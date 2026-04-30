@@ -1,6 +1,6 @@
 // triplot のテーブル型定義（手書き）
 // 後で `supabase gen types typescript --linked > lib/types/database.ts` で置き換え可能。
-// Row / Insert / Update の3形式は @supabase/supabase-js の型推論と互換。
+// 各テーブルに Relationships: [] を持たせるのは postgrest-js の GenericTable 要件。
 
 export type Visibility = "shared" | "private";
 export type Currency = "JPY" | "USD";
@@ -8,6 +8,9 @@ export type TripStatus = "planning" | "ongoing" | "finished";
 export type MemberKind = "member" | "guest";
 
 export type Database = {
+  __InternalSupabase: {
+    PostgrestVersion: "12";
+  };
   public: {
     Tables: {
       users: {
@@ -32,6 +35,7 @@ export type Database = {
           is_anonymous?: boolean;
           created_at?: string;
         };
+        Relationships: [];
       };
       trips: {
         Row: {
@@ -64,6 +68,7 @@ export type Database = {
           last_activity_at?: string;
           created_at?: string;
         };
+        Relationships: [];
       };
       trip_members: {
         Row: {
@@ -96,6 +101,22 @@ export type Database = {
           joined_at?: string;
           left_at?: string | null;
         };
+        Relationships: [
+          {
+            foreignKeyName: "trip_members_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "trip_members_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       trip_invites: {
         Row: {
@@ -110,6 +131,15 @@ export type Database = {
           trip_id?: string;
           token_hash?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "trip_invites_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       trip_exchange_rates: {
         Row: {
@@ -127,6 +157,15 @@ export type Database = {
           currency?: Currency;
           rate_to_default?: number;
         };
+        Relationships: [
+          {
+            foreignKeyName: "trip_exchange_rates_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       places: {
         Row: {
@@ -168,6 +207,22 @@ export type Database = {
           note?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "places_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "places_created_by_member_id_fkey";
+            columns: ["created_by_member_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       events: {
         Row: {
@@ -206,6 +261,29 @@ export type Database = {
           note?: string | null;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "events_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_created_by_member_id_fkey";
+            columns: ["created_by_member_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "events_place_id_fkey";
+            columns: ["place_id"];
+            isOneToOne: false;
+            referencedRelation: "places";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       expenses: {
         Row: {
@@ -247,6 +325,29 @@ export type Database = {
           paid_at?: string;
           created_at?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "expenses_trip_id_fkey";
+            columns: ["trip_id"];
+            isOneToOne: false;
+            referencedRelation: "trips";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenses_created_by_member_id_fkey";
+            columns: ["created_by_member_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenses_payer_member_id_fkey";
+            columns: ["payer_member_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+        ];
       };
       expense_splits: {
         Row: {
@@ -261,6 +362,22 @@ export type Database = {
           expense_id?: string;
           member_id?: string;
         };
+        Relationships: [
+          {
+            foreignKeyName: "expense_splits_expense_id_fkey";
+            columns: ["expense_id"];
+            isOneToOne: false;
+            referencedRelation: "expenses";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expense_splits_member_id_fkey";
+            columns: ["member_id"];
+            isOneToOne: false;
+            referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+        ];
       };
     };
     Views: Record<string, never>;
