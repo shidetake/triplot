@@ -221,24 +221,16 @@ create policy expenses_delete on expenses for delete
 
 create policy expense_splits_all on expense_splits for all
   using (
-    exists (
-      select 1 from expenses e
-      where e.id = expense_id
-        and (
-          (e.visibility = 'shared' and public.is_active_trip_member(e.trip_id))
-          or
-          (e.visibility = 'private' and public.is_own_member(e.created_by_member_id))
-        )
+    expense_id in (
+      select id from expenses
+      where (visibility = 'shared' and public.is_active_trip_member(trip_id))
+         or (visibility = 'private' and public.is_own_member(created_by_member_id))
     )
   )
   with check (
-    exists (
-      select 1 from expenses e
-      where e.id = expense_id
-        and (
-          (e.visibility = 'shared' and public.is_active_trip_member(e.trip_id))
-          or
-          (e.visibility = 'private' and public.is_own_member(e.created_by_member_id))
-        )
+    expense_id in (
+      select id from expenses
+      where (visibility = 'shared' and public.is_active_trip_member(trip_id))
+         or (visibility = 'private' and public.is_own_member(created_by_member_id))
     )
   );
