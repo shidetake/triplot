@@ -1,5 +1,7 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
@@ -31,9 +33,8 @@ export async function createTripAction(
     return { error: "セッションがありません" };
   }
 
-  // @supabase/ssr の createServerClient は INSERT 時に JWT を Authorization
-  // ヘッダーに乗せていない様子（auth.uid() が RLS で null になる）。
-  // 明示的に access_token を付けた basic クライアントで DB 操作を行う。
+  // @supabase/ssr のクライアントは INSERT 時に JWT を Authorization に乗せ
+  // 切れないことがあるため、明示的に access_token を付与した basic クライアントを使う。
   const db = createSupabaseClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -59,41 +60,27 @@ export async function createTripAction(
     return { error: "タイトルと表示名は必須です" };
   }
 
-  const { data: trip, error: tripError } = await db
-    .from("trips")
-    .insert({
-      title,
-      start_date: startDate,
-      end_date: endDate,
-      default_currency: defaultCurrency,
-    })
-    .select()
-    .single();
+  // ID をクライアント側で生成して、INSERT は RETURNING しない形にする。
+  // RETURNING すると INSERT 直後の SELECT ポリシー評価が走り、まだ
+  // trip_members に自分の行が無いため SELECT が拒否されエラーになる。
+  const tripId = randomUUID();
 
-  if (tripError || !trip) {
-    let jwtInfo = "";
-    try {
-      const payloadB64 = session.access_token.split(".")[1];
-      const json = Buffer.from(payloadB64, "base64").toString();
-      const payload = JSON.parse(json) as Record<string, unknown>;
-      jwtInfo = ` | JWT sub=${String(payload.sub).slice(0, 8)} role=${payload.role} aud=${payload.aud}`;
-    } catch (e) {
-      jwtInfo = ` | JWT decode failed: ${e instanceof Error ? e.message : String(e)}`;
-    }
-    let pgAuth = "";
-    try {
-      const { data: dbg } = await db.rpc("debug_auth" as never);
-      pgAuth = ` | PG ${String(dbg)}`;
-    } catch (e) {
-      pgAuth = ` | RPC failed: ${e instanceof Error ? e.message : String(e)}`;
-    }
+  const { error: tripError } = await db.from("trips").insert({
+    id: tripId,
+    title,
+    start_date: startDate,
+    end_date: endDate,
+    default_currency: defaultCurrency,
+  });
+
+  if (tripError) {
     return {
-      error: `${tripError?.message ?? "旅行の作成に失敗しました"}${jwtInfo}${pgAuth}`,
+      error: `旅行の作成に失敗: ${tripError.message}`,
     };
   }
 
   const { error: memberError } = await db.from("trip_members").insert({
-    trip_id: trip.id,
+    trip_id: tripId,
     user_id: user.id,
     display_name: displayName,
     kind: "member",
@@ -108,12 +95,16 @@ export async function createTripAction(
     Number.isFinite(usdToJpy) &&
     usdToJpy > 0
   ) {
-    await db.from("trip_exchange_rates").insert({
-      trip_id: trip.id,
+    const { error: rateError } = await db.from("trip_exchange_rates").insert({
+      trip_id: tripId,
       currency: "USD",
       rate_to_default: usdToJpy,
     });
+    if (rateError) {
+      // 為替レートは旅行作成の必須要件ではないので、失敗しても旅行作成自体は通す
+      console.warn("failed to insert exchange rate:", rateError.message);
+    }
   }
 
-  redirect(`/trips/${trip.id}`);
+  redirect(`/trips/${tripId}`);
 }
