@@ -22,10 +22,7 @@ export default async function NewTripPage() {
       <p className="mt-2 text-sm text-zinc-600">
         基本情報だけ先に決めてください。あとから変更できます。
       </p>
-      <CreateTripForm
-        userId={user.id}
-        defaultDisplayName={profile?.display_name ?? null}
-      />
+      <CreateTripForm defaultDisplayName={profile?.display_name ?? null} />
     </main>
   );
 }
