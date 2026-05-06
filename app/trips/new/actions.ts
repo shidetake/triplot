@@ -15,10 +15,16 @@ export async function createTripAction(
   const supabase = await createClient();
   const {
     data: { user },
+    error: userError,
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return {
+      error: `getUser failed: ${userError?.message ?? "no user"}`,
+    };
   }
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
 
   const title = ((formData.get("title") as string | null) ?? "").trim();
   const displayName = (
@@ -47,7 +53,7 @@ export async function createTripAction(
 
   if (tripError || !trip) {
     return {
-      error: tripError?.message ?? "旅行の作成に失敗しました",
+      error: `${tripError?.message ?? "旅行の作成に失敗しました"} | DEBUG user=${user.id.slice(0, 8)} hasSession=${!!session} tokenLen=${session?.access_token?.length ?? 0}`,
     };
   }
 
