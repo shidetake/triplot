@@ -1,8 +1,10 @@
 "use server";
 
+import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import type { Database } from "@/lib/types/database";
 
 export type CreateTripState = {
   error: string | null;
@@ -25,6 +27,23 @@ export async function createTripAction(
   const {
     data: { session },
   } = await supabase.auth.getSession();
+  if (!session) {
+    return { error: "セッションがありません" };
+  }
+
+  // @supabase/ssr の createServerClient は INSERT 時に JWT を Authorization
+  // ヘッダーに乗せていない様子（auth.uid() が RLS で null になる）。
+  // 明示的に access_token を付けた basic クライアントで DB 操作を行う。
+  const db = createSupabaseClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      },
+      auth: { persistSession: false, autoRefreshToken: false },
+    },
+  );
 
   const title = ((formData.get("title") as string | null) ?? "").trim();
   const displayName = (
@@ -40,7 +59,7 @@ export async function createTripAction(
     return { error: "タイトルと表示名は必須です" };
   }
 
-  const { data: trip, error: tripError } = await supabase
+  const { data: trip, error: tripError } = await db
     .from("trips")
     .insert({
       title,
@@ -53,11 +72,11 @@ export async function createTripAction(
 
   if (tripError || !trip) {
     return {
-      error: `${tripError?.message ?? "旅行の作成に失敗しました"} | DEBUG user=${user.id.slice(0, 8)} hasSession=${!!session} tokenLen=${session?.access_token?.length ?? 0}`,
+      error: `${tripError?.message ?? "旅行の作成に失敗しました"}`,
     };
   }
 
-  const { error: memberError } = await supabase.from("trip_members").insert({
+  const { error: memberError } = await db.from("trip_members").insert({
     trip_id: trip.id,
     user_id: user.id,
     display_name: displayName,
@@ -73,7 +92,7 @@ export async function createTripAction(
     Number.isFinite(usdToJpy) &&
     usdToJpy > 0
   ) {
-    await supabase.from("trip_exchange_rates").insert({
+    await db.from("trip_exchange_rates").insert({
       trip_id: trip.id,
       currency: "USD",
       rate_to_default: usdToJpy,
