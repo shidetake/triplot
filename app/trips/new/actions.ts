@@ -71,8 +71,24 @@ export async function createTripAction(
     .single();
 
   if (tripError || !trip) {
+    let jwtInfo = "";
+    try {
+      const payloadB64 = session.access_token.split(".")[1];
+      const json = Buffer.from(payloadB64, "base64").toString();
+      const payload = JSON.parse(json) as Record<string, unknown>;
+      jwtInfo = ` | JWT sub=${String(payload.sub).slice(0, 8)} role=${payload.role} aud=${payload.aud}`;
+    } catch (e) {
+      jwtInfo = ` | JWT decode failed: ${e instanceof Error ? e.message : String(e)}`;
+    }
+    let pgAuth = "";
+    try {
+      const { data: dbg } = await db.rpc("debug_auth" as never);
+      pgAuth = ` | PG ${String(dbg)}`;
+    } catch (e) {
+      pgAuth = ` | RPC failed: ${e instanceof Error ? e.message : String(e)}`;
+    }
     return {
-      error: `${tripError?.message ?? "旅行の作成に失敗しました"}`,
+      error: `${tripError?.message ?? "旅行の作成に失敗しました"}${jwtInfo}${pgAuth}`,
     };
   }
 
