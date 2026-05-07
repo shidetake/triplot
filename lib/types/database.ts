@@ -382,6 +382,17 @@ export type Database = {
     };
     Views: Record<string, never>;
     Functions: {
+      create_trip: {
+        Args: {
+          p_title: string;
+          p_start_date: string | null;
+          p_end_date: string | null;
+          p_default_currency: "JPY" | "USD";
+          p_display_name: string;
+          p_usd_to_jpy_rate?: number | null;
+        };
+        Returns: string;
+      };
       is_active_trip_member: {
         Args: { _trip_id: string };
         Returns: boolean;
