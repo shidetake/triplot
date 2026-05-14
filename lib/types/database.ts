@@ -394,6 +394,20 @@ export type Database = {
         };
         Returns: string;
       };
+      create_expense: {
+        Args: {
+          p_trip_id: string;
+          p_amount: number;
+          p_currency: Currency;
+          p_payer_member_id: string;
+          p_visibility: Visibility;
+          p_splittable: boolean;
+          p_note: string | null;
+          p_paid_at: string | null;
+          p_split_member_ids: string[];
+        };
+        Returns: string;
+      };
       is_active_trip_member: {
         // _trip_id は trips.id（text）
         Args: { _trip_id: string };
