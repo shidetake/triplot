@@ -1,8 +1,6 @@
 -- create_trip：trip + 自分の trip_member + 為替レートを 1 トランザクションで作る。
 -- SECURITY DEFINER で RLS をバイパスし、関数の入口で auth.uid() を確認する。
--- これがないと「INSERT INTO trips RETURNING *」での SELECT ポリシー評価で
--- "row violates row-level security policy" になる（INSERT 直後はまだ
--- trip_members に自分の行がないため）。
+-- trips.id は短い ID（nanoid(10)）なので、衝突に備えてリトライ。
 
 create or replace function public.create_trip(
   p_title             text,
@@ -12,14 +10,15 @@ create or replace function public.create_trip(
   p_display_name      text,
   p_usd_to_jpy_rate   numeric default null
 )
-returns uuid
+returns text
 language plpgsql
 security definer
 set search_path = public
 as $body$
 declare
   v_uid uuid := auth.uid();
-  v_trip_id uuid;
+  v_trip_id text;
+  v_attempts int := 0;
 begin
   -- 関数の入口で認可チェック（DEFINER で RLS をバイパスするので自前で書く）
   if v_uid is null then
@@ -37,9 +36,21 @@ begin
     raise exception 'invalid default_currency';
   end if;
 
-  insert into trips (title, start_date, end_date, default_currency)
-  values (p_title, p_start_date, p_end_date, p_default_currency)
-  returning id into v_trip_id;
+  -- 衝突リトライで trip 作成（10文字 nanoid なので 9 億件規模で衝突 50%、
+  -- 実用上はほぼ 1 発で通る）
+  loop
+    begin
+      insert into trips (title, start_date, end_date, default_currency)
+      values (p_title, p_start_date, p_end_date, p_default_currency)
+      returning id into v_trip_id;
+      exit;
+    exception when unique_violation then
+      v_attempts := v_attempts + 1;
+      if v_attempts > 5 then
+        raise exception 'failed to generate unique trip id after 5 attempts';
+      end if;
+    end;
+  end loop;
 
   insert into trip_members (trip_id, user_id, display_name, kind)
   values (v_trip_id, v_uid, p_display_name, 'member');
@@ -55,7 +66,5 @@ begin
 end;
 $body$;
 
--- 認証済みユーザのみ呼べるようにする（SECURITY DEFINER のデフォルトは
--- public 全員が EXECUTE 可能なので、anon を弾く）。
 revoke all on function public.create_trip(text, date, date, text, text, numeric) from public;
 grant execute on function public.create_trip(text, date, date, text, text, numeric) to authenticated;

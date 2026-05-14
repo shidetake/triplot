@@ -71,6 +71,7 @@ export type Database = {
         Relationships: [];
       };
       trip_members: {
+        // trip_id は text(10) の短い ID
         Row: {
           id: string;
           trip_id: string;
@@ -394,6 +395,7 @@ export type Database = {
         Returns: string;
       };
       is_active_trip_member: {
+        // _trip_id は trips.id（text）
         Args: { _trip_id: string };
         Returns: boolean;
       };

@@ -10,7 +10,7 @@
 -- ヘルパー関数
 -- ────────────────────────────────────────────────────────────
 
-create or replace function public.is_active_trip_member(_trip_id uuid)
+create or replace function public.is_active_trip_member(_trip_id text)
 returns boolean
 language sql
 stable

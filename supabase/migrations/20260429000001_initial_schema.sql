@@ -3,6 +3,27 @@
 --  - 旅行（trips）は所有者を持たない共同物。trip_members で多対多に参加者を紐付ける
 --  - 投稿系（places / events / expenses）は visibility で shared/private を分ける
 --  - 多通貨対応：trip_exchange_rates に手動レートを持ち、default_currency に換算する
+--  - trips.id は URL に出すため短い ID（10文字 base62）。他テーブルの主キーは uuid
+
+-- ────────────────────────────────────────────────────────────
+-- nanoid 関数（URL 用の短い ID 生成）
+-- ────────────────────────────────────────────────────────────
+create or replace function public.nanoid(size int default 10)
+returns text
+language plpgsql
+volatile
+as $body$
+declare
+  alphabet text := '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  result text := '';
+  i int;
+begin
+  for i in 1..size loop
+    result := result || substr(alphabet, 1 + floor(random() * 62)::int, 1);
+  end loop;
+  return result;
+end;
+$body$;
 
 -- ────────────────────────────────────────────────────────────
 -- users（Supabase Auth と1対1）
@@ -17,9 +38,10 @@ create table users (
 
 -- ────────────────────────────────────────────────────────────
 -- trips（旅行）
+-- id は URL に出るため短い ID。10文字 base62 で衝突 50% に達するのは 9 億件規模。
 -- ────────────────────────────────────────────────────────────
 create table trips (
-  id                uuid primary key default gen_random_uuid(),
+  id                text primary key default public.nanoid(10),
   title             text not null,
   start_date        date,
   end_date          date,
@@ -38,7 +60,7 @@ create table trips (
 -- ────────────────────────────────────────────────────────────
 create table trip_members (
   id            uuid primary key default gen_random_uuid(),
-  trip_id       uuid not null references trips(id) on delete cascade,
+  trip_id       text not null references trips(id) on delete cascade,
   user_id       uuid not null references users(id) on delete cascade,
   display_name  text not null,
   color         text,
@@ -52,7 +74,7 @@ create table trip_members (
 -- trip_invites（リンク参加用トークン、ハッシュ保存）
 -- ────────────────────────────────────────────────────────────
 create table trip_invites (
-  trip_id     uuid not null references trips(id) on delete cascade,
+  trip_id     text not null references trips(id) on delete cascade,
   token_hash  text primary key
 );
 
@@ -60,7 +82,7 @@ create table trip_invites (
 -- trip_exchange_rates（trip 内の手動為替レート）
 -- ────────────────────────────────────────────────────────────
 create table trip_exchange_rates (
-  trip_id          uuid not null references trips(id) on delete cascade,
+  trip_id          text not null references trips(id) on delete cascade,
   currency         text not null check (currency in ('JPY','USD')),
   rate_to_default  numeric not null,
   primary key (trip_id, currency)
@@ -71,7 +93,7 @@ create table trip_exchange_rates (
 -- ────────────────────────────────────────────────────────────
 create table places (
   id                    uuid primary key default gen_random_uuid(),
-  trip_id               uuid not null references trips(id) on delete cascade,
+  trip_id               text not null references trips(id) on delete cascade,
   created_by_member_id  uuid not null references trip_members(id) on delete cascade,
   visibility            text not null check (visibility in ('shared','private')),
   google_place_id       text,
@@ -88,7 +110,7 @@ create table places (
 -- ────────────────────────────────────────────────────────────
 create table events (
   id                    uuid primary key default gen_random_uuid(),
-  trip_id               uuid not null references trips(id) on delete cascade,
+  trip_id               text not null references trips(id) on delete cascade,
   created_by_member_id  uuid not null references trip_members(id) on delete cascade,
   visibility            text not null check (visibility in ('shared','private')),
   title                 text not null,
@@ -104,7 +126,7 @@ create table events (
 -- ────────────────────────────────────────────────────────────
 create table expenses (
   id                    uuid primary key default gen_random_uuid(),
-  trip_id               uuid not null references trips(id) on delete cascade,
+  trip_id               text not null references trips(id) on delete cascade,
   created_by_member_id  uuid not null references trip_members(id) on delete cascade,
   visibility            text not null check (visibility in ('shared','private')),
   amount                numeric not null,
