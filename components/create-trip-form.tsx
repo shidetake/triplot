@@ -55,14 +55,6 @@ export function CreateTripForm({
         </select>
       </label>
 
-      <Field
-        label="USD → JPY レート（為替の手動設定。後から変更可）"
-        name="usd_to_jpy_rate"
-        type="number"
-        step="0.01"
-        defaultValue="150"
-      />
-
       <button
         type="submit"
         disabled={isPending}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState } from "react";
+import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import {
   createExpenseAction,
@@ -13,6 +13,14 @@ type Member = {
   display_name: string;
 };
 
+export type Category = {
+  id: string;
+  name: string;
+  emoji: string;
+  color: string;
+  sort_order: number;
+};
+
 const initialState: CreateExpenseState = { ok: false, error: null };
 
 export function ExpenseForm({
@@ -20,15 +28,17 @@ export function ExpenseForm({
   members,
   myMemberId,
   defaultCurrency,
-  availableCurrencies,
+  categories,
+  averageRates, // { JPY: 1, USD: 平均 } — まだ履歴がない currency は省略
   defaultPaidAt,
 }: {
   tripId: string;
   members: Member[];
   myMemberId: string;
   defaultCurrency: Currency;
-  availableCurrencies: Currency[];
-  defaultPaidAt: string; // YYYY-MM-DD
+  categories: Category[];
+  averageRates: Partial<Record<Currency, number>>;
+  defaultPaidAt: string;
 }) {
   const boundAction = createExpenseAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(
@@ -36,22 +46,38 @@ export function ExpenseForm({
     initialState,
   );
 
+  const [localCurrency, setLocalCurrency] = useState<Currency>(defaultCurrency);
   const [visibility, setVisibility] = useState<"shared" | "private">("shared");
   const [splittable, setSplittable] = useState(true);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(
     () => new Set(members.map((m) => m.id)),
   );
 
+  // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。
+  const rateFor = (c: Currency): string => {
+    if (c === defaultCurrency) return "1";
+    const avg = averageRates[c];
+    return avg !== undefined ? String(avg) : "";
+  };
+  const [rateInput, setRateInput] = useState<string>(() =>
+    rateFor(defaultCurrency),
+  );
+
   const formRef = useRef<HTMLFormElement>(null);
   const noteId = useId();
 
-  // 成功時に uncontrolled な入力（金額・メモ等）だけリセット。
-  // visibility / splittable / 対象は次の費用入力でも流用しやすいよう保持する。
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
+      // rateInput / localCurrency / visibility / splittable は controlled なので
+      // 連続入力の UX を考えて保持する（form.reset() は uncontrolled だけリセット）
     }
   }, [state.ok]);
+
+  const onCurrencyChange = (c: Currency) => {
+    setLocalCurrency(c);
+    setRateInput(rateFor(c));
+  };
 
   const toggleSplit = (id: string) => {
     setSelectedSplits((prev) => {
@@ -62,6 +88,11 @@ export function ExpenseForm({
     });
   };
 
+  const sortedCategories = useMemo(
+    () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
+    [categories],
+  );
+
   return (
     <form
       ref={formRef}
@@ -70,10 +101,10 @@ export function ExpenseForm({
     >
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
-          <span className="font-medium">金額</span>
+          <span className="font-medium">現地価格</span>
           <input
             type="number"
-            name="amount"
+            name="local_price"
             required
             min="0"
             step="0.01"
@@ -85,18 +116,67 @@ export function ExpenseForm({
         <label className="block text-sm">
           <span className="font-medium">通貨</span>
           <select
-            name="currency"
-            defaultValue={defaultCurrency}
+            name="local_currency"
+            value={localCurrency}
+            onChange={(e) => onCurrencyChange(e.target.value as Currency)}
             className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
           >
-            {availableCurrencies.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
-            ))}
+            <option value="JPY">JPY</option>
+            <option value="USD">USD</option>
           </select>
         </label>
       </div>
+
+      {localCurrency !== defaultCurrency && (
+        <label className="block text-sm">
+          <span className="font-medium">
+            為替レート（1 {localCurrency} = ? {defaultCurrency}）
+          </span>
+          <input
+            type="number"
+            name="rate_to_default"
+            required
+            min="0"
+            step="0.0001"
+            inputMode="decimal"
+            value={rateInput}
+            onChange={(e) => setRateInput(e.target.value)}
+            placeholder={
+              averageRates[localCurrency] !== undefined
+                ? String(averageRates[localCurrency])
+                : "例: 150"
+            }
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          />
+          {averageRates[localCurrency] !== undefined && (
+            <span className="mt-1 block text-xs text-zinc-500">
+              この旅行の平均レート: {averageRates[localCurrency]}
+            </span>
+          )}
+        </label>
+      )}
+      {localCurrency === defaultCurrency && (
+        <input type="hidden" name="rate_to_default" value="1" />
+      )}
+
+      <label className="block text-sm">
+        <span className="font-medium">カテゴリ</span>
+        <select
+          name="category_id"
+          required
+          defaultValue={
+            sortedCategories.find((c) => c.name === "その他")?.id ??
+            sortedCategories[0]?.id
+          }
+          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+        >
+          {sortedCategories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.emoji} {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <label className="block text-sm">
         <span className="font-medium">支払った人</span>

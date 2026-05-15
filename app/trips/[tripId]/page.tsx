@@ -1,10 +1,9 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { ExpenseForm } from "@/components/expense-form";
+import { type Category, ExpenseForm } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
-import type { ExchangeRates } from "@/lib/currency";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -13,7 +12,6 @@ import {
   calculateSettlements,
   type SettlementExpense,
 } from "@/lib/settlement";
-import { convertToDefault } from "@/lib/currency";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency } from "@/lib/types/database";
 
@@ -48,28 +46,28 @@ export default async function TripDetailPage({
   const me = activeMembers.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
-  const { data: ratesRows } = await supabase
-    .from("trip_exchange_rates")
-    .select("currency, rate_to_default")
-    .eq("trip_id", tripId);
+  const { data: categoriesRaw } = await supabase
+    .from("expense_categories")
+    .select("id, name, color, emoji, sort_order")
+    .eq("trip_id", tripId)
+    .order("sort_order", { ascending: true });
 
-  const rates: ExchangeRates = {};
-  for (const r of ratesRows ?? []) {
-    rates[r.currency as Currency] = Number(r.rate_to_default);
-  }
+  const categories: Category[] = categoriesRaw ?? [];
 
   const { data: expensesRaw } = await supabase
     .from("expenses")
     .select(
-      "id, amount, currency, visibility, splittable, note, paid_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
+      "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
     )
     .eq("trip_id", tripId)
     .order("paid_at", { ascending: false });
 
   const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
     id: e.id,
-    amount: Number(e.amount),
-    currency: e.currency,
+    local_price: Number(e.local_price),
+    local_currency: e.local_currency,
+    rate_to_default: Number(e.rate_to_default),
+    category_id: e.category_id,
     visibility: e.visibility,
     splittable: e.splittable,
     note: e.note,
@@ -79,12 +77,26 @@ export default async function TripDetailPage({
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
   }));
 
-  // Settlement / Summary 用に shared & splittable な費用だけを default_currency に換算して渡す
+  // 通貨ごとの平均レート（フォームのデフォルトと表示用）
+  const ratesByCurrency = new Map<Currency, number[]>();
+  for (const e of expenses) {
+    const arr = ratesByCurrency.get(e.local_currency) ?? [];
+    arr.push(e.rate_to_default);
+    ratesByCurrency.set(e.local_currency, arr);
+  }
+  const averageRates: Partial<Record<Currency, number>> = {};
+  for (const [c, rates] of ratesByCurrency) {
+    averageRates[c] = rates.reduce((s, r) => s + r, 0) / rates.length;
+  }
+  // default_currency は常に 1
+  averageRates[trip.default_currency] = 1;
+
+  // Settlement / Summary 用に default_currency に換算済みで渡す
   const settlementExpenses: SettlementExpense[] = expenses
     .filter((e) => e.visibility === "shared" && e.splittable)
     .map((e) => ({
       id: e.id,
-      amount: convertToDefault(e.amount, e.currency, rates),
+      amount: e.local_price * e.rate_to_default,
       payerMemberId: e.payer_member_id,
       splitMemberIds: e.split_member_ids,
     }));
@@ -96,25 +108,18 @@ export default async function TripDetailPage({
 
   const summaryExpenses: SummaryExpense[] = expenses.map((e) => ({
     visibility: e.visibility,
-    amount: e.amount,
-    currency: e.currency,
+    amountInDefault: e.local_price * e.rate_to_default,
     payerMemberId: e.payer_member_id,
     splittable: e.splittable,
     splitMemberIds: e.split_member_ids,
     createdByMemberId: e.created_by_member_id,
   }));
 
-  const summary = calculateExpenseSummary(summaryExpenses, me.id, rates);
+  const summary = calculateExpenseSummary(summaryExpenses, me.id);
 
-  const availableCurrencies: Currency[] = ["JPY", "USD"].filter(
-    (c): c is Currency =>
-      c === trip.default_currency || rates[c as Currency] !== undefined,
-  );
-
-  // 日付デフォルトは「旅行期間内なら start_date、それ以外は今日」
   const today = new Date().toISOString().slice(0, 10);
   const defaultPaidAt =
-    trip.start_date && trip.end_date && today < trip.start_date
+    trip.start_date && today < trip.start_date
       ? trip.start_date
       : trip.end_date && today > trip.end_date
         ? trip.end_date
@@ -157,7 +162,7 @@ export default async function TripDetailPage({
           settlements={settlements}
           members={activeMembers}
           defaultCurrency={trip.default_currency}
-          rates={rates}
+          averageRates={averageRates}
         />
 
         <details className="rounded-md border border-zinc-200 bg-white">
@@ -173,7 +178,8 @@ export default async function TripDetailPage({
               }))}
               myMemberId={me.id}
               defaultCurrency={trip.default_currency}
-              availableCurrencies={availableCurrencies}
+              categories={categories}
+              averageRates={averageRates}
               defaultPaidAt={defaultPaidAt}
             />
           </div>
@@ -183,6 +189,8 @@ export default async function TripDetailPage({
           tripId={tripId}
           expenses={expenses}
           members={activeMembers}
+          categories={categories}
+          defaultCurrency={trip.default_currency}
           myMemberId={me.id}
         />
       </section>

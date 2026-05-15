@@ -23,11 +23,16 @@ export async function createExpenseAction(
     return { ok: false, error: "ログインしてください" };
   }
 
-  const amountRaw = (formData.get("amount") as string | null) ?? "";
-  const amount = Number.parseFloat(amountRaw);
-  const currency = formData.get("currency") as Currency | null;
-  const payerMemberId = (formData.get("payer_member_id") as string | null) ?? "";
-  const visibility = (formData.get("visibility") as Visibility | null) ?? "shared";
+  const localPriceRaw = (formData.get("local_price") as string | null) ?? "";
+  const localPrice = Number.parseFloat(localPriceRaw);
+  const localCurrency = formData.get("local_currency") as Currency | null;
+  const rateRaw = (formData.get("rate_to_default") as string | null) ?? "";
+  const rateToDefault = Number.parseFloat(rateRaw);
+  const categoryId = (formData.get("category_id") as string | null) ?? "";
+  const payerMemberId =
+    (formData.get("payer_member_id") as string | null) ?? "";
+  const visibility =
+    (formData.get("visibility") as Visibility | null) ?? "shared";
   const splittable =
     visibility === "shared" && formData.get("splittable") === "on";
   const note = ((formData.get("note") as string | null) ?? "").trim();
@@ -37,11 +42,17 @@ export async function createExpenseAction(
 
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
-  if (!Number.isFinite(amount) || amount <= 0) {
+  if (!Number.isFinite(localPrice) || localPrice <= 0) {
     return { ok: false, error: "金額は正の数で入力してください" };
   }
-  if (!currency || !["JPY", "USD"].includes(currency)) {
+  if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
     return { ok: false, error: "通貨を選んでください" };
+  }
+  if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {
+    return { ok: false, error: "為替レートは正の数で入力してください" };
+  }
+  if (!categoryId) {
+    return { ok: false, error: "カテゴリを選んでください" };
   }
   if (!payerMemberId) {
     return { ok: false, error: "支払った人を選んでください" };
@@ -52,8 +63,10 @@ export async function createExpenseAction(
 
   const { error } = await supabase.rpc("create_expense", {
     p_trip_id: tripId,
-    p_amount: amount,
-    p_currency: currency,
+    p_local_price: localPrice,
+    p_local_currency: localCurrency,
+    p_rate_to_default: rateToDefault,
+    p_category_id: categoryId,
     p_payer_member_id: payerMemberId,
     p_visibility: visibility,
     p_splittable: splittable,

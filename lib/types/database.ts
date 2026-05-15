@@ -142,25 +142,37 @@ export type Database = {
           },
         ];
       };
-      trip_exchange_rates: {
+      expense_categories: {
         Row: {
+          id: string;
           trip_id: string;
-          currency: Currency;
-          rate_to_default: number;
+          name: string;
+          color: string;
+          emoji: string;
+          sort_order: number;
+          created_at: string;
         };
         Insert: {
+          id?: string;
           trip_id: string;
-          currency: Currency;
-          rate_to_default: number;
+          name: string;
+          color: string;
+          emoji: string;
+          sort_order: number;
+          created_at?: string;
         };
         Update: {
+          id?: string;
           trip_id?: string;
-          currency?: Currency;
-          rate_to_default?: number;
+          name?: string;
+          color?: string;
+          emoji?: string;
+          sort_order?: number;
+          created_at?: string;
         };
         Relationships: [
           {
-            foreignKeyName: "trip_exchange_rates_trip_id_fkey";
+            foreignKeyName: "expense_categories_trip_id_fkey";
             columns: ["trip_id"];
             isOneToOne: false;
             referencedRelation: "trips";
@@ -292,8 +304,10 @@ export type Database = {
           trip_id: string;
           created_by_member_id: string;
           visibility: Visibility;
-          amount: number;
-          currency: Currency;
+          local_price: number;
+          local_currency: Currency;
+          rate_to_default: number;
+          category_id: string;
           payer_member_id: string;
           splittable: boolean;
           note: string | null;
@@ -305,8 +319,10 @@ export type Database = {
           trip_id: string;
           created_by_member_id: string;
           visibility: Visibility;
-          amount: number;
-          currency: Currency;
+          local_price: number;
+          local_currency: Currency;
+          rate_to_default: number;
+          category_id: string;
           payer_member_id: string;
           splittable?: boolean;
           note?: string | null;
@@ -318,8 +334,10 @@ export type Database = {
           trip_id?: string;
           created_by_member_id?: string;
           visibility?: Visibility;
-          amount?: number;
-          currency?: Currency;
+          local_price?: number;
+          local_currency?: Currency;
+          rate_to_default?: number;
+          category_id?: string;
           payer_member_id?: string;
           splittable?: boolean;
           note?: string | null;
@@ -346,6 +364,13 @@ export type Database = {
             columns: ["payer_member_id"];
             isOneToOne: false;
             referencedRelation: "trip_members";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "expenses_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "expense_categories";
             referencedColumns: ["id"];
           },
         ];
@@ -390,15 +415,16 @@ export type Database = {
           p_end_date: string | null;
           p_default_currency: "JPY" | "USD";
           p_display_name: string;
-          p_usd_to_jpy_rate?: number | null;
         };
         Returns: string;
       };
       create_expense: {
         Args: {
           p_trip_id: string;
-          p_amount: number;
-          p_currency: Currency;
+          p_local_price: number;
+          p_local_currency: Currency;
+          p_rate_to_default: number;
+          p_category_id: string;
           p_payer_member_id: string;
           p_visibility: Visibility;
           p_splittable: boolean;
@@ -407,6 +433,10 @@ export type Database = {
           p_split_member_ids: string[];
         };
         Returns: string;
+      };
+      seed_default_expense_categories: {
+        Args: { _trip_id: string };
+        Returns: void;
       };
       is_active_trip_member: {
         // _trip_id は trips.id（text）

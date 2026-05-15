@@ -1,4 +1,3 @@
-import type { ExchangeRates } from "@/lib/currency";
 import type { ExpenseSummary } from "@/lib/expenseSummary";
 import type { Settlement } from "@/lib/settlement";
 import type { Currency } from "@/lib/types/database";
@@ -13,26 +12,39 @@ export function ExpenseSummaryView({
   settlements,
   members,
   defaultCurrency,
-  rates,
+  averageRates,
 }: {
   summary: ExpenseSummary;
   settlements: Settlement[];
   members: Member[];
   defaultCurrency: Currency;
-  rates: ExchangeRates;
+  averageRates: Partial<Record<Currency, number>>;
 }) {
   const memberById = new Map(members.map((m) => [m.id, m]));
 
-  const rateHints = Object.entries(rates)
+  const rateHints = Object.entries(averageRates)
     .filter(([c]) => c !== defaultCurrency)
-    .map(([c, r]) => `1 ${c} = ${r} ${defaultCurrency}`);
+    .map(([c, r]) => `1 ${c} ≈ ${r} ${defaultCurrency}`);
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2 rounded-md border border-zinc-200 bg-white p-4 text-sm">
-        <SummaryCell label="共有での自己負担" value={summary.sharedSelfShare} currency={defaultCurrency} />
-        <SummaryCell label="プライベート合計" value={summary.privateTotal} currency={defaultCurrency} />
-        <SummaryCell label="合計" value={summary.total} currency={defaultCurrency} emphasized />
+        <SummaryCell
+          label="共有での自己負担"
+          value={summary.sharedSelfShare}
+          currency={defaultCurrency}
+        />
+        <SummaryCell
+          label="プライベート合計"
+          value={summary.privateTotal}
+          currency={defaultCurrency}
+        />
+        <SummaryCell
+          label="合計"
+          value={summary.total}
+          currency={defaultCurrency}
+          emphasized
+        />
       </div>
 
       <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm">
@@ -50,14 +62,16 @@ export function ExpenseSummaryView({
                 <span className="font-medium">
                   {memberById.get(s.toMemberId)?.display_name ?? "?"}
                 </span>
-                <span className="ml-2">{formatAmount(s.amount, defaultCurrency)}</span>
+                <span className="ml-2">
+                  {formatAmount(s.amount, defaultCurrency)}
+                </span>
               </li>
             ))}
           </ul>
         )}
         {rateHints.length > 0 && (
           <p className="mt-3 text-xs text-zinc-500">
-            換算レート: {rateHints.join(", ")}
+            平均レート: {rateHints.join(", ")}
           </p>
         )}
       </div>
@@ -79,7 +93,11 @@ function SummaryCell({
   return (
     <div>
       <div className="text-xs text-zinc-500">{label}</div>
-      <div className={emphasized ? "mt-1 text-lg font-semibold" : "mt-1 font-medium"}>
+      <div
+        className={
+          emphasized ? "mt-1 text-lg font-semibold" : "mt-1 font-medium"
+        }
+      >
         {formatAmount(value, currency)}
       </div>
     </div>

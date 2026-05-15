@@ -27,8 +27,6 @@ export async function createTripAction(
   const startDate = (formData.get("start_date") as string) || null;
   const endDate = (formData.get("end_date") as string) || null;
   const defaultCurrency = formData.get("default_currency") as "JPY" | "USD";
-  const usdToJpyRaw = formData.get("usd_to_jpy_rate") as string | null;
-  const usdToJpy = usdToJpyRaw ? Number.parseFloat(usdToJpyRaw) : null;
 
   if (!title || !displayName) {
     return { error: "タイトルと表示名は必須です" };
@@ -40,8 +38,6 @@ export async function createTripAction(
     p_end_date: endDate,
     p_default_currency: defaultCurrency,
     p_display_name: displayName,
-    p_usd_to_jpy_rate:
-      Number.isFinite(usdToJpy) && (usdToJpy ?? 0) > 0 ? usdToJpy : null,
   });
 
   if (error || !tripId) {

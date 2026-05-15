@@ -1,13 +1,10 @@
 // 「自分がこの旅行で使った金額」サマリ計算
 // shared 費用の按分後の自己負担額 + private 費用の合計
-
-import type { Currency, ExchangeRates } from "./currency";
-import { convertToDefault } from "./currency";
+// amount は呼び出し側で default_currency に換算済み（local_price × rate_to_default）。
 
 export type SummaryExpense = {
   visibility: "shared" | "private";
-  amount: number;
-  currency: Currency;
+  amountInDefault: number; // default_currency 換算済み
   payerMemberId: string;
   splittable: boolean;
   splitMemberIds: string[]; // splittable=true のときに使用
@@ -23,18 +20,15 @@ export type ExpenseSummary = {
 export function calculateExpenseSummary(
   expenses: SummaryExpense[],
   myMemberId: string,
-  rates: ExchangeRates,
 ): ExpenseSummary {
   let sharedSelfShare = 0;
   let privateTotal = 0;
 
   for (const e of expenses) {
-    const amount = convertToDefault(e.amount, e.currency, rates);
-
     if (e.visibility === "private") {
       // 投稿者自身にしか見えない仕様。RLS で守られているはずだが念のため。
       if (e.createdByMemberId === myMemberId) {
-        privateTotal += amount;
+        privateTotal += e.amountInDefault;
       }
       continue;
     }
@@ -42,12 +36,12 @@ export function calculateExpenseSummary(
     // shared
     if (e.splittable) {
       if (e.splitMemberIds.includes(myMemberId) && e.splitMemberIds.length > 0) {
-        sharedSelfShare += amount / e.splitMemberIds.length;
+        sharedSelfShare += e.amountInDefault / e.splitMemberIds.length;
       }
     } else {
       // 誰かのおごり：自分が支払者なら全額、それ以外は 0
       if (e.payerMemberId === myMemberId) {
-        sharedSelfShare += amount;
+        sharedSelfShare += e.amountInDefault;
       }
     }
   }

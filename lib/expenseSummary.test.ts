@@ -2,22 +2,19 @@ import { describe, expect, it } from "vitest";
 
 import { calculateExpenseSummary, type SummaryExpense } from "./expenseSummary";
 
-const rates = { JPY: 1, USD: 150 };
-
 describe("calculateExpenseSummary", () => {
   it("shared splittable：自分が splitMemberIds に含まれていれば按分額が加算", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
-        amount: 30000,
-        currency: "JPY",
+        amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
         splitMemberIds: ["alice", "bob"],
         createdByMemberId: "alice",
       },
     ];
-    expect(calculateExpenseSummary(expenses, "bob", rates)).toEqual({
+    expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       sharedSelfShare: 15000,
       privateTotal: 0,
       total: 15000,
@@ -28,15 +25,14 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
-        amount: 30000,
-        currency: "JPY",
+        amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
         splitMemberIds: ["alice", "bob"],
         createdByMemberId: "alice",
       },
     ];
-    expect(calculateExpenseSummary(expenses, "carol", rates)).toEqual({
+    expect(calculateExpenseSummary(expenses, "carol")).toEqual({
       sharedSelfShare: 0,
       privateTotal: 0,
       total: 0,
@@ -47,31 +43,29 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
-        amount: 5000,
-        currency: "JPY",
+        amountInDefault: 5000,
         payerMemberId: "alice",
         splittable: false,
         splitMemberIds: [],
         createdByMemberId: "alice",
       },
     ];
-    expect(calculateExpenseSummary(expenses, "alice", rates).total).toBe(5000);
-    expect(calculateExpenseSummary(expenses, "bob", rates).total).toBe(0);
+    expect(calculateExpenseSummary(expenses, "alice").total).toBe(5000);
+    expect(calculateExpenseSummary(expenses, "bob").total).toBe(0);
   });
 
   it("private：投稿者本人なら privateTotal に加算", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "private",
-        amount: 20,
-        currency: "USD",
+        amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
         splitMemberIds: [],
         createdByMemberId: "bob",
       },
     ];
-    expect(calculateExpenseSummary(expenses, "bob", rates)).toEqual({
+    expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       sharedSelfShare: 0,
       privateTotal: 3000,
       total: 3000,
@@ -82,23 +76,21 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "private",
-        amount: 20,
-        currency: "USD",
+        amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
         splitMemberIds: [],
         createdByMemberId: "bob",
       },
     ];
-    expect(calculateExpenseSummary(expenses, "alice", rates).total).toBe(0);
+    expect(calculateExpenseSummary(expenses, "alice").total).toBe(0);
   });
 
-  it("複合シナリオ：USD 200 のホテルを2人で割り勘 + USD 20 の private", () => {
+  it("複合シナリオ：30000 ホテル割り勘 + 3000 private", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
-        amount: 200,
-        currency: "USD",
+        amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
         splitMemberIds: ["alice", "bob"],
@@ -106,16 +98,15 @@ describe("calculateExpenseSummary", () => {
       },
       {
         visibility: "private",
-        amount: 20,
-        currency: "USD",
+        amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
         splitMemberIds: [],
         createdByMemberId: "bob",
       },
     ];
-    // bob: 200 USD * 150 / 2 = 15000 + 20 USD * 150 = 3000 → total 18000
-    expect(calculateExpenseSummary(expenses, "bob", rates)).toEqual({
+    // bob: 30000/2 = 15000 + 3000 = 18000
+    expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       sharedSelfShare: 15000,
       privateTotal: 3000,
       total: 18000,

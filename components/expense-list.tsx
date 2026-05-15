@@ -5,10 +5,14 @@ import { useTransition } from "react";
 import { deleteExpenseAction } from "@/app/trips/[tripId]/actions";
 import type { Currency, Visibility } from "@/lib/types/database";
 
+import type { Category } from "./expense-form";
+
 export type ExpenseRow = {
   id: string;
-  amount: number;
-  currency: Currency;
+  local_price: number;
+  local_currency: Currency;
+  rate_to_default: number;
+  category_id: string;
   visibility: Visibility;
   splittable: boolean;
   note: string | null;
@@ -27,14 +31,19 @@ export function ExpenseList({
   tripId,
   expenses,
   members,
+  categories,
+  defaultCurrency,
   myMemberId,
 }: {
   tripId: string;
   expenses: ExpenseRow[];
   members: Member[];
+  categories: Category[];
+  defaultCurrency: Currency;
   myMemberId: string;
 }) {
   const memberById = new Map(members.map((m) => [m.id, m]));
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
 
   if (expenses.length === 0) {
     return (
@@ -50,6 +59,8 @@ export function ExpenseList({
           tripId={tripId}
           expense={e}
           memberById={memberById}
+          category={categoryById.get(e.category_id)}
+          defaultCurrency={defaultCurrency}
           canDelete={
             e.visibility === "private"
               ? e.created_by_member_id === myMemberId
@@ -65,11 +76,15 @@ function ExpenseRowItem({
   tripId,
   expense,
   memberById,
+  category,
+  defaultCurrency,
   canDelete,
 }: {
   tripId: string;
   expense: ExpenseRow;
   memberById: Map<string, Member>;
+  category: Category | undefined;
+  defaultCurrency: Currency;
   canDelete: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -82,6 +97,9 @@ function ExpenseRowItem({
         .join(", ")
     : null;
 
+  const isForeign = expense.local_currency !== defaultCurrency;
+  const amountInDefault = expense.local_price * expense.rate_to_default;
+
   const onDelete = () => {
     if (!confirm("この費用を削除しますか？")) return;
     startTransition(async () => {
@@ -93,10 +111,25 @@ function ExpenseRowItem({
   return (
     <li className="flex items-start justify-between gap-3 p-3 text-sm">
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          {category && (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+              style={{ backgroundColor: category.color }}
+            >
+              <span>{category.emoji}</span>
+              <span>{category.name}</span>
+            </span>
+          )}
           <span className="font-medium">
-            {formatAmount(expense.amount, expense.currency)}
+            {formatAmount(amountInDefault, defaultCurrency)}
           </span>
+          {isForeign && (
+            <span className="text-xs text-zinc-500">
+              ({formatAmount(expense.local_price, expense.local_currency)} @{" "}
+              {expense.rate_to_default})
+            </span>
+          )}
           {expense.visibility === "private" && (
             <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
               プライベート
