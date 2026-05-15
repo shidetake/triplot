@@ -38,7 +38,10 @@ export async function createExpenseAction(
   const note = ((formData.get("note") as string | null) ?? "").trim();
   const paidAtRaw = (formData.get("paid_at") as string | null) ?? "";
   // <input type="date"> は "YYYY-MM-DD"。timestamptz として送るため T00:00 を足す。
-  const paidAt = paidAtRaw ? `${paidAtRaw}T00:00:00` : null;
+  // 未入力なら現在時刻（DB 側 coalesce もあるが型を string に保つ）。
+  const paidAt = paidAtRaw
+    ? `${paidAtRaw}T00:00:00`
+    : new Date().toISOString();
 
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
@@ -70,7 +73,7 @@ export async function createExpenseAction(
     p_payer_member_id: payerMemberId,
     p_visibility: visibility,
     p_splittable: splittable,
-    p_note: note || null,
+    p_note: note, // 空文字は DB 側 nullif で NULL になる
     p_paid_at: paidAt,
     p_split_member_ids: splittable ? splitMemberIds : [],
   });

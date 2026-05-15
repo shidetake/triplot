@@ -34,8 +34,9 @@ export async function createTripAction(
 
   const { data: tripId, error } = await supabase.rpc("create_trip", {
     p_title: title,
-    p_start_date: startDate,
-    p_end_date: endDate,
+    // gen-types は DEFAULT 無し nullable 引数を string にするが、DB は null 可
+    p_start_date: startDate as string,
+    p_end_date: endDate as string,
     p_default_currency: defaultCurrency,
     p_display_name: displayName,
   });

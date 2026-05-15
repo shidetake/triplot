@@ -9,6 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "db:types": "bash scripts/gen-db-types.sh",
+    "db:types:check": "bash scripts/check-db-types.sh",
     "prepare": "husky || true"
   },
   "dependencies": {

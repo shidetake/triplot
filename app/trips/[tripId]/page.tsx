@@ -13,7 +13,7 @@ import {
   type SettlementExpense,
 } from "@/lib/settlement";
 import { createClient } from "@/lib/supabase/server";
-import type { Currency } from "@/lib/types/database";
+import type { Currency, Visibility } from "@/lib/types/database";
 
 export default async function TripDetailPage({
   params,
@@ -62,13 +62,16 @@ export default async function TripDetailPage({
     .eq("trip_id", tripId)
     .order("paid_at", { ascending: false });
 
+  // gen-types は CHECK 制約を読めず string を返すので、DB 境界でドメイン型に絞る
+  const defaultCurrency = trip.default_currency as Currency;
+
   const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
     id: e.id,
     local_price: Number(e.local_price),
-    local_currency: e.local_currency,
+    local_currency: e.local_currency as Currency,
     rate_to_default: Number(e.rate_to_default),
     category_id: e.category_id,
-    visibility: e.visibility,
+    visibility: e.visibility as Visibility,
     splittable: e.splittable,
     note: e.note,
     paid_at: e.paid_at,
@@ -89,7 +92,7 @@ export default async function TripDetailPage({
     averageRates[c] = rates.reduce((s, r) => s + r, 0) / rates.length;
   }
   // default_currency は常に 1
-  averageRates[trip.default_currency] = 1;
+  averageRates[defaultCurrency] = 1;
 
   // Settlement / Summary 用に default_currency に換算済みで渡す
   const settlementExpenses: SettlementExpense[] = expenses
@@ -161,7 +164,7 @@ export default async function TripDetailPage({
           summary={summary}
           settlements={settlements}
           members={activeMembers}
-          defaultCurrency={trip.default_currency}
+          defaultCurrency={defaultCurrency}
           averageRates={averageRates}
         />
 
@@ -177,7 +180,7 @@ export default async function TripDetailPage({
                 display_name: m.display_name,
               }))}
               myMemberId={me.id}
-              defaultCurrency={trip.default_currency}
+              defaultCurrency={defaultCurrency}
               categories={categories}
               averageRates={averageRates}
               defaultPaidAt={defaultPaidAt}
@@ -190,7 +193,7 @@ export default async function TripDetailPage({
           expenses={expenses}
           members={activeMembers}
           categories={categories}
-          defaultCurrency={trip.default_currency}
+          defaultCurrency={defaultCurrency}
           myMemberId={me.id}
         />
       </section>
