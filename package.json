@@ -9,7 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepare": "husky"
+    "prepare": "husky || true"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",
