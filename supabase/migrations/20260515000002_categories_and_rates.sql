@@ -1,14 +1,22 @@
 -- B 拡張: カテゴリと per-expense 為替レート
 --
 -- 変更:
---  - expense_categories テーブル新設（trip ごと、seed で 11 個）
+--  - expense_categories テーブル新設（trip ごと、create_trip 時に 11 個 seed）
 --  - expenses から amount / currency を撤去し、local_price / local_currency /
 --    rate_to_default / category_id に置換
 --  - trip_exchange_rates テーブルは廃止（per-expense レートに統一）
 --  - create_trip から p_usd_to_jpy_rate を撤去、デフォルトカテゴリ seed を追加
 --  - create_expense を新スキーマに対応
 --
--- 注意: expenses は test data として全削除する。
+-- 開発中のため: 既存 trips を保つ backfill は書かず、先頭で truncate trips cascade
+-- する（trip_members / expenses / expense_categories も道連れ）。本番運用に入ったら
+-- このパターンは捨てる。
+
+-- ────────────────────────────────────────────────────────────
+-- 既存データ一掃（開発中の運用）
+-- 既存 trips があると下流の NOT NULL 追加・FK 追加が崩れる。backfill は書かない。
+-- ────────────────────────────────────────────────────────────
+truncate table trips cascade;
 
 -- ────────────────────────────────────────────────────────────
 -- expense_categories
@@ -67,24 +75,9 @@ begin
 end;
 $body$;
 
--- 既存 trips にも seed
-do $$
-declare
-  t record;
-begin
-  for t in select id from trips loop
-    perform public.seed_default_expense_categories(t.id);
-  end loop;
-end;
-$$;
-
--- ────────────────────────────────────────────────────────────
--- expenses の全削除（test data。category_id NOT NULL を入れるため）
--- ────────────────────────────────────────────────────────────
-truncate table expenses cascade;
-
 -- ────────────────────────────────────────────────────────────
 -- expenses スキーマ変更
+-- （trips を truncate cascade 済みなので expenses は空）
 -- ────────────────────────────────────────────────────────────
 alter table expenses drop column amount;
 alter table expenses drop column currency;
