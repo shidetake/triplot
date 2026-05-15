@@ -27,18 +27,22 @@ export function ExpenseForm({
   tripId,
   members,
   myMemberId,
-  defaultCurrency,
+  defaultCurrency, // trip のデフォルト通貨。為替レート計算の基準（換算なら 1）
+  initialCurrency, // 通貨セレクタの初期値（= 最後に入力した費用の通貨）
   categories,
+  initialCategoryId, // = 最後に入力した費用のカテゴリ
   averageRates, // { JPY: 1, USD: 平均 } — まだ履歴がない currency は省略
-  defaultPaidAt,
+  initialPaidAt, // = 最後に入力した費用の日付
 }: {
   tripId: string;
   members: Member[];
   myMemberId: string;
   defaultCurrency: Currency;
+  initialCurrency: Currency;
   categories: Category[];
+  initialCategoryId: string;
   averageRates: Partial<Record<Currency, number>>;
-  defaultPaidAt: string;
+  initialPaidAt: string;
 }) {
   const boundAction = createExpenseAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(
@@ -46,7 +50,9 @@ export function ExpenseForm({
     initialState,
   );
 
-  const [localCurrency, setLocalCurrency] = useState<Currency>(defaultCurrency);
+  const [localCurrency, setLocalCurrency] = useState<Currency>(initialCurrency);
+  const [categoryId, setCategoryId] = useState<string>(initialCategoryId);
+  const [paidAt, setPaidAt] = useState<string>(initialPaidAt);
   const [visibility, setVisibility] = useState<"shared" | "private">("shared");
   const [splittable, setSplittable] = useState(true);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(
@@ -60,7 +66,7 @@ export function ExpenseForm({
     return avg !== undefined ? String(avg) : "";
   };
   const [rateInput, setRateInput] = useState<string>(() =>
-    rateFor(defaultCurrency),
+    rateFor(initialCurrency),
   );
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -69,8 +75,9 @@ export function ExpenseForm({
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
-      // rateInput / localCurrency / visibility / splittable は controlled なので
-      // 連続入力の UX を考えて保持する（form.reset() は uncontrolled だけリセット）
+      // 通貨 / カテゴリ / 日付 / レート / 公開範囲 / 割り勘は controlled。
+      // 連続入力で前回値を引き継ぐため保持する（form.reset() は uncontrolled だけリセット）。
+      // 支払った人は uncontrolled なので毎回「自分」に戻る（仕様）。
     }
   }, [state.ok]);
 
@@ -101,7 +108,7 @@ export function ExpenseForm({
     >
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
-          <span className="font-medium">現地価格</span>
+          <span className="font-medium">価格</span>
           <input
             type="number"
             name="local_price"
@@ -164,10 +171,8 @@ export function ExpenseForm({
         <select
           name="category_id"
           required
-          defaultValue={
-            sortedCategories.find((c) => c.name === "その他")?.id ??
-            sortedCategories[0]?.id
-          }
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         >
           {sortedCategories.map((c) => (
@@ -176,6 +181,17 @@ export function ExpenseForm({
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="block text-sm" htmlFor={noteId}>
+        <span className="font-medium">メモ（任意）</span>
+        <input
+          id={noteId}
+          type="text"
+          name="note"
+          placeholder="ランチ、空港バス、など"
+          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+        />
       </label>
 
       <label className="block text-sm">
@@ -198,7 +214,8 @@ export function ExpenseForm({
         <input
           type="date"
           name="paid_at"
-          defaultValue={defaultPaidAt}
+          value={paidAt}
+          onChange={(e) => setPaidAt(e.target.value)}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         />
       </label>
@@ -274,17 +291,6 @@ export function ExpenseForm({
           </div>
         </fieldset>
       )}
-
-      <label className="block text-sm" htmlFor={noteId}>
-        <span className="font-medium">メモ（任意）</span>
-        <input
-          id={noteId}
-          type="text"
-          name="note"
-          placeholder="ランチ、空港バス、など"
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-        />
-      </label>
 
       <button
         type="submit"

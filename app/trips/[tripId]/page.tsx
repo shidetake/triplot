@@ -57,7 +57,7 @@ export default async function TripDetailPage({
   const { data: expensesRaw } = await supabase
     .from("expenses")
     .select(
-      "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
+      "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
     )
     .eq("trip_id", tripId)
     .order("paid_at", { ascending: false });
@@ -75,6 +75,7 @@ export default async function TripDetailPage({
     splittable: e.splittable,
     note: e.note,
     paid_at: e.paid_at,
+    created_at: e.created_at,
     payer_member_id: e.payer_member_id,
     created_by_member_id: e.created_by_member_id,
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
@@ -120,9 +121,24 @@ export default async function TripDetailPage({
 
   const summary = calculateExpenseSummary(summaryExpenses, me.id);
 
+  // フォームの初期値は「最後に入力した費用」に揃える（通貨・カテゴリ・日付）。
+  // 履歴が無いときだけ trip のデフォルトにフォールバック。
+  const lastEntered = expenses.reduce<ExpenseRow | null>(
+    (acc, e) => (acc && acc.created_at >= e.created_at ? acc : e),
+    null,
+  );
+
   const today = new Date().toISOString().slice(0, 10);
-  const defaultPaidAt =
-    trip.start_date && today < trip.start_date
+  const initialCurrency: Currency =
+    lastEntered?.local_currency ?? defaultCurrency;
+  const initialCategoryId =
+    lastEntered?.category_id ??
+    categories.find((c) => c.name === "その他")?.id ??
+    categories[0]?.id ??
+    "";
+  const initialPaidAt = lastEntered
+    ? lastEntered.paid_at.slice(0, 10)
+    : trip.start_date && today < trip.start_date
       ? trip.start_date
       : trip.end_date && today > trip.end_date
         ? trip.end_date
@@ -181,9 +197,11 @@ export default async function TripDetailPage({
               }))}
               myMemberId={me.id}
               defaultCurrency={defaultCurrency}
+              initialCurrency={initialCurrency}
               categories={categories}
+              initialCategoryId={initialCategoryId}
               averageRates={averageRates}
-              defaultPaidAt={defaultPaidAt}
+              initialPaidAt={initialPaidAt}
             />
           </div>
         </details>

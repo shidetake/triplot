@@ -17,6 +17,7 @@ export type ExpenseRow = {
   splittable: boolean;
   note: string | null;
   paid_at: string;
+  created_at: string;
   payer_member_id: string;
   created_by_member_id: string;
   split_member_ids: string[];
