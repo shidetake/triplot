@@ -148,13 +148,10 @@ const FULL_DAY_WINDOW = { startMin: 0, endMin: 24 * 60 };
 export function buildSchedule(
   events: ScheduleEvent[],
   opts: {
-    tripTz: string;
     tripStart?: string | null; // YYYY-MM-DD
     tripEnd?: string | null;
   },
 ): Schedule {
-  const tripTz = opts.tripTz;
-
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
   let rangeEnd: string | null = opts.tripEnd ?? null;
@@ -193,8 +190,14 @@ export function buildSchedule(
     });
   };
 
+  // 旅行TZ概念は持たない。普通の日の「現在TZ」は旅程から導出する:
+  //  - 最初の時差移動より前 → その移動の出発TZ
+  //  - 時差移動が無ければ → 最初の非終日イベントのTZ（無ければ UTC。
+  //    単一列の日は列が1つなので、この値は配置に影響しない）
+  const firstTz = events.find((e) => !e.allDay)?.startTz ?? "UTC";
+
   let cursor = rangeStart;
-  let currentTz = tripTz;
+  let currentTz = transits.length > 0 ? transits[0].startTz : firstTz;
 
   for (const t of transits) {
     const departDate = parseWall(t.startAt).date;

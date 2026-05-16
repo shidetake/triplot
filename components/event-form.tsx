@@ -50,21 +50,13 @@ export type EventFormMode =
   | { mode: "create"; date: string; time: string; tz: string }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
-function TzSelect({
-  name,
-  defaultValue,
-  tripTz,
-}: {
-  name: string;
-  defaultValue: string;
-  tripTz: string;
-}) {
+function TzSelect({ name, value }: { name: string; value: string }) {
   const opts = [...TIMEZONE_OPTIONS];
-  if (!opts.some((o) => o.value === tripTz)) {
-    opts.unshift({ value: tripTz, label: `${tripTz}（旅行の既定）` });
+  if (value && !opts.some((o) => o.value === value)) {
+    opts.unshift({ value, label: value });
   }
   return (
-    <select name={name} defaultValue={defaultValue} className={inputCls}>
+    <select name={name} defaultValue={value} className={inputCls}>
       {opts.map((o) => (
         <option key={o.value} value={o.value}>
           {o.label}
@@ -83,13 +75,13 @@ function initialKind3(ev: ScheduleEvent | null): Kind3 {
 
 export function EventForm({
   tripId,
-  tripTz,
+  defaultTz,
   state: formMode,
   places,
   onDone,
 }: {
   tripId: string;
-  tripTz: string;
+  defaultTz: string; // 個別TZの初期値（= 前回入力 or ブラウザTZ）
   state: EventFormMode;
   places: { id: string; name: string }[];
   onDone: () => void;
@@ -123,7 +115,7 @@ export function EventForm({
     : { date: formMode.date, time: formMode.time };
   const endInit = isEdit ? splitWall(ev!.endAt) : { date: "", time: "" };
   const tzInit = isEdit ? ev!.startTz : formMode.tz;
-  const endTzInit = isEdit ? (ev!.endTz ?? tripTz) : tripTz;
+  const endTzInit = isEdit ? (ev!.endTz ?? defaultTz) : defaultTz;
 
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
@@ -234,11 +226,7 @@ export function EventForm({
             </div>
             <label className="mt-2 block text-xs">
               <span className="text-zinc-600">出発地タイムゾーン</span>
-              <TzSelect
-                name="depart_tz"
-                defaultValue={tzInit}
-                tripTz={tripTz}
-              />
+              <TzSelect name="depart_tz" value={tzInit} />
             </label>
           </fieldset>
 
@@ -270,11 +258,7 @@ export function EventForm({
             </div>
             <label className="mt-2 block text-xs">
               <span className="text-zinc-600">到着地タイムゾーン</span>
-              <TzSelect
-                name="arrive_tz"
-                defaultValue={endTzInit}
-                tripTz={tripTz}
-              />
+              <TzSelect name="arrive_tz" value={endTzInit} />
             </label>
           </fieldset>
         </div>
@@ -303,8 +287,7 @@ export function EventForm({
               />
             </label>
           </div>
-          {/* 終日はTZ無関係。スキーマの NOT NULL を満たすため旅行TZを送る */}
-          <input type="hidden" name="tz" value={tripTz} />
+          {/* 終日はTZ無関係。サーバ側で UTC 固定にする（tz は送らない） */}
         </div>
       )}
 
@@ -343,7 +326,7 @@ export function EventForm({
           </div>
           <label className="block text-xs">
             <span className="text-zinc-600">タイムゾーン</span>
-            <TzSelect name="tz" defaultValue={tzInit} tripTz={tripTz} />
+            <TzSelect name="tz" value={tzInit} />
           </label>
         </div>
       )}

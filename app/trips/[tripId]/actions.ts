@@ -315,10 +315,9 @@ function parseEventForm(formData: FormData): ParsedEvent {
 
   // normal
   const allDay = formData.get("all_day") === "on";
-  const tz = get("tz");
-  if (!tz) return { error: "タイムゾーンを選んでください" };
 
   if (allDay) {
+    // 終日イベントのTZは表示に無関係。旅行TZ概念は廃止したので UTC 固定。
     const startDate = get("start_date");
     const endDate = get("end_date") || startDate;
     if (!startDate) return { error: "日付を入力してください" };
@@ -331,7 +330,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
       title,
       startAt: `${startDate}T00:00:00`,
       endAt: `${endDate}T00:00:00`,
-      startTz: tz,
+      startTz: "UTC",
       endTz: null,
       placeId,
       visibility,
@@ -339,6 +338,8 @@ function parseEventForm(formData: FormData): ParsedEvent {
     };
   }
 
+  const tz = get("tz");
+  if (!tz) return { error: "タイムゾーンを選んでください" };
   const startDate = get("start_date");
   const startTime = get("start_time");
   const endTime = get("end_time");

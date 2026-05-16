@@ -67,7 +67,7 @@ function FormPopover({
 
 export function ScheduleSection({
   tripId,
-  tripTimeZone,
+  initialTz,
   tripStart,
   tripEnd,
   events,
@@ -75,7 +75,7 @@ export function ScheduleSection({
   myMemberId,
 }: {
   tripId: string;
-  tripTimeZone: string;
+  initialTz: string | null; // 前回入力イベントのTZ（無ければ null）
   tripStart: string | null;
   tripEnd: string | null;
   events: EventRow[];
@@ -84,14 +84,20 @@ export function ScheduleSection({
 }) {
   const [open, setOpen] = useState<OpenForm | null>(null);
 
+  // 個別TZの初期値: 前回入力 → 無ければブラウザのTZ（自宅で計画する想定）。
+  // 表示計算には使わない（あくまでフォームの初期選択）。
+  const defaultTz = useMemo(() => {
+    if (initialTz) return initialTz;
+    try {
+      return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    } catch {
+      return "UTC";
+    }
+  }, [initialTz]);
+
   const schedule = useMemo(
-    () =>
-      buildSchedule(events, {
-        tripTz: tripTimeZone,
-        tripStart,
-        tripEnd,
-      }),
-    [events, tripTimeZone, tripStart, tripEnd],
+    () => buildSchedule(events, { tripStart, tripEnd }),
+    [events, tripStart, tripEnd],
   );
 
   const placeName = useCallback(
@@ -110,7 +116,7 @@ export function ScheduleSection({
         mode: "create",
         date: defaultDate,
         time: "09:00",
-        tz: tripTimeZone,
+        tz: defaultTz,
       },
       anchor: { x: e.clientX, y: e.clientY },
     });
@@ -120,12 +126,18 @@ export function ScheduleSection({
     (date: string, tz: string, minutes: number, anchor: Anchor) => {
       const h = String(Math.floor(minutes / 60)).padStart(2, "0");
       const m = String(minutes % 60).padStart(2, "0");
+      // 列のTZ（旅程から導出）を初期値に。情報が無い列(UTC)なら前回入力TZ。
       setOpen({
-        form: { mode: "create", date, time: `${h}:${m}`, tz },
+        form: {
+          mode: "create",
+          date,
+          time: `${h}:${m}`,
+          tz: tz === "UTC" ? defaultTz : tz,
+        },
         anchor,
       });
     },
-    [],
+    [defaultTz],
   );
 
   const onEventClick = useCallback(
@@ -174,7 +186,7 @@ export function ScheduleSection({
         <FormPopover anchor={open.anchor} onClose={closeForm}>
           <EventForm
             tripId={tripId}
-            tripTz={tripTimeZone}
+            defaultTz={defaultTz}
             state={open.form}
             places={places}
             onDone={closeForm}

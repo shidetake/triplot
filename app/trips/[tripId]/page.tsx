@@ -44,7 +44,7 @@ export default async function TripDetailPage({
     supabase
       .from("trips")
       .select(
-        "id, title, start_date, end_date, status, default_currency, time_zone",
+        "id, title, start_date, end_date, status, default_currency",
       )
       .eq("id", tripId)
       .single(),
@@ -81,7 +81,7 @@ export default async function TripDetailPage({
     supabase
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
@@ -151,6 +151,19 @@ export default async function TripDetailPage({
     note: e.note,
     createdByMemberId: e.created_by_member_id,
   }));
+
+  // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントのTZ。
+  // 費用フォームの「最後に入力した値を初期値に」と同方針。無ければ null。
+  const lastEnteredEvent = (eventsRaw ?? [])
+    .filter((e) => !e.all_day)
+    .reduce<{ created_at: string; start_tz: string } | null>(
+      (acc, e) =>
+        acc && acc.created_at >= e.created_at
+          ? acc
+          : { created_at: e.created_at, start_tz: e.start_tz },
+      null,
+    );
+  const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
 
@@ -251,7 +264,7 @@ export default async function TripDetailPage({
 
         <ScheduleSection
           tripId={tripId}
-          tripTimeZone={trip.time_zone}
+          initialTz={initialEventTz}
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
           events={scheduleEvents}

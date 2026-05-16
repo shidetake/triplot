@@ -414,7 +414,6 @@ export type Database = {
           last_activity_at: string
           start_date: string | null
           status: string
-          time_zone: string
           title: string
         }
         Insert: {
@@ -425,7 +424,6 @@ export type Database = {
           last_activity_at?: string
           start_date?: string | null
           status?: string
-          time_zone?: string
           title: string
         }
         Update: {
@@ -436,7 +434,6 @@ export type Database = {
           last_activity_at?: string
           start_date?: string | null
           status?: string
-          time_zone?: string
           title?: string
         }
         Relationships: []

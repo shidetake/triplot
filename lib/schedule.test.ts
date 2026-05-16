@@ -45,14 +45,13 @@ describe("壁時計・日付ユーティリティ", () => {
 
 describe("buildSchedule: 列の構築", () => {
   it("イベントも trip 日付も無ければ空", () => {
-    const s = buildSchedule([], { tripTz: "Asia/Tokyo" });
+    const s = buildSchedule([], {});
     expect(s.groups).toEqual([]);
     expect(s.columns).toEqual([]);
   });
 
   it("1泊2日は2列（無駄な7列を出さない）", () => {
     const s = buildSchedule([], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-04-27",
       tripEnd: "2026-04-28",
     });
@@ -60,12 +59,10 @@ describe("buildSchedule: 列の構築", () => {
       "2026-04-27",
       "2026-04-28",
     ]);
-    expect(s.columns.every((c) => c.tz === "Asia/Tokyo")).toBe(true);
   });
 
   it("8日旅行は8列", () => {
     const s = buildSchedule([], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-05-01",
       tripEnd: "2026-05-08",
     });
@@ -75,13 +72,21 @@ describe("buildSchedule: 列の構築", () => {
   it("イベントが trip 範囲外でも列が出る", () => {
     const s = buildSchedule(
       [ev({ id: "e1", startAt: "2026-05-10T09:00:00" })],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-02" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-02" },
     );
     expect(s.columns.map((c) => c.date)).toContain("2026-05-10");
   });
+
+  it("時差移動が無い普通の日のTZは最初の非終日イベント由来", () => {
+    const s = buildSchedule(
+      [ev({ id: "e1", startTz: "Pacific/Honolulu" })],
+      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
+    );
+    expect(s.columns[0].tz).toBe("Pacific/Honolulu");
+  });
 });
 
-describe("buildSchedule: フライト(transit)日は等幅2列", () => {
+describe("buildSchedule: 時差移動の日は等幅2列", () => {
   const flight = ev({
     id: "f1",
     title: "NRT-HNL",
@@ -92,9 +97,8 @@ describe("buildSchedule: フライト(transit)日は等幅2列", () => {
     endTz: "Pacific/Honolulu",
   });
 
-  it("フライト日が出発TZ側/到着TZ側の2列グループになる", () => {
+  it("移動日が出発TZ側/到着TZ側の2列グループになる", () => {
     const s = buildSchedule([flight], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-04-27",
       tripEnd: "2026-04-28",
     });
@@ -113,9 +117,8 @@ describe("buildSchedule: フライト(transit)日は等幅2列", () => {
     });
   });
 
-  it("フライト後はTZが到着側に切り替わる", () => {
+  it("移動後はTZが到着側に切り替わる", () => {
     const s = buildSchedule([flight], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-04-27",
       tripEnd: "2026-04-29",
     });
@@ -125,9 +128,8 @@ describe("buildSchedule: フライト(transit)日は等幅2列", () => {
     expect(after?.tz).toBe("Pacific/Honolulu");
   });
 
-  it("便はリボン用に出発列・到着列・分を持つ", () => {
+  it("リボン用に出発列・到着列・分を持つ", () => {
     const s = buildSchedule([flight], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-04-27",
       tripEnd: "2026-04-28",
     });
@@ -151,7 +153,6 @@ describe("buildSchedule: フライト(transit)日は等幅2列", () => {
       endTz: "Asia/Tokyo",
     });
     const s = buildSchedule([ret], {
-      tripTz: "Pacific/Honolulu",
       tripStart: "2026-05-01",
       tripEnd: "2026-05-05",
     });
@@ -169,7 +170,7 @@ describe("buildSchedule: 時刻イベントの重なりレーン", () => {
         ev({ id: "a", startAt: "2026-05-01T09:00:00", endAt: "2026-05-01T10:00:00" }),
         ev({ id: "b", startAt: "2026-05-01T11:00:00", endAt: "2026-05-01T12:00:00" }),
       ],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-01" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
     );
     expect(s.timed.every((t) => t.laneCount === 1)).toBe(true);
   });
@@ -180,7 +181,7 @@ describe("buildSchedule: 時刻イベントの重なりレーン", () => {
         ev({ id: "a", startAt: "2026-05-01T09:00:00", endAt: "2026-05-01T11:00:00" }),
         ev({ id: "b", startAt: "2026-05-01T10:00:00", endAt: "2026-05-01T12:00:00" }),
       ],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-01" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
     );
     const a = s.timed.find((t) => t.event.id === "a")!;
     const b = s.timed.find((t) => t.event.id === "b")!;
@@ -192,7 +193,7 @@ describe("buildSchedule: 時刻イベントの重なりレーン", () => {
   it("end 無しは既定60分扱い", () => {
     const s = buildSchedule(
       [ev({ id: "a", startAt: "2026-05-01T09:00:00", endAt: null })],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-01" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
     );
     expect(s.timed[0].endMin).toBe(10 * 60);
   });
@@ -206,6 +207,7 @@ describe("buildSchedule: 終日・連日バー", () => {
           id: "stay",
           title: "宿泊",
           allDay: true,
+          startTz: "UTC",
           startAt: "2026-05-02T00:00:00",
           endAt: "2026-05-04T00:00:00",
         }),
@@ -213,11 +215,12 @@ describe("buildSchedule: 終日・連日バー", () => {
           id: "x",
           title: "イベント",
           allDay: true,
+          startTz: "UTC",
           startAt: "2026-05-03T00:00:00",
           endAt: "2026-05-03T00:00:00",
         }),
       ],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-05" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-05" },
     );
     // columns: 05-01..05-05 = index 0..4
     const stay = s.allDayBars.find((b) => b.event.id === "stay")!;
@@ -237,14 +240,13 @@ describe("buildSchedule: 縦軸は常に0:00-24:00固定", () => {
         ev({ id: "a", startAt: "2026-05-01T09:00:00", endAt: "2026-05-01T10:00:00" }),
         ev({ id: "b", startAt: "2026-05-01T14:00:00", endAt: "2026-05-01T15:30:00" }),
       ],
-      { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-01" },
+      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
     );
     expect(s.window).toEqual({ startMin: 0, endMin: 24 * 60 });
   });
 
   it("予定が無くても 0:00-24:00", () => {
     const s = buildSchedule([], {
-      tripTz: "Asia/Tokyo",
       tripStart: "2026-05-01",
       tripEnd: "2026-05-01",
     });
