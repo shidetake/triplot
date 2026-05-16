@@ -33,14 +33,19 @@ const FIELDS = [
 ];
 
 export function PlaceSearch({
+  query,
+  onQueryChange,
+  onClear,
   biasCenter,
   onResults,
 }: {
+  query: string;
+  onQueryChange: (value: string) => void;
+  onClear: () => void;
   biasCenter: LatLng;
   onResults: (results: CandidatePlace[]) => void;
 }) {
   const placesLib = useMapsLibrary("places");
-  const [query, setQuery] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -93,13 +98,35 @@ export function PlaceSearch({
   return (
     <form onSubmit={onSubmit} className="space-y-1">
       <div className="flex gap-2">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="店名・地名で検索（例: 浅草 寿司）"
-          className="min-w-0 flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
-        />
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="店名・地名で検索（例: 浅草 寿司）"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-black focus:outline-none"
+          />
+          {query && (
+            <button
+              type="button"
+              onClick={onClear}
+              aria-label="検索をクリア"
+              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+            >
+              <svg
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.75"
+                strokeLinecap="round"
+                className="h-3.5 w-3.5"
+                aria-hidden="true"
+              >
+                <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+              </svg>
+            </button>
+          )}
+        </div>
         <button
           type="submit"
           disabled={!ready || pending}

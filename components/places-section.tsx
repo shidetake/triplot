@@ -24,6 +24,7 @@ export function PlacesSection({
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+  const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
 
@@ -39,10 +40,11 @@ export function PlacesSection({
 
   const closeInfo = useCallback(() => setSelected(null), []);
 
-  const onAdded = useCallback((placeId: string) => {
-    // 追加した候補は保存済みピンになるので候補から外す（revalidate で
-    // places prop に反映される）。
-    setCandidates((cs) => cs.filter((c) => c.placeId !== placeId));
+  // 場所を追加した時／× を押した時、どちらも「検索は用無し」なので
+  // 検索文字列・候補ピン・選択中の吹き出しをまとめて消す。
+  const clearSearch = useCallback(() => {
+    setQuery("");
+    setCandidates([]);
     setSelected(null);
   }, []);
 
@@ -71,7 +73,7 @@ export function PlacesSection({
           tripId={tripId}
           candidate={c}
           statuses={statuses}
-          onAdded={() => onAdded(c.placeId)}
+          onAdded={clearSearch}
         />
       );
     }
@@ -97,7 +99,13 @@ export function PlacesSection({
   return (
     <APIProvider apiKey={apiKey}>
       <div className="space-y-4">
-        <PlaceSearch biasCenter={biasCenter} onResults={onResults} />
+        <PlaceSearch
+          query={query}
+          onQueryChange={setQuery}
+          onClear={clearSearch}
+          biasCenter={biasCenter}
+          onResults={onResults}
+        />
         <PlaceMap
           places={places}
           statuses={statuses}
