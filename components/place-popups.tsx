@@ -112,7 +112,7 @@ export function CandidateInfo({
   }, [state.ok, onAdded]);
 
   return (
-    <div className="w-64 space-y-2">
+    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
       {candidate.photoUri && (
         // 吹き出しを開いた時だけ <img> が読まれる → Photo 課金は開いた分のみ。
         // Google 写真 CDN は動的ドメインで next/image の最適化対象外なので素の img。
@@ -120,7 +120,7 @@ export function CandidateInfo({
         <img
           src={candidate.photoUri}
           alt={candidate.name}
-          className="h-28 w-full rounded object-cover"
+          className="h-24 w-full shrink-0 rounded object-cover"
         />
       )}
       <div>
@@ -239,7 +239,7 @@ export function SavedInfo({
   };
 
   return (
-    <div className="w-64 space-y-2">
+    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
       <div>
         <div className="flex flex-wrap items-center gap-2">
           {status && (

@@ -112,7 +112,7 @@ export function PlaceMap({
 
   return (
     <div className="space-y-1">
-      <div className="h-80 w-full overflow-hidden rounded-md border border-zinc-200">
+      <div className="h-[32rem] w-full overflow-hidden rounded-md border border-zinc-200">
         <Map
           mapId={mapId}
           defaultCenter={initialCenter}
