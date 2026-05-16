@@ -142,7 +142,7 @@ export async function createPlaceAction(
   const lng = parseCoord(formData.get("lng") as string | null);
 
   if (!name) {
-    return { ok: false, error: "場所の名前を入力してください" };
+    return { ok: false, error: "場所を検索して選択してください" };
   }
   if (!statusId) {
     return { ok: false, error: "ステータスを選んでください" };

@@ -39,43 +39,70 @@ export function PlaceForm({
   const [statusId, setStatusId] = useState(sortedStatuses[0]?.id ?? "");
   const [visibility, setVisibility] = useState<"shared" | "private">("shared");
 
-  // name と Google 由来の隠しフィールドは uncontrolled。
-  // 成功時は form.reset() で空に戻す（expense-form と同じ方式。effect 内 setState を避ける）。
+  // 新 Places API（PlaceAutocompleteElement）。レガシー Autocomplete は非推奨のため
+  // こちらを使う。選択結果は hidden input に詰めて server action へ送る。
   const placesLib = useMapsLibrary("places");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const acContainerRef = useRef<HTMLDivElement>(null);
+  const acElementRef =
+    useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
+  const nameRef = useRef<HTMLInputElement>(null);
   const placeIdRef = useRef<HTMLInputElement>(null);
   const latRef = useRef<HTMLInputElement>(null);
   const lngRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const noteId = useId();
 
-  const clearGoogleFields = () => {
-    if (placeIdRef.current) placeIdRef.current.value = "";
-    if (latRef.current) latRef.current.value = "";
-    if (lngRef.current) lngRef.current.value = "";
-  };
-
-  // Google Places Autocomplete を name 入力にバインド。
-  // 選択時に place_id / 座標 / 正式名を埋める。手入力時は onChange で外す。
   useEffect(() => {
-    if (!placesLib || !inputRef.current) return;
-    const ac = new placesLib.Autocomplete(inputRef.current, {
-      fields: ["place_id", "name", "geometry"],
-    });
-    const listener = ac.addListener("place_changed", () => {
-      const p = ac.getPlace();
-      if (inputRef.current && p.name) inputRef.current.value = p.name;
-      if (placeIdRef.current) placeIdRef.current.value = p.place_id ?? "";
-      const loc = p.geometry?.location;
-      if (latRef.current) latRef.current.value = loc ? String(loc.lat()) : "";
-      if (lngRef.current) lngRef.current.value = loc ? String(loc.lng()) : "";
-    });
-    return () => listener.remove();
+    if (!placesLib || !acContainerRef.current) return;
+
+    const el = new google.maps.places.PlaceAutocompleteElement({});
+    el.placeholder = "店名・地名で検索";
+    el.requestedLanguage = "ja";
+    el.requestedRegion = "jp";
+    el.style.width = "100%";
+    acElementRef.current = el;
+    acContainerRef.current.appendChild(el);
+
+    const controller = new AbortController();
+    el.addEventListener(
+      "gmp-select",
+      (event: google.maps.places.PlacePredictionSelectEvent) => {
+        // fetchFields は非同期。listener 自体は同期にして promise を投げっぱなしにする
+        // （async listener は no-misused-promises に触れるため）。
+        void (async () => {
+          const place = event.placePrediction.toPlace();
+          await place.fetchFields({
+            fields: ["id", "displayName", "location"],
+          });
+          if (nameRef.current) {
+            nameRef.current.value = place.displayName ?? "";
+          }
+          if (placeIdRef.current) {
+            placeIdRef.current.value = place.id ?? "";
+          }
+          const loc = place.location;
+          if (latRef.current) {
+            latRef.current.value = loc ? String(loc.lat()) : "";
+          }
+          if (lngRef.current) {
+            lngRef.current.value = loc ? String(loc.lng()) : "";
+          }
+        })();
+      },
+      { signal: controller.signal },
+    );
+
+    return () => {
+      controller.abort();
+      el.remove();
+      acElementRef.current = null;
+    };
   }, [placesLib]);
 
   useEffect(() => {
     if (state.ok) {
-      formRef.current?.reset();
+      formRef.current?.reset(); // hidden input を "" に戻す
+      if (acElementRef.current) acElementRef.current.value = "";
       // statusId / visibility は controlled かつ意図的に保持（reset 対象外）
     }
   }, [state.ok]);
@@ -86,20 +113,16 @@ export function PlaceForm({
       action={formAction}
       className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
     >
-      <label className="block text-sm">
+      <div className="text-sm">
         <span className="font-medium">場所</span>
-        <input
-          ref={inputRef}
-          type="text"
-          name="name"
-          required
-          defaultValue=""
-          onChange={clearGoogleFields}
-          placeholder={placesLib ? "店名・地名で検索" : "地図を読み込み中..."}
-          autoComplete="off"
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-        />
-      </label>
+        <div ref={acContainerRef} className="mt-1" />
+        <p className="mt-1 text-xs text-zinc-500">
+          {placesLib
+            ? "Google マップから検索して選択してください"
+            : "地図を読み込み中..."}
+        </p>
+      </div>
+      <input ref={nameRef} type="hidden" name="name" defaultValue="" />
       <input
         ref={placeIdRef}
         type="hidden"
