@@ -16,37 +16,49 @@ export type Database = {
     Tables: {
       events: {
         Row: {
+          all_day: boolean
           created_at: string
           created_by_member_id: string
           end_at: string | null
+          end_tz: string | null
           id: string
+          kind: string
           note: string | null
           place_id: string | null
           start_at: string
+          start_tz: string
           title: string
           trip_id: string
           visibility: string
         }
         Insert: {
+          all_day?: boolean
           created_at?: string
           created_by_member_id: string
           end_at?: string | null
+          end_tz?: string | null
           id?: string
+          kind?: string
           note?: string | null
           place_id?: string | null
           start_at: string
+          start_tz: string
           title: string
           trip_id: string
           visibility: string
         }
         Update: {
+          all_day?: boolean
           created_at?: string
           created_by_member_id?: string
           end_at?: string | null
+          end_tz?: string | null
           id?: string
+          kind?: string
           note?: string | null
           place_id?: string | null
           start_at?: string
+          start_tz?: string
           title?: string
           trip_id?: string
           visibility?: string
@@ -402,6 +414,7 @@ export type Database = {
           last_activity_at: string
           start_date: string | null
           status: string
+          time_zone: string
           title: string
         }
         Insert: {
@@ -412,6 +425,7 @@ export type Database = {
           last_activity_at?: string
           start_date?: string | null
           status?: string
+          time_zone?: string
           title: string
         }
         Update: {
@@ -422,6 +436,7 @@ export type Database = {
           last_activity_at?: string
           start_date?: string | null
           status?: string
+          time_zone?: string
           title?: string
         }
         Relationships: []
@@ -455,6 +470,22 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_event: {
+        Args: {
+          p_all_day: boolean
+          p_end_at: string
+          p_end_tz: string
+          p_kind: string
+          p_note: string
+          p_place_id: string
+          p_start_at: string
+          p_start_tz: string
+          p_title: string
+          p_trip_id: string
+          p_visibility: string
+        }
+        Returns: string
+      }
       create_expense: {
         Args: {
           p_category_id: string
@@ -504,6 +535,22 @@ export type Database = {
       }
       seed_default_place_statuses: {
         Args: { _trip_id: string }
+        Returns: undefined
+      }
+      update_event: {
+        Args: {
+          p_all_day: boolean
+          p_end_at: string
+          p_end_tz: string
+          p_event_id: string
+          p_kind: string
+          p_note: string
+          p_place_id: string
+          p_start_at: string
+          p_start_tz: string
+          p_title: string
+          p_visibility: string
+        }
         Returns: undefined
       }
       update_place: {

@@ -239,3 +239,232 @@ export async function deletePlaceAction(
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
 }
+
+// ────────────────────────────────────────────────────────────
+// events（スケジュール）
+// ────────────────────────────────────────────────────────────
+
+export type EventMutationState = {
+  error: string | null;
+  ok: boolean;
+};
+
+type EventKind = "normal" | "transit";
+
+type ParsedEvent =
+  | { error: string }
+  | {
+      kind: EventKind;
+      allDay: boolean;
+      title: string;
+      startAt: string;
+      endAt: string | null;
+      startTz: string;
+      endTz: string | null;
+      placeId: string | null;
+      visibility: Visibility;
+      note: string;
+    };
+
+// <input type="date"> / <input type="time"> は分離して送る。壁時計なので
+// ここで素朴に "YYYY-MM-DDTHH:MM:00" へ組むだけ（TZ変換は一切しない）。
+function parseEventForm(formData: FormData): ParsedEvent {
+  const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
+
+  const kind = (get("kind") || "normal") as EventKind;
+  if (kind !== "normal" && kind !== "transit") {
+    return { error: "種別が不正です" };
+  }
+  const title = get("title");
+  if (!title) return { error: "タイトルを入力してください" };
+
+  const visibility = (get("visibility") || "shared") as Visibility;
+  if (visibility !== "shared" && visibility !== "private") {
+    return { error: "公開範囲が不正です" };
+  }
+  const note = get("note");
+  const placeIdRaw = get("place_id");
+  const placeId = placeIdRaw === "" ? null : placeIdRaw;
+
+  if (kind === "transit") {
+    const departDate = get("depart_date");
+    const departTime = get("depart_time");
+    const departTz = get("depart_tz");
+    const arriveDate = get("arrive_date");
+    const arriveTime = get("arrive_time");
+    const arriveTz = get("arrive_tz");
+    if (!departDate || !departTime || !departTz) {
+      return { error: "出発の日時・タイムゾーンを入力してください" };
+    }
+    if (!arriveDate || !arriveTime || !arriveTz) {
+      return { error: "到着の日時・タイムゾーンを入力してください" };
+    }
+    return {
+      kind,
+      allDay: false,
+      title,
+      startAt: `${departDate}T${departTime}:00`,
+      endAt: `${arriveDate}T${arriveTime}:00`,
+      startTz: departTz,
+      endTz: arriveTz,
+      placeId,
+      visibility,
+      note,
+    };
+  }
+
+  // normal
+  const allDay = formData.get("all_day") === "on";
+  const tz = get("tz");
+  if (!tz) return { error: "タイムゾーンを選んでください" };
+
+  if (allDay) {
+    const startDate = get("start_date");
+    const endDate = get("end_date") || startDate;
+    if (!startDate) return { error: "日付を入力してください" };
+    if (endDate < startDate) {
+      return { error: "終了日は開始日以降にしてください" };
+    }
+    return {
+      kind,
+      allDay: true,
+      title,
+      startAt: `${startDate}T00:00:00`,
+      endAt: `${endDate}T00:00:00`,
+      startTz: tz,
+      endTz: null,
+      placeId,
+      visibility,
+      note,
+    };
+  }
+
+  const startDate = get("start_date");
+  const startTime = get("start_time");
+  const endTime = get("end_time");
+  if (!startDate || !startTime) {
+    return { error: "開始の日付・時刻を入力してください" };
+  }
+  if (endTime && endTime < startTime) {
+    return { error: "終了時刻は開始時刻以降にしてください" };
+  }
+  return {
+    kind,
+    allDay: false,
+    title,
+    startAt: `${startDate}T${startTime}:00`,
+    endAt: endTime ? `${startDate}T${endTime}:00` : null,
+    startTz: tz,
+    endTz: null,
+    placeId,
+    visibility,
+    note,
+  };
+}
+
+export async function createEventAction(
+  tripId: string,
+  _prevState: EventMutationState,
+  formData: FormData,
+): Promise<EventMutationState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "ログインしてください" };
+  }
+
+  const parsed = parseEventForm(formData);
+  if ("error" in parsed) {
+    return { ok: false, error: parsed.error };
+  }
+
+  const { error } = await supabase.rpc("create_event", {
+    p_trip_id: tripId,
+    p_title: parsed.title,
+    p_kind: parsed.kind,
+    p_all_day: parsed.allDay,
+    p_start_at: parsed.startAt,
+    // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）
+    p_end_at: parsed.endAt as unknown as string,
+    p_start_tz: parsed.startTz,
+    p_end_tz: parsed.endTz as unknown as string,
+    p_place_id: parsed.placeId as unknown as string,
+    p_visibility: parsed.visibility,
+    p_note: parsed.note,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
+export async function updateEventAction(
+  tripId: string,
+  _prevState: EventMutationState,
+  formData: FormData,
+): Promise<EventMutationState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "ログインしてください" };
+  }
+
+  const eventId = ((formData.get("event_id") as string | null) ?? "").trim();
+  if (!eventId) {
+    return { ok: false, error: "対象のイベントが不明です" };
+  }
+
+  const parsed = parseEventForm(formData);
+  if ("error" in parsed) {
+    return { ok: false, error: parsed.error };
+  }
+
+  const { error } = await supabase.rpc("update_event", {
+    p_event_id: eventId,
+    p_title: parsed.title,
+    p_kind: parsed.kind,
+    p_all_day: parsed.allDay,
+    p_start_at: parsed.startAt,
+    p_end_at: parsed.endAt as unknown as string,
+    p_start_tz: parsed.startTz,
+    p_end_tz: parsed.endTz as unknown as string,
+    p_place_id: parsed.placeId as unknown as string,
+    p_visibility: parsed.visibility,
+    p_note: parsed.note,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
+export async function deleteEventAction(
+  tripId: string,
+  eventId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const { error } = await supabase.from("events").delete().eq("id", eventId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}

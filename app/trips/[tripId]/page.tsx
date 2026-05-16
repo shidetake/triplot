@@ -6,6 +6,7 @@ import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
+import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -38,10 +39,13 @@ export default async function TripDetailPage({
     { data: expensesRaw },
     { data: placeStatusesRaw },
     { data: placesRaw },
+    { data: eventsRaw },
   ] = await Promise.all([
     supabase
       .from("trips")
-      .select("id, title, start_date, end_date, status, default_currency")
+      .select(
+        "id, title, start_date, end_date, status, default_currency, time_zone",
+      )
       .eq("id", tripId)
       .single(),
     supabase
@@ -74,6 +78,13 @@ export default async function TripDetailPage({
       )
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false }),
+    supabase
+      .from("events")
+      .select(
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id",
+      )
+      .eq("trip_id", tripId)
+      .order("start_at", { ascending: true }),
   ]);
 
   if (tripError || !trip) notFound();
@@ -123,6 +134,25 @@ export default async function TripDetailPage({
     created_by_member_id: p.created_by_member_id,
     created_at: p.created_at,
   }));
+
+  // events は壁時計（timestamp without tz）。文字列のまま素通しする
+  // （new Date でローカルTZ解釈させない）。
+  const scheduleEvents: EventRow[] = (eventsRaw ?? []).map((e) => ({
+    id: e.id,
+    title: e.title,
+    kind: e.kind as "normal" | "transit",
+    allDay: e.all_day,
+    startAt: e.start_at,
+    endAt: e.end_at,
+    startTz: e.start_tz,
+    endTz: e.end_tz,
+    placeId: e.place_id,
+    visibility: e.visibility as Visibility,
+    note: e.note,
+    createdByMemberId: e.created_by_member_id,
+  }));
+
+  const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
 
   // 通貨ごとの平均レート（フォームのデフォルトと表示用）
   const ratesByCurrency = new Map<Currency, number[]>();
@@ -217,6 +247,20 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
+        <h2 className="text-lg font-medium">スケジュール</h2>
+
+        <ScheduleSection
+          tripId={tripId}
+          tripTimeZone={trip.time_zone}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
+          events={scheduleEvents}
+          places={placesForPicker}
+          myMemberId={me.id}
+        />
+      </section>
+
+      <section className="mt-10 space-y-6">
         <h2 className="text-lg font-medium">場所</h2>
 
         <PlacesSection
@@ -270,9 +314,7 @@ export default async function TripDetailPage({
         />
       </section>
 
-      <section className="mt-12 grid gap-3 text-sm text-zinc-500">
-        <p>TODO: 地図・ピン管理</p>
-        <p>TODO: スケジュール（週ビュー）</p>
+      <section className="mt-12 text-sm text-zinc-500">
         <p>TODO: 共有リンクの発行とゲスト参加</p>
       </section>
     </main>
