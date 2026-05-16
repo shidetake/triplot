@@ -220,6 +220,41 @@ export type Database = {
           },
         ]
       }
+      place_statuses: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+          sort_order: number
+          trip_id: string
+        }
+        Insert: {
+          color: string
+          created_at?: string
+          id?: string
+          name: string
+          sort_order: number
+          trip_id: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "place_statuses_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       places: {
         Row: {
           created_at: string
@@ -230,7 +265,7 @@ export type Database = {
           lng: number | null
           name: string
           note: string | null
-          status: string | null
+          status_id: string
           trip_id: string
           visibility: string
         }
@@ -243,7 +278,7 @@ export type Database = {
           lng?: number | null
           name: string
           note?: string | null
-          status?: string | null
+          status_id: string
           trip_id: string
           visibility: string
         }
@@ -256,7 +291,7 @@ export type Database = {
           lng?: number | null
           name?: string
           note?: string | null
-          status?: string | null
+          status_id?: string
           trip_id?: string
           visibility?: string
         }
@@ -266,6 +301,13 @@ export type Database = {
             columns: ["created_by_member_id"]
             isOneToOne: false
             referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "places_status_id_fkey"
+            columns: ["status_id"]
+            isOneToOne: false
+            referencedRelation: "place_statuses"
             referencedColumns: ["id"]
           },
           {
@@ -426,6 +468,19 @@ export type Database = {
         }
         Returns: string
       }
+      create_place: {
+        Args: {
+          p_google_place_id: string
+          p_lat: number
+          p_lng: number
+          p_name: string
+          p_note: string
+          p_status_id: string
+          p_trip_id: string
+          p_visibility: string
+        }
+        Returns: string
+      }
       create_trip: {
         Args: {
           p_default_currency: string
@@ -440,6 +495,10 @@ export type Database = {
       is_own_member: { Args: { _member_id: string }; Returns: boolean }
       nanoid: { Args: { size?: number }; Returns: string }
       seed_default_expense_categories: {
+        Args: { _trip_id: string }
+        Returns: undefined
+      }
+      seed_default_place_statuses: {
         Args: { _trip_id: string }
         Returns: undefined
       }

@@ -106,3 +106,89 @@ export async function deleteExpenseAction(
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
 }
+
+export type CreatePlaceState = {
+  error: string | null;
+  ok: boolean;
+};
+
+export async function createPlaceAction(
+  tripId: string,
+  _prevState: CreatePlaceState,
+  formData: FormData,
+): Promise<CreatePlaceState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "ログインしてください" };
+  }
+
+  const name = ((formData.get("name") as string | null) ?? "").trim();
+  const statusId = (formData.get("status_id") as string | null) ?? "";
+  const visibility =
+    (formData.get("visibility") as Visibility | null) ?? "shared";
+  const note = ((formData.get("note") as string | null) ?? "").trim();
+  const googlePlaceId = (
+    (formData.get("google_place_id") as string | null) ?? ""
+  ).trim();
+
+  const parseCoord = (raw: string | null): number | null => {
+    const n = Number.parseFloat(raw ?? "");
+    return Number.isFinite(n) ? n : null;
+  };
+  const lat = parseCoord(formData.get("lat") as string | null);
+  const lng = parseCoord(formData.get("lng") as string | null);
+
+  if (!name) {
+    return { ok: false, error: "場所の名前を入力してください" };
+  }
+  if (!statusId) {
+    return { ok: false, error: "ステータスを選んでください" };
+  }
+  if (!["shared", "private"].includes(visibility)) {
+    return { ok: false, error: "公開範囲が不正です" };
+  }
+
+  const { error } = await supabase.rpc("create_place", {
+    p_trip_id: tripId,
+    p_name: name,
+    p_status_id: statusId,
+    p_visibility: visibility,
+    p_note: note, // 空文字は DB 側 nullif で NULL になる
+    p_google_place_id: googlePlaceId,
+    // gen-types は DEFAULT 無し nullable 関数引数を非 null 型にする既知の癖。
+    // 座標は手入力時 null になりうる（plpgsql 側は null 許容）。呼び出し側でキャスト。
+    p_lat: lat as number,
+    p_lng: lng as number,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
+export async function deletePlaceAction(
+  tripId: string,
+  placeId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const { error } = await supabase.from("places").delete().eq("id", placeId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}

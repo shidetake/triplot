@@ -4,6 +4,9 @@ import { notFound, redirect } from "next/navigation";
 import { type Category, ExpenseForm } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
+import type { PlaceStatus } from "@/components/place-form";
+import type { PlaceRow } from "@/components/place-list";
+import { PlacesSection } from "@/components/places-section";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -34,6 +37,8 @@ export default async function TripDetailPage({
     { data: members },
     { data: categoriesRaw },
     { data: expensesRaw },
+    { data: placeStatusesRaw },
+    { data: placesRaw },
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -58,6 +63,18 @@ export default async function TripDetailPage({
       )
       .eq("trip_id", tripId)
       .order("paid_at", { ascending: false }),
+    supabase
+      .from("place_statuses")
+      .select("id, name, color, sort_order")
+      .eq("trip_id", tripId)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("places")
+      .select(
+        "id, name, lat, lng, google_place_id, status_id, visibility, note, created_by_member_id, created_at",
+      )
+      .eq("trip_id", tripId)
+      .order("created_at", { ascending: false }),
   ]);
 
   if (tripError || !trip) notFound();
@@ -85,6 +102,26 @@ export default async function TripDetailPage({
     payer_member_id: e.payer_member_id,
     created_by_member_id: e.created_by_member_id,
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
+  }));
+
+  const placeStatuses: PlaceStatus[] = (placeStatusesRaw ?? []).map((s) => ({
+    id: s.id,
+    name: s.name,
+    color: s.color,
+    sort_order: s.sort_order,
+  }));
+
+  const places: PlaceRow[] = (placesRaw ?? []).map((p) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+    google_place_id: p.google_place_id,
+    status_id: p.status_id,
+    visibility: p.visibility as Visibility,
+    note: p.note,
+    created_by_member_id: p.created_by_member_id,
+    created_at: p.created_at,
   }));
 
   // 通貨ごとの平均レート（フォームのデフォルトと表示用）
@@ -177,6 +214,17 @@ export default async function TripDetailPage({
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="mt-10 space-y-6">
+        <h2 className="text-lg font-medium">場所</h2>
+
+        <PlacesSection
+          tripId={tripId}
+          places={places}
+          statuses={placeStatuses}
+          myMemberId={me.id}
+        />
       </section>
 
       <section className="mt-10 space-y-6">
