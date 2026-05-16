@@ -138,7 +138,8 @@ export type Schedule = {
 
 const MIN_EVENT_MIN = 30; // 表示上の最低高さ（分換算）
 const DEFAULT_DURATION_MIN = 60; // end が無い時刻イベントの既定長
-const FALLBACK_WINDOW = { startMin: 8 * 60, endMin: 20 * 60 };
+// 縦軸は常に 0:00〜24:00 固定（添付図と同じ。予定に応じて伸縮させない）。
+const FULL_DAY_WINDOW = { startMin: 0, endMin: 24 * 60 };
 
 // ──────────────────────────────────────────────
 // メイン
@@ -172,7 +173,7 @@ export function buildSchedule(
       transits: [],
       allDayBars: [],
       allDayRowCount: 0,
-      window: FALLBACK_WINDOW,
+      window: FULL_DAY_WINDOW,
     };
   }
 
@@ -368,27 +369,6 @@ export function buildSchedule(
     allDayBars.push({ event: ev, startColIndex, endColIndex, row });
   }
 
-  // 5) 縦の表示窓（時刻/便の最早〜最遅を時間境界に丸め、無駄を切る）
-  let lo = Infinity;
-  let hi = -Infinity;
-  for (const p of timed) {
-    lo = Math.min(lo, p.topMin);
-    hi = Math.max(hi, p.endMin);
-  }
-  for (const t of placedTransits) {
-    lo = Math.min(lo, t.departMin, t.arriveMin);
-    hi = Math.max(hi, t.departMin, t.arriveMin);
-  }
-  let window = FALLBACK_WINDOW;
-  if (lo !== Infinity) {
-    const startMin = Math.max(0, Math.floor(lo / 60) * 60);
-    const endMin = Math.min(24 * 60, Math.ceil(hi / 60) * 60);
-    window = {
-      startMin,
-      endMin: Math.max(endMin, startMin + 60),
-    };
-  }
-
   return {
     groups,
     columns,
@@ -396,6 +376,7 @@ export function buildSchedule(
     transits: placedTransits,
     allDayBars,
     allDayRowCount: rowEnds.length,
-    window,
+    // 常に 0:00〜24:00。予定に応じた伸縮はしない。
+    window: FULL_DAY_WINDOW,
   };
 }

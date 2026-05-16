@@ -230,8 +230,8 @@ describe("buildSchedule: 終日・連日バー", () => {
   });
 });
 
-describe("buildSchedule: 縦の表示窓", () => {
-  it("イベントの最早〜最遅を時間境界に丸めて窓を作る", () => {
+describe("buildSchedule: 縦軸は常に0:00-24:00固定", () => {
+  it("予定があっても窓は伸縮しない", () => {
     const s = buildSchedule(
       [
         ev({ id: "a", startAt: "2026-05-01T09:00:00", endAt: "2026-05-01T10:00:00" }),
@@ -239,15 +239,15 @@ describe("buildSchedule: 縦の表示窓", () => {
       ],
       { tripTz: "Asia/Tokyo", tripStart: "2026-05-01", tripEnd: "2026-05-01" },
     );
-    expect(s.window).toEqual({ startMin: 9 * 60, endMin: 16 * 60 });
+    expect(s.window).toEqual({ startMin: 0, endMin: 24 * 60 });
   });
 
-  it("時刻イベントが無ければ既定窓 8:00-20:00", () => {
+  it("予定が無くても 0:00-24:00", () => {
     const s = buildSchedule([], {
       tripTz: "Asia/Tokyo",
       tripStart: "2026-05-01",
       tripEnd: "2026-05-01",
     });
-    expect(s.window).toEqual({ startMin: 8 * 60, endMin: 20 * 60 });
+    expect(s.window).toEqual({ startMin: 0, endMin: 24 * 60 });
   });
 });

@@ -34,14 +34,20 @@ const initialState: EventMutationState = { ok: false, error: null };
 const inputCls =
   "mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none";
 
+// 予定の3種別。フライトは「予定の一種」なので入口は分けず、ここで切り替える。
+//  - timed   : 通常（日付＋時刻。単一TZ）
+//  - allday  : 終日（開始日〜終了日。複数日もこれ。TZ無関係）
+//  - transit : タイムゾーン跨ぎ（出発と到着で日付もTZも変わる＝フライト等）
+type Kind3 = "timed" | "allday" | "transit";
+
+const KIND3_LABEL: Record<Kind3, string> = {
+  timed: "通常",
+  allday: "終日",
+  transit: "時差移動",
+};
+
 export type EventFormMode =
-  | {
-      mode: "create";
-      kind: "normal" | "transit";
-      date: string; // YYYY-MM-DD
-      time: string; // HH:MM
-      tz: string;
-    }
+  | { mode: "create"; date: string; time: string; tz: string }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
 function TzSelect({
@@ -68,6 +74,13 @@ function TzSelect({
   );
 }
 
+function initialKind3(ev: ScheduleEvent | null): Kind3 {
+  if (!ev) return "timed";
+  if (ev.kind === "transit") return "transit";
+  if (ev.allDay) return "allday";
+  return "timed";
+}
+
 export function EventForm({
   tripId,
   tripTz,
@@ -89,9 +102,7 @@ export function EventForm({
     : createEventAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(action, initialState);
 
-  const initialKind = isEdit ? ev!.kind : formMode.kind;
-  const [kind] = useState<"normal" | "transit">(initialKind);
-  const [allDay, setAllDay] = useState(isEdit ? ev!.allDay : false);
+  const [kind3, setKind3] = useState<Kind3>(initialKind3(ev));
   const [visibility, setVisibility] = useState<Visibility>(
     isEdit ? ev!.visibility : "shared",
   );
@@ -102,7 +113,7 @@ export function EventForm({
     if (state.ok) onDone();
   }, [state.ok, onDone]);
 
-  // 初期値（壁時計文字列を date / time に割る）
+  // 壁時計文字列を date / time に割る
   const splitWall = (s: string | null) => {
     if (!s) return { date: "", time: "" };
     return { date: s.slice(0, 10), time: s.slice(11, 16) };
@@ -129,6 +140,9 @@ export function EventForm({
     });
   };
 
+  // 種別 → サーバ契約（kind / all_day）への写像。hidden で送る。
+  const submitKind = kind3 === "transit" ? "transit" : "normal";
+
   return (
     <form
       action={formAction}
@@ -136,7 +150,7 @@ export function EventForm({
     >
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-medium">
-          {isEdit ? "予定を編集" : kind === "transit" ? "フライトを追加" : "予定を追加"}
+          {isEdit ? "予定を編集" : "予定を追加"}
         </h3>
         <button
           type="button"
@@ -147,8 +161,34 @@ export function EventForm({
         </button>
       </div>
 
-      <input type="hidden" name="kind" value={kind} />
+      <input type="hidden" name="kind" value={submitKind} />
+      {kind3 === "allday" && (
+        <input type="hidden" name="all_day" value="on" />
+      )}
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
+
+      {/* 種別セレクタ（通常／終日／タイムゾーン跨ぎ） */}
+      <div className="flex gap-1 rounded-md border border-zinc-200 p-1">
+        {(["timed", "allday", "transit"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKind3(k)}
+            className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
+              kind3 === k
+                ? "bg-black text-white"
+                : "text-zinc-600 hover:bg-zinc-100"
+            }`}
+          >
+            {KIND3_LABEL[k]}
+          </button>
+        ))}
+      </div>
+      {kind3 === "transit" && (
+        <p className="-mt-1 text-[11px] text-zinc-500">
+          フライトなど、出発と到着でタイムゾーンが変わる予定。
+        </p>
+      )}
 
       <label className="block text-sm">
         <span className="font-medium">タイトル</span>
@@ -157,12 +197,14 @@ export function EventForm({
           name="title"
           required
           defaultValue={ev?.title ?? ""}
-          placeholder={kind === "transit" ? "NRT-HNL ZG002" : "ハイキング"}
+          placeholder={
+            kind3 === "transit" ? "NRT-HNL ZG002" : "ハイキング"
+          }
           className={inputCls}
         />
       </label>
 
-      {kind === "transit" ? (
+      {kind3 === "transit" && (
         <div className="space-y-3">
           <fieldset className="rounded-md border border-zinc-200 p-3">
             <legend className="px-1 text-xs font-medium text-zinc-600">
@@ -211,7 +253,7 @@ export function EventForm({
                   type="date"
                   name="arrive_date"
                   required
-                  defaultValue={endInit.date}
+                  defaultValue={endInit.date || startInit.date}
                   className={inputCls}
                 />
               </label>
@@ -236,74 +278,69 @@ export function EventForm({
             </label>
           </fieldset>
         </div>
-      ) : (
+      )}
+
+      {kind3 === "allday" && (
         <div className="space-y-3">
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              name="all_day"
-              checked={allDay}
-              onChange={(e) => setAllDay(e.target.checked)}
-            />
-            <span>終日 / 連日</span>
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="block text-xs">
+              <span className="text-zinc-600">開始日</span>
+              <input
+                type="date"
+                name="start_date"
+                required
+                defaultValue={startInit.date}
+                className={inputCls}
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="text-zinc-600">終了日（任意）</span>
+              <input
+                type="date"
+                name="end_date"
+                defaultValue={endInit.date || startInit.date}
+                className={inputCls}
+              />
+            </label>
+          </div>
+          {/* 終日はTZ無関係。スキーマの NOT NULL を満たすため旅行TZを送る */}
+          <input type="hidden" name="tz" value={tripTz} />
+        </div>
+      )}
 
-          {allDay ? (
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-xs">
-                <span className="text-zinc-600">開始日</span>
-                <input
-                  type="date"
-                  name="start_date"
-                  required
-                  defaultValue={startInit.date}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="text-zinc-600">終了日</span>
-                <input
-                  type="date"
-                  name="end_date"
-                  defaultValue={endInit.date || startInit.date}
-                  className={inputCls}
-                />
-              </label>
-            </div>
-          ) : (
-            <div className="grid grid-cols-3 gap-2">
-              <label className="block text-xs">
-                <span className="text-zinc-600">日付</span>
-                <input
-                  type="date"
-                  name="start_date"
-                  required
-                  defaultValue={startInit.date}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="text-zinc-600">開始</span>
-                <input
-                  type="time"
-                  name="start_time"
-                  required
-                  defaultValue={startInit.time || "09:00"}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="text-zinc-600">終了（任意）</span>
-                <input
-                  type="time"
-                  name="end_time"
-                  defaultValue={endInit.time}
-                  className={inputCls}
-                />
-              </label>
-            </div>
-          )}
-
+      {kind3 === "timed" && (
+        <div className="space-y-3">
+          <div className="grid grid-cols-3 gap-2">
+            <label className="block text-xs">
+              <span className="text-zinc-600">日付</span>
+              <input
+                type="date"
+                name="start_date"
+                required
+                defaultValue={startInit.date}
+                className={inputCls}
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="text-zinc-600">開始</span>
+              <input
+                type="time"
+                name="start_time"
+                required
+                defaultValue={startInit.time || "09:00"}
+                className={inputCls}
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="text-zinc-600">終了（任意）</span>
+              <input
+                type="time"
+                name="end_time"
+                defaultValue={endInit.time}
+                className={inputCls}
+              />
+            </label>
+          </div>
           <label className="block text-xs">
             <span className="text-zinc-600">タイムゾーン</span>
             <TzSelect name="tz" defaultValue={tzInit} tripTz={tripTz} />

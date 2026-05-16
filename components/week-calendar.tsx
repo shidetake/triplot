@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import type { Schedule, ScheduleEvent } from "@/lib/schedule";
 
@@ -8,6 +8,8 @@ const GUTTER = 48; // 時刻ガター幅 px
 const HOUR_PX = 48; // 1時間の高さ px
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
 const MIN_BLOCK = 20; // イベントブロックの最低高さ px
+
+export type Anchor = { x: number; y: number };
 
 function colWidth(n: number): number {
   if (n <= 3) return 200;
@@ -31,15 +33,21 @@ export function WeekCalendar({
   schedule: Schedule;
   placeName: (placeId: string | null) => string | null;
   selectedEventId: string | null;
-  onSlotClick: (date: string, tz: string, minutes: number) => void;
-  onEventClick: (eventId: string) => void;
+  onSlotClick: (
+    date: string,
+    tz: string,
+    minutes: number,
+    anchor: Anchor,
+  ) => void;
+  onEventClick: (eventId: string, anchor: Anchor) => void;
 }) {
-  const { groups, columns, timed, transits, allDayBars, allDayRowCount, window } =
+  const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
 
   const COL = colWidth(columns.length);
-  const winStart = window.startMin;
-  const winEnd = window.endMin;
+  // 縦軸は常に 0:00〜24:00 固定（添付図と同じ）
+  const winStart = 0;
+  const winEnd = 24 * 60;
   const bodyH = ((winEnd - winStart) / 60) * HOUR_PX;
   const totalW = columns.length * COL;
 
@@ -47,6 +55,12 @@ export function WeekCalendar({
     () => new Map(columns.map((c, i) => [c.key, i])),
     [columns],
   );
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  // 0時始まりだと早朝が無駄に見えるので、初回だけ 6:00 付近へスクロール。
+  useEffect(() => {
+    if (scrollRef.current) scrollRef.current.scrollTop = 6 * HOUR_PX;
+  }, []);
 
   const y = (min: number) =>
     ((Math.min(Math.max(min, winStart), winEnd) - winStart) / 60) * HOUR_PX;
@@ -75,12 +89,15 @@ export function WeekCalendar({
   };
 
   return (
-    <div className="overflow-x-auto rounded-md border border-zinc-200 bg-white">
+    <div
+      ref={scrollRef}
+      className="max-h-[70vh] overflow-auto rounded-md border border-zinc-200 bg-white"
+    >
       <div style={{ width: GUTTER + totalW }}>
-        {/* ── ヘッダ（日付。transit は2列ぶん＋TZ変化注記） ── */}
-        <div className="flex border-b border-zinc-200">
+        {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
+        <div className="sticky top-0 z-30 flex border-b border-zinc-200 bg-white">
           <div
-            className="sticky left-0 z-20 shrink-0 border-r border-zinc-200 bg-white"
+            className="sticky left-0 z-40 shrink-0 border-r border-zinc-200 bg-white"
             style={{ width: GUTTER }}
           />
           {groups.map((g) => (
@@ -117,7 +134,9 @@ export function WeekCalendar({
               <button
                 key={b.event.id}
                 type="button"
-                onClick={() => onEventClick(b.event.id)}
+                onClick={(e) =>
+                  onEventClick(b.event.id, { x: e.clientX, y: e.clientY })
+                }
                 className={`absolute truncate rounded px-1 text-left text-[11px] ${
                   selectedEventId === b.event.id
                     ? "bg-amber-300 text-amber-950"
@@ -137,7 +156,7 @@ export function WeekCalendar({
           </div>
         </div>
 
-        {/* ── 本体（時刻グリッド） ── */}
+        {/* ── 本体（0:00〜24:00 固定グリッド） ── */}
         <div className="flex">
           {/* 時刻ガター */}
           <div
@@ -179,7 +198,12 @@ export function WeekCalendar({
                   const off = e.clientY - rect.top;
                   const raw = winStart + (off / HOUR_PX) * 60;
                   const snapped = Math.round(raw / 30) * 30;
-                  onSlotClick(c.date, c.tz, Math.max(0, Math.min(1439, snapped)));
+                  onSlotClick(
+                    c.date,
+                    c.tz,
+                    Math.max(0, Math.min(1439, snapped)),
+                    { x: e.clientX, y: e.clientY },
+                  );
                 }}
               />
             ))}
@@ -198,7 +222,7 @@ export function WeekCalendar({
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
-                    onEventClick(p.event.id);
+                    onEventClick(p.event.id, { x: e.clientX, y: e.clientY });
                   }}
                   className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${
                     sel
@@ -222,7 +246,7 @@ export function WeekCalendar({
               );
             })}
 
-            {/* フライト：出発列ブロック＋到着列ブロック＋リボン */}
+            {/* 時差移動：出発列ブロック＋到着列ブロック＋リボン */}
             {transits.map((t) => {
               const di = colIndexByKey.get(t.departColumnKey);
               const ai = colIndexByKey.get(t.arriveColumnKey);
@@ -258,7 +282,7 @@ export function WeekCalendar({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEventClick(t.event.id);
+                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
                     }}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
                     style={{
@@ -278,7 +302,7 @@ export function WeekCalendar({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      onEventClick(t.event.id);
+                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
                     }}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
                     style={{
