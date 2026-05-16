@@ -27,40 +27,46 @@ export default async function TripDetailPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  const { data: trip, error } = await supabase
-    .from("trips")
-    .select("id, title, start_date, end_date, status, default_currency")
-    .eq("id", tripId)
-    .single();
+  // 4 本とも tripId キーで互いに独立。RLS で保護されているので並列で叩く
+  // （直列だと Vercel→Supabase の RTT が 4 回積み上がる）。
+  const [
+    { data: trip, error: tripError },
+    { data: members },
+    { data: categoriesRaw },
+    { data: expensesRaw },
+  ] = await Promise.all([
+    supabase
+      .from("trips")
+      .select("id, title, start_date, end_date, status, default_currency")
+      .eq("id", tripId)
+      .single(),
+    supabase
+      .from("trip_members")
+      .select("id, user_id, display_name, kind, color")
+      .eq("trip_id", tripId)
+      .is("left_at", null)
+      .order("joined_at", { ascending: true }),
+    supabase
+      .from("expense_categories")
+      .select("id, name, color, emoji, sort_order")
+      .eq("trip_id", tripId)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("expenses")
+      .select(
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
+      )
+      .eq("trip_id", tripId)
+      .order("paid_at", { ascending: false }),
+  ]);
 
-  if (error || !trip) notFound();
-
-  const { data: members } = await supabase
-    .from("trip_members")
-    .select("id, user_id, display_name, kind, color")
-    .eq("trip_id", tripId)
-    .is("left_at", null)
-    .order("joined_at", { ascending: true });
+  if (tripError || !trip) notFound();
 
   const activeMembers = members ?? [];
   const me = activeMembers.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
-  const { data: categoriesRaw } = await supabase
-    .from("expense_categories")
-    .select("id, name, color, emoji, sort_order")
-    .eq("trip_id", tripId)
-    .order("sort_order", { ascending: true });
-
   const categories: Category[] = categoriesRaw ?? [];
-
-  const { data: expensesRaw } = await supabase
-    .from("expenses")
-    .select(
-      "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
-    )
-    .eq("trip_id", tripId)
-    .order("paid_at", { ascending: false });
 
   // gen-types は CHECK 制約を読めず string を返すので、DB 境界でドメイン型に絞る
   const defaultCurrency = trip.default_currency as Currency;
