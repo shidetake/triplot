@@ -107,16 +107,16 @@ export async function deleteExpenseAction(
   return { error: null };
 }
 
-export type CreatePlaceState = {
+export type PlaceMutationState = {
   error: string | null;
   ok: boolean;
 };
 
 export async function createPlaceAction(
   tripId: string,
-  _prevState: CreatePlaceState,
+  _prevState: PlaceMutationState,
   formData: FormData,
-): Promise<CreatePlaceState> {
+): Promise<PlaceMutationState> {
   const supabase = await createClient();
   const {
     data: { user },
@@ -133,6 +133,9 @@ export async function createPlaceAction(
   const googlePlaceId = (
     (formData.get("google_place_id") as string | null) ?? ""
   ).trim();
+  const formattedAddress = (
+    (formData.get("formatted_address") as string | null) ?? ""
+  ).trim();
 
   const parseCoord = (raw: string | null): number | null => {
     const n = Number.parseFloat(raw ?? "");
@@ -141,8 +144,9 @@ export async function createPlaceAction(
   const lat = parseCoord(formData.get("lat") as string | null);
   const lng = parseCoord(formData.get("lng") as string | null);
 
-  if (!name) {
-    return { ok: false, error: "場所を検索して選択してください" };
+  // 場所は必ず Google 検索結果由来。識別子・座標・住所が揃っていなければ不正。
+  if (!name || !googlePlaceId || !formattedAddress || lat == null || lng == null) {
+    return { ok: false, error: "場所を検索して候補から選んでください" };
   }
   if (!statusId) {
     return { ok: false, error: "ステータスを選んでください" };
@@ -158,10 +162,53 @@ export async function createPlaceAction(
     p_visibility: visibility,
     p_note: note, // 空文字は DB 側 nullif で NULL になる
     p_google_place_id: googlePlaceId,
-    // gen-types は DEFAULT 無し nullable 関数引数を非 null 型にする既知の癖。
-    // 座標は手入力時 null になりうる（plpgsql 側は null 許容）。呼び出し側でキャスト。
-    p_lat: lat as number,
-    p_lng: lng as number,
+    p_lat: lat,
+    p_lng: lng,
+    p_formatted_address: formattedAddress,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
+export async function updatePlaceAction(
+  tripId: string,
+  _prevState: PlaceMutationState,
+  formData: FormData,
+): Promise<PlaceMutationState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "ログインしてください" };
+  }
+
+  const placeId = (formData.get("place_id") as string | null) ?? "";
+  const statusId = (formData.get("status_id") as string | null) ?? "";
+  const visibility =
+    (formData.get("visibility") as Visibility | null) ?? "shared";
+  const note = ((formData.get("note") as string | null) ?? "").trim();
+
+  if (!placeId) {
+    return { ok: false, error: "対象の場所が不明です" };
+  }
+  if (!statusId) {
+    return { ok: false, error: "ステータスを選んでください" };
+  }
+  if (!["shared", "private"].includes(visibility)) {
+    return { ok: false, error: "公開範囲が不正です" };
+  }
+
+  const { error } = await supabase.rpc("update_place", {
+    p_place_id: placeId,
+    p_status_id: statusId,
+    p_visibility: visibility,
+    p_note: note, // 空文字は DB 側 nullif で NULL になる
   });
 
   if (error) {

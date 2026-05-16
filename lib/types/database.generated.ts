@@ -259,10 +259,11 @@ export type Database = {
         Row: {
           created_at: string
           created_by_member_id: string
-          google_place_id: string | null
+          formatted_address: string
+          google_place_id: string
           id: string
-          lat: number | null
-          lng: number | null
+          lat: number
+          lng: number
           name: string
           note: string | null
           status_id: string
@@ -272,10 +273,11 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by_member_id: string
-          google_place_id?: string | null
+          formatted_address: string
+          google_place_id: string
           id?: string
-          lat?: number | null
-          lng?: number | null
+          lat: number
+          lng: number
           name: string
           note?: string | null
           status_id: string
@@ -285,10 +287,11 @@ export type Database = {
         Update: {
           created_at?: string
           created_by_member_id?: string
-          google_place_id?: string | null
+          formatted_address?: string
+          google_place_id?: string
           id?: string
-          lat?: number | null
-          lng?: number | null
+          lat?: number
+          lng?: number
           name?: string
           note?: string | null
           status_id?: string
@@ -470,6 +473,7 @@ export type Database = {
       }
       create_place: {
         Args: {
+          p_formatted_address: string
           p_google_place_id: string
           p_lat: number
           p_lng: number
@@ -500,6 +504,15 @@ export type Database = {
       }
       seed_default_place_statuses: {
         Args: { _trip_id: string }
+        Returns: undefined
+      }
+      update_place: {
+        Args: {
+          p_note: string
+          p_place_id: string
+          p_status_id: string
+          p_visibility: string
+        }
         Returns: undefined
       }
     }

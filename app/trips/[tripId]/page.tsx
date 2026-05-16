@@ -4,8 +4,7 @@ import { notFound, redirect } from "next/navigation";
 import { type Category, ExpenseForm } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
-import type { PlaceStatus } from "@/components/place-form";
-import type { PlaceRow } from "@/components/place-list";
+import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import {
   calculateExpenseSummary,
@@ -71,7 +70,7 @@ export default async function TripDetailPage({
     supabase
       .from("places")
       .select(
-        "id, name, lat, lng, google_place_id, status_id, visibility, note, created_by_member_id, created_at",
+        "id, name, lat, lng, google_place_id, formatted_address, status_id, visibility, note, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false }),
@@ -117,6 +116,7 @@ export default async function TripDetailPage({
     lat: p.lat,
     lng: p.lng,
     google_place_id: p.google_place_id,
+    formatted_address: p.formatted_address,
     status_id: p.status_id,
     visibility: p.visibility as Visibility,
     note: p.note,
