@@ -2,18 +2,18 @@
 
 import { useMemo } from "react";
 
-import { Map, Marker } from "@vis.gl/react-google-maps";
+import { AdvancedMarker, Map } from "@vis.gl/react-google-maps";
 
 import type { PlaceRow } from "./place-list";
 
 type Pinned = PlaceRow & { lat: number; lng: number };
 
 export function PlaceMap({ places }: { places: PlaceRow[] }) {
+  // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
+  const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+
   const pins = useMemo(
-    () =>
-      places.filter(
-        (p): p is Pinned => p.lat != null && p.lng != null,
-      ),
+    () => places.filter((p): p is Pinned => p.lat != null && p.lng != null),
     [places],
   );
 
@@ -27,23 +27,32 @@ export function PlaceMap({ places }: { places: PlaceRow[] }) {
   }, [pins]);
 
   return (
-    <div className="h-72 w-full overflow-hidden rounded-md border border-zinc-200">
-      <Map
-        // pin の数で remount して中心・ズームを取り直す（uncontrolled props のため）
-        key={pins.length}
-        defaultCenter={center}
-        defaultZoom={pins.length > 1 ? 11 : 13}
-        gestureHandling="greedy"
-        style={{ width: "100%", height: "100%" }}
-      >
-        {pins.map((p) => (
-          <Marker
-            key={p.id}
-            position={{ lat: p.lat, lng: p.lng }}
-            title={p.name}
-          />
-        ))}
-      </Map>
+    <div className="space-y-1">
+      <div className="h-72 w-full overflow-hidden rounded-md border border-zinc-200">
+        <Map
+          // pin の数で remount して中心・ズームを取り直す（uncontrolled props のため）
+          key={pins.length}
+          mapId={mapId}
+          defaultCenter={center}
+          defaultZoom={pins.length > 1 ? 11 : 13}
+          gestureHandling="greedy"
+          style={{ width: "100%", height: "100%" }}
+        >
+          {mapId &&
+            pins.map((p) => (
+              <AdvancedMarker
+                key={p.id}
+                position={{ lat: p.lat, lng: p.lng }}
+                title={p.name}
+              />
+            ))}
+        </Map>
+      </div>
+      {!mapId && (
+        <p className="text-xs text-amber-700">
+          Map ID 未設定のため地図上のピンは非表示です（一覧は下に表示されます）。
+        </p>
+      )}
     </div>
   );
 }
