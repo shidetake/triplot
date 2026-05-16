@@ -46,6 +46,27 @@ const KIND3_LABEL: Record<Kind3, string> = {
   transit: "時差移動",
 };
 
+// 壁時計の (date,time) ↔ 通算分。Date.UTC を計算専用に使い、ローカルTZは
+// 一切経由しない（floating time を保つ）。
+function dtToMin(date: string, time: string): number {
+  const [y, m, d] = date.split("-").map(Number);
+  const [hh, mm] = time.split(":").map(Number);
+  return Math.floor(Date.UTC(y, m - 1, d) / 60000) + hh * 60 + mm;
+}
+function minToDt(min: number): { date: string; time: string } {
+  const dayMin = Math.floor(min / 1440) * 1440;
+  const d = new Date(dayMin * 60000);
+  const date = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(
+    2,
+    "0",
+  )}-${String(d.getUTCDate()).padStart(2, "0")}`;
+  const rem = min - dayMin;
+  const time = `${String(Math.floor(rem / 60)).padStart(2, "0")}:${String(
+    rem % 60,
+  ).padStart(2, "0")}`;
+  return { date, time };
+}
+
 export type EventFormMode =
   | { mode: "create"; date: string; time: string; tz: string }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
@@ -116,6 +137,30 @@ export function EventForm({
   const endInit = isEdit ? splitWall(ev!.endAt) : { date: "", time: "" };
   const tzInit = isEdit ? ev!.startTz : formMode.tz;
   const endTzInit = isEdit ? (ev!.endTz ?? defaultTz) : defaultTz;
+
+  // 通常イベントの開始/終了は controlled。開始を動かすと長さを保って
+  // 終了が追従。終了は必須で、既定は開始の1時間後。
+  const initSMin = dtToMin(
+    startInit.date || "2026-01-01",
+    startInit.time || "09:00",
+  );
+  const [sDate, setSDate] = useState(startInit.date || "2026-01-01");
+  const [sTime, setSTime] = useState(startInit.time || "09:00");
+  const initEMin =
+    isEdit && endInit.date
+      ? dtToMin(endInit.date, endInit.time || "00:00")
+      : initSMin + 60;
+  const [eDate, setEDate] = useState(minToDt(initEMin).date);
+  const [eTime, setETime] = useState(minToDt(initEMin).time);
+
+  const moveStart = (nd: string, nt: string) => {
+    const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
+    setSDate(nd);
+    setSTime(nt);
+    const ne = minToDt(dtToMin(nd, nt) + dur);
+    setEDate(ne.date);
+    setETime(ne.time);
+  };
 
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
@@ -194,6 +239,22 @@ export function EventForm({
           }
           className={inputCls}
         />
+      </label>
+
+      <label className="block text-sm">
+        <span className="font-medium">場所（任意）</span>
+        <select
+          name="place_id"
+          defaultValue={ev?.placeId ?? ""}
+          className={inputCls}
+        >
+          <option value="">なし</option>
+          {places.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name}
+            </option>
+          ))}
+        </select>
       </label>
 
       {kind3 === "transit" && (
@@ -293,33 +354,48 @@ export function EventForm({
 
       {kind3 === "timed" && (
         <div className="space-y-3">
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 gap-2">
             <label className="block text-xs">
-              <span className="text-zinc-600">日付</span>
+              <span className="text-zinc-600">開始日</span>
               <input
                 type="date"
                 name="start_date"
                 required
-                defaultValue={startInit.date}
+                value={sDate}
+                onChange={(e) => moveStart(e.target.value, sTime)}
                 className={inputCls}
               />
             </label>
             <label className="block text-xs">
-              <span className="text-zinc-600">開始</span>
+              <span className="text-zinc-600">開始時刻</span>
               <input
                 type="time"
                 name="start_time"
                 required
-                defaultValue={startInit.time || "09:00"}
+                value={sTime}
+                onChange={(e) => moveStart(sDate, e.target.value)}
                 className={inputCls}
               />
             </label>
             <label className="block text-xs">
-              <span className="text-zinc-600">終了（任意）</span>
+              <span className="text-zinc-600">終了日</span>
+              <input
+                type="date"
+                name="end_date"
+                required
+                value={eDate}
+                onChange={(e) => setEDate(e.target.value)}
+                className={inputCls}
+              />
+            </label>
+            <label className="block text-xs">
+              <span className="text-zinc-600">終了時刻</span>
               <input
                 type="time"
                 name="end_time"
-                defaultValue={endInit.time}
+                required
+                value={eTime}
+                onChange={(e) => setETime(e.target.value)}
                 className={inputCls}
               />
             </label>
@@ -330,22 +406,6 @@ export function EventForm({
           </label>
         </div>
       )}
-
-      <label className="block text-sm">
-        <span className="font-medium">場所（任意）</span>
-        <select
-          name="place_id"
-          defaultValue={ev?.placeId ?? ""}
-          className={inputCls}
-        >
-          <option value="">なし</option>
-          {places.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-      </label>
 
       <fieldset className="text-xs">
         <legend className="font-medium text-zinc-700">公開範囲</legend>

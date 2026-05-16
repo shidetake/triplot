@@ -277,20 +277,41 @@ export function buildSchedule(
     }
 
     const s = parseWall(ev.startAt);
-    const col = colFor(s.date, ev.startTz);
-    if (!col) continue;
-    const startMin = s.minutes;
-    const rawEnd = ev.endAt ? parseWall(ev.endAt).minutes : null;
-    const endMin =
-      rawEnd != null && rawEnd > startMin
-        ? rawEnd
-        : startMin + DEFAULT_DURATION_MIN;
-    timedRaw.push({
-      event: ev,
-      columnKey: col.key,
-      topMin: startMin,
-      endMin,
-    });
+    const e = ev.endAt ? parseWall(ev.endAt) : null;
+
+    if (!e || e.date === s.date) {
+      // 同日内
+      const col = colFor(s.date, ev.startTz);
+      if (!col) continue;
+      const endMin =
+        e && e.minutes > s.minutes
+          ? e.minutes
+          : s.minutes + DEFAULT_DURATION_MIN;
+      timedRaw.push({
+        event: ev,
+        columnKey: col.key,
+        topMin: s.minutes,
+        endMin,
+      });
+      continue;
+    }
+
+    // 日跨ぎ（TZは跨がない）。日ごとに分割して描く:
+    //  初日 [開始, 24:00] / 中日 [0:00, 24:00] / 最終日 [0:00, 終了]
+    for (let d = s.date; cmpDate(d, e.date) <= 0; d = addDays(d, 1)) {
+      const isFirst = d === s.date;
+      const isLast = d === e.date;
+      // 最終日 0:00 ちょうど終了は前日 24:00 までで終わり。空セグメントは出さない
+      if (isLast && e.minutes === 0) break;
+      const col = colFor(d, ev.startTz);
+      if (!col) continue;
+      timedRaw.push({
+        event: ev,
+        columnKey: col.key,
+        topMin: isFirst ? s.minutes : 0,
+        endMin: isLast ? e.minutes : 24 * 60,
+      });
+    }
   }
 
   // 列ごとに重なりクラスタを作ってレーン割当

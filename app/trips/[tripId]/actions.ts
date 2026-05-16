@@ -342,19 +342,27 @@ function parseEventForm(formData: FormData): ParsedEvent {
   if (!tz) return { error: "タイムゾーンを選んでください" };
   const startDate = get("start_date");
   const startTime = get("start_time");
+  const endDate = get("end_date") || startDate;
   const endTime = get("end_time");
   if (!startDate || !startTime) {
     return { error: "開始の日付・時刻を入力してください" };
   }
-  if (endTime && endTime < startTime) {
-    return { error: "終了時刻は開始時刻以降にしてください" };
+  if (!endTime) {
+    return { error: "終了時刻を入力してください" };
+  }
+  // TZは跨がない（start_tz と同じ）が、日付は跨いでよい。
+  // 同一フォーマットなので文字列比較で日時順を判定できる。
+  const startAt = `${startDate}T${startTime}:00`;
+  const endAt = `${endDate}T${endTime}:00`;
+  if (endAt < startAt) {
+    return { error: "終了は開始以降にしてください" };
   }
   return {
     kind,
     allDay: false,
     title,
-    startAt: `${startDate}T${startTime}:00`,
-    endAt: endTime ? `${startDate}T${endTime}:00` : null,
+    startAt,
+    endAt,
     startTz: tz,
     endTz: null,
     placeId,

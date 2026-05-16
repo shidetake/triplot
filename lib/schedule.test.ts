@@ -199,6 +199,47 @@ describe("buildSchedule: 時刻イベントの重なりレーン", () => {
   });
 });
 
+describe("buildSchedule: 日跨ぎ通常イベント（TZは跨がない）", () => {
+  it("初日[開始,24:00]・最終日[0:00,終了]に分割される", () => {
+    const s = buildSchedule(
+      [
+        ev({
+          id: "night",
+          startAt: "2026-05-01T22:00:00",
+          endAt: "2026-05-02T02:00:00",
+        }),
+      ],
+      { tripStart: "2026-05-01", tripEnd: "2026-05-02" },
+    );
+    const segs = s.timed.filter((t) => t.event.id === "night");
+    expect(segs).toHaveLength(2);
+    const day1 = segs.find((x) => x.columnKey === "d-2026-05-01")!;
+    const day2 = segs.find((x) => x.columnKey === "d-2026-05-02")!;
+    expect(day1).toMatchObject({ topMin: 22 * 60, endMin: 24 * 60 });
+    expect(day2).toMatchObject({ topMin: 0, endMin: 2 * 60 });
+  });
+
+  it("最終日0:00ちょうど終了なら最終日セグメントは出さない", () => {
+    const s = buildSchedule(
+      [
+        ev({
+          id: "x",
+          startAt: "2026-05-01T10:00:00",
+          endAt: "2026-05-02T00:00:00",
+        }),
+      ],
+      { tripStart: "2026-05-01", tripEnd: "2026-05-02" },
+    );
+    const segs = s.timed.filter((t) => t.event.id === "x");
+    expect(segs).toHaveLength(1);
+    expect(segs[0]).toMatchObject({
+      columnKey: "d-2026-05-01",
+      topMin: 10 * 60,
+      endMin: 24 * 60,
+    });
+  });
+});
+
 describe("buildSchedule: 終日・連日バー", () => {
   it("連日バーが正しい列index範囲を持ち、重なりは別行へ", () => {
     const s = buildSchedule(

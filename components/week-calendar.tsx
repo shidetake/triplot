@@ -218,7 +218,7 @@ export function WeekCalendar({
               const sel = selectedEventId === p.event.id;
               return (
                 <button
-                  key={p.event.id}
+                  key={`${p.event.id}-${p.columnKey}`}
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
@@ -257,26 +257,8 @@ export function WeekCalendar({
               const base = sel
                 ? "border-violet-500 bg-violet-200 text-violet-950"
                 : "border-violet-300 bg-violet-100 text-violet-900 hover:bg-violet-200";
-              const x1 = di * COL + COL / 2;
-              const x2 = ai * COL + COL / 2;
               return (
                 <div key={t.event.id}>
-                  {/* リボン */}
-                  <svg
-                    className="pointer-events-none absolute left-0 top-0"
-                    width={totalW}
-                    height={bodyH}
-                  >
-                    <line
-                      x1={x1}
-                      y1={yd}
-                      x2={x2}
-                      y2={ya}
-                      stroke="#7c3aed"
-                      strokeWidth={2}
-                      strokeDasharray="4 3"
-                    />
-                  </svg>
                   {/* 出発側 */}
                   <button
                     type="button"
