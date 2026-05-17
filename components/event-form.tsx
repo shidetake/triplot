@@ -32,7 +32,11 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 const initialState: EventMutationState = { ok: false, error: null };
 
 const inputCls =
-  "mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none";
+  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none";
+
+// グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
+// 広がり、ポップオーバーから input がはみ出す。
+const fieldCls = "block min-w-0 text-xs";
 
 // 予定の3種別。フライトは「予定の一種」なので入口は分けず、ここで切り替える。
 //  - timed   : 通常（日付＋時刻。単一TZ）
@@ -257,78 +261,67 @@ export function EventForm({
         </select>
       </label>
 
+      {/* 日時。3種別とも同じ2列グリッド。差は「右に時刻を入れるか」
+          「TZ行が付くか」だけ。 */}
       {kind3 === "transit" && (
         <div className="space-y-3">
-          <fieldset className="rounded-md border border-zinc-200 p-3">
-            <legend className="px-1 text-xs font-medium text-zinc-600">
-              出発
-            </legend>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-xs">
-                <span className="text-zinc-600">日付</span>
-                <input
-                  type="date"
-                  name="depart_date"
-                  required
-                  defaultValue={startInit.date}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="text-zinc-600">時刻</span>
-                <input
-                  type="time"
-                  name="depart_time"
-                  required
-                  defaultValue={startInit.time || "09:00"}
-                  className={inputCls}
-                />
-              </label>
-            </div>
-            <label className="mt-2 block text-xs">
-              <span className="text-zinc-600">出発地タイムゾーン</span>
-              <TzSelect name="depart_tz" value={tzInit} />
+          <div className="grid grid-cols-2 gap-2">
+            <label className={fieldCls}>
+              <span className="text-zinc-600">出発日</span>
+              <input
+                type="date"
+                name="depart_date"
+                required
+                defaultValue={startInit.date}
+                className={inputCls}
+              />
             </label>
-          </fieldset>
-
-          <fieldset className="rounded-md border border-zinc-200 p-3">
-            <legend className="px-1 text-xs font-medium text-zinc-600">
-              到着
-            </legend>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block text-xs">
-                <span className="text-zinc-600">日付</span>
-                <input
-                  type="date"
-                  name="arrive_date"
-                  required
-                  defaultValue={endInit.date || startInit.date}
-                  className={inputCls}
-                />
-              </label>
-              <label className="block text-xs">
-                <span className="text-zinc-600">時刻</span>
-                <input
-                  type="time"
-                  name="arrive_time"
-                  required
-                  defaultValue={endInit.time}
-                  className={inputCls}
-                />
-              </label>
-            </div>
-            <label className="mt-2 block text-xs">
-              <span className="text-zinc-600">到着地タイムゾーン</span>
-              <TzSelect name="arrive_tz" value={endTzInit} />
+            <label className={fieldCls}>
+              <span className="text-zinc-600">出発時刻</span>
+              <input
+                type="time"
+                name="depart_time"
+                required
+                defaultValue={startInit.time || "09:00"}
+                className={inputCls}
+              />
             </label>
-          </fieldset>
+            <label className={fieldCls}>
+              <span className="text-zinc-600">到着日</span>
+              <input
+                type="date"
+                name="arrive_date"
+                required
+                defaultValue={endInit.date || startInit.date}
+                className={inputCls}
+              />
+            </label>
+            <label className={fieldCls}>
+              <span className="text-zinc-600">到着時刻</span>
+              <input
+                type="time"
+                name="arrive_time"
+                required
+                defaultValue={endInit.time}
+                className={inputCls}
+              />
+            </label>
+          </div>
+          <label className={fieldCls}>
+            <span className="text-zinc-600">出発地タイムゾーン</span>
+            <TzSelect name="depart_tz" value={tzInit} />
+          </label>
+          <label className={fieldCls}>
+            <span className="text-zinc-600">到着地タイムゾーン</span>
+            <TzSelect name="arrive_tz" value={endTzInit} />
+          </label>
         </div>
       )}
 
       {kind3 === "allday" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs">
+            <label className={fieldCls}>
               <span className="text-zinc-600">開始日</span>
               <input
                 type="date"
@@ -338,15 +331,18 @@ export function EventForm({
                 className={inputCls}
               />
             </label>
-            <label className="block text-xs">
-              <span className="text-zinc-600">終了日（任意）</span>
+            <div />
+            <label className={fieldCls}>
+              <span className="text-zinc-600">終了日</span>
               <input
                 type="date"
                 name="end_date"
+                required
                 defaultValue={endInit.date || startInit.date}
                 className={inputCls}
               />
             </label>
+            <div />
           </div>
           {/* 終日はTZ無関係。サーバ側で UTC 固定にする（tz は送らない） */}
         </div>
@@ -355,7 +351,7 @@ export function EventForm({
       {kind3 === "timed" && (
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
-            <label className="block text-xs">
+            <label className={fieldCls}>
               <span className="text-zinc-600">開始日</span>
               <input
                 type="date"
@@ -366,7 +362,7 @@ export function EventForm({
                 className={inputCls}
               />
             </label>
-            <label className="block text-xs">
+            <label className={fieldCls}>
               <span className="text-zinc-600">開始時刻</span>
               <input
                 type="time"
@@ -377,7 +373,7 @@ export function EventForm({
                 className={inputCls}
               />
             </label>
-            <label className="block text-xs">
+            <label className={fieldCls}>
               <span className="text-zinc-600">終了日</span>
               <input
                 type="date"
@@ -388,7 +384,7 @@ export function EventForm({
                 className={inputCls}
               />
             </label>
-            <label className="block text-xs">
+            <label className={fieldCls}>
               <span className="text-zinc-600">終了時刻</span>
               <input
                 type="time"
@@ -400,7 +396,7 @@ export function EventForm({
               />
             </label>
           </div>
-          <label className="block text-xs">
+          <label className={fieldCls}>
             <span className="text-zinc-600">タイムゾーン</span>
             <TzSelect name="tz" value={tzInit} />
           </label>

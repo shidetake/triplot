@@ -79,13 +79,13 @@ type FieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
 
 function Field({ label, name, type = "text", ...rest }: FieldProps) {
   return (
-    <label className="block text-sm">
+    <label className="block min-w-0 text-sm">
       <span className="font-medium">{label}</span>
       <input
         {...rest}
         type={type}
         name={name}
-        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+        className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
       />
     </label>
   );
