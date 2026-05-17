@@ -3,7 +3,6 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
-import { DeleteTripButton } from "@/components/delete-trip-button";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
@@ -11,7 +10,7 @@ import { MembersSection } from "@/components/members-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
-import { ShareButton } from "@/components/share-button";
+import { TripActions } from "@/components/trip-actions";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -248,7 +247,7 @@ export default async function TripDetailPage({
         <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
           ← 旅行一覧に戻る
         </Link>
-        <ShareButton tripId={tripId} baseUrl={inviteBaseUrl} />
+        <TripActions tripId={tripId} baseUrl={inviteBaseUrl} />
       </div>
 
       <header className="mt-4">
@@ -333,9 +332,6 @@ export default async function TripDetailPage({
         />
       </section>
 
-      <div className="mt-16 border-t border-zinc-200 pt-6">
-        <DeleteTripButton tripId={tripId} />
-      </div>
     </main>
   );
 }
