@@ -26,6 +26,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      // GA オプトアウト等のブラウザ拡張が <html> に属性を注入して
+      // ハイドレーション不一致になるため、この要素1階層分だけ抑制する。
+      suppressHydrationWarning
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
