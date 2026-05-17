@@ -5,6 +5,7 @@ import { AddExpenseButton } from "@/components/add-expense-button";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
+import { InviteSection } from "@/components/invite-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
@@ -260,6 +261,11 @@ export default async function TripDetailPage({
         </ul>
       </section>
 
+      <section className="mt-10 space-y-3">
+        <h2 className="text-lg font-medium">共有</h2>
+        <InviteSection tripId={tripId} />
+      </section>
+
       <section className="mt-10 space-y-6">
         <h2 className="text-lg font-medium">スケジュール</h2>
 
@@ -319,10 +325,6 @@ export default async function TripDetailPage({
           defaultCurrency={defaultCurrency}
           myMemberId={me.id}
         />
-      </section>
-
-      <section className="mt-12 text-sm text-zinc-500">
-        <p>TODO: 共有リンクの発行とゲスト参加</p>
       </section>
     </main>
   );

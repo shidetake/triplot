@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { generateInviteToken, hashInviteToken } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@/lib/types/database";
 
@@ -476,4 +477,33 @@ export async function deleteEventAction(
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
+}
+
+// ────────────────────────────────────────────────────────────
+// 共有リンク
+// ────────────────────────────────────────────────────────────
+
+export async function createInviteAction(
+  tripId: string,
+): Promise<{ token: string | null; error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { token: null, error: "ログインしてください" };
+  }
+
+  // 生トークンは返すだけ（URL 用）。DB にはハッシュのみ保存。
+  const token = generateInviteToken();
+  const { error } = await supabase.rpc("create_trip_invite", {
+    p_trip_id: tripId,
+    p_token_hash: hashInviteToken(token),
+  });
+
+  if (error) {
+    return { token: null, error: error.message };
+  }
+
+  return { token, error: null };
 }

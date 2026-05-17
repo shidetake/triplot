@@ -336,18 +336,31 @@ export type Database = {
       }
       trip_invites: {
         Row: {
+          created_at: string
+          created_by_member_id: string | null
           token_hash: string
           trip_id: string
         }
         Insert: {
+          created_at?: string
+          created_by_member_id?: string | null
           token_hash: string
           trip_id: string
         }
         Update: {
+          created_at?: string
+          created_by_member_id?: string | null
           token_hash?: string
           trip_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "trip_invites_created_by_member_id_fkey"
+            columns: ["created_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "trip_invites_trip_id_fkey"
             columns: ["trip_id"]
@@ -523,9 +536,18 @@ export type Database = {
         }
         Returns: string
       }
+      create_trip_invite: {
+        Args: { p_token_hash: string; p_trip_id: string }
+        Returns: undefined
+      }
       is_active_trip_member: { Args: { _trip_id: string }; Returns: boolean }
       is_own_member: { Args: { _member_id: string }; Returns: boolean }
+      join_trip_via_invite: {
+        Args: { p_display_name: string; p_token_hash: string }
+        Returns: string
+      }
       nanoid: { Args: { size?: number }; Returns: string }
+      peek_invite: { Args: { p_token_hash: string }; Returns: string }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
