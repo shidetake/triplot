@@ -148,31 +148,45 @@ export function PlaceMap({
             })}
 
           {mapId &&
-            candidates.map((c) => (
-              <AdvancedMarker
-                key={`cand-${c.placeId}`}
-                position={{ lat: c.lat, lng: c.lng }}
-                title={c.name}
-                onClick={() => onSelectCandidate(c.placeId)}
-              >
-                {/* 検索結果は本家 Google マップ風の赤い雫ピン（くっきり） */}
-                <svg
-                  width="26"
-                  height="38"
-                  viewBox="0 0 24 36"
-                  aria-hidden
-                  style={{ transform: "translateY(-25%)" }}
+            candidates.map((c) => {
+              const isSel =
+                selected?.kind === "candidate" &&
+                selected.placeId === c.placeId;
+              return (
+                <AdvancedMarker
+                  key={`cand-${c.placeId}`}
+                  position={{ lat: c.lat, lng: c.lng }}
+                  title={c.name}
+                  onClick={() => onSelectCandidate(c.placeId)}
                 >
-                  <path
-                    d="M12 0C6 0 1 5 1 11c0 8.3 11 25 11 25s11-16.7 11-25C23 5 18 0 12 0z"
-                    fill="#EA4335"
-                    stroke="#ffffff"
-                    strokeWidth="1.5"
-                  />
-                  <circle cx="12" cy="11" r="4" fill="#A50E0E" />
-                </svg>
-              </AdvancedMarker>
-            ))}
+                  {isSel ? (
+                    // 選択中: 本家 Google の雫ピン（Material location_on の
+                    // くびれ形状）。先端を座標に合わせて上げる。
+                    <svg
+                      width="34"
+                      height="34"
+                      viewBox="0 -960 960 960"
+                      aria-hidden
+                      style={{
+                        transform: "translateY(-46%)",
+                        filter: "drop-shadow(0 1px 1px rgba(0,0,0,.35))",
+                      }}
+                    >
+                      <path
+                        d="M458.5-103.5Q448-107 440-115q-42-38-91-87.5T258-309q-42-57-70-119t-28-124q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 62-28 124t-70 119q-42 57-91 106.5T520-115q-8 8-18.5 11.5T480-100q-11 0-21.5-3.5Z"
+                        fill="#EA4335"
+                        stroke="#ffffff"
+                        strokeWidth="22"
+                      />
+                      <circle cx="480" cy="-560" r="92" fill="#A50E0E" />
+                    </svg>
+                  ) : (
+                    // 非選択: 本家の小さい赤リングの丸（赤枠太め・白小さめ）
+                    <div className="h-[18px] w-[18px] rounded-full border-[5px] border-[#EA4335] bg-white shadow" />
+                  )}
+                </AdvancedMarker>
+              );
+            })}
 
           {selected && selectedPos && (
             <InfoWindow
