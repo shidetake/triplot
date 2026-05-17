@@ -11,7 +11,7 @@ import {
 
 import { boundsOf, centroid, type LatLng, TOKYO } from "@/lib/placeMap";
 
-import type { PlaceRow, PlaceStatus } from "./place-list";
+import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import type { CandidatePlace } from "./place-search";
 
 export type Selection =
@@ -83,8 +83,8 @@ export function PlaceMap({
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
 
-  const statusColor = useMemo(
-    () => Object.fromEntries(statuses.map((s) => [s.id, s.color])),
+  const statusById: Record<string, PlaceStatus> = useMemo(
+    () => Object.fromEntries(statuses.map((s) => [s.id, s])),
     [statuses],
   );
 
@@ -125,22 +125,27 @@ export function PlaceMap({
           <MapController points={fitPoints} panTo={selectedPos} />
 
           {mapId &&
-            places.map((p) => (
-              <AdvancedMarker
-                key={p.id}
-                position={{ lat: p.lat, lng: p.lng }}
-                title={p.name}
-                onClick={() => onSelectSaved(p.id)}
-              >
-                {/* 手動選択した絵文字。リングは status 色 */}
-                <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white text-base shadow"
-                  style={{ borderColor: statusColor[p.status_id] ?? "#6b7280" }}
+            places.map((p) => {
+              const st = statusById[p.status_id];
+              // 未確定（候補）ステータスは半透明、確定はくっきり
+              return (
+                <AdvancedMarker
+                  key={p.id}
+                  position={{ lat: p.lat, lng: p.lng }}
+                  title={p.name}
+                  onClick={() => onSelectSaved(p.id)}
                 >
-                  {p.icon}
-                </div>
-              </AdvancedMarker>
-            ))}
+                  <div
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow ${
+                      st?.tentative ? "opacity-50" : ""
+                    }`}
+                    style={{ backgroundColor: st?.color ?? "#6b7280" }}
+                  >
+                    <PlaceIcon icon={p.icon} size={16} />
+                  </div>
+                </AdvancedMarker>
+              );
+            })}
 
           {mapId &&
             candidates.map((c) => (
@@ -150,10 +155,22 @@ export function PlaceMap({
                 title={c.name}
                 onClick={() => onSelectCandidate(c.placeId)}
               >
-                {/* 候補（保存前）は半透明で保存済みと区別 */}
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-blue-500 bg-white text-sm opacity-50 shadow">
-                  📍
-                </div>
+                {/* 検索結果は本家 Google マップ風の赤い雫ピン（くっきり） */}
+                <svg
+                  width="26"
+                  height="38"
+                  viewBox="0 0 24 36"
+                  aria-hidden
+                  style={{ transform: "translateY(-25%)" }}
+                >
+                  <path
+                    d="M12 0C6 0 1 5 1 11c0 8.3 11 25 11 25s11-16.7 11-25C23 5 18 0 12 0z"
+                    fill="#EA4335"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                  />
+                  <circle cx="12" cy="11" r="4" fill="#A50E0E" />
+                </svg>
               </AdvancedMarker>
             ))}
 

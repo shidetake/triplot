@@ -13,6 +13,7 @@ import type { Visibility } from "@/lib/types/database";
 import {
   gmapsUrl,
   PLACE_ICONS,
+  PlaceIcon,
   type PlaceRow,
   type PlaceStatus,
 } from "./place-list";
@@ -109,13 +110,13 @@ function IconPicker({
             type="button"
             onClick={() => onChange(o.value)}
             title={o.label}
-            className={`flex h-8 w-8 items-center justify-center rounded-md border text-base ${
+            className={`flex h-8 w-8 items-center justify-center rounded-md border ${
               value === o.value
-                ? "border-black bg-zinc-100"
-                : "border-zinc-300 hover:bg-zinc-50"
+                ? "border-black bg-zinc-900 text-white"
+                : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
             }`}
           >
-            {o.value}
+            <PlaceIcon icon={o.value} size={22} />
           </button>
         ))}
       </div>
@@ -296,8 +297,12 @@ export function SavedInfo({
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm font-semibold">
-          <span className="mr-1">{place.icon}</span>
+        <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
+          <PlaceIcon
+            icon={place.icon}
+            size={18}
+            className="shrink-0 text-zinc-700"
+          />
           {place.name}
         </p>
         <p className="mt-0.5 text-xs text-zinc-600">

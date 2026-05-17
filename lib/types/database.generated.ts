@@ -239,6 +239,7 @@ export type Database = {
           id: string
           name: string
           sort_order: number
+          tentative: boolean
           trip_id: string
         }
         Insert: {
@@ -247,6 +248,7 @@ export type Database = {
           id?: string
           name: string
           sort_order: number
+          tentative?: boolean
           trip_id: string
         }
         Update: {
@@ -255,6 +257,7 @@ export type Database = {
           id?: string
           name?: string
           sort_order?: number
+          tentative?: boolean
           trip_id?: string
         }
         Relationships: [

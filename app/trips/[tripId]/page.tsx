@@ -72,7 +72,7 @@ export default async function TripDetailPage({
       .order("paid_at", { ascending: false }),
     supabase
       .from("place_statuses")
-      .select("id, name, color, sort_order")
+      .select("id, name, color, sort_order, tentative")
       .eq("trip_id", tripId)
       .order("sort_order", { ascending: true }),
     supabase
@@ -123,6 +123,7 @@ export default async function TripDetailPage({
     name: s.name,
     color: s.color,
     sort_order: s.sort_order,
+    tentative: s.tentative,
   }));
 
   const places: PlaceRow[] = (placesRaw ?? []).map((p) => ({
