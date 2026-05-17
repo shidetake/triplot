@@ -138,6 +138,7 @@ export async function createPlaceAction(
   const formattedAddress = (
     (formData.get("formatted_address") as string | null) ?? ""
   ).trim();
+  const icon = ((formData.get("icon") as string | null) ?? "").trim();
 
   const parseCoord = (raw: string | null): number | null => {
     const n = Number.parseFloat(raw ?? "");
@@ -167,6 +168,7 @@ export async function createPlaceAction(
     p_lat: lat,
     p_lng: lng,
     p_formatted_address: formattedAddress,
+    p_icon: icon, // 空なら DB 側で '📍'
   });
 
   if (error) {
@@ -195,6 +197,7 @@ export async function updatePlaceAction(
   const visibility =
     (formData.get("visibility") as Visibility | null) ?? "shared";
   const note = ((formData.get("note") as string | null) ?? "").trim();
+  const icon = ((formData.get("icon") as string | null) ?? "").trim();
 
   if (!placeId) {
     return { ok: false, error: "対象の場所が不明です" };
@@ -211,6 +214,7 @@ export async function updatePlaceAction(
     p_status_id: statusId,
     p_visibility: visibility,
     p_note: note, // 空文字は DB 側 nullif で NULL になる
+    p_icon: icon, // 空なら DB 側で '📍'
   });
 
   if (error) {

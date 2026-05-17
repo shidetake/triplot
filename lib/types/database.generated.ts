@@ -273,6 +273,7 @@ export type Database = {
           created_by_member_id: string
           formatted_address: string
           google_place_id: string
+          icon: string
           id: string
           lat: number
           lng: number
@@ -287,6 +288,7 @@ export type Database = {
           created_by_member_id: string
           formatted_address: string
           google_place_id: string
+          icon?: string
           id?: string
           lat: number
           lng: number
@@ -301,6 +303,7 @@ export type Database = {
           created_by_member_id?: string
           formatted_address?: string
           google_place_id?: string
+          icon?: string
           id?: string
           lat?: number
           lng?: number
@@ -516,6 +519,7 @@ export type Database = {
         Args: {
           p_formatted_address: string
           p_google_place_id: string
+          p_icon: string
           p_lat: number
           p_lng: number
           p_name: string
@@ -579,6 +583,7 @@ export type Database = {
       }
       update_place: {
         Args: {
+          p_icon: string
           p_note: string
           p_place_id: string
           p_status_id: string

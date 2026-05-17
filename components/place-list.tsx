@@ -19,9 +19,28 @@ export type PlaceRow = {
   status_id: string;
   visibility: Visibility;
   note: string | null;
+  icon: string;
   created_by_member_id: string;
   created_at: string;
 };
+
+// ピンの形（手動選択）。固定パレット。先頭が既定。
+export const PLACE_ICONS: { value: string; label: string }[] = [
+  { value: "📍", label: "その他" },
+  { value: "✈️", label: "空港" },
+  { value: "🏨", label: "宿" },
+  { value: "🍽️", label: "食事" },
+  { value: "☕", label: "カフェ" },
+  { value: "🍺", label: "バー" },
+  { value: "🛍️", label: "買い物" },
+  { value: "🏞️", label: "自然・公園" },
+  { value: "🏛️", label: "観光・名所" },
+  { value: "⛩️", label: "寺社" },
+  { value: "🏖️", label: "ビーチ" },
+  { value: "🚉", label: "駅" },
+  { value: "🅿️", label: "駐車場" },
+  { value: "🎢", label: "アクティビティ" },
+];
 
 export function gmapsUrl(p: Pick<PlaceRow, "name" | "google_place_id">): string {
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(

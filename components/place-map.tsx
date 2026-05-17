@@ -6,7 +6,6 @@ import {
   AdvancedMarker,
   InfoWindow,
   Map,
-  Pin,
   useMap,
 } from "@vis.gl/react-google-maps";
 
@@ -133,11 +132,13 @@ export function PlaceMap({
                 title={p.name}
                 onClick={() => onSelectSaved(p.id)}
               >
-                <Pin
-                  background={statusColor[p.status_id] ?? "#6b7280"}
-                  borderColor="#ffffff"
-                  glyphColor="#ffffff"
-                />
+                {/* 手動選択した絵文字。リングは status 色 */}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full border-2 bg-white text-base shadow"
+                  style={{ borderColor: statusColor[p.status_id] ?? "#6b7280" }}
+                >
+                  {p.icon}
+                </div>
               </AdvancedMarker>
             ))}
 
@@ -149,13 +150,10 @@ export function PlaceMap({
                 title={c.name}
                 onClick={() => onSelectCandidate(c.placeId)}
               >
-                {/* 候補は中空の白ピンで保存済みと視覚的に区別 */}
-                <Pin
-                  background="#ffffff"
-                  borderColor="#3b82f6"
-                  glyphColor="#3b82f6"
-                  scale={0.9}
-                />
+                {/* 候補（保存前）は半透明で保存済みと区別 */}
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-blue-500 bg-white text-sm opacity-50 shadow">
+                  📍
+                </div>
               </AdvancedMarker>
             ))}
 

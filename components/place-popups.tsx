@@ -10,7 +10,12 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
-import { gmapsUrl, type PlaceRow, type PlaceStatus } from "./place-list";
+import {
+  gmapsUrl,
+  PLACE_ICONS,
+  type PlaceRow,
+  type PlaceStatus,
+} from "./place-list";
 import type { CandidatePlace } from "./place-search";
 
 const initialState: PlaceMutationState = { ok: false, error: null };
@@ -87,6 +92,37 @@ function VisibilityField({
   );
 }
 
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <fieldset className="text-xs">
+      <legend className="font-medium text-zinc-700">ピンの形</legend>
+      <div className="mt-1 flex flex-wrap gap-1">
+        {PLACE_ICONS.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            onClick={() => onChange(o.value)}
+            title={o.label}
+            className={`flex h-8 w-8 items-center justify-center rounded-md border text-base ${
+              value === o.value
+                ? "border-black bg-zinc-100"
+                : "border-zinc-300 hover:bg-zinc-50"
+            }`}
+          >
+            {o.value}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
 export function CandidateInfo({
   tripId,
   candidate,
@@ -105,6 +141,7 @@ export function CandidateInfo({
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
   const [visibility, setVisibility] = useState<Visibility>("shared");
+  const [icon, setIcon] = useState("📍");
   const noteId = useId();
 
   useEffect(() => {
@@ -154,11 +191,13 @@ export function CandidateInfo({
           value={candidate.address}
         />
 
+        <input type="hidden" name="icon" value={icon} />
         <StatusSelect
           statuses={statuses}
           value={statusId}
           onChange={setStatusId}
         />
+        <IconPicker value={icon} onChange={setIcon} />
         <VisibilityField
           value={visibility}
           onChange={setVisibility}
@@ -218,6 +257,7 @@ export function SavedInfo({
   );
   const [statusId, setStatusId] = useState(place.status_id);
   const [visibility, setVisibility] = useState<Visibility>(place.visibility);
+  const [icon, setIcon] = useState(place.icon);
   const noteId = useId();
 
   const [isDeleting, startDelete] = useTransition();
@@ -256,7 +296,10 @@ export function SavedInfo({
             </span>
           )}
         </div>
-        <p className="mt-1 text-sm font-semibold">{place.name}</p>
+        <p className="mt-1 text-sm font-semibold">
+          <span className="mr-1">{place.icon}</span>
+          {place.name}
+        </p>
         <p className="mt-0.5 text-xs text-zinc-600">
           {place.formatted_address}
         </p>
@@ -279,11 +322,13 @@ export function SavedInfo({
           className="space-y-2 border-t border-zinc-200 pt-2"
         >
           <input type="hidden" name="place_id" value={place.id} />
+          <input type="hidden" name="icon" value={icon} />
           <StatusSelect
             statuses={statuses}
             value={statusId}
             onChange={setStatusId}
           />
+          <IconPicker value={icon} onChange={setIcon} />
           <VisibilityField
             value={visibility}
             onChange={setVisibility}
