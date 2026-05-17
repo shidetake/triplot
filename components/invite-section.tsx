@@ -2,24 +2,39 @@
 
 import { useState, useTransition } from "react";
 
-import { createInviteAction } from "@/app/trips/[tripId]/actions";
+import {
+  ensureInviteAction,
+  regenerateInviteAction,
+} from "@/app/trips/[tripId]/actions";
 
-export function InviteSection({ tripId }: { tripId: string }) {
-  const [url, setUrl] = useState<string | null>(null);
+export function InviteSection({
+  tripId,
+  initialToken,
+  baseUrl,
+}: {
+  tripId: string;
+  initialToken: string | null;
+  baseUrl: string;
+}) {
+  const [token, setToken] = useState<string | null>(initialToken);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [isPending, start] = useTransition();
 
-  const issue = () => {
+  const url = token ? `${baseUrl}/join/${token}` : "";
+
+  const run = (
+    fn: (id: string) => Promise<{ token: string | null; error: string | null }>,
+  ) => {
     setError(null);
     setCopied(false);
     start(async () => {
-      const { token, error } = await createInviteAction(tripId);
-      if (error || !token) {
-        setError(error ?? "発行に失敗しました");
+      const res = await fn(tripId);
+      if (res.error || !res.token) {
+        setError(res.error ?? "失敗しました");
         return;
       }
-      setUrl(`${window.location.origin}/join/${token}`);
+      setToken(res.token);
     });
   };
 
@@ -39,21 +54,17 @@ export function InviteSection({ tripId }: { tripId: string }) {
         リンクを知っている人は、ログイン不要（ゲスト）でこの旅行に参加できます。
       </p>
 
-      <button
-        type="button"
-        onClick={issue}
-        disabled={isPending}
-        className="h-9 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
-      >
-        {isPending
-          ? "発行中..."
-          : url
-            ? "新しいリンクを発行"
-            : "招待リンクを発行"}
-      </button>
-
-      {url && (
-        <div className="space-y-1">
+      {!token ? (
+        <button
+          type="button"
+          onClick={() => run(ensureInviteAction)}
+          disabled={isPending}
+          className="h-9 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {isPending ? "発行中..." : "招待リンクを発行"}
+        </button>
+      ) : (
+        <div className="space-y-2">
           <div className="flex gap-2">
             <input
               readOnly
@@ -69,9 +80,22 @@ export function InviteSection({ tripId }: { tripId: string }) {
               {copied ? "コピー済み" : "コピー"}
             </button>
           </div>
-          <p className="text-xs text-zinc-500">
-            このリンクは一度しか表示されません。発行するたびに別のリンクになります（古いリンクも有効）。
-          </p>
+          <button
+            type="button"
+            onClick={() => {
+              if (
+                !confirm(
+                  "リンクを再生成すると、今までのリンクは使えなくなります。よろしいですか？",
+                )
+              )
+                return;
+              run(regenerateInviteAction);
+            }}
+            disabled={isPending}
+            className="text-xs text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline disabled:opacity-50"
+          >
+            {isPending ? "処理中..." : "リンクを再生成（旧リンクを無効化）"}
+          </button>
         </div>
       )}
 

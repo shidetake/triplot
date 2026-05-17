@@ -2,7 +2,6 @@
 
 import { redirect } from "next/navigation";
 
-import { hashInviteToken } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
 
 // 参加を確定する。セッション（匿名 or Google）必須。成功で trip へ redirect。
@@ -19,7 +18,7 @@ export async function joinAction(
   }
 
   const { data: tripId, error } = await supabase.rpc("join_trip_via_invite", {
-    p_token_hash: hashInviteToken(token),
+    p_token: token,
     p_display_name: displayName,
   });
 

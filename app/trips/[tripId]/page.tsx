@@ -1,3 +1,4 @@
+import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -42,6 +43,7 @@ export default async function TripDetailPage({
     { data: placeStatusesRaw },
     { data: placesRaw },
     { data: eventsRaw },
+    { data: inviteRow },
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -87,6 +89,11 @@ export default async function TripDetailPage({
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
+    supabase
+      .from("trip_invites")
+      .select("token")
+      .eq("trip_id", tripId)
+      .maybeSingle(),
   ]);
 
   if (tripError || !trip) notFound();
@@ -168,6 +175,13 @@ export default async function TripDetailPage({
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
+
+  // 招待リンクの絶対URLはサーバ側でヘッダから組む（client で window を
+  // 触ると SSR と不一致 / effect-setState になるため）。
+  const h = await headers();
+  const host = h.get("host") ?? "";
+  const proto = h.get("x-forwarded-proto") ?? "https";
+  const inviteBaseUrl = host ? `${proto}://${host}` : "";
 
   // 通貨ごとの平均レート（フォームのデフォルトと表示用）
   const ratesByCurrency = new Map<Currency, number[]>();
@@ -263,7 +277,11 @@ export default async function TripDetailPage({
 
       <section className="mt-10 space-y-3">
         <h2 className="text-lg font-medium">共有</h2>
-        <InviteSection tripId={tripId} />
+        <InviteSection
+          tripId={tripId}
+          initialToken={inviteRow?.token ?? null}
+          baseUrl={inviteBaseUrl}
+        />
       </section>
 
       <section className="mt-10 space-y-6">

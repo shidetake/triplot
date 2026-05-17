@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
-import { generateInviteToken, hashInviteToken } from "@/lib/invite";
+import { generateInviteToken } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@/lib/types/database";
 
@@ -483,7 +483,8 @@ export async function deleteEventAction(
 // 共有リンク
 // ────────────────────────────────────────────────────────────
 
-export async function createInviteAction(
+// 取得 or 初回発行（冪等）。既にあれば既存トークンが返る。
+export async function ensureInviteAction(
   tripId: string,
 ): Promise<{ token: string | null; error: string | null }> {
   const supabase = await createClient();
@@ -494,16 +495,36 @@ export async function createInviteAction(
     return { token: null, error: "ログインしてください" };
   }
 
-  // 生トークンは返すだけ（URL 用）。DB にはハッシュのみ保存。
-  const token = generateInviteToken();
-  const { error } = await supabase.rpc("create_trip_invite", {
+  const { data: token, error } = await supabase.rpc("ensure_trip_invite", {
     p_trip_id: tripId,
-    p_token_hash: hashInviteToken(token),
+    p_token: generateInviteToken(),
   });
 
-  if (error) {
-    return { token: null, error: error.message };
+  if (error || !token) {
+    return { token: null, error: error?.message ?? "発行に失敗しました" };
+  }
+  return { token, error: null };
+}
+
+// 再生成（旧リンク即失効）。
+export async function regenerateInviteAction(
+  tripId: string,
+): Promise<{ token: string | null; error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { token: null, error: "ログインしてください" };
   }
 
+  const { data: token, error } = await supabase.rpc("regenerate_trip_invite", {
+    p_trip_id: tripId,
+    p_token: generateInviteToken(),
+  });
+
+  if (error || !token) {
+    return { token: null, error: error?.message ?? "再生成に失敗しました" };
+  }
   return { token, error: null };
 }

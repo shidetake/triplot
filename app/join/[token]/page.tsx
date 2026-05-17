@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { hashInviteToken } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
 
 import { JoinForm } from "./join-form";
@@ -17,7 +16,7 @@ export default async function JoinPage({
 
   // peek_invite は anon 可。トークンを知っている人だけが旅行名を見られる。
   const { data: title } = await supabase.rpc("peek_invite", {
-    p_token_hash: hashInviteToken(token),
+    p_token: token,
   });
 
   const {
