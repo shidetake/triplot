@@ -7,6 +7,8 @@ import {
   type CreateTripState,
 } from "@/app/trips/create-trip-action";
 
+import { DateRangeCalendar } from "./date-range-calendar";
+
 type Currency = "JPY" | "USD";
 
 const CURRENCIES: { value: Currency; label: string }[] = [
@@ -51,9 +53,11 @@ export function CreateTripForm({
         required
         defaultValue={defaultDisplayName ?? ""}
       />
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="開始日" name="start_date" type="date" />
-        <Field label="終了日" name="end_date" type="date" />
+      <div className="text-sm">
+        <span className="font-medium">日程</span>
+        <div className="mt-1">
+          <DateRangeCalendar startName="start_date" endName="end_date" />
+        </div>
       </div>
 
       <label className="block text-sm">
