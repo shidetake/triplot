@@ -5,16 +5,17 @@ import { useEffect, useMemo, useRef } from "react";
 import type { Schedule, ScheduleEvent } from "@/lib/schedule";
 
 const GUTTER = 48; // 時刻ガター幅 px
-const HOUR_PX = 48; // 1時間の高さ px
+const HOUR_PX = 29; // 1時間の高さ px（従来48の約6割）
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
-const MIN_BLOCK = 20; // イベントブロックの最低高さ px
+const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 
 export type Anchor = { x: number; y: number };
 
 function colWidth(n: number): number {
-  if (n <= 3) return 200;
-  if (n <= 6) return 150;
-  return 120;
+  // 1日の横幅は従来（200/150/120）の約6割
+  if (n <= 3) return 120;
+  if (n <= 6) return 90;
+  return 72;
 }
 
 function hhmm(min: number): string {
