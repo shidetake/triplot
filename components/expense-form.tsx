@@ -33,6 +33,7 @@ export function ExpenseForm({
   initialCategoryId, // = 最後に入力した費用のカテゴリ
   averageRates, // { JPY: 1, USD: 平均 } — まだ履歴がない currency は省略
   initialPaidAt, // = 最後に入力した費用の日付
+  onDone, // ポップオーバーで使うとき: 追加成功で閉じる
 }: {
   tripId: string;
   members: Member[];
@@ -43,6 +44,7 @@ export function ExpenseForm({
   initialCategoryId: string;
   averageRates: Partial<Record<Currency, number>>;
   initialPaidAt: string;
+  onDone?: () => void;
 }) {
   const boundAction = createExpenseAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(
@@ -78,8 +80,9 @@ export function ExpenseForm({
       // 通貨 / カテゴリ / 日付 / レート / 公開範囲 / 割り勘は controlled。
       // 連続入力で前回値を引き継ぐため保持する（form.reset() は uncontrolled だけリセット）。
       // 支払った人は uncontrolled なので毎回「自分」に戻る（仕様）。
+      onDone?.(); // ポップオーバー時は予定追加と同様、成功で閉じる
     }
-  }, [state.ok]);
+  }, [state.ok, onDone]);
 
   const onCurrencyChange = (c: Currency) => {
     setLocalCurrency(c);
@@ -106,6 +109,19 @@ export function ExpenseForm({
       action={formAction}
       className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
     >
+      {onDone && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-medium">費用を追加</h3>
+          <button
+            type="button"
+            onClick={onDone}
+            className="text-xs text-zinc-500 hover:text-zinc-900"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
           <span className="font-medium">価格</span>

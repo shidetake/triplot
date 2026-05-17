@@ -1,69 +1,16 @@
 "use client";
 
-import {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
-import { type Anchor, WeekCalendar } from "./week-calendar";
+import { type Anchor, FormPopover } from "./form-popover";
+import { WeekCalendar } from "./week-calendar";
 
 export type EventRow = ScheduleEvent & { createdByMemberId: string };
 
 type OpenForm = { form: EventFormMode; anchor: Anchor };
-
-// クリック位置の近くに出すポップオーバー。画面外にはみ出さないよう
-// マウント後に実寸を測ってクランプする。
-function FormPopover({
-  anchor,
-  onClose,
-  children,
-}: {
-  anchor: Anchor;
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number }>({
-    left: anchor.x,
-    top: anchor.y,
-  });
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const pad = 8;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const left = Math.max(pad, Math.min(anchor.x + 8, vw - w - pad));
-    const top = Math.max(pad, Math.min(anchor.y, vh - h - pad));
-    setPos({ left, top });
-  }, [anchor.x, anchor.y]);
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-        aria-hidden
-      />
-      <div
-        ref={ref}
-        className="fixed z-50 max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-zinc-300 bg-white shadow-xl"
-        style={{ left: pos.left, top: pos.top }}
-      >
-        {children}
-      </div>
-    </>
-  );
-}
 
 export function ScheduleSection({
   tripId,

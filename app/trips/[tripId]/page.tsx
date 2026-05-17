@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
-import { type Category, ExpenseForm } from "@/components/expense-form";
+import { AddExpenseButton } from "@/components/add-expense-button";
+import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
@@ -295,27 +296,20 @@ export default async function TripDetailPage({
           averageRates={averageRates}
         />
 
-        <details className="rounded-md border border-zinc-200 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-medium">
-            費用を追加
-          </summary>
-          <div className="border-t border-zinc-200 p-4">
-            <ExpenseForm
-              tripId={tripId}
-              members={activeMembers.map((m) => ({
-                id: m.id,
-                display_name: m.display_name,
-              }))}
-              myMemberId={me.id}
-              defaultCurrency={defaultCurrency}
-              initialCurrency={initialCurrency}
-              categories={categories}
-              initialCategoryId={initialCategoryId}
-              averageRates={averageRates}
-              initialPaidAt={initialPaidAt}
-            />
-          </div>
-        </details>
+        <AddExpenseButton
+          tripId={tripId}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+          }))}
+          myMemberId={me.id}
+          defaultCurrency={defaultCurrency}
+          initialCurrency={initialCurrency}
+          categories={categories}
+          initialCategoryId={initialCategoryId}
+          averageRates={averageRates}
+          initialPaidAt={initialPaidAt}
+        />
 
         <ExpenseList
           tripId={tripId}
