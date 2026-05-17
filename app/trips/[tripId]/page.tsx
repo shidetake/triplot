@@ -3,9 +3,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
+import { DeleteTripButton } from "@/components/delete-trip-button";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
+import { MembersSection } from "@/components/members-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
@@ -259,17 +261,15 @@ export default async function TripDetailPage({
 
       <section className="mt-8">
         <h2 className="text-sm font-medium text-zinc-700">メンバー</h2>
-        <ul className="mt-2 flex flex-wrap gap-2">
-          {activeMembers.map((m) => (
-            <li
-              key={m.id}
-              className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm"
-            >
-              <span>{m.display_name}</span>
-              <span className="text-xs text-zinc-500">({m.kind})</span>
-            </li>
-          ))}
-        </ul>
+        <MembersSection
+          tripId={tripId}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+            kind: m.kind,
+          }))}
+          myMemberId={me.id}
+        />
       </section>
 
       <section className="mt-10 space-y-6">
@@ -300,14 +300,6 @@ export default async function TripDetailPage({
       <section className="mt-10 space-y-6">
         <h2 className="text-lg font-medium">費用</h2>
 
-        <ExpenseSummaryView
-          summary={summary}
-          settlements={settlements}
-          members={activeMembers}
-          defaultCurrency={defaultCurrency}
-          averageRates={averageRates}
-        />
-
         <AddExpenseButton
           tripId={tripId}
           members={activeMembers.map((m) => ({
@@ -323,6 +315,14 @@ export default async function TripDetailPage({
           initialPaidAt={initialPaidAt}
         />
 
+        <ExpenseSummaryView
+          summary={summary}
+          settlements={settlements}
+          members={activeMembers}
+          defaultCurrency={defaultCurrency}
+          averageRates={averageRates}
+        />
+
         <ExpenseList
           tripId={tripId}
           expenses={expenses}
@@ -332,6 +332,10 @@ export default async function TripDetailPage({
           myMemberId={me.id}
         />
       </section>
+
+      <div className="mt-16 border-t border-zinc-200 pt-6">
+        <DeleteTripButton tripId={tripId} />
+      </div>
     </main>
   );
 }

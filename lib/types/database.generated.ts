@@ -552,6 +552,7 @@ export type Database = {
         Args: { p_token: string; p_trip_id: string }
         Returns: string
       }
+      remove_trip_member: { Args: { p_member_id: string }; Returns: undefined }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined

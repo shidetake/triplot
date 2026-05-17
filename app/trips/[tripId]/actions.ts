@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { generateInviteToken } from "@/lib/invite";
 import { createClient } from "@/lib/supabase/server";
@@ -527,4 +528,58 @@ export async function regenerateInviteAction(
     return { token: null, error: error?.message ?? "再生成に失敗しました" };
   }
   return { token, error: null };
+}
+
+// ────────────────────────────────────────────────────────────
+// トリップ削除 / メンバー削除
+// ────────────────────────────────────────────────────────────
+
+export async function deleteTripAction(
+  tripId: string,
+): Promise<{ error: string }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  // RLS（trips_member_delete）でアクティブメンバーのみ削除可。
+  // 関連テーブルは on delete cascade。
+  const { error } = await supabase.from("trips").delete().eq("id", tripId);
+  if (error) {
+    return { error: error.message };
+  }
+
+  redirect("/");
+}
+
+export async function removeMemberAction(
+  tripId: string,
+  memberId: string,
+  isSelf: boolean,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const { error } = await supabase.rpc("remove_trip_member", {
+    p_member_id: memberId,
+  });
+  if (error) {
+    return { error: error.message };
+  }
+
+  // 自分を外したらこの旅行はもう見えない → 一覧へ
+  if (isSelf) {
+    redirect("/");
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
 }
