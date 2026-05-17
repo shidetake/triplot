@@ -6,10 +6,10 @@ import { AddExpenseButton } from "@/components/add-expense-button";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
-import { InviteSection } from "@/components/invite-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
+import { ShareButton } from "@/components/share-button";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -43,7 +43,6 @@ export default async function TripDetailPage({
     { data: placeStatusesRaw },
     { data: placesRaw },
     { data: eventsRaw },
-    { data: inviteRow },
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -89,11 +88,6 @@ export default async function TripDetailPage({
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
-    supabase
-      .from("trip_invites")
-      .select("token")
-      .eq("trip_id", tripId)
-      .maybeSingle(),
   ]);
 
   if (tripError || !trip) notFound();
@@ -248,9 +242,12 @@ export default async function TripDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
-      <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
-        ← 旅行一覧に戻る
-      </Link>
+      <div className="flex items-start justify-between gap-3">
+        <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
+          ← 旅行一覧に戻る
+        </Link>
+        <ShareButton tripId={tripId} baseUrl={inviteBaseUrl} />
+      </div>
 
       <header className="mt-4">
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
@@ -273,15 +270,6 @@ export default async function TripDetailPage({
             </li>
           ))}
         </ul>
-      </section>
-
-      <section className="mt-10 space-y-3">
-        <h2 className="text-lg font-medium">共有</h2>
-        <InviteSection
-          tripId={tripId}
-          initialToken={inviteRow?.token ?? null}
-          baseUrl={inviteBaseUrl}
-        />
       </section>
 
       <section className="mt-10 space-y-6">
