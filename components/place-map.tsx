@@ -194,6 +194,9 @@ export function PlaceMap({
               onCloseClick={onCloseInfo}
               maxWidth={300}
               headerDisabled
+              // ピンに被らないよう、ピン高さ分だけ上へ逃がす
+              // （選択中の候補＝雫ピンは背が高いので多め）。
+              pixelOffset={[0, selected.kind === "candidate" ? -52 : -24]}
             >
               {infoContent}
             </InfoWindow>
