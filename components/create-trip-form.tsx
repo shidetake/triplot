@@ -5,7 +5,7 @@ import { useActionState } from "react";
 import {
   createTripAction,
   type CreateTripState,
-} from "@/app/trips/new/actions";
+} from "@/app/trips/create-trip-action";
 
 type Currency = "JPY" | "USD";
 
@@ -18,8 +18,10 @@ const initialState: CreateTripState = { error: null };
 
 export function CreateTripForm({
   defaultDisplayName,
+  onDone,
 }: {
   defaultDisplayName?: string | null;
+  onDone: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
     createTripAction,
@@ -27,7 +29,21 @@ export function CreateTripForm({
   );
 
   return (
-    <form action={formAction} className="mt-6 space-y-4">
+    <form
+      action={formAction}
+      className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium">新しい旅行を作る</h3>
+        <button
+          type="button"
+          onClick={onDone}
+          className="text-xs text-zinc-500 hover:text-zinc-900"
+        >
+          閉じる
+        </button>
+      </div>
+
       <Field label="タイトル" name="title" required placeholder="ハワイ旅行" />
       <Field
         label="あなたの表示名（旅行内）"
@@ -35,7 +51,7 @@ export function CreateTripForm({
         required
         defaultValue={defaultDisplayName ?? ""}
       />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-3">
         <Field label="開始日" name="start_date" type="date" />
         <Field label="終了日" name="end_date" type="date" />
       </div>
@@ -58,7 +74,7 @@ export function CreateTripForm({
       <button
         type="submit"
         disabled={isPending}
-        className="h-12 w-full rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
       >
         {isPending ? "作成中..." : "作成する"}
       </button>

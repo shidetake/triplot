@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { CreateTripButton } from "@/components/create-trip-button";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
 import { SignOutButton } from "@/components/sign-out-button";
 import { createClient } from "@/lib/supabase/server";
@@ -9,6 +10,16 @@ export default async function Home() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  let defaultDisplayName: string | null = null;
+  if (user) {
+    const { data: profile } = await supabase
+      .from("users")
+      .select("display_name")
+      .eq("id", user.id)
+      .single();
+    defaultDisplayName = profile?.display_name ?? null;
+  }
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -35,12 +46,7 @@ export default async function Home() {
             <SignOutButton />
           </div>
 
-          <Link
-            href="/trips/new"
-            className="inline-flex h-12 items-center justify-center rounded-md bg-black px-6 font-medium text-white transition hover:bg-zinc-800"
-          >
-            新しい旅行を作る
-          </Link>
+          <CreateTripButton defaultDisplayName={defaultDisplayName} />
 
           <TripList userId={user.id} />
         </section>
