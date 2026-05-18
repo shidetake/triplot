@@ -257,6 +257,20 @@ export type EventMutationState = {
 
 type EventKind = "normal" | "transit";
 
+// 場所欄の3モード。saved=保存済み or 無し、free=フリーテキスト、
+// google=サジェスト確定（places に確定で作成して紐づける）。
+type ParsedPlace =
+  | { kind: "saved"; placeId: string | null }
+  | { kind: "free"; label: string | null }
+  | {
+      kind: "google";
+      placeId: string;
+      name: string;
+      address: string;
+      lat: number;
+      lng: number;
+    };
+
 type ParsedEvent =
   | { error: string }
   | {
@@ -267,7 +281,7 @@ type ParsedEvent =
       endAt: string | null;
       startTz: string;
       endTz: string | null;
-      placeId: string | null;
+      place: ParsedPlace;
       visibility: Visibility;
       note: string;
     };
@@ -289,8 +303,39 @@ function parseEventForm(formData: FormData): ParsedEvent {
     return { error: "公開範囲が不正です" };
   }
   const note = get("note");
-  const placeIdRaw = get("place_id");
-  const placeId = placeIdRaw === "" ? null : placeIdRaw;
+
+  const placeMode = get("place_mode") || "saved";
+  let place: ParsedPlace;
+  if (placeMode === "google") {
+    const gPlaceId = get("g_place_id");
+    const gName = get("g_name");
+    const gAddress = get("g_address");
+    const gLat = Number.parseFloat(get("g_lat"));
+    const gLng = Number.parseFloat(get("g_lng"));
+    if (
+      !gPlaceId ||
+      !gName ||
+      !gAddress ||
+      !Number.isFinite(gLat) ||
+      !Number.isFinite(gLng)
+    ) {
+      return { error: "場所を検索して候補から選んでください" };
+    }
+    place = {
+      kind: "google",
+      placeId: gPlaceId,
+      name: gName,
+      address: gAddress,
+      lat: gLat,
+      lng: gLng,
+    };
+  } else if (placeMode === "free") {
+    const label = get("place_label");
+    place = { kind: "free", label: label === "" ? null : label };
+  } else {
+    const placeIdRaw = get("place_id");
+    place = { kind: "saved", placeId: placeIdRaw === "" ? null : placeIdRaw };
+  }
 
   if (kind === "transit") {
     const departDate = get("depart_date");
@@ -313,7 +358,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
       endAt: `${arriveDate}T${arriveTime}:00`,
       startTz: departTz,
       endTz: arriveTz,
-      placeId,
+      place,
       visibility,
       note,
     };
@@ -338,7 +383,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
       endAt: `${endDate}T00:00:00`,
       startTz: "UTC",
       endTz: null,
-      placeId,
+      place,
       visibility,
       note,
     };
@@ -371,7 +416,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
     endAt,
     startTz: tz,
     endTz: null,
-    placeId,
+    place,
     visibility,
     note,
   };
@@ -395,20 +440,46 @@ export async function createEventAction(
     return { ok: false, error: parsed.error };
   }
 
-  const { error } = await supabase.rpc("create_event", {
-    p_trip_id: tripId,
-    p_title: parsed.title,
-    p_kind: parsed.kind,
-    p_all_day: parsed.allDay,
-    p_start_at: parsed.startAt,
-    // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）
-    p_end_at: parsed.endAt as unknown as string,
-    p_start_tz: parsed.startTz,
-    p_end_tz: parsed.endTz as unknown as string,
-    p_place_id: parsed.placeId as unknown as string,
-    p_visibility: parsed.visibility,
-    p_note: parsed.note,
-  });
+  const place = parsed.place;
+  // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）
+  const { error } =
+    place.kind === "google"
+      ? await supabase.rpc("create_event_with_place", {
+          p_trip_id: tripId,
+          p_title: parsed.title,
+          p_kind: parsed.kind,
+          p_all_day: parsed.allDay,
+          p_start_at: parsed.startAt,
+          p_end_at: parsed.endAt as unknown as string,
+          p_start_tz: parsed.startTz,
+          p_end_tz: parsed.endTz as unknown as string,
+          p_visibility: parsed.visibility,
+          p_note: parsed.note,
+          p_google_place_id: place.placeId,
+          p_place_name: place.name,
+          p_lat: place.lat,
+          p_lng: place.lng,
+          p_formatted_address: place.address,
+          p_icon: "",
+        })
+      : await supabase.rpc("create_event", {
+          p_trip_id: tripId,
+          p_title: parsed.title,
+          p_kind: parsed.kind,
+          p_all_day: parsed.allDay,
+          p_start_at: parsed.startAt,
+          p_end_at: parsed.endAt as unknown as string,
+          p_start_tz: parsed.startTz,
+          p_end_tz: parsed.endTz as unknown as string,
+          p_place_id: (place.kind === "saved"
+            ? place.placeId
+            : null) as unknown as string,
+          p_visibility: parsed.visibility,
+          p_note: parsed.note,
+          p_place_label: (place.kind === "free"
+            ? place.label
+            : null) as unknown as string,
+        });
 
   if (error) {
     return { ok: false, error: error.message };
@@ -441,19 +512,45 @@ export async function updateEventAction(
     return { ok: false, error: parsed.error };
   }
 
-  const { error } = await supabase.rpc("update_event", {
-    p_event_id: eventId,
-    p_title: parsed.title,
-    p_kind: parsed.kind,
-    p_all_day: parsed.allDay,
-    p_start_at: parsed.startAt,
-    p_end_at: parsed.endAt as unknown as string,
-    p_start_tz: parsed.startTz,
-    p_end_tz: parsed.endTz as unknown as string,
-    p_place_id: parsed.placeId as unknown as string,
-    p_visibility: parsed.visibility,
-    p_note: parsed.note,
-  });
+  const place = parsed.place;
+  const { error } =
+    place.kind === "google"
+      ? await supabase.rpc("update_event_with_place", {
+          p_event_id: eventId,
+          p_title: parsed.title,
+          p_kind: parsed.kind,
+          p_all_day: parsed.allDay,
+          p_start_at: parsed.startAt,
+          p_end_at: parsed.endAt as unknown as string,
+          p_start_tz: parsed.startTz,
+          p_end_tz: parsed.endTz as unknown as string,
+          p_visibility: parsed.visibility,
+          p_note: parsed.note,
+          p_google_place_id: place.placeId,
+          p_place_name: place.name,
+          p_lat: place.lat,
+          p_lng: place.lng,
+          p_formatted_address: place.address,
+          p_icon: "",
+        })
+      : await supabase.rpc("update_event", {
+          p_event_id: eventId,
+          p_title: parsed.title,
+          p_kind: parsed.kind,
+          p_all_day: parsed.allDay,
+          p_start_at: parsed.startAt,
+          p_end_at: parsed.endAt as unknown as string,
+          p_start_tz: parsed.startTz,
+          p_end_tz: parsed.endTz as unknown as string,
+          p_place_id: (place.kind === "saved"
+            ? place.placeId
+            : null) as unknown as string,
+          p_visibility: parsed.visibility,
+          p_note: parsed.note,
+          p_place_label: (place.kind === "free"
+            ? place.label
+            : null) as unknown as string,
+        });
 
   if (error) {
     return { ok: false, error: error.message };

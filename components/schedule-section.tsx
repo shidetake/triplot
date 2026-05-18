@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 
+import type { LatLng } from "@/lib/placeMap";
 import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
@@ -19,6 +20,7 @@ export function ScheduleSection({
   tripEnd,
   events,
   places,
+  biasCenter,
   myMemberId,
 }: {
   tripId: string;
@@ -27,6 +29,7 @@ export function ScheduleSection({
   tripEnd: string | null;
   events: EventRow[];
   places: { id: string; name: string }[];
+  biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
 }) {
   const [open, setOpen] = useState<OpenForm | null>(null);
@@ -146,6 +149,7 @@ export function ScheduleSection({
             defaultTz={defaultTz}
             state={open.form}
             places={places}
+            biasCenter={biasCenter}
             onDone={closeForm}
           />
         </FormPopover>

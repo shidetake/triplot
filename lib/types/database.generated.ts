@@ -25,6 +25,7 @@ export type Database = {
           kind: string
           note: string | null
           place_id: string | null
+          place_label: string | null
           start_at: string
           start_tz: string
           title: string
@@ -41,6 +42,7 @@ export type Database = {
           kind?: string
           note?: string | null
           place_id?: string | null
+          place_label?: string | null
           start_at: string
           start_tz: string
           title: string
@@ -57,6 +59,7 @@ export type Database = {
           kind?: string
           note?: string | null
           place_id?: string | null
+          place_label?: string | null
           start_at?: string
           start_tz?: string
           title?: string
@@ -494,6 +497,28 @@ export type Database = {
           p_kind: string
           p_note: string
           p_place_id: string
+          p_place_label: string
+          p_start_at: string
+          p_start_tz: string
+          p_title: string
+          p_trip_id: string
+          p_visibility: string
+        }
+        Returns: string
+      }
+      create_event_with_place: {
+        Args: {
+          p_all_day: boolean
+          p_end_at: string
+          p_end_tz: string
+          p_formatted_address: string
+          p_google_place_id: string
+          p_icon: string
+          p_kind: string
+          p_lat: number
+          p_lng: number
+          p_note: string
+          p_place_name: string
           p_start_at: string
           p_start_tz: string
           p_title: string
@@ -547,6 +572,19 @@ export type Database = {
         Args: { p_token: string; p_trip_id: string }
         Returns: string
       }
+      find_or_create_trip_place: {
+        Args: {
+          p_formatted_address: string
+          p_google_place_id: string
+          p_icon: string
+          p_lat: number
+          p_lng: number
+          p_member_id: string
+          p_name: string
+          p_trip_id: string
+        }
+        Returns: string
+      }
       is_active_trip_member: { Args: { _trip_id: string }; Returns: boolean }
       is_own_member: { Args: { _member_id: string }; Returns: boolean }
       join_trip_via_invite: {
@@ -577,6 +615,28 @@ export type Database = {
           p_kind: string
           p_note: string
           p_place_id: string
+          p_place_label: string
+          p_start_at: string
+          p_start_tz: string
+          p_title: string
+          p_visibility: string
+        }
+        Returns: undefined
+      }
+      update_event_with_place: {
+        Args: {
+          p_all_day: boolean
+          p_end_at: string
+          p_end_tz: string
+          p_event_id: string
+          p_formatted_address: string
+          p_google_place_id: string
+          p_icon: string
+          p_kind: string
+          p_lat: number
+          p_lng: number
+          p_note: string
+          p_place_name: string
           p_start_at: string
           p_start_tz: string
           p_title: string

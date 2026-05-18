@@ -80,7 +80,7 @@ export function WeekCalendar({
   const allDayBandH = Math.max(allDayRowCount, 1) * ALLDAY_ROW + 4;
 
   const blockLabel = (ev: ScheduleEvent) => {
-    const pn = placeName(ev.placeId);
+    const pn = placeName(ev.placeId) ?? ev.placeLabel;
     return (
       <>
         <span className="font-medium">{ev.title}</span>

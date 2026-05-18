@@ -19,6 +19,7 @@ import {
   calculateSettlements,
   type SettlementExpense,
 } from "@/lib/settlement";
+import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@/lib/types/database";
 
@@ -85,7 +86,7 @@ export default async function TripDetailPage({
     supabase
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, place_label, visibility, note, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
@@ -153,6 +154,7 @@ export default async function TripDetailPage({
     startTz: e.start_tz,
     endTz: e.end_tz,
     placeId: e.place_id,
+    placeLabel: e.place_label,
     visibility: e.visibility as Visibility,
     note: e.note,
     createdByMemberId: e.created_by_member_id,
@@ -172,6 +174,9 @@ export default async function TripDetailPage({
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
+  // スケジュールの Google 検索の地理バイアス（既存ピンの重心 or 東京）
+  const placesBiasCenter =
+    centroid(places.map((p) => ({ lat: p.lat, lng: p.lng }))) ?? TOKYO;
 
   // 招待リンクの絶対URLはサーバ側でヘッダから組む（client で window を
   // 触ると SSR と不一致 / effect-setState になるため）。
@@ -283,6 +288,7 @@ export default async function TripDetailPage({
           tripEnd={trip.end_date}
           events={scheduleEvents}
           places={placesForPicker}
+          biasCenter={placesBiasCenter}
           myMemberId={me.id}
         />
       </section>
