@@ -116,8 +116,18 @@ export function ScheduleSection({
         >
           ＋ 予定を追加
         </button>
-        <span className="self-center text-xs text-zinc-500">
-          空き時間をタップしても追加できます・時刻は全て現地時刻（端末設定に依存しません）
+        <span className="group relative inline-flex self-center">
+          <span
+            tabIndex={0}
+            role="img"
+            aria-label="予定の追加方法"
+            className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-600"
+          >
+            ?
+          </span>
+          <span className="pointer-events-none absolute left-0 top-full z-10 mt-1 w-52 rounded-md bg-zinc-800 px-2 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+            空き時間をタップしても追加できます
+          </span>
         </span>
       </div>
 
