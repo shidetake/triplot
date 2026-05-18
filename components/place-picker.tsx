@@ -10,10 +10,10 @@ import type { LatLng } from "@/lib/placeMap";
 // 混ぜて出す、よくあるコンボボックス（Google カレンダーの場所欄や
 // Notion / Linear の作成サジェストと同系統）。
 //
-// 区別の付け方（先人の実装を踏襲）:
+// 区別の付け方:
 //  - ドロップダウンから保存済み行を選ぶ      → place_id 連携
 //  - ドロップダウンから Google 行を選ぶ      → 確定で places 作成＋連携
-//  - 何も選ばず入力テキストのまま            → 自由入力（place_label）
+//  - 何も選ばず入力テキストのまま確定        → 自由入力（place_label）
 //  - 入力が保存済みの名前と完全一致           → その保存済みへ自動解決
 //
 // サーバ契約（place_mode / place_id / place_label / g_*）は据え置きで、
@@ -37,8 +37,7 @@ export type PlacePickerInitial =
 
 type Row =
   | { type: "saved"; id: string; name: string }
-  | { type: "google"; sug: google.maps.places.AutocompleteSuggestion }
-  | { type: "free"; text: string };
+  | { type: "google"; sug: google.maps.places.AutocompleteSuggestion };
 
 export function PlacePicker({
   places,
@@ -146,24 +145,14 @@ export function PlacePicker({
       name: p.name,
     }));
     for (const s of gSug) r.push({ type: "google", sug: s });
-    const q = query.trim();
-    if (q && !savedMatches.some((p) => p.name === q)) {
-      r.push({ type: "free", text: q });
-    }
     return r;
-  }, [savedMatches, gSug, query]);
+  }, [savedMatches, gSug]);
 
   const choose = (row: Row) => {
     if (row.type === "saved") {
       setResolved({ kind: "saved", id: row.id, name: row.name });
       setQuery(row.name);
       setGSug([]);
-      setOpen(false);
-      return;
-    }
-    if (row.type === "free") {
-      setResolved(null);
-      setQuery(row.text);
       setOpen(false);
       return;
     }
@@ -289,38 +278,23 @@ export function PlacePicker({
                 </li>
               );
             }
-            if (row.type === "google") {
-              const pred = row.sug.placePrediction!;
-              return (
-                <li key={`g-${pred.placeId ?? i}`}>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => choose(row)}
-                    className={base}
-                  >
-                    <span className="font-medium">
-                      {pred.mainText?.text ?? pred.text.text}
-                    </span>
-                    {pred.secondaryText?.text && (
-                      <span className="block truncate text-[11px] text-zinc-500">
-                        {pred.secondaryText.text}
-                      </span>
-                    )}
-                  </button>
-                </li>
-              );
-            }
+            const pred = row.sug.placePrediction!;
             return (
-              <li key="free">
+              <li key={`g-${pred.placeId ?? i}`}>
                 <button
                   type="button"
                   onMouseEnter={() => setActive(i)}
                   onClick={() => choose(row)}
                   className={base}
                 >
-                  「<span className="font-medium">{row.text}</span>
-                  」をそのまま使う
+                  <span className="font-medium">
+                    {pred.mainText?.text ?? pred.text.text}
+                  </span>
+                  {pred.secondaryText?.text && (
+                    <span className="block truncate text-[11px] text-zinc-500">
+                      {pred.secondaryText.text}
+                    </span>
+                  )}
                 </button>
               </li>
             );
