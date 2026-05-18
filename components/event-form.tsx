@@ -14,15 +14,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
-import { PlaceAutocomplete, type PickedPlace } from "./place-autocomplete";
-
-type PlaceMode = "saved" | "google" | "free";
-
-const PLACE_MODE_LABEL: Record<PlaceMode, string> = {
-  saved: "保存済み",
-  google: "Google検索",
-  free: "自由入力",
-};
+import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
@@ -130,13 +122,16 @@ export function EventForm({
   const ev = isEdit ? formMode.event : null;
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // 場所欄の3モード。編集時は既存値からモードを推定（place_id→保存済み、
-  // place_label→自由入力、どちらも無し→保存済みの「なし」）。
-  const [placeMode, setPlaceMode] = useState<PlaceMode>(
-    ev?.placeId ? "saved" : ev?.placeLabel ? "free" : "saved",
-  );
-  const [picked, setPicked] = useState<PickedPlace | null>(null);
-  const [freeLabel, setFreeLabel] = useState(ev?.placeLabel ?? "");
+  // 場所欄の初期値。編集時は既存の place_id / place_label から復元する。
+  const placePickerInitial: PlacePickerInitial = ev?.placeId
+    ? {
+        kind: "saved",
+        id: ev.placeId,
+        name: places.find((p) => p.id === ev.placeId)?.name ?? "",
+      }
+    : ev?.placeLabel
+      ? { kind: "free", label: ev.placeLabel }
+      : null;
 
   const action = isEdit
     ? updateEventAction.bind(null, tripId)
@@ -271,109 +266,25 @@ export function EventForm({
 
       <div className="block text-sm">
         <span className="font-medium">場所（任意）</span>
-
-        <input type="hidden" name="place_mode" value={placeMode} />
-
-        <div className="mt-1 flex gap-1 rounded-md border border-zinc-200 p-1">
-          {(["saved", "google", "free"] as const).map((m) => (
-            <button
-              key={m}
-              type="button"
-              onClick={() => setPlaceMode(m)}
-              className={`flex-1 rounded px-2 py-1 text-xs font-medium transition ${
-                placeMode === m
-                  ? "bg-black text-white"
-                  : "text-zinc-600 hover:bg-zinc-100"
-              }`}
-            >
-              {PLACE_MODE_LABEL[m]}
-            </button>
-          ))}
-        </div>
-
-        {/* 保存済みから選ぶ（従来 UX） */}
-        {placeMode === "saved" && (
-          <select
-            name="place_id"
-            defaultValue={ev?.placeId ?? ""}
-            className={`${inputCls} mt-2`}
-          >
-            <option value="">なし</option>
-            {places.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-        )}
-
-        {/* Google から検索して選ぶ → 確定で「場所」にも追加され紐づく */}
-        {placeMode === "google" && (
-          <div className="mt-2">
-            {picked ? (
-              <div className="flex items-start justify-between gap-2 rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {picked.name}
-                  </p>
-                  <p className="truncate text-[11px] text-zinc-500">
-                    {picked.address}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setPicked(null)}
-                  className="shrink-0 text-xs text-zinc-500 hover:text-zinc-900"
-                >
-                  選び直す
-                </button>
-              </div>
-            ) : mapsApiKey ? (
-              <APIProvider apiKey={mapsApiKey}>
-                <PlaceAutocomplete
-                  biasCenter={biasCenter}
-                  onPick={setPicked}
-                />
-              </APIProvider>
-            ) : (
-              <p className="rounded-md bg-amber-50 p-2 text-xs text-amber-800">
-                Google Maps API キーが未設定のため検索は使えません。
-              </p>
-            )}
-            <p className="mt-1 text-[11px] text-zinc-500">
-              選ぶと「場所」にも確定ステータスで追加されます。
-            </p>
-            {picked && (
-              <>
-                <input
-                  type="hidden"
-                  name="g_place_id"
-                  value={picked.placeId}
-                />
-                <input type="hidden" name="g_name" value={picked.name} />
-                <input
-                  type="hidden"
-                  name="g_address"
-                  value={picked.address}
-                />
-                <input type="hidden" name="g_lat" value={picked.lat} />
-                <input type="hidden" name="g_lng" value={picked.lng} />
-              </>
-            )}
-          </div>
-        )}
-
-        {/* 完全フリーテキスト → places は作らず place_label に保持 */}
-        {placeMode === "free" && (
-          <input
-            type="text"
-            name="place_label"
-            value={freeLabel}
-            onChange={(e) => setFreeLabel(e.target.value)}
-            placeholder="例: 集合場所のロビー"
-            className={`${inputCls} mt-2`}
+        {mapsApiKey ? (
+          <APIProvider apiKey={mapsApiKey}>
+            <PlacePicker
+              places={places}
+              biasCenter={biasCenter}
+              initial={placePickerInitial}
+            />
+          </APIProvider>
+        ) : (
+          <PlacePicker
+            places={places}
+            biasCenter={biasCenter}
+            initial={placePickerInitial}
           />
         )}
+        <p className="mt-1 text-[11px] text-zinc-500">
+          保存済み・Google 候補・自由入力。Google
+          候補を選ぶと「場所」にも確定で追加されます。
+        </p>
       </div>
 
       {/* 日時。3種別とも同じ2列グリッド。差は「右に時刻を入れるか」
