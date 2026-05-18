@@ -30,9 +30,10 @@ type Resolved =
       lng: number;
     };
 
+// 自由入力も Model B で place_id に解決済みなので、編集時の初期値は
+// 常に保存済み（saved）か無し。自由入力の「初期値」は存在しない。
 export type PlacePickerInitial =
   | { kind: "saved"; id: string; name: string }
-  | { kind: "free"; label: string }
   | null;
 
 type Row =
@@ -50,13 +51,9 @@ export function PlacePicker({
 }) {
   const placesLib = useMapsLibrary("places");
 
-  const [query, setQuery] = useState(
-    initial ? (initial.kind === "saved" ? initial.name : initial.label) : "",
-  );
+  const [query, setQuery] = useState(initial ? initial.name : "");
   const [resolved, setResolved] = useState<Resolved | null>(
-    initial && initial.kind === "saved"
-      ? { kind: "saved", id: initial.id, name: initial.name }
-      : null,
+    initial ? { kind: "saved", id: initial.id, name: initial.name } : null,
   );
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);

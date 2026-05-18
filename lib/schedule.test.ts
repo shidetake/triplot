@@ -18,7 +18,6 @@ function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEven
     startTz: "Asia/Tokyo",
     endTz: null,
     placeId: null,
-    placeLabel: null,
     visibility: "shared",
     note: null,
     ...p,

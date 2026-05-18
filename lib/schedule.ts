@@ -19,7 +19,6 @@ export type ScheduleEvent = {
   startTz: string; // IANA。start_at がどのTZの壁時計か
   endTz: string | null; // transit の到着TZ。normal は null（= startTz）
   placeId: string | null;
-  placeLabel: string | null; // place_id 無しのフリーテキスト場所
   visibility: "shared" | "private";
   note: string | null;
 };

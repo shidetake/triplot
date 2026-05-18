@@ -122,16 +122,15 @@ export function EventForm({
   const ev = isEdit ? formMode.event : null;
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
-  // 場所欄の初期値。編集時は既存の place_id / place_label から復元する。
+  // 場所欄の初期値。編集時は既存の place_id から復元する（自由入力も
+  // place_id に解決済みなので saved として戻る）。
   const placePickerInitial: PlacePickerInitial = ev?.placeId
     ? {
         kind: "saved",
         id: ev.placeId,
         name: places.find((p) => p.id === ev.placeId)?.name ?? "",
       }
-    : ev?.placeLabel
-      ? { kind: "free", label: ev.placeLabel }
-      : null;
+    : null;
 
   const action = isEdit
     ? updateEventAction.bind(null, tripId)

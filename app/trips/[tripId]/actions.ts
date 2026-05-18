@@ -441,45 +441,67 @@ export async function createEventAction(
   }
 
   const place = parsed.place;
-  // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）
-  const { error } =
-    place.kind === "google"
-      ? await supabase.rpc("create_event_with_place", {
-          p_trip_id: tripId,
-          p_title: parsed.title,
-          p_kind: parsed.kind,
-          p_all_day: parsed.allDay,
-          p_start_at: parsed.startAt,
-          p_end_at: parsed.endAt as unknown as string,
-          p_start_tz: parsed.startTz,
-          p_end_tz: parsed.endTz as unknown as string,
-          p_visibility: parsed.visibility,
-          p_note: parsed.note,
-          p_google_place_id: place.placeId,
-          p_place_name: place.name,
-          p_lat: place.lat,
-          p_lng: place.lng,
-          p_formatted_address: place.address,
-          p_icon: "",
-        })
-      : await supabase.rpc("create_event", {
-          p_trip_id: tripId,
-          p_title: parsed.title,
-          p_kind: parsed.kind,
-          p_all_day: parsed.allDay,
-          p_start_at: parsed.startAt,
-          p_end_at: parsed.endAt as unknown as string,
-          p_start_tz: parsed.startTz,
-          p_end_tz: parsed.endTz as unknown as string,
-          p_place_id: (place.kind === "saved"
-            ? place.placeId
-            : null) as unknown as string,
-          p_visibility: parsed.visibility,
-          p_note: parsed.note,
-          p_place_label: (place.kind === "free"
-            ? place.label
-            : null) as unknown as string,
-        });
+  // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）。
+  // 場所は kind で 3 分岐: google→確定 place、自由入力→未マップ place、
+  // 保存済み/無し→ place_id 直指定。いずれもサーバ側で place_id に解決する。
+  let error: { message: string } | null = null;
+  if (place.kind === "google") {
+    error = (
+      await supabase.rpc("create_event_with_place", {
+        p_trip_id: tripId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+        p_google_place_id: place.placeId,
+        p_place_name: place.name,
+        p_lat: place.lat,
+        p_lng: place.lng,
+        p_formatted_address: place.address,
+        p_icon: "",
+      })
+    ).error;
+  } else if (place.kind === "free" && place.label) {
+    error = (
+      await supabase.rpc("create_event_with_freetext_place", {
+        p_trip_id: tripId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+        p_place_name: place.label,
+      })
+    ).error;
+  } else {
+    // 保存済み、または場所なし（自由入力が空 / saved が null）
+    error = (
+      await supabase.rpc("create_event", {
+        p_trip_id: tripId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_place_id: (place.kind === "saved"
+          ? place.placeId
+          : null) as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+      })
+    ).error;
+  }
 
   if (error) {
     return { ok: false, error: error.message };
@@ -513,44 +535,65 @@ export async function updateEventAction(
   }
 
   const place = parsed.place;
-  const { error } =
-    place.kind === "google"
-      ? await supabase.rpc("update_event_with_place", {
-          p_event_id: eventId,
-          p_title: parsed.title,
-          p_kind: parsed.kind,
-          p_all_day: parsed.allDay,
-          p_start_at: parsed.startAt,
-          p_end_at: parsed.endAt as unknown as string,
-          p_start_tz: parsed.startTz,
-          p_end_tz: parsed.endTz as unknown as string,
-          p_visibility: parsed.visibility,
-          p_note: parsed.note,
-          p_google_place_id: place.placeId,
-          p_place_name: place.name,
-          p_lat: place.lat,
-          p_lng: place.lng,
-          p_formatted_address: place.address,
-          p_icon: "",
-        })
-      : await supabase.rpc("update_event", {
-          p_event_id: eventId,
-          p_title: parsed.title,
-          p_kind: parsed.kind,
-          p_all_day: parsed.allDay,
-          p_start_at: parsed.startAt,
-          p_end_at: parsed.endAt as unknown as string,
-          p_start_tz: parsed.startTz,
-          p_end_tz: parsed.endTz as unknown as string,
-          p_place_id: (place.kind === "saved"
-            ? place.placeId
-            : null) as unknown as string,
-          p_visibility: parsed.visibility,
-          p_note: parsed.note,
-          p_place_label: (place.kind === "free"
-            ? place.label
-            : null) as unknown as string,
-        });
+  // create と同じ 3 分岐（google / 自由入力 / 保存済み・無し）。
+  let error: { message: string } | null = null;
+  if (place.kind === "google") {
+    error = (
+      await supabase.rpc("update_event_with_place", {
+        p_event_id: eventId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+        p_google_place_id: place.placeId,
+        p_place_name: place.name,
+        p_lat: place.lat,
+        p_lng: place.lng,
+        p_formatted_address: place.address,
+        p_icon: "",
+      })
+    ).error;
+  } else if (place.kind === "free" && place.label) {
+    error = (
+      await supabase.rpc("update_event_with_freetext_place", {
+        p_event_id: eventId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+        p_place_name: place.label,
+      })
+    ).error;
+  } else {
+    // 保存済み、または場所なし（自由入力が空 / saved が null）
+    error = (
+      await supabase.rpc("update_event", {
+        p_event_id: eventId,
+        p_title: parsed.title,
+        p_kind: parsed.kind,
+        p_all_day: parsed.allDay,
+        p_start_at: parsed.startAt,
+        p_end_at: parsed.endAt as unknown as string,
+        p_start_tz: parsed.startTz,
+        p_end_tz: parsed.endTz as unknown as string,
+        p_place_id: (place.kind === "saved"
+          ? place.placeId
+          : null) as unknown as string,
+        p_visibility: parsed.visibility,
+        p_note: parsed.note,
+      })
+    ).error;
+  }
 
   if (error) {
     return { ok: false, error: error.message };

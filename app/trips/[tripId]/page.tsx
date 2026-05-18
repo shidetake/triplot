@@ -86,7 +86,7 @@ export default async function TripDetailPage({
     supabase
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, place_label, visibility, note, created_by_member_id, created_at",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
@@ -154,7 +154,6 @@ export default async function TripDetailPage({
     startTz: e.start_tz,
     endTz: e.end_tz,
     placeId: e.place_id,
-    placeLabel: e.place_label,
     visibility: e.visibility as Visibility,
     note: e.note,
     createdByMemberId: e.created_by_member_id,
