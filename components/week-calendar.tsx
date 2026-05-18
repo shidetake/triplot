@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { Schedule, ScheduleEvent } from "@/lib/schedule";
 
@@ -56,6 +56,10 @@ export function WeekCalendar({
     () => new Map(columns.map((c, i) => [c.key, i])),
     [columns],
   );
+
+  // 日跨ぎ／時差移動は同一イベントが複数ブロックに分かれる。CSS の hover:
+  // だと乗っているブロックしか光らないので、選択と同様に JS で全ブロックを光らせる。
+  const [hoveredEventId, setHoveredEventId] = useState<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   // 0時始まりだと早朝が無駄に見えるので、初回だけ 6:00 付近へスクロール。
@@ -217,6 +221,7 @@ export function WeekCalendar({
               const h = Math.max(y(p.endMin) - top, MIN_BLOCK);
               const w = COL / p.laneCount;
               const sel = selectedEventId === p.event.id;
+              const hov = hoveredEventId === p.event.id;
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -225,12 +230,14 @@ export function WeekCalendar({
                     e.stopPropagation();
                     onEventClick(p.event.id, { x: e.clientX, y: e.clientY });
                   }}
+                  onMouseEnter={() => setHoveredEventId(p.event.id)}
+                  onMouseLeave={() => setHoveredEventId(null)}
                   className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${
                     sel
                       ? "z-10 border-blue-500 bg-blue-100 text-blue-950"
                       : p.event.visibility === "private"
-                        ? "border-zinc-300 bg-zinc-100 text-zinc-700 hover:bg-zinc-200"
-                        : "border-emerald-300 bg-emerald-100 text-emerald-900 hover:bg-emerald-200"
+                        ? `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`
+                        : `border-emerald-300 text-emerald-900 ${hov ? "bg-emerald-200" : "bg-emerald-100"}`
                   }`}
                   style={{
                     left: i * COL + p.lane * w + 1,
@@ -255,9 +262,10 @@ export function WeekCalendar({
               const yd = y(t.departMin);
               const ya = y(t.arriveMin);
               const sel = selectedEventId === t.event.id;
+              const hov = hoveredEventId === t.event.id;
               const base = sel
                 ? "border-violet-500 bg-violet-200 text-violet-950"
-                : "border-violet-300 bg-violet-100 text-violet-900 hover:bg-violet-200";
+                : `border-violet-300 text-violet-900 ${hov ? "bg-violet-200" : "bg-violet-100"}`;
               return (
                 <div key={t.event.id}>
                   {/* 出発側 */}
@@ -267,6 +275,8 @@ export function WeekCalendar({
                       e.stopPropagation();
                       onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
                     }}
+                    onMouseEnter={() => setHoveredEventId(t.event.id)}
+                    onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
                     style={{
                       left: di * COL + 1,
@@ -287,6 +297,8 @@ export function WeekCalendar({
                       e.stopPropagation();
                       onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
                     }}
+                    onMouseEnter={() => setHoveredEventId(t.event.id)}
+                    onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
                     style={{
                       left: ai * COL + 1,
