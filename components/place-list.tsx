@@ -13,10 +13,11 @@ export type PlaceStatus = {
 export type PlaceRow = {
   id: string;
   name: string;
-  lat: number;
-  lng: number;
-  google_place_id: string;
-  formatted_address: string;
+  // 未マップ（自由入力）の場所は座標・住所・gpid を持たない。
+  lat: number | null;
+  lng: number | null;
+  google_place_id: string | null;
+  formatted_address: string | null;
   status_id: string;
   visibility: Visibility;
   note: string | null;
@@ -98,10 +99,19 @@ export function PlaceIcon({
   );
 }
 
-export function gmapsUrl(p: Pick<PlaceRow, "name" | "google_place_id">): string {
-  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    p.name,
-  )}&query_place_id=${p.google_place_id}`;
+export function gmapsUrl(
+  p: Pick<PlaceRow, "name" | "google_place_id" | "lat" | "lng">,
+): string {
+  const base = `https://www.google.com/maps/search/?api=1&query=`;
+  // Google 由来は place_id でピンポイント、手動ピンは座標、
+  // 未マップ（座標も無い）は名前で検索だけ。
+  if (p.google_place_id) {
+    return `${base}${encodeURIComponent(p.name)}&query_place_id=${p.google_place_id}`;
+  }
+  if (p.lat != null && p.lng != null) {
+    return `${base}${p.lat},${p.lng}`;
+  }
+  return `${base}${encodeURIComponent(p.name)}`;
 }
 
 export function PlaceList({
@@ -130,6 +140,7 @@ export function PlaceList({
       {places.map((p) => {
         const status = statusById.get(p.status_id);
         const isSelected = p.id === selectedId;
+        const unmapped = p.lat == null;
         return (
           <li key={p.id}>
             <button
@@ -155,15 +166,26 @@ export function PlaceList({
                       プライベート
                     </span>
                   )}
+                  {unmapped && (
+                    <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700">
+                      地図未登録
+                    </span>
+                  )}
                 </div>
-                <p className="mt-1 truncate text-xs text-zinc-500">
-                  {p.formatted_address}
-                </p>
+                {p.formatted_address && (
+                  <p className="mt-1 truncate text-xs text-zinc-500">
+                    {p.formatted_address}
+                  </p>
+                )}
                 {p.note && (
                   <p className="mt-1 text-xs text-zinc-700">{p.note}</p>
                 )}
               </div>
-              <span className="shrink-0 text-xs text-blue-600">地図で見る</span>
+              {!unmapped && (
+                <span className="shrink-0 text-xs text-blue-600">
+                  地図で見る
+                </span>
+              )}
             </button>
           </li>
         );

@@ -29,7 +29,12 @@ export function PlacesSection({
   const [selected, setSelected] = useState<Selection | null>(null);
 
   const biasCenter = useMemo(
-    () => centroid(places.map((p) => ({ lat: p.lat, lng: p.lng }))) ?? TOKYO,
+    () =>
+      centroid(
+        places
+          .filter((p) => p.lat != null && p.lng != null)
+          .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
+      ) ?? TOKYO,
     [places],
   );
 

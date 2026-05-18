@@ -305,9 +305,17 @@ export function SavedInfo({
           />
           {place.name}
         </p>
-        <p className="mt-0.5 text-xs text-zinc-600">
-          {place.formatted_address}
-        </p>
+        {place.formatted_address ? (
+          <p className="mt-0.5 text-xs text-zinc-600">
+            {place.formatted_address}
+          </p>
+        ) : (
+          place.lat == null && (
+            <p className="mt-0.5 text-xs text-amber-700">
+              地図未登録（座標なし）
+            </p>
+          )
+        )}
         {!editing && place.note && (
           <p className="mt-1 text-xs text-zinc-700">{place.note}</p>
         )}

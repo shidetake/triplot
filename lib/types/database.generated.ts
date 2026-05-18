@@ -277,12 +277,12 @@ export type Database = {
         Row: {
           created_at: string
           created_by_member_id: string
-          formatted_address: string
-          google_place_id: string
+          formatted_address: string | null
+          google_place_id: string | null
           icon: string
           id: string
-          lat: number
-          lng: number
+          lat: number | null
+          lng: number | null
           name: string
           note: string | null
           status_id: string
@@ -292,12 +292,12 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by_member_id: string
-          formatted_address: string
-          google_place_id: string
+          formatted_address?: string | null
+          google_place_id?: string | null
           icon?: string
           id?: string
-          lat: number
-          lng: number
+          lat?: number | null
+          lng?: number | null
           name: string
           note?: string | null
           status_id: string
@@ -307,12 +307,12 @@ export type Database = {
         Update: {
           created_at?: string
           created_by_member_id?: string
-          formatted_address?: string
-          google_place_id?: string
+          formatted_address?: string | null
+          google_place_id?: string | null
           icon?: string
           id?: string
-          lat?: number
-          lng?: number
+          lat?: number | null
+          lng?: number | null
           name?: string
           note?: string | null
           status_id?: string

@@ -174,9 +174,13 @@ export default async function TripDetailPage({
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
-  // スケジュールの Google 検索の地理バイアス（既存ピンの重心 or 東京）
+  // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
   const placesBiasCenter =
-    centroid(places.map((p) => ({ lat: p.lat, lng: p.lng }))) ?? TOKYO;
+    centroid(
+      places
+        .filter((p) => p.lat != null && p.lng != null)
+        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
+    ) ?? TOKYO;
 
   // 招待リンクの絶対URLはサーバ側でヘッダから組む（client で window を
   // 触ると SSR と不一致 / effect-setState になるため）。

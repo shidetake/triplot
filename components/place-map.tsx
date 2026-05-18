@@ -88,13 +88,23 @@ export function PlaceMap({
     [statuses],
   );
 
+  // 未マップ（自由入力）の場所は座標が無いので地図に出さない。
+  const mappedPlaces = useMemo(
+    () =>
+      places.filter(
+        (p): p is PlaceRow & { lat: number; lng: number } =>
+          p.lat != null && p.lng != null,
+      ),
+    [places],
+  );
+
   // 検索結果があればそちらに、無ければ保存済みピンに合わせる。
   const fitPoints: LatLng[] = useMemo(
     () =>
       candidates.length > 0
         ? candidates.map((c) => ({ lat: c.lat, lng: c.lng }))
-        : places.map((p) => ({ lat: p.lat, lng: p.lng })),
-    [candidates, places],
+        : mappedPlaces.map((p) => ({ lat: p.lat, lng: p.lng })),
+    [candidates, mappedPlaces],
   );
 
   const initialCenter = centroid(fitPoints) ?? TOKYO;
@@ -103,7 +113,9 @@ export function PlaceMap({
     if (!selected) return null;
     if (selected.kind === "saved") {
       const p = places.find((x) => x.id === selected.id);
-      return p ? { lat: p.lat, lng: p.lng } : null;
+      return p && p.lat != null && p.lng != null
+        ? { lat: p.lat, lng: p.lng }
+        : null;
     }
     const c = candidates.find((x) => x.placeId === selected.placeId);
     return c ? { lat: c.lat, lng: c.lng } : null;
@@ -125,7 +137,7 @@ export function PlaceMap({
           <MapController points={fitPoints} panTo={selectedPos} />
 
           {mapId &&
-            places.map((p) => {
+            mappedPlaces.map((p) => {
               const st = statusById[p.status_id];
               // 未確定（候補）ステータスは半透明、確定はくっきり
               return (
