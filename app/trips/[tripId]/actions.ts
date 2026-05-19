@@ -285,6 +285,37 @@ export async function deletePlaceAction(
   return { error: null };
 }
 
+// 未マップ place に座標を後から設定する（地図でピンを置いて確定）。
+export async function setPlaceLocationAction(
+  tripId: string,
+  placeId: string,
+  lat: number,
+  lng: number,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return { error: "座標が不正です" };
+  }
+
+  const { error } = await supabase.rpc("set_place_location", {
+    p_place_id: placeId,
+    p_lat: lat,
+    p_lng: lng,
+  });
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
 // ────────────────────────────────────────────────────────────
 // events（スケジュール）
 // ────────────────────────────────────────────────────────────

@@ -8,7 +8,12 @@ import { centroid, type LatLng, TOKYO } from "@/lib/placeMap";
 
 import { PlaceList, type PlaceRow, type PlaceStatus } from "./place-list";
 import { PlaceMap, type Selection } from "./place-map";
-import { CandidateInfo, DraftInfo, SavedInfo } from "./place-popups";
+import {
+  CandidateInfo,
+  DraftInfo,
+  LocateInfo,
+  SavedInfo,
+} from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 
 export function PlacesSection({
@@ -31,6 +36,12 @@ export function PlacesSection({
   const [draft, setDraft] = useState<LatLng | null>(null);
   // タップ選択中のベースマップ POI（マーカーは出さず吹き出しだけ）。
   const [poi, setPoi] = useState<CandidatePlace | null>(null);
+  // 「未マップ place の位置を地図で指定する」一回きりのスコープ状態。
+  // 設定中は draft を置くと新規追加ではなくこの place の location を埋める。
+  const [pendingLocationFor, setPendingLocationFor] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const biasCenter = useMemo(
     () =>
@@ -95,6 +106,25 @@ export function PlacesSection({
     setPoi(null);
   }, []);
 
+  // 未マップ place を一覧でクリック: 「位置を指定」スコープを開始する。
+  // 他の選択状態は一旦クリアして、地図に集中させる。
+  const startLocate = useCallback((id: string, name: string) => {
+    setQuery("");
+    setCandidates([]);
+    setSelected(null);
+    setDraft(null);
+    setPoi(null);
+    setPendingLocationFor({ id, name });
+  }, []);
+  const cancelLocate = useCallback(() => {
+    setPendingLocationFor(null);
+    setDraft(null);
+  }, []);
+  const finishLocate = useCallback(() => {
+    setPendingLocationFor(null);
+    setDraft(null);
+  }, []);
+
   if (!apiKey) {
     return (
       <div className="space-y-4">
@@ -106,6 +136,7 @@ export function PlacesSection({
           statuses={statuses}
           selectedId={null}
           onSelect={() => {}}
+          onLocate={() => {}}
         />
       </div>
     );
@@ -146,18 +177,42 @@ export function PlacesSection({
     }
   }
 
-  const draftContent: React.ReactNode = draft ? (
+  const draftContent: React.ReactNode = !draft ? null : pendingLocationFor ? (
+    // 「位置を指定」スコープ中の draft は既存 place への location 設定。
+    <LocateInfo
+      tripId={tripId}
+      placeId={pendingLocationFor.id}
+      placeName={pendingLocationFor.name}
+      draft={draft}
+      onDone={finishLocate}
+      onCancel={cancelLocate}
+    />
+  ) : (
     <DraftInfo
       tripId={tripId}
       draft={draft}
       statuses={statuses}
       onAdded={clearSearch}
     />
-  ) : null;
+  );
 
   return (
     <APIProvider apiKey={apiKey}>
       <div className="space-y-4">
+        {pendingLocationFor && (
+          <div className="flex items-center justify-between gap-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
+            <span>
+              「{pendingLocationFor.name}」の位置を地図で指定（クリック / 長押し）
+            </span>
+            <button
+              type="button"
+              onClick={cancelLocate}
+              className="shrink-0 rounded border border-amber-300 px-2 py-1 text-xs font-medium hover:bg-amber-100"
+            >
+              やめる
+            </button>
+          </div>
+        )}
         <PlaceSearch
           query={query}
           onQueryChange={setQuery}
@@ -187,6 +242,7 @@ export function PlacesSection({
           statuses={statuses}
           selectedId={selected?.kind === "saved" ? selected.id : null}
           onSelect={selectSaved}
+          onLocate={startLocate}
         />
       </div>
     </APIProvider>

@@ -672,6 +672,10 @@ export type Database = {
         Args: { _trip_id: string }
         Returns: undefined
       }
+      set_place_location: {
+        Args: { p_lat: number; p_lng: number; p_place_id: string }
+        Returns: undefined
+      }
       update_event: {
         Args: {
           p_all_day: boolean

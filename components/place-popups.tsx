@@ -6,6 +6,7 @@ import {
   createPlaceAction,
   deletePlaceAction,
   type PlaceMutationState,
+  setPlaceLocationAction,
   updatePlaceAction,
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
@@ -324,6 +325,77 @@ export function DraftInfo({
           </p>
         )}
       </form>
+    </div>
+  );
+}
+
+// 未マップ place（自由入力で名前だけ作られた場所）に、地図でピンを
+// 置いて座標を設定するフォーム。DraftInfo と違い、新規作成ではなく
+// 既存 place の location を埋めるだけなので入力欄は無く確定ボタンのみ。
+export function LocateInfo({
+  tripId,
+  placeId,
+  placeName,
+  draft,
+  onDone,
+  onCancel,
+}: {
+  tripId: string;
+  placeId: string;
+  placeName: string;
+  draft: { lat: number; lng: number };
+  onDone: () => void;
+  onCancel: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const onConfirm = () => {
+    setError(null);
+    startTransition(async () => {
+      const { error } = await setPlaceLocationAction(
+        tripId,
+        placeId,
+        draft.lat,
+        draft.lng,
+      );
+      if (error) {
+        setError(error);
+        return;
+      }
+      onDone();
+    });
+  };
+
+  return (
+    <div className="flex w-64 flex-col gap-2 pr-1">
+      <div>
+        <p className="text-sm font-semibold">位置を設定</p>
+        <p className="mt-0.5 text-xs text-zinc-700">「{placeName}」</p>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
+        </p>
+      </div>
+      <div className="flex gap-2 border-t border-zinc-200 pt-2">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
+        >
+          やめる
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          disabled={isPending}
+          className="h-9 flex-1 rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {isPending ? "設定中..." : "ここに設定"}
+        </button>
+      </div>
+      {error && (
+        <p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>
+      )}
     </div>
   );
 }

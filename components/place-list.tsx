@@ -119,11 +119,14 @@ export function PlaceList({
   statuses,
   selectedId,
   onSelect,
+  onLocate,
 }: {
   places: PlaceRow[];
   statuses: PlaceStatus[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
+  onLocate: (id: string, name: string) => void;
 }) {
   const statusById = new Map(statuses.map((s) => [s.id, s]));
 
@@ -145,7 +148,9 @@ export function PlaceList({
           <li key={p.id}>
             <button
               type="button"
-              onClick={() => onSelect(p.id)}
+              onClick={() =>
+                unmapped ? onLocate(p.id, p.name) : onSelect(p.id)
+              }
               className={`flex w-full items-start gap-2 p-3 text-left text-sm transition hover:bg-zinc-50 ${
                 isSelected ? "bg-zinc-50" : ""
               }`}
@@ -181,11 +186,9 @@ export function PlaceList({
                   <p className="mt-1 text-xs text-zinc-700">{p.note}</p>
                 )}
               </div>
-              {!unmapped && (
-                <span className="shrink-0 text-xs text-blue-600">
-                  地図で見る
-                </span>
-              )}
+              <span className="shrink-0 text-xs text-blue-600">
+                {unmapped ? "ピンを設定" : "地図で見る"}
+              </span>
             </button>
           </li>
         );
