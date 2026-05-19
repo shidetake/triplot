@@ -21,27 +21,23 @@ import { boundsOf, centroid, type LatLng, TOKYO } from "@/lib/placeMap";
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import type { CandidatePlace } from "./place-search";
 
-// クリックの元になったポインタがマウス（＝PC）か。PC は本家同様
-// 普通クリックで自由ピン。タッチ（iOS 等）はここを通さず長押しで置く。
-function isMouseClick(de: Event | undefined): boolean {
-  if (typeof PointerEvent !== "undefined" && de instanceof PointerEvent) {
-    return de.pointerType === "mouse";
-  }
-  if (typeof TouchEvent !== "undefined" && de instanceof TouchEvent) {
-    return false;
-  }
-  return de instanceof MouseEvent;
-}
-
 // タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
 // contextmenu が安定しないため自前実装）。<Map> の子として描画し、
 // useMap でマップ DOM とオーバーレイ投影に触る。
+//
+// 同じ touch リスナで「直近にタッチがあったか」も記録する。click の
+// domEvent 種別判定は iOS で当てにならない（タップの合成 click が
+// MouseEvent 系で来て PC と区別できない）ので、自由ピンの click ドロップは
+// 「直近に touch が無い＝マウス」のときだけにする（タッチ端末は touch を
+// 出す・マウスは出さない＝確実）。
 function LongPressPin({
   onLongPress,
   suppressClickUntil,
+  recentTouchUntil,
 }: {
   onLongPress: (p: LatLng) => void;
   suppressClickUntil: MutableRefObject<number>;
+  recentTouchUntil: MutableRefObject<number>;
 }) {
   const map = useMap();
 
@@ -56,6 +52,7 @@ function LongPressPin({
     overlay.setMap(map);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
+    let pressFired = false;
     let sx = 0;
     let sy = 0;
     const clear = () => {
@@ -65,10 +62,12 @@ function LongPressPin({
       }
     };
     const onStart = (ev: TouchEvent) => {
+      recentTouchUntil.current = performance.now() + 700;
       if (ev.touches.length !== 1) {
         clear();
         return;
       }
+      pressFired = false;
       sx = ev.touches[0].clientX;
       sy = ev.touches[0].clientY;
       clear();
@@ -81,8 +80,7 @@ function LongPressPin({
           new google.maps.Point(sx - rect.left, sy - rect.top),
         );
         if (ll) {
-          // 長押し直後に来る合成 click で draft を即閉じしないよう抑止。
-          suppressClickUntil.current = performance.now() + 700;
+          pressFired = true;
           onLongPress({ lat: ll.lat(), lng: ll.lng() });
         }
       }, 500);
@@ -97,19 +95,26 @@ function LongPressPin({
         clear(); // pan とみなしてキャンセル
       }
     };
+    const onEnd = () => {
+      clear();
+      recentTouchUntil.current = performance.now() + 700;
+      // 長押しが発火していたら、離した直後に来る合成 click で draft を
+      // 即閉じしないよう抑止（保持時間に依らず touchend 基準で覆う）。
+      if (pressFired) suppressClickUntil.current = performance.now() + 700;
+    };
     div.addEventListener("touchstart", onStart, { passive: true });
     div.addEventListener("touchmove", onMove, { passive: true });
-    div.addEventListener("touchend", clear, { passive: true });
-    div.addEventListener("touchcancel", clear, { passive: true });
+    div.addEventListener("touchend", onEnd, { passive: true });
+    div.addEventListener("touchcancel", onEnd, { passive: true });
     return () => {
       clear();
       div.removeEventListener("touchstart", onStart);
       div.removeEventListener("touchmove", onMove);
-      div.removeEventListener("touchend", clear);
-      div.removeEventListener("touchcancel", clear);
+      div.removeEventListener("touchend", onEnd);
+      div.removeEventListener("touchcancel", onEnd);
       overlay.setMap(null);
     };
-  }, [map, onLongPress, suppressClickUntil]);
+  }, [map, onLongPress, suppressClickUntil, recentTouchUntil]);
 
   return null;
 }
@@ -197,6 +202,9 @@ export function PlaceMap({
   const placesLib = useMapsLibrary("places");
   // 長押しで仮ピンを置いた直後の合成 click を無視する締切（performance.now）。
   const suppressClickUntil = useRef(0);
+  // 直近にタッチがあった締切。これ以内の click はタッチ由来とみなし、
+  // 自由ピンの click ドロップ（＝マウス専用）を行わない。
+  const recentTouchUntil = useRef(0);
 
   const statusById: Record<string, PlaceStatus> = useMemo(
     () => Object.fromEntries(statuses.map((s) => [s.id, s])),
@@ -296,8 +304,9 @@ export function PlaceMap({
               return;
             }
             // PC（マウス）の普通クリックは本家同様その場に自由ピン。
-            // タッチのタップはここで何もしない（自由位置は長押し）。
-            if (isMouseClick(e.domEvent)) {
+            // 直近に touch があった＝タッチ端末なので落とさない（自由位置
+            // はタッチでは長押し）。マウスは touch を出さないので通る。
+            if (performance.now() >= recentTouchUntil.current) {
               const ll = e.detail.latLng;
               if (ll) onMapTap({ lat: ll.lat, lng: ll.lng });
             }
@@ -308,6 +317,7 @@ export function PlaceMap({
           <LongPressPin
             onLongPress={onMapTap}
             suppressClickUntil={suppressClickUntil}
+            recentTouchUntil={recentTouchUntil}
           />
 
           {mapId &&
