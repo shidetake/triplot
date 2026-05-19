@@ -183,8 +183,8 @@ export function PlaceMap({
               })();
               return;
             }
-            // モード無し・1分岐: 何か開いていれば「閉じるだけ」優先。
-            // 吹き出しも仮ピンも無いときだけ、空白タップで仮ピンを置く。
+            // モード無し: 何か開いていれば「閉じるだけ」。空白タップでは
+            // ピンを置かない（自由位置は長押し＝onContextmenu で行う＝本家流）。
             if (selected) {
               onCloseInfo();
               return;
@@ -193,6 +193,11 @@ export function PlaceMap({
               onCloseDraft();
               return;
             }
+          }}
+          onContextmenu={(e) => {
+            // 長押し（PCは右クリック）で任意地点に仮ピン。ブラウザ既定の
+            // コンテキストメニュー/コールアウトは抑止する。
+            e.domEvent?.preventDefault();
             const ll = e.detail.latLng;
             if (ll) onMapTap({ lat: ll.lat, lng: ll.lng });
           }}

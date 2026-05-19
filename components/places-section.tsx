@@ -153,7 +153,7 @@ export function PlacesSection({
         />
         <p className="text-xs text-zinc-500">
           検索して候補から追加するほか、地図上の施設をタップ、または任意の
-          地点をタップしてピンを置くこともできます。
+          地点を長押し（PC は右クリック）してピンを置くこともできます。
         </p>
         <PlaceMap
           places={places}
