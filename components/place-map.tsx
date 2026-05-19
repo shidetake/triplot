@@ -123,7 +123,7 @@ function LongPressPin({
 // 雫ピンと丸アイコンで高さが違うので 2 種類。雫は「検索候補の選択中」と
 // 「自由(draft)ピン」で同じ要素なので必ず同じ値を使う（定数で一元化）。
 const INFO_OFFSET_PIN = -47; // RedPin（赤い雫）
-const INFO_OFFSET_ICON = -29; // 保存済みピン / ベースマップ POI 既存アイコン
+const INFO_OFFSET_ICON = -27; // 保存済みピン / ベースマップ POI 既存アイコン
 
 // 本家 Google の赤い雫ピン（Material location_on）。先端を座標に合わせて
 // 上げる。検索候補の選択時と自由（draft）ピンで共用。
