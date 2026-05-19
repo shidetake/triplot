@@ -8,13 +8,16 @@
 --    別行になり重複しうる（逆順も同様）。
 --  - 「同名＝同一場所」を仕様として徹底するため、両関数を互いに意識させる:
 --      * Google: gpid 一致が無ければ、同名・未マップ・shared の既存を
---        「昇格」（gpid/lat/lng/住所を埋める）して再利用。重複を作らない。
---        status/visibility/note/icon はユーザ設定を尊重し触らない。
+--        「昇格」（名前を Google 表記に揃え、gpid/lat/lng/住所を埋める）
+--        して再利用。重複を作らない。どちらの操作順でも最終状態が一致する
+--        （= 常に Google の正規表記＋座標）。status/visibility/note/icon は
+--        ユーザ設定を尊重し触らない。
 --      * 自由入力: 同名・shared の既存があれば（Google 由来でも）再利用。
 --        マップ済みを優先。無ければ従来通り未マップ・候補で新規。
 --  - 名前一致マージなので「同名の別店」を同一視しうるが、これは既に
 --    自由入力↔自由入力の find-or-create で受け入れ済みの性質（同名再利用を
---    選択した時点の前提）。昇格は座標ゼロの place を埋めるだけで悪化なし。
+--    選択した時点の前提）。昇格は座標ゼロの place を埋め、名前を Google
+--    表記へ正規化するだけ（同名一致が前提なので表記ゆれの吸収のみ）。
 --
 -- シグネチャは不変（create or replace。型再生成はノーチャーン）。内部
 -- ヘルパのままで authenticated には GRANT しない（revoke を再掲）。
@@ -70,7 +73,9 @@ begin
 
   -- 2) gpid 一致が無ければ、同名・未マップ・shared の既存を昇格して再利用
   --    （自由入力で先に作られた同名 place が Google 由来として確定される）。
-  --    status/visibility/note/icon は触らない（ユーザ設定を尊重）。
+  --    名前も Google の正規表記へ揃える（操作順に依らず最終状態を一致させ、
+  --    大小・表記ゆれを正規化）。status/visibility/note/icon はユーザ設定を
+  --    尊重して触らない。
   select id into v_place_id
   from places
   where trip_id = p_trip_id
@@ -82,7 +87,8 @@ begin
 
   if v_place_id is not null then
     update places
-    set google_place_id   = v_gpid,
+    set name              = trim(p_name),
+        google_place_id   = v_gpid,
         lat               = p_lat,
         lng               = p_lng,
         formatted_address = trim(p_formatted_address)
