@@ -32,11 +32,11 @@ import type { CandidatePlace } from "./place-search";
 // 出す・マウスは出さない＝確実）。
 function LongPressPin({
   onLongPress,
-  suppressClickUntil,
+  ignoreNextMapClick,
   recentTouchUntil,
 }: {
   onLongPress: (p: LatLng) => void;
-  suppressClickUntil: MutableRefObject<number>;
+  ignoreNextMapClick: MutableRefObject<boolean>;
   recentTouchUntil: MutableRefObject<number>;
 }) {
   const map = useMap();
@@ -52,7 +52,6 @@ function LongPressPin({
     overlay.setMap(map);
 
     let timer: ReturnType<typeof setTimeout> | null = null;
-    let pressFired = false;
     let sx = 0;
     let sy = 0;
     const clear = () => {
@@ -63,11 +62,12 @@ function LongPressPin({
     };
     const onStart = (ev: TouchEvent) => {
       recentTouchUntil.current = performance.now() + 700;
+      // 新しいジェスチャ開始。前ジェスチャで click が来ず残ったフラグを掃除。
+      ignoreNextMapClick.current = false;
       if (ev.touches.length !== 1) {
         clear();
         return;
       }
-      pressFired = false;
       sx = ev.touches[0].clientX;
       sy = ev.touches[0].clientY;
       clear();
@@ -80,7 +80,10 @@ function LongPressPin({
           new google.maps.Point(sx - rect.left, sy - rect.top),
         );
         if (ll) {
-          pressFired = true;
+          // 長押しで draft を出した。指を離した後に来る合成 click を
+          // 1 回だけ確実に食う（タイミング非依存。これが無いと
+          // touchend→click が "draft 上の余白タップ→閉じる" に化ける）。
+          ignoreNextMapClick.current = true;
           onLongPress({ lat: ll.lat(), lng: ll.lng() });
         }
       }, 500);
@@ -98,9 +101,6 @@ function LongPressPin({
     const onEnd = () => {
       clear();
       recentTouchUntil.current = performance.now() + 700;
-      // 長押しが発火していたら、離した直後に来る合成 click で draft を
-      // 即閉じしないよう抑止（保持時間に依らず touchend 基準で覆う）。
-      if (pressFired) suppressClickUntil.current = performance.now() + 700;
     };
     div.addEventListener("touchstart", onStart, { passive: true });
     div.addEventListener("touchmove", onMove, { passive: true });
@@ -114,7 +114,7 @@ function LongPressPin({
       div.removeEventListener("touchcancel", onEnd);
       overlay.setMap(null);
     };
-  }, [map, onLongPress, suppressClickUntil, recentTouchUntil]);
+  }, [map, onLongPress, ignoreNextMapClick, recentTouchUntil]);
 
   return null;
 }
@@ -200,8 +200,10 @@ export function PlaceMap({
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const placesLib = useMapsLibrary("places");
-  // 長押しで仮ピンを置いた直後の合成 click を無視する締切（performance.now）。
-  const suppressClickUntil = useRef(0);
+  // 長押しで仮ピンを置いた直後に来る合成 click を 1 回だけ食う（タイミング
+  // 非依存。これが無いと touchend→click が draft 上の余白タップ＝閉じる
+  // に化け、指を離した瞬間に仮ピンが消える）。
+  const ignoreNextMapClick = useRef(false);
   // 直近にタッチがあった締切。これ以内の click はタッチ由来とみなし、
   // 自由ピンの click ドロップ（＝マウス専用）を行わない。
   const recentTouchUntil = useRef(0);
@@ -256,8 +258,12 @@ export function PlaceMap({
           // 本家同様、ベースマップの POI（店/施設）アイコンをタップ可能に。
           clickableIcons
           onClick={(e) => {
-            // 長押しで置いた直後の合成 click は無視（draft 即閉じ防止）。
-            if (performance.now() < suppressClickUntil.current) return;
+            // 長押しで置いた直後の合成 click を 1 回だけ食う（draft 即閉じ
+            // 防止）。pointerup 由来等で click が touchend より先でも確実。
+            if (ignoreNextMapClick.current) {
+              ignoreNextMapClick.current = false;
+              return;
+            }
             // POI アイコンのタップ: placeId が取れる。Google 既定の吹き出しを
             // 止めて、Place Details を 1 回引いて候補として登録フォームへ
             // （ユーザ操作時のみの課金。サジェスト確定と同種）。
@@ -316,7 +322,7 @@ export function PlaceMap({
           <MapController points={fitPoints} panTo={selectedPos} />
           <LongPressPin
             onLongPress={onMapTap}
-            suppressClickUntil={suppressClickUntil}
+            ignoreNextMapClick={ignoreNextMapClick}
             recentTouchUntil={recentTouchUntil}
           />
 
