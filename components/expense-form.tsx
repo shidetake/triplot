@@ -222,10 +222,6 @@ export function ExpenseForm({
         ) : (
           <PlacePicker places={places} biasCenter={biasCenter} initial={null} />
         )}
-        <p className="mt-1 text-[11px] text-zinc-500">
-          保存済み・Google 候補・自由入力。Google
-          候補を選ぶと「場所」にも確定で追加されます。
-        </p>
       </div>
 
       <label className="block text-sm" htmlFor={noteId}>

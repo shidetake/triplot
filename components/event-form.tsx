@@ -280,10 +280,6 @@ export function EventForm({
             initial={placePickerInitial}
           />
         )}
-        <p className="mt-1 text-[11px] text-zinc-500">
-          保存済み・Google 候補・自由入力。Google
-          候補を選ぶと「場所」にも確定で追加されます。
-        </p>
       </div>
 
       {/* 日時。3種別とも同じ2列グリッド。差は「右に時刻を入れるか」
