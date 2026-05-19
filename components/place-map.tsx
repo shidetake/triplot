@@ -122,7 +122,10 @@ function LongPressPin({
 // InfoWindow をマーカーに被せないための上方向オフセット(px)。
 // 雫ピンと丸アイコンで高さが違うので 2 種類。雫は「検索候補の選択中」と
 // 「自由(draft)ピン」で同じ要素なので必ず同じ値を使う（定数で一元化）。
-const INFO_OFFSET_PIN = -47; // RedPin（赤い雫）
+// RedPin の translateY を動かしたら、その移動 px ぶん必ずここも同じだけ
+// 動かす（隙間ができないよう連動）。-13% は -46% から +33pt = 34px の
+// 約33% ≒ 11px ピンを下げたので、-47 から +11 して -36。
+const INFO_OFFSET_PIN = -36; // RedPin（赤い雫）
 const INFO_OFFSET_ICON = -27; // 保存済みピン / ベースマップ POI 既存アイコン
 
 // 本家 Google の赤い雫ピン（Material location_on）。translateY で先端を
@@ -434,6 +437,9 @@ export function PlaceMap({
               position={draft}
               draggable
               onDragEnd={(e) => {
+                // ドラッグ離し直後に来るマップ click（特に PC）が
+                // 「余白タップ→draft 閉じる」に化けるのを 1 回食う。
+                ignoreNextMapClick.current = true;
                 if (e.latLng) {
                   onDraftMove({ lat: e.latLng.lat(), lng: e.latLng.lng() });
                 }
