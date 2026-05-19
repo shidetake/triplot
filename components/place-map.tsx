@@ -125,8 +125,9 @@ function LongPressPin({
 const INFO_OFFSET_PIN = -47; // RedPin（赤い雫）
 const INFO_OFFSET_ICON = -27; // 保存済みピン / ベースマップ POI 既存アイコン
 
-// 本家 Google の赤い雫ピン（Material location_on）。先端を座標に合わせて
-// 上げる。検索候補の選択時と自由（draft）ピンで共用。
+// 本家 Google の赤い雫ピン（Material location_on）。translateY で先端を
+// マーカーのアンカー（＝クリック/座標点）に合わせる。値を大きく(負に)
+// するほどピンは上にズレる。検索候補の選択時と自由（draft）ピンで共用。
 function RedPin() {
   return (
     <svg
@@ -135,7 +136,7 @@ function RedPin() {
       viewBox="0 -960 960 960"
       aria-hidden
       style={{
-        transform: "translateY(-46%)",
+        transform: "translateY(-13%)",
         filter: "drop-shadow(0 1px 1px rgba(0,0,0,.35))",
       }}
     >
