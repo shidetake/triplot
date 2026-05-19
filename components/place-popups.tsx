@@ -232,6 +232,102 @@ export function CandidateInfo({
   );
 }
 
+// 地図タップで置いた手動ピン（座標のみ・Google 由来でない）を場所に
+// 追加するフォーム。CandidateInfo と同型だが名前は手入力・gpid/住所無し。
+export function DraftInfo({
+  tripId,
+  draft,
+  statuses,
+  onAdded,
+}: {
+  tripId: string;
+  draft: { lat: number; lng: number };
+  statuses: PlaceStatus[];
+  onAdded: () => void;
+}) {
+  const [state, formAction, isPending] = useActionState(
+    createPlaceAction.bind(null, tripId),
+    initialState,
+  );
+  const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
+  const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
+  const [visibility, setVisibility] = useState<Visibility>("shared");
+  const [icon, setIcon] = useState("📍");
+  const nameId = useId();
+  const noteId = useId();
+
+  useEffect(() => {
+    if (state.ok) onAdded();
+  }, [state.ok, onAdded]);
+
+  return (
+    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
+      <div>
+        <p className="text-sm font-semibold">地図にピンを追加</p>
+        <p className="mt-0.5 text-xs text-zinc-500">
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
+        </p>
+      </div>
+
+      <form
+        action={formAction}
+        className="space-y-2 border-t border-zinc-200 pt-2"
+      >
+        <input type="hidden" name="lat" value={draft.lat} />
+        <input type="hidden" name="lng" value={draft.lng} />
+        <input type="hidden" name="icon" value={icon} />
+
+        <label className="block text-xs" htmlFor={nameId}>
+          <span className="font-medium text-zinc-700">名前</span>
+          <input
+            id={nameId}
+            type="text"
+            name="name"
+            required
+            autoFocus
+            placeholder="例: 集合場所、撮影スポット"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+          />
+        </label>
+        <StatusSelect
+          statuses={statuses}
+          value={statusId}
+          onChange={setStatusId}
+        />
+        <IconPicker value={icon} onChange={setIcon} />
+        <VisibilityField
+          value={visibility}
+          onChange={setVisibility}
+          editable
+        />
+        <label className="block text-xs" htmlFor={noteId}>
+          <span className="font-medium text-zinc-700">メモ（任意）</span>
+          <input
+            id={noteId}
+            type="text"
+            name="note"
+            placeholder="営業時間、予約要、など"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+          />
+        </label>
+
+        <button
+          type="submit"
+          disabled={isPending}
+          className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {isPending ? "追加中..." : "この地点を追加"}
+        </button>
+        {state.error && (
+          <p className="rounded bg-red-50 p-2 text-xs text-red-700">
+            {state.error}
+          </p>
+        )}
+      </form>
+    </div>
+  );
+}
+
 export function SavedInfo({
   tripId,
   place,

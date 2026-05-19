@@ -4,11 +4,11 @@ import { useCallback, useMemo, useState } from "react";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
-import { centroid, TOKYO } from "@/lib/placeMap";
+import { centroid, type LatLng, TOKYO } from "@/lib/placeMap";
 
 import { PlaceList, type PlaceRow, type PlaceStatus } from "./place-list";
 import { PlaceMap, type Selection } from "./place-map";
-import { CandidateInfo, SavedInfo } from "./place-popups";
+import { CandidateInfo, DraftInfo, SavedInfo } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 
 export function PlacesSection({
@@ -27,6 +27,8 @@ export function PlacesSection({
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
+  // 地図タップで置いた仮ピン（未保存）。selected とは排他。
+  const [draft, setDraft] = useState<LatLng | null>(null);
 
   const biasCenter = useMemo(
     () =>
@@ -41,16 +43,36 @@ export function PlacesSection({
   const onResults = useCallback((results: CandidatePlace[]) => {
     setCandidates(results);
     setSelected(null);
+    setDraft(null);
   }, []);
 
   const closeInfo = useCallback(() => setSelected(null), []);
 
+  // 保存済み/候補を選んだら仮ピンは引っ込める（同時に2つ開かない）。
+  const selectSaved = useCallback((id: string) => {
+    setDraft(null);
+    setSelected({ kind: "saved", id });
+  }, []);
+  const selectCandidate = useCallback((placeId: string) => {
+    setDraft(null);
+    setSelected({ kind: "candidate", placeId });
+  }, []);
+
+  // 空白タップ: 何も開いてなければ仮ピンを置く/移動（モード無し）。
+  const onMapTap = useCallback((p: LatLng) => {
+    setSelected(null);
+    setDraft(p);
+  }, []);
+  const onDraftMove = useCallback((p: LatLng) => setDraft(p), []);
+  const closeDraft = useCallback(() => setDraft(null), []);
+
   // 場所を追加した時／× を押した時、どちらも「検索は用無し」なので
-  // 検索文字列・候補ピン・選択中の吹き出しをまとめて消す。
+  // 検索文字列・候補ピン・選択中の吹き出し・仮ピンをまとめて消す。
   const clearSearch = useCallback(() => {
     setQuery("");
     setCandidates([]);
     setSelected(null);
+    setDraft(null);
   }, []);
 
   if (!apiKey) {
@@ -101,6 +123,15 @@ export function PlacesSection({
     }
   }
 
+  const draftContent: React.ReactNode = draft ? (
+    <DraftInfo
+      tripId={tripId}
+      draft={draft}
+      statuses={statuses}
+      onAdded={clearSearch}
+    />
+  ) : null;
+
   return (
     <APIProvider apiKey={apiKey}>
       <div className="space-y-4">
@@ -111,23 +142,30 @@ export function PlacesSection({
           biasCenter={biasCenter}
           onResults={onResults}
         />
+        <p className="text-xs text-zinc-500">
+          検索して候補から追加するほか、地図をタップして任意の地点にピンを
+          置くこともできます。
+        </p>
         <PlaceMap
           places={places}
           statuses={statuses}
           candidates={candidates}
           selected={selected}
-          onSelectSaved={(id) => setSelected({ kind: "saved", id })}
-          onSelectCandidate={(placeId) =>
-            setSelected({ kind: "candidate", placeId })
-          }
+          draft={draft}
+          onSelectSaved={selectSaved}
+          onSelectCandidate={selectCandidate}
           onCloseInfo={closeInfo}
+          onMapTap={onMapTap}
+          onDraftMove={onDraftMove}
+          onCloseDraft={closeDraft}
           infoContent={infoContent}
+          draftContent={draftContent}
         />
         <PlaceList
           places={places}
           statuses={statuses}
           selectedId={selected?.kind === "saved" ? selected.id : null}
-          onSelect={(id) => setSelected({ kind: "saved", id })}
+          onSelect={selectSaved}
         />
       </div>
     </APIProvider>

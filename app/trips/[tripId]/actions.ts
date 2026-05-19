@@ -185,9 +185,10 @@ export async function createPlaceAction(
   const lat = parseCoord(formData.get("lat") as string | null);
   const lng = parseCoord(formData.get("lng") as string | null);
 
-  // 場所は必ず Google 検索結果由来。識別子・座標・住所が揃っていなければ不正。
-  if (!name || !googlePlaceId || !formattedAddress || lat == null || lng == null) {
-    return { ok: false, error: "場所を検索して候補から選んでください" };
+  // create_place 経由は地図上の点なので name と座標は必須。gpid/住所は
+  // 任意（Google 候補なら揃う・地図タップの手動ピンは無し）。
+  if (!name || lat == null || lng == null) {
+    return { ok: false, error: "場所名と地点を指定してください" };
   }
   if (!statusId) {
     return { ok: false, error: "ステータスを選んでください" };

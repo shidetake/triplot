@@ -66,19 +66,29 @@ export function PlaceMap({
   statuses,
   candidates,
   selected,
+  draft,
   onSelectSaved,
   onSelectCandidate,
   onCloseInfo,
+  onMapTap,
+  onDraftMove,
+  onCloseDraft,
   infoContent,
+  draftContent,
 }: {
   places: PlaceRow[];
   statuses: PlaceStatus[];
   candidates: CandidatePlace[];
   selected: Selection | null;
+  draft: LatLng | null;
   onSelectSaved: (id: string) => void;
   onSelectCandidate: (placeId: string) => void;
   onCloseInfo: () => void;
+  onMapTap: (p: LatLng) => void;
+  onDraftMove: (p: LatLng) => void;
+  onCloseDraft: () => void;
   infoContent: ReactNode;
+  draftContent: ReactNode;
 }) {
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
@@ -131,7 +141,16 @@ export function PlaceMap({
           gestureHandling="greedy"
           disableDefaultUI
           clickableIcons={false}
-          onClick={() => selected && onCloseInfo()}
+          onClick={(e) => {
+            // 吹き出しが開いていれば閉じる優先（モード無し）。
+            // 何も開いてなければ空白タップで仮ピンを置く/移動。
+            if (selected) {
+              onCloseInfo();
+              return;
+            }
+            const ll = e.detail.latLng;
+            if (ll) onMapTap({ lat: ll.lat, lng: ll.lng });
+          }}
           style={{ width: "100%", height: "100%" }}
         >
           <MapController points={fitPoints} panTo={selectedPos} />
@@ -211,6 +230,33 @@ export function PlaceMap({
               pixelOffset={[0, selected.kind === "candidate" ? -52 : -24]}
             >
               {infoContent}
+            </InfoWindow>
+          )}
+
+          {mapId && draft && (
+            <AdvancedMarker
+              position={draft}
+              draggable
+              onDragEnd={(e) => {
+                if (e.latLng) {
+                  onDraftMove({ lat: e.latLng.lat(), lng: e.latLng.lng() });
+                }
+              }}
+            >
+              {/* 仮ピン: 保存済み（status色）・候補（赤）と区別できる紫 */}
+              <div className="h-5 w-5 rounded-full border-2 border-white bg-indigo-600 shadow ring-2 ring-indigo-300" />
+            </AdvancedMarker>
+          )}
+
+          {draft && (
+            <InfoWindow
+              position={draft}
+              onCloseClick={onCloseDraft}
+              maxWidth={300}
+              headerDisabled
+              pixelOffset={[0, -24]}
+            >
+              {draftContent}
             </InfoWindow>
           )}
         </Map>
