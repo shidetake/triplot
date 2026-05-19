@@ -31,3 +31,15 @@ input[type="time"] {
   min-width: 0;
   max-width: 100%;
 }
+
+/* iOS Safari がドラッグ可能/タップ可能なマップピン（特にドラッグ可能な
+   仮ピン）に出す青い四角＝タップハイライト/フォーカス枠を消す。
+   -webkit-tap-highlight-color はデスクトップでは無効、outline も PC では
+   マウスクリック時に出ない(:focus-visible)ので、実質 iOS だけが変わり
+   PC のマウス操作には影響しない。 */
+gmp-advanced-marker,
+gmp-advanced-marker:focus,
+gmp-advanced-marker:focus-visible {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
