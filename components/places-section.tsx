@@ -165,10 +165,6 @@ export function PlacesSection({
           biasCenter={biasCenter}
           onResults={onResults}
         />
-        <p className="text-xs text-zinc-500">
-          検索して候補から追加するほか、地図上の施設をタップ、または任意の
-          地点に（PC はクリック／スマホは長押しで）ピンを置けます。
-        </p>
         <PlaceMap
           places={places}
           statuses={statuses}
