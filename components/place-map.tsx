@@ -142,10 +142,14 @@ export function PlaceMap({
           disableDefaultUI
           clickableIcons={false}
           onClick={(e) => {
-            // 吹き出しが開いていれば閉じる優先（モード無し）。
-            // 何も開いてなければ空白タップで仮ピンを置く/移動。
+            // モード無し・1分岐: 何か開いていれば「閉じるだけ」優先。
+            // 吹き出しも仮ピンも無いときだけ、空白タップで仮ピンを置く。
             if (selected) {
               onCloseInfo();
+              return;
+            }
+            if (draft) {
+              onCloseDraft();
               return;
             }
             const ll = e.detail.latLng;
