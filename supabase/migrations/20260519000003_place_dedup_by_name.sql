@@ -13,7 +13,9 @@
 --        （= 常に Google の正規表記＋座標）。status/visibility/note/icon は
 --        ユーザ設定を尊重し触らない。
 --      * 自由入力: 同名・shared の既存があれば（Google 由来でも）再利用。
---        マップ済みを優先。無ければ従来通り未マップ・候補で新規。
+--        マップ済みを優先。無ければ未マップ・確定で新規（予定/費用に入れた
+--        時点で訪問可否は確定済み。未確定なのは座標だけ。Google 経路と
+--        揃え、操作順に依らず status も一致させる）。
 --  - 名前一致マージなので「同名の別店」を同一視しうるが、これは既に
 --    自由入力↔自由入力の find-or-create で受け入れ済みの性質（同名再利用を
 --    選択した時点の前提）。昇格は座標ゼロの place を埋め、名前を Google
@@ -165,16 +167,18 @@ begin
     return v_place_id;
   end if;
 
-  -- 候補（tentative=true）。seed 済みなら必ず 1 件ある
+  -- 確定（tentative=false）。予定/費用に入れた時点で「行く/行った」は
+  -- 確定済み（未確定なのは座標だけ）。Google 経路と揃え順序非依存にする。
+  -- seed 済みなら必ず 1 件ある
   select id into v_status_id
   from place_statuses
   where trip_id = p_trip_id
-    and tentative = true
+    and tentative = false
   order by sort_order
   limit 1;
 
   if v_status_id is null then
-    raise exception 'tentative status not found for this trip';
+    raise exception 'confirmed status not found for this trip';
   end if;
 
   insert into places (
