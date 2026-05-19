@@ -272,7 +272,7 @@ export function ExpenseForm({
               checked={visibility === "shared"}
               onChange={() => setVisibility("shared")}
             />
-            <span>共有（メンバーに見える）</span>
+            <span>共有</span>
           </label>
           <label className="inline-flex items-center gap-2">
             <input
@@ -285,7 +285,7 @@ export function ExpenseForm({
                 setSplittable(false);
               }}
             />
-            <span>プライベート（自分のみ）</span>
+            <span>自分のみ</span>
           </label>
         </div>
       </fieldset>
