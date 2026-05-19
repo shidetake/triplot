@@ -2,11 +2,16 @@
 
 import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
 
+import { APIProvider } from "@vis.gl/react-google-maps";
+
 import {
   createExpenseAction,
   type CreateExpenseState,
 } from "@/app/trips/[tripId]/actions";
+import type { LatLng } from "@/lib/placeMap";
 import type { Currency } from "@/lib/types/database";
+
+import { PlacePicker } from "./place-picker";
 
 type Member = {
   id: string;
@@ -33,6 +38,8 @@ export function ExpenseForm({
   initialCategoryId, // = 最後に入力した費用のカテゴリ
   averageRates, // { JPY: 1, USD: 平均 } — まだ履歴がない currency は省略
   initialPaidAt, // = 最後に入力した費用の日付
+  places,
+  biasCenter, // Google 検索の地理バイアス（既存ピン重心 or 東京）
   onDone, // ポップオーバーで使うとき: 追加成功で閉じる
 }: {
   tripId: string;
@@ -44,8 +51,11 @@ export function ExpenseForm({
   initialCategoryId: string;
   averageRates: Partial<Record<Currency, number>>;
   initialPaidAt: string;
+  places: { id: string; name: string }[];
+  biasCenter: LatLng;
   onDone?: () => void;
 }) {
+  const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const boundAction = createExpenseAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(
     boundAction,
@@ -198,6 +208,25 @@ export function ExpenseForm({
           ))}
         </select>
       </label>
+
+      <div className="block text-sm">
+        <span className="font-medium">場所（任意）</span>
+        {mapsApiKey ? (
+          <APIProvider apiKey={mapsApiKey}>
+            <PlacePicker
+              places={places}
+              biasCenter={biasCenter}
+              initial={null}
+            />
+          </APIProvider>
+        ) : (
+          <PlacePicker places={places} biasCenter={biasCenter} initial={null} />
+        )}
+        <p className="mt-1 text-[11px] text-zinc-500">
+          保存済み・Google 候補・自由入力。Google
+          候補を選ぶと「場所」にも確定で追加されます。
+        </p>
+      </div>
 
       <label className="block text-sm" htmlFor={noteId}>
         <span className="font-medium">メモ（任意）</span>

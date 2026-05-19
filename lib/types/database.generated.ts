@@ -166,6 +166,7 @@ export type Database = {
           note: string | null
           paid_at: string
           payer_member_id: string
+          place_id: string | null
           rate_to_default: number
           splittable: boolean
           trip_id: string
@@ -181,6 +182,7 @@ export type Database = {
           note?: string | null
           paid_at?: string
           payer_member_id: string
+          place_id?: string | null
           rate_to_default: number
           splittable?: boolean
           trip_id: string
@@ -196,6 +198,7 @@ export type Database = {
           note?: string | null
           paid_at?: string
           payer_member_id?: string
+          place_id?: string | null
           rate_to_default?: number
           splittable?: boolean
           trip_id?: string
@@ -221,6 +224,13 @@ export type Database = {
             columns: ["payer_member_id"]
             isOneToOne: false
             referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
             referencedColumns: ["id"]
           },
           {
@@ -547,6 +557,46 @@ export type Database = {
           p_note: string
           p_paid_at: string
           p_payer_member_id: string
+          p_place_id: string
+          p_rate_to_default: number
+          p_split_member_ids: string[]
+          p_splittable: boolean
+          p_trip_id: string
+          p_visibility: string
+        }
+        Returns: string
+      }
+      create_expense_with_freetext_place: {
+        Args: {
+          p_category_id: string
+          p_local_currency: string
+          p_local_price: number
+          p_note: string
+          p_paid_at: string
+          p_payer_member_id: string
+          p_place_name: string
+          p_rate_to_default: number
+          p_split_member_ids: string[]
+          p_splittable: boolean
+          p_trip_id: string
+          p_visibility: string
+        }
+        Returns: string
+      }
+      create_expense_with_place: {
+        Args: {
+          p_category_id: string
+          p_formatted_address: string
+          p_google_place_id: string
+          p_icon: string
+          p_lat: number
+          p_lng: number
+          p_local_currency: string
+          p_local_price: number
+          p_note: string
+          p_paid_at: string
+          p_payer_member_id: string
+          p_place_name: string
           p_rate_to_default: number
           p_split_member_ids: string[]
           p_splittable: boolean

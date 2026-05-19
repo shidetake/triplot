@@ -21,6 +21,7 @@ export type ExpenseRow = {
   payer_member_id: string;
   created_by_member_id: string;
   split_member_ids: string[];
+  place_id: string | null;
 };
 
 type Member = {
@@ -33,6 +34,7 @@ export function ExpenseList({
   expenses,
   members,
   categories,
+  places,
   defaultCurrency,
   myMemberId,
 }: {
@@ -40,11 +42,13 @@ export function ExpenseList({
   expenses: ExpenseRow[];
   members: Member[];
   categories: Category[];
+  places: { id: string; name: string }[];
   defaultCurrency: Currency;
   myMemberId: string;
 }) {
   const memberById = new Map(members.map((m) => [m.id, m]));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const placeNameById = new Map(places.map((p) => [p.id, p.name]));
 
   if (expenses.length === 0) {
     return (
@@ -61,6 +65,9 @@ export function ExpenseList({
           expense={e}
           memberById={memberById}
           category={categoryById.get(e.category_id)}
+          placeName={
+            e.place_id ? (placeNameById.get(e.place_id) ?? null) : null
+          }
           defaultCurrency={defaultCurrency}
           canDelete={
             e.visibility === "private"
@@ -78,6 +85,7 @@ function ExpenseRowItem({
   expense,
   memberById,
   category,
+  placeName,
   defaultCurrency,
   canDelete,
 }: {
@@ -85,6 +93,7 @@ function ExpenseRowItem({
   expense: ExpenseRow;
   memberById: Map<string, Member>;
   category: Category | undefined;
+  placeName: string | null;
   defaultCurrency: Currency;
   canDelete: boolean;
 }) {
@@ -153,6 +162,9 @@ function ExpenseRowItem({
             </>
           )}
         </div>
+        {placeName && (
+          <p className="mt-1 truncate text-xs text-zinc-600">📍 {placeName}</p>
+        )}
         {expense.note && (
           <p className="mt-1 text-xs text-zinc-700">{expense.note}</p>
         )}

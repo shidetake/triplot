@@ -66,7 +66,13 @@ export async function createExpenseAction(
     return { ok: false, error: "割り勘対象を1人以上選んでください" };
   }
 
-  const { error } = await supabase.rpc("create_expense", {
+  const place = parsePlace(formData);
+  if ("error" in place) {
+    return { ok: false, error: place.error };
+  }
+
+  // 費用に共通の引数。場所は events と同じ 3 分岐でサーバ側 place_id 解決。
+  const base = {
     p_trip_id: tripId,
     p_local_price: localPrice,
     p_local_currency: localCurrency,
@@ -78,7 +84,39 @@ export async function createExpenseAction(
     p_note: note, // 空文字は DB 側 nullif で NULL になる
     p_paid_at: paidAt,
     p_split_member_ids: splittable ? splitMemberIds : [],
-  });
+  };
+
+  let error: { message: string } | null = null;
+  if (place.kind === "google") {
+    error = (
+      await supabase.rpc("create_expense_with_place", {
+        ...base,
+        p_google_place_id: place.placeId,
+        p_place_name: place.name,
+        p_lat: place.lat,
+        p_lng: place.lng,
+        p_formatted_address: place.address,
+        p_icon: "",
+      })
+    ).error;
+  } else if (place.kind === "free" && place.label) {
+    error = (
+      await supabase.rpc("create_expense_with_freetext_place", {
+        ...base,
+        p_place_name: place.label,
+      })
+    ).error;
+  } else {
+    // 保存済み、または場所なし（自由入力が空 / saved が null）
+    error = (
+      await supabase.rpc("create_expense", {
+        ...base,
+        p_place_id: (place.kind === "saved"
+          ? place.placeId
+          : null) as unknown as string,
+      })
+    ).error;
+  }
 
   if (error) {
     return { ok: false, error: error.message };
@@ -271,6 +309,43 @@ type ParsedPlace =
       lng: number;
     };
 
+// 場所欄（PlacePicker の hidden input）を ParsedPlace に解す。
+// 予定・費用で共有する（同じ PlacePicker・同じ wire 契約）。
+function parsePlace(formData: FormData): ParsedPlace | { error: string } {
+  const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
+  const placeMode = get("place_mode") || "saved";
+  if (placeMode === "google") {
+    const gPlaceId = get("g_place_id");
+    const gName = get("g_name");
+    const gAddress = get("g_address");
+    const gLat = Number.parseFloat(get("g_lat"));
+    const gLng = Number.parseFloat(get("g_lng"));
+    if (
+      !gPlaceId ||
+      !gName ||
+      !gAddress ||
+      !Number.isFinite(gLat) ||
+      !Number.isFinite(gLng)
+    ) {
+      return { error: "場所を検索して候補から選んでください" };
+    }
+    return {
+      kind: "google",
+      placeId: gPlaceId,
+      name: gName,
+      address: gAddress,
+      lat: gLat,
+      lng: gLng,
+    };
+  }
+  if (placeMode === "free") {
+    const label = get("place_label");
+    return { kind: "free", label: label === "" ? null : label };
+  }
+  const placeIdRaw = get("place_id");
+  return { kind: "saved", placeId: placeIdRaw === "" ? null : placeIdRaw };
+}
+
 type ParsedEvent =
   | { error: string }
   | {
@@ -304,38 +379,8 @@ function parseEventForm(formData: FormData): ParsedEvent {
   }
   const note = get("note");
 
-  const placeMode = get("place_mode") || "saved";
-  let place: ParsedPlace;
-  if (placeMode === "google") {
-    const gPlaceId = get("g_place_id");
-    const gName = get("g_name");
-    const gAddress = get("g_address");
-    const gLat = Number.parseFloat(get("g_lat"));
-    const gLng = Number.parseFloat(get("g_lng"));
-    if (
-      !gPlaceId ||
-      !gName ||
-      !gAddress ||
-      !Number.isFinite(gLat) ||
-      !Number.isFinite(gLng)
-    ) {
-      return { error: "場所を検索して候補から選んでください" };
-    }
-    place = {
-      kind: "google",
-      placeId: gPlaceId,
-      name: gName,
-      address: gAddress,
-      lat: gLat,
-      lng: gLng,
-    };
-  } else if (placeMode === "free") {
-    const label = get("place_label");
-    place = { kind: "free", label: label === "" ? null : label };
-  } else {
-    const placeIdRaw = get("place_id");
-    place = { kind: "saved", placeId: placeIdRaw === "" ? null : placeIdRaw };
-  }
+  const place = parsePlace(formData);
+  if ("error" in place) return { error: place.error };
 
   if (kind === "transit") {
     const departDate = get("depart_date");

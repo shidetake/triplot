@@ -67,7 +67,7 @@ export default async function TripDetailPage({
     supabase
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
       .order("paid_at", { ascending: false }),
@@ -117,6 +117,7 @@ export default async function TripDetailPage({
     payer_member_id: e.payer_member_id,
     created_by_member_id: e.created_by_member_id,
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
+    place_id: e.place_id,
   }));
 
   const placeStatuses: PlaceStatus[] = (placeStatusesRaw ?? []).map((s) => ({
@@ -323,6 +324,8 @@ export default async function TripDetailPage({
           initialCategoryId={initialCategoryId}
           averageRates={averageRates}
           initialPaidAt={initialPaidAt}
+          places={placesForPicker}
+          biasCenter={placesBiasCenter}
         />
 
         <ExpenseSummaryView
@@ -338,6 +341,7 @@ export default async function TripDetailPage({
           expenses={expenses}
           members={activeMembers}
           categories={categories}
+          places={placesForPicker}
           defaultCurrency={defaultCurrency}
           myMemberId={me.id}
         />
