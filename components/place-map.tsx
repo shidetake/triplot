@@ -413,7 +413,7 @@ export function PlaceMap({
               // ピンに被らないよう上へ逃がす。候補＝雫ピンは背が高いので
               // 多め。保存済み・POI（既存アイコンに矢印が被らないよう）は
               // 同じだけ上げる。
-              pixelOffset={[0, selected.kind === "candidate" ? -52 : -24]}
+              pixelOffset={[0, selected.kind === "candidate" ? -52 : -29]}
             >
               {infoContent}
             </InfoWindow>
@@ -440,7 +440,7 @@ export function PlaceMap({
               onCloseClick={onCloseDraft}
               maxWidth={300}
               headerDisabled
-              pixelOffset={[0, -52]}
+              pixelOffset={[0, -47]}
             >
               {draftContent}
             </InfoWindow>
