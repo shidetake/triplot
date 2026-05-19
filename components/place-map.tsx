@@ -1,6 +1,12 @@
 "use client";
 
-import { type ReactNode, useEffect, useMemo } from "react";
+import {
+  type MutableRefObject,
+  type ReactNode,
+  useEffect,
+  useMemo,
+  useRef,
+} from "react";
 
 import {
   AdvancedMarker,
@@ -14,6 +20,99 @@ import { boundsOf, centroid, type LatLng, TOKYO } from "@/lib/placeMap";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import type { CandidatePlace } from "./place-search";
+
+// クリックの元になったポインタがマウス（＝PC）か。PC は本家同様
+// 普通クリックで自由ピン。タッチ（iOS 等）はここを通さず長押しで置く。
+function isMouseClick(de: Event | undefined): boolean {
+  if (typeof PointerEvent !== "undefined" && de instanceof PointerEvent) {
+    return de.pointerType === "mouse";
+  }
+  if (typeof TouchEvent !== "undefined" && de instanceof TouchEvent) {
+    return false;
+  }
+  return de instanceof MouseEvent;
+}
+
+// タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
+// contextmenu が安定しないため自前実装）。<Map> の子として描画し、
+// useMap でマップ DOM とオーバーレイ投影に触る。
+function LongPressPin({
+  onLongPress,
+  suppressClickUntil,
+}: {
+  onLongPress: (p: LatLng) => void;
+  suppressClickUntil: MutableRefObject<number>;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const div = map.getDiv();
+    // 投影（screen px → latLng）を得るための空オーバーレイ。
+    const overlay = new google.maps.OverlayView();
+    overlay.onAdd = () => {};
+    overlay.draw = () => {};
+    overlay.onRemove = () => {};
+    overlay.setMap(map);
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let sx = 0;
+    let sy = 0;
+    const clear = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    };
+    const onStart = (ev: TouchEvent) => {
+      if (ev.touches.length !== 1) {
+        clear();
+        return;
+      }
+      sx = ev.touches[0].clientX;
+      sy = ev.touches[0].clientY;
+      clear();
+      timer = setTimeout(() => {
+        timer = null;
+        const proj = overlay.getProjection();
+        if (!proj) return;
+        const rect = div.getBoundingClientRect();
+        const ll = proj.fromContainerPixelToLatLng(
+          new google.maps.Point(sx - rect.left, sy - rect.top),
+        );
+        if (ll) {
+          // 長押し直後に来る合成 click で draft を即閉じしないよう抑止。
+          suppressClickUntil.current = performance.now() + 700;
+          onLongPress({ lat: ll.lat(), lng: ll.lng() });
+        }
+      }, 500);
+    };
+    const onMove = (ev: TouchEvent) => {
+      if (!timer) return;
+      const t = ev.touches[0];
+      if (
+        t &&
+        (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10)
+      ) {
+        clear(); // pan とみなしてキャンセル
+      }
+    };
+    div.addEventListener("touchstart", onStart, { passive: true });
+    div.addEventListener("touchmove", onMove, { passive: true });
+    div.addEventListener("touchend", clear, { passive: true });
+    div.addEventListener("touchcancel", clear, { passive: true });
+    return () => {
+      clear();
+      div.removeEventListener("touchstart", onStart);
+      div.removeEventListener("touchmove", onMove);
+      div.removeEventListener("touchend", clear);
+      div.removeEventListener("touchcancel", clear);
+      overlay.setMap(null);
+    };
+  }, [map, onLongPress, suppressClickUntil]);
+
+  return null;
+}
 
 export type Selection =
   | { kind: "saved"; id: string }
@@ -96,6 +195,8 @@ export function PlaceMap({
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const placesLib = useMapsLibrary("places");
+  // 長押しで仮ピンを置いた直後の合成 click を無視する締切（performance.now）。
+  const suppressClickUntil = useRef(0);
 
   const statusById: Record<string, PlaceStatus> = useMemo(
     () => Object.fromEntries(statuses.map((s) => [s.id, s])),
@@ -147,6 +248,8 @@ export function PlaceMap({
           // 本家同様、ベースマップの POI（店/施設）アイコンをタップ可能に。
           clickableIcons
           onClick={(e) => {
+            // 長押しで置いた直後の合成 click は無視（draft 即閉じ防止）。
+            if (performance.now() < suppressClickUntil.current) return;
             // POI アイコンのタップ: placeId が取れる。Google 既定の吹き出しを
             // 止めて、Place Details を 1 回引いて候補として登録フォームへ
             // （ユーザ操作時のみの課金。サジェスト確定と同種）。
@@ -183,8 +286,7 @@ export function PlaceMap({
               })();
               return;
             }
-            // モード無し: 何か開いていれば「閉じるだけ」。空白タップでは
-            // ピンを置かない（自由位置は長押し＝onContextmenu で行う＝本家流）。
+            // 何か開いていれば「閉じるだけ」優先。
             if (selected) {
               onCloseInfo();
               return;
@@ -193,17 +295,20 @@ export function PlaceMap({
               onCloseDraft();
               return;
             }
-          }}
-          onContextmenu={(e) => {
-            // 長押し（PCは右クリック）で任意地点に仮ピン。ブラウザ既定の
-            // コンテキストメニュー/コールアウトは抑止する。
-            e.domEvent?.preventDefault();
-            const ll = e.detail.latLng;
-            if (ll) onMapTap({ lat: ll.lat, lng: ll.lng });
+            // PC（マウス）の普通クリックは本家同様その場に自由ピン。
+            // タッチのタップはここで何もしない（自由位置は長押し）。
+            if (isMouseClick(e.domEvent)) {
+              const ll = e.detail.latLng;
+              if (ll) onMapTap({ lat: ll.lat, lng: ll.lng });
+            }
           }}
           style={{ width: "100%", height: "100%" }}
         >
           <MapController points={fitPoints} panTo={selectedPos} />
+          <LongPressPin
+            onLongPress={onMapTap}
+            suppressClickUntil={suppressClickUntil}
+          />
 
           {mapId &&
             mappedPlaces.map((p) => {
