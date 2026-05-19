@@ -118,15 +118,21 @@ export function PlaceList({
   places,
   statuses,
   selectedId,
+  locatingId,
   onSelect,
   onLocate,
+  onCancelLocate,
 }: {
   places: PlaceRow[];
   statuses: PlaceStatus[];
   selectedId: string | null;
+  // 現在「位置を指定」モード中の未マップ place の id（あれば）。
+  // その行は active 表示にして、クリックで取り消しできるようにする。
+  locatingId: string | null;
   onSelect: (id: string) => void;
   // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
   onLocate: (id: string, name: string) => void;
+  onCancelLocate: () => void;
 }) {
   const statusById = new Map(statuses.map((s) => [s.id, s]));
 
@@ -144,15 +150,24 @@ export function PlaceList({
         const status = statusById.get(p.status_id);
         const isSelected = p.id === selectedId;
         const unmapped = p.lat == null;
+        const isLocating = unmapped && p.id === locatingId;
         return (
           <li key={p.id}>
             <button
               type="button"
               onClick={() =>
-                unmapped ? onLocate(p.id, p.name) : onSelect(p.id)
+                isLocating
+                  ? onCancelLocate()
+                  : unmapped
+                    ? onLocate(p.id, p.name)
+                    : onSelect(p.id)
               }
-              className={`flex w-full items-start gap-2 p-3 text-left text-sm transition hover:bg-zinc-50 ${
-                isSelected ? "bg-zinc-50" : ""
+              className={`flex w-full items-start gap-2 p-3 text-left text-sm transition ${
+                isLocating
+                  ? "border-l-4 border-amber-400 bg-amber-50"
+                  : isSelected
+                    ? "bg-zinc-50 hover:bg-zinc-50"
+                    : "hover:bg-zinc-50"
               }`}
             >
               <div className="min-w-0 flex-1">
@@ -185,9 +200,18 @@ export function PlaceList({
                 {p.note && (
                   <p className="mt-1 text-xs text-zinc-700">{p.note}</p>
                 )}
+                {isLocating && (
+                  <p className="mt-1 text-xs text-amber-800">
+                    地図でクリック / 長押しでピンを置いてください
+                  </p>
+                )}
               </div>
-              <span className="shrink-0 text-xs text-blue-600">
-                {unmapped ? "ピンを設定" : "地図で見る"}
+              <span
+                className={`shrink-0 text-xs ${
+                  isLocating ? "text-amber-700" : "text-blue-600"
+                }`}
+              >
+                {unmapped ? (isLocating ? "やめる" : "ピンを設定") : "地図で見る"}
               </span>
             </button>
           </li>

@@ -135,8 +135,10 @@ export function PlacesSection({
           places={places}
           statuses={statuses}
           selectedId={null}
+          locatingId={null}
           onSelect={() => {}}
           onLocate={() => {}}
+          onCancelLocate={() => {}}
         />
       </div>
     );
@@ -199,20 +201,6 @@ export function PlacesSection({
   return (
     <APIProvider apiKey={apiKey}>
       <div className="space-y-4">
-        {pendingLocationFor && (
-          <div className="flex items-center justify-between gap-3 rounded-md bg-amber-50 p-3 text-sm text-amber-900">
-            <span>
-              「{pendingLocationFor.name}」の位置を地図で指定（クリック / 長押し）
-            </span>
-            <button
-              type="button"
-              onClick={cancelLocate}
-              className="shrink-0 rounded border border-amber-300 px-2 py-1 text-xs font-medium hover:bg-amber-100"
-            >
-              やめる
-            </button>
-          </div>
-        )}
         <PlaceSearch
           query={query}
           onQueryChange={setQuery}
@@ -241,8 +229,10 @@ export function PlacesSection({
           places={places}
           statuses={statuses}
           selectedId={selected?.kind === "saved" ? selected.id : null}
+          locatingId={pendingLocationFor?.id ?? null}
           onSelect={selectSaved}
           onLocate={startLocate}
+          onCancelLocate={cancelLocate}
         />
       </div>
     </APIProvider>
