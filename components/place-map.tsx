@@ -7,6 +7,7 @@ import {
   InfoWindow,
   Map,
   useMap,
+  useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 
 import { boundsOf, centroid, type LatLng, TOKYO } from "@/lib/placeMap";
@@ -73,6 +74,7 @@ export function PlaceMap({
   onMapTap,
   onDraftMove,
   onCloseDraft,
+  onPoiSelect,
   infoContent,
   draftContent,
 }: {
@@ -87,11 +89,13 @@ export function PlaceMap({
   onMapTap: (p: LatLng) => void;
   onDraftMove: (p: LatLng) => void;
   onCloseDraft: () => void;
+  onPoiSelect: (c: CandidatePlace) => void;
   infoContent: ReactNode;
   draftContent: ReactNode;
 }) {
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+  const placesLib = useMapsLibrary("places");
 
   const statusById: Record<string, PlaceStatus> = useMemo(
     () => Object.fromEntries(statuses.map((s) => [s.id, s])),
@@ -140,8 +144,45 @@ export function PlaceMap({
           defaultZoom={places.length > 1 ? 11 : 13}
           gestureHandling="greedy"
           disableDefaultUI
-          clickableIcons={false}
+          // 本家同様、ベースマップの POI（店/施設）アイコンをタップ可能に。
+          clickableIcons
           onClick={(e) => {
+            // POI アイコンのタップ: placeId が取れる。Google 既定の吹き出しを
+            // 止めて、Place Details を 1 回引いて候補として登録フォームへ
+            // （ユーザ操作時のみの課金。サジェスト確定と同種）。
+            const poiId = e.detail.placeId;
+            if (poiId) {
+              e.stop();
+              if (!placesLib) return;
+              void (async () => {
+                try {
+                  const place = new placesLib.Place({ id: poiId });
+                  await place.fetchFields({
+                    fields: [
+                      "id",
+                      "displayName",
+                      "formattedAddress",
+                      "location",
+                    ],
+                  });
+                  const loc = place.location;
+                  if (!place.id || !loc) return;
+                  onPoiSelect({
+                    placeId: place.id,
+                    name: place.displayName ?? "(名称不明)",
+                    address: place.formattedAddress ?? "",
+                    lat: loc.lat(),
+                    lng: loc.lng(),
+                    rating: null,
+                    userRatingCount: null,
+                    photoUri: null,
+                  });
+                } catch {
+                  // 取得失敗時は何もしない（空白タップの手動ピンで代替可）
+                }
+              })();
+              return;
+            }
             // モード無し・1分岐: 何か開いていれば「閉じるだけ」優先。
             // 吹き出しも仮ピンも無いときだけ、空白タップで仮ピンを置く。
             if (selected) {

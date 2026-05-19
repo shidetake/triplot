@@ -66,6 +66,15 @@ export function PlacesSection({
   const onDraftMove = useCallback((p: LatLng) => setDraft(p), []);
   const closeDraft = useCallback(() => setDraft(null), []);
 
+  // 地図上の Google POI をタップ: 1件だけの検索結果と同じ扱いにして
+  // 既存の候補追加フォーム（CandidateInfo）を再利用する。
+  const showPoi = useCallback((c: CandidatePlace) => {
+    setDraft(null);
+    setQuery("");
+    setCandidates([c]);
+    setSelected({ kind: "candidate", placeId: c.placeId });
+  }, []);
+
   // 場所を追加した時／× を押した時、どちらも「検索は用無し」なので
   // 検索文字列・候補ピン・選択中の吹き出し・仮ピンをまとめて消す。
   const clearSearch = useCallback(() => {
@@ -143,8 +152,8 @@ export function PlacesSection({
           onResults={onResults}
         />
         <p className="text-xs text-zinc-500">
-          検索して候補から追加するほか、地図をタップして任意の地点にピンを
-          置くこともできます。
+          検索して候補から追加するほか、地図上の施設をタップ、または任意の
+          地点をタップしてピンを置くこともできます。
         </p>
         <PlaceMap
           places={places}
@@ -158,6 +167,7 @@ export function PlacesSection({
           onMapTap={onMapTap}
           onDraftMove={onDraftMove}
           onCloseDraft={closeDraft}
+          onPoiSelect={showPoi}
           infoContent={infoContent}
           draftContent={draftContent}
         />
