@@ -119,6 +119,12 @@ function LongPressPin({
   return null;
 }
 
+// InfoWindow をマーカーに被せないための上方向オフセット(px)。
+// 雫ピンと丸アイコンで高さが違うので 2 種類。雫は「検索候補の選択中」と
+// 「自由(draft)ピン」で同じ要素なので必ず同じ値を使う（定数で一元化）。
+const INFO_OFFSET_PIN = -47; // RedPin（赤い雫）
+const INFO_OFFSET_ICON = -29; // 保存済みピン / ベースマップ POI 既存アイコン
+
 // 本家 Google の赤い雫ピン（Material location_on）。先端を座標に合わせて
 // 上げる。検索候補の選択時と自由（draft）ピンで共用。
 function RedPin() {
@@ -410,10 +416,13 @@ export function PlaceMap({
               onCloseClick={onCloseInfo}
               maxWidth={300}
               headerDisabled
-              // ピンに被らないよう上へ逃がす。候補＝雫ピンは背が高いので
-              // 多め。保存済み・POI（既存アイコンに矢印が被らないよう）は
-              // 同じだけ上げる。
-              pixelOffset={[0, selected.kind === "candidate" ? -52 : -29]}
+              // 候補＝雫ピン（draft と同形）は深め、保存済み・POI は浅め。
+              pixelOffset={[
+                0,
+                selected.kind === "candidate"
+                  ? INFO_OFFSET_PIN
+                  : INFO_OFFSET_ICON,
+              ]}
             >
               {infoContent}
             </InfoWindow>
@@ -440,7 +449,7 @@ export function PlaceMap({
               onCloseClick={onCloseDraft}
               maxWidth={300}
               headerDisabled
-              pixelOffset={[0, -47]}
+              pixelOffset={[0, INFO_OFFSET_PIN]}
             >
               {draftContent}
             </InfoWindow>
