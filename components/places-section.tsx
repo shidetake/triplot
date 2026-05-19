@@ -29,6 +29,8 @@ export function PlacesSection({
   const [selected, setSelected] = useState<Selection | null>(null);
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
   const [draft, setDraft] = useState<LatLng | null>(null);
+  // タップ選択中のベースマップ POI（マーカーは出さず吹き出しだけ）。
+  const [poi, setPoi] = useState<CandidatePlace | null>(null);
 
   const biasCenter = useMemo(
     () =>
@@ -44,44 +46,53 @@ export function PlacesSection({
     setCandidates(results);
     setSelected(null);
     setDraft(null);
+    setPoi(null);
   }, []);
 
-  const closeInfo = useCallback(() => setSelected(null), []);
+  const closeInfo = useCallback(() => {
+    setSelected(null);
+    setPoi(null);
+  }, []);
 
-  // 保存済み/候補を選んだら仮ピンは引っ込める（同時に2つ開かない）。
+  // 保存済み/候補を選んだら仮ピン・POI は引っ込める（同時に2つ開かない）。
   const selectSaved = useCallback((id: string) => {
     setDraft(null);
+    setPoi(null);
     setSelected({ kind: "saved", id });
   }, []);
   const selectCandidate = useCallback((placeId: string) => {
     setDraft(null);
+    setPoi(null);
     setSelected({ kind: "candidate", placeId });
   }, []);
 
   // 空白タップ: 何も開いてなければ仮ピンを置く/移動（モード無し）。
   const onMapTap = useCallback((p: LatLng) => {
     setSelected(null);
+    setPoi(null);
     setDraft(p);
   }, []);
   const onDraftMove = useCallback((p: LatLng) => setDraft(p), []);
   const closeDraft = useCallback(() => setDraft(null), []);
 
-  // 地図上の Google POI をタップ: 1件だけの検索結果と同じ扱いにして
-  // 既存の候補追加フォーム（CandidateInfo）を再利用する。
+  // 地図上の Google POI をタップ: 既存の POI アイコンはそのまま見せ、
+  // マーカーは足さず吹き出し（CandidateInfo）だけ出す。
   const showPoi = useCallback((c: CandidatePlace) => {
     setDraft(null);
     setQuery("");
-    setCandidates([c]);
-    setSelected({ kind: "candidate", placeId: c.placeId });
+    setCandidates([]);
+    setPoi(c);
+    setSelected({ kind: "poi", placeId: c.placeId });
   }, []);
 
   // 場所を追加した時／× を押した時、どちらも「検索は用無し」なので
-  // 検索文字列・候補ピン・選択中の吹き出し・仮ピンをまとめて消す。
+  // 検索文字列・候補ピン・選択中の吹き出し・仮ピン・POI をまとめて消す。
   const clearSearch = useCallback(() => {
     setQuery("");
     setCandidates([]);
     setSelected(null);
     setDraft(null);
+    setPoi(null);
   }, []);
 
   if (!apiKey) {
@@ -101,8 +112,11 @@ export function PlacesSection({
   }
 
   let infoContent: React.ReactNode = null;
-  if (selected?.kind === "candidate") {
-    const c = candidates.find((x) => x.placeId === selected.placeId);
+  if (selected?.kind === "candidate" || selected?.kind === "poi") {
+    const c =
+      selected.kind === "poi"
+        ? poi
+        : candidates.find((x) => x.placeId === selected.placeId);
     if (c) {
       infoContent = (
         <CandidateInfo
@@ -161,6 +175,7 @@ export function PlacesSection({
           candidates={candidates}
           selected={selected}
           draft={draft}
+          poi={poi}
           onSelectSaved={selectSaved}
           onSelectCandidate={selectCandidate}
           onCloseInfo={closeInfo}

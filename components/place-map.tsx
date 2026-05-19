@@ -119,9 +119,37 @@ function LongPressPin({
   return null;
 }
 
+// 本家 Google の赤い雫ピン（Material location_on）。先端を座標に合わせて
+// 上げる。検索候補の選択時と自由（draft）ピンで共用。
+function RedPin() {
+  return (
+    <svg
+      width="34"
+      height="34"
+      viewBox="0 -960 960 960"
+      aria-hidden
+      style={{
+        transform: "translateY(-46%)",
+        filter: "drop-shadow(0 1px 1px rgba(0,0,0,.35))",
+      }}
+    >
+      <path
+        d="M458.5-103.5Q448-107 440-115q-42-38-91-87.5T258-309q-42-57-70-119t-28-124q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 62-28 124t-70 119q-42 57-91 106.5T520-115q-8 8-18.5 11.5T480-100q-11 0-21.5-3.5Z"
+        fill="#EA4335"
+        stroke="#ffffff"
+        strokeWidth="22"
+      />
+      <circle cx="480" cy="-560" r="92" fill="#A50E0E" />
+    </svg>
+  );
+}
+
 export type Selection =
   | { kind: "saved"; id: string }
-  | { kind: "candidate"; placeId: string };
+  | { kind: "candidate"; placeId: string }
+  // POI タップ: 既存のベースマップ POI を選択中。マーカーは出さず
+  // （Google のアイコンをそのまま見せる）吹き出しだけ出す。
+  | { kind: "poi"; placeId: string };
 
 // 表示集合が変わったときだけ地図を fit し直すためのキー。
 function pointsKey(points: LatLng[]): string {
@@ -179,6 +207,7 @@ export function PlaceMap({
   onDraftMove,
   onCloseDraft,
   onPoiSelect,
+  poi,
   infoContent,
   draftContent,
 }: {
@@ -187,6 +216,7 @@ export function PlaceMap({
   candidates: CandidatePlace[];
   selected: Selection | null;
   draft: LatLng | null;
+  poi: CandidatePlace | null;
   onSelectSaved: (id: string) => void;
   onSelectCandidate: (placeId: string) => void;
   onCloseInfo: () => void;
@@ -242,9 +272,12 @@ export function PlaceMap({
         ? { lat: p.lat, lng: p.lng }
         : null;
     }
+    if (selected.kind === "poi") {
+      return poi ? { lat: poi.lat, lng: poi.lng } : null;
+    }
     const c = candidates.find((x) => x.placeId === selected.placeId);
     return c ? { lat: c.lat, lng: c.lng } : null;
-  }, [selected, places, candidates]);
+  }, [selected, places, candidates, poi]);
 
   return (
     <div className="space-y-1">
@@ -362,26 +395,7 @@ export function PlaceMap({
                   onClick={() => onSelectCandidate(c.placeId)}
                 >
                   {isSel ? (
-                    // 選択中: 本家 Google の雫ピン（Material location_on の
-                    // くびれ形状）。先端を座標に合わせて上げる。
-                    <svg
-                      width="34"
-                      height="34"
-                      viewBox="0 -960 960 960"
-                      aria-hidden
-                      style={{
-                        transform: "translateY(-46%)",
-                        filter: "drop-shadow(0 1px 1px rgba(0,0,0,.35))",
-                      }}
-                    >
-                      <path
-                        d="M458.5-103.5Q448-107 440-115q-42-38-91-87.5T258-309q-42-57-70-119t-28-124q0-150 96.5-239T480-880q127 0 223.5 89T800-552q0 62-28 124t-70 119q-42 57-91 106.5T520-115q-8 8-18.5 11.5T480-100q-11 0-21.5-3.5Z"
-                        fill="#EA4335"
-                        stroke="#ffffff"
-                        strokeWidth="22"
-                      />
-                      <circle cx="480" cy="-560" r="92" fill="#A50E0E" />
-                    </svg>
+                    <RedPin />
                   ) : (
                     // 非選択: 本家の小さい赤リングの丸（赤枠太め・白小さめ）
                     <div className="h-[18px] w-[18px] rounded-full border-[5px] border-[#EA4335] bg-white shadow" />
@@ -396,9 +410,17 @@ export function PlaceMap({
               onCloseClick={onCloseInfo}
               maxWidth={300}
               headerDisabled
-              // ピンに被らないよう、ピン高さ分だけ上へ逃がす
-              // （選択中の候補＝雫ピンは背が高いので多め）。
-              pixelOffset={[0, selected.kind === "candidate" ? -52 : -24]}
+              // ピンに被らないよう、ピン高さ分だけ上へ逃がす。候補＝雫ピンは
+              // 背が高いので多め。POI 選択はマーカーを出さない（既存の
+              // Google アイコンをそのまま見せる）ので少しだけ。
+              pixelOffset={[
+                0,
+                selected.kind === "candidate"
+                  ? -52
+                  : selected.kind === "poi"
+                    ? -8
+                    : -24,
+              ]}
             >
               {infoContent}
             </InfoWindow>
@@ -414,8 +436,8 @@ export function PlaceMap({
                 }
               }}
             >
-              {/* 仮ピン: 保存済み（status色）・候補（赤）と区別できる紫 */}
-              <div className="h-5 w-5 rounded-full border-2 border-white bg-indigo-600 shadow ring-2 ring-indigo-300" />
+              {/* 仮ピン＝検索候補の選択時と同じ赤い雫ピン（未保存の点） */}
+              <RedPin />
             </AdvancedMarker>
           )}
 
@@ -425,7 +447,7 @@ export function PlaceMap({
               onCloseClick={onCloseDraft}
               maxWidth={300}
               headerDisabled
-              pixelOffset={[0, -24]}
+              pixelOffset={[0, -52]}
             >
               {draftContent}
             </InfoWindow>
