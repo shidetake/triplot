@@ -410,17 +410,10 @@ export function PlaceMap({
               onCloseClick={onCloseInfo}
               maxWidth={300}
               headerDisabled
-              // ピンに被らないよう、ピン高さ分だけ上へ逃がす。候補＝雫ピンは
-              // 背が高いので多め。POI 選択はマーカーを出さない（既存の
-              // Google アイコンをそのまま見せる）ので少しだけ。
-              pixelOffset={[
-                0,
-                selected.kind === "candidate"
-                  ? -52
-                  : selected.kind === "poi"
-                    ? -8
-                    : -24,
-              ]}
+              // ピンに被らないよう上へ逃がす。候補＝雫ピンは背が高いので
+              // 多め。保存済み・POI（既存アイコンに矢印が被らないよう）は
+              // 同じだけ上げる。
+              pixelOffset={[0, selected.kind === "candidate" ? -52 : -24]}
             >
               {infoContent}
             </InfoWindow>
