@@ -365,11 +365,20 @@ export function buildSchedule(
   }
 
   // 4) 終日／連日バー（上部帯）。列index範囲＋行スタック
+  // 期間が長いほど上の段に来るよう「長さ DESC → 開始日 ASC」でソート。
+  // greedy で先頭から row 0 に詰めるので、長い予定が自然と最上段に乗る。
   const allDayEvents = events
     .filter((e) => e.allDay)
-    .sort((a, b) =>
-      a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0,
-    );
+    .sort((a, b) => {
+      const aStart = parseWall(a.startAt).date;
+      const aEnd = a.endAt ? parseWall(a.endAt).date : aStart;
+      const bStart = parseWall(b.startAt).date;
+      const bEnd = b.endAt ? parseWall(b.endAt).date : bStart;
+      const aLen = dateToUtc(aEnd) - dateToUtc(aStart);
+      const bLen = dateToUtc(bEnd) - dateToUtc(bStart);
+      if (aLen !== bLen) return bLen - aLen;
+      return a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0;
+    });
   const allDayBars: AllDayBar[] = [];
   const rowEnds: number[] = []; // row -> 最後に埋まった列index
   for (const ev of allDayEvents) {
