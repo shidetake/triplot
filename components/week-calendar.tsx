@@ -257,15 +257,20 @@ export function WeekCalendar({
       const mode = dragModeRef.current;
       let vx = 0;
       let vy = 0;
+      // 左端は時刻ガター(GUTTER)が常に居座っているので、列が始まる
+      // 位置（rect.left + GUTTER）を基準にトリガを置く。これが無いと
+      // ゴーストがガター裏に潜り込んでから初めて auto-scroll が動いて
+      // ガターに被って見える。
+      const leftEdge = rect.left + GUTTER + EDGE;
       if (mode === "time") {
         // 通常予定は時刻＋日付の両軸を動かせるので、縦/横の両端で反応
         if (clientY < rect.top + EDGE) vy = -SPEED;
         else if (clientY > rect.bottom - EDGE) vy = SPEED;
-        if (clientX < rect.left + EDGE) vx = -SPEED;
+        if (clientX < leftEdge) vx = -SPEED;
         else if (clientX > rect.right - EDGE) vx = SPEED;
       } else if (mode === "allday") {
         // 終日ゴーストは横移動のみ → 横の端だけ反応
-        if (clientX < rect.left + EDGE) vx = -SPEED;
+        if (clientX < leftEdge) vx = -SPEED;
         else if (clientX > rect.right - EDGE) vx = SPEED;
       }
       const st = autoScrollRef.current;
