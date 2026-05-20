@@ -7,11 +7,13 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import {
   createExpenseAction,
   type CreateExpenseState,
+  updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
-import type { Currency } from "@/lib/types/database";
+import type { Currency, Visibility } from "@/lib/types/database";
 
-import { PlacePicker } from "./place-picker";
+import type { ExpenseRow } from "./expense-list";
+import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 type Member = {
   id: string;
@@ -40,6 +42,10 @@ export function ExpenseForm({
   initialPaidAt, // = 最後に入力した費用の日付
   places,
   biasCenter, // Google 検索の地理バイアス（既存ピン重心 or 東京）
+  // 編集モード。指定があると update 経路になり、各フィールドはこの値で
+  // プリフィル。未指定なら従来通り新規作成。
+  editExpense,
+  canChangeVisibility = true,
   onDone, // ポップオーバーで使うとき: 追加成功で閉じる
 }: {
   tripId: string;
@@ -53,23 +59,43 @@ export function ExpenseForm({
   initialPaidAt: string;
   places: { id: string; name: string }[];
   biasCenter: LatLng;
+  editExpense?: ExpenseRow;
+  canChangeVisibility?: boolean;
   onDone?: () => void;
 }) {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const boundAction = createExpenseAction.bind(null, tripId);
+  const isEdit = !!editExpense;
+
+  // 初期値はモードで切替（編集なら expense そのもの、新規なら最後入力 or 既定）。
+  const initCurrency: Currency = isEdit
+    ? editExpense.local_currency
+    : initialCurrency;
+  const initCategoryId = isEdit ? editExpense.category_id : initialCategoryId;
+  const initPaidAt = isEdit
+    ? editExpense.paid_at.slice(0, 10)
+    : initialPaidAt;
+  const initVisibility: Visibility = isEdit
+    ? editExpense.visibility
+    : "shared";
+  const initSplittable = isEdit ? editExpense.splittable : true;
+  const initSplits = isEdit
+    ? new Set(editExpense.split_member_ids)
+    : new Set(members.map((m) => m.id));
+
+  const boundAction = isEdit
+    ? updateExpenseAction.bind(null, tripId, editExpense.id)
+    : createExpenseAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(
     boundAction,
     initialState,
   );
 
-  const [localCurrency, setLocalCurrency] = useState<Currency>(initialCurrency);
-  const [categoryId, setCategoryId] = useState<string>(initialCategoryId);
-  const [paidAt, setPaidAt] = useState<string>(initialPaidAt);
-  const [visibility, setVisibility] = useState<"shared" | "private">("shared");
-  const [splittable, setSplittable] = useState(true);
-  const [selectedSplits, setSelectedSplits] = useState<Set<string>>(
-    () => new Set(members.map((m) => m.id)),
-  );
+  const [localCurrency, setLocalCurrency] = useState<Currency>(initCurrency);
+  const [categoryId, setCategoryId] = useState<string>(initCategoryId);
+  const [paidAt, setPaidAt] = useState<string>(initPaidAt);
+  const [visibility, setVisibility] = useState<Visibility>(initVisibility);
+  const [splittable, setSplittable] = useState(initSplittable);
+  const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
 
   // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。
   const rateFor = (c: Currency): string => {
@@ -78,7 +104,7 @@ export function ExpenseForm({
     return avg !== undefined ? String(avg) : "";
   };
   const [rateInput, setRateInput] = useState<string>(() =>
-    rateFor(initialCurrency),
+    isEdit ? String(editExpense.rate_to_default) : rateFor(initCurrency),
   );
 
   const formRef = useRef<HTMLFormElement>(null);
@@ -113,6 +139,17 @@ export function ExpenseForm({
     [categories],
   );
 
+  // 編集時、保存済みの場所をピッカーの初期値に。
+  const placePickerInitial: PlacePickerInitial =
+    isEdit && editExpense.place_id
+      ? {
+          kind: "saved",
+          id: editExpense.place_id,
+          name:
+            places.find((p) => p.id === editExpense.place_id)?.name ?? "",
+        }
+      : null;
+
   return (
     <form
       ref={formRef}
@@ -121,7 +158,9 @@ export function ExpenseForm({
     >
       {onDone && (
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium">費用を追加</h3>
+          <h3 className="text-sm font-medium">
+            {isEdit ? "費用を編集" : "費用を追加"}
+          </h3>
           <button
             type="button"
             onClick={onDone}
@@ -154,6 +193,7 @@ export function ExpenseForm({
             step="0.01"
             inputMode="decimal"
             placeholder="0"
+            defaultValue={isEdit ? editExpense.local_price : undefined}
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
           />
         </label>
@@ -227,11 +267,15 @@ export function ExpenseForm({
             <PlacePicker
               places={places}
               biasCenter={biasCenter}
-              initial={null}
+              initial={placePickerInitial}
             />
           </APIProvider>
         ) : (
-          <PlacePicker places={places} biasCenter={biasCenter} initial={null} />
+          <PlacePicker
+            places={places}
+            biasCenter={biasCenter}
+            initial={placePickerInitial}
+          />
         )}
       </div>
 
@@ -242,6 +286,7 @@ export function ExpenseForm({
           type="text"
           name="note"
           placeholder="ランチ、空港バス、など"
+          defaultValue={isEdit ? (editExpense.note ?? "") : ""}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         />
       </label>
@@ -250,7 +295,7 @@ export function ExpenseForm({
         <span className="font-medium">支払った人</span>
         <select
           name="payer_member_id"
-          defaultValue={myMemberId}
+          defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         >
           {members.map((m) => (
@@ -272,34 +317,38 @@ export function ExpenseForm({
         />
       </label>
 
-      <fieldset className="text-sm">
-        <legend className="font-medium">公開範囲</legend>
-        <div className="mt-1 flex gap-4">
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="radio"
-              name="visibility"
-              value="shared"
-              checked={visibility === "shared"}
-              onChange={() => setVisibility("shared")}
-            />
-            <span>共有</span>
-          </label>
-          <label className="inline-flex items-center gap-2">
-            <input
-              type="radio"
-              name="visibility"
-              value="private"
-              checked={visibility === "private"}
-              onChange={() => {
-                setVisibility("private");
-                setSplittable(false);
-              }}
-            />
-            <span>自分のみ</span>
-          </label>
-        </div>
-      </fieldset>
+      {canChangeVisibility ? (
+        <fieldset className="text-sm">
+          <legend className="font-medium">公開範囲</legend>
+          <div className="mt-1 flex gap-4">
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="visibility"
+                value="shared"
+                checked={visibility === "shared"}
+                onChange={() => setVisibility("shared")}
+              />
+              <span>共有</span>
+            </label>
+            <label className="inline-flex items-center gap-2">
+              <input
+                type="radio"
+                name="visibility"
+                value="private"
+                checked={visibility === "private"}
+                onChange={() => {
+                  setVisibility("private");
+                  setSplittable(false);
+                }}
+              />
+              <span>自分のみ</span>
+            </label>
+          </div>
+        </fieldset>
+      ) : (
+        <input type="hidden" name="visibility" value={visibility} />
+      )}
 
       {visibility === "shared" && (
         <label className="inline-flex items-center gap-2 text-sm">
@@ -349,7 +398,13 @@ export function ExpenseForm({
         disabled={isPending}
         className="h-10 w-full rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
       >
-        {isPending ? "追加中..." : "費用を追加"}
+        {isPending
+          ? isEdit
+            ? "保存中..."
+            : "追加中..."
+          : isEdit
+            ? "保存"
+            : "費用を追加"}
       </button>
 
       {state.error && (

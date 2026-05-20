@@ -126,6 +126,117 @@ export async function createExpenseAction(
   return { ok: true, error: null };
 }
 
+// 既存費用の編集。createExpenseAction とほぼ同じ場所解決の 3 分岐を辿る。
+export async function updateExpenseAction(
+  tripId: string,
+  expenseId: string,
+  _prevState: CreateExpenseState,
+  formData: FormData,
+): Promise<CreateExpenseState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: "ログインしてください" };
+  }
+
+  const localPriceRaw = (formData.get("local_price") as string | null) ?? "";
+  const localPrice = Number.parseFloat(localPriceRaw);
+  const localCurrency = formData.get("local_currency") as Currency | null;
+  const rateRaw = (formData.get("rate_to_default") as string | null) ?? "";
+  const rateToDefault = Number.parseFloat(rateRaw);
+  const categoryId = (formData.get("category_id") as string | null) ?? "";
+  const payerMemberId =
+    (formData.get("payer_member_id") as string | null) ?? "";
+  const visibility =
+    (formData.get("visibility") as Visibility | null) ?? "shared";
+  const splittable =
+    visibility === "shared" && formData.get("splittable") === "on";
+  const note = ((formData.get("note") as string | null) ?? "").trim();
+  const paidAtRaw = (formData.get("paid_at") as string | null) ?? "";
+  const paidAt = paidAtRaw
+    ? `${paidAtRaw}T00:00:00`
+    : new Date().toISOString();
+  const splitMemberIds = formData.getAll("split_member_ids").map(String);
+
+  if (!Number.isFinite(localPrice) || localPrice <= 0) {
+    return { ok: false, error: "金額は正の数で入力してください" };
+  }
+  if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
+    return { ok: false, error: "通貨を選んでください" };
+  }
+  if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {
+    return { ok: false, error: "為替レートは正の数で入力してください" };
+  }
+  if (!categoryId) {
+    return { ok: false, error: "カテゴリを選んでください" };
+  }
+  if (!payerMemberId) {
+    return { ok: false, error: "支払った人を選んでください" };
+  }
+  if (splittable && splitMemberIds.length === 0) {
+    return { ok: false, error: "割り勘対象を1人以上選んでください" };
+  }
+
+  const place = parsePlace(formData);
+  if ("error" in place) {
+    return { ok: false, error: place.error };
+  }
+
+  const base = {
+    p_expense_id: expenseId,
+    p_local_price: localPrice,
+    p_local_currency: localCurrency,
+    p_rate_to_default: rateToDefault,
+    p_category_id: categoryId,
+    p_payer_member_id: payerMemberId,
+    p_visibility: visibility,
+    p_splittable: splittable,
+    p_note: note,
+    p_paid_at: paidAt,
+    p_split_member_ids: splittable ? splitMemberIds : [],
+  };
+
+  let error: { message: string } | null = null;
+  if (place.kind === "google") {
+    error = (
+      await supabase.rpc("update_expense_with_place", {
+        ...base,
+        p_google_place_id: place.placeId,
+        p_place_name: place.name,
+        p_lat: place.lat,
+        p_lng: place.lng,
+        p_formatted_address: place.address,
+        p_icon: "",
+      })
+    ).error;
+  } else if (place.kind === "free" && place.label) {
+    error = (
+      await supabase.rpc("update_expense_with_freetext_place", {
+        ...base,
+        p_place_name: place.label,
+      })
+    ).error;
+  } else {
+    error = (
+      await supabase.rpc("update_expense", {
+        ...base,
+        p_place_id: (place.kind === "saved"
+          ? place.placeId
+          : null) as unknown as string,
+      })
+    ).error;
+  }
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
 export async function deleteExpenseAction(
   tripId: string,
   expenseId: string,

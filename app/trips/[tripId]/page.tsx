@@ -343,6 +343,11 @@ export default async function TripDetailPage({
           categories={categories}
           places={placesForPicker}
           defaultCurrency={defaultCurrency}
+          initialCurrency={initialCurrency}
+          initialCategoryId={initialCategoryId}
+          averageRates={averageRates}
+          initialPaidAt={initialPaidAt}
+          biasCenter={placesBiasCenter}
           myMemberId={me.id}
         />
       </section>
