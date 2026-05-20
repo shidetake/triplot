@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { Schedule, ScheduleEvent } from "@/lib/schedule";
+import { MIN_EVENT_MIN, type Schedule, type ScheduleEvent } from "@/lib/schedule";
 
 const GUTTER = 48; // 時刻ガター幅 px
 const HOUR_PX = 29; // 1時間の高さ px（従来48の約6割）
@@ -302,6 +302,81 @@ export function WeekCalendar({
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
+
+  // ゴーストが既存予定と時間帯で重なるとき、ゴーストを含めてレーンを
+  // 引き直す。schedule.ts の cluster + greedy lane と同じアルゴリズム
+  // を踏襲して、ゴーストの列に居る既存 PlacedEvent ＋ ゴーストを並べ替え、
+  // 重なるクラスタ内の lane/laneCount を override する map を作る。
+  // 重ならない時は map に何も入れない＝既存も従来通り、ゴーストも全幅。
+  const GHOST_KEY = "__ghost__";
+  const laneOverrides = useMemo<Map<
+    string,
+    { lane: number; laneCount: number }
+  > | null>(() => {
+    if (!ghost) return null;
+    const ghostCol = columns[ghost.columnIndex];
+    if (!ghostCol) return null;
+    const ghostColKey = ghostCol.key;
+    type Entry = { topMin: number; endMin: number; id: string };
+    const entries: Entry[] = [
+      ...timed
+        .filter((p) => p.columnKey === ghostColKey)
+        .map((p) => ({
+          topMin: p.topMin,
+          endMin: p.endMin,
+          id: p.event.id,
+        })),
+      {
+        topMin: ghost.startMin,
+        endMin: ghost.startMin + 60,
+        id: GHOST_KEY,
+      },
+    ];
+    entries.sort((a, b) => a.topMin - b.topMin || a.endMin - b.endMin);
+
+    const result = new Map<string, { lane: number; laneCount: number }>();
+    let cluster: Entry[] = [];
+    let clusterEnd = -1;
+    const flush = () => {
+      const laneEnds: number[] = [];
+      const assigned: { e: Entry; lane: number }[] = [];
+      for (const e of cluster) {
+        const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
+        let lane = laneEnds.findIndex((ee) => ee <= e.topMin);
+        if (lane === -1) {
+          lane = laneEnds.length;
+          laneEnds.push(dispEnd);
+        } else {
+          laneEnds[lane] = dispEnd;
+        }
+        assigned.push({ e, lane });
+      }
+      const laneCount = laneEnds.length;
+      const hasGhost = cluster.some((c) => c.id === GHOST_KEY);
+      // ゴーストが他予定と重なる時だけ override（laneCount>1）。重ならない
+      // クラスタや、ゴースト不在クラスタは元の lane を使う。
+      if (hasGhost && laneCount > 1) {
+        for (const { e, lane } of assigned) {
+          result.set(e.id, { lane, laneCount });
+        }
+      }
+      cluster = [];
+      clusterEnd = -1;
+    };
+    for (const e of entries) {
+      const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
+      if (cluster.length === 0 || e.topMin < clusterEnd) {
+        cluster.push(e);
+        clusterEnd = Math.max(clusterEnd, dispEnd);
+      } else {
+        flush();
+        cluster.push(e);
+        clusterEnd = dispEnd;
+      }
+    }
+    if (cluster.length) flush();
+    return result;
+  }, [ghost, timed, columns]);
 
   if (columns.length === 0) {
     return (
@@ -693,21 +768,28 @@ export function WeekCalendar({
             ))}
 
             {/* スマホ長押し中のゴースト枠（1時間・半透明） */}
-            {ghost && (
-              <div
-                className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
-                style={{
-                  left: ghost.columnIndex * COL + 1,
-                  width: COL - 2,
-                  top: y(ghost.startMin),
-                  height: HOUR_PX,
-                }}
-              >
-                <span className="block text-[10px] tabular-nums opacity-80">
-                  {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
-                </span>
-              </div>
-            )}
+            {ghost &&
+              (() => {
+                const ov = laneOverrides?.get(GHOST_KEY);
+                const lane = ov?.lane ?? 0;
+                const laneCount = ov?.laneCount ?? 1;
+                const w = COL / laneCount;
+                return (
+                  <div
+                    className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
+                    style={{
+                      left: ghost.columnIndex * COL + lane * w + 1,
+                      width: w - 2,
+                      top: y(ghost.startMin),
+                      height: HOUR_PX,
+                    }}
+                  >
+                    <span className="block text-[10px] tabular-nums opacity-80">
+                      {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
+                    </span>
+                  </div>
+                );
+              })()}
 
             {/* 時刻イベント */}
             {timed.map((p) => {
@@ -715,7 +797,12 @@ export function WeekCalendar({
               if (i == null) return null;
               const top = y(p.topMin);
               const h = Math.max(y(p.endMin) - top, MIN_BLOCK);
-              const w = COL / p.laneCount;
+              // ゴーストとレーン共有する時だけ override で再計算した lane
+              // を使う。それ以外は schedule.ts で確定済みの値をそのまま。
+              const ov = laneOverrides?.get(p.event.id);
+              const lane = ov?.lane ?? p.lane;
+              const laneCount = ov?.laneCount ?? p.laneCount;
+              const w = COL / laneCount;
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
               return (
@@ -736,7 +823,7 @@ export function WeekCalendar({
                         : `border-emerald-300 text-emerald-900 ${hov ? "bg-emerald-200" : "bg-emerald-100"}`
                   }`}
                   style={{
-                    left: i * COL + p.lane * w + 1,
+                    left: i * COL + lane * w + 1,
                     width: w - 2,
                     top,
                     height: h - 1,

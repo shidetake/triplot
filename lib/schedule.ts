@@ -136,7 +136,9 @@ export type Schedule = {
   window: { startMin: number; endMin: number };
 };
 
-const MIN_EVENT_MIN = 30; // 表示上の最低高さ（分換算）
+// 表示上の最低高さ（分換算）。レーン重なり判定でも使うため週カレンダー
+// 側のゴースト合流計算と値を共有したいので export する。
+export const MIN_EVENT_MIN = 30;
 const DEFAULT_DURATION_MIN = 60; // end が無い時刻イベントの既定長
 // 縦軸は常に 0:00〜24:00 固定（添付図と同じ。予定に応じて伸縮させない）。
 const FULL_DAY_WINDOW = { startMin: 0, endMin: 24 * 60 };
