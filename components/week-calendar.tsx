@@ -11,6 +11,14 @@ const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 
 export type Anchor = { x: number; y: number };
 
+// PC ドラッグで描画中の可変長ゴースト。状態は親で持つ（form 開閉と
+// ライフサイクルを合わせるため）。columnIndex は schedule.columns 基準。
+export type PcDragRender = {
+  columnIndex: number;
+  startMin: number;
+  endMin: number;
+};
+
 function colWidth(n: number): number {
   // 1日の横幅は従来（200/150/120）の約6割
   if (n <= 3) return 120;
@@ -28,6 +36,8 @@ export function WeekCalendar({
   schedule,
   placeName,
   selectedEventId,
+  pcDrag,
+  onPcDragChange,
   onSlotClick,
   onAllDaySlotClick,
   onEventClick,
@@ -35,6 +45,10 @@ export function WeekCalendar({
   schedule: Schedule;
   placeName: (placeId: string | null) => string | null;
   selectedEventId: string | null;
+  // PC ドラッグの可変長ゴースト。フォームが開いている間も残したいので
+  // 状態は親(ScheduleSection)持ち。閉じる/確定で親が null クリアする。
+  pcDrag: PcDragRender | null;
+  onPcDragChange: (next: PcDragRender | null) => void;
   onSlotClick: (
     date: string,
     tz: string,
@@ -119,12 +133,7 @@ export function WeekCalendar({
   // pointer events を pointerType==="mouse" で絞って使う。touch は別系統
   // （長押し）で扱うのでここでは無視。click(pointerup-no-drag)は1時間枠
   // のフォーム、drag は可変長で開始/終了を form に渡す。
-  type PcDragRender = {
-    columnIndex: number;
-    startMin: number;
-    endMin: number;
-  };
-  const [pcDrag, setPcDragState] = useState<PcDragRender | null>(null);
+  // pcDrag 状態は親が持つ（フォーム表示中もゴーストを残すため）。
   const pcDragRef = useRef<{
     date: string;
     tz: string;
@@ -323,6 +332,7 @@ export function WeekCalendar({
       stopAutoScroll();
     };
   }, [unlockPageScroll, stopAutoScroll]);
+
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
@@ -720,7 +730,7 @@ export function WeekCalendar({
                     info.startMin + 30,
                     Math.min(24 * 60, Math.round(raw / 30) * 30),
                   );
-                  setPcDragState({
+                  onPcDragChange({
                     columnIndex: info.columnIndex,
                     startMin: info.startMin,
                     endMin: snapped,
@@ -735,9 +745,10 @@ export function WeekCalendar({
                     info.columnEl.releasePointerCapture(e.pointerId);
                   }
                   if (info.dragging) {
-                    // ドラッグ確定 → 開始/終了を form に渡す
+                    // ドラッグ確定 → 開始/終了を form に渡す。
+                    // ゴースト(pcDrag)は親が form 閉じ時にクリアするので、
+                    // ここでは触らず開いてる間は表示し続ける。
                     const end = pcDrag?.endMin ?? info.startMin + 60;
-                    setPcDragState(null);
                     onSlotClick(
                       info.date,
                       info.tz,
@@ -747,7 +758,7 @@ export function WeekCalendar({
                     );
                   } else {
                     // ドラッグ無し＝ただのクリック → 既存挙動（1時間枠）
-                    setPcDragState(null);
+                    onPcDragChange(null);
                     onSlotClick(info.date, info.tz, info.startMin, {
                       x: e.clientX,
                       y: e.clientY,
@@ -757,7 +768,7 @@ export function WeekCalendar({
                 onPointerCancel={(e) => {
                   if (e.pointerType !== "mouse") return;
                   pcDragRef.current = null;
-                  setPcDragState(null);
+                  onPcDragChange(null);
                 }}
                 onTouchStart={(e) => {
                   recentTouchUntil.current = performance.now() + 700;

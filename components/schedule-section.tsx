@@ -7,7 +7,7 @@ import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
 import { type Anchor, FormPopover } from "./form-popover";
-import { WeekCalendar } from "./week-calendar";
+import { type PcDragRender, WeekCalendar } from "./week-calendar";
 
 export type EventRow = ScheduleEvent & { createdByMemberId: string };
 
@@ -33,6 +33,9 @@ export function ScheduleSection({
   myMemberId: string;
 }) {
   const [open, setOpen] = useState<OpenForm | null>(null);
+  // PC ドラッグで作成中の可変長ゴースト。form 表示中も枠を残したいので
+  // ScheduleSection で保持し、closeForm で同期的に消す。
+  const [pcDrag, setPcDrag] = useState<PcDragRender | null>(null);
 
   // 個別TZの初期値: 前回入力 → 無ければブラウザのTZ（自宅で計画する想定）。
   // 表示計算には使わない（あくまでフォームの初期選択）。
@@ -56,7 +59,12 @@ export function ScheduleSection({
     [places],
   );
 
-  const closeForm = useCallback(() => setOpen(null), []);
+  const closeForm = useCallback(() => {
+    setOpen(null);
+    // PC ドラッグのゴーストも form を閉じたタイミングで消す
+    // （ドラッグ→form→確定/キャンセル の一連で見た目が連続するように）。
+    setPcDrag(null);
+  }, []);
 
   const defaultDate = tripStart ?? new Date().toISOString().slice(0, 10);
 
@@ -169,6 +177,8 @@ export function ScheduleSection({
         schedule={schedule}
         placeName={placeName}
         selectedEventId={selectedEventId}
+        pcDrag={pcDrag}
+        onPcDragChange={setPcDrag}
         onSlotClick={onSlotClick}
         onAllDaySlotClick={onAllDaySlotClick}
         onEventClick={onEventClick}
