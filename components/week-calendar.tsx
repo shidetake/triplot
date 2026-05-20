@@ -276,7 +276,11 @@ export function WeekCalendar({
                   const t = e.touches[0];
                   const colEl = e.currentTarget;
                   const rect = colEl.getBoundingClientRect();
-                  const startMin = yToMin(t.clientY - rect.top);
+                  // 指の30分上を仮ピンの開始時刻に。指で隠れず見やすい。
+                  const startMin = Math.max(
+                    0,
+                    yToMin(t.clientY - rect.top) - 30,
+                  );
                   clearLongPress();
                   longPressInfo.current = {
                     startX: t.clientX,
@@ -316,8 +320,12 @@ export function WeekCalendar({
                     return;
                   }
                   // 長押し成立後: 縦方向に追従してゴースト時刻を更新
+                  // （onTouchStart と同じく指の30分上に置く）。
                   const rect = info.columnEl.getBoundingClientRect();
-                  const newMin = yToMin(t.clientY - rect.top);
+                  const newMin = Math.max(
+                    0,
+                    yToMin(t.clientY - rect.top) - 30,
+                  );
                   const g = ghostRef.current;
                   if (g && newMin !== g.startMin) {
                     setGhost({ ...g, startMin: newMin });
@@ -356,7 +364,7 @@ export function WeekCalendar({
             {/* スマホ長押し中のゴースト枠（1時間・半透明） */}
             {ghost && (
               <div
-                className="pointer-events-none absolute z-20 rounded border border-emerald-500 bg-emerald-200/60 px-1 py-0.5 text-[11px] leading-tight text-emerald-900 shadow"
+                className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
                 style={{
                   left: ghost.columnIndex * COL + 1,
                   width: COL - 2,
