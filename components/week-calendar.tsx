@@ -360,7 +360,7 @@ export function WeekCalendar({
         {/* ── 終日帯 ── */}
         <div className="flex border-b border-zinc-200 bg-zinc-50">
           <div
-            className="sticky left-0 z-20 flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-zinc-500"
+            className="sticky left-0 z-[25] flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-zinc-500"
             style={{ width: GUTTER }}
           >
             終日
@@ -504,7 +504,7 @@ export function WeekCalendar({
         <div className="flex">
           {/* 時刻ガター */}
           <div
-            className="sticky left-0 z-20 shrink-0 border-r border-zinc-200 bg-white"
+            className="sticky left-0 z-[25] shrink-0 border-r border-zinc-200 bg-white"
             style={{ width: GUTTER, height: bodyH }}
           >
             <div className="relative h-full">
