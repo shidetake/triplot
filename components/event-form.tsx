@@ -84,6 +84,9 @@ export type EventFormMode =
       tz: string;
       // 起動時に終日種別を選んでおきたい時のヒント（終日帯の長押し追加経路）。
       allDay?: boolean;
+      // PC ドラッグで作成した時の終了時刻("HH:MM")。同日扱い。未指定なら
+      // 既存の "開始+1時間" がデフォルト。
+      endTime?: string;
     }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
@@ -180,7 +183,9 @@ export function EventForm({
   const initEMin =
     isEdit && endInit.date
       ? dtToMin(endInit.date, endInit.time || "00:00")
-      : initSMin + 60;
+      : formMode.mode === "create" && formMode.endTime
+        ? dtToMin(formMode.date, formMode.endTime)
+        : initSMin + 60;
   const [eDate, setEDate] = useState(minToDt(initEMin).date);
   const [eTime, setETime] = useState(minToDt(initEMin).time);
 

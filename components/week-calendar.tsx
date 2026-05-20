@@ -40,6 +40,8 @@ export function WeekCalendar({
     tz: string,
     minutes: number,
     anchor: Anchor,
+    // PC ドラッグで終了時刻を確定した時のみ渡される（タップ/クリックは省略）
+    endMinutes?: number,
   ) => void;
   // 終日帯の空きを長押し→離して終日予定追加。横ドラッグで日付変更。
   onAllDaySlotClick: (date: string, anchor: Anchor) => void;
@@ -112,6 +114,28 @@ export function WeekCalendar({
     }
     longPressInfo.current = null;
   }, []);
+
+  // ── PC のドラッグで予定追加（Google カレンダー風） ──
+  // pointer events を pointerType==="mouse" で絞って使う。touch は別系統
+  // （長押し）で扱うのでここでは無視。click(pointerup-no-drag)は1時間枠
+  // のフォーム、drag は可変長で開始/終了を form に渡す。
+  type PcDragRender = {
+    columnIndex: number;
+    startMin: number;
+    endMin: number;
+  };
+  const [pcDrag, setPcDragState] = useState<PcDragRender | null>(null);
+  const pcDragRef = useRef<{
+    date: string;
+    tz: string;
+    columnIndex: number;
+    columnEl: HTMLElement;
+    startMin: number;
+    startClientX: number;
+    startClientY: number;
+    dragging: boolean;
+  } | null>(null);
+
   // ── 終日帯のゴースト（横ドラッグで日付選択。1日固定） ──
   type AllDayGhost = { date: string; columnIndex: number };
   const [allDayGhost, setAllDayGhostState] = useState<AllDayGhost | null>(null);
@@ -313,10 +337,22 @@ export function WeekCalendar({
     string,
     { lane: number; laneCount: number }
   > | null>(() => {
-    if (!ghost) return null;
-    const ghostCol = columns[ghost.columnIndex];
-    if (!ghostCol) return null;
-    const ghostColKey = ghostCol.key;
+    // タッチの長押しゴースト or PC ドラッグゴーストどちらかを対象に。
+    const target = ghost
+      ? {
+          col: columns[ghost.columnIndex],
+          topMin: ghost.startMin,
+          endMin: ghost.startMin + 60,
+        }
+      : pcDrag
+        ? {
+            col: columns[pcDrag.columnIndex],
+            topMin: pcDrag.startMin,
+            endMin: pcDrag.endMin,
+          }
+        : null;
+    if (!target || !target.col) return null;
+    const ghostColKey = target.col.key;
     type Entry = { topMin: number; endMin: number; id: string };
     const entries: Entry[] = [
       ...timed
@@ -327,8 +363,8 @@ export function WeekCalendar({
           id: p.event.id,
         })),
       {
-        topMin: ghost.startMin,
-        endMin: ghost.startMin + 60,
+        topMin: target.topMin,
+        endMin: target.endMin,
         id: GHOST_KEY,
       },
     ];
@@ -376,7 +412,7 @@ export function WeekCalendar({
     }
     if (cluster.length) flush();
     return result;
-  }, [ghost, timed, columns]);
+  }, [ghost, pcDrag, timed, columns]);
 
   // 終日ゴーストの行（rowStack）。ゴーストの列を覆う既存バーの行を避けて
   // 空いている最小 row を割り当てる。同列に既存バーが居なければ row=0、
@@ -636,21 +672,92 @@ export function WeekCalendar({
                 key={c.key}
                 className="absolute top-0 cursor-pointer border-r border-zinc-100"
                 style={{ left: i * COL, width: COL, height: bodyH }}
-                onClick={(e) => {
-                  // スマホはタップでは追加しない（長押し経由のみ）。
-                  // touch 直後の合成 click を除外する。マウスは touch を
-                  // 出さないので素通り＝PC は従来通り。
-                  if (performance.now() < recentTouchUntil.current) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
+                onPointerDown={(e) => {
+                  // PC（マウス）専用。touch / pen は touch 系で扱うので無視。
+                  if (e.pointerType !== "mouse") return;
+                  if (e.button !== 0) return; // 左クリックのみ
+                  const colEl = e.currentTarget;
+                  const rect = colEl.getBoundingClientRect();
                   const off = e.clientY - rect.top;
                   const raw = winStart + (off / HOUR_PX) * 60;
-                  const snapped = Math.round(raw / 30) * 30;
-                  onSlotClick(
-                    c.date,
-                    c.tz,
-                    Math.max(0, Math.min(1439, snapped)),
-                    { x: e.clientX, y: e.clientY },
+                  const snapped = Math.max(
+                    0,
+                    Math.min(1380, Math.round(raw / 30) * 30),
                   );
+                  pcDragRef.current = {
+                    date: c.date,
+                    tz: c.tz,
+                    columnIndex: i,
+                    columnEl: colEl,
+                    startMin: snapped,
+                    startClientX: e.clientX,
+                    startClientY: e.clientY,
+                    dragging: false,
+                  };
+                  // ポインタを列に固定して、はみ出しても move/up が届くように。
+                  colEl.setPointerCapture(e.pointerId);
+                }}
+                onPointerMove={(e) => {
+                  if (e.pointerType !== "mouse") return;
+                  const info = pcDragRef.current;
+                  if (!info) return;
+                  // 5px 動いたら "ドラッグ" として可変長ゴースト表示開始
+                  if (!info.dragging) {
+                    if (
+                      Math.abs(e.clientX - info.startClientX) > 5 ||
+                      Math.abs(e.clientY - info.startClientY) > 5
+                    ) {
+                      info.dragging = true;
+                    } else {
+                      return;
+                    }
+                  }
+                  // 現在 Y → 終了時刻（30分スナップ・最小30分・上限24:00）
+                  const rect = info.columnEl.getBoundingClientRect();
+                  const off = e.clientY - rect.top;
+                  const raw = winStart + (off / HOUR_PX) * 60;
+                  const snapped = Math.max(
+                    info.startMin + 30,
+                    Math.min(24 * 60, Math.round(raw / 30) * 30),
+                  );
+                  setPcDragState({
+                    columnIndex: info.columnIndex,
+                    startMin: info.startMin,
+                    endMin: snapped,
+                  });
+                }}
+                onPointerUp={(e) => {
+                  if (e.pointerType !== "mouse") return;
+                  const info = pcDragRef.current;
+                  pcDragRef.current = null;
+                  if (!info) return;
+                  if (info.columnEl.hasPointerCapture(e.pointerId)) {
+                    info.columnEl.releasePointerCapture(e.pointerId);
+                  }
+                  if (info.dragging) {
+                    // ドラッグ確定 → 開始/終了を form に渡す
+                    const end = pcDrag?.endMin ?? info.startMin + 60;
+                    setPcDragState(null);
+                    onSlotClick(
+                      info.date,
+                      info.tz,
+                      info.startMin,
+                      { x: e.clientX, y: e.clientY },
+                      end,
+                    );
+                  } else {
+                    // ドラッグ無し＝ただのクリック → 既存挙動（1時間枠）
+                    setPcDragState(null);
+                    onSlotClick(info.date, info.tz, info.startMin, {
+                      x: e.clientX,
+                      y: e.clientY,
+                    });
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  if (e.pointerType !== "mouse") return;
+                  pcDragRef.current = null;
+                  setPcDragState(null);
                 }}
                 onTouchStart={(e) => {
                   recentTouchUntil.current = performance.now() + 700;
@@ -810,6 +917,30 @@ export function WeekCalendar({
                   >
                     <span className="block text-[10px] tabular-nums opacity-80">
                       {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
+                    </span>
+                  </div>
+                );
+              })()}
+
+            {/* PC ドラッグ中のゴースト枠（可変長・半透明） */}
+            {pcDrag &&
+              (() => {
+                const ov = laneOverrides?.get(GHOST_KEY);
+                const lane = ov?.lane ?? 0;
+                const laneCount = ov?.laneCount ?? 1;
+                const w = COL / laneCount;
+                return (
+                  <div
+                    className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
+                    style={{
+                      left: pcDrag.columnIndex * COL + lane * w + 1,
+                      width: w - 2,
+                      top: y(pcDrag.startMin),
+                      height: y(pcDrag.endMin) - y(pcDrag.startMin),
+                    }}
+                  >
+                    <span className="block text-[10px] tabular-nums opacity-80">
+                      {hhmm(pcDrag.startMin)}–{hhmm(pcDrag.endMin)}
                     </span>
                   </div>
                 );
