@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Schedule, ScheduleEvent } from "@/lib/schedule";
 
@@ -69,6 +69,55 @@ export function WeekCalendar({
 
   const y = (min: number) =>
     ((Math.min(Math.max(min, winStart), winEnd) - winStart) / 60) * HOUR_PX;
+
+  // 30分刻みスナップ。1時間の枠が縦軸からはみ出さないよう 23:00(=1380) を上限。
+  const yToMin = useCallback((offsetY: number): number => {
+    const raw = winStart + (offsetY / HOUR_PX) * 60;
+    return Math.max(0, Math.min(1380, Math.round(raw / 30) * 30));
+  }, []);
+
+  // ── スマホの長押し→ゴースト枠→ドラッグで時間移動→離すと予定追加 ──
+  // PC は従来通りクリックで即追加（mouse は touch を出さないので touch
+  // 系の経路に入らない・onClick は recentTouchUntil で touch 直後の合成
+  // click だけ除外する）。
+  type Ghost = {
+    date: string;
+    tz: string;
+    columnIndex: number;
+    startMin: number;
+  };
+  const [ghost, setGhostState] = useState<Ghost | null>(null);
+  const ghostRef = useRef<Ghost | null>(null);
+  const setGhost = useCallback((g: Ghost | null) => {
+    ghostRef.current = g;
+    setGhostState(g);
+  }, []);
+  const recentTouchUntil = useRef(0);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressInfo = useRef<{
+    startX: number;
+    startY: number;
+    date: string;
+    tz: string;
+    columnIndex: number;
+    columnEl: HTMLElement;
+    pressFired: boolean;
+  } | null>(null);
+  const clearLongPress = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    longPressInfo.current = null;
+  }, []);
+  // ゴースト表示中はページの touch スクロールを止める（React の onTouchMove
+  // は passive なので preventDefault は document の non-passive listener で）。
+  useEffect(() => {
+    if (!ghost) return;
+    const onMove = (e: TouchEvent) => e.preventDefault();
+    document.addEventListener("touchmove", onMove, { passive: false });
+    return () => document.removeEventListener("touchmove", onMove);
+  }, [ghost]);
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
@@ -192,13 +241,17 @@ export function WeekCalendar({
               />
             ))}
 
-            {/* 列の縦罫線＋クリックで予定追加 */}
+            {/* 列の縦罫線＋クリック(PC)/長押し(スマホ) で予定追加 */}
             {columns.map((c, i) => (
               <div
                 key={c.key}
                 className="absolute top-0 cursor-pointer border-r border-zinc-100"
                 style={{ left: i * COL, width: COL, height: bodyH }}
                 onClick={(e) => {
+                  // スマホはタップでは追加しない（長押し経由のみ）。
+                  // touch 直後の合成 click を除外する。マウスは touch を
+                  // 出さないので素通り＝PC は従来通り。
+                  if (performance.now() < recentTouchUntil.current) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const off = e.clientY - rect.top;
                   const raw = winStart + (off / HOUR_PX) * 60;
@@ -210,8 +263,108 @@ export function WeekCalendar({
                     { x: e.clientX, y: e.clientY },
                   );
                 }}
+                onTouchStart={(e) => {
+                  recentTouchUntil.current = performance.now() + 700;
+                  if (e.touches.length !== 1) {
+                    clearLongPress();
+                    return;
+                  }
+                  const t = e.touches[0];
+                  const colEl = e.currentTarget;
+                  const rect = colEl.getBoundingClientRect();
+                  const startMin = yToMin(t.clientY - rect.top);
+                  clearLongPress();
+                  longPressInfo.current = {
+                    startX: t.clientX,
+                    startY: t.clientY,
+                    date: c.date,
+                    tz: c.tz,
+                    columnIndex: i,
+                    columnEl: colEl,
+                    pressFired: false,
+                  };
+                  longPressTimer.current = setTimeout(() => {
+                    longPressTimer.current = null;
+                    const info = longPressInfo.current;
+                    if (!info) return;
+                    info.pressFired = true;
+                    setGhost({
+                      date: info.date,
+                      tz: info.tz,
+                      columnIndex: info.columnIndex,
+                      startMin,
+                    });
+                  }, 500);
+                }}
+                onTouchMove={(e) => {
+                  const info = longPressInfo.current;
+                  if (!info) return;
+                  const t = e.touches[0];
+                  if (!t) return;
+                  if (!info.pressFired) {
+                    // 長押し成立前に大きく動いた＝スクロール扱いで取消
+                    if (
+                      Math.abs(t.clientX - info.startX) > 10 ||
+                      Math.abs(t.clientY - info.startY) > 10
+                    ) {
+                      clearLongPress();
+                    }
+                    return;
+                  }
+                  // 長押し成立後: 縦方向に追従してゴースト時刻を更新
+                  const rect = info.columnEl.getBoundingClientRect();
+                  const newMin = yToMin(t.clientY - rect.top);
+                  const g = ghostRef.current;
+                  if (g && newMin !== g.startMin) {
+                    setGhost({ ...g, startMin: newMin });
+                  }
+                }}
+                onTouchEnd={() => {
+                  const info = longPressInfo.current;
+                  recentTouchUntil.current = performance.now() + 700;
+                  clearLongPress();
+                  if (info?.pressFired) {
+                    const g = ghostRef.current;
+                    if (g) {
+                      const rect = info.columnEl.getBoundingClientRect();
+                      // ゴースト枠の中央あたりを anchor に（FormPopover 用）
+                      const anchorY =
+                        rect.top + ((g.startMin - winStart) / 60) * HOUR_PX +
+                        HOUR_PX / 2;
+                      const anchorX = rect.left + rect.width / 2;
+                      setGhost(null);
+                      onSlotClick(g.date, g.tz, g.startMin, {
+                        x: anchorX,
+                        y: anchorY,
+                      });
+                      return;
+                    }
+                  }
+                  setGhost(null);
+                }}
+                onTouchCancel={() => {
+                  clearLongPress();
+                  setGhost(null);
+                }}
               />
             ))}
+
+            {/* スマホ長押し中のゴースト枠（1時間・半透明） */}
+            {ghost && (
+              <div
+                className="pointer-events-none absolute z-20 rounded border border-emerald-500 bg-emerald-200/60 px-1 py-0.5 text-[11px] leading-tight text-emerald-900 shadow"
+                style={{
+                  left: ghost.columnIndex * COL + 1,
+                  width: COL - 2,
+                  top: y(ghost.startMin),
+                  height: HOUR_PX,
+                }}
+              >
+                <span className="block text-[10px] tabular-nums opacity-80">
+                  {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
+                </span>
+              </div>
+            )}
 
             {/* 時刻イベント */}
             {timed.map((p) => {

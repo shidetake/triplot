@@ -129,7 +129,7 @@ export function ScheduleSection({
             ?
           </span>
           <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-1 w-52 rounded-md bg-zinc-800 px-2 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            空き時間をタップしても追加できます
+            空き時間をクリック / 長押しでも追加できます
           </span>
         </span>
       </div>
