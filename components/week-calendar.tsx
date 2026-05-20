@@ -148,14 +148,134 @@ export function WeekCalendar({
     [columns.length, COL],
   );
 
-  // ゴースト表示中はページの touch スクロールを止める（React の onTouchMove
-  // は passive なので preventDefault は document の non-passive listener で）。
+  // ── ゴースト中のページ touch スクロール抑止 ──
+  // useEffect 経由だと長押し成立から listener 登録までに 1 フレーム空き、
+  // その隙にスクロールしてしまう（ユーザ報告）ので、長押し成立時に
+  // 即時登録できる imperative 関数として用意する。
+  const scrollLockRef = useRef<((e: TouchEvent) => void) | null>(null);
+  const lockPageScroll = useCallback(() => {
+    if (scrollLockRef.current) return;
+    const h = (e: TouchEvent) => e.preventDefault();
+    scrollLockRef.current = h;
+    document.addEventListener("touchmove", h, { passive: false });
+  }, []);
+  const unlockPageScroll = useCallback(() => {
+    const h = scrollLockRef.current;
+    if (h) {
+      document.removeEventListener("touchmove", h);
+      scrollLockRef.current = null;
+    }
+  }, []);
+
+  // ── 端ドラッグで auto-scroll（画面外の時刻/日付へ持っていける） ──
+  // ゴースト中はページスクロールを止めているので、画面外に行きたい時は
+  // ここで finger 位置 → 端ならカレンダーを継続的に scroll する。ゴースト
+  // 位置は finger に追従するよう rAF tick の中で再計算する。
+  const dragPosRef = useRef<{ x: number; y: number } | null>(null);
+  const dragModeRef = useRef<"time" | "allday" | null>(null);
+  const autoScrollRef = useRef<{
+    rafId: number | null;
+    vx: number;
+    vy: number;
+  }>({ rafId: null, vx: 0, vy: 0 });
+  // tick の本体は render 依存値（columns / COL）を直接参照する。各 render で
+  // 最新クロージャを ref に詰め直し、rAF へ渡すラッパは ref 越しに最新版を
+  // 呼ぶ（useCallback の deps が render ごとに変わって immutability ルール
+  // に引っかかるのを回避しつつ、最新の columns 等が見える）。
+  const tickRef = useRef<() => void>(() => {});
   useEffect(() => {
-    if (!ghost && !allDayGhost) return;
-    const onMove = (e: TouchEvent) => e.preventDefault();
-    document.addEventListener("touchmove", onMove, { passive: false });
-    return () => document.removeEventListener("touchmove", onMove);
-  }, [ghost, allDayGhost]);
+    tickRef.current = () => {
+      const el = scrollRef.current;
+      const st = autoScrollRef.current;
+      if (!el) {
+        st.rafId = null;
+        return;
+      }
+      if (st.vx) el.scrollLeft += st.vx;
+      if (st.vy) el.scrollTop += st.vy;
+      const pos = dragPosRef.current;
+      if (pos) {
+        if (dragModeRef.current === "time") {
+          const info = longPressInfo.current;
+          if (info?.pressFired) {
+            const rect = info.columnEl.getBoundingClientRect();
+            const newMin = Math.max(0, yToMin(pos.y - rect.top) - 30);
+            const g = ghostRef.current;
+            if (g && newMin !== g.startMin) {
+              setGhost({ ...g, startMin: newMin });
+            }
+          }
+        } else if (dragModeRef.current === "allday") {
+          const info = allDayLongPressInfo.current;
+          if (info?.pressFired) {
+            const rect = info.stripEl.getBoundingClientRect();
+            const idx = Math.max(
+              0,
+              Math.min(
+                columns.length - 1,
+                Math.floor((pos.x - rect.left) / COL),
+              ),
+            );
+            const c = columns[idx];
+            const g = allDayGhostRef.current;
+            if (c && g && idx !== g.columnIndex) {
+              setAllDayGhost({ date: c.date, columnIndex: idx });
+            }
+          }
+        }
+      }
+      if (st.vx !== 0 || st.vy !== 0) {
+        st.rafId = requestAnimationFrame(() => tickRef.current());
+      } else {
+        st.rafId = null;
+      }
+    };
+  });
+  const updateAutoScroll = useCallback(
+    (clientX: number, clientY: number) => {
+      const el = scrollRef.current;
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const EDGE = 40;
+      const SPEED = 8;
+      const mode = dragModeRef.current;
+      let vx = 0;
+      let vy = 0;
+      if (mode === "time") {
+        // 時刻ゴーストは列固定で縦移動のみ → 縦の端だけ反応
+        if (clientY < rect.top + EDGE) vy = -SPEED;
+        else if (clientY > rect.bottom - EDGE) vy = SPEED;
+      } else if (mode === "allday") {
+        // 終日ゴーストは横移動のみ → 横の端だけ反応
+        if (clientX < rect.left + EDGE) vx = -SPEED;
+        else if (clientX > rect.right - EDGE) vx = SPEED;
+      }
+      const st = autoScrollRef.current;
+      st.vx = vx;
+      st.vy = vy;
+      if ((vx !== 0 || vy !== 0) && st.rafId == null) {
+        st.rafId = requestAnimationFrame(() => tickRef.current());
+      }
+    },
+    [],
+  );
+  const stopAutoScroll = useCallback(() => {
+    const st = autoScrollRef.current;
+    st.vx = 0;
+    st.vy = 0;
+    if (st.rafId != null) {
+      cancelAnimationFrame(st.rafId);
+      st.rafId = null;
+    }
+  }, []);
+
+  // アンマウント時に万一残っていれば後片付け。
+  useEffect(() => {
+    return () => {
+      unlockPageScroll();
+      stopAutoScroll();
+    };
+  }, [unlockPageScroll, stopAutoScroll]);
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
@@ -251,6 +371,11 @@ export function WeekCalendar({
                 const idx = columnIndexFromX(info.stripEl, t.clientX);
                 const c = columns[idx];
                 if (!c) return;
+                // 成立した瞬間にページ scroll を即時ロック（useEffect 経由
+                // だと 1 フレーム空いてスクロールが滑る原因になる）。
+                lockPageScroll();
+                dragModeRef.current = "allday";
+                dragPosRef.current = { x: t.clientX, y: t.clientY };
                 setAllDayGhost({ date: c.date, columnIndex: idx });
               }, 500);
             }}
@@ -268,17 +393,24 @@ export function WeekCalendar({
                 }
                 return;
               }
+              dragPosRef.current = { x: t.clientX, y: t.clientY };
               const idx = columnIndexFromX(info.stripEl, t.clientX);
               const c = columns[idx];
               const g = allDayGhostRef.current;
               if (c && g && idx !== g.columnIndex) {
                 setAllDayGhost({ date: c.date, columnIndex: idx });
               }
+              // 端なら auto-scroll（横方向）。
+              updateAutoScroll(t.clientX, t.clientY);
             }}
             onTouchEnd={() => {
               const info = allDayLongPressInfo.current;
               recentTouchUntil.current = performance.now() + 700;
               clearAllDayLongPress();
+              stopAutoScroll();
+              dragPosRef.current = null;
+              dragModeRef.current = null;
+              unlockPageScroll();
               if (info?.pressFired) {
                 const g = allDayGhostRef.current;
                 if (g) {
@@ -295,6 +427,10 @@ export function WeekCalendar({
             }}
             onTouchCancel={() => {
               clearAllDayLongPress();
+              stopAutoScroll();
+              dragPosRef.current = null;
+              dragModeRef.current = null;
+              unlockPageScroll();
               setAllDayGhost(null);
             }}
           >
@@ -423,6 +559,15 @@ export function WeekCalendar({
                     const info = longPressInfo.current;
                     if (!info) return;
                     info.pressFired = true;
+                    // 成立した瞬間にページ scroll を即時ロック（useEffect
+                    // 経由だと 1 フレーム空く＝指を動かしてもスクロール
+                    // してしまう問題の根本対策）。
+                    lockPageScroll();
+                    dragModeRef.current = "time";
+                    dragPosRef.current = {
+                      x: info.startX,
+                      y: info.startY,
+                    };
                     setGhost({
                       date: info.date,
                       tz: info.tz,
@@ -448,6 +593,7 @@ export function WeekCalendar({
                   }
                   // 長押し成立後: 縦方向に追従してゴースト時刻を更新
                   // （onTouchStart と同じく指の30分上に置く）。
+                  dragPosRef.current = { x: t.clientX, y: t.clientY };
                   const rect = info.columnEl.getBoundingClientRect();
                   const newMin = Math.max(
                     0,
@@ -457,11 +603,17 @@ export function WeekCalendar({
                   if (g && newMin !== g.startMin) {
                     setGhost({ ...g, startMin: newMin });
                   }
+                  // 端なら auto-scroll（縦方向）。
+                  updateAutoScroll(t.clientX, t.clientY);
                 }}
                 onTouchEnd={() => {
                   const info = longPressInfo.current;
                   recentTouchUntil.current = performance.now() + 700;
                   clearLongPress();
+                  stopAutoScroll();
+                  dragPosRef.current = null;
+                  dragModeRef.current = null;
+                  unlockPageScroll();
                   if (info?.pressFired) {
                     const g = ghostRef.current;
                     if (g) {
@@ -483,6 +635,10 @@ export function WeekCalendar({
                 }}
                 onTouchCancel={() => {
                   clearLongPress();
+                  stopAutoScroll();
+                  dragPosRef.current = null;
+                  dragModeRef.current = null;
+                  unlockPageScroll();
                   setGhost(null);
                 }}
               />
