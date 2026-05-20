@@ -378,6 +378,23 @@ export function WeekCalendar({
     return result;
   }, [ghost, timed, columns]);
 
+  // 終日ゴーストの行（rowStack）。ゴーストの列を覆う既存バーの行を避けて
+  // 空いている最小 row を割り当てる。同列に既存バーが居なければ row=0、
+  // 全段埋まっていれば新規 row（バンド高さも伸ばす）。
+  const ghostAllDayRow = useMemo<number | null>(() => {
+    if (!allDayGhost) return null;
+    const idx = allDayGhost.columnIndex;
+    const occupied = new Set<number>();
+    for (const b of allDayBars) {
+      if (b.startColIndex <= idx && b.endColIndex >= idx) {
+        occupied.add(b.row);
+      }
+    }
+    let row = 0;
+    while (occupied.has(row)) row++;
+    return row;
+  }, [allDayGhost, allDayBars]);
+
   if (columns.length === 0) {
     return (
       <p className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
@@ -386,7 +403,12 @@ export function WeekCalendar({
     );
   }
 
-  const allDayBandH = Math.max(allDayRowCount, 1) * ALLDAY_ROW + 4;
+  // ゴーストが既存より下の段を使う場合はバンドを伸ばす。
+  const effectiveAllDayRows = Math.max(
+    allDayRowCount,
+    ghostAllDayRow != null ? ghostAllDayRow + 1 : 0,
+  );
+  const allDayBandH = Math.max(effectiveAllDayRows, 1) * ALLDAY_ROW + 4;
 
   const blockLabel = (ev: ScheduleEvent) => {
     const pn = placeName(ev.placeId);
@@ -555,16 +577,18 @@ export function WeekCalendar({
                 {b.event.title}
               </button>
             ))}
-            {/* スマホ長押し中のゴースト枠（1日分・行0・半透明） */}
+            {/* スマホ長押し中のゴースト枠（1日分・半透明）。同列に既存
+                バーがあればその下の段に積み上げる（足りなければバンドも伸びる）。 */}
             {allDayGhost && (() => {
               const [, m, d] = allDayGhost.date.split("-");
+              const row = ghostAllDayRow ?? 0;
               return (
                 <div
                   className="pointer-events-none absolute z-20 truncate rounded border border-amber-400 bg-amber-100/50 px-1 text-[11px] leading-tight text-amber-900"
                   style={{
                     left: allDayGhost.columnIndex * COL + 2,
                     width: COL - 4,
-                    top: 2,
+                    top: row * ALLDAY_ROW + 2,
                     height: ALLDAY_ROW - 2,
                   }}
                 >
