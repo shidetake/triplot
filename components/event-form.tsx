@@ -77,7 +77,14 @@ function minToDt(min: number): { date: string; time: string } {
 }
 
 export type EventFormMode =
-  | { mode: "create"; date: string; time: string; tz: string }
+  | {
+      mode: "create";
+      date: string;
+      time: string;
+      tz: string;
+      // 起動時に終日種別を選んでおきたい時のヒント（終日帯の長押し追加経路）。
+      allDay?: boolean;
+    }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
 function TzSelect({ name, value }: { name: string; value: string }) {
@@ -96,8 +103,8 @@ function TzSelect({ name, value }: { name: string; value: string }) {
   );
 }
 
-function initialKind3(ev: ScheduleEvent | null): Kind3 {
-  if (!ev) return "timed";
+function initialKind3(ev: ScheduleEvent | null, allDayHint: boolean): Kind3 {
+  if (!ev) return allDayHint ? "allday" : "timed";
   if (ev.kind === "transit") return "transit";
   if (ev.allDay) return "allday";
   return "timed";
@@ -137,7 +144,9 @@ export function EventForm({
     : createEventAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(action, initialState);
 
-  const [kind3, setKind3] = useState<Kind3>(initialKind3(ev));
+  const [kind3, setKind3] = useState<Kind3>(
+    initialKind3(ev, formMode.mode === "create" && formMode.allDay === true),
+  );
   const [visibility, setVisibility] = useState<Visibility>(
     isEdit ? ev!.visibility : "shared",
   );

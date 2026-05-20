@@ -90,6 +90,23 @@ export function ScheduleSection({
     [defaultTz],
   );
 
+  // 終日帯の空きを長押し→離した時に呼ばれる。終日種別をプリセットで開く。
+  const onAllDaySlotClick = useCallback(
+    (date: string, anchor: Anchor) => {
+      setOpen({
+        form: {
+          mode: "create",
+          date,
+          time: "00:00", // 終日では使われない
+          tz: defaultTz, // 同上
+          allDay: true,
+        },
+        anchor,
+      });
+    },
+    [defaultTz],
+  );
+
   const onEventClick = useCallback(
     (eventId: string, anchor: Anchor) => {
       const ev = events.find((e) => e.id === eventId);
@@ -139,6 +156,7 @@ export function ScheduleSection({
         placeName={placeName}
         selectedEventId={selectedEventId}
         onSlotClick={onSlotClick}
+        onAllDaySlotClick={onAllDaySlotClick}
         onEventClick={onEventClick}
       />
 

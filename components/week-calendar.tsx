@@ -29,6 +29,7 @@ export function WeekCalendar({
   placeName,
   selectedEventId,
   onSlotClick,
+  onAllDaySlotClick,
   onEventClick,
 }: {
   schedule: Schedule;
@@ -40,6 +41,8 @@ export function WeekCalendar({
     minutes: number,
     anchor: Anchor,
   ) => void;
+  // 終日帯の空きを長押し→離して終日予定追加。横ドラッグで日付変更。
+  onAllDaySlotClick: (date: string, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
 }) {
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
@@ -110,14 +113,49 @@ export function WeekCalendar({
     }
     longPressInfo.current = null;
   }, []);
+  // ── 終日帯のゴースト（横ドラッグで日付選択。1日固定） ──
+  type AllDayGhost = { date: string; columnIndex: number };
+  const [allDayGhost, setAllDayGhostState] = useState<AllDayGhost | null>(null);
+  const allDayGhostRef = useRef<AllDayGhost | null>(null);
+  const setAllDayGhost = useCallback((g: AllDayGhost | null) => {
+    allDayGhostRef.current = g;
+    setAllDayGhostState(g);
+  }, []);
+  const allDayLongPressTimer = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+  const allDayLongPressInfo = useRef<{
+    startX: number;
+    startY: number;
+    stripEl: HTMLElement;
+    pressFired: boolean;
+  } | null>(null);
+  const clearAllDayLongPress = useCallback(() => {
+    if (allDayLongPressTimer.current) {
+      clearTimeout(allDayLongPressTimer.current);
+      allDayLongPressTimer.current = null;
+    }
+    allDayLongPressInfo.current = null;
+  }, []);
+  const columnIndexFromX = useCallback(
+    (stripEl: HTMLElement, clientX: number): number => {
+      const rect = stripEl.getBoundingClientRect();
+      return Math.max(
+        0,
+        Math.min(columns.length - 1, Math.floor((clientX - rect.left) / COL)),
+      );
+    },
+    [columns.length, COL],
+  );
+
   // ゴースト表示中はページの touch スクロールを止める（React の onTouchMove
   // は passive なので preventDefault は document の non-passive listener で）。
   useEffect(() => {
-    if (!ghost) return;
+    if (!ghost && !allDayGhost) return;
     const onMove = (e: TouchEvent) => e.preventDefault();
     document.addEventListener("touchmove", onMove, { passive: false });
     return () => document.removeEventListener("touchmove", onMove);
-  }, [ghost]);
+  }, [ghost, allDayGhost]);
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
@@ -187,6 +225,78 @@ export function WeekCalendar({
           <div
             className="relative"
             style={{ width: totalW, height: allDayBandH }}
+            onTouchStart={(e) => {
+              recentTouchUntil.current = performance.now() + 700;
+              // 既存の終日バー上でのタッチは選択用なので長押し対象外
+              const target = e.target as HTMLElement;
+              if (target.closest("button")) return;
+              if (e.touches.length !== 1) {
+                clearAllDayLongPress();
+                return;
+              }
+              const t = e.touches[0];
+              const stripEl = e.currentTarget;
+              clearAllDayLongPress();
+              allDayLongPressInfo.current = {
+                startX: t.clientX,
+                startY: t.clientY,
+                stripEl,
+                pressFired: false,
+              };
+              allDayLongPressTimer.current = setTimeout(() => {
+                allDayLongPressTimer.current = null;
+                const info = allDayLongPressInfo.current;
+                if (!info) return;
+                info.pressFired = true;
+                const idx = columnIndexFromX(info.stripEl, t.clientX);
+                const c = columns[idx];
+                if (!c) return;
+                setAllDayGhost({ date: c.date, columnIndex: idx });
+              }, 500);
+            }}
+            onTouchMove={(e) => {
+              const info = allDayLongPressInfo.current;
+              if (!info) return;
+              const t = e.touches[0];
+              if (!t) return;
+              if (!info.pressFired) {
+                if (
+                  Math.abs(t.clientX - info.startX) > 10 ||
+                  Math.abs(t.clientY - info.startY) > 10
+                ) {
+                  clearAllDayLongPress();
+                }
+                return;
+              }
+              const idx = columnIndexFromX(info.stripEl, t.clientX);
+              const c = columns[idx];
+              const g = allDayGhostRef.current;
+              if (c && g && idx !== g.columnIndex) {
+                setAllDayGhost({ date: c.date, columnIndex: idx });
+              }
+            }}
+            onTouchEnd={() => {
+              const info = allDayLongPressInfo.current;
+              recentTouchUntil.current = performance.now() + 700;
+              clearAllDayLongPress();
+              if (info?.pressFired) {
+                const g = allDayGhostRef.current;
+                if (g) {
+                  const stripRect = info.stripEl.getBoundingClientRect();
+                  const anchorX =
+                    stripRect.left + g.columnIndex * COL + COL / 2;
+                  const anchorY = stripRect.top + stripRect.height / 2;
+                  setAllDayGhost(null);
+                  onAllDaySlotClick(g.date, { x: anchorX, y: anchorY });
+                  return;
+                }
+              }
+              setAllDayGhost(null);
+            }}
+            onTouchCancel={() => {
+              clearAllDayLongPress();
+              setAllDayGhost(null);
+            }}
           >
             {allDayBars.map((b) => (
               <button
@@ -211,6 +321,23 @@ export function WeekCalendar({
                 {b.event.title}
               </button>
             ))}
+            {/* スマホ長押し中のゴースト枠（1日分・行0・半透明） */}
+            {allDayGhost && (() => {
+              const [, m, d] = allDayGhost.date.split("-");
+              return (
+                <div
+                  className="pointer-events-none absolute z-20 truncate rounded border border-amber-400 bg-amber-100/50 px-1 text-[11px] leading-tight text-amber-900"
+                  style={{
+                    left: allDayGhost.columnIndex * COL + 2,
+                    width: COL - 4,
+                    top: 2,
+                    height: ALLDAY_ROW - 2,
+                  }}
+                >
+                  {Number(m)}/{Number(d)}
+                </div>
+              );
+            })()}
           </div>
         </div>
 
