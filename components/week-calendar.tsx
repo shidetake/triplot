@@ -100,10 +100,9 @@ export function WeekCalendar({
   const longPressInfo = useRef<{
     startX: number;
     startY: number;
-    date: string;
-    tz: string;
-    columnIndex: number;
-    columnEl: HTMLElement;
+    // 本体（全列を含む relative コンテナ）。横ドラッグで列を跨ぐので、
+    // 個別の列 el ではなく親で座標→列インデックスに変換する。
+    bodyEl: HTMLElement;
     pressFired: boolean;
   } | null>(null);
   const clearLongPress = useCallback(() => {
@@ -198,11 +197,28 @@ export function WeekCalendar({
         if (dragModeRef.current === "time") {
           const info = longPressInfo.current;
           if (info?.pressFired) {
-            const rect = info.columnEl.getBoundingClientRect();
-            const newMin = Math.max(0, yToMin(pos.y - rect.top) - 30);
+            const bodyRect = info.bodyEl.getBoundingClientRect();
+            const newMin = Math.max(0, yToMin(pos.y - bodyRect.top) - 30);
+            const newIdx = Math.max(
+              0,
+              Math.min(
+                columns.length - 1,
+                Math.floor((pos.x - bodyRect.left) / COL),
+              ),
+            );
+            const newC = columns[newIdx];
             const g = ghostRef.current;
-            if (g && newMin !== g.startMin) {
-              setGhost({ ...g, startMin: newMin });
+            if (
+              newC &&
+              g &&
+              (newMin !== g.startMin || newIdx !== g.columnIndex)
+            ) {
+              setGhost({
+                date: newC.date,
+                tz: newC.tz,
+                columnIndex: newIdx,
+                startMin: newMin,
+              });
             }
           }
         } else if (dragModeRef.current === "allday") {
@@ -242,9 +258,11 @@ export function WeekCalendar({
       let vx = 0;
       let vy = 0;
       if (mode === "time") {
-        // 時刻ゴーストは列固定で縦移動のみ → 縦の端だけ反応
+        // 通常予定は時刻＋日付の両軸を動かせるので、縦/横の両端で反応
         if (clientY < rect.top + EDGE) vy = -SPEED;
         else if (clientY > rect.bottom - EDGE) vy = SPEED;
+        if (clientX < rect.left + EDGE) vx = -SPEED;
+        else if (clientX > rect.right - EDGE) vx = SPEED;
       } else if (mode === "allday") {
         // 終日ゴーストは横移動のみ → 横の端だけ反応
         if (clientX < rect.left + EDGE) vx = -SPEED;
@@ -538,6 +556,11 @@ export function WeekCalendar({
                   }
                   const t = e.touches[0];
                   const colEl = e.currentTarget;
+                  const bodyEl = colEl.parentElement as HTMLElement | null;
+                  if (!bodyEl) {
+                    clearLongPress();
+                    return;
+                  }
                   const rect = colEl.getBoundingClientRect();
                   // 指の30分上を仮ピンの開始時刻に。指で隠れず見やすい。
                   const startMin = Math.max(
@@ -548,12 +571,13 @@ export function WeekCalendar({
                   longPressInfo.current = {
                     startX: t.clientX,
                     startY: t.clientY,
-                    date: c.date,
-                    tz: c.tz,
-                    columnIndex: i,
-                    columnEl: colEl,
+                    bodyEl,
                     pressFired: false,
                   };
+                  // 初期ゴーストは押した列・押した位置の時刻
+                  const initialDate = c.date;
+                  const initialTz = c.tz;
+                  const initialIdx = i;
                   longPressTimer.current = setTimeout(() => {
                     longPressTimer.current = null;
                     const info = longPressInfo.current;
@@ -569,9 +593,9 @@ export function WeekCalendar({
                       y: info.startY,
                     };
                     setGhost({
-                      date: info.date,
-                      tz: info.tz,
-                      columnIndex: info.columnIndex,
+                      date: initialDate,
+                      tz: initialTz,
+                      columnIndex: initialIdx,
                       startMin,
                     });
                   }, 500);
@@ -591,19 +615,35 @@ export function WeekCalendar({
                     }
                     return;
                   }
-                  // 長押し成立後: 縦方向に追従してゴースト時刻を更新
-                  // （onTouchStart と同じく指の30分上に置く）。
+                  // 長押し成立後: 縦＝時刻、横＝日付の両方に追従。
                   dragPosRef.current = { x: t.clientX, y: t.clientY };
-                  const rect = info.columnEl.getBoundingClientRect();
+                  const bodyRect = info.bodyEl.getBoundingClientRect();
                   const newMin = Math.max(
                     0,
-                    yToMin(t.clientY - rect.top) - 30,
+                    yToMin(t.clientY - bodyRect.top) - 30,
                   );
+                  const newIdx = Math.max(
+                    0,
+                    Math.min(
+                      columns.length - 1,
+                      Math.floor((t.clientX - bodyRect.left) / COL),
+                    ),
+                  );
+                  const newC = columns[newIdx];
                   const g = ghostRef.current;
-                  if (g && newMin !== g.startMin) {
-                    setGhost({ ...g, startMin: newMin });
+                  if (
+                    newC &&
+                    g &&
+                    (newMin !== g.startMin || newIdx !== g.columnIndex)
+                  ) {
+                    setGhost({
+                      date: newC.date,
+                      tz: newC.tz,
+                      columnIndex: newIdx,
+                      startMin: newMin,
+                    });
                   }
-                  // 端なら auto-scroll（縦方向）。
+                  // 端なら auto-scroll（縦+横）。
                   updateAutoScroll(t.clientX, t.clientY);
                 }}
                 onTouchEnd={() => {
@@ -617,12 +657,15 @@ export function WeekCalendar({
                   if (info?.pressFired) {
                     const g = ghostRef.current;
                     if (g) {
-                      const rect = info.columnEl.getBoundingClientRect();
-                      // ゴースト枠の中央あたりを anchor に（FormPopover 用）
+                      // 全列を含む本体の rect からゴースト中央位置を計算
+                      // （ドラッグで列が変わっていても正しい anchor になる）。
+                      const bodyRect = info.bodyEl.getBoundingClientRect();
+                      const anchorX =
+                        bodyRect.left + g.columnIndex * COL + COL / 2;
                       const anchorY =
-                        rect.top + ((g.startMin - winStart) / 60) * HOUR_PX +
+                        bodyRect.top +
+                        ((g.startMin - winStart) / 60) * HOUR_PX +
                         HOUR_PX / 2;
-                      const anchorX = rect.left + rect.width / 2;
                       setGhost(null);
                       onSlotClick(g.date, g.tz, g.startMin, {
                         x: anchorX,
