@@ -145,7 +145,11 @@ export function WeekCalendar({
   return (
     <div
       ref={scrollRef}
-      className="max-h-[70vh] overflow-auto rounded-md border border-zinc-200 bg-white"
+      // iOS Safari は長押しで拡大鏡(loupe)＋テキスト選択を出してしまい、
+      // 自前の長押し→ゴースト追加と被って使いにくい。カレンダー内は
+      // 選択不要なので user-select:none / touch-callout:none で抑止する。
+      style={{ WebkitTouchCallout: "none" }}
+      className="max-h-[70vh] select-none overflow-auto rounded-md border border-zinc-200 bg-white"
     >
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
