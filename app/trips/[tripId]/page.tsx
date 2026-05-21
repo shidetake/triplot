@@ -70,7 +70,10 @@ export default async function TripDetailPage({
         "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
-      .order("paid_at", { ascending: false }),
+      // 古い順（新しいものが下）。同 paid_at（時刻未指定の同日 00:00 等）は
+      // 作成順で新しいものが下に来るよう created_at で二次ソート。
+      .order("paid_at", { ascending: true })
+      .order("created_at", { ascending: true }),
     supabase
       .from("place_statuses")
       .select("id, name, color, sort_order, tentative")
