@@ -134,7 +134,7 @@ create table expenses (
   payer_member_id       uuid not null references trip_members(id) on delete cascade,
   splittable            boolean not null default true,
   note                  text,
-  paid_at               timestamptz not null default now(),
+  paid_at               timestamp not null default (now() at time zone 'utc'),
   created_at            timestamptz not null default now(),
   -- private は割り勘不可
   check (visibility = 'shared' or splittable = false)

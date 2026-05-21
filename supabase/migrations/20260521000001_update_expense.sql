@@ -21,7 +21,7 @@ create or replace function public.update_expense(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_place_id          uuid
 )
@@ -155,11 +155,11 @@ end;
 $body$;
 
 revoke all on function public.update_expense(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], uuid
 ) from public;
 grant execute on function public.update_expense(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], uuid
 ) to authenticated;
 
@@ -176,7 +176,7 @@ create or replace function public.update_expense_with_place(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_google_place_id   text,
   p_place_name        text,
@@ -232,11 +232,11 @@ end;
 $body$;
 
 revoke all on function public.update_expense_with_place(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text, text, double precision, double precision, text, text
 ) from public;
 grant execute on function public.update_expense_with_place(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text, text, double precision, double precision, text, text
 ) to authenticated;
 
@@ -253,7 +253,7 @@ create or replace function public.update_expense_with_freetext_place(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_place_name        text
 )
@@ -303,10 +303,10 @@ end;
 $body$;
 
 revoke all on function public.update_expense_with_freetext_place(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text
 ) from public;
 grant execute on function public.update_expense_with_freetext_place(
-  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  uuid, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text
 ) to authenticated;

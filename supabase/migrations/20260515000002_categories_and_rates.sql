@@ -163,7 +163,7 @@ grant execute on function public.create_trip(text, date, date, text, text) to au
 -- create_expense: 新スキーマ対応
 -- ────────────────────────────────────────────────────────────
 drop function if exists public.create_expense(
-  text, numeric, text, uuid, text, boolean, text, timestamptz, uuid[]
+  text, numeric, text, uuid, text, boolean, text, timestamp, uuid[]
 );
 
 create or replace function public.create_expense(
@@ -176,7 +176,7 @@ create or replace function public.create_expense(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[]
 )
 returns uuid
@@ -250,7 +250,7 @@ begin
   values (
     p_trip_id, v_my_member_id, p_visibility, p_local_price, p_local_currency,
     p_rate_to_default, p_category_id, p_payer_member_id, p_splittable,
-    nullif(trim(coalesce(p_note, '')), ''), coalesce(p_paid_at, now())
+    nullif(trim(coalesce(p_note, '')), ''), coalesce(p_paid_at, (now() at time zone 'utc'))
   )
   returning id into v_expense_id;
 
@@ -278,8 +278,8 @@ end;
 $body$;
 
 revoke all on function public.create_expense(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz, uuid[]
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp, uuid[]
 ) from public;
 grant execute on function public.create_expense(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz, uuid[]
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp, uuid[]
 ) to authenticated;

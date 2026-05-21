@@ -25,7 +25,7 @@ create index expenses_place_idx on expenses (place_id);
 -- 旧 create_expense（11 引数）を drop して p_place_id 付き 12 引数で置換
 -- ────────────────────────────────────────────────────────────
 drop function if exists public.create_expense(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz, uuid[]
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp, uuid[]
 );
 
 create or replace function public.create_expense(
@@ -38,7 +38,7 @@ create or replace function public.create_expense(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_place_id          uuid
 )
@@ -125,7 +125,7 @@ begin
   values (
     p_trip_id, v_my_member_id, p_visibility, p_local_price, p_local_currency,
     p_rate_to_default, p_category_id, p_payer_member_id, p_splittable,
-    nullif(trim(coalesce(p_note, '')), ''), coalesce(p_paid_at, now()),
+    nullif(trim(coalesce(p_note, '')), ''), coalesce(p_paid_at, (now() at time zone 'utc')),
     p_place_id
   )
   returning id into v_expense_id;
@@ -154,11 +154,11 @@ end;
 $body$;
 
 revoke all on function public.create_expense(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], uuid
 ) from public;
 grant execute on function public.create_expense(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], uuid
 ) to authenticated;
 
@@ -177,7 +177,7 @@ create or replace function public.create_expense_with_place(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_google_place_id   text,
   p_place_name        text,
@@ -224,11 +224,11 @@ end;
 $body$;
 
 revoke all on function public.create_expense_with_place(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text, text, double precision, double precision, text, text
 ) from public;
 grant execute on function public.create_expense_with_place(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text, text, double precision, double precision, text, text
 ) to authenticated;
 
@@ -246,7 +246,7 @@ create or replace function public.create_expense_with_freetext_place(
   p_visibility        text,
   p_splittable        boolean,
   p_note              text,
-  p_paid_at           timestamptz,
+  p_paid_at           timestamp,
   p_split_member_ids  uuid[],
   p_place_name        text
 )
@@ -287,10 +287,10 @@ end;
 $body$;
 
 revoke all on function public.create_expense_with_freetext_place(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text
 ) from public;
 grant execute on function public.create_expense_with_freetext_place(
-  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamptz,
+  text, numeric, text, numeric, uuid, uuid, text, boolean, text, timestamp,
   uuid[], text
 ) to authenticated;
