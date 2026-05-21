@@ -157,10 +157,13 @@ export async function updateExpenseAction(
   const splittable =
     visibility === "shared" && formData.get("splittable") === "on";
   const note = ((formData.get("note") as string | null) ?? "").trim();
-  const paidAtRaw = (formData.get("paid_at") as string | null) ?? "";
-  const paidAt = paidAtRaw
-    ? `${paidAtRaw}T00:00:00`
-    : new Date().toISOString();
+  // create と同じく日付+時刻を結合（TZ 付けず wall clock として送る）。
+  const dateRaw = (formData.get("paid_at_date") as string | null) ?? "";
+  const timeRaw = (formData.get("paid_at_time") as string | null) ?? "";
+  const paidAt =
+    dateRaw && timeRaw
+      ? `${dateRaw}T${timeRaw}:00`
+      : new Date().toISOString();
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
