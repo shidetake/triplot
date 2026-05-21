@@ -30,6 +30,13 @@ export type Category = {
 
 const initialState: CreateExpenseState = { ok: false, error: null };
 
+function nowHHMM(): string {
+  const d = new Date();
+  const h = String(d.getHours()).padStart(2, "0");
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h}:${m}`;
+}
+
 export function ExpenseForm({
   tripId,
   members,
@@ -71,9 +78,13 @@ export function ExpenseForm({
     ? editExpense.local_currency
     : initialCurrency;
   const initCategoryId = isEdit ? editExpense.category_id : initialCategoryId;
-  const initPaidAt = isEdit
+  const initPaidAtDate = isEdit
     ? editExpense.paid_at.slice(0, 10)
     : initialPaidAt;
+  // 編集時は保存済みの時刻、新規は端末の現在時刻スナップショットを既定に。
+  const initPaidAtTime = isEdit
+    ? editExpense.paid_at.slice(11, 16)
+    : nowHHMM();
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";
@@ -92,7 +103,8 @@ export function ExpenseForm({
 
   const [localCurrency, setLocalCurrency] = useState<Currency>(initCurrency);
   const [categoryId, setCategoryId] = useState<string>(initCategoryId);
-  const [paidAt, setPaidAt] = useState<string>(initPaidAt);
+  const [paidAtDate, setPaidAtDate] = useState<string>(initPaidAtDate);
+  const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
   const [visibility, setVisibility] = useState<Visibility>(initVisibility);
   const [splittable, setSplittable] = useState(initSplittable);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
@@ -306,16 +318,31 @@ export function ExpenseForm({
         </select>
       </label>
 
-      <label className="block text-sm">
-        <span className="font-medium">日付</span>
-        <input
-          type="date"
-          name="paid_at"
-          value={paidAt}
-          onChange={(e) => setPaidAt(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-        />
-      </label>
+      {/* 日付＋時刻（予定フォームと同じく1行で左:日付・右:時刻） */}
+      <div className="grid grid-cols-2 gap-2">
+        <label className="block min-w-0 text-sm">
+          <span className="font-medium">日付</span>
+          <input
+            type="date"
+            name="paid_at_date"
+            required
+            value={paidAtDate}
+            onChange={(e) => setPaidAtDate(e.target.value)}
+            className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          />
+        </label>
+        <label className="block min-w-0 text-sm">
+          <span className="font-medium">時刻</span>
+          <input
+            type="time"
+            name="paid_at_time"
+            required
+            value={paidAtTime}
+            onChange={(e) => setPaidAtTime(e.target.value)}
+            className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          />
+        </label>
+      </div>
 
       {canChangeVisibility ? (
         <fieldset className="text-sm">

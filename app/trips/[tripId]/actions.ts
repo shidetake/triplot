@@ -38,12 +38,15 @@ export async function createExpenseAction(
   const splittable =
     visibility === "shared" && formData.get("splittable") === "on";
   const note = ((formData.get("note") as string | null) ?? "").trim();
-  const paidAtRaw = (formData.get("paid_at") as string | null) ?? "";
-  // <input type="date"> は "YYYY-MM-DD"。timestamptz として送るため T00:00 を足す。
-  // 未入力なら現在時刻（DB 側 coalesce もあるが型を string に保つ）。
-  const paidAt = paidAtRaw
-    ? `${paidAtRaw}T00:00:00`
-    : new Date().toISOString();
+  // 日付 + 時刻を結合して "YYYY-MM-DDTHH:MM:00" にする（タイムゾーン
+  // 指定なし）。Supabase の session TZ は UTC なので、この文字列は UTC
+  // 壁時計として保存され、読み戻しても同じ wall clock が得られる。
+  const dateRaw = (formData.get("paid_at_date") as string | null) ?? "";
+  const timeRaw = (formData.get("paid_at_time") as string | null) ?? "";
+  const paidAt =
+    dateRaw && timeRaw
+      ? `${dateRaw}T${timeRaw}:00`
+      : new Date().toISOString();
 
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 

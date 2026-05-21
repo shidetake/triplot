@@ -206,7 +206,7 @@ function ExpenseRowItem({
             )}
           </div>
           <div className="mt-1 text-xs text-zinc-600">
-            <span>{formatDate(expense.paid_at)}</span>
+            <span>{formatDateTime(expense.paid_at)}</span>
             <span className="mx-1">・</span>
             <span>支払: {payerName}</span>
             {splitNames && (
@@ -249,7 +249,13 @@ function formatAmount(amount: number, currency: Currency): string {
   return formatter.format(amount);
 }
 
-function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getMonth() + 1}/${d.getDate()}`;
+// paid_at は wall clock として保存している（フォームで送る文字列に TZ を
+// 付けず Supabase session(UTC) で解釈させ、読み戻しの UTC 表現がそのまま
+// 入力時の壁時計になる）。ここでは Date 経由ではなく文字列スライスで
+// 取り出し、表示時のローカル TZ ズレを避ける。
+function formatDateTime(iso: string): string {
+  const [, mo, d] = iso.slice(0, 10).split("-").map(Number);
+  const hhmm = iso.slice(11, 16);
+  // 時刻未入力で作成された既存データは 00:00 のはず。日付だけ出す。
+  return hhmm === "00:00" ? `${mo}/${d}` : `${mo}/${d} ${hhmm}`;
 }
