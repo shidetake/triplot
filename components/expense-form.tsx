@@ -81,10 +81,11 @@ export function ExpenseForm({
   const initPaidAtDate = isEdit
     ? editExpense.paid_at.slice(0, 10)
     : initialPaidAt;
-  // 編集時は保存済みの時刻、新規は端末の現在時刻スナップショットを既定に。
-  const initPaidAtTime = isEdit
-    ? editExpense.paid_at.slice(11, 16)
-    : nowHHMM();
+  // 時刻は「指定したい人だけ」展開して入れるトグル方式。未展開時は 00:00
+  // で送信し、一覧でも時刻表示が出ない（formatDateTime の挙動）。
+  // 編集時は保存済み時刻が 00:00 以外なら最初から展開、新規は折りたたみ。
+  const initPaidAtTime = isEdit ? editExpense.paid_at.slice(11, 16) : "00:00";
+  const initShowTime = isEdit ? initPaidAtTime !== "00:00" : false;
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";
@@ -105,6 +106,20 @@ export function ExpenseForm({
   const [categoryId, setCategoryId] = useState<string>(initCategoryId);
   const [paidAtDate, setPaidAtDate] = useState<string>(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
+  const [showTime, setShowTime] = useState<boolean>(initShowTime);
+
+  const expandTime = () => {
+    // 折りたたみ状態（時刻=00:00）から開く時、いきなり 00:00 のままより
+    // 今の時刻を初期表示した方が編集が楽。一度入れた値があればそれを残す。
+    if (paidAtTime === "00:00") setPaidAtTime(nowHHMM());
+    setShowTime(true);
+  };
+  const collapseTime = () => {
+    // 折りたたむ = 「時刻は気にしない」。00:00 戻しでフォーム経由で送る値も
+    // 00:00 にする（一覧で時刻非表示）。
+    setPaidAtTime("00:00");
+    setShowTime(false);
+  };
   const [visibility, setVisibility] = useState<Visibility>(initVisibility);
   const [splittable, setSplittable] = useState(initSplittable);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
@@ -318,7 +333,7 @@ export function ExpenseForm({
         </select>
       </label>
 
-      {/* 日付＋時刻（予定フォームと同じく1行で左:日付・右:時刻） */}
+      {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
         <label className="block min-w-0 text-sm">
           <span className="font-medium">日付</span>
@@ -331,17 +346,54 @@ export function ExpenseForm({
             className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
           />
         </label>
-        <label className="block min-w-0 text-sm">
-          <span className="font-medium">時刻</span>
-          <input
-            type="time"
-            name="paid_at_time"
-            required
-            value={paidAtTime}
-            onChange={(e) => setPaidAtTime(e.target.value)}
-            className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-          />
-        </label>
+        {showTime ? (
+          <div className="block min-w-0 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-medium">時刻</span>
+              <button
+                type="button"
+                onClick={collapseTime}
+                aria-label="時刻をやめる"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+              >
+                <svg
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.75"
+                  strokeLinecap="round"
+                  className="h-3 w-3"
+                  aria-hidden="true"
+                >
+                  <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+                </svg>
+              </button>
+            </div>
+            <input
+              type="time"
+              name="paid_at_time"
+              required
+              value={paidAtTime}
+              onChange={(e) => setPaidAtTime(e.target.value)}
+              className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+            />
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-col text-sm">
+            {/* 日付ラベルと縦位置を揃えるためのダミー */}
+            <span aria-hidden className="invisible font-medium">
+              時刻
+            </span>
+            <button
+              type="button"
+              onClick={expandTime}
+              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-900"
+            >
+              ＋ 時刻を指定
+            </button>
+            <input type="hidden" name="paid_at_time" value="00:00" />
+          </div>
+        )}
       </div>
 
       {canChangeVisibility ? (

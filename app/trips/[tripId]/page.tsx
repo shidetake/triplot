@@ -244,13 +244,11 @@ export default async function TripDetailPage({
     categories.find((c) => c.name === "その他")?.id ??
     categories[0]?.id ??
     "";
+  // 初回（費用ゼロ）は旅行開始日、それ以降は最後に作った費用の日を既定に。
+  // 開始日未設定の trip では今日にフォールバック。
   const initialPaidAt = lastEntered
     ? lastEntered.paid_at.slice(0, 10)
-    : trip.start_date && today < trip.start_date
-      ? trip.start_date
-      : trip.end_date && today > trip.end_date
-        ? trip.end_date
-        : today;
+    : (trip.start_date ?? today);
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
