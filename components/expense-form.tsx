@@ -30,12 +30,8 @@ export type Category = {
 
 const initialState: CreateExpenseState = { ok: false, error: null };
 
-function nowHHMM(): string {
-  const d = new Date();
-  const h = String(d.getHours()).padStart(2, "0");
-  const m = String(d.getMinutes()).padStart(2, "0");
-  return `${h}:${m}`;
-}
+// 時刻トグルを開いた直後の "12:00" を表す定数（揃え）。
+const DEFAULT_TIME_ON_EXPAND = "12:00";
 
 export function ExpenseForm({
   tripId,
@@ -108,10 +104,26 @@ export function ExpenseForm({
   const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
   const [showTime, setShowTime] = useState<boolean>(initShowTime);
 
+  // 「＋ 時刻を指定」を押した直後に時刻 input にフォーカス＆ピッカーを開く
+  // ためのフラグ。callback ref で input が mount した瞬間に拾う。
+  const justExpandedRef = useRef(false);
+  const timeInputCallback = (node: HTMLInputElement | null) => {
+    if (!node || !justExpandedRef.current) return;
+    justExpandedRef.current = false;
+    node.focus();
+    try {
+      // showPicker は一部環境で user activation 切れ等で例外を投げる。
+      // 失敗しても focus は当たっているので体感的にすぐ入力できる。
+      node.showPicker();
+    } catch {
+      /* noop */
+    }
+  };
+
   const expandTime = () => {
-    // 折りたたみ状態（時刻=00:00）から開く時、いきなり 00:00 のままより
-    // 今の時刻を初期表示した方が編集が楽。一度入れた値があればそれを残す。
-    if (paidAtTime === "00:00") setPaidAtTime(nowHHMM());
+    // 初期値は 12:00 固定（雑に入れる人向けのプリセット）。
+    setPaidAtTime(DEFAULT_TIME_ON_EXPAND);
+    justExpandedRef.current = true;
     setShowTime(true);
   };
   const collapseTime = () => {
@@ -370,6 +382,7 @@ export function ExpenseForm({
               </button>
             </div>
             <input
+              ref={timeInputCallback}
               type="time"
               name="paid_at_time"
               required
