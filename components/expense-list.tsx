@@ -67,8 +67,6 @@ export function ExpenseList({
   const memberById = new Map(members.map((m) => [m.id, m]));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
-  // 複数TZ旅程のときだけ、各費用に現地TZの都市名を添える。
-  const showTz = tzTimeline.transits.length > 0;
 
   // 行タップで編集ポップオーバーを開く。anchor はクリック位置。
   const [editing, setEditing] = useState<{
@@ -97,7 +95,6 @@ export function ExpenseList({
               e.place_id ? (placeNameById.get(e.place_id) ?? null) : null
             }
             defaultCurrency={defaultCurrency}
-            showTz={showTz}
             canDelete={
               e.visibility === "private"
                 ? e.created_by_member_id === myMemberId
@@ -142,7 +139,6 @@ function ExpenseRowItem({
   category,
   placeName,
   defaultCurrency,
-  showTz,
   canDelete,
   onEdit,
 }: {
@@ -152,7 +148,6 @@ function ExpenseRowItem({
   category: Category | undefined;
   placeName: string | null;
   defaultCurrency: Currency;
-  showTz: boolean;
   canDelete: boolean;
   onEdit: (anchor: Anchor) => void;
 }) {
@@ -167,9 +162,6 @@ function ExpenseRowItem({
     : null;
 
   const isForeign = expense.local_currency !== defaultCurrency;
-  // 時刻を指定した費用だけ TZ を意識する方針なので、TZ 都市名も時刻が
-  // あるときだけ添える（00:00=時刻未指定は日付のみ→TZ も出さない）。
-  const hasTime = expense.paid_at.slice(11, 16) !== "00:00";
   const amountInDefault = expense.local_price * expense.rate_to_default;
 
   const onDelete = () => {
@@ -219,17 +211,11 @@ function ExpenseRowItem({
             )}
           </div>
           <div className="mt-1 text-xs text-zinc-600">
-            <span>{formatDateTime(expense.paid_at)}</span>
-            {showTz && hasTime && (
-              <span className="ml-1 text-zinc-400">
-                ({tzCity(expense.tz)})
-              </span>
-            )}
-            <span className="mx-1">・</span>
+            <span>{formatDateTime(expense.paid_at)}</span>{" "}
             <span>支払: {payerName}</span>
             {splitNames && (
               <>
-                <span className="mx-1">・</span>
+                {" "}
                 <span>割勘: {splitNames}</span>
               </>
             )}
@@ -271,11 +257,6 @@ function formatAmount(amount: number, currency: Currency): string {
 // 付けず Supabase session(UTC) で解釈させ、読み戻しの UTC 表現がそのまま
 // 入力時の壁時計になる）。ここでは Date 経由ではなく文字列スライスで
 // 取り出し、表示時のローカル TZ ズレを避ける。
-// IANA TZ から都市名だけ取り出す（"Pacific/Honolulu" → "Honolulu"）。
-function tzCity(iana: string): string {
-  return iana.split("/").pop()?.replace(/_/g, " ") ?? iana;
-}
-
 function formatDateTime(iso: string): string {
   const [, mo, d] = iso.slice(0, 10).split("-").map(Number);
   const hhmm = iso.slice(11, 16);
