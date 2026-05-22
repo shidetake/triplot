@@ -167,6 +167,9 @@ function ExpenseRowItem({
     : null;
 
   const isForeign = expense.local_currency !== defaultCurrency;
+  // 時刻を指定した費用だけ TZ を意識する方針なので、TZ 都市名も時刻が
+  // あるときだけ添える（00:00=時刻未指定は日付のみ→TZ も出さない）。
+  const hasTime = expense.paid_at.slice(11, 16) !== "00:00";
   const amountInDefault = expense.local_price * expense.rate_to_default;
 
   const onDelete = () => {
@@ -217,7 +220,7 @@ function ExpenseRowItem({
           </div>
           <div className="mt-1 text-xs text-zinc-600">
             <span>{formatDateTime(expense.paid_at)}</span>
-            {showTz && (
+            {showTz && hasTime && (
               <span className="ml-1 text-zinc-400">
                 ({tzCity(expense.tz)})
               </span>

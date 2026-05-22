@@ -447,15 +447,16 @@ export function ExpenseForm({
         )}
       </div>
 
-      {/* タイムゾーン。サーバへは常に hidden で送る。複数TZ旅程のときだけ
-          見せる：通常日は現地TZの控えめ表示、乗継日は出発/到着の2択。 */}
+      {/* タイムゾーン。サーバへは常に hidden で送る（内部は保持）。
+          時刻を指定したときだけ意味を持つので、表示も showTime のときだけ。
+          複数TZ旅程の通常日は控えめ表示、乗継日は出発/到着の2択。 */}
       <input type="hidden" name="tz" value={tz} />
-      {multiTz &&
+      {showTime &&
+        multiTz &&
         (tzRes.kind === "ambiguous" ? (
           <fieldset className="text-sm">
-            <legend className="font-medium">この日の現地タイムゾーン</legend>
-            <p className="mt-0.5 text-[11px] text-zinc-500">
-              移動日です。どちら側で使ったか選んでください。
+            <p className="text-[11px] text-zinc-500">
+              移動日です。どちらのタイムゾーンで使ったか選んでください。
             </p>
             <div className="mt-1 flex flex-col gap-1">
               <label className="inline-flex items-center gap-2">
