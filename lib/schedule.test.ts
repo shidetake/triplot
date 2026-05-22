@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   buildSchedule,
+  buildTripTzTimeline,
   formatDayLabel,
   parseWall,
+  resolveExpenseTz,
   type ScheduleEvent,
 } from "./schedule";
 
@@ -23,6 +25,81 @@ function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEven
     ...p,
   };
 }
+
+describe("resolveExpenseTz: 旅程からTZを引く", () => {
+  // 成田(JST)→ホノルル(HST)。時差>飛行時間で到着暦日が出発と同じ(5/22)。
+  // 復路は逆で 5/28 発(HST) → 5/30 着(JST)、5/29 は空の上。
+  const events: ScheduleEvent[] = [
+    ev({
+      id: "out",
+      kind: "transit",
+      startAt: "2026-05-22T20:00:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-05-22T09:00:00",
+      endTz: "Pacific/Honolulu",
+    }),
+    ev({
+      id: "ret",
+      kind: "transit",
+      startAt: "2026-05-28T11:00:00",
+      startTz: "Pacific/Honolulu",
+      endAt: "2026-05-30T15:00:00",
+      endTz: "Asia/Tokyo",
+    }),
+  ];
+  const tl = buildTripTzTimeline(events);
+
+  it("出発前は出発TZ(JST)", () => {
+    expect(resolveExpenseTz("2026-05-21", tl)).toEqual({
+      kind: "single",
+      tz: "Asia/Tokyo",
+    });
+  });
+  it("往路の乗継日(出発日==到着日)は ambiguous", () => {
+    expect(resolveExpenseTz("2026-05-22", tl)).toEqual({
+      kind: "ambiguous",
+      departTz: "Asia/Tokyo",
+      arriveTz: "Pacific/Honolulu",
+    });
+  });
+  it("滞在中は到着TZ(HST)", () => {
+    expect(resolveExpenseTz("2026-05-25", tl)).toEqual({
+      kind: "single",
+      tz: "Pacific/Honolulu",
+    });
+  });
+  it("復路の出発日は出発TZ(HST)", () => {
+    expect(resolveExpenseTz("2026-05-28", tl)).toEqual({
+      kind: "single",
+      tz: "Pacific/Honolulu",
+    });
+  });
+  it("復路で空の上の暦日は到着側(JST)に寄せる", () => {
+    expect(resolveExpenseTz("2026-05-29", tl)).toEqual({
+      kind: "single",
+      tz: "Asia/Tokyo",
+    });
+  });
+  it("復路の到着日(JST)と帰国後", () => {
+    expect(resolveExpenseTz("2026-05-30", tl)).toEqual({
+      kind: "single",
+      tz: "Asia/Tokyo",
+    });
+    expect(resolveExpenseTz("2026-06-01", tl)).toEqual({
+      kind: "single",
+      tz: "Asia/Tokyo",
+    });
+  });
+  it("transit が無ければ常に fallback（最初の非終日イベントのTZ）", () => {
+    const tl2 = buildTripTzTimeline([
+      ev({ id: "a", startTz: "Europe/Paris" }),
+    ]);
+    expect(resolveExpenseTz("2026-05-22", tl2)).toEqual({
+      kind: "single",
+      tz: "Europe/Paris",
+    });
+  });
+});
 
 describe("壁時計・日付ユーティリティ", () => {
   it("parseWall は日付と分を取り出す（Date解釈しない）", () => {

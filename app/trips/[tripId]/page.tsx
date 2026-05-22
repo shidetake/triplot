@@ -15,6 +15,7 @@ import {
   calculateExpenseSummary,
   type SummaryExpense,
 } from "@/lib/expenseSummary";
+import { buildTripTzTimeline } from "@/lib/schedule";
 import {
   calculateSettlements,
   type SettlementExpense,
@@ -67,12 +68,13 @@ export default async function TripDetailPage({
     supabase
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
-      // 古い順（新しいものが下）。同 paid_at（時刻未指定の同日 00:00 等）は
-      // 作成順で新しいものが下に来るよう created_at で二次ソート。
-      .order("paid_at", { ascending: true })
+      // 発生順（古い→新しい、新しいものが下）。occurred_at は壁時計をその
+      // 費用の TZ で解釈した絶対時刻なので、跨TZでも正しく時系列に並ぶ。
+      // 同 occurred_at は作成順で安定させる。
+      .order("occurred_at", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
       .from("place_statuses")
@@ -121,6 +123,7 @@ export default async function TripDetailPage({
     created_by_member_id: e.created_by_member_id,
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
     place_id: e.place_id,
+    tz: e.tz,
   }));
 
   const placeStatuses: PlaceStatus[] = (placeStatusesRaw ?? []).map((s) => ({
@@ -177,6 +180,8 @@ export default async function TripDetailPage({
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
+  // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
+  const tzTimeline = buildTripTzTimeline(scheduleEvents);
   // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
   const placesBiasCenter =
     centroid(
@@ -327,6 +332,7 @@ export default async function TripDetailPage({
           initialPaidAt={initialPaidAt}
           places={placesForPicker}
           biasCenter={placesBiasCenter}
+          tzTimeline={tzTimeline}
         />
 
         <ExpenseSummaryView
@@ -349,6 +355,7 @@ export default async function TripDetailPage({
           averageRates={averageRates}
           initialPaidAt={initialPaidAt}
           biasCenter={placesBiasCenter}
+          tzTimeline={tzTimeline}
           myMemberId={me.id}
         />
       </section>

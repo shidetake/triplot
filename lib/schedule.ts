@@ -415,3 +415,77 @@ export function buildSchedule(
     window: FULL_DAY_WINDOW,
   };
 }
+
+// ──────────────────────────────────────────────
+// 旅程のTZタイムライン（費用の壁時計→絶対時刻の解決に使う）
+// ──────────────────────────────────────────────
+
+/** 旅程から導いた、日付→TZ を引くための最小情報（serializable）。 */
+export type TripTzTimeline = {
+  /** transit が無い時の既定TZ（最初の非終日イベント由来、無ければ UTC） */
+  fallbackTz: string;
+  /** 出発時刻順に並んだ移動。各区間の境界になる */
+  transits: {
+    departDate: string;
+    arriveDate: string;
+    departTz: string;
+    arriveTz: string;
+  }[];
+};
+
+export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
+  const transits = events
+    .filter((e) => e.kind === "transit" && e.endAt && e.endTz)
+    .sort((a, b) =>
+      a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0,
+    )
+    .map((t) => ({
+      departDate: parseWall(t.startAt).date,
+      arriveDate: parseWall(t.endAt as string).date,
+      departTz: t.startTz,
+      arriveTz: t.endTz as string,
+    }));
+  const fallbackTz = events.find((e) => !e.allDay)?.startTz ?? "UTC";
+  return { fallbackTz, transits };
+}
+
+export type TzResolution =
+  | { kind: "single"; tz: string }
+  // 同一暦日に出発側/到着側の両TZがある乗継日。どちらか選ばせる。
+  | { kind: "ambiguous"; departTz: string; arriveTz: string };
+
+/**
+ * その日付に費用が発生したと仮定したときの現地TZを旅程から引く。
+ * 乗継日（出発日==到着日）だけは一意に決まらないので ambiguous を返す。
+ */
+export function resolveExpenseTz(
+  date: string,
+  tl: TripTzTimeline,
+): TzResolution {
+  const { transits, fallbackTz } = tl;
+  if (transits.length === 0) return { kind: "single", tz: fallbackTz };
+
+  // 最初の移動より前は、その移動の出発TZにいる。
+  let currentTz = transits[0].departTz;
+  for (const t of transits) {
+    if (cmpDate(date, t.departDate) < 0) {
+      return { kind: "single", tz: currentTz };
+    }
+    if (date === t.departDate && date === t.arriveDate) {
+      return { kind: "ambiguous", departTz: t.departTz, arriveTz: t.arriveTz };
+    }
+    if (date === t.departDate) {
+      return { kind: "single", tz: t.departTz };
+    }
+    if (cmpDate(date, t.departDate) > 0 && cmpDate(date, t.arriveDate) < 0) {
+      // 暦日まるごと空の上 → 到着側に寄せる
+      return { kind: "single", tz: t.arriveTz };
+    }
+    if (date === t.arriveDate) {
+      return { kind: "single", tz: t.arriveTz };
+    }
+    // この移動より後ろ → 到着TZへ進んで次の移動を見る
+    currentTz = t.arriveTz;
+  }
+  return { kind: "single", tz: currentTz };
+}

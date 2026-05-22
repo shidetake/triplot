@@ -10,10 +10,23 @@ import {
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
+import {
+  resolveExpenseTz,
+  type TripTzTimeline,
+} from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 
+import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
+
+function tzLabel(iana: string): string {
+  return (
+    TIMEZONE_OPTIONS.find((o) => o.value === iana)?.label ??
+    iana.split("/").pop()?.replace(/_/g, " ") ??
+    iana
+  );
+}
 
 type Member = {
   id: string;
@@ -45,6 +58,7 @@ export function ExpenseForm({
   initialPaidAt, // = 最後に入力した費用の日付
   places,
   biasCenter, // Google 検索の地理バイアス（既存ピン重心 or 東京）
+  tzTimeline, // 旅程から日付→TZ を引くタイムライン（費用の発生TZ推定）
   // 編集モード。指定があると update 経路になり、各フィールドはこの値で
   // プリフィル。未指定なら従来通り新規作成。
   editExpense,
@@ -62,6 +76,7 @@ export function ExpenseForm({
   initialPaidAt: string;
   places: { id: string; name: string }[];
   biasCenter: LatLng;
+  tzTimeline: TripTzTimeline;
   editExpense?: ExpenseRow;
   canChangeVisibility?: boolean;
   onDone?: () => void;
@@ -103,6 +118,29 @@ export function ExpenseForm({
   const [paidAtDate, setPaidAtDate] = useState<string>(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
   const [showTime, setShowTime] = useState<boolean>(initShowTime);
+
+  // 費用の発生TZ。編集時は保存値、新規は日付から旅程推測（乗継日は出発側を
+  // 既定にして、下の2択でユーザが変えられる）。日付変更時に追従させる。
+  const initTz = isEdit
+    ? editExpense.tz
+    : (() => {
+        const r = resolveExpenseTz(initPaidAtDate, tzTimeline);
+        return r.kind === "single" ? r.tz : r.departTz;
+      })();
+  const [tz, setTz] = useState<string>(initTz);
+  // 今選ばれている日付に対する解決結果（single か 乗継日 ambiguous か）。
+  const tzRes = useMemo(
+    () => resolveExpenseTz(paidAtDate, tzTimeline),
+    [paidAtDate, tzTimeline],
+  );
+  const multiTz = tzTimeline.transits.length > 0;
+
+  const onDateChange = (newDate: string) => {
+    setPaidAtDate(newDate);
+    // 日付が変わったら TZ も推測し直す（乗継日は出発側を既定）。
+    const r = resolveExpenseTz(newDate, tzTimeline);
+    setTz(r.kind === "single" ? r.tz : r.departTz);
+  };
 
   // 「＋ 時刻を指定」を押した直後に時刻 input にフォーカス＆ピッカーを開く
   // ためのフラグ。callback ref で input が mount した瞬間に拾う。
@@ -354,7 +392,7 @@ export function ExpenseForm({
             name="paid_at_date"
             required
             value={paidAtDate}
-            onChange={(e) => setPaidAtDate(e.target.value)}
+            onChange={(e) => onDateChange(e.target.value)}
             className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
           />
         </label>
@@ -408,6 +446,43 @@ export function ExpenseForm({
           </div>
         )}
       </div>
+
+      {/* タイムゾーン。サーバへは常に hidden で送る。複数TZ旅程のときだけ
+          見せる：通常日は現地TZの控えめ表示、乗継日は出発/到着の2択。 */}
+      <input type="hidden" name="tz" value={tz} />
+      {multiTz &&
+        (tzRes.kind === "ambiguous" ? (
+          <fieldset className="text-sm">
+            <legend className="font-medium">この日の現地タイムゾーン</legend>
+            <p className="mt-0.5 text-[11px] text-zinc-500">
+              移動日です。どちら側で使ったか選んでください。
+            </p>
+            <div className="mt-1 flex flex-col gap-1">
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="tz_choice"
+                  checked={tz === tzRes.departTz}
+                  onChange={() => setTz(tzRes.departTz)}
+                />
+                <span>出発側: {tzLabel(tzRes.departTz)}</span>
+              </label>
+              <label className="inline-flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="tz_choice"
+                  checked={tz === tzRes.arriveTz}
+                  onChange={() => setTz(tzRes.arriveTz)}
+                />
+                <span>到着側: {tzLabel(tzRes.arriveTz)}</span>
+              </label>
+            </div>
+          </fieldset>
+        ) : (
+          <p className="text-xs text-zinc-500">
+            現地タイムゾーン: {tzLabel(tz)}
+          </p>
+        ))}
 
       {canChangeVisibility ? (
         <fieldset className="text-sm">

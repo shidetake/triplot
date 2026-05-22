@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { deleteExpenseAction } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
+import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 
 import { type Category, ExpenseForm } from "./expense-form";
@@ -24,6 +25,7 @@ export type ExpenseRow = {
   created_by_member_id: string;
   split_member_ids: string[];
   place_id: string | null;
+  tz: string;
 };
 
 type Member = {
@@ -43,6 +45,7 @@ export function ExpenseList({
   averageRates,
   initialPaidAt,
   biasCenter,
+  tzTimeline,
   myMemberId,
 }: {
   tripId: string;
@@ -58,11 +61,14 @@ export function ExpenseList({
   averageRates: Partial<Record<Currency, number>>;
   initialPaidAt: string;
   biasCenter: LatLng;
+  tzTimeline: TripTzTimeline;
   myMemberId: string;
 }) {
   const memberById = new Map(members.map((m) => [m.id, m]));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
+  // 複数TZ旅程のときだけ、各費用に現地TZの都市名を添える。
+  const showTz = tzTimeline.transits.length > 0;
 
   // 行タップで編集ポップオーバーを開く。anchor はクリック位置。
   const [editing, setEditing] = useState<{
@@ -91,6 +97,7 @@ export function ExpenseList({
               e.place_id ? (placeNameById.get(e.place_id) ?? null) : null
             }
             defaultCurrency={defaultCurrency}
+            showTz={showTz}
             canDelete={
               e.visibility === "private"
                 ? e.created_by_member_id === myMemberId
@@ -115,6 +122,7 @@ export function ExpenseList({
             initialPaidAt={initialPaidAt}
             places={places}
             biasCenter={biasCenter}
+            tzTimeline={tzTimeline}
             editExpense={editing.expense}
             canChangeVisibility={
               editing.expense.created_by_member_id === myMemberId
@@ -134,6 +142,7 @@ function ExpenseRowItem({
   category,
   placeName,
   defaultCurrency,
+  showTz,
   canDelete,
   onEdit,
 }: {
@@ -143,6 +152,7 @@ function ExpenseRowItem({
   category: Category | undefined;
   placeName: string | null;
   defaultCurrency: Currency;
+  showTz: boolean;
   canDelete: boolean;
   onEdit: (anchor: Anchor) => void;
 }) {
@@ -207,6 +217,11 @@ function ExpenseRowItem({
           </div>
           <div className="mt-1 text-xs text-zinc-600">
             <span>{formatDateTime(expense.paid_at)}</span>
+            {showTz && (
+              <span className="ml-1 text-zinc-400">
+                ({tzCity(expense.tz)})
+              </span>
+            )}
             <span className="mx-1">・</span>
             <span>支払: {payerName}</span>
             {splitNames && (
@@ -253,6 +268,11 @@ function formatAmount(amount: number, currency: Currency): string {
 // 付けず Supabase session(UTC) で解釈させ、読み戻しの UTC 表現がそのまま
 // 入力時の壁時計になる）。ここでは Date 経由ではなく文字列スライスで
 // 取り出し、表示時のローカル TZ ズレを避ける。
+// IANA TZ から都市名だけ取り出す（"Pacific/Honolulu" → "Honolulu"）。
+function tzCity(iana: string): string {
+  return iana.split("/").pop()?.replace(/_/g, " ") ?? iana;
+}
+
 function formatDateTime(iso: string): string {
   const [, mo, d] = iso.slice(0, 10).split("-").map(Number);
   const hhmm = iso.slice(11, 16);

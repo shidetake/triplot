@@ -47,6 +47,8 @@ export async function createExpenseAction(
     dateRaw && timeRaw
       ? `${dateRaw}T${timeRaw}:00`
       : new Date().toISOString();
+  // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
+  const tz = ((formData.get("tz") as string | null) ?? "").trim();
 
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
@@ -87,6 +89,7 @@ export async function createExpenseAction(
     p_note: note, // 空文字は DB 側 nullif で NULL になる
     p_paid_at: paidAt,
     p_split_member_ids: splittable ? splitMemberIds : [],
+    p_tz: tz,
   };
 
   let error: { message: string } | null = null;
@@ -164,6 +167,8 @@ export async function updateExpenseAction(
     dateRaw && timeRaw
       ? `${dateRaw}T${timeRaw}:00`
       : new Date().toISOString();
+  // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
+  const tz = ((formData.get("tz") as string | null) ?? "").trim();
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
@@ -202,6 +207,7 @@ export async function updateExpenseAction(
     p_note: note,
     p_paid_at: paidAt,
     p_split_member_ids: splittable ? splitMemberIds : [],
+    p_tz: tz,
   };
 
   let error: { message: string } | null = null;
