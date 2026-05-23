@@ -19,7 +19,7 @@ import {
 import { boundsOf, centerOf, type LatLng, TOKYO } from "@/lib/placeMap";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
-import type { CandidatePlace } from "./place-search";
+import { type CandidatePlace, extractRegion } from "./place-search";
 
 // タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
 // contextmenu が安定しないため自前実装）。<Map> の子として描画し、
@@ -324,6 +324,7 @@ export function PlaceMap({
                       "id",
                       "displayName",
                       "formattedAddress",
+                      "addressComponents",
                       "location",
                     ],
                   });
@@ -335,6 +336,7 @@ export function PlaceMap({
                     address: place.formattedAddress ?? "",
                     lat: loc.lat(),
                     lng: loc.lng(),
+                    ...extractRegion(place.addressComponents),
                     rating: null,
                     userRatingCount: null,
                     photoUri: null,

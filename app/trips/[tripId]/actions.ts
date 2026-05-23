@@ -103,6 +103,9 @@ export async function createExpenseAction(
         p_lng: place.lng,
         p_formatted_address: place.address,
         p_icon: "",
+        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
+        p_region: place.region ?? "",
+        p_locality: place.locality ?? "",
       })
     ).error;
   } else if (place.kind === "free" && place.label) {
@@ -221,6 +224,9 @@ export async function updateExpenseAction(
         p_lng: place.lng,
         p_formatted_address: place.address,
         p_icon: "",
+        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
+        p_region: place.region ?? "",
+        p_locality: place.locality ?? "",
       })
     ).error;
   } else if (place.kind === "free" && place.label) {
@@ -299,6 +305,8 @@ export async function createPlaceAction(
   const formattedAddress = (
     (formData.get("formatted_address") as string | null) ?? ""
   ).trim();
+  const region = ((formData.get("region") as string | null) ?? "").trim();
+  const locality = ((formData.get("locality") as string | null) ?? "").trim();
   const icon = ((formData.get("icon") as string | null) ?? "").trim();
 
   const parseCoord = (raw: string | null): number | null => {
@@ -331,6 +339,8 @@ export async function createPlaceAction(
     p_lng: lng,
     p_formatted_address: formattedAddress,
     p_icon: icon, // 空なら DB 側で '📍'
+    p_region: region, // 空文字は DB 側 nullif で NULL
+    p_locality: locality,
   });
 
   if (error) {
@@ -462,6 +472,8 @@ type ParsedPlace =
       address: string;
       lat: number;
       lng: number;
+      region: string | null;
+      locality: string | null;
     };
 
 // 場所欄（PlacePicker の hidden input）を ParsedPlace に解す。
@@ -491,6 +503,8 @@ function parsePlace(formData: FormData): ParsedPlace | { error: string } {
       address: gAddress,
       lat: gLat,
       lng: gLng,
+      region: get("g_region") || null,
+      locality: get("g_locality") || null,
     };
   }
   if (placeMode === "free") {
@@ -664,6 +678,9 @@ export async function createEventAction(
         p_lng: place.lng,
         p_formatted_address: place.address,
         p_icon: "",
+        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
+        p_region: place.region ?? "",
+        p_locality: place.locality ?? "",
       })
     ).error;
   } else if (place.kind === "free" && place.label) {
@@ -756,6 +773,9 @@ export async function updateEventAction(
         p_lng: place.lng,
         p_formatted_address: place.address,
         p_icon: "",
+        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
+        p_region: place.region ?? "",
+        p_locality: place.locality ?? "",
       })
     ).error;
   } else if (place.kind === "free" && place.label) {

@@ -14,6 +14,9 @@ export type CandidatePlace = {
   address: string;
   lat: number;
   lng: number;
+  // 地図のクラスタチップ用。region=都道府県/州、locality=市。保存時に格納する。
+  region: string | null;
+  locality: string | null;
   rating: number | null;
   userRatingCount: number | null;
   // 写真はここで URI まで作るが、課金は <img> が実際に読まれた時。
@@ -21,11 +24,30 @@ export type CandidatePlace = {
   photoUri: string | null;
 };
 
+// Google の住所成分から region(州/県) と locality(市) を取り出す。
+// searchByText / autocomplete の fetchFields どちらの addressComponents も
+// 同じ形（{ types, longText }）なので共有する。
+export function extractRegion(
+  components:
+    | { types: string[]; longText: string | null }[]
+    | null
+    | undefined,
+): { region: string | null; locality: string | null } {
+  const pick = (type: string) =>
+    components?.find((c) => c.types.includes(type))?.longText ?? null;
+  return {
+    region: pick("administrative_area_level_1"),
+    locality: pick("locality") ?? pick("sublocality_level_1"),
+  };
+}
+
 // Enterprise ティア。これ以上のフィールド（営業時間/電話等）は要求しない。
+// addressComponents は住所系SKUで、現状の課金ティアを上げない。
 const FIELDS = [
   "id",
   "displayName",
   "formattedAddress",
+  "addressComponents",
   "location",
   "rating",
   "userRatingCount",
@@ -78,6 +100,7 @@ export function PlaceSearch({
             address: p.formattedAddress ?? "",
             lat: p.location!.lat(),
             lng: p.location!.lng(),
+            ...extractRegion(p.addressComponents),
             rating: p.rating ?? null,
             userRatingCount: p.userRatingCount ?? null,
             photoUri: p.photos?.[0]?.getURI({ maxWidth: 400 }) ?? null,

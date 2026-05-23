@@ -296,8 +296,10 @@ export type Database = {
           id: string
           lat: number | null
           lng: number | null
+          locality: string | null
           name: string
           note: string | null
+          region: string | null
           status_id: string
           trip_id: string
           visibility: string
@@ -311,8 +313,10 @@ export type Database = {
           id?: string
           lat?: number | null
           lng?: number | null
+          locality?: string | null
           name: string
           note?: string | null
+          region?: string | null
           status_id: string
           trip_id: string
           visibility: string
@@ -326,8 +330,10 @@ export type Database = {
           id?: string
           lat?: number | null
           lng?: number | null
+          locality?: string | null
           name?: string
           note?: string | null
+          region?: string | null
           status_id?: string
           trip_id?: string
           visibility?: string
@@ -545,8 +551,10 @@ export type Database = {
           p_kind: string
           p_lat: number
           p_lng: number
+          p_locality: string
           p_note: string
           p_place_name: string
+          p_region: string
           p_start_at: string
           p_start_tz: string
           p_title: string
@@ -601,11 +609,13 @@ export type Database = {
           p_lng: number
           p_local_currency: string
           p_local_price: number
+          p_locality: string
           p_note: string
           p_paid_at: string
           p_payer_member_id: string
           p_place_name: string
           p_rate_to_default: number
+          p_region: string
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
@@ -621,8 +631,10 @@ export type Database = {
           p_icon: string
           p_lat: number
           p_lng: number
+          p_locality: string
           p_name: string
           p_note: string
+          p_region: string
           p_status_id: string
           p_trip_id: string
           p_visibility: string
@@ -654,8 +666,10 @@ export type Database = {
           p_icon: string
           p_lat: number
           p_lng: number
+          p_locality: string
           p_member_id: string
           p_name: string
+          p_region: string
           p_trip_id: string
         }
         Returns: string
@@ -729,8 +743,10 @@ export type Database = {
           p_kind: string
           p_lat: number
           p_lng: number
+          p_locality: string
           p_note: string
           p_place_name: string
+          p_region: string
           p_start_at: string
           p_start_tz: string
           p_title: string
@@ -785,11 +801,13 @@ export type Database = {
           p_lng: number
           p_local_currency: string
           p_local_price: number
+          p_locality: string
           p_note: string
           p_paid_at: string
           p_payer_member_id: string
           p_place_name: string
           p_rate_to_default: number
+          p_region: string
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz: string

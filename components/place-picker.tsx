@@ -6,6 +6,8 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
 import type { LatLng } from "@/lib/placeMap";
 
+import { extractRegion } from "./place-search";
+
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
 // 混ぜて出す、よくあるコンボボックス（Google カレンダーの場所欄や
 // Notion / Linear の作成サジェストと同系統）。
@@ -28,6 +30,8 @@ type Resolved =
       address: string;
       lat: number;
       lng: number;
+      region: string | null;
+      locality: string | null;
     };
 
 // 自由入力も Model B で place_id に解決済みなので、編集時の初期値は
@@ -160,7 +164,13 @@ export function PlacePicker({
     void (async () => {
       try {
         await place.fetchFields({
-          fields: ["id", "displayName", "formattedAddress", "location"],
+          fields: [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "addressComponents",
+            "location",
+          ],
         });
         const loc = place.location;
         if (!place.id || !loc) return;
@@ -171,6 +181,7 @@ export function PlacePicker({
           address: place.formattedAddress ?? "",
           lat: loc.lat(),
           lng: loc.lng(),
+          ...extractRegion(place.addressComponents),
         });
         setQuery(place.displayName ?? pred.text.text);
       } finally {
@@ -208,7 +219,15 @@ export function PlacePicker({
   let mode = "saved";
   let placeId = "";
   let placeLabel = "";
-  let g = { id: "", name: "", address: "", lat: "", lng: "" };
+  let g = {
+    id: "",
+    name: "",
+    address: "",
+    lat: "",
+    lng: "",
+    region: "",
+    locality: "",
+  };
   if (resolved?.kind === "saved") {
     mode = "saved";
     placeId = resolved.id;
@@ -220,6 +239,8 @@ export function PlacePicker({
       address: resolved.address,
       lat: String(resolved.lat),
       lng: String(resolved.lng),
+      region: resolved.region ?? "",
+      locality: resolved.locality ?? "",
     };
   } else if (!resolved && exactSaved && query.trim()) {
     mode = "saved";
@@ -239,6 +260,8 @@ export function PlacePicker({
       <input type="hidden" name="g_address" value={g.address} />
       <input type="hidden" name="g_lat" value={g.lat} />
       <input type="hidden" name="g_lng" value={g.lng} />
+      <input type="hidden" name="g_region" value={g.region} />
+      <input type="hidden" name="g_locality" value={g.locality} />
 
       <input
         type="text"

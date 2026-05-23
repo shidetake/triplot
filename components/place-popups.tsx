@@ -192,6 +192,8 @@ export function CandidateInfo({
           name="formatted_address"
           value={candidate.address}
         />
+        <input type="hidden" name="region" value={candidate.region ?? ""} />
+        <input type="hidden" name="locality" value={candidate.locality ?? ""} />
 
         <input type="hidden" name="icon" value={icon} />
         <StatusSelect
