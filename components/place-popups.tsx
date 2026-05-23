@@ -450,6 +450,20 @@ export function SavedInfo({
     });
   };
 
+  // 削除ボタン（ゴミ箱）。詳細表示・編集中のどちらの下部でも左に置く。
+  const deleteButton = canDelete ? (
+    <button
+      type="button"
+      onClick={onDelete}
+      disabled={isDeleting}
+      aria-label="削除"
+      title="削除"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+    >
+      <TrashIcon size={18} />
+    </button>
+  ) : null;
+
   return (
     <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
       <div>
@@ -469,18 +483,24 @@ export function SavedInfo({
               </span>
             )}
           </div>
-          {canDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isDeleting}
-              aria-label="削除"
-              title="削除"
-              className="-mr-0.5 -mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+          <button
+            type="button"
+            onClick={onDone}
+            aria-label="閉じる"
+            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+          >
+            <svg
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              className="h-3.5 w-3.5"
+              aria-hidden="true"
             >
-              <TrashIcon size={16} />
-            </button>
-          )}
+              <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
+            </svg>
+          </button>
         </div>
         <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
           <PlaceIcon
@@ -544,13 +564,7 @@ export function SavedInfo({
             />
           </label>
           <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setEditing(false)}
-              className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
-            >
-              キャンセル
-            </button>
+            {deleteButton}
             <button
               type="submit"
               disabled={isPending}
@@ -566,15 +580,18 @@ export function SavedInfo({
           )}
         </form>
       ) : (
-        canEdit && (
-          <div className="border-t border-zinc-200 pt-2">
-            <button
-              type="button"
-              onClick={() => setEditing(true)}
-              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
-            >
-              編集
-            </button>
+        (canEdit || canDelete) && (
+          <div className="flex gap-2 border-t border-zinc-200 pt-2">
+            {deleteButton}
+            {canEdit && (
+              <button
+                type="button"
+                onClick={() => setEditing(true)}
+                className="h-9 rounded-md border border-zinc-300 px-5 text-sm font-medium transition hover:bg-zinc-50"
+              >
+                編集
+              </button>
+            )}
           </div>
         )
       )}
