@@ -14,6 +14,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
+import { TrashIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
@@ -496,9 +497,11 @@ export function EventForm({
             type="button"
             onClick={onDelete}
             disabled={isDeleting}
-            className="h-9 rounded-md border border-red-200 px-3 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            aria-label="削除"
+            title="削除"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
           >
-            {isDeleting ? "削除中..." : "削除"}
+            <TrashIcon size={18} />
           </button>
         )}
         <button

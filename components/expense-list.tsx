@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 
-import { deleteExpenseAction } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
 import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
@@ -87,7 +86,6 @@ export function ExpenseList({
         {expenses.map((e) => (
           <ExpenseRowItem
             key={e.id}
-            tripId={tripId}
             expense={e}
             memberById={memberById}
             category={categoryById.get(e.category_id)}
@@ -95,11 +93,6 @@ export function ExpenseList({
               e.place_id ? (placeNameById.get(e.place_id) ?? null) : null
             }
             defaultCurrency={defaultCurrency}
-            canDelete={
-              e.visibility === "private"
-                ? e.created_by_member_id === myMemberId
-                : true
-            }
             onEdit={(anchor) => setEditing({ expense: e, anchor })}
           />
         ))}
@@ -133,26 +126,20 @@ export function ExpenseList({
 }
 
 function ExpenseRowItem({
-  tripId,
   expense,
   memberById,
   category,
   placeName,
   defaultCurrency,
-  canDelete,
   onEdit,
 }: {
-  tripId: string;
   expense: ExpenseRow;
   memberById: Map<string, Member>;
   category: Category | undefined;
   placeName: string | null;
   defaultCurrency: Currency;
-  canDelete: boolean;
   onEdit: (anchor: Anchor) => void;
 }) {
-  const [isPending, startTransition] = useTransition();
-
   const payerName =
     memberById.get(expense.payer_member_id)?.display_name ?? "?";
   const splitNames = expense.splittable
@@ -164,20 +151,12 @@ function ExpenseRowItem({
   const isForeign = expense.local_currency !== defaultCurrency;
   const amountInDefault = expense.local_price * expense.rate_to_default;
 
-  const onDelete = () => {
-    if (!confirm("この費用を削除しますか？")) return;
-    startTransition(async () => {
-      const { error } = await deleteExpenseAction(tripId, expense.id);
-      if (error) alert(`削除に失敗しました: ${error}`);
-    });
-  };
-
   return (
-    <li className="flex items-stretch text-sm">
+    <li className="text-sm">
       <button
         type="button"
         onClick={(e) => onEdit({ x: e.clientX, y: e.clientY })}
-        className="flex min-w-0 flex-1 items-start p-3 text-left transition hover:bg-zinc-50"
+        className="flex w-full items-start p-3 text-left transition hover:bg-zinc-50"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -230,26 +209,6 @@ function ExpenseRowItem({
           )}
         </div>
       </button>
-      {canDelete && (
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={isPending}
-          aria-label="削除"
-          title="削除"
-          className="shrink-0 self-start p-3 text-zinc-400 hover:text-red-600 disabled:opacity-50"
-        >
-          <svg
-            viewBox="0 -960 960 960"
-            width={18}
-            height={18}
-            fill="currentColor"
-            aria-hidden
-          >
-            <path d="M280-120q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm120-160h80v-360h-80v360Zm160 0h80v-360h-80v360Z" />
-          </svg>
-        </button>
-      )}
     </li>
   );
 }

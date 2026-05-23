@@ -11,6 +11,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
+import { TrashIcon } from "./icons";
 import {
   gmapsUrl,
   PLACE_ICONS,
@@ -452,19 +453,33 @@ export function SavedInfo({
   return (
     <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
       <div>
-        <div className="flex flex-wrap items-center gap-2">
-          {status && (
-            <span
-              className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
-              style={{ backgroundColor: status.color }}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {status && (
+              <span
+                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                style={{ backgroundColor: status.color }}
+              >
+                {status.name}
+              </span>
+            )}
+            {place.visibility === "private" && (
+              <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
+                プライベート
+              </span>
+            )}
+          </div>
+          {canDelete && (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isDeleting}
+              aria-label="削除"
+              title="削除"
+              className="-mr-0.5 -mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
             >
-              {status.name}
-            </span>
-          )}
-          {place.visibility === "private" && (
-            <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
-              プライベート
-            </span>
+              <TrashIcon size={16} />
+            </button>
           )}
         </div>
         <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
@@ -551,27 +566,15 @@ export function SavedInfo({
           )}
         </form>
       ) : (
-        (canEdit || canDelete) && (
-          <div className="flex gap-2 border-t border-zinc-200 pt-2">
-            {canEdit && (
-              <button
-                type="button"
-                onClick={() => setEditing(true)}
-                className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
-              >
-                編集
-              </button>
-            )}
-            {canDelete && (
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={isDeleting}
-                className="h-9 flex-1 rounded-md border border-red-200 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-              >
-                {isDeleting ? "削除中..." : "削除"}
-              </button>
-            )}
+        canEdit && (
+          <div className="border-t border-zinc-200 pt-2">
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
+            >
+              編集
+            </button>
           </div>
         )
       )}

@@ -1,12 +1,21 @@
 "use client";
 
-import { useActionState, useEffect, useId, useMemo, useRef, useState } from "react";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
 import {
   createExpenseAction,
   type CreateExpenseState,
+  deleteExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
@@ -18,6 +27,7 @@ import type { Currency, Visibility } from "@/lib/types/database";
 
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
+import { TrashIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 function tzLabel(iana: string): string {
@@ -112,6 +122,26 @@ export function ExpenseForm({
     boundAction,
     initialState,
   );
+
+  // 削除は編集時のみ。private は作成者だけ（RPC と同条件）、shared は誰でも。
+  const canDelete =
+    !!editExpense &&
+    (editExpense.visibility === "private"
+      ? editExpense.created_by_member_id === myMemberId
+      : true);
+  const [isDeleting, startDelete] = useTransition();
+  const onDelete = () => {
+    if (!editExpense) return;
+    if (!confirm("この費用を削除しますか？")) return;
+    startDelete(async () => {
+      const { error } = await deleteExpenseAction(tripId, editExpense.id);
+      if (error) {
+        alert(`削除に失敗しました: ${error}`);
+        return;
+      }
+      onDone?.();
+    });
+  };
 
   const [localCurrency, setLocalCurrency] = useState<Currency>(initCurrency);
   const [categoryId, setCategoryId] = useState<string>(initCategoryId);
@@ -561,19 +591,33 @@ export function ExpenseForm({
         </fieldset>
       )}
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="h-10 w-full rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
-      >
-        {isPending
-          ? isEdit
-            ? "保存中..."
-            : "追加中..."
-          : isEdit
-            ? "保存"
-            : "費用を追加"}
-      </button>
+      <div className="flex gap-2">
+        {canDelete && (
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={isDeleting}
+            aria-label="削除"
+            title="削除"
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+          >
+            <TrashIcon size={18} />
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={isPending}
+          className="h-10 flex-1 rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        >
+          {isPending
+            ? isEdit
+              ? "保存中..."
+              : "追加中..."
+            : isEdit
+              ? "保存"
+              : "費用を追加"}
+        </button>
+      </div>
 
       {state.error && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
