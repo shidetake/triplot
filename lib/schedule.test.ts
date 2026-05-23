@@ -262,10 +262,10 @@ describe("buildSchedule: 時差移動の日は等幅2列", () => {
     const arr = s.columns.find((c) => c.date === "2026-05-05");
     expect(dep).toMatchObject({ role: "day", tz: "Pacific/Honolulu" });
     expect(arr).toMatchObject({ role: "day", tz: "Asia/Tokyo" });
-    // 出発日には wraps 便と対称な TZ 変化注記を出す
-    expect(s.groups.find((g) => g.key === "d-2026-05-04")?.tzNote).toBe(
-      "Pacific/Honolulu → Asia/Tokyo",
-    );
+    // 出発日には wraps 便と対称な TZ 変化注記を出す。注記は2列ぶんの幅で見せる。
+    const depGroup = s.groups.find((g) => g.key === "d-2026-05-04");
+    expect(depGroup?.tzNote).toBe("Pacific/Honolulu → Asia/Tokyo");
+    expect(depGroup?.tzNoteSpan).toBe(2);
     // 便自体は出発列→到着列を跨ぐリボンとして残る
     expect(s.transits).toHaveLength(1);
     expect(s.transits[0]).toMatchObject({

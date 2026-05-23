@@ -485,14 +485,19 @@ export function WeekCalendar({
           {groups.map((g) => (
             <div
               key={g.key}
-              className="shrink-0 border-r border-zinc-200 px-1 py-1 text-center"
+              className="relative shrink-0 border-r border-zinc-200 px-1 py-1 text-center"
               style={{ width: g.columns.length * COL }}
             >
               <div className="text-xs font-medium text-zinc-800">
                 {g.label}
               </div>
               {g.tzNote && (
-                <div className="truncate text-[10px] text-amber-700">
+                // 前進する便は注記だけ出発日＋到着日の2列ぶんの幅で見せる
+                // （列は結合しない）。狭い時は2行まで折り返す。
+                <div
+                  className="line-clamp-2 text-[10px] leading-tight text-amber-700"
+                  style={{ width: (g.tzNoteSpan ?? g.columns.length) * COL }}
+                >
                   ✈ {g.tzNote}
                 </div>
               )}

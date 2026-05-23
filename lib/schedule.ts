@@ -99,6 +99,11 @@ export type ColumnGroup = {
   label: string;
   /** 出発/到着でTZが変わる旨を出すための補助（transit のみ） */
   tzNote: string | null;
+  /**
+   * tzNote を何列ぶんの幅で見せるか（既定は columns.length）。前進する便は
+   * 日付列を結合しないが、注記だけは出発日＋到着日の2列に跨げるよう 2 にする。
+   */
+  tzNoteSpan?: number;
   columns: Column[];
 };
 
@@ -185,11 +190,17 @@ export function buildSchedule(
 
   const groups: ColumnGroup[] = [];
 
-  const pushDay = (date: string, tz: string, tzNote: string | null = null) => {
+  const pushDay = (
+    date: string,
+    tz: string,
+    tzNote: string | null = null,
+    tzNoteSpan?: number,
+  ) => {
     groups.push({
       key: `d-${date}`,
       label: formatDayLabel(date),
       tzNote,
+      tzNoteSpan,
       columns: [{ key: `d-${date}`, date, tz, role: "day" }],
     });
   };
@@ -251,9 +262,16 @@ export function buildSchedule(
       // 時刻が前進する便は日付を結合しない。出発日（出発TZ）と到着日
       // （到着TZ）を普通の日付列として並べ、便は列を跨ぐ通常リボンで描く。
       // ただし「ここでTZが切り替わる」注記は wraps 便と対称に出す（出発日に）。
+      // 注記は出発日＋到着日の2列ぶんの幅で見せる（列自体は結合しない）。
       // 空中で飛んだ暦日は列を作らない（消えた日を正直に表現）。
-      pushDay(departDate, t.startTz, `${t.startTz} → ${arriveTz}`);
-      if (arriveDate !== departDate) pushDay(arriveDate, arriveTz);
+      const sameDay = arriveDate === departDate;
+      pushDay(
+        departDate,
+        t.startTz,
+        `${t.startTz} → ${arriveTz}`,
+        sameDay ? 1 : 2,
+      );
+      if (!sameDay) pushDay(arriveDate, arriveTz);
     }
 
     // 到着日の翌日から、到着TZの普通の日へ。空中で飛んだ暦日は列を作らない
