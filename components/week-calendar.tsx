@@ -496,7 +496,10 @@ export function WeekCalendar({
                 // （列は結合しない）。狭い時は2行まで折り返す。
                 <div
                   className="line-clamp-2 text-[10px] leading-tight text-amber-700"
-                  style={{ width: (g.tzNoteSpan ?? g.columns.length) * COL }}
+                  // 親の px-1（左右 4px）の内側に置かれるので、span*COL ぴったり
+                  // だと左の 4px ぶん右にずれて隣の日付に食い込む。左右 8px を
+                  // 引いてスパン内（4px インセット）に収める。
+                  style={{ width: (g.tzNoteSpan ?? g.columns.length) * COL - 8 }}
                 >
                   ✈ {g.tzNote}
                 </div>
