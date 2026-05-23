@@ -479,11 +479,10 @@ export function PlaceMap({
             <InfoWindow
               position={selectedPos}
               onCloseClick={onCloseInfo}
-              // 中身は w-64(256px) 固定。Google は中身ラッパの使える幅を
-              // maxWidth から内部余白を引いて決め、iOS だとそれが 256 を
-              // 下回って横スクロールが出る。上限を広げて 256 を確実に収める
-              // （吹き出しの見た目幅は中身に追従するので広がらない）。
-              maxWidth={360}
+              // 横幅は中身側の可変幅（各 *Info の w-[min(16rem,calc(100vw-3rem))]）
+              // と globals.css の .gm-style-iw-* 上書きで制御する。maxWidth は
+              // Google が中身より狭く頭打ちさせて端切れ・横スクロールの原因に
+              // なるので使わない。
               headerDisabled
               // 候補＝雫ピン（draft と同形）は深め、保存済み・POI は浅め。
               pixelOffset={[
@@ -519,7 +518,6 @@ export function PlaceMap({
             <InfoWindow
               position={draft}
               onCloseClick={onCloseDraft}
-              maxWidth={360}
               headerDisabled
               pixelOffset={[0, INFO_OFFSET_PIN]}
             >

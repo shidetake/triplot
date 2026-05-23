@@ -152,7 +152,7 @@ export function CandidateInfo({
   }, [state.ok, onAdded]);
 
   return (
-    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
+    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pr-1">
       {candidate.photoUri && (
         // 吹き出しを開いた時だけ <img> が読まれる → Photo 課金は開いた分のみ。
         // Google 写真 CDN は動的ドメインで next/image の最適化対象外なので素の img。
@@ -265,7 +265,7 @@ export function DraftInfo({
   }, [state.ok, onAdded]);
 
   return (
-    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
+    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pr-1">
       <div>
         <p className="text-sm font-semibold">地図にピンを追加</p>
         <p className="mt-0.5 text-xs text-zinc-500">
@@ -371,7 +371,7 @@ export function LocateInfo({
   };
 
   return (
-    <div className="flex w-64 flex-col gap-2 pr-1">
+    <div className="flex w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 pr-1">
       <div>
         <p className="text-sm font-semibold">位置を設定</p>
         <p className="mt-0.5 text-xs text-zinc-700">「{placeName}」</p>
@@ -465,7 +465,7 @@ export function SavedInfo({
   ) : null;
 
   return (
-    <div className="flex max-h-[26rem] w-64 flex-col gap-2 overflow-y-auto pr-1">
+    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pr-1">
       <div>
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
@@ -508,7 +508,7 @@ export function SavedInfo({
             size={18}
             className="shrink-0 text-zinc-700"
           />
-          {place.name}
+          <span className="min-w-0 break-words">{place.name}</span>
         </p>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-zinc-600">
