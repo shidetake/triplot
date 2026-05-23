@@ -1015,6 +1015,33 @@ export function WeekCalendar({
               const base = sel
                 ? "border-violet-500 bg-violet-200 text-violet-950"
                 : `border-violet-300 text-violet-900 ${hov ? "bg-violet-200" : "bg-violet-100"}`;
+              if (di === ai) {
+                // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
+                return (
+                  <button
+                    key={t.event.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
+                    }}
+                    onMouseEnter={() => setHoveredEventId(t.event.id)}
+                    onMouseLeave={() => setHoveredEventId(null)}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
+                    style={{
+                      left: di * COL + 1,
+                      width: COL - 2,
+                      top: yd,
+                      height: Math.max(ya - yd, MIN_BLOCK),
+                    }}
+                  >
+                    <span className="block text-[10px] tabular-nums opacity-70">
+                      ✈ {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                    </span>
+                    <span className="font-medium">{t.event.title}</span>
+                  </button>
+                );
+              }
               return (
                 <div key={t.event.id}>
                   {/* 出発側 */}

@@ -238,6 +238,39 @@ describe("buildSchedule: 時差移動の日は等幅2列", () => {
     expect(dates).toContain("2026-05-05");
     expect(dates).not.toContain("2026-05-04");
   });
+
+  it("時刻が前進する便（時差が戻らない）は日付を結合せず普通の列にする", () => {
+    // HNL(HST)→HND(JST)。出発 5/4 16:20 → 到着 5/5 20:00。
+    // 壁時計上は前進（重なり無し）なので2列グループにしない。
+    const fwd = ev({
+      id: "fwd1",
+      title: "HNL-HND",
+      kind: "transit",
+      startAt: "2026-05-04T16:20:00",
+      startTz: "Pacific/Honolulu",
+      endAt: "2026-05-05T20:00:00",
+      endTz: "Asia/Tokyo",
+    });
+    const s = buildSchedule([fwd], {
+      tripStart: "2026-05-04",
+      tripEnd: "2026-05-05",
+    });
+    // 移動日の2列グループ(t-fwd1)は作られない
+    expect(s.groups.find((g) => g.key === "t-fwd1")).toBeUndefined();
+    // 出発日・到着日は普通の日付列（role=day）として並ぶ
+    const dep = s.columns.find((c) => c.date === "2026-05-04");
+    const arr = s.columns.find((c) => c.date === "2026-05-05");
+    expect(dep).toMatchObject({ role: "day", tz: "Pacific/Honolulu" });
+    expect(arr).toMatchObject({ role: "day", tz: "Asia/Tokyo" });
+    // 便自体は出発列→到着列を跨ぐリボンとして残る
+    expect(s.transits).toHaveLength(1);
+    expect(s.transits[0]).toMatchObject({
+      departColumnKey: dep!.key,
+      arriveColumnKey: arr!.key,
+      departMin: 16 * 60 + 20,
+      arriveMin: 20 * 60,
+    });
+  });
 });
 
 describe("buildSchedule: 時刻イベントの重なりレーン", () => {

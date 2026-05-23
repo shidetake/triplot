@@ -4,10 +4,12 @@
 //  - イベント時刻はすべて「現地の壁時計＋そのTZ」。ここでは Date を「TZ変換目的で」
 //    使わない（new Date(str) はローカルTZ解釈でズレる）。日付演算が要る所は
 //    Date.UTC で UTC のみを使い、ローカルTZが入り込む経路を作らない。
-//  - カレンダーは「絶対時間軸1本」ではなく「旅程ローカル日の列」。普通の日は1列、
-//    フライト(transit)の日だけ等幅2列（出発TZ側／到着TZ側）に割り、便はその間を
-//    リボンで繋ぐ。これで全日程で同じローカル時刻が同じ高さに揃い（横スキャン可）、
-//    TZ跨ぎでも「同じ日が2回」を“隠さず正直に”2列で見せられる。
+//  - カレンダーは「絶対時間軸1本」ではなく「旅程ローカル日の列」。普通の日は1列。
+//    フライト(transit)のうち「時差が戻って出発・到着の時間帯が壁時計上で重なる」
+//    便だけ移動日を等幅2列（出発TZ側／到着TZ側）に割り、便はその間をリボンで
+//    繋ぐ（同じ時間帯が2回現れるのを“隠さず正直に”2列で見せる）。時刻が前進する
+//    便（西→東で1日進む等）は重なりが無いので日付を結合せず普通の日付列のまま、
+//    便は列跨ぎリボンで描く。これで全日程で同じローカル時刻が同じ高さに揃う。
 
 export type ScheduleEvent = {
   id: string;
@@ -202,8 +204,10 @@ export function buildSchedule(
   let currentTz = transits.length > 0 ? transits[0].startTz : firstTz;
 
   for (const t of transits) {
-    const departDate = parseWall(t.startAt).date;
-    const arriveDate = parseWall(t.endAt as string).date;
+    const dep = parseWall(t.startAt);
+    const arr = parseWall(t.endAt as string);
+    const departDate = dep.date;
+    const arriveDate = arr.date;
     const arriveTz = t.endTz as string;
 
     // transit までの普通の日
@@ -212,30 +216,44 @@ export function buildSchedule(
       cursor = addDays(cursor, 1);
     }
 
-    // フライトの日 = 等幅2列（出発TZ側 / 到着TZ側）
-    const label =
-      departDate === arriveDate
-        ? formatDayLabel(departDate)
-        : `${formatDayLabel(departDate)} → ${formatDayLabel(arriveDate)}`;
-    groups.push({
-      key: `t-${t.id}`,
-      label,
-      tzNote: `${t.startTz} → ${arriveTz}`,
-      columns: [
-        {
-          key: `t-${t.id}-dep`,
-          date: departDate,
-          tz: t.startTz,
-          role: "transit-depart",
-        },
-        {
-          key: `t-${t.id}-arr`,
-          date: arriveDate,
-          tz: arriveTz,
-          role: "transit-arrive",
-        },
-      ],
-    });
+    // 壁時計を1本の線形軸に並べたとき、到着が出発と同時かそれ以前に来るか。
+    // ＝時差が戻って時刻が巻き戻り、出発と到着の時間帯が重なるケース。
+    const dayDiff = (dateToUtc(arriveDate) - dateToUtc(departDate)) / 86400000;
+    const wraps = dayDiff * 1440 + (arr.minutes - dep.minutes) <= 0;
+
+    if (wraps) {
+      // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため
+      // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
+      const label =
+        departDate === arriveDate
+          ? formatDayLabel(departDate)
+          : `${formatDayLabel(departDate)} → ${formatDayLabel(arriveDate)}`;
+      groups.push({
+        key: `t-${t.id}`,
+        label,
+        tzNote: `${t.startTz} → ${arriveTz}`,
+        columns: [
+          {
+            key: `t-${t.id}-dep`,
+            date: departDate,
+            tz: t.startTz,
+            role: "transit-depart",
+          },
+          {
+            key: `t-${t.id}-arr`,
+            date: arriveDate,
+            tz: arriveTz,
+            role: "transit-arrive",
+          },
+        ],
+      });
+    } else {
+      // 時刻が前進する便は日付を結合しない。出発日（出発TZ）と到着日
+      // （到着TZ）を普通の日付列として並べ、便は列を跨ぐ通常リボンで描く。
+      // 空中で飛んだ暦日は列を作らない（消えた日を正直に表現）。
+      pushDay(departDate, t.startTz);
+      if (arriveDate !== departDate) pushDay(arriveDate, arriveTz);
+    }
 
     // 到着日の翌日から、到着TZの普通の日へ。空中で飛んだ暦日は列を作らない
     currentTz = arriveTz;
