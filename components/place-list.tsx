@@ -194,11 +194,6 @@ export function PlaceList({
                     </span>
                   )}
                 </div>
-                {p.formatted_address && (
-                  <p className="mt-1 truncate text-xs text-zinc-500">
-                    {p.formatted_address}
-                  </p>
-                )}
                 {p.note && (
                   <p className="mt-1 text-xs text-zinc-700">{p.note}</p>
                 )}
