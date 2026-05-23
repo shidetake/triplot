@@ -16,7 +16,7 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 
-import { boundsOf, centroid, type LatLng, TOKYO } from "@/lib/placeMap";
+import { boundsOf, centerOf, type LatLng, TOKYO } from "@/lib/placeMap";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import type { CandidatePlace } from "./place-search";
@@ -272,7 +272,9 @@ export function PlaceMap({
     [candidates, mappedPlaces],
   );
 
-  const initialCenter = centroid(fitPoints) ?? TOKYO;
+  // fitBounds 前の初期中心。bounds 中心なら日付変更線跨ぎでも正しい側に出る。
+  const initBounds = boundsOf(fitPoints);
+  const initialCenter = initBounds ? centerOf(initBounds) : TOKYO;
 
   const selectedPos: LatLng | null = useMemo(() => {
     if (!selected) return null;
