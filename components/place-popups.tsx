@@ -587,7 +587,7 @@ export function SavedInfo({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="h-9 rounded-md border border-zinc-300 px-5 text-sm font-medium transition hover:bg-zinc-50"
+                className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
               >
                 編集
               </button>
