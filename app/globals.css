@@ -32,18 +32,6 @@ input[type="time"] {
   max-width: 100%;
 }
 
-/* 場所/候補の吹き出し（Google Maps InfoWindow）。
-   吹き出しの横幅は「中身の固定幅（各 *Info の w-64 = 256px）」と
-   <InfoWindow maxWidth={300}> で決まる。編集ボタン等の中身要素の幅では
-   決まらない（中身が固定幅なので縮めても効かない）。
-   Google は中身ラッパ .gm-style-iw-d に overflow:auto を付けるため、中身が
-   ラッパ幅と僅差になる iOS Safari で不要な横スクロールが出る（PC では出ない）。
-   縦スクロールは中身側（max-h + overflow-y）で扱うので、ここでは Google
-   ラッパの overflow を無効化して横スクロールを止める。 */
-.gm-style-iw-d {
-  overflow: hidden !important;
-}
-
 /* iOS Safari がドラッグ可能/タップ可能なマップピン（特にドラッグ可能な
    仮ピン）に出す青い四角＝タップハイライト/フォーカス枠を消す。
    -webkit-tap-highlight-color はデスクトップでは無効、outline も PC では
