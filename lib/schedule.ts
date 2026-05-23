@@ -185,11 +185,11 @@ export function buildSchedule(
 
   const groups: ColumnGroup[] = [];
 
-  const pushDay = (date: string, tz: string) => {
+  const pushDay = (date: string, tz: string, tzNote: string | null = null) => {
     groups.push({
       key: `d-${date}`,
       label: formatDayLabel(date),
-      tzNote: null,
+      tzNote,
       columns: [{ key: `d-${date}`, date, tz, role: "day" }],
     });
   };
@@ -250,8 +250,9 @@ export function buildSchedule(
     } else {
       // 時刻が前進する便は日付を結合しない。出発日（出発TZ）と到着日
       // （到着TZ）を普通の日付列として並べ、便は列を跨ぐ通常リボンで描く。
+      // ただし「ここでTZが切り替わる」注記は wraps 便と対称に出す（出発日に）。
       // 空中で飛んだ暦日は列を作らない（消えた日を正直に表現）。
-      pushDay(departDate, t.startTz);
+      pushDay(departDate, t.startTz, `${t.startTz} → ${arriveTz}`);
       if (arriveDate !== departDate) pushDay(arriveDate, arriveTz);
     }
 
