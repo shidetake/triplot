@@ -69,3 +69,135 @@ export function centerOf(b: Bounds): LatLng {
   }
   return { lat, lng };
 }
+
+// ──────────────────────────────────────────────
+// 地点クラスタリング（地図のエリアチップ用）
+// ──────────────────────────────────────────────
+
+// クラスタ連結のしきい値(km)。隣接ピン同士の間隔がこれ未満なら同じクラスタに
+// 連結する（単リンク）。連続して埋まれば数珠つなぎで1つ、大きな隙間で割れる。
+// 旅行の「エリア」は概ね100km以内、別の「脚」は数百km以上離れる前提。後で調整。
+export const CLUSTER_GAP_KM = 100;
+
+export type ClusterInput = {
+  lat: number;
+  lng: number;
+  region: string | null; // 都道府県/州（administrative_area_level_1）
+  locality: string | null; // 市
+};
+
+export type Cluster = {
+  points: ClusterInput[];
+  size: number;
+  bounds: Bounds;
+  // 地域ラベル。原則は「メンバー共通の region」。同じ region のクラスタが
+  // 複数ある時だけ市名で補足（"カリフォルニア / Los Angeles"）。地域情報が
+  // 全く無いクラスタは null（UI 側でフォールバック表示）。
+  label: string | null;
+};
+
+const EARTH_KM = 6371;
+
+function haversineKm(a: LatLng, b: LatLng): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const la1 = toRad(a.lat);
+  const la2 = toRad(b.lat);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(la1) * Math.cos(la2) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_KM * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+// 最頻の非 null 値（出現順で安定）。
+function mode(values: (string | null)[]): string | null {
+  const counts = new Map<string, number>();
+  for (const v of values) if (v) counts.set(v, (counts.get(v) ?? 0) + 1);
+  let best: string | null = null;
+  let bestN = 0;
+  for (const [v, n] of counts) {
+    if (n > bestN) {
+      best = v;
+      bestN = n;
+    }
+  }
+  return best;
+}
+
+function assignLabels(clusters: Cluster[]): void {
+  const region = clusters.map((c) => mode(c.points.map((p) => p.region)));
+  const locality = clusters.map((c) => mode(c.points.map((p) => p.locality)));
+  const base = clusters.map((_, i) => region[i] ?? locality[i]);
+
+  const baseCount = new Map<string, number>();
+  for (const b of base) if (b) baseCount.set(b, (baseCount.get(b) ?? 0) + 1);
+
+  clusters.forEach((c, i) => {
+    const b = base[i];
+    if (!b) {
+      c.label = null;
+      return;
+    }
+    // region が複数クラスタで衝突する時だけ市名で補足する。
+    if (region[i] && (baseCount.get(b) ?? 0) > 1 && locality[i]) {
+      c.label = `${b} / ${locality[i]}`;
+    } else {
+      c.label = b;
+    }
+  });
+}
+
+// 単リンク（隙間ベース）クラスタリング。サイズ降順で返す（先頭＝主役候補）。
+export function clusterPlaces(
+  places: ClusterInput[],
+  gapKm: number = CLUSTER_GAP_KM,
+): Cluster[] {
+  const n = places.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (x: number): number => {
+    let r = x;
+    while (parent[r] !== r) r = parent[r];
+    while (parent[x] !== r) {
+      const next = parent[x];
+      parent[x] = r;
+      x = next;
+    }
+    return r;
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      if (haversineKm(places[i], places[j]) < gapKm) {
+        parent[find(i)] = find(j);
+      }
+    }
+  }
+
+  const groups = new Map<number, ClusterInput[]>();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    const arr = groups.get(r) ?? [];
+    arr.push(places[i]);
+    groups.set(r, arr);
+  }
+
+  const clusters: Cluster[] = [...groups.values()].map((points) => ({
+    points,
+    size: points.length,
+    bounds: boundsOf(points)!,
+    label: null,
+  }));
+
+  assignLabels(clusters);
+  clusters.sort((a, b) => b.size - a.size);
+  return clusters;
+}
+
+// 既定でズームすべき「主役」クラスタ。最多ピンが単独で最大ならそれ。
+// 同数で割れている（例: 1+1）等、主役が決まらなければ null（＝全体 fit）。
+export function dominantCluster(clusters: Cluster[]): Cluster | null {
+  if (clusters.length === 0) return null;
+  if (clusters.length === 1) return clusters[0];
+  const [a, b] = clusters; // size 降順
+  return a.size > b.size ? a : null;
+}

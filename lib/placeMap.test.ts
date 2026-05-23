@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { boundsOf, centerOf, centroid, type LatLng } from "./placeMap";
+import {
+  boundsOf,
+  centerOf,
+  centroid,
+  type ClusterInput,
+  clusterPlaces,
+  dominantCluster,
+  type LatLng,
+} from "./placeMap";
 
 describe("centroid", () => {
   it("空配列は null", () => {
@@ -90,5 +98,100 @@ describe("centerOf", () => {
     const c = centerOf({ south: 21.32, west: 140.39, north: 35.77, east: -157.92 });
     expect(c.lat).toBeCloseTo(28.545, 3);
     expect(c.lng).toBeCloseTo(171.235, 3);
+  });
+});
+
+describe("clusterPlaces", () => {
+  const p = (
+    lat: number,
+    lng: number,
+    region: string | null = null,
+    locality: string | null = null,
+  ): ClusterInput => ({ lat, lng, region, locality });
+
+  it("空配列は空", () => {
+    expect(clusterPlaces([])).toEqual([]);
+  });
+
+  it("近い2点(<100km)は1クラスタ", () => {
+    // ホノルル と カイルア（≈13km）
+    const cs = clusterPlaces([
+      p(21.31, -157.86, "Hawaii", "Honolulu"),
+      p(21.4, -157.74, "Hawaii", "Kailua"),
+    ]);
+    expect(cs).toHaveLength(1);
+    expect(cs[0].size).toBe(2);
+    expect(cs[0].label).toBe("Hawaii");
+  });
+
+  it("遠い2点(>100km)は2クラスタ", () => {
+    // 成田 と ホノルル
+    const cs = clusterPlaces([
+      p(35.77, 140.39, "Chiba", "Narita"),
+      p(21.31, -157.86, "Hawaii", "Honolulu"),
+    ]);
+    expect(cs).toHaveLength(2);
+  });
+
+  it("単リンク：隙間<100kmが連続すれば総延長>100kmでも1クラスタ", () => {
+    // 赤道上で 0.7°(≈78km)刻み。端から端は ≈156km だが連結する。
+    const cs = clusterPlaces([p(0, 0), p(0, 0.7), p(0, 1.4)]);
+    expect(cs).toHaveLength(1);
+    expect(cs[0].size).toBe(3);
+  });
+
+  it("同じ州に別クラスタが2つある時だけ市名で補足", () => {
+    // LA と SF（≈560km）。どちらも California。
+    const cs = clusterPlaces([
+      p(34.05, -118.24, "California", "Los Angeles"),
+      p(34.04, -118.25, "California", "Los Angeles"),
+      p(37.77, -122.42, "California", "San Francisco"),
+    ]);
+    expect(cs).toHaveLength(2);
+    const labels = cs.map((c) => c.label).sort();
+    expect(labels).toEqual([
+      "California / Los Angeles",
+      "California / San Francisco",
+    ]);
+  });
+
+  it("サイズ降順で返す（主役が先頭）", () => {
+    const cs = clusterPlaces([
+      p(21.31, -157.86, "Hawaii", "Honolulu"),
+      p(21.4, -157.74, "Hawaii", "Kailua"),
+      p(21.35, -157.9, "Hawaii", "Honolulu"),
+      p(35.77, 140.39, "Chiba", "Narita"),
+    ]);
+    expect(cs[0].size).toBe(3);
+    expect(cs[0].label).toBe("Hawaii");
+  });
+});
+
+describe("dominantCluster", () => {
+  const p = (lat: number, lng: number): ClusterInput => ({
+    lat,
+    lng,
+    region: null,
+    locality: null,
+  });
+
+  it("最多が単独最大なら主役を返す（ハワイ3 vs 成田1）", () => {
+    const cs = clusterPlaces([
+      p(21.31, -157.86),
+      p(21.4, -157.74),
+      p(21.35, -157.9),
+      p(35.77, 140.39),
+    ]);
+    expect(dominantCluster(cs)?.size).toBe(3);
+  });
+
+  it("同数で割れていれば null（1+1 → 全体fit）", () => {
+    const cs = clusterPlaces([p(35.77, 140.39), p(21.31, -157.86)]);
+    expect(dominantCluster(cs)).toBeNull();
+  });
+
+  it("1クラスタならそれ", () => {
+    const cs = clusterPlaces([p(21.31, -157.86), p(21.4, -157.74)]);
+    expect(dominantCluster(cs)?.size).toBe(2);
   });
 });
