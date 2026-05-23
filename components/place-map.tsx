@@ -3,9 +3,11 @@
 import {
   type MutableRefObject,
   type ReactNode,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from "react";
 
 import {
@@ -16,7 +18,15 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 
-import { boundsOf, centerOf, type LatLng, TOKYO } from "@/lib/placeMap";
+import {
+  boundsOf,
+  centerOf,
+  type Cluster,
+  clusterPlaces,
+  dominantCluster,
+  type LatLng,
+  TOKYO,
+} from "@/lib/placeMap";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
@@ -240,6 +250,7 @@ export function PlaceMap({
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const placesLib = useMapsLibrary("places");
+  const map = useMap();
   // 長押しで仮ピンを置いた直後に来る合成 click を 1 回だけ食う（タイミング
   // 非依存。これが無いと touchend→click が draft 上の余白タップ＝閉じる
   // に化け、指を離した瞬間に仮ピンが消える）。
@@ -263,18 +274,64 @@ export function PlaceMap({
     [places],
   );
 
-  // 検索結果があればそちらに、無ければ保存済みピンに合わせる。
-  const fitPoints: LatLng[] = useMemo(
+  // 保存済みピンをエリアでクラスタリング（検索中はチップを出さない）。
+  const clusters = useMemo<Cluster[]>(
     () =>
       candidates.length > 0
-        ? candidates.map((c) => ({ lat: c.lat, lng: c.lng }))
-        : mappedPlaces.map((p) => ({ lat: p.lat, lng: p.lng })),
+        ? []
+        : clusterPlaces(
+            mappedPlaces.map((p) => ({
+              lat: p.lat,
+              lng: p.lng,
+              region: p.region,
+              locality: p.locality,
+            })),
+          ),
     [candidates, mappedPlaces],
   );
+  const main = useMemo(() => dominantCluster(clusters), [clusters]);
+
+  // 既定でズームする点群: 検索中は候補、エリアが割れていれば主役クラスタ、
+  // 主役が決まらなければ全ピン。
+  const focusPoints: LatLng[] = useMemo(() => {
+    if (candidates.length > 0)
+      return candidates.map((c) => ({ lat: c.lat, lng: c.lng }));
+    if (main) return main.points.map((p) => ({ lat: p.lat, lng: p.lng }));
+    return mappedPlaces.map((p) => ({ lat: p.lat, lng: p.lng }));
+  }, [candidates, main, mappedPlaces]);
 
   // fitBounds 前の初期中心。bounds 中心なら日付変更線跨ぎでも正しい側に出る。
-  const initBounds = boundsOf(fitPoints);
+  const initBounds = boundsOf(focusPoints);
   const initialCenter = initBounds ? centerOf(initBounds) : TOKYO;
+
+  // チップで手動フォーカスしたエリア。null=既定（主役 or 全体）。-1="すべて"。
+  const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
+  const activeIdx = focusedIdx ?? (main ? 0 : -1);
+
+  const focusBounds = useCallback(
+    (b: { south: number; west: number; north: number; east: number }) => {
+      map?.fitBounds(
+        { south: b.south, west: b.west, north: b.north, east: b.east },
+        60,
+      );
+    },
+    [map],
+  );
+  const focusCluster = (c: Cluster, idx: number) => {
+    setFocusedIdx(idx);
+    if (!map) return;
+    if (c.size === 1) {
+      map.setCenter({ lat: c.points[0].lat, lng: c.points[0].lng });
+      map.setZoom(14);
+      return;
+    }
+    focusBounds(c.bounds);
+  };
+  const focusAll = () => {
+    setFocusedIdx(-1);
+    const b = boundsOf(mappedPlaces.map((p) => ({ lat: p.lat, lng: p.lng })));
+    if (b) focusBounds(b);
+  };
 
   const selectedPos: LatLng | null = useMemo(() => {
     if (!selected) return null;
@@ -293,7 +350,37 @@ export function PlaceMap({
 
   return (
     <div className="space-y-1">
-      <div className="h-[32rem] w-full overflow-hidden rounded-md border border-zinc-200">
+      <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-zinc-200">
+        {clusters.length > 1 && (
+          <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-w-[72%] flex-wrap gap-1">
+            {clusters.map((c, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => focusCluster(c, i)}
+                className={`pointer-events-auto rounded-full border px-2 py-0.5 text-xs shadow-sm ${
+                  activeIdx === i
+                    ? "border-violet-600 bg-violet-600 text-white"
+                    : "border-zinc-300 bg-white/90 text-zinc-700"
+                }`}
+              >
+                {c.label ?? "その他"}
+                <span className="ml-1 opacity-70">{c.size}</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={focusAll}
+              className={`pointer-events-auto rounded-full border px-2 py-0.5 text-xs shadow-sm ${
+                activeIdx === -1
+                  ? "border-violet-600 bg-violet-600 text-white"
+                  : "border-zinc-300 bg-white/90 text-zinc-700"
+              }`}
+            >
+              すべて
+            </button>
+          </div>
+        )}
         <Map
           mapId={mapId}
           defaultCenter={initialCenter}
@@ -366,7 +453,7 @@ export function PlaceMap({
           }}
           style={{ width: "100%", height: "100%" }}
         >
-          <MapController points={fitPoints} panTo={selectedPos} />
+          <MapController points={focusPoints} panTo={selectedPos} />
           <LongPressPin
             onLongPress={onMapTap}
             ignoreNextMapClick={ignoreNextMapClick}

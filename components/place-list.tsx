@@ -18,6 +18,8 @@ export type PlaceRow = {
   lng: number | null;
   google_place_id: string | null;
   formatted_address: string | null;
+  region: string | null;
+  locality: string | null;
   status_id: string;
   visibility: Visibility;
   note: string | null;

@@ -84,7 +84,7 @@ export default async function TripDetailPage({
     supabase
       .from("places")
       .select(
-        "id, name, lat, lng, google_place_id, formatted_address, status_id, visibility, note, icon, created_by_member_id, created_at",
+        "id, name, lat, lng, google_place_id, formatted_address, region, locality, status_id, visibility, note, icon, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false }),
@@ -141,6 +141,8 @@ export default async function TripDetailPage({
     lng: p.lng,
     google_place_id: p.google_place_id,
     formatted_address: p.formatted_address,
+    region: p.region,
+    locality: p.locality,
     status_id: p.status_id,
     visibility: p.visibility as Visibility,
     note: p.note,
