@@ -351,36 +351,6 @@ export function PlaceMap({
   return (
     <div className="space-y-1">
       <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-zinc-200">
-        {clusters.length > 1 && (
-          <div className="pointer-events-none absolute bottom-2 left-2 z-10 flex max-w-[72%] flex-wrap gap-1">
-            {clusters.map((c, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => focusCluster(c, i)}
-                className={`pointer-events-auto rounded-full border px-2 py-0.5 text-xs shadow-sm ${
-                  activeIdx === i
-                    ? "border-violet-600 bg-violet-600 text-white"
-                    : "border-zinc-300 bg-white/90 text-zinc-700"
-                }`}
-              >
-                {c.label ?? "その他"}
-                <span className="ml-1 opacity-70">{c.size}</span>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={focusAll}
-              className={`pointer-events-auto rounded-full border px-2 py-0.5 text-xs shadow-sm ${
-                activeIdx === -1
-                  ? "border-violet-600 bg-violet-600 text-white"
-                  : "border-zinc-300 bg-white/90 text-zinc-700"
-              }`}
-            >
-              すべて
-            </button>
-          </div>
-        )}
         <Map
           mapId={mapId}
           defaultCenter={initialCenter}
@@ -554,6 +524,35 @@ export function PlaceMap({
           )}
         </Map>
       </div>
+      {clusters.length > 1 && (
+        <div className="flex flex-wrap gap-1">
+          {clusters.map((c, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => focusCluster(c, i)}
+              className={`rounded-full border px-2 py-0.5 text-xs ${
+                activeIdx === i
+                  ? "border-violet-600 bg-violet-600 text-white"
+                  : "border-zinc-300 bg-white text-zinc-700"
+              }`}
+            >
+              {c.label ?? "その他"}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={focusAll}
+            className={`rounded-full border px-2 py-0.5 text-xs ${
+              activeIdx === -1
+                ? "border-violet-600 bg-violet-600 text-white"
+                : "border-zinc-300 bg-white text-zinc-700"
+            }`}
+          >
+            すべて
+          </button>
+        </div>
+      )}
       {!mapId && (
         <p className="text-xs text-amber-700">
           Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。
