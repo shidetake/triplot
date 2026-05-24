@@ -27,7 +27,7 @@ import type { Currency, Visibility } from "@/lib/types/database";
 
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
-import { ExpenseCategoryIcon } from "./expense-category-icon";
+import { CategorySelect } from "./category-select";
 import { TrashIcon, CloseIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
@@ -343,35 +343,12 @@ export function ExpenseForm({
 
       <div className="block text-sm">
         <span className="font-medium">カテゴリ</span>
-        {/* <option> に SVG は描けないので、場所の IconPicker と同型の
-            色チップ・グリッドで選ぶ。category_id は hidden input で送る。 */}
-        <input type="hidden" name="category_id" value={categoryId} />
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {sortedCategories.map((c) => {
-            const selected = c.id === categoryId;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setCategoryId(c.id)}
-                title={c.name}
-                aria-label={c.name}
-                aria-pressed={selected}
-                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-white transition ${
-                  selected
-                    ? "border-zinc-900"
-                    : "border-transparent opacity-50 hover:opacity-100"
-                }`}
-                style={{ backgroundColor: c.color }}
-              >
-                <ExpenseCategoryIcon icon={c.icon} size={18} />
-              </button>
-            );
-          })}
-        </div>
-        <span className="mt-1 block text-xs text-zinc-500">
-          {sortedCategories.find((c) => c.id === categoryId)?.name}
-        </span>
+        <CategorySelect
+          name="category_id"
+          categories={sortedCategories}
+          value={categoryId}
+          onChange={setCategoryId}
+        />
       </div>
 
       <div className="block text-sm">
