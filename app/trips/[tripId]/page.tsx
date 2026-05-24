@@ -289,6 +289,8 @@ export default async function TripDetailPage({
   );
 
   const today = new Date().toISOString().slice(0, 10);
+  // 旅行開始日以降か（準備TODOの既定折りたたみ判定に使う）。開始日未設定は未開始扱い。
+  const tripStarted = trip.start_date != null && today >= trip.start_date;
   const initialCurrency: Currency =
     lastEntered?.local_currency ?? defaultCurrency;
   const initialCategoryId =
@@ -411,6 +413,7 @@ export default async function TripDetailPage({
           tripId={tripId}
           kind="prep"
           title="準備"
+          defaultCollapsed={tripStarted}
           todos={prepTodos}
           members={todoMembers}
           myMemberId={me.id}
@@ -420,6 +423,7 @@ export default async function TripDetailPage({
           tripId={tripId}
           kind="onsite"
           title="現地"
+          defaultCollapsed={false}
           todos={onsiteTodos}
           members={todoMembers}
           myMemberId={me.id}

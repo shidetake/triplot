@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useState, useTransition } from "react";
+import { useEffect, useOptimistic, useState, useTransition } from "react";
 
 import {
   createTodoAction,
@@ -71,6 +71,7 @@ export function TodoSection({
   tripId,
   kind,
   title,
+  defaultCollapsed,
   todos,
   members,
   myMemberId,
@@ -78,13 +79,44 @@ export function TodoSection({
   tripId: string;
   kind: TodoKind;
   title: string;
+  // フェーズ由来の既定折りたたみ（例: 準備は旅行開始以降は畳む）。
+  defaultCollapsed: boolean;
   todos: TodoRow[];
   members: MemberLite[];
   myMemberId: string;
 }) {
   const placeholder =
     kind === "prep" ? "準備することを追加" : "現地ですることを追加";
-  const [collapsed, setCollapsed] = useState(false);
+
+  // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)。手動で開閉したら
+  // localStorage に覚え、次回以降は既定より優先する。
+  const storageKey = `triplot.todoCollapsed.${tripId}.${kind}`;
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  // localStorage はクライアント専用。SSR/初回描画は defaultCollapsed で揃え、
+  // マウント後に保存値があればそれに同期する（hydration 不一致を避ける正当な用途）。
+  useEffect(() => {
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(storageKey);
+    } catch {
+      saved = null; // localStorage 不可環境は既定のまま
+    }
+    if (saved === "1" || saved === "0") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部ストア同期
+      setCollapsed(saved === "1");
+    }
+  }, [storageKey]);
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      try {
+        localStorage.setItem(storageKey, next ? "1" : "0");
+      } catch {
+        // 保存失敗は無視（状態だけ反映）
+      }
+      return next;
+    });
+  };
   const [isPending, startTransition] = useTransition();
   const [optimisticTodos, applyOptimistic] = useOptimistic(
     todos,
@@ -202,7 +234,7 @@ export function TodoSection({
     <div className="space-y-3">
       <button
         type="button"
-        onClick={() => setCollapsed((c) => !c)}
+        onClick={toggleCollapsed}
         aria-expanded={!collapsed}
         className="flex w-full items-center gap-1 text-left text-sm font-semibold text-zinc-700"
       >
