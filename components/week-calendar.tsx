@@ -5,9 +5,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MIN_EVENT_MIN, type Schedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { CheckIcon } from "./icons";
+import { ReservationIcon } from "./reservation-icon";
 
 // 予約マーカー（タイトル先頭）。意味は凡例（schedule-section）で補足する:
-//  - 要予約（未）= 🎫 絵文字（小さくても色付きで視認しやすい）
+//  - 要予約（未）= チケットアイコン（黄色で視認しやすい）
 //  - 予約済 = 淡色チェック
 // ブロックの地色（種別/個人色）はそのまま。
 function ReservationMark({ ev }: { ev: ScheduleEvent }) {
@@ -18,9 +19,7 @@ function ReservationMark({ ev }: { ev: ScheduleEvent }) {
       className="mr-0.5 inline-block shrink-0 align-text-bottom opacity-70"
     />
   ) : (
-    <span className="mr-0.5" aria-hidden>
-      🎫
-    </span>
+    <ReservationIcon size={11} className="mr-0.5" />
   );
 }
 

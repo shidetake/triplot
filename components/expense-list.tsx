@@ -10,6 +10,7 @@ import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { type Anchor, FormPopover } from "./form-popover";
+import { PlaceIcon } from "./place-list";
 
 export type ExpenseRow = {
   id: string;
@@ -207,8 +208,9 @@ function ExpenseRowItem({
             )}
           </div>
           {placeName && (
-            <p className="mt-1 truncate text-xs text-zinc-600">
-              📍 {placeName}
+            <p className="mt-1 flex items-center gap-1 text-xs text-zinc-600">
+              <PlaceIcon icon="📍" size={13} className="shrink-0" />
+              <span className="min-w-0 truncate">{placeName}</span>
             </p>
           )}
           {expense.note && (

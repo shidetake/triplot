@@ -9,6 +9,7 @@ import {
   updateTodoAction,
 } from "@/app/trips/[tripId]/actions";
 import { ChevronIcon, CheckIcon, TrashIcon } from "@/components/icons";
+import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
 import type { TodoKind, TodoPriority } from "@/lib/types/database";
 
@@ -328,11 +329,7 @@ export function TodoSection({
                         : "text-zinc-800"
                     }`}
                   >
-                    {todo.event_id && (
-                      <span className="mr-1" aria-hidden>
-                        🎫
-                      </span>
-                    )}
+                    {todo.event_id && <ReservationIcon size={13} className="mr-1" />}
                     {todo.title}
                   </span>
                 )}

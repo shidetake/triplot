@@ -7,6 +7,7 @@ import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
 import { CheckIcon } from "./icons";
+import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
 
@@ -191,7 +192,7 @@ export function ScheduleSection({
       {hasReservation && (
         <div className="flex items-center gap-4 text-[11px] text-zinc-500">
           <span className="inline-flex items-center gap-1">
-            <span aria-hidden>🎫</span>
+            <ReservationIcon size={12} />
             要予約
           </span>
           <span className="inline-flex items-center gap-1">
