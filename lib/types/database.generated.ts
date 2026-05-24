@@ -369,6 +369,7 @@ export type Database = {
           done: boolean
           event_id: string | null
           id: string
+          kind: string
           priority: string
           title: string
           trip_id: string
@@ -379,6 +380,7 @@ export type Database = {
           done?: boolean
           event_id?: string | null
           id?: string
+          kind?: string
           priority?: string
           title: string
           trip_id: string
@@ -389,6 +391,7 @@ export type Database = {
           done?: boolean
           event_id?: string | null
           id?: string
+          kind?: string
           priority?: string
           title?: string
           trip_id?: string
@@ -694,7 +697,12 @@ export type Database = {
         Returns: string
       }
       create_todo: {
-        Args: { p_priority: string; p_title: string; p_trip_id: string }
+        Args: {
+          p_kind: string
+          p_priority: string
+          p_title: string
+          p_trip_id: string
+        }
         Returns: string
       }
       create_trip: {

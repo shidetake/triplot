@@ -985,11 +985,13 @@ export async function removeMemberAction(
 // 更新（チェック / 本文 / 優先度）と削除は RLS 配下の素の table 操作。
 
 const TODO_PRIORITIES = ["high", "medium", "low"];
+const TODO_KINDS = ["prep", "onsite"];
 
 export async function createTodoAction(
   tripId: string,
   title: string,
   priority: string,
+  kind: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -1002,11 +1004,15 @@ export async function createTodoAction(
   if (!TODO_PRIORITIES.includes(priority)) {
     return { error: "優先度が不正です" };
   }
+  if (!TODO_KINDS.includes(kind)) {
+    return { error: "区分が不正です" };
+  }
 
   const { error } = await supabase.rpc("create_todo", {
     p_trip_id: tripId,
     p_title: trimmed,
     p_priority: priority,
+    p_kind: kind,
   });
   if (error) return { error: error.message };
 

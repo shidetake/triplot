@@ -23,7 +23,12 @@ import {
 } from "@/lib/settlement";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
-import type { Currency, TodoPriority, Visibility } from "@/lib/types/database";
+import type {
+  Currency,
+  TodoKind,
+  TodoPriority,
+  Visibility,
+} from "@/lib/types/database";
 
 export default async function TripDetailPage({
   params,
@@ -100,7 +105,7 @@ export default async function TripDetailPage({
     supabase
       .from("todos")
       .select(
-        "id, title, priority, done, created_at, created_by_member_id, event_id",
+        "id, title, priority, done, created_at, created_by_member_id, kind, event_id",
       )
       .eq("trip_id", tripId)
       // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
@@ -207,7 +212,15 @@ export default async function TripDetailPage({
     done: t.done,
     created_at: t.created_at,
     created_by_member_id: t.created_by_member_id,
+    kind: t.kind as TodoKind,
     event_id: t.event_id,
+  }));
+  const prepTodos = todos.filter((t) => t.kind === "prep");
+  const onsiteTodos = todos.filter((t) => t.kind === "onsite");
+  const todoMembers = activeMembers.map((m) => ({
+    id: m.id,
+    display_name: m.display_name,
+    color: m.color,
   }));
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
@@ -396,12 +409,19 @@ export default async function TripDetailPage({
 
         <TodoSection
           tripId={tripId}
-          todos={todos}
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-            color: m.color,
-          }))}
+          kind="prep"
+          title="準備"
+          todos={prepTodos}
+          members={todoMembers}
+          myMemberId={me.id}
+        />
+
+        <TodoSection
+          tripId={tripId}
+          kind="onsite"
+          title="現地"
+          todos={onsiteTodos}
+          members={todoMembers}
           myMemberId={me.id}
         />
       </section>

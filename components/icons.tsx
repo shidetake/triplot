@@ -42,3 +42,24 @@ export function CheckIcon({
     </svg>
   );
 }
+
+export function ChevronIcon({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 -960 960 960"
+      width={size}
+      height={size}
+      fill="currentColor"
+      className={className}
+      aria-hidden
+    >
+      <path d="M504-480 320-664l56-56 240 240-240 240-56-56 184-184Z" />
+    </svg>
+  );
+}

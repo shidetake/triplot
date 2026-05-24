@@ -8,9 +8,9 @@ import {
   toggleTodoAction,
   updateTodoAction,
 } from "@/app/trips/[tripId]/actions";
-import { CheckIcon, TrashIcon } from "@/components/icons";
+import { ChevronIcon, CheckIcon, TrashIcon } from "@/components/icons";
 import { sortTodos } from "@/lib/todoSort";
-import type { TodoPriority } from "@/lib/types/database";
+import type { TodoKind, TodoPriority } from "@/lib/types/database";
 
 export type TodoRow = {
   id: string;
@@ -19,6 +19,7 @@ export type TodoRow = {
   done: boolean;
   created_at: string;
   created_by_member_id: string;
+  kind: TodoKind;
   // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
   event_id: string | null;
 };
@@ -68,15 +69,22 @@ function PrioritySelect({
 
 export function TodoSection({
   tripId,
+  kind,
+  title,
   todos,
   members,
   myMemberId,
 }: {
   tripId: string;
+  kind: TodoKind;
+  title: string;
   todos: TodoRow[];
   members: MemberLite[];
   myMemberId: string;
 }) {
+  const placeholder =
+    kind === "prep" ? "準備することを追加" : "現地ですることを追加";
+  const [collapsed, setCollapsed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [optimisticTodos, applyOptimistic] = useOptimistic(
     todos,
@@ -126,12 +134,18 @@ export function TodoSection({
       done: false,
       created_at: new Date().toISOString(),
       created_by_member_id: myMemberId,
+      kind,
       event_id: null,
     };
     setDraft("");
     startTransition(async () => {
       applyOptimistic({ type: "add", todo: temp });
-      const { error } = await createTodoAction(tripId, title, draftPriority);
+      const { error } = await createTodoAction(
+        tripId,
+        title,
+        draftPriority,
+        kind,
+      );
       if (error) alert(`失敗しました: ${error}`);
     });
   };
@@ -186,8 +200,25 @@ export function TodoSection({
 
   return (
     <div className="space-y-3">
-      {/* 追加 */}
-      <div className="flex items-center gap-2">
+      <button
+        type="button"
+        onClick={() => setCollapsed((c) => !c)}
+        aria-expanded={!collapsed}
+        className="flex w-full items-center gap-1 text-left text-sm font-semibold text-zinc-700"
+      >
+        <ChevronIcon
+          size={16}
+          className={`shrink-0 text-zinc-400 transition-transform ${
+            collapsed ? "" : "rotate-90"
+          }`}
+        />
+        {title}
+      </button>
+
+      {!collapsed && (
+        <>
+          {/* 追加 */}
+          <div className="flex items-center gap-2">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -199,7 +230,7 @@ export function TodoSection({
               add();
             }
           }}
-          placeholder="やりたいことを追加"
+          placeholder={placeholder}
           className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400"
         />
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
@@ -303,6 +334,8 @@ export function TodoSection({
             </li>
           ))}
         </ul>
+      )}
+        </>
       )}
     </div>
   );
