@@ -26,7 +26,7 @@ create table expense_categories (
   trip_id     text not null references trips(id) on delete cascade,
   name        text not null,
   color       text not null,
-  emoji       text not null,
+  icon        text not null,  -- Material Symbols のアイコン名（安定キー）
   sort_order  int  not null,
   created_at  timestamptz not null default now(),
   unique (trip_id, name)
@@ -59,19 +59,19 @@ security definer
 set search_path = public
 as $body$
 begin
-  insert into expense_categories (trip_id, name, color, emoji, sort_order)
+  insert into expense_categories (trip_id, name, color, icon, sort_order)
   values
-    (_trip_id, '渡航',     '#3b82f6', '✈️', 1),
-    (_trip_id, '現地移動', '#06b6d4', '🚊', 2),
-    (_trip_id, '飲食',     '#f97316', '🍽️', 3),
-    (_trip_id, '衣服',     '#a855f7', '👕', 4),
-    (_trip_id, 'エンタメ', '#ec4899', '🎉', 5),
-    (_trip_id, '土産',     '#ef4444', '🎁', 6),
-    (_trip_id, '宿泊',     '#6366f1', '🏨', 7),
-    (_trip_id, '通信',     '#6b7280', '📡', 8),
-    (_trip_id, '医療',     '#10b981', '🏥', 9),
-    (_trip_id, 'カジノ',   '#f59e0b', '🎰', 10),
-    (_trip_id, 'その他',   '#71717a', '❓', 11);
+    (_trip_id, '渡航',     '#3b82f6', 'flight',         1),
+    (_trip_id, '現地移動', '#06b6d4', 'tram',           2),
+    (_trip_id, '飲食',     '#f97316', 'restaurant',     3),
+    (_trip_id, '衣服',     '#a855f7', 'checkroom',      4),
+    (_trip_id, 'エンタメ', '#ec4899', 'celebration',    5),
+    (_trip_id, '土産',     '#ef4444', 'redeem',         6),
+    (_trip_id, '宿泊',     '#6366f1', 'hotel',          7),
+    (_trip_id, '通信',     '#6b7280', 'wifi',           8),
+    (_trip_id, '医療',     '#10b981', 'local_hospital', 9),
+    (_trip_id, 'カジノ',   '#f59e0b', 'casino',         10),
+    (_trip_id, 'その他',   '#71717a', 'category',       11);
 end;
 $body$;
 

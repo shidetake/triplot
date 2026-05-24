@@ -7,6 +7,7 @@ import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 
 import { type Category, ExpenseForm } from "./expense-form";
+import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 
 export type ExpenseRow = {
@@ -165,7 +166,7 @@ function ExpenseRowItem({
                 className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
                 style={{ backgroundColor: category.color }}
               >
-                <span>{category.emoji}</span>
+                <ExpenseCategoryIcon icon={category.icon} size={14} className="shrink-0" />
                 <span>{category.name}</span>
               </span>
             )}

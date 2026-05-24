@@ -18,7 +18,7 @@
 truncate table trips cascade;
 
 -- ────────────────────────────────────────────────────────────
--- place_statuses（expense_categories と同型。emoji は持たない）
+-- place_statuses（expense_categories と同型。icon は持たない）
 -- ────────────────────────────────────────────────────────────
 create table place_statuses (
   id          uuid primary key default gen_random_uuid(),

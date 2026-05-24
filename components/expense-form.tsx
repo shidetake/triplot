@@ -27,7 +27,8 @@ import type { Currency, Visibility } from "@/lib/types/database";
 
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
-import { TrashIcon } from "./icons";
+import { ExpenseCategoryIcon } from "./expense-category-icon";
+import { TrashIcon, CloseIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 function tzLabel(iana: string): string {
@@ -46,7 +47,7 @@ type Member = {
 export type Category = {
   id: string;
   name: string;
-  emoji: string;
+  icon: string;
   color: string;
   sort_order: number;
 };
@@ -274,17 +275,7 @@ export function ExpenseForm({
             aria-label="閉じる"
             className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
           >
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              className="h-3.5 w-3.5"
-              aria-hidden="true"
-            >
-              <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-            </svg>
+            <CloseIcon size={14} />
           </button>
         </div>
       )}
@@ -350,22 +341,38 @@ export function ExpenseForm({
         <input type="hidden" name="rate_to_default" value="1" />
       )}
 
-      <label className="block text-sm">
+      <div className="block text-sm">
         <span className="font-medium">カテゴリ</span>
-        <select
-          name="category_id"
-          required
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-        >
-          {sortedCategories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.emoji} {c.name}
-            </option>
-          ))}
-        </select>
-      </label>
+        {/* <option> に SVG は描けないので、場所の IconPicker と同型の
+            色チップ・グリッドで選ぶ。category_id は hidden input で送る。 */}
+        <input type="hidden" name="category_id" value={categoryId} />
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {sortedCategories.map((c) => {
+            const selected = c.id === categoryId;
+            return (
+              <button
+                key={c.id}
+                type="button"
+                onClick={() => setCategoryId(c.id)}
+                title={c.name}
+                aria-label={c.name}
+                aria-pressed={selected}
+                className={`flex h-9 w-9 items-center justify-center rounded-full border-2 text-white transition ${
+                  selected
+                    ? "border-zinc-900"
+                    : "border-transparent opacity-50 hover:opacity-100"
+                }`}
+                style={{ backgroundColor: c.color }}
+              >
+                <ExpenseCategoryIcon icon={c.icon} size={18} />
+              </button>
+            );
+          })}
+        </div>
+        <span className="mt-1 block text-xs text-zinc-500">
+          {sortedCategories.find((c) => c.id === categoryId)?.name}
+        </span>
+      </div>
 
       <div className="block text-sm">
         <span className="font-medium">場所（任意）</span>
@@ -436,17 +443,7 @@ export function ExpenseForm({
                 aria-label="時刻をやめる"
                 className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
               >
-                <svg
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.75"
-                  strokeLinecap="round"
-                  className="h-3 w-3"
-                  aria-hidden="true"
-                >
-                  <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-                </svg>
+                <CloseIcon size={12} />
               </button>
             </div>
             <input

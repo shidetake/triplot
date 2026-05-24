@@ -69,7 +69,7 @@ export default async function TripDetailPage({
       .order("joined_at", { ascending: true }),
     supabase
       .from("expense_categories")
-      .select("id, name, color, emoji, sort_order")
+      .select("id, name, color, icon, sort_order")
       .eq("trip_id", tripId)
       .order("sort_order", { ascending: true }),
     supabase
