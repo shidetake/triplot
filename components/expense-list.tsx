@@ -167,7 +167,9 @@ function ExpenseRowItem({
                 style={{ backgroundColor: category.color }}
               >
                 <ExpenseCategoryIcon icon={category.icon} size={14} className="shrink-0" />
-                <span>{category.name}</span>
+                {/* iOS Safari の CJK は行ボックス内でやや上目に出るので、テキスト
+                    だけ実寸 0.5px 下げて視覚的に中央へ寄せる（全ブラウザ一律・微量）。 */}
+                <span className="relative top-[0.5px]">{category.name}</span>
               </span>
             )}
             <span className="font-medium">
