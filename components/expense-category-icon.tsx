@@ -34,19 +34,25 @@ const EXPENSE_ICON_PATHS: Record<string, string> = {
 export function ExpenseCategoryIcon({
   icon,
   size = 18,
+  inset = 0,
   className,
 }: {
   icon: string;
   size?: number;
+  // 0..0.5。>0 にすると viewBox を広げて内側に余白を作る。これで svg を親(丸チップ)
+  // いっぱいの size で描いても glyph は (1-2*inset) の大きさで中央に来る。
+  // 「13px を 20px 丸に CSS flex で中央寄せ」だと余白が半端px(3.5)になり、エンジン/
+  // DPR ごとに丸めが変わってズレる（WebKit≠Blink を実測）。SVG 内部描画は両エンジン
+  // 完全一致なので、中央寄せを CSS でなく SVG 側でやるための仕組み。
+  inset?: number;
   className?: string;
 }) {
   const key = icon in EXPENSE_ICON_PATHS ? icon : "category";
-  // display:block が無いと iOS Safari(WebKit) では flex 内の inline SVG が
-  // baseline に引っ張られて下にズレる（Chrome/Firefox では出ない WebKit 由来の
-  // 不具合）。これが「丸の中で右下にズレて見える」原因。glyph 個別の補正は不要。
+  const span = 960 / (1 - 2 * inset);
+  const off = (span - 960) / 2;
   return (
     <svg
-      viewBox="0 -960 960 960"
+      viewBox={`${-off} ${-960 - off} ${span} ${span}`}
       width={size}
       height={size}
       fill="currentColor"

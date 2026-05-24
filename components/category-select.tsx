@@ -100,12 +100,14 @@ export function CategorySelect({
 }
 
 function CategoryChip({ category }: { category: Category }) {
+  // svg を丸いっぱい(20px)に描き、余白は inset で SVG 内側に作る。CSS の flex
+  // 中央寄せを使わないので、エンジン/DPR をまたいでもサブピクセルのズレが出ない。
   return (
     <span
-      className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-white"
+      className="block h-5 w-5 shrink-0 rounded-full text-white"
       style={{ backgroundColor: category.color }}
     >
-      <ExpenseCategoryIcon icon={category.icon} size={13} />
+      <ExpenseCategoryIcon icon={category.icon} size={20} inset={0.18} />
     </span>
   );
 }
