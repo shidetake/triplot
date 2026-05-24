@@ -59,3 +59,16 @@ gmp-advanced-marker:focus-visible {
   outline: none;
   -webkit-tap-highlight-color: transparent;
 }
+
+/* 同じ iOS の青い四角が InfoWindow 内のボタン/リンク（閉じる×・削除・編集・
+   「Googleマップで開く」）にも出るので、マーカーと同様に消す。中身ラッパは
+   .gm-style-iw-d（.gm-style-iw とは別クラストークンなので前者で当てる）。 */
+.gm-style-iw-d button,
+.gm-style-iw-d a,
+.gm-style-iw-d button:focus,
+.gm-style-iw-d a:focus,
+.gm-style-iw-d button:focus-visible,
+.gm-style-iw-d a:focus-visible {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
