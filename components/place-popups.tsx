@@ -11,7 +11,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
-import { TrashIcon } from "./icons";
+import { TrashIcon, CloseIcon } from "./icons";
 import {
   gmapsUrl,
   PLACE_ICONS,
@@ -489,17 +489,7 @@ export function SavedInfo({
             aria-label="閉じる"
             className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
           >
-            <svg
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.75"
-              strokeLinecap="round"
-              className="h-3.5 w-3.5"
-              aria-hidden="true"
-            >
-              <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-            </svg>
+            <CloseIcon size={14} />
           </button>
         </div>
         <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">

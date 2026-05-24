@@ -14,7 +14,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
-import { TrashIcon } from "./icons";
+import { TrashIcon, CloseIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
@@ -237,17 +237,7 @@ export function EventForm({
           aria-label="閉じる"
           className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
         >
-          <svg
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          >
-            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-          </svg>
+          <CloseIcon size={14} />
         </button>
       </div>
 

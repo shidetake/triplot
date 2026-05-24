@@ -8,6 +8,7 @@ import {
 } from "@/app/trips/create-trip-action";
 
 import { DateRangeCalendar } from "./date-range-calendar";
+import { CloseIcon } from "./icons";
 
 type Currency = "JPY" | "USD";
 
@@ -43,17 +44,7 @@ export function CreateTripForm({
           aria-label="閉じる"
           className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
         >
-          <svg
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.75"
-            strokeLinecap="round"
-            className="h-3.5 w-3.5"
-            aria-hidden="true"
-          >
-            <path d="M3.5 3.5l9 9M12.5 3.5l-9 9" />
-          </svg>
+          <CloseIcon size={14} />
         </button>
       </div>
 

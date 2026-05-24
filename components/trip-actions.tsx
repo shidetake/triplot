@@ -9,6 +9,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 
 import { type Anchor, FormPopover } from "./form-popover";
+import { ShareIcon } from "./icons";
 
 // 旅行のアクション群。Notion 同様、共有アイコン（単体）と ⋯ メニューの
 // 両方から共有でき、⋯ メニューには削除も入れる（中身は今後増やす想定）。
@@ -116,21 +117,7 @@ export function TripActions({
           onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
           className={iconBtn}
         >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden
-          >
-            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
-            <path d="M12 15V3" />
-            <path d="m8 7 4-4 4 4" />
-          </svg>
+          <ShareIcon size={18} />
         </button>
         <button
           type="button"
