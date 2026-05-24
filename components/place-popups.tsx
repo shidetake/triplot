@@ -11,7 +11,6 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
-import { ColorBadge } from "./color-badge";
 import { TrashIcon, CloseIcon } from "./icons";
 import {
   gmapsUrl,
@@ -421,7 +420,6 @@ export function SavedInfo({
   canChangeVisibility: boolean;
   onDone: () => void;
 }) {
-  const status = statuses.find((s) => s.id === place.status_id);
   const [editing, setEditing] = useState(false);
 
   const [state, formAction, isPending] = useActionState(
@@ -469,16 +467,19 @@ export function SavedInfo({
     <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pr-1">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {status && (
-              <ColorBadge color={status.color}>{status.name}</ColorBadge>
-            )}
+          <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
+            <PlaceIcon
+              icon={place.icon}
+              size={18}
+              className="shrink-0 text-zinc-700"
+            />
+            <span className="min-w-0 break-words">{place.name}</span>
             {place.visibility === "private" && (
-              <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
+              <span className="shrink-0 rounded bg-zinc-100 px-1.5 text-xs font-normal text-zinc-600">
                 プライベート
               </span>
             )}
-          </div>
+          </p>
           <button
             type="button"
             onClick={onDone}
@@ -488,14 +489,6 @@ export function SavedInfo({
             <CloseIcon size={14} />
           </button>
         </div>
-        <p className="mt-1 flex items-center gap-1.5 text-sm font-semibold">
-          <PlaceIcon
-            icon={place.icon}
-            size={18}
-            className="shrink-0 text-zinc-700"
-          />
-          <span className="min-w-0 break-words">{place.name}</span>
-        </p>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-zinc-600">
             {place.formatted_address}
