@@ -21,6 +21,7 @@ export function TripActions({
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
+  const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, start] = useTransition();
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,24 +38,57 @@ export function TripActions({
     timer.current = setTimeout(() => setToast(null), 2500);
   };
 
-  const copyVia = (
-    fn: (id: string) => Promise<{ token: string | null; error: string | null }>,
-    okMsg: string,
-  ) => {
+  // 共有リンクは「ポップアップを開いた時点」で先に取得して state に持っておく。
+  // こうすればコピーボタンのタップ時はネットワーク待ちが無く、navigator.clipboard を
+  // 同期的に呼べる。iOS Safari は await（ネットワーク往復）を挟むと user activation が
+  // 失効してクリップボード書き込みを拒否するため、これが必須。
+  const fetchToken = () => {
     start(async () => {
-      const res = await fn(tripId);
+      const res = await ensureInviteAction(tripId);
       if (res.error || !res.token) {
-        flashToast(res.error ?? "失敗しました");
+        flashToast(res.error ?? "リンクの取得に失敗しました");
         return;
       }
-      try {
-        await navigator.clipboard.writeText(`${baseUrl}/join/${res.token}`);
-      } catch {
-        flashToast("コピーに失敗しました");
-        return;
-      }
+      setInviteToken(res.token);
+    });
+  };
+
+  const openShare = (anchor: Anchor) => {
+    setShareAnchor(anchor);
+    if (!inviteToken) fetchToken();
+  };
+
+  const onCopy = async () => {
+    if (!inviteToken) return;
+    try {
+      await navigator.clipboard.writeText(`${baseUrl}/join/${inviteToken}`);
       setShareAnchor(null);
-      flashToast(okMsg);
+      flashToast("リンクをコピーしました");
+    } catch {
+      flashToast("コピーに失敗しました");
+    }
+  };
+
+  // 再生成は prefetch できない（開くたびに旧リンクを無効化してしまう）。新トークンは
+  // ネットワーク往復後にしか存在しないので、コピーと分離する: 再生成は state を更新して
+  // ポップアップは開いたまま、ユーザーが続けて「リンクをコピー」を押す（同期コピー）。
+  const onRegenerate = () => {
+    if (
+      !confirm(
+        "リンクを再生成すると、今までのリンクは使えなくなります。よろしいですか？",
+      )
+    )
+      return;
+    start(async () => {
+      const res = await regenerateInviteAction(tripId);
+      if (res.error || !res.token) {
+        flashToast(res.error ?? "再生成に失敗しました");
+        return;
+      }
+      setInviteToken(res.token);
+      flashToast(
+        "新しいリンクを発行しました（旧リンクは無効）。「リンクをコピー」を押してください",
+      );
     });
   };
 
@@ -81,7 +115,7 @@ export function TripActions({
         <button
           type="button"
           aria-label="共有"
-          onClick={(e) => setShareAnchor({ x: e.clientX, y: e.clientY })}
+          onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
           className={iconBtn}
         >
           <svg
@@ -123,7 +157,7 @@ export function TripActions({
               onClick={() => {
                 const a = menuAnchor;
                 setMenuAnchor(null);
-                setShareAnchor(a);
+                if (a) openShare(a);
               }}
               className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
             >
@@ -150,28 +184,15 @@ export function TripActions({
             </p>
             <button
               type="button"
-              onClick={() =>
-                copyVia(ensureInviteAction, "リンクをコピーしました")
-              }
-              disabled={isPending}
+              onClick={onCopy}
+              disabled={isPending || !inviteToken}
               className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (
-                  !confirm(
-                    "リンクを再生成すると、今までのリンクは使えなくなります。よろしいですか？",
-                  )
-                )
-                  return;
-                copyVia(
-                  regenerateInviteAction,
-                  "新しいリンクをコピーしました（旧リンクは無効）",
-                );
-              }}
+              onClick={onRegenerate}
               disabled={isPending}
               className="block w-full text-center text-xs text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline disabled:opacity-50"
             >
