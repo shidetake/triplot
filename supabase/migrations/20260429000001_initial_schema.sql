@@ -45,9 +45,6 @@ create table trips (
   title             text not null,
   start_date        date,
   end_date          date,
-  status            text not null
-                      check (status in ('planning','ongoing','finished'))
-                      default 'planning',
   default_currency  text not null
                       check (default_currency in ('JPY','USD'))
                       default 'JPY',

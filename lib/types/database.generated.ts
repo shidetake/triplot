@@ -454,7 +454,6 @@ export type Database = {
           id: string
           last_activity_at: string
           start_date: string | null
-          status: string
           title: string
         }
         Insert: {
@@ -464,7 +463,6 @@ export type Database = {
           id?: string
           last_activity_at?: string
           start_date?: string | null
-          status?: string
           title: string
         }
         Update: {
@@ -474,7 +472,6 @@ export type Database = {
           id?: string
           last_activity_at?: string
           start_date?: string | null
-          status?: string
           title?: string
         }
         Relationships: []

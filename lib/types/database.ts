@@ -9,5 +9,4 @@ export type { Database, Json } from "./database.generated";
 
 export type Currency = "JPY" | "USD";
 export type Visibility = "shared" | "private";
-export type TripStatus = "planning" | "ongoing" | "finished";
 export type MemberKind = "member" | "guest";

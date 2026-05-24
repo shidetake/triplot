@@ -59,7 +59,7 @@ async function TripList({ userId }: { userId: string }) {
   const supabase = await createClient();
   const { data: memberships, error } = await supabase
     .from("trip_members")
-    .select("trip_id, trips(id, title, start_date, end_date, status)")
+    .select("trip_id, trips(id, title, start_date, end_date)")
     .eq("user_id", userId)
     .is("left_at", null)
     .order("joined_at", { ascending: false });
@@ -95,9 +95,6 @@ async function TripList({ userId }: { userId: string }) {
             <div className="font-medium">{trip.title}</div>
             <div className="mt-1 text-sm text-zinc-500">
               {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
-              <span className="ml-2 inline-flex items-center rounded bg-zinc-100 px-2 text-xs text-zinc-600">
-                {trip.status}
-              </span>
             </div>
           </Link>
         </li>

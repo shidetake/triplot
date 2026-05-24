@@ -50,7 +50,7 @@ export default async function TripDetailPage({
     supabase
       .from("trips")
       .select(
-        "id, title, start_date, end_date, status, default_currency",
+        "id, title, start_date, end_date, default_currency",
       )
       .eq("id", tripId)
       .single(),
@@ -273,7 +273,7 @@ export default async function TripDetailPage({
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
         <p className="mt-2 text-sm text-zinc-600">
           {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}・精算通貨:{" "}
-          {trip.default_currency}・状態: {trip.status}
+          {trip.default_currency}
         </p>
       </header>
 
