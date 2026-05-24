@@ -144,7 +144,7 @@ export function CandidateInfo({
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
   const [visibility, setVisibility] = useState<Visibility>("shared");
-  const [icon, setIcon] = useState("📍");
+  const [icon, setIcon] = useState("pin");
   const noteId = useId();
 
   useEffect(() => {
@@ -265,7 +265,7 @@ export function DraftInfo({
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
   const [visibility, setVisibility] = useState<Visibility>("shared");
-  const [icon, setIcon] = useState("📍");
+  const [icon, setIcon] = useState("pin");
   const nameId = useId();
   const noteId = useId();
 

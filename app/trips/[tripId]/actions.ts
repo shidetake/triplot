@@ -338,7 +338,7 @@ export async function createPlaceAction(
     p_lat: lat,
     p_lng: lng,
     p_formatted_address: formattedAddress,
-    p_icon: icon, // 空なら DB 側で '📍'
+    p_icon: icon, // 空なら DB 側で 'pin'
     p_region: region, // 空文字は DB 側 nullif で NULL
     p_locality: locality,
   });
@@ -386,7 +386,7 @@ export async function updatePlaceAction(
     p_status_id: statusId,
     p_visibility: visibility,
     p_note: note, // 空文字は DB 側 nullif で NULL になる
-    p_icon: icon, // 空なら DB 側で '📍'
+    p_icon: icon, // 空なら DB 側で 'pin'
   });
 
   if (error) {

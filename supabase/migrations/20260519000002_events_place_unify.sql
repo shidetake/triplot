@@ -479,7 +479,7 @@ begin
   )
   values (
     p_trip_id, p_member_id, 'shared', null,
-    v_name, null, null, v_status_id, null, null, '📍'
+    v_name, null, null, v_status_id, null, null, 'pin'
   )
   returning id into v_place_id;
 

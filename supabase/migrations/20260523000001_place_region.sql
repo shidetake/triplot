@@ -121,7 +121,7 @@ begin
     p_trip_id, p_member_id, 'shared', v_gpid,
     trim(p_name), p_lat, p_lng, v_status_id, null,
     trim(p_formatted_address),
-    coalesce(nullif(trim(coalesce(p_icon, '')), ''), '📍'),
+    coalesce(nullif(trim(coalesce(p_icon, '')), ''), 'pin'),
     v_region, v_locality
   )
   returning id into v_place_id;
@@ -210,7 +210,7 @@ begin
     trim(p_name), p_lat, p_lng, p_status_id,
     nullif(trim(coalesce(p_note, '')), ''),
     nullif(trim(coalesce(p_formatted_address, '')), ''),
-    coalesce(nullif(trim(coalesce(p_icon, '')), ''), '📍'),
+    coalesce(nullif(trim(coalesce(p_icon, '')), ''), 'pin'),
     nullif(trim(coalesce(p_region, '')), ''),
     nullif(trim(coalesce(p_locality, '')), '')
   )

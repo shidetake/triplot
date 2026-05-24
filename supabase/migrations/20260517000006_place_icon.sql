@@ -2,10 +2,10 @@
 --
 -- icon はアプリ側で定義した固定パレットから1つ選んだ絵文字を保持するだけ
 -- （trip ごとにユーザ管理する列挙ではないので独立テーブルにはしない）。
--- 未選択時は汎用ピン '📍'。create_place / update_place に p_icon を追加
+-- 未選択時は汎用ピン 'pin'。create_place / update_place に p_icon を追加
 -- （引数が変わるので旧版を drop して置換）。
 
-alter table places add column icon text not null default '📍';
+alter table places add column icon text not null default 'pin';
 
 -- ────────────────────────────────────────────────────────────
 -- create_place: p_icon を追加
@@ -87,7 +87,7 @@ begin
     trim(p_name), p_lat, p_lng, p_status_id,
     nullif(trim(coalesce(p_note, '')), ''),
     trim(p_formatted_address),
-    coalesce(nullif(trim(coalesce(p_icon, '')), ''), '📍')
+    coalesce(nullif(trim(coalesce(p_icon, '')), ''), 'pin')
   )
   returning id into v_place_id;
 
@@ -178,7 +178,7 @@ begin
   set status_id  = p_status_id,
       visibility = p_visibility,
       note       = nullif(trim(coalesce(p_note, '')), ''),
-      icon       = coalesce(nullif(trim(coalesce(p_icon, '')), ''), '📍')
+      icon       = coalesce(nullif(trim(coalesce(p_icon, '')), ''), 'pin')
   where id = p_place_id;
 
   update trips set last_activity_at = now() where id = v_trip_id;
