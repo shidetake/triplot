@@ -524,7 +524,7 @@ export function WeekCalendar({
                   // 引いてスパン内（4px インセット）に収める。
                   style={{ width: (g.tzNoteSpan ?? g.columns.length) * COL - 8 }}
                 >
-                  ✈ {g.tzNote}
+                  {g.tzNote}
                 </div>
               )}
             </div>
@@ -1068,7 +1068,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      ✈ {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                      {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
@@ -1097,7 +1097,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      ✈ {hhmm(t.departMin)} 発
+                      {hhmm(t.departMin)} 発
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
@@ -1122,7 +1122,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      ✈ {hhmm(t.arriveMin)} 着
+                      {hhmm(t.arriveMin)} 着
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
