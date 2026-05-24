@@ -468,11 +468,6 @@ export function SavedInfo({
       <div>
         <div className="flex items-start justify-between gap-2">
           <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
-            <PlaceIcon
-              icon={place.icon}
-              size={18}
-              className="shrink-0 text-zinc-700"
-            />
             <span className="min-w-0 break-words">{place.name}</span>
             {place.visibility === "private" && (
               <span className="shrink-0 rounded bg-zinc-100 px-1.5 text-xs font-normal text-zinc-600">
