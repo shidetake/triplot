@@ -86,9 +86,7 @@ export function TripActions({
         return;
       }
       setInviteToken(res.token);
-      flashToast(
-        "新しいリンクを発行しました（旧リンクは無効）。「リンクをコピー」を押してください",
-      );
+      flashToast("新しいリンクを発行しました。「リンクをコピー」を押してください");
     });
   };
 
