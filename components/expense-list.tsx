@@ -163,7 +163,7 @@ function ExpenseRowItem({
           <div className="flex flex-wrap items-center gap-2">
             {category && (
               <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium text-white"
+                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium leading-none text-white"
                 style={{ backgroundColor: category.color }}
               >
                 <ExpenseCategoryIcon icon={category.icon} size={14} className="shrink-0" />
