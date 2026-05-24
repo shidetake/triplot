@@ -31,20 +31,6 @@ const EXPENSE_ICON_PATHS: Record<string, string> = {
     "m261-526 220-354 220 354H261ZM705.65-80Q633-80 582.5-130.65q-50.5-50.64-50.5-123Q532-326 582.65-377q50.64-51 123-51Q778-428 829-377.15q51 50.86 51 123.5 0 72.65-50.85 123.15Q778.29-80 705.65-80ZM120-105v-304h304v304H120Z",
 };
 
-// MS の glyph はフォント由来でバウンディングボックスが viewBox 中心(480,-480)
-// から微妙にずれている（非対称な hotel/redeem/celebration 等で顕著）。円の
-// ど真ん中に見せるため、各 glyph の bbox 中心が viewBox 中心に来るよう viewBox
-// 側をずらす補正量 [dx, dy]（未指定=0）。値は rsvg + ImageMagick の trim 実測。
-const ICON_OFFSET: Record<string, [number, number]> = {
-  flight: [0, 6],
-  restaurant: [20, 0],
-  celebration: [-31, 10],
-  redeem: [0, 20],
-  hotel: [0, 12],
-  wifi: [0, -16],
-  category: [-20, 0],
-};
-
 export function ExpenseCategoryIcon({
   icon,
   size = 18,
@@ -55,14 +41,16 @@ export function ExpenseCategoryIcon({
   className?: string;
 }) {
   const key = icon in EXPENSE_ICON_PATHS ? icon : "category";
-  const [dx, dy] = ICON_OFFSET[key] ?? [0, 0];
+  // display:block が無いと iOS Safari(WebKit) では flex 内の inline SVG が
+  // baseline に引っ張られて下にズレる（Chrome/Firefox では出ない WebKit 由来の
+  // 不具合）。これが「丸の中で右下にズレて見える」原因。glyph 個別の補正は不要。
   return (
     <svg
-      viewBox={`${-dx} ${-960 - dy} 960 960`}
+      viewBox="0 -960 960 960"
       width={size}
       height={size}
       fill="currentColor"
-      className={className}
+      className={["block", className].filter(Boolean).join(" ")}
       aria-hidden
     >
       <path d={EXPENSE_ICON_PATHS[key]} />
