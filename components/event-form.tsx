@@ -154,6 +154,11 @@ export function EventForm({
   const [visibility, setVisibility] = useState<Visibility>(
     isEdit ? ev!.visibility : "shared",
   );
+  // 要予約。ON で「〇〇の予約」TODO（優先度:高）が紐づく。共有予定のみ
+  // （private は共有TODOリストに漏れるため）。
+  const [needsReservation, setNeedsReservation] = useState<boolean>(
+    isEdit ? ev!.needsReservation : false,
+  );
 
   const [isDeleting, startDelete] = useTransition();
 
@@ -479,6 +484,19 @@ export function EventForm({
           <input type="hidden" name="visibility" value={visibility} />
         )}
       </fieldset>
+
+      {/* 要予約。共有予定のみ（private は共有TODOリストに出せない）。 */}
+      {visibility === "shared" && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="needs_reservation"
+            checked={needsReservation}
+            onChange={(e) => setNeedsReservation(e.target.checked)}
+          />
+          <span className="font-medium">要予約</span>
+        </label>
+      )}
 
       <label className="block text-sm">
         <span className="font-medium">メモ（任意）</span>

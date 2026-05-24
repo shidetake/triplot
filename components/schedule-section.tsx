@@ -6,6 +6,7 @@ import type { LatLng } from "@/lib/placeMap";
 import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
+import { CheckIcon } from "./icons";
 import { type Anchor, FormPopover } from "./form-popover";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
 
@@ -148,6 +149,9 @@ export function ScheduleSection({
   const selectedEventId =
     open?.form.mode === "edit" ? open.form.event.id : null;
 
+  // 予約マーカーの凡例。予約のある予定が1件でもある時だけ出す。
+  const hasReservation = events.some((e) => e.needsReservation);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap gap-2">
@@ -183,6 +187,19 @@ export function ScheduleSection({
         onAllDaySlotClick={onAllDaySlotClick}
         onEventClick={onEventClick}
       />
+
+      {hasReservation && (
+        <div className="flex items-center gap-4 text-[11px] text-zinc-500">
+          <span className="inline-flex items-center gap-1">
+            <span aria-hidden>🎫</span>
+            要予約
+          </span>
+          <span className="inline-flex items-center gap-1">
+            <CheckIcon size={12} className="text-zinc-400" />
+            予約済
+          </span>
+        </div>
+      )}
 
       {open && (
         <FormPopover anchor={open.anchor} onClose={closeForm}>

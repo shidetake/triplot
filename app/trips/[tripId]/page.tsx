@@ -10,6 +10,7 @@ import { MembersSection } from "@/components/members-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
+import { type TodoRow, TodoSection } from "@/components/todo-section";
 import { TripActions } from "@/components/trip-actions";
 import {
   calculateExpenseSummary,
@@ -22,7 +23,7 @@ import {
 } from "@/lib/settlement";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
-import type { Currency, Visibility } from "@/lib/types/database";
+import type { Currency, TodoPriority, Visibility } from "@/lib/types/database";
 
 export default async function TripDetailPage({
   params,
@@ -46,6 +47,7 @@ export default async function TripDetailPage({
     { data: placeStatusesRaw },
     { data: placesRaw },
     { data: eventsRaw },
+    { data: todosRaw },
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -95,6 +97,14 @@ export default async function TripDetailPage({
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
+    supabase
+      .from("todos")
+      .select(
+        "id, title, priority, done, created_at, created_by_member_id, event_id",
+      )
+      .eq("trip_id", tripId)
+      // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
+      .order("created_at", { ascending: true }),
   ]);
 
   if (tripError || !trip) notFound();
@@ -151,6 +161,13 @@ export default async function TripDetailPage({
     created_at: p.created_at,
   }));
 
+  // 予約TODO（event_id 付き）から予定ごとの予約状態を引く。
+  // has = 要予約、値(done) = 予約済か。
+  const reservationByEvent = new Map<string, boolean>();
+  for (const t of todosRaw ?? []) {
+    if (t.event_id) reservationByEvent.set(t.event_id, t.done);
+  }
+
   // events は壁時計（timestamp without tz）。文字列のまま素通しする
   // （new Date でローカルTZ解釈させない）。
   const scheduleEvents: EventRow[] = (eventsRaw ?? []).map((e) => ({
@@ -166,6 +183,8 @@ export default async function TripDetailPage({
     visibility: e.visibility as Visibility,
     note: e.note,
     createdByMemberId: e.created_by_member_id,
+    needsReservation: reservationByEvent.has(e.id),
+    reservationDone: reservationByEvent.get(e.id) ?? false,
   }));
 
   // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントのTZ。
@@ -180,6 +199,16 @@ export default async function TripDetailPage({
       null,
     );
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
+
+  const todos: TodoRow[] = (todosRaw ?? []).map((t) => ({
+    id: t.id,
+    title: t.title,
+    priority: t.priority as TodoPriority,
+    done: t.done,
+    created_at: t.created_at,
+    created_by_member_id: t.created_by_member_id,
+    event_id: t.event_id,
+  }));
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
   // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
@@ -362,6 +391,20 @@ export default async function TripDetailPage({
         />
       </section>
 
+      <section className="mt-10 space-y-6">
+        <h2 className="text-lg font-medium">TODOリスト</h2>
+
+        <TodoSection
+          tripId={tripId}
+          todos={todos}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+            color: m.color,
+          }))}
+          myMemberId={me.id}
+        />
+      </section>
     </main>
   );
 }

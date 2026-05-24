@@ -362,6 +362,61 @@ export type Database = {
           },
         ]
       }
+      todos: {
+        Row: {
+          created_at: string
+          created_by_member_id: string
+          done: boolean
+          event_id: string | null
+          id: string
+          priority: string
+          title: string
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_member_id: string
+          done?: boolean
+          event_id?: string | null
+          id?: string
+          priority?: string
+          title: string
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_member_id?: string
+          done?: boolean
+          event_id?: string | null
+          id?: string
+          priority?: string
+          title?: string
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todos_created_by_member_id_fkey"
+            columns: ["created_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todos_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trip_invites: {
         Row: {
           created_at: string
@@ -638,6 +693,10 @@ export type Database = {
         }
         Returns: string
       }
+      create_todo: {
+        Args: { p_priority: string; p_title: string; p_trip_id: string }
+        Returns: string
+      }
       create_trip: {
         Args: {
           p_default_currency: string
@@ -690,6 +749,10 @@ export type Database = {
       }
       seed_default_place_statuses: {
         Args: { _trip_id: string }
+        Returns: undefined
+      }
+      set_event_reservation: {
+        Args: { p_event_id: string; p_needs: boolean }
         Returns: undefined
       }
       set_place_location: {

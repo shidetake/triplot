@@ -655,37 +655,43 @@ export async function createEventAction(
   }
 
   const place = parsed.place;
+  // 要予約は共有予定のみ（private は共有TODOリストに漏れる）。
+  const needsReservation =
+    formData.get("needs_reservation") === "on" &&
+    parsed.visibility === "shared";
   // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）。
   // 場所は kind で 3 分岐: google→確定 place、自由入力→未マップ place、
   // 保存済み/無し→ place_id 直指定。いずれもサーバ側で place_id に解決する。
+  let eventId: string | null = null;
   let error: { message: string } | null = null;
   if (place.kind === "google") {
-    error = (
-      await supabase.rpc("create_event_with_place", {
-        p_trip_id: tripId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-        p_google_place_id: place.placeId,
-        p_place_name: place.name,
-        p_lat: place.lat,
-        p_lng: place.lng,
-        p_formatted_address: place.address,
-        p_icon: "",
-        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
-        p_region: place.region ?? "",
-        p_locality: place.locality ?? "",
-      })
-    ).error;
+    const { data, error: e } = await supabase.rpc("create_event_with_place", {
+      p_trip_id: tripId,
+      p_title: parsed.title,
+      p_kind: parsed.kind,
+      p_all_day: parsed.allDay,
+      p_start_at: parsed.startAt,
+      p_end_at: parsed.endAt as unknown as string,
+      p_start_tz: parsed.startTz,
+      p_end_tz: parsed.endTz as unknown as string,
+      p_visibility: parsed.visibility,
+      p_note: parsed.note,
+      p_google_place_id: place.placeId,
+      p_place_name: place.name,
+      p_lat: place.lat,
+      p_lng: place.lng,
+      p_formatted_address: place.address,
+      p_icon: "",
+      // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
+      p_region: place.region ?? "",
+      p_locality: place.locality ?? "",
+    });
+    eventId = data as string | null;
+    error = e;
   } else if (place.kind === "free" && place.label) {
-    error = (
-      await supabase.rpc("create_event_with_freetext_place", {
+    const { data, error: e } = await supabase.rpc(
+      "create_event_with_freetext_place",
+      {
         p_trip_id: tripId,
         p_title: parsed.title,
         p_kind: parsed.kind,
@@ -697,31 +703,44 @@ export async function createEventAction(
         p_visibility: parsed.visibility,
         p_note: parsed.note,
         p_place_name: place.label,
-      })
-    ).error;
+      },
+    );
+    eventId = data as string | null;
+    error = e;
   } else {
     // 保存済み、または場所なし（自由入力が空 / saved が null）
-    error = (
-      await supabase.rpc("create_event", {
-        p_trip_id: tripId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_place_id: (place.kind === "saved"
-          ? place.placeId
-          : null) as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-      })
-    ).error;
+    const { data, error: e } = await supabase.rpc("create_event", {
+      p_trip_id: tripId,
+      p_title: parsed.title,
+      p_kind: parsed.kind,
+      p_all_day: parsed.allDay,
+      p_start_at: parsed.startAt,
+      p_end_at: parsed.endAt as unknown as string,
+      p_start_tz: parsed.startTz,
+      p_end_tz: parsed.endTz as unknown as string,
+      p_place_id: (place.kind === "saved"
+        ? place.placeId
+        : null) as unknown as string,
+      p_visibility: parsed.visibility,
+      p_note: parsed.note,
+    });
+    eventId = data as string | null;
+    error = e;
   }
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  // 要予約なら予約TODOを紐づける（作成直後なので未存在→新規作成）。
+  if (needsReservation && eventId) {
+    const { error: rErr } = await supabase.rpc("set_event_reservation", {
+      p_event_id: eventId,
+      p_needs: true,
+    });
+    if (rErr) {
+      return { ok: false, error: rErr.message };
+    }
   }
 
   revalidatePath(`/trips/${tripId}`);
@@ -752,6 +771,10 @@ export async function updateEventAction(
   }
 
   const place = parsed.place;
+  // 要予約は共有予定のみ（private は共有TODOリストに漏れる）。
+  const needsReservation =
+    formData.get("needs_reservation") === "on" &&
+    parsed.visibility === "shared";
   // create と同じ 3 分岐（google / 自由入力 / 保存済み・無し）。
   let error: { message: string } | null = null;
   if (place.kind === "google") {
@@ -817,6 +840,15 @@ export async function updateEventAction(
 
   if (error) {
     return { ok: false, error: error.message };
+  }
+
+  // 予約TODOの同期（ON→作成 / OFF→解除。編集のたびに反映）。
+  const { error: rErr } = await supabase.rpc("set_event_reservation", {
+    p_event_id: eventId,
+    p_needs: needsReservation,
+  });
+  if (rErr) {
+    return { ok: false, error: rErr.message };
   }
 
   revalidatePath(`/trips/${tripId}`);
@@ -943,6 +975,110 @@ export async function removeMemberAction(
   if (isSelf) {
     redirect("/");
   }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+// ── TODO（やりたいこと） ─────────────────────────────────────────────
+// 共有リスト。作成だけ created_by_member_id 解決のため RPC、
+// 更新（チェック / 本文 / 優先度）と削除は RLS 配下の素の table 操作。
+
+const TODO_PRIORITIES = ["high", "medium", "low"];
+
+export async function createTodoAction(
+  tripId: string,
+  title: string,
+  priority: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "ログインしてください" };
+
+  const trimmed = title.trim();
+  if (!trimmed) return { error: "内容を入力してください" };
+  if (!TODO_PRIORITIES.includes(priority)) {
+    return { error: "優先度が不正です" };
+  }
+
+  const { error } = await supabase.rpc("create_todo", {
+    p_trip_id: tripId,
+    p_title: trimmed,
+    p_priority: priority,
+  });
+  if (error) return { error: error.message };
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+export async function toggleTodoAction(
+  tripId: string,
+  todoId: string,
+  done: boolean,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "ログインしてください" };
+
+  const { error } = await supabase
+    .from("todos")
+    .update({ done })
+    .eq("id", todoId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+export async function updateTodoAction(
+  tripId: string,
+  todoId: string,
+  fields: { title?: string; priority?: string },
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "ログインしてください" };
+
+  const patch: { title?: string; priority?: string } = {};
+  if (fields.title !== undefined) {
+    const trimmed = fields.title.trim();
+    if (!trimmed) return { error: "内容を入力してください" };
+    patch.title = trimmed;
+  }
+  if (fields.priority !== undefined) {
+    if (!TODO_PRIORITIES.includes(fields.priority)) {
+      return { error: "優先度が不正です" };
+    }
+    patch.priority = fields.priority;
+  }
+  if (Object.keys(patch).length === 0) return { error: null };
+
+  const { error } = await supabase.from("todos").update(patch).eq("id", todoId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+export async function deleteTodoAction(
+  tripId: string,
+  todoId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "ログインしてください" };
+
+  const { error } = await supabase.from("todos").delete().eq("id", todoId);
+  if (error) return { error: error.message };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };

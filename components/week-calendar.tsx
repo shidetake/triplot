@@ -4,6 +4,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { MIN_EVENT_MIN, type Schedule, type ScheduleEvent } from "@/lib/schedule";
 
+import { CheckIcon } from "./icons";
+
+// 予約マーカー（タイトル先頭）。意味は凡例（schedule-section）で補足する:
+//  - 要予約（未）= 🎫 絵文字（小さくても色付きで視認しやすい）
+//  - 予約済 = 淡色チェック
+// ブロックの地色（種別/個人色）はそのまま。
+function ReservationMark({ ev }: { ev: ScheduleEvent }) {
+  if (!ev.needsReservation) return null;
+  return ev.reservationDone ? (
+    <CheckIcon
+      size={11}
+      className="mr-0.5 inline-block shrink-0 align-text-bottom opacity-70"
+    />
+  ) : (
+    <span className="mr-0.5" aria-hidden>
+      🎫
+    </span>
+  );
+}
+
 const GUTTER = 48; // 時刻ガター幅 px
 const HOUR_PX = 29; // 1時間の高さ px（従来48の約6割）
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
@@ -460,7 +480,10 @@ export function WeekCalendar({
     const pn = placeName(ev.placeId);
     return (
       <>
-        <span className="font-medium">{ev.title}</span>
+        <span className="font-medium">
+          <ReservationMark ev={ev} />
+          {ev.title}
+        </span>
         {pn && <span className="block truncate opacity-70">{pn}</span>}
       </>
     );
@@ -628,6 +651,7 @@ export function WeekCalendar({
                 }}
                 title={b.event.title}
               >
+                <ReservationMark ev={b.event} />
                 {b.event.title}
               </button>
             ))}
@@ -1046,7 +1070,10 @@ export function WeekCalendar({
                     <span className="block text-[10px] tabular-nums opacity-70">
                       ✈ {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
                     </span>
-                    <span className="font-medium">{t.event.title}</span>
+                    <span className="font-medium">
+                      <ReservationMark ev={t.event} />
+                      {t.event.title}
+                    </span>
                   </button>
                 );
               }
@@ -1072,7 +1099,10 @@ export function WeekCalendar({
                     <span className="block text-[10px] tabular-nums opacity-70">
                       ✈ {hhmm(t.departMin)} 発
                     </span>
-                    <span className="font-medium">{t.event.title}</span>
+                    <span className="font-medium">
+                      <ReservationMark ev={t.event} />
+                      {t.event.title}
+                    </span>
                   </button>
                   {/* 到着側 */}
                   <button
@@ -1094,7 +1124,10 @@ export function WeekCalendar({
                     <span className="block text-[10px] tabular-nums opacity-70">
                       ✈ {hhmm(t.arriveMin)} 着
                     </span>
-                    <span className="font-medium">{t.event.title}</span>
+                    <span className="font-medium">
+                      <ReservationMark ev={t.event} />
+                      {t.event.title}
+                    </span>
                   </button>
                 </div>
               );

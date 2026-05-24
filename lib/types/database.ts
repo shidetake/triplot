@@ -10,3 +10,4 @@ export type { Database, Json } from "./database.generated";
 export type Currency = "JPY" | "USD";
 export type Visibility = "shared" | "private";
 export type MemberKind = "member" | "guest";
+export type TodoPriority = "high" | "medium" | "low";

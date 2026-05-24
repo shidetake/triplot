@@ -23,6 +23,10 @@ export type ScheduleEvent = {
   placeId: string | null;
   visibility: "shared" | "private";
   note: string | null;
+  // 予約管理: 紐づく予約TODOから導出。needsReservation=要予約 or 予約済の予定、
+  // reservationDone=その予約TODOが done（=予約済）か。無ければ両方 false。
+  needsReservation: boolean;
+  reservationDone: boolean;
 };
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;

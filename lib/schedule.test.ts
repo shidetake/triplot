@@ -22,6 +22,8 @@ function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEven
     placeId: null,
     visibility: "shared",
     note: null,
+    needsReservation: false,
+    reservationDone: false,
     ...p,
   };
 }
