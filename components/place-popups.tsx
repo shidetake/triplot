@@ -166,11 +166,20 @@ export function CandidateInfo({
       <div>
         <p className="text-sm font-semibold">{candidate.name}</p>
         {candidate.rating != null && (
-          <p className="text-xs text-amber-600">
-            ★ {candidate.rating.toFixed(1)}
+          <p className="flex items-center gap-0.5 text-xs text-amber-600">
+            <svg
+              viewBox="0 -960 960 960"
+              width={12}
+              height={12}
+              fill="currentColor"
+              className="block shrink-0"
+              aria-hidden
+            >
+              <path d="m233-120 65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z" />
+            </svg>
+            <span>{candidate.rating.toFixed(1)}</span>
             {candidate.userRatingCount != null && (
               <span className="text-zinc-500">
-                {" "}
                 ({candidate.userRatingCount})
               </span>
             )}
