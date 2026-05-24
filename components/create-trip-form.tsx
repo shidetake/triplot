@@ -12,8 +12,8 @@ import { DateRangeCalendar } from "./date-range-calendar";
 type Currency = "JPY" | "USD";
 
 const CURRENCIES: { value: Currency; label: string }[] = [
-  { value: "JPY", label: "JPY (¥)" },
-  { value: "USD", label: "USD ($)" },
+  { value: "JPY", label: "JPY 日本円" },
+  { value: "USD", label: "USD 米ドル" },
 ];
 
 const initialState: CreateTripState = { error: null };
