@@ -11,6 +11,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
+import { ColorBadge } from "./color-badge";
 import { TrashIcon, CloseIcon } from "./icons";
 import {
   gmapsUrl,
@@ -470,12 +471,7 @@ export function SavedInfo({
         <div className="flex items-start justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {status && (
-              <span
-                className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
-                style={{ backgroundColor: status.color }}
-              >
-                {status.name}
-              </span>
+              <ColorBadge color={status.color}>{status.name}</ColorBadge>
             )}
             {place.visibility === "private" && (
               <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">

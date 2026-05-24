@@ -6,6 +6,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 
+import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { type Anchor, FormPopover } from "./form-popover";
@@ -162,15 +163,18 @@ function ExpenseRowItem({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             {category && (
-              <span
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium leading-none text-white"
-                style={{ backgroundColor: category.color }}
+              <ColorBadge
+                color={category.color}
+                icon={
+                  <ExpenseCategoryIcon
+                    icon={category.icon}
+                    size={14}
+                    className="shrink-0"
+                  />
+                }
               >
-                <ExpenseCategoryIcon icon={category.icon} size={14} className="shrink-0" />
-                {/* iOS Safari の CJK は行ボックス内でやや上目に出るので、テキスト
-                    だけ実寸 0.5px 下げて視覚的に中央へ寄せる（全ブラウザ一律・微量）。 */}
-                <span className="relative top-[0.5px]">{category.name}</span>
-              </span>
+                {category.name}
+              </ColorBadge>
             )}
             <span className="font-medium">
               {formatAmount(amountInDefault, defaultCurrency)}

@@ -2,6 +2,8 @@
 
 import type { Visibility } from "@/lib/types/database";
 
+import { ColorBadge } from "./color-badge";
+
 export type PlaceStatus = {
   id: string;
   name: string;
@@ -175,12 +177,7 @@ export function PlaceList({
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   {status && (
-                    <span
-                      className="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium text-white"
-                      style={{ backgroundColor: status.color }}
-                    >
-                      {status.name}
-                    </span>
+                    <ColorBadge color={status.color}>{status.name}</ColorBadge>
                   )}
                   <span className="font-medium">{p.name}</span>
                   {p.visibility === "private" && (
