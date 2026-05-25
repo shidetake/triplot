@@ -36,8 +36,7 @@ export function CreateTripForm({
       action={formAction}
       className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
     >
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-medium">新しい旅行を作る</h3>
+      <div className="flex justify-end">
         <button
           type="button"
           onClick={onDone}
