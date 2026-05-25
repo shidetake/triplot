@@ -282,7 +282,9 @@ export function ExpenseForm({
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
-          <span className="font-medium">価格</span>
+          <span className="font-medium">
+            価格<span className="ml-0.5 font-normal text-red-500">*</span>
+          </span>
           <input
             type="number"
             name="local_price"
@@ -313,6 +315,7 @@ export function ExpenseForm({
         <label className="block text-sm">
           <span className="font-medium">
             為替レート（1 {localCurrency} = ? {defaultCurrency}）
+            <span className="ml-0.5 font-normal text-red-500">*</span>
           </span>
           <input
             type="number"
@@ -352,7 +355,7 @@ export function ExpenseForm({
       </div>
 
       <div className="block text-sm">
-        <span className="font-medium">場所（任意）</span>
+        <span className="font-medium">場所</span>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
@@ -371,7 +374,7 @@ export function ExpenseForm({
       </div>
 
       <label className="block text-sm" htmlFor={noteId}>
-        <span className="font-medium">メモ（任意）</span>
+        <span className="font-medium">メモ</span>
         <input
           id={noteId}
           type="text"
@@ -400,7 +403,9 @@ export function ExpenseForm({
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
         <label className="block min-w-0 text-sm">
-          <span className="font-medium">日付</span>
+          <span className="font-medium">
+            日付<span className="ml-0.5 font-normal text-red-500">*</span>
+          </span>
           <input
             type="date"
             name="paid_at_date"

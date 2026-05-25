@@ -269,7 +269,7 @@ export function PlacePicker({
         onChange={(e) => onChange(e.target.value)}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="場所を検索 / 入力（任意）"
+        placeholder="場所を検索 / 入力"
         autoComplete="off"
         className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
       />

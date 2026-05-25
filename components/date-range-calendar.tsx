@@ -2,6 +2,8 @@
 
 import { useMemo, useState } from "react";
 
+import { ChevronIcon } from "./icons";
+
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
 function pad(n: number): string {
@@ -95,7 +97,7 @@ export function DateRangeCalendar({
           aria-label="前の月"
           className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
         >
-          ‹
+          <ChevronIcon size={18} className="rotate-180" />
         </button>
         <div className="text-sm font-semibold text-zinc-900">
           {view.y}年{view.m0 + 1}月
@@ -106,7 +108,7 @@ export function DateRangeCalendar({
           aria-label="次の月"
           className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900"
         >
-          ›
+          <ChevronIcon size={18} />
         </button>
       </div>
 

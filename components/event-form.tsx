@@ -271,7 +271,9 @@ export function EventForm({
       )}
 
       <label className="block text-sm">
-        <span className="font-medium">タイトル</span>
+        <span className="font-medium">
+          タイトル<span className="ml-0.5 font-normal text-red-500">*</span>
+        </span>
         <input
           type="text"
           name="title"
@@ -285,7 +287,7 @@ export function EventForm({
       </label>
 
       <div className="block text-sm">
-        <span className="font-medium">場所（任意）</span>
+        <span className="font-medium">場所</span>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
@@ -489,7 +491,7 @@ export function EventForm({
       )}
 
       <label className="block text-sm">
-        <span className="font-medium">メモ（任意）</span>
+        <span className="font-medium">メモ</span>
         <input
           type="text"
           name="note"

@@ -11,7 +11,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
-import { TrashIcon, CloseIcon } from "./icons";
+import { TrashIcon, CloseIcon, EditIcon } from "./icons";
 import {
   gmapsUrl,
   PLACE_ICONS,
@@ -218,7 +218,7 @@ export function CandidateInfo({
           editable
         />
         <label className="block text-xs" htmlFor={noteId}>
-          <span className="font-medium text-zinc-700">メモ（任意）</span>
+          <span className="font-medium text-zinc-700">メモ</span>
           <input
             id={noteId}
             type="text"
@@ -314,7 +314,7 @@ export function DraftInfo({
           editable
         />
         <label className="block text-xs" htmlFor={noteId}>
-          <span className="font-medium text-zinc-700">メモ（任意）</span>
+          <span className="font-medium text-zinc-700">メモ</span>
           <input
             id={noteId}
             type="text"
@@ -570,9 +570,10 @@ export function SavedInfo({
               <button
                 type="button"
                 onClick={() => setEditing(true)}
-                className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
+                aria-label="編集"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50"
               >
-                編集
+                <EditIcon size={18} />
               </button>
             )}
           </div>

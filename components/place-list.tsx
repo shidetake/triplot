@@ -200,13 +200,15 @@ export function PlaceList({
                   </p>
                 )}
               </div>
-              <span
-                className={`shrink-0 text-xs ${
-                  isLocating ? "text-amber-700" : "text-blue-600"
-                }`}
-              >
-                {unmapped ? (isLocating ? "やめる" : "ピンを設定") : "地図で見る"}
-              </span>
+              {unmapped && (
+                <span
+                  className={`shrink-0 text-xs ${
+                    isLocating ? "text-amber-700" : "text-blue-600"
+                  }`}
+                >
+                  {isLocating ? "やめる" : "ピンを設定"}
+                </span>
+              )}
             </button>
           </li>
         );
