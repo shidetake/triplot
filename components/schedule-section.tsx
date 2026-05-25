@@ -155,28 +155,31 @@ export function ScheduleSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={openCreate}
-          aria-label="予定を追加"
-          className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
-        >
-          <PlusIcon size={18} />
-        </button>
-        <span className="group relative inline-flex self-center">
-          <span
-            tabIndex={0}
-            role="img"
-            aria-label="予定の追加方法"
-            className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-600"
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-lg font-medium">スケジュール</h2>
+        <div className="flex items-center gap-2">
+          <span className="group relative inline-flex">
+            <span
+              tabIndex={0}
+              role="img"
+              aria-label="予定の追加方法"
+              className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-600"
+            >
+              ?
+            </span>
+            <span className="pointer-events-none absolute bottom-full right-0 z-10 mb-1 w-52 rounded-md bg-zinc-800 px-2 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+              空き時間をクリック / 長押しでも追加できます
+            </span>
+          </span>
+          <button
+            type="button"
+            onClick={openCreate}
+            aria-label="予定を追加"
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
           >
-            ?
-          </span>
-          <span className="pointer-events-none absolute bottom-full left-0 z-10 mb-1 w-52 rounded-md bg-zinc-800 px-2 py-1.5 text-xs leading-snug text-white opacity-0 shadow-lg transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            空き時間をクリック / 長押しでも追加できます
-          </span>
-        </span>
+            <PlusIcon size={18} />
+          </button>
+        </div>
       </div>
 
       <WeekCalendar

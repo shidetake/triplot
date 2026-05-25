@@ -335,8 +335,6 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-medium">スケジュール</h2>
-
         <ScheduleSection
           tripId={tripId}
           initialTz={initialEventTz}
@@ -361,25 +359,26 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-medium">費用</h2>
-
-        <AddExpenseButton
-          tripId={tripId}
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-          }))}
-          myMemberId={me.id}
-          defaultCurrency={defaultCurrency}
-          initialCurrency={initialCurrency}
-          categories={categories}
-          initialCategoryId={initialCategoryId}
-          averageRates={averageRates}
-          initialPaidAt={initialPaidAt}
-          places={placesForPicker}
-          biasCenter={placesBiasCenter}
-          tzTimeline={tzTimeline}
-        />
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-lg font-medium">費用</h2>
+          <AddExpenseButton
+            tripId={tripId}
+            members={activeMembers.map((m) => ({
+              id: m.id,
+              display_name: m.display_name,
+            }))}
+            myMemberId={me.id}
+            defaultCurrency={defaultCurrency}
+            initialCurrency={initialCurrency}
+            categories={categories}
+            initialCategoryId={initialCategoryId}
+            averageRates={averageRates}
+            initialPaidAt={initialPaidAt}
+            places={placesForPicker}
+            biasCenter={placesBiasCenter}
+            tzTimeline={tzTimeline}
+          />
+        </div>
 
         <ExpenseSummaryView
           summary={summary}
