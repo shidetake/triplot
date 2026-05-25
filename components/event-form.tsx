@@ -195,6 +195,10 @@ export function EventForm({
   const [eDate, setEDate] = useState(minToDt(initEMin).date);
   const [eTime, setETime] = useState(minToDt(initEMin).time);
 
+  // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
+  // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
+  const transitArriveInit = minToDt(initSMin + 60);
+
   const moveStart = (nd: string, nt: string) => {
     const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
     setSDate(nd);
@@ -333,7 +337,7 @@ export function EventForm({
                 type="date"
                 name="arrive_date"
                 required
-                defaultValue={endInit.date || startInit.date}
+                defaultValue={endInit.date || transitArriveInit.date}
                 className={inputCls}
               />
             </label>
@@ -343,7 +347,7 @@ export function EventForm({
                 type="time"
                 name="arrive_time"
                 required
-                defaultValue={endInit.time}
+                defaultValue={endInit.time || transitArriveInit.time}
                 className={inputCls}
               />
             </label>
