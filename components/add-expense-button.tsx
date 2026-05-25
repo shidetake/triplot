@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ExpenseForm } from "./expense-form";
 import { type Anchor, FormPopover } from "./form-popover";
+import { PlusIcon } from "./icons";
 
 // 予定追加と同じ「ボタン → クリック位置にポップオーバー」スタイルで
 // 費用追加フォームを出す。props は ExpenseForm にそのまま渡す。
@@ -17,9 +18,10 @@ export function AddExpenseButton(props: Props) {
       <button
         type="button"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
-        className="h-9 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+        aria-label="費用を追加"
+        className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
       >
-        ＋ 費用を追加
+        <PlusIcon size={18} />
       </button>
 
       {anchor && (

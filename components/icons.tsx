@@ -146,3 +146,19 @@ export function EqualIcon({
     </LucideIcon>
   );
 }
+
+// Lucide: plus（追加）
+export function PlusIcon({
+  size = 18,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <path d="M5 12h14" />
+      <path d="M12 5v14" />
+    </LucideIcon>
+  );
+}

@@ -6,7 +6,7 @@ import type { LatLng } from "@/lib/placeMap";
 import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { EventForm, type EventFormMode } from "./event-form";
-import { CheckIcon } from "./icons";
+import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
@@ -159,9 +159,10 @@ export function ScheduleSection({
         <button
           type="button"
           onClick={openCreate}
-          className="h-9 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+          aria-label="予定を追加"
+          className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
         >
-          ＋ 予定を追加
+          <PlusIcon size={18} />
         </button>
         <span className="group relative inline-flex self-center">
           <span
