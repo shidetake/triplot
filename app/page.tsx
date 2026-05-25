@@ -11,6 +11,9 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // 旅行作成フォームの表示名デフォルト。フルネームは長いので、Google の
+  // given_name（名）を優先。無ければ保存済み display_name の先頭トークン
+  // （半角/全角スペース区切り）にフォールバックして短くする。
   let defaultDisplayName: string | null = null;
   if (user) {
     const { data: profile } = await supabase
@@ -18,7 +21,11 @@ export default async function Home() {
       .select("display_name")
       .eq("id", user.id)
       .single();
-    defaultDisplayName = profile?.display_name ?? null;
+    const given = (
+      user.user_metadata?.given_name as string | undefined
+    )?.trim();
+    const firstToken = (profile?.display_name ?? "").trim().split(/[\s　]+/)[0];
+    defaultDisplayName = given || firstToken || null;
   }
 
   return (
