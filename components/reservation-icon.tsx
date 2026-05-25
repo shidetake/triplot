@@ -14,7 +14,7 @@ export function ReservationIcon({
       width={size}
       height={size}
       fill="currentColor"
-      className={["inline-block shrink-0 align-text-bottom text-amber-500", className]
+      className={["inline-block shrink-0 align-middle text-yellow-400", className]
         .filter(Boolean)
         .join(" ")}
       aria-hidden

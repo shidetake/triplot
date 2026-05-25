@@ -16,7 +16,7 @@ function ReservationMark({ ev }: { ev: ScheduleEvent }) {
   return ev.reservationDone ? (
     <CheckIcon
       size={11}
-      className="mr-0.5 inline-block shrink-0 align-text-bottom opacity-70"
+      className="mr-0.5 inline-block shrink-0 align-middle opacity-70"
     />
   ) : (
     <ReservationIcon size={11} className="mr-0.5" />
