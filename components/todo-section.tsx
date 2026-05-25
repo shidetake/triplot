@@ -14,7 +14,13 @@ import {
   toggleTodoAction,
   updateTodoAction,
 } from "@/app/trips/[tripId]/actions";
-import { ChevronIcon, CheckIcon, EqualIcon, TrashIcon } from "@/components/icons";
+import {
+  ChevronIcon,
+  CheckIcon,
+  EqualIcon,
+  PlusIcon,
+  TrashIcon,
+} from "@/components/icons";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
 import type { TodoKind, TodoPriority } from "@/lib/types/database";
@@ -338,16 +344,15 @@ export function TodoSection({
           type="button"
           onClick={add}
           disabled={isPending || draft.trim() === ""}
-          className="shrink-0 rounded-md bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:opacity-40"
+          aria-label="追加"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-white transition hover:bg-zinc-700 disabled:opacity-40"
         >
-          追加
+          <PlusIcon size={16} />
         </button>
       </div>
 
       {/* リスト */}
-      {ordered.length === 0 ? (
-        <p className="px-2 py-1 text-sm text-zinc-400">まだありません</p>
-      ) : (
+      {ordered.length === 0 ? null : (
         <ul>
           {ordered.map((todo) => (
             <li

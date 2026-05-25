@@ -141,11 +141,7 @@ export function PlaceList({
   const statusById = new Map(statuses.map((s) => [s.id, s]));
 
   if (places.length === 0) {
-    return (
-      <p className="text-sm text-zinc-500">
-        まだ場所はありません。上で検索して地図のピンから追加してください。
-      </p>
-    );
+    return null;
   }
 
   return (

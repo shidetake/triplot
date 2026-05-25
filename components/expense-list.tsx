@@ -78,9 +78,7 @@ export function ExpenseList({
   const closeEdit = () => setEditing(null);
 
   if (expenses.length === 0) {
-    return (
-      <p className="text-sm text-zinc-500">まだ費用は登録されていません。</p>
-    );
+    return null;
   }
 
   return (

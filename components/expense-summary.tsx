@@ -50,7 +50,7 @@ export function ExpenseSummaryView({
       <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm">
         <h3 className="font-medium">精算</h3>
         {settlements.length === 0 ? (
-          <p className="mt-2 text-zinc-500">精算は不要です。</p>
+          <p className="mt-2 text-zinc-500">—</p>
         ) : (
           <ul className="mt-2 space-y-1">
             {settlements.map((s, i) => (
