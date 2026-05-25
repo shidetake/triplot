@@ -165,7 +165,7 @@ export function TripActions({
         <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)}>
           <div className="space-y-3 p-4">
             <p className="text-xs text-zinc-500">
-              リンクを知っている人はログイン不要（ゲスト）で参加できます。
+              リンクがあればログイン不要で参加できます。
             </p>
             <button
               type="button"
