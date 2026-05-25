@@ -428,7 +428,7 @@ export function TodoSection({
                 type="button"
                 onClick={() => remove(todo)}
                 aria-label="削除"
-                className="shrink-0 rounded p-1 text-zinc-300 transition hover:bg-zinc-200 hover:text-zinc-600"
+                className="shrink-0 rounded p-1 text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-700"
               >
                 <TrashIcon size={16} />
               </button>
