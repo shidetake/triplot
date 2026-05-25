@@ -130,3 +130,19 @@ export function EditIcon({
     </LucideIcon>
   );
 }
+
+// Lucide: equal（= 横2本線。優先度「中」に使う）
+export function EqualIcon({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <path d="M5 9h14" />
+      <path d="M5 15h14" />
+    </LucideIcon>
+  );
+}

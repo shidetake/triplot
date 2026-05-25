@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useOptimistic, useState, useTransition } from "react";
+import {
+  useEffect,
+  useOptimistic,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 
 import {
   createTodoAction,
@@ -8,7 +14,7 @@ import {
   toggleTodoAction,
   updateTodoAction,
 } from "@/app/trips/[tripId]/actions";
-import { ChevronIcon, CheckIcon, TrashIcon } from "@/components/icons";
+import { ChevronIcon, CheckIcon, EqualIcon, TrashIcon } from "@/components/icons";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
 import type { TodoKind, TodoPriority } from "@/lib/types/database";
@@ -32,11 +38,21 @@ type MemberLite = {
 };
 
 // 優先度チップの配色（ライトモード固定）
-const PRIORITY_CHIP: Record<TodoPriority, string> = {
-  high: "bg-red-100 text-red-700",
-  medium: "bg-amber-100 text-amber-700",
-  low: "bg-zinc-100 text-zinc-600",
+const PRIORITY_LABEL: Record<TodoPriority, string> = {
+  high: "高",
+  medium: "中",
+  low: "低",
 };
+
+// JIRA 風の優先度アイコン（高=上シェブロン / 中=イコール / 低=下シェブロン）。
+// 既存の Lucide Chevron を回転して再利用し、色＋形状で色覚にも配慮する。
+function PriorityIcon({ p, size = 16 }: { p: TodoPriority; size?: number }) {
+  if (p === "high")
+    return <ChevronIcon size={size} className="-rotate-90 text-red-500" />;
+  if (p === "low")
+    return <ChevronIcon size={size} className="rotate-90 text-blue-500" />;
+  return <EqualIcon size={size} className="text-amber-500" />;
+}
 
 type OptimisticAction =
   | { type: "add"; todo: TodoRow }
@@ -53,18 +69,69 @@ function PrioritySelect({
   onChange: (p: TodoPriority) => void;
   disabled?: boolean;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   return (
-    <select
-      value={value}
-      onChange={(e) => onChange(e.target.value as TodoPriority)}
-      disabled={disabled}
-      aria-label="優先度"
-      className={`shrink-0 cursor-pointer appearance-none rounded-full px-2 py-0.5 text-center text-xs font-medium outline-none disabled:opacity-50 ${PRIORITY_CHIP[value]}`}
-    >
-      <option value="high">高</option>
-      <option value="medium">中</option>
-      <option value="low">低</option>
-    </select>
+    <div ref={ref} className="relative shrink-0">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => setOpen((o) => !o)}
+        aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-zinc-100 disabled:opacity-50"
+      >
+        <PriorityIcon p={value} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute right-0 z-50 mt-1 w-24 overflow-hidden rounded-md border border-zinc-300 bg-white py-1 shadow-lg"
+        >
+          {(["high", "medium", "low"] as const).map((p) => {
+            const sel = p === value;
+            return (
+              <li key={p} role="option" aria-selected={sel}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(p);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-50 ${
+                    sel ? "bg-zinc-50 font-medium" : ""
+                  }`}
+                >
+                  <PriorityIcon p={p} size={15} />
+                  <span className="flex-1">{PRIORITY_LABEL[p]}</span>
+                  {sel && <CheckIcon size={13} className="text-zinc-500" />}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
