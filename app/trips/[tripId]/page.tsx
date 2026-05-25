@@ -293,11 +293,10 @@ export default async function TripDetailPage({
   const tripStarted = trip.start_date != null && today >= trip.start_date;
   const initialCurrency: Currency =
     lastEntered?.local_currency ?? defaultCurrency;
+  // 初回（費用ゼロ）は一番上のカテゴリ（= 渡航。sort_order 昇順の先頭）。
+  // 2件目以降は最後に使ったカテゴリを既定に。
   const initialCategoryId =
-    lastEntered?.category_id ??
-    categories.find((c) => c.name === "その他")?.id ??
-    categories[0]?.id ??
-    "";
+    lastEntered?.category_id ?? categories[0]?.id ?? "";
   // 初回（費用ゼロ）は旅行開始日、それ以降は最後に作った費用の日を既定に。
   // 開始日未設定の trip では今日にフォールバック。
   const initialPaidAt = lastEntered
