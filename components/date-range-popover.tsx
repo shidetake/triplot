@@ -99,20 +99,29 @@ export function DateRangePopover({
           <Calendar
             mode="range"
             selected={range}
-            onSelect={(r) => {
-              setRange(r);
-              // 範囲が確定したら閉じる（片方だけのときは開いたまま）。
-              // min=1 を渡すことで「初回クリックで from=to=d として確定扱い」
-              // になる v10 既定の挙動を抑え、初回クリックは to=undefined にする。
-              if (r?.from && r?.to) setOpen(false);
-            }}
+            onSelect={setRange}
             defaultMonth={range?.from ?? new Date()}
             locale={ja}
+            // min=1 を渡すことで「初回クリックで from=to=d として確定扱い」になる
+            // v10 既定の挙動を抑え、初回クリックは to=undefined にする。
             min={1}
             captionLayout="dropdown-years"
             startMonth={RANGE_START}
             endMonth={RANGE_END}
           />
+          {/* 範囲選択は片端だけ押したつもりが両端確定になって popover が閉じる
+              のがミスりやすいので、自動クローズはやめて、ここの「確定」を明示
+              タップで閉じる方式にしている。両端揃うまで disabled。 */}
+          <div className="flex justify-end border-t border-zinc-200 p-2">
+            <button
+              type="button"
+              disabled={!f || !t}
+              onClick={() => setOpen(false)}
+              className="h-8 rounded-md bg-black px-4 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-40"
+            >
+              確定
+            </button>
+          </div>
         </PopoverContent>
       </Popover>
     </>
