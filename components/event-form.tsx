@@ -14,6 +14,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
+import { DatePopover } from "./date-popover";
 import { TrashIcon, CloseIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
@@ -117,6 +118,8 @@ function initialKind3(ev: ScheduleEvent | null, allDayHint: boolean): Kind3 {
 export function EventForm({
   tripId,
   defaultTz,
+  tripStart,
+  tripEnd,
   state: formMode,
   places,
   biasCenter,
@@ -124,6 +127,8 @@ export function EventForm({
 }: {
   tripId: string;
   defaultTz: string; // 個別TZの初期値（= 前回入力 or ブラウザTZ）
+  tripStart: string | null; // カレンダーの旅行期間ハイライト用
+  tripEnd: string | null;
   state: EventFormMode;
   places: { id: string; name: string }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
@@ -198,6 +203,15 @@ export function EventForm({
   // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
   const transitArriveInit = minToDt(initSMin + 60);
+
+  // 時差移動 / 終日の日付は DatePopover（カスタム）に置換したので、フォーム送信用に
+  // それぞれ controlled state を持つ。日付追従ロジックは入れない（"とりあえず"の既定）。
+  const [departDate, setDepartDate] = useState(startInit.date);
+  const [arriveDate, setArriveDate] = useState(
+    endInit.date || transitArriveInit.date,
+  );
+  const [alldayStart, setAlldayStart] = useState(startInit.date);
+  const [alldayEnd, setAlldayEnd] = useState(endInit.date || startInit.date);
 
   const moveStart = (nd: string, nt: string) => {
     const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
@@ -313,12 +327,13 @@ export function EventForm({
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
               <span className="text-zinc-600">出発日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="depart_date"
+                value={departDate}
+                onChange={setDepartDate}
                 required
-                defaultValue={startInit.date}
-                className={inputCls}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <label className={fieldCls}>
@@ -333,12 +348,13 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-zinc-600">到着日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="arrive_date"
+                value={arriveDate}
+                onChange={setArriveDate}
                 required
-                defaultValue={endInit.date || transitArriveInit.date}
-                className={inputCls}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <label className={fieldCls}>
@@ -368,23 +384,25 @@ export function EventForm({
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
               <span className="text-zinc-600">開始日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="start_date"
+                value={alldayStart}
+                onChange={setAlldayStart}
                 required
-                defaultValue={startInit.date}
-                className={inputCls}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <div />
             <label className={fieldCls}>
               <span className="text-zinc-600">終了日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="end_date"
+                value={alldayEnd}
+                onChange={setAlldayEnd}
                 required
-                defaultValue={endInit.date || startInit.date}
-                className={inputCls}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <div />
@@ -398,13 +416,13 @@ export function EventForm({
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
               <span className="text-zinc-600">開始日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="start_date"
-                required
                 value={sDate}
-                onChange={(e) => moveStart(e.target.value, sTime)}
-                className={inputCls}
+                onChange={(v) => moveStart(v, sTime)}
+                required
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <label className={fieldCls}>
@@ -420,13 +438,13 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-zinc-600">終了日</span>
-              <input
-                type="date"
+              <DatePopover
                 name="end_date"
-                required
                 value={eDate}
-                onChange={(e) => setEDate(e.target.value)}
-                className={inputCls}
+                onChange={setEDate}
+                required
+                tripStart={tripStart}
+                tripEnd={tripEnd}
               />
             </label>
             <label className={fieldCls}>

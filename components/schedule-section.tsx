@@ -211,6 +211,8 @@ export function ScheduleSection({
           <EventForm
             tripId={tripId}
             defaultTz={defaultTz}
+            tripStart={tripStart}
+            tripEnd={tripEnd}
             state={open.form}
             places={places}
             biasCenter={biasCenter}

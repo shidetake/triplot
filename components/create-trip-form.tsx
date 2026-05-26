@@ -7,7 +7,7 @@ import {
   type CreateTripState,
 } from "@/app/trips/create-trip-action";
 
-import { DateRangeCalendar } from "./date-range-calendar";
+import { DateRangePicker } from "./date-range-picker";
 import { CloseIcon } from "./icons";
 
 type Currency = "JPY" | "USD";
@@ -57,7 +57,7 @@ export function CreateTripForm({
       <div className="text-sm">
         <span className="font-medium">日程</span>
         <div className="mt-1">
-          <DateRangeCalendar startName="start_date" endName="end_date" />
+          <DateRangePicker startName="start_date" endName="end_date" />
         </div>
       </div>
 
