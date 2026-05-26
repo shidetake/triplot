@@ -11,21 +11,35 @@ export default async function Home() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 旅行作成フォームの表示名デフォルト。フルネームは長いので、Google の
-  // given_name（名）を優先。無ければ保存済み display_name の先頭トークン
-  // （半角/全角スペース区切り）にフォールバックして短くする。
+  // 旅行作成フォームの表示名デフォルト。
+  // 既存データ優先: 直近に参加した旅行で使った表示名（最新の在籍旅行）。
+  // 無ければ完全デフォルト: Google の given_name（名）→ users.display_name の
+  // 先頭トークン（半角/全角スペース区切り）にフォールバックして短くする。
   let defaultDisplayName: string | null = null;
   if (user) {
-    const { data: profile } = await supabase
-      .from("users")
+    const { data: lastMember } = await supabase
+      .from("trip_members")
       .select("display_name")
-      .eq("id", user.id)
-      .single();
-    const given = (
-      user.user_metadata?.given_name as string | undefined
-    )?.trim();
-    const firstToken = (profile?.display_name ?? "").trim().split(/[\s　]+/)[0];
-    defaultDisplayName = given || firstToken || null;
+      .eq("user_id", user.id)
+      .order("joined_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (lastMember?.display_name) {
+      defaultDisplayName = lastMember.display_name;
+    } else {
+      const { data: profile } = await supabase
+        .from("users")
+        .select("display_name")
+        .eq("id", user.id)
+        .single();
+      const given = (
+        user.user_metadata?.given_name as string | undefined
+      )?.trim();
+      const firstToken = (profile?.display_name ?? "")
+        .trim()
+        .split(/[\s　]+/)[0];
+      defaultDisplayName = given || firstToken || null;
+    }
   }
 
   return (
