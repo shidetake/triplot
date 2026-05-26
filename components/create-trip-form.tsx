@@ -7,7 +7,7 @@ import {
   type CreateTripState,
 } from "@/app/trips/create-trip-action";
 
-import { DateRangePicker } from "./date-range-picker";
+import { DateRangePopover } from "./date-range-popover";
 import { CloseIcon } from "./icons";
 
 type Currency = "JPY" | "USD";
@@ -57,7 +57,11 @@ export function CreateTripForm({
       <div className="text-sm">
         <span className="font-medium">日程</span>
         <div className="mt-1">
-          <DateRangePicker startName="start_date" endName="end_date" />
+          <DateRangePopover
+            startName="start_date"
+            endName="end_date"
+            required
+          />
         </div>
       </div>
 
