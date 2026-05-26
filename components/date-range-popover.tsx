@@ -95,11 +95,14 @@ export function DateRangePopover({
             selected={range}
             onSelect={(r) => {
               setRange(r);
-              // 範囲が確定したら閉じる（片方だけのときは開いたまま）
+              // 範囲が確定したら閉じる（片方だけのときは開いたまま）。
+              // min=1 を渡すことで「初回クリックで from=to=d として確定扱い」
+              // になる v10 既定の挙動を抑え、初回クリックは to=undefined にする。
               if (r?.from && r?.to) setOpen(false);
             }}
             defaultMonth={range?.from ?? new Date()}
             locale={ja}
+            min={1}
           />
         </PopoverContent>
       </Popover>
