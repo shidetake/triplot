@@ -172,6 +172,34 @@ function Calendar({
             </td>
           )
         },
+        // 月によって 4/5/6 行が混在すると popover の縦幅がガタつくので、
+        // 5 行表示を基準に揃える。4 週月は最後に空行を1つ足し、6 週月は
+        // 行間 mt-2 → mt-0.5 に詰めて 5 行ぶんの縦幅に収める（CSS は
+        // globals.css の [data-slot="calendar-weeks"][data-week-count="6"]）。
+        Weeks: ({ children, ...props }) => {
+          const childArr = React.Children.toArray(children)
+          const count = childArr.length
+          if (count === 4) {
+            childArr.push(
+              <tr
+                key="__filler__"
+                aria-hidden="true"
+                className="mt-2 flex w-full"
+              >
+                <td className="h-(--cell-size) flex-1" />
+              </tr>
+            )
+          }
+          return (
+            <tbody
+              data-slot="calendar-weeks"
+              data-week-count={count}
+              {...props}
+            >
+              {childArr}
+            </tbody>
+          )
+        },
         ...components,
       }}
       {...props}

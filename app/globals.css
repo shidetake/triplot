@@ -103,6 +103,14 @@ input[type="time"] {
   max-width: 100%;
 }
 
+/* カレンダー（react-day-picker）の月切替時の高さブレ防止。Tripit のように
+   5 行を基準にして、6 週月は行間 mt-2 → mt-0.5 に詰めて 5 行と同じ縦幅に
+   揃える。4 週月は components/ui/calendar.tsx の Weeks override 側で空行を
+   1つ足して 5 行表示にしている。 */
+[data-slot="calendar-weeks"][data-week-count="6"] > * {
+  margin-top: 0.125rem;
+}
+
 /* 場所/候補の吹き出し（Google Maps InfoWindow）。
    Google は中身ラッパ .gm-style-iw-c / .gm-style-iw-d に max-width と
    overflow:auto を付ける。この max-width が中身(各 *Info の可変幅)より狭い
