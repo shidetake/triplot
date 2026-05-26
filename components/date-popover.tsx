@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 
 import { Calendar } from "@/components/ui/calendar";
+import { CustomMonthCaption } from "@/components/calendar-caption";
 import {
   Popover,
   PopoverContent,
@@ -12,7 +13,8 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-// captionLayout="dropdown" 時の年ドロップダウンの上限/下限。今日から±10年。
+// カレンダーの ＜ ＞ ナビゲーションを抑える範囲。今日から±10年。
+// CustomMonthCaption の YEAR_FROM/YEAR_TO と同じ範囲を維持すること。
 const TODAY = new Date();
 const RANGE_START = new Date(TODAY.getFullYear() - 10, 0, 1);
 const RANGE_END = new Date(TODAY.getFullYear() + 10, 11, 1);
@@ -89,9 +91,10 @@ export function DatePopover({
             }}
             defaultMonth={date ?? tripFrom ?? new Date()}
             locale={ja}
-            captionLayout="dropdown"
+            captionLayout="label"
             startMonth={RANGE_START}
             endMonth={RANGE_END}
+            components={{ MonthCaption: CustomMonthCaption }}
             modifiers={
               tripFrom && tripTo ? { trip: { from: tripFrom, to: tripTo } } : undefined
             }
