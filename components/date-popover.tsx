@@ -12,6 +12,11 @@ import {
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
+// captionLayout="dropdown" 時の年ドロップダウンの上限/下限。今日から±10年。
+const TODAY = new Date();
+const RANGE_START = new Date(TODAY.getFullYear() - 10, 0, 1);
+const RANGE_END = new Date(TODAY.getFullYear() + 10, 11, 1);
+
 function parseYmd(s?: string | null): Date | undefined {
   if (!s) return undefined;
   const [y, m, d] = s.split("-").map(Number);
@@ -84,6 +89,9 @@ export function DatePopover({
             }}
             defaultMonth={date ?? tripFrom ?? new Date()}
             locale={ja}
+            captionLayout="dropdown"
+            startMonth={RANGE_START}
+            endMonth={RANGE_END}
             modifiers={
               tripFrom && tripTo ? { trip: { from: tripFrom, to: tripTo } } : undefined
             }
