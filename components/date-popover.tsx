@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
+import type { Matcher } from "react-day-picker";
 
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -35,6 +36,8 @@ function fmtYmd(d?: Date): string {
 // 単発の日付選択ポップオーバー。タップでカレンダーが開く。フォーム送信は
 // hidden input(name) で "YYYY-MM-DD" を流す。tripStart/tripEnd を渡すと
 // その日程をカレンダー上で薄い背景色でハイライトする（旅行外も選択可）。
+// disabled は rdp の Matcher をそのまま転送。「終了日は開始日より前不可」など
+// 不正状態を picker レベルで物理的に弾くために使う（呼び出し側でセット）。
 export function DatePopover({
   name,
   value,
@@ -42,6 +45,7 @@ export function DatePopover({
   required,
   tripStart,
   tripEnd,
+  disabled,
   className,
 }: {
   name: string;
@@ -50,6 +54,7 @@ export function DatePopover({
   required?: boolean;
   tripStart?: string | null;
   tripEnd?: string | null;
+  disabled?: Matcher | Matcher[];
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -93,6 +98,7 @@ export function DatePopover({
             captionLayout="dropdown-years"
             startMonth={RANGE_START}
             endMonth={RANGE_END}
+            disabled={disabled}
             modifiers={
               tripFrom && tripTo ? { trip: { from: tripFrom, to: tripTo } } : undefined
             }

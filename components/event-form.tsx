@@ -57,6 +57,15 @@ const KIND3_LABEL: Record<Kind3, string> = {
   transit: "時差移動",
 };
 
+// "YYYY-MM-DD" → Date。DatePopover の disabled マッチャ（{before: Date}）用。
+// ローカルTZの 00:00 で生成する（floating time を保つ意図と一致）。
+function ymdToDate(s: string): Date | undefined {
+  if (!s) return undefined;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
 // 壁時計の (date,time) ↔ 通算分。Date.UTC を計算専用に使い、ローカルTZは
 // 一切経由しない（floating time を保つ）。
 function dtToMin(date: string, time: string): number {
@@ -220,6 +229,30 @@ export function EventForm({
     const ne = minToDt(dtToMin(nd, nt) + dur);
     setEDate(ne.date);
     setETime(ne.time);
+  };
+
+  // timed の終了ガード。日付は picker で disable してるので逆転はほぼ起き
+  // ないが、同日内で end_time < start_time に手で動かしたケースを最小1時間
+  // で start+60min に snap する（A1 パターン）。
+  const setEnd = (nd: string, nt: string) => {
+    const sMin = dtToMin(sDate, sTime);
+    const eMin = dtToMin(nd, nt);
+    if (eMin <= sMin) {
+      const ne = minToDt(sMin + 60);
+      setEDate(ne.date);
+      setETime(ne.time);
+    } else {
+      setEDate(nd);
+      setETime(nt);
+    }
+  };
+
+  // allday の開始ガード。終了 picker は開始より前を disable しているので
+  // 「終了 → 開始」方向の逆転は picker で防止済み。逆方向（開始を終了より
+  // 後にする）が来た場合は単日扱いで end も開始日に揃える。
+  const setAlldayStartG = (v: string) => {
+    setAlldayStart(v);
+    if (v > alldayEnd) setAlldayEnd(v);
   };
 
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
@@ -387,7 +420,7 @@ export function EventForm({
               <DatePopover
                 name="start_date"
                 value={alldayStart}
-                onChange={setAlldayStart}
+                onChange={setAlldayStartG}
                 required
                 tripStart={tripStart}
                 tripEnd={tripEnd}
@@ -403,6 +436,11 @@ export function EventForm({
                 required
                 tripStart={tripStart}
                 tripEnd={tripEnd}
+                disabled={
+                  ymdToDate(alldayStart)
+                    ? { before: ymdToDate(alldayStart)! }
+                    : undefined
+                }
               />
             </label>
             <div />
@@ -441,10 +479,15 @@ export function EventForm({
               <DatePopover
                 name="end_date"
                 value={eDate}
-                onChange={setEDate}
+                onChange={(v) => setEnd(v, eTime)}
                 required
                 tripStart={tripStart}
                 tripEnd={tripEnd}
+                disabled={
+                  ymdToDate(sDate)
+                    ? { before: ymdToDate(sDate)! }
+                    : undefined
+                }
               />
             </label>
             <label className={fieldCls}>
@@ -454,7 +497,7 @@ export function EventForm({
                 name="end_time"
                 required
                 value={eTime}
-                onChange={(e) => setETime(e.target.value)}
+                onChange={(e) => setEnd(eDate, e.target.value)}
                 className={inputCls}
               />
             </label>
