@@ -99,7 +99,17 @@ export function DateRangePopover({
           <Calendar
             mode="range"
             selected={range}
-            onSelect={setRange}
+            onSelect={(newRange, triggerDate) => {
+              // 範囲確定済みのときに次の日付がタップされたら「新しい開始日」
+              // としてリセットする（Booking / Airbnb 風）。rdp デフォルトは
+              // 端点を寄せる挙動だが、travel app では予測しにくい（範囲内
+              // タップで片端が縮む等）ので採用しない。
+              if (range?.from && range?.to) {
+                setRange({ from: triggerDate, to: undefined });
+              } else {
+                setRange(newRange);
+              }
+            }}
             defaultMonth={range?.from ?? new Date()}
             locale={ja}
             // min=1 を渡すことで「初回クリックで from=to=d として確定扱い」になる
