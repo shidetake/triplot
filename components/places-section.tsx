@@ -53,12 +53,20 @@ export function PlacesSection({
     [places],
   );
 
-  const onResults = useCallback((results: CandidatePlace[]) => {
-    setCandidates(results);
-    setSelected(null);
-    setDraft(null);
-    setPoi(null);
-  }, []);
+  const onResults = useCallback(
+    (results: CandidatePlace[], opts?: { selectFirst?: boolean }) => {
+      setCandidates(results);
+      setDraft(null);
+      setPoi(null);
+      // autocomplete からの 1 件確定なら、その候補を「選択中（吹き出し開く）」に。
+      if (opts?.selectFirst && results[0]) {
+        setSelected({ kind: "candidate", placeId: results[0].placeId });
+      } else {
+        setSelected(null);
+      }
+    },
+    [],
+  );
 
   const closeInfo = useCallback(() => {
     setSelected(null);

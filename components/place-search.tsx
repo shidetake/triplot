@@ -66,7 +66,12 @@ export function PlaceSearch({
   onQueryChange: (value: string) => void;
   onClear: () => void;
   biasCenter: LatLng;
-  onResults: (results: CandidatePlace[]) => void;
+  // selectFirst=true は autocomplete 確定経路のシグナル。呼び出し側で
+  // results[0] を「候補ピン選択中（吹き出し開く）」状態にする。
+  onResults: (
+    results: CandidatePlace[],
+    opts?: { selectFirst?: boolean },
+  ) => void;
 }) {
   const placesLib = useMapsLibrary("places");
   const [pending, setPending] = useState(false);
@@ -172,7 +177,7 @@ export function PlaceSearch({
           photoUri: place.photos?.[0]?.getURI({ maxWidth: 400 }) ?? null,
         };
         onQueryChange(cp.name);
-        onResults([cp]);
+        onResults([cp], { selectFirst: true });
       } catch {
         setError("場所の詳細取得に失敗しました");
       } finally {
