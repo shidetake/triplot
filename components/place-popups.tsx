@@ -142,7 +142,12 @@ export function CandidateInfo({
     initialState,
   );
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
-  const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
+  // 新規作成時のデフォルトは「確定」=tentative が false の最初のステータス。
+  // ユーザが追加した独自ステータス構成でも、確定相当（非 tentative）が
+  // 優先される。全部 tentative の場合だけ最初の行にフォールバック。
+  const defaultStatusId =
+    sorted.find((s) => !s.tentative)?.id ?? sorted[0]?.id ?? "";
+  const [statusId, setStatusId] = useState(defaultStatusId);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const [icon, setIcon] = useState("pin");
   const noteId = useId();
@@ -263,7 +268,12 @@ export function DraftInfo({
     initialState,
   );
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
-  const [statusId, setStatusId] = useState(sorted[0]?.id ?? "");
+  // 新規作成時のデフォルトは「確定」=tentative が false の最初のステータス。
+  // ユーザが追加した独自ステータス構成でも、確定相当（非 tentative）が
+  // 優先される。全部 tentative の場合だけ最初の行にフォールバック。
+  const defaultStatusId =
+    sorted.find((s) => !s.tentative)?.id ?? sorted[0]?.id ?? "";
+  const [statusId, setStatusId] = useState(defaultStatusId);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const [icon, setIcon] = useState("pin");
   const nameId = useId();
