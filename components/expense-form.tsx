@@ -116,10 +116,15 @@ export function ExpenseForm({
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";
-  const initSplittable = isEdit ? editExpense.splittable : true;
-  const initSplits = isEdit
-    ? new Set(editExpense.split_member_ids)
-    : new Set(members.map((m) => m.id));
+  // 編集モードで splittable=false の費用は「自分のみ（=おごり / 自分の費用）」
+  // として復元する。split_member_ids は空で保存されているので、ここで自分を
+  // 1人だけ選択した状態にしておく（チップ UI で自分のみ表示）。
+  const initOnlySelf = isEdit && !editExpense.splittable;
+  const initSplits: Set<string> = initOnlySelf
+    ? new Set([myMemberId])
+    : isEdit
+      ? new Set(editExpense.split_member_ids)
+      : new Set(members.map((m) => m.id));
 
   const boundAction = isEdit
     ? updateExpenseAction.bind(null, tripId, editExpense.id)
@@ -207,18 +212,17 @@ export function ExpenseForm({
     setShowTime(false);
   };
   const [visibility, setVisibility] = useState<Visibility>(initVisibility);
-  const [splittable, setSplittable] = useState(initSplittable);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
 
   // 割り勘対象の "全員 / 一部" モード（event-form の参加者と同じ disclosure）。
-  // 編集時、保存済み split がアクティブメンバーと完全一致なら "all"、
-  // 1人でも欠けてる / 余分があれば "custom"。
+  // 編集時、保存済み split がアクティブメンバーと完全一致なら "all"。
+  // それ以外（subset / 自分のみ）は "custom" でチップ展開した状態で開く。
   const splitsMatchAll = (() => {
     if (initSplits.size !== members.length) return false;
     return members.every((m) => initSplits.has(m.id));
   })();
   const [splitMode, setSplitMode] = useState<"all" | "custom">(
-    isEdit && initSplittable && !splitsMatchAll ? "custom" : "all",
+    isEdit && !splitsMatchAll ? "custom" : "all",
   );
 
   // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。
@@ -262,14 +266,31 @@ export function ExpenseForm({
     });
   };
 
-  // フォーム送信時に hidden で流す split_member_ids。"all" のときは全員、
-  // "custom" のときはチップ選択分。割り勘 OFF のときは何も送らない。
-  const submittedSplitIds: string[] =
-    visibility === "shared" && splittable
-      ? splitMode === "all"
-        ? members.map((m) => m.id)
-        : Array.from(selectedSplits)
-      : [];
+  // 割り勘対象から splittable と split_member_ids を導出する。
+  //  - 自分のみ選択（=「割り勘しない」と同義）→ splittable=false, ids=[]
+  //  - 全員 / 一部（自分以外も居る） → splittable=true, ids=選択分
+  //  - private → 強制的に splittable=false（DB の CHECK 制約に合わせる）
+  const onlySelf =
+    selectedSplits.size === 1 && selectedSplits.has(myMemberId);
+  const submittedSplittable = visibility === "shared" && !onlySelf;
+  const submittedSplitIds: string[] = !submittedSplittable
+    ? []
+    : splitMode === "all"
+      ? members.map((m) => m.id)
+      : Array.from(selectedSplits);
+
+  // disclosure ラベルは選択状態から決める。
+  //  - 全員選択 → "全員"
+  //  - 自分のみ → "自分のみ"
+  //  - その他   → "一部"
+  const allSelectedNow =
+    selectedSplits.size === members.length &&
+    members.every((m) => selectedSplits.has(m.id));
+  const splitLabel = onlySelf
+    ? "自分のみ"
+    : allSelectedNow
+      ? "全員"
+      : "一部";
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -542,10 +563,7 @@ export function ExpenseForm({
                 name="visibility"
                 value="private"
                 checked={visibility === "private"}
-                onChange={() => {
-                  setVisibility("private");
-                  setSplittable(false);
-                }}
+                onChange={() => setVisibility("private")}
               />
               <span>自分のみ</span>
             </label>
@@ -555,22 +573,11 @@ export function ExpenseForm({
         <input type="hidden" name="visibility" value={visibility} />
       )}
 
-      {visibility === "shared" && (
-        <label className="inline-flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="splittable"
-            checked={splittable}
-            onChange={(e) => setSplittable(e.target.checked)}
-          />
-          <span>割り勘する</span>
-        </label>
-      )}
-
       {/* 割り勘対象。event-form の参加者と同じ disclosure + chip パターン。
           デフォルトは「割り勘対象: 全員 ▼」。タップで展開してチップで選択。
-          展開状態は「割り勘対象: 一部 ▲」。▲ で畳むと全員に戻る。 */}
-      {visibility === "shared" && splittable && (
+          展開状態は選択内容で「全員 ▲」「一部 ▲」「自分のみ ▲」に切り替わる。
+          自分のみ = 割り勘しない（=おごり/自分の費用）と同義。 */}
+      {visibility === "shared" && members.length > 1 && (
         <div className="text-sm">
           <button
             type="button"
@@ -585,7 +592,7 @@ export function ExpenseForm({
             aria-expanded={splitMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-zinc-700 transition hover:text-zinc-900"
           >
-            <span>割り勘対象: {splitMode === "all" ? "全員" : "一部"}</span>
+            <span>割り勘対象: {splitMode === "all" ? "全員" : splitLabel}</span>
             <span className="text-[10px] text-zinc-500">
               {splitMode === "all" ? "▼" : "▲"}
             </span>
@@ -615,7 +622,11 @@ export function ExpenseForm({
         </div>
       )}
 
-      {/* 送信用 hidden inputs。全員 / 一部 / 割り勘 OFF を集約して書く。 */}
+      {/* 送信用 hidden inputs。"自分のみ" は splittable=false + 空配列、
+          それ以外（全員/一部）は splittable=true + 選択分。 */}
+      {submittedSplittable && (
+        <input type="hidden" name="splittable" value="on" />
+      )}
       {submittedSplitIds.map((id) => (
         <input key={id} type="hidden" name="split_member_ids" value={id} />
       ))}
