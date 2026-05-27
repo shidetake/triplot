@@ -569,34 +569,30 @@ export function EventForm({
       </fieldset>
 
       {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので
-          省略）。デフォルトは「全員参加」で非展開。「別行動を指定」を押すと
-          メンバーチップが出て、参加する人だけを残す。送信は pMode=custom の時
-          だけ hidden input を生やし、それ以外は何も送らない（=全員のシュガー）。 */}
+          省略）。デフォルトは「参加者: 全員 ▼」の disclosure。タップで展開して
+          チップで選択できるようになる。展開状態は「参加者: 一部 ▲」表示で、再
+          タップでチップを畳んで全員に戻す。送信は pMode=custom の時だけ hidden
+          input を生やし、それ以外は何も送らない（=全員のシュガー）。 */}
       {visibility === "shared" && members.length > 1 && (
         <div className="text-xs">
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-zinc-700">参加者</span>
-            {pMode === "all" ? (
-              <button
-                type="button"
-                onClick={() => setPMode("custom")}
-                className="rounded-md border border-dashed border-zinc-300 px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-900"
-              >
-                ＋ 別行動を指定
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => {
-                  setPMode("all");
-                  setPSelected(new Set(members.map((m) => m.id)));
-                }}
-                className="text-[11px] text-zinc-500 underline hover:text-zinc-900"
-              >
-                全員に戻す
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              if (pMode === "all") {
+                setPMode("custom");
+              } else {
+                setPMode("all");
+                setPSelected(new Set(members.map((m) => m.id)));
+              }
+            }}
+            aria-expanded={pMode === "custom"}
+            className="inline-flex items-center gap-1 rounded font-medium text-zinc-700 transition hover:text-zinc-900"
+          >
+            <span>参加者: {pMode === "all" ? "全員" : "一部"}</span>
+            <span className="text-[10px] text-zinc-500">
+              {pMode === "all" ? "▼" : "▲"}
+            </span>
+          </button>
           {pMode === "custom" && (
             <div className="mt-1.5 flex flex-wrap gap-1">
               {members.map((m) => {
