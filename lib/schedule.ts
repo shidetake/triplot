@@ -27,6 +27,9 @@ export type ScheduleEvent = {
   // reservationDone=その予約TODOが done（=予約済）か。無ければ両方 false。
   needsReservation: boolean;
   reservationDone: boolean;
+  // 参加者（部分集合）。空配列 = 「全員」のシュガー（明示メンバー無し）。
+  // 1 件以上 = 明示的にその trip_members.id だけが当事者。
+  participantMemberIds: string[];
 };
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;

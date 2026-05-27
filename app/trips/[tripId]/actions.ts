@@ -528,6 +528,9 @@ type ParsedEvent =
       place: ParsedPlace;
       visibility: Visibility;
       note: string;
+      // shared 時のみ意味を持つ。空配列 = 全員参加（DB 側で行を作らない）。
+      // private 時はサーバ側で空配列に正規化して送る（クライアントは何送っても無視）。
+      participantMemberIds: string[];
     };
 
 // <input type="date"> / <input type="time"> は分離して送る。壁時計なので
@@ -547,6 +550,16 @@ function parseEventForm(formData: FormData): ParsedEvent {
     return { error: "公開範囲が不正です" };
   }
   const note = get("note");
+
+  // 参加者は <input type="hidden" name="participant_member_ids" value={memberId}> を
+  // 複数本生やす方式で送られる。private は無意味なので空に正規化。
+  const participantMemberIds =
+    visibility === "shared"
+      ? formData
+          .getAll("participant_member_ids")
+          .map(String)
+          .filter((s) => s !== "")
+      : [];
 
   const place = parsePlace(formData);
   if ("error" in place) return { error: place.error };
@@ -575,6 +588,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
       place,
       visibility,
       note,
+      participantMemberIds,
     };
   }
 
@@ -600,6 +614,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
       place,
       visibility,
       note,
+      participantMemberIds,
     };
   }
 
@@ -633,6 +648,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
     place,
     visibility,
     note,
+    participantMemberIds,
   };
 }
 
@@ -685,6 +701,7 @@ export async function createEventAction(
       // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
       p_region: place.region ?? "",
       p_locality: place.locality ?? "",
+      p_participant_member_ids: parsed.participantMemberIds,
     });
     eventId = data as string | null;
     error = e;
@@ -703,6 +720,7 @@ export async function createEventAction(
         p_visibility: parsed.visibility,
         p_note: parsed.note,
         p_place_name: place.label,
+        p_participant_member_ids: parsed.participantMemberIds,
       },
     );
     eventId = data as string | null;
@@ -723,6 +741,7 @@ export async function createEventAction(
         : null) as unknown as string,
       p_visibility: parsed.visibility,
       p_note: parsed.note,
+      p_participant_member_ids: parsed.participantMemberIds,
     });
     eventId = data as string | null;
     error = e;
@@ -799,6 +818,7 @@ export async function updateEventAction(
         // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
         p_region: place.region ?? "",
         p_locality: place.locality ?? "",
+        p_participant_member_ids: parsed.participantMemberIds,
       })
     ).error;
   } else if (place.kind === "free" && place.label) {
@@ -815,6 +835,7 @@ export async function updateEventAction(
         p_visibility: parsed.visibility,
         p_note: parsed.note,
         p_place_name: place.label,
+        p_participant_member_ids: parsed.participantMemberIds,
       })
     ).error;
   } else {
@@ -834,6 +855,7 @@ export async function updateEventAction(
           : null) as unknown as string,
         p_visibility: parsed.visibility,
         p_note: parsed.note,
+        p_participant_member_ids: parsed.participantMemberIds,
       })
     ).error;
   }

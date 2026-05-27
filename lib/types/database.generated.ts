@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      event_participants: {
+        Row: {
+          event_id: string
+          member_id: string
+        }
+        Insert: {
+          event_id: string
+          member_id: string
+        }
+        Update: {
+          event_id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_participants_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           all_day: boolean
@@ -570,6 +600,7 @@ export type Database = {
           p_end_tz: string
           p_kind: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_id: string
           p_start_at: string
           p_start_tz: string
@@ -586,6 +617,7 @@ export type Database = {
           p_end_tz: string
           p_kind: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_name: string
           p_start_at: string
           p_start_tz: string
@@ -608,6 +640,7 @@ export type Database = {
           p_lng: number
           p_locality: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_name: string
           p_region: string
           p_start_at: string
@@ -775,6 +808,7 @@ export type Database = {
           p_event_id: string
           p_kind: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_id: string
           p_start_at: string
           p_start_tz: string
@@ -791,6 +825,7 @@ export type Database = {
           p_event_id: string
           p_kind: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_name: string
           p_start_at: string
           p_start_tz: string
@@ -813,6 +848,7 @@ export type Database = {
           p_lng: number
           p_locality: string
           p_note: string
+          p_participant_member_ids: string[]
           p_place_name: string
           p_region: string
           p_start_at: string

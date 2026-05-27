@@ -55,6 +55,7 @@ export function WeekCalendar({
   schedule,
   placeName,
   selectedEventId,
+  myMemberId,
   pcDrag,
   onPcDragChange,
   onSlotClick,
@@ -64,6 +65,8 @@ export function WeekCalendar({
   schedule: Schedule;
   placeName: (placeId: string | null) => string | null;
   selectedEventId: string | null;
+  // 自分が participants に含まれない予定（=別行動）を薄く描くために必要。
+  myMemberId: string;
   // PC ドラッグの可変長ゴースト。フォームが開いている間も残したいので
   // 状態は親(ScheduleSection)持ち。閉じる/確定で親が null クリアする。
   pcDrag: PcDragRender | null;
@@ -80,6 +83,12 @@ export function WeekCalendar({
   onAllDaySlotClick: (date: string, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
 }) {
+  // 自分が「明示参加者リスト」から外れている＝別行動の予定か。
+  // 空配列 = 「全員」のシュガーなので、その場合は自分も含まれる扱い。
+  const isMyEvent = (e: ScheduleEvent): boolean => {
+    if (e.participantMemberIds.length === 0) return true;
+    return e.participantMemberIds.includes(myMemberId);
+  };
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
 
@@ -641,7 +650,7 @@ export function WeekCalendar({
                   selectedEventId === b.event.id
                     ? "bg-amber-300 text-amber-950"
                     : "bg-amber-200 text-amber-900 hover:bg-amber-300"
-                }`}
+                } ${isMyEvent(b.event) ? "" : "opacity-50"}`}
                 style={{
                   left: b.startColIndex * COL + 2,
                   width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
@@ -1018,7 +1027,7 @@ export function WeekCalendar({
                       : p.event.visibility === "private"
                         ? `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`
                         : `border-emerald-300 text-emerald-900 ${hov ? "bg-emerald-200" : "bg-emerald-100"}`
-                  }`}
+                  } ${isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
@@ -1043,9 +1052,12 @@ export function WeekCalendar({
               const ya = y(t.arriveMin);
               const sel = selectedEventId === t.event.id;
               const hov = hoveredEventId === t.event.id;
-              const base = sel
-                ? "border-violet-500 bg-violet-200 text-violet-950"
-                : `border-violet-300 text-violet-900 ${hov ? "bg-violet-200" : "bg-violet-100"}`;
+              const fade = isMyEvent(t.event) ? "" : " opacity-50";
+              const base =
+                (sel
+                  ? "border-violet-500 bg-violet-200 text-violet-950"
+                  : `border-violet-300 text-violet-900 ${hov ? "bg-violet-200" : "bg-violet-100"}`) +
+                fade;
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
                 return (

@@ -131,6 +131,8 @@ export function EventForm({
   tripEnd,
   state: formMode,
   places,
+  members,
+  myMemberId,
   biasCenter,
   onDone,
 }: {
@@ -140,6 +142,8 @@ export function EventForm({
   tripEnd: string | null;
   state: EventFormMode;
   places: { id: string; name: string }[];
+  members: { id: string; display_name: string }[];
+  myMemberId: string;
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   onDone: () => void;
 }) {
@@ -173,6 +177,31 @@ export function EventForm({
   const [needsReservation, setNeedsReservation] = useState<boolean>(
     isEdit ? ev!.needsReservation : false,
   );
+
+  // 参加者。「全員」モードと「個別」モードの2状態。
+  //  - "all"    = 全員参加（送信時は participant_member_ids を一切送らない）
+  //  - "custom" = 部分集合（選んだメンバーIDだけ hidden input で送る）
+  // 編集モードで既存参加者が居れば最初から custom 開始。
+  const initialCustom = isEdit && (ev?.participantMemberIds.length ?? 0) > 0;
+  const [pMode, setPMode] = useState<"all" | "custom">(
+    initialCustom ? "custom" : "all",
+  );
+  const [pSelected, setPSelected] = useState<Set<string>>(() => {
+    if (initialCustom) return new Set(ev!.participantMemberIds);
+    return new Set(members.map((m) => m.id));
+  });
+  const toggleParticipant = (id: string) => {
+    setPSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        // 最後の1人を残す（0 人になると意味不明な予定になる）
+        if (next.size > 1) next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   const [isDeleting, startDelete] = useTransition();
 
@@ -538,6 +567,70 @@ export function EventForm({
           <input type="hidden" name="visibility" value={visibility} />
         )}
       </fieldset>
+
+      {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので
+          省略）。デフォルトは「全員参加」で非展開。「別行動を指定」を押すと
+          メンバーチップが出て、参加する人だけを残す。送信は pMode=custom の時
+          だけ hidden input を生やし、それ以外は何も送らない（=全員のシュガー）。 */}
+      {visibility === "shared" && members.length > 1 && (
+        <div className="text-xs">
+          <div className="flex items-center gap-2">
+            <span className="font-medium text-zinc-700">参加者</span>
+            {pMode === "all" ? (
+              <button
+                type="button"
+                onClick={() => setPMode("custom")}
+                className="rounded-md border border-dashed border-zinc-300 px-2 py-0.5 text-[11px] text-zinc-500 transition hover:border-zinc-400 hover:text-zinc-900"
+              >
+                ＋ 別行動を指定
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  setPMode("all");
+                  setPSelected(new Set(members.map((m) => m.id)));
+                }}
+                className="text-[11px] text-zinc-500 underline hover:text-zinc-900"
+              >
+                全員に戻す
+              </button>
+            )}
+          </div>
+          {pMode === "custom" && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {members.map((m) => {
+                const on = pSelected.has(m.id);
+                const isMe = m.id === myMemberId;
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleParticipant(m.id)}
+                    aria-pressed={on}
+                    className={
+                      on
+                        ? "rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-900 ring-1 ring-blue-300"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
+                    }
+                  >
+                    {isMe ? `${m.display_name}（自分）` : m.display_name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          {pMode === "custom" &&
+            Array.from(pSelected).map((id) => (
+              <input
+                key={id}
+                type="hidden"
+                name="participant_member_ids"
+                value={id}
+              />
+            ))}
+        </div>
+      )}
 
       {/* 要予約。共有予定のみ（private は共有TODOリストに出せない）。 */}
       {visibility === "shared" && (

@@ -98,7 +98,7 @@ export default async function TripDetailPage({
     supabase
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
@@ -190,6 +190,7 @@ export default async function TripDetailPage({
     createdByMemberId: e.created_by_member_id,
     needsReservation: reservationByEvent.has(e.id),
     reservationDone: reservationByEvent.get(e.id) ?? false,
+    participantMemberIds: (e.event_participants ?? []).map((p) => p.member_id),
   }));
 
   // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントのTZ。
@@ -340,6 +341,10 @@ export default async function TripDetailPage({
           tripEnd={trip.end_date}
           events={scheduleEvents}
           places={placesForPicker}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+          }))}
           biasCenter={placesBiasCenter}
           myMemberId={me.id}
         />

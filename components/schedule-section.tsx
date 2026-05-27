@@ -22,6 +22,7 @@ export function ScheduleSection({
   tripEnd,
   events,
   places,
+  members,
   biasCenter,
   myMemberId,
 }: {
@@ -31,6 +32,7 @@ export function ScheduleSection({
   tripEnd: string | null;
   events: EventRow[];
   places: { id: string; name: string }[];
+  members: { id: string; display_name: string }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
 }) {
@@ -186,6 +188,7 @@ export function ScheduleSection({
         schedule={schedule}
         placeName={placeName}
         selectedEventId={selectedEventId}
+        myMemberId={myMemberId}
         pcDrag={pcDrag}
         onPcDragChange={setPcDrag}
         onSlotClick={onSlotClick}
@@ -215,6 +218,8 @@ export function ScheduleSection({
             tripEnd={tripEnd}
             state={open.form}
             places={places}
+            members={members}
+            myMemberId={myMemberId}
             biasCenter={biasCenter}
             onDone={closeForm}
           />
