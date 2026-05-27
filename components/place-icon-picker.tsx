@@ -3,18 +3,14 @@
 import { useEffect, useState, useTransition } from "react";
 
 import { addTripPinOptionAction } from "@/app/trips/[tripId]/actions";
-import {
-  ICON_CATALOG,
-  ICON_CATEGORIES,
-  getIcon,
-  type IconCatalogEntry,
-} from "@/lib/placeIcons";
+import { ICON_CATALOG, getIcon } from "@/lib/placeIcons";
 
 import { CloseIcon } from "./icons";
 import { PlaceIcon } from "./place-list";
 
-// 場所ピンの追加ピッカー。カタログをカテゴリ別に grid で並べ、トリップに
-// 既に追加済みのアイコンは fade 表示（再追加は unique 制約で弾かれる）。
+// 場所ピンの追加ピッカー。カタログ全件を 1 つの grid にフラットに並べる
+// （カテゴリは内部の sort 順保持のためだけに残してて UI には出さない）。
+// トリップに既に追加済みのアイコンは fade + クリック不可。
 // 確定で trip_pin_options に行を1つ insert し、追加された icon キーを
 // onAdded で親に返す（親は dropdown 選択をその新しい key に切替える）。
 export function PlaceIconPicker({
@@ -40,12 +36,6 @@ export function PlaceIconPicker({
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
-
-  // カテゴリ別にまとめる（カタログ順は固定）
-  const byCategory = ICON_CATEGORIES.map((cat) => ({
-    cat,
-    items: ICON_CATALOG.filter((e) => e.category === cat),
-  })).filter((g) => g.items.length > 0);
 
   const selectedEntry = selected ? getIcon(selected) : null;
 
@@ -82,17 +72,32 @@ export function PlaceIconPicker({
           </button>
         </header>
 
-        <div className="flex-1 overflow-y-auto">
-          {byCategory.map(({ cat, items }) => (
-            <CategoryBlock
-              key={cat}
-              label={cat}
-              items={items}
-              usedKeys={usedKeys}
-              selected={selected}
-              onSelect={(k) => setSelected(k)}
-            />
-          ))}
+        <div className="flex-1 overflow-y-auto p-2">
+          <div className="grid grid-cols-8 gap-px">
+            {ICON_CATALOG.map((it) => {
+              const used = usedKeys.has(it.key);
+              const sel = selected === it.key;
+              return (
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => setSelected(it.key)}
+                  disabled={used}
+                  title={it.label}
+                  aria-pressed={sel}
+                  className={`flex h-9 items-center justify-center rounded-md transition ${
+                    sel
+                      ? "bg-blue-100 text-blue-900"
+                      : used
+                        ? "cursor-not-allowed text-zinc-900 opacity-25"
+                        : "text-zinc-700 hover:bg-zinc-100"
+                  }`}
+                >
+                  <PlaceIcon icon={it.key} size={20} />
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <footer className="border-t border-zinc-100">
@@ -138,49 +143,3 @@ export function PlaceIconPicker({
   );
 }
 
-function CategoryBlock({
-  label,
-  items,
-  usedKeys,
-  selected,
-  onSelect,
-}: {
-  label: string;
-  items: IconCatalogEntry[];
-  usedKeys: Set<string>;
-  selected: string | null;
-  onSelect: (key: string) => void;
-}) {
-  return (
-    <div>
-      <div className="px-4 pb-1 pt-3 text-[11px] font-medium tracking-wide text-zinc-400">
-        {label}
-      </div>
-      <div className="grid grid-cols-8 gap-px px-2 pb-1">
-        {items.map((it) => {
-          const used = usedKeys.has(it.key);
-          const sel = selected === it.key;
-          return (
-            <button
-              key={it.key}
-              type="button"
-              onClick={() => onSelect(it.key)}
-              disabled={used}
-              title={it.label}
-              aria-pressed={sel}
-              className={`flex h-9 items-center justify-center rounded-md transition ${
-                sel
-                  ? "bg-blue-100 text-blue-900"
-                  : used
-                    ? "cursor-not-allowed text-zinc-900 opacity-25"
-                    : "text-zinc-700 hover:bg-zinc-100"
-              }`}
-            >
-              <PlaceIcon icon={it.key} size={20} />
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
