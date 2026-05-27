@@ -195,11 +195,6 @@ function ExpenseRowItem({
                 プライベート
               </span>
             )}
-            {expense.visibility === "shared" && !expense.splittable && (
-              <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700">
-                おごり
-              </span>
-            )}
           </div>
           <div className="mt-1 text-xs text-zinc-600">
             <span>{formatDateTime(expense.paid_at)}</span>{" "}
