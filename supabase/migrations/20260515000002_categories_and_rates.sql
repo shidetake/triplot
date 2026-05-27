@@ -65,7 +65,7 @@ begin
     (_trip_id, '現地移動', '#06b6d4', 'tram',           2),
     (_trip_id, '飲食',     '#f97316', 'restaurant',     3),
     (_trip_id, '衣服',     '#a855f7', 'checkroom',      4),
-    (_trip_id, 'エンタメ', '#ec4899', 'celebration',    5),
+    (_trip_id, 'レジャー', '#ec4899', 'local_activity', 5),
     (_trip_id, '土産',     '#ef4444', 'redeem',         6),
     (_trip_id, '宿泊',     '#6366f1', 'hotel',          7),
     (_trip_id, '通信',     '#6b7280', 'wifi',           8),
