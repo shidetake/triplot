@@ -491,6 +491,7 @@ export type Database = {
           color: string | null
           display_name: string
           id: string
+          is_admin: boolean
           joined_at: string
           kind: string
           left_at: string | null
@@ -501,6 +502,7 @@ export type Database = {
           color?: string | null
           display_name: string
           id?: string
+          is_admin?: boolean
           joined_at?: string
           kind: string
           left_at?: string | null
@@ -511,6 +513,7 @@ export type Database = {
           color?: string | null
           display_name?: string
           id?: string
+          is_admin?: boolean
           joined_at?: string
           kind?: string
           left_at?: string | null

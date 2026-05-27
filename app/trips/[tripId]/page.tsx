@@ -337,13 +337,11 @@ export default async function TripDetailPage({
       <section className="mt-8">
         <h2 className="text-sm font-medium text-zinc-700">メンバー</h2>
         <MembersSection
-          tripId={tripId}
           members={activeMembers.map((m) => ({
             id: m.id,
             display_name: m.display_name,
             color: m.color,
           }))}
-          myMemberId={me.id}
         />
       </section>
 

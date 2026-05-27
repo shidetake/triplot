@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
@@ -133,7 +134,7 @@ export function TripActions({
         </button>
       </div>
 
-      {/* ⋯ メニュー（共有 / 削除） */}
+      {/* ⋯ メニュー（共有 / メンバー / 削除） */}
       {menuAnchor && (
         <FormPopover anchor={menuAnchor} onClose={() => setMenuAnchor(null)}>
           <div className="py-1 text-sm">
@@ -148,6 +149,13 @@ export function TripActions({
             >
               共有
             </button>
+            <Link
+              href={`/trips/${tripId}/members`}
+              onClick={() => setMenuAnchor(null)}
+              className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+            >
+              メンバー管理
+            </Link>
             <button
               type="button"
               onClick={onDelete}
