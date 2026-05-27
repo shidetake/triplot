@@ -13,10 +13,9 @@ import { PlaceIcon } from "./place-list";
 // 場所ピンの管理ピッカー。カタログ全件を 1 つの grid にフラットに並べる
 // （カテゴリは内部の sort 順保持のためだけに残してて UI には出さない）。
 //
-// 既追加のアイコンは fade + クリック不可で「もう持ってる」と分かるようにし、
-// 右上の × バッジで削除できる。未追加のアイコンはクリックで選択 → 「追加」で
-// trip_pin_options に insert、その icon キーを onAdded で親に返す（親は
-// dropdown 選択をその新しい key に切替える）。
+// 既追加のアイコンは fade で「もう持ってる」と分かるが、選択は可能 →
+// その状態で下のボタンが「削除」に切り替わる。未追加は同様に選択 → 「追加」。
+// 1 つのアクションボタンで CRUD 両対応にして、追加用 × バッジの視覚ノイズを避ける。
 //
 // 閉じる経路: Esc / 背景クリック / キャンセルボタン。
 export function PlaceIconPicker({
@@ -48,31 +47,42 @@ export function PlaceIconPicker({
   }, [onClose]);
 
   const selectedEntry = selected ? getIcon(selected) : null;
+  const selectedOption = selected ? optionByIcon.get(selected) : null;
+  const mode: "add" | "remove" = selectedOption ? "remove" : "add";
 
-  const submitAdd = () => {
+  const submit = () => {
     if (!selected || isPending) return;
     setError(null);
-    start(async () => {
-      const { error } = await addTripPinOptionAction(tripId, selected);
-      if (error) {
-        setError(error);
+    if (selectedOption) {
+      // 削除
+      if (
+        !confirm(
+          `「${selectedOption.label}」を外しますか？\n（既にこのアイコンを使ってる場所はそのまま残ります）`,
+        )
+      ) {
         return;
       }
-      onAdded(selected);
-    });
-  };
-
-  const submitRemove = (opt: PinOption) => {
-    if (isPending) return;
-    if (!confirm(`「${opt.label}」を外しますか？\n（既にこのアイコンを使ってる場所はそのまま残ります）`)) {
-      return;
+      const opt = selectedOption;
+      start(async () => {
+        const { error } = await removeTripPinOptionAction(tripId, opt.id);
+        if (error) {
+          setError(error);
+          return;
+        }
+        // 削除後はそのアイコンが「未追加」に変わるので選択も解除
+        setSelected(null);
+      });
+    } else {
+      // 追加
+      start(async () => {
+        const { error } = await addTripPinOptionAction(tripId, selected);
+        if (error) {
+          setError(error);
+          return;
+        }
+        onAdded(selected);
+      });
     }
-    setError(null);
-    start(async () => {
-      const { error } = await removeTripPinOptionAction(tripId, opt.id);
-      if (error) setError(error);
-      // 削除成功 → 親 revalidate で pinOptions 更新 → 自動 re-render
-    });
   };
 
   return (
@@ -88,40 +98,30 @@ export function PlaceIconPicker({
         <div className="flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-8 gap-px">
             {ICON_CATALOG.map((it) => {
-              const usedOpt = optionByIcon.get(it.key);
-              const used = !!usedOpt;
+              const used = optionByIcon.has(it.key);
               const sel = selected === it.key;
+              // 選択ハイライトは状態で色を変える: 未追加=青(追加候補)、
+              // 追加済=赤(削除候補)。下のボタン色とも揃う。
+              const selectedClass = used
+                ? "bg-red-100 text-red-900"
+                : "bg-blue-100 text-blue-900";
+              const idleClass = used
+                ? "text-zinc-900 opacity-25 hover:opacity-40"
+                : "text-zinc-700 hover:bg-zinc-100";
               return (
-                <div key={it.key} className="relative">
-                  <button
-                    type="button"
-                    onClick={() => !used && setSelected(it.key)}
-                    disabled={used || isPending}
-                    title={it.label}
-                    aria-pressed={sel}
-                    className={`flex h-9 w-full items-center justify-center rounded-md transition ${
-                      sel
-                        ? "bg-blue-100 text-blue-900"
-                        : used
-                          ? "cursor-not-allowed text-zinc-900 opacity-25"
-                          : "text-zinc-700 hover:bg-zinc-100"
-                    }`}
-                  >
-                    <PlaceIcon icon={it.key} size={20} />
-                  </button>
-                  {used && usedOpt && (
-                    <button
-                      type="button"
-                      onClick={() => submitRemove(usedOpt)}
-                      disabled={isPending}
-                      aria-label={`${it.label} を外す`}
-                      title={`${it.label} を外す`}
-                      className="absolute -right-0.5 -top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-zinc-500 text-[9px] leading-none text-white transition hover:bg-red-500 disabled:opacity-50"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
+                <button
+                  key={it.key}
+                  type="button"
+                  onClick={() => setSelected(it.key)}
+                  disabled={isPending}
+                  title={it.label}
+                  aria-pressed={sel}
+                  className={`flex h-9 items-center justify-center rounded-md transition ${
+                    sel ? selectedClass : idleClass
+                  } disabled:cursor-not-allowed`}
+                >
+                  <PlaceIcon icon={it.key} size={20} />
+                </button>
               );
             })}
           </div>
@@ -157,11 +157,21 @@ export function PlaceIconPicker({
             </button>
             <button
               type="button"
-              onClick={submitAdd}
+              onClick={submit}
               disabled={!selected || isPending}
-              className="rounded-lg bg-black px-4 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-40"
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium text-white transition disabled:opacity-40 ${
+                mode === "remove"
+                  ? "bg-red-600 hover:bg-red-700"
+                  : "bg-black hover:bg-zinc-800"
+              }`}
             >
-              {isPending ? "追加中..." : "追加"}
+              {isPending
+                ? mode === "remove"
+                  ? "削除中..."
+                  : "追加中..."
+                : mode === "remove"
+                  ? "削除"
+                  : "追加"}
             </button>
           </div>
         </footer>
