@@ -642,7 +642,7 @@ export function SavedInfo({
                 onClick={() => setEditing(true)}
                 aria-label="編集"
                 title="編集"
-                className="flex h-9 flex-1 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50"
+                className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800"
               >
                 <EditIcon size={18} />
               </button>
