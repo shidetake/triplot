@@ -5,7 +5,6 @@ import { useEffect, useState, useTransition } from "react";
 import { addTripPinOptionAction } from "@/app/trips/[tripId]/actions";
 import { ICON_CATALOG, getIcon } from "@/lib/placeIcons";
 
-import { CloseIcon } from "./icons";
 import { PlaceIcon } from "./place-list";
 
 // 場所ピンの追加ピッカー。カタログ全件を 1 つの grid にフラットに並べる
@@ -60,18 +59,8 @@ export function PlaceIconPicker({
       }}
     >
       <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <header className="flex items-center justify-between border-b border-zinc-100 px-4 py-3">
-          <span className="text-sm font-semibold">アイコンを追加</span>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="閉じる"
-            className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100"
-          >
-            <CloseIcon size={16} />
-          </button>
-        </header>
-
+        {/* タイトルと × は省略（grid と footer に面積を回す）。閉じる手段は
+            Esc / 背景クリック / キャンセルボタンの 3 経路あり。 */}
         <div className="flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-8 gap-px">
             {ICON_CATALOG.map((it) => {
