@@ -106,7 +106,7 @@ export default async function TripDetailPage({
     supabase
       .from("todos")
       .select(
-        "id, title, priority, done, created_at, created_by_member_id, kind, event_id",
+        "id, title, priority, done, created_at, created_by_member_id, kind, event_id, todo_likes(member_id)",
       )
       .eq("trip_id", tripId)
       // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
@@ -219,16 +219,21 @@ export default async function TripDetailPage({
     );
   const initialEventTz = lastEnteredEvent?.start_tz ?? null;
 
-  const todos: TodoRow[] = (todosRaw ?? []).map((t) => ({
-    id: t.id,
-    title: t.title,
-    priority: t.priority as TodoPriority,
-    done: t.done,
-    created_at: t.created_at,
-    created_by_member_id: t.created_by_member_id,
-    kind: t.kind as TodoKind,
-    event_id: t.event_id,
-  }));
+  const todos: TodoRow[] = (todosRaw ?? []).map((t) => {
+    const likes = t.todo_likes ?? [];
+    return {
+      id: t.id,
+      title: t.title,
+      priority: t.priority as TodoPriority,
+      done: t.done,
+      created_at: t.created_at,
+      created_by_member_id: t.created_by_member_id,
+      kind: t.kind as TodoKind,
+      event_id: t.event_id,
+      likeCount: likes.length,
+      iLiked: likes.some((l) => l.member_id === me.id),
+    };
+  });
   const prepTodos = todos.filter((t) => t.kind === "prep");
   const onsiteTodos = todos.filter((t) => t.kind === "onsite");
   const todoMembers = activeMembers.map((m) => ({

@@ -12,12 +12,14 @@ import {
   createTodoAction,
   deleteTodoAction,
   toggleTodoAction,
+  toggleTodoLikeAction,
   updateTodoAction,
 } from "@/app/trips/[tripId]/actions";
 import {
   ChevronIcon,
   CheckIcon,
   EqualIcon,
+  HeartIcon,
   PlusIcon,
   TrashIcon,
 } from "@/components/icons";
@@ -36,6 +38,9 @@ export type TodoRow = {
   kind: TodoKind;
   // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
   event_id: string | null;
+  // 現地TODO のいいね（prep は常に 0/false）。
+  likeCount: number;
+  iLiked: boolean;
 };
 
 type MemberLite = {
@@ -65,7 +70,8 @@ type OptimisticAction =
   | { type: "add"; todo: TodoRow }
   | { type: "toggle"; id: string; done: boolean }
   | { type: "update"; id: string; title?: string; priority?: TodoPriority }
-  | { type: "delete"; id: string };
+  | { type: "delete"; id: string }
+  | { type: "like"; id: string; liked: boolean };
 
 function PrioritySelect({
   value,
@@ -217,6 +223,16 @@ export function TodoSection({
           );
         case "delete":
           return state.filter((t) => t.id !== action.id);
+        case "like":
+          return state.map((t) =>
+            t.id === action.id
+              ? {
+                  ...t,
+                  iLiked: action.liked,
+                  likeCount: t.likeCount + (action.liked ? 1 : -1),
+                }
+              : t,
+          );
       }
     },
   );
@@ -242,6 +258,8 @@ export function TodoSection({
       created_by_member_id: myMemberId,
       kind,
       event_id: null,
+      likeCount: 0,
+      iLiked: false,
     };
     setDraft("");
     startTransition(async () => {
@@ -298,6 +316,14 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "delete", id: todo.id });
       const { error } = await deleteTodoAction(tripId, todo.id);
+      if (error) alert(`失敗しました: ${error}`);
+    });
+  };
+
+  const toggleLike = (todo: TodoRow) => {
+    startTransition(async () => {
+      applyOptimistic({ type: "like", id: todo.id, liked: !todo.iLiked });
+      const { error } = await toggleTodoLikeAction(tripId, todo.id);
       if (error) alert(`失敗しました: ${error}`);
     });
   };
@@ -412,14 +438,33 @@ export function TodoSection({
                 onChange={(p) => changePriority(todo, p)}
               />
 
+              {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
+              {kind === "onsite" && (
+                <button
+                  type="button"
+                  onClick={() => toggleLike(todo)}
+                  aria-label={todo.iLiked ? "いいねを取り消す" : "いいね"}
+                  aria-pressed={todo.iLiked}
+                  title={todo.iLiked ? "いいねを取り消す" : "いいね"}
+                  className={`flex shrink-0 items-center gap-0.5 rounded p-1 text-xs transition ${
+                    todo.iLiked
+                      ? "text-rose-500 hover:bg-rose-50"
+                      : "text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700"
+                  }`}
+                >
+                  <HeartIcon size={16} filled={todo.iLiked} />
+                  {todo.likeCount > 0 && (
+                    <span className="tabular-nums">{todo.likeCount}</span>
+                  )}
+                </button>
+              )}
+
               <span className="flex shrink-0 items-center gap-1 text-xs text-zinc-500">
                 <MemberAvatar
                   name={memberName(todo.created_by_member_id)}
                   color={memberColor(todo.created_by_member_id)}
                 />
-                <span className="hidden sm:inline">
-                  {memberName(todo.created_by_member_id)}
-                </span>
+                <span>{memberName(todo.created_by_member_id)}</span>
               </span>
 
               <button

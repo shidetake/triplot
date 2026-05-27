@@ -392,6 +392,39 @@ export type Database = {
           },
         ]
       }
+      todo_likes: {
+        Row: {
+          created_at: string
+          member_id: string
+          todo_id: string
+        }
+        Insert: {
+          created_at?: string
+          member_id: string
+          todo_id: string
+        }
+        Update: {
+          created_at?: string
+          member_id?: string
+          todo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_likes_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_likes_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       todos: {
         Row: {
           created_at: string

@@ -1275,3 +1275,55 @@ export async function deleteTodoAction(
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
 }
+
+// 現地TODO のいいねトグル。RLS で active member 限定。
+// 既にいいね済みなら delete、未いいねなら insert。
+// 「現地TODO 限定」は UI 側だけのガード（DB は kind を問わない）。
+export async function toggleTodoLikeAction(
+  tripId: string,
+  todoId: string,
+): Promise<{ error: string | null; liked: boolean }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "ログインしてください", liked: false };
+
+  // 自分の member_id を引く
+  const { data: meMember } = await supabase
+    .from("trip_members")
+    .select("id")
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id)
+    .is("left_at", null)
+    .maybeSingle();
+  if (!meMember) {
+    return { error: "このトリップのメンバーではありません", liked: false };
+  }
+
+  // 既存いいね？
+  const { data: existing } = await supabase
+    .from("todo_likes")
+    .select("todo_id")
+    .eq("todo_id", todoId)
+    .eq("member_id", meMember.id)
+    .maybeSingle();
+
+  if (existing) {
+    const { error } = await supabase
+      .from("todo_likes")
+      .delete()
+      .eq("todo_id", todoId)
+      .eq("member_id", meMember.id);
+    if (error) return { error: error.message, liked: true };
+    revalidatePath(`/trips/${tripId}`);
+    return { error: null, liked: false };
+  } else {
+    const { error } = await supabase
+      .from("todo_likes")
+      .insert({ todo_id: todoId, member_id: meMember.id });
+    if (error) return { error: error.message, liked: false };
+    revalidatePath(`/trips/${tripId}`);
+    return { error: null, liked: true };
+  }
+}
