@@ -376,6 +376,8 @@ export default async function TripDetailPage({
             places={placesForPicker}
             biasCenter={placesBiasCenter}
             tzTimeline={tzTimeline}
+            tripStart={trip.start_date}
+            tripEnd={trip.end_date}
           />
         </div>
 
@@ -400,6 +402,8 @@ export default async function TripDetailPage({
           initialPaidAt={initialPaidAt}
           biasCenter={placesBiasCenter}
           tzTimeline={tzTimeline}
+          tripStart={trip.start_date}
+          tripEnd={trip.end_date}
           myMemberId={me.id}
         />
       </section>

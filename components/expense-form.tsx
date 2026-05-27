@@ -25,6 +25,7 @@ import {
 } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 
+import { DatePopover } from "./date-popover";
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
@@ -70,6 +71,8 @@ export function ExpenseForm({
   places,
   biasCenter, // Google 検索の地理バイアス（既存ピン重心 or 東京）
   tzTimeline, // 旅程から日付→TZ を引くタイムライン（費用の発生TZ推定）
+  tripStart, // DatePopover の旅行期間ハイライト用
+  tripEnd,
   // 編集モード。指定があると update 経路になり、各フィールドはこの値で
   // プリフィル。未指定なら従来通り新規作成。
   editExpense,
@@ -88,6 +91,8 @@ export function ExpenseForm({
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   tzTimeline: TripTzTimeline;
+  tripStart: string | null;
+  tripEnd: string | null;
   editExpense?: ExpenseRow;
   canChangeVisibility?: boolean;
   onDone?: () => void;
@@ -403,14 +408,16 @@ export function ExpenseForm({
           <span className="font-medium">
             日付<span className="ml-0.5 font-normal text-red-500">*</span>
           </span>
-          <input
-            type="date"
-            name="paid_at_date"
-            required
-            value={paidAtDate}
-            onChange={(e) => onDateChange(e.target.value)}
-            className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
-          />
+          <div className="mt-1">
+            <DatePopover
+              name="paid_at_date"
+              value={paidAtDate}
+              onChange={onDateChange}
+              required
+              tripStart={tripStart}
+              tripEnd={tripEnd}
+            />
+          </div>
         </label>
         {showTime ? (
           <div className="block min-w-0 text-sm">

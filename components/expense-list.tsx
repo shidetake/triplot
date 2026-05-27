@@ -48,6 +48,8 @@ export function ExpenseList({
   initialPaidAt,
   biasCenter,
   tzTimeline,
+  tripStart,
+  tripEnd,
   myMemberId,
 }: {
   tripId: string;
@@ -64,6 +66,8 @@ export function ExpenseList({
   initialPaidAt: string;
   biasCenter: LatLng;
   tzTimeline: TripTzTimeline;
+  tripStart: string | null;
+  tripEnd: string | null;
   myMemberId: string;
 }) {
   const memberById = new Map(members.map((m) => [m.id, m]));
@@ -114,6 +118,8 @@ export function ExpenseList({
             places={places}
             biasCenter={biasCenter}
             tzTimeline={tzTimeline}
+            tripStart={tripStart}
+            tripEnd={tripEnd}
             editExpense={editing.expense}
             canChangeVisibility={
               editing.expense.created_by_member_id === myMemberId
