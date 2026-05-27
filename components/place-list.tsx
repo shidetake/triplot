@@ -31,22 +31,23 @@ export type PlaceRow = {
 };
 
 // ピンの形（手動選択）。固定パレット。先頭が既定。
+// グループ感: その他 / 滞在・食事 / 屋内・買い物 / 遊び・観光 / 移動・駐車。
 export const PLACE_ICONS: { value: string; label: string }[] = [
   { value: "pin", label: "その他" },
-  { value: "airport", label: "空港" },
   { value: "lodging", label: "宿" },
   { value: "food", label: "食事" },
   { value: "cafe", label: "カフェ" },
   { value: "bar", label: "バー" },
   { value: "shopping", label: "買い物" },
-  { value: "nature", label: "自然・公園" },
-  { value: "sightseeing", label: "観光・名所" },
-  { value: "station", label: "駅" },
-  { value: "parking", label: "駐車場" },
   // 旧「アクティビティ」(attractions=遊園地アイコン) と旧「ビーチ」を統合。
   // local_activity (★付きチケット) で「レジャー」全般 — 遊園地もビーチも
   // アクティビティ体験も。
   { value: "activity", label: "レジャー" },
+  { value: "nature", label: "自然・公園" },
+  { value: "sightseeing", label: "観光・名所" },
+  { value: "airport", label: "空港" },
+  { value: "station", label: "駅" },
+  { value: "parking", label: "駐車場" },
 ];
 
 // 各カテゴリ → Google 公式 Material Symbols (Rounded, FILL) の SVG パス。
