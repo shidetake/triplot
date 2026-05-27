@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
@@ -72,13 +72,125 @@ export function PlaceSearch({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // event-form の PlacePicker と同方針の autocomplete ドロップダウン。
+  // 入力中に候補を出し、選ぶと「その1件だけが検索結果」として扱う。
+  // 検索ボタンは温存（曖昧語で20件並べたいケース用）。
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [sug, setSug] = useState<google.maps.places.AutocompleteSuggestion[]>(
+    [],
+  );
+  const boxRef = useRef<HTMLFormElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
+    null,
+  );
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const ready = !!placesLib;
+
+  // 外側クリックでドロップダウンを閉じる
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, []);
+
+  // セッショントークン: autocomplete と直後の Place Details を 1 セッション扱いに
+  // して課金を抑える。pick 完了でリセット。
+  const ensureToken = () => {
+    if (!placesLib) return undefined;
+    if (!tokenRef.current) {
+      tokenRef.current = new placesLib.AutocompleteSessionToken();
+    }
+    return tokenRef.current;
+  };
+
+  const fetchSuggestions = (q: string) => {
+    if (!placesLib || q.trim().length < 2) {
+      setSug([]);
+      return;
+    }
+    const sessionToken = ensureToken();
+    void (async () => {
+      try {
+        const { suggestions } =
+          await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+            input: q,
+            language: "ja",
+            region: "jp",
+            sessionToken,
+            locationBias: { center: biasCenter, radius: 30000 },
+          });
+        setSug(suggestions.filter((s) => s.placePrediction).slice(0, 6));
+      } catch {
+        setSug([]);
+      }
+    })();
+  };
+
+  const onChange = (v: string) => {
+    onQueryChange(v);
+    setOpen(true);
+    setActive(0);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchSuggestions(v), 300);
+  };
+
+  // ドロップダウンから 1 件を確定 → fetchFields で詳細を取って onResults 1 件で返す。
+  // 検索ボタン経路と同じ CandidatePlace の形で渡すので、地図/吹き出しの下流は不変。
+  const pick = (sug: google.maps.places.AutocompleteSuggestion) => {
+    const pred = sug.placePrediction;
+    if (!pred) return;
+    const place = pred.toPlace();
+    setOpen(false);
+    setSug([]);
+    setPending(true);
+    setError(null);
+    void (async () => {
+      try {
+        await place.fetchFields({ fields: FIELDS });
+        const loc = place.location;
+        if (!place.id || !loc) {
+          setError("場所の詳細を取得できませんでした");
+          return;
+        }
+        const cp: CandidatePlace = {
+          placeId: place.id,
+          name: place.displayName ?? pred.text.text,
+          address: place.formattedAddress ?? "",
+          lat: loc.lat(),
+          lng: loc.lng(),
+          ...extractRegion(place.addressComponents),
+          rating: place.rating ?? null,
+          userRatingCount: place.userRatingCount ?? null,
+          photoUri: place.photos?.[0]?.getURI({ maxWidth: 400 }) ?? null,
+        };
+        onQueryChange(cp.name);
+        onResults([cp]);
+      } catch {
+        setError("場所の詳細取得に失敗しました");
+      } finally {
+        tokenRef.current = null; // セッション終了 → 次回入力で新トークン
+        setPending(false);
+        inputRef.current?.blur();
+      }
+    })();
+  };
 
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const q = query.trim();
     if (!placesLib || !q || pending) return;
 
+    // 検索ボタン経路では autocomplete セッションは「中断」扱い。新しいトークンに。
+    tokenRef.current = null;
+    setOpen(false);
     setPending(true);
     setError(null);
     void (async () => {
@@ -119,21 +231,61 @@ export function PlaceSearch({
     })();
   };
 
+  const onKeyDown = (e: React.KeyboardEvent) => {
+    if (open && sug.length > 0) {
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setActive((a) => Math.min(a + 1, sug.length - 1));
+        return;
+      }
+      if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setActive((a) => Math.max(a - 1, 0));
+        return;
+      }
+      if (e.key === "Enter") {
+        // 候補が開いてる時は Enter で候補確定（テキスト検索を発火しない）
+        e.preventDefault();
+        pick(sug[active]);
+        return;
+      }
+      if (e.key === "Escape") {
+        setOpen(false);
+        return;
+      }
+    }
+  };
+
   return (
-    <form onSubmit={onSubmit} className="space-y-1">
+    <form
+      ref={boxRef}
+      onSubmit={onSubmit}
+      className="relative space-y-1"
+      autoComplete="off"
+    >
       <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">
           <input
+            ref={inputRef}
             type="text"
             value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
+            onChange={(e) => onChange(e.target.value)}
+            onFocus={() => {
+              if (sug.length > 0) setOpen(true);
+            }}
+            onKeyDown={onKeyDown}
             placeholder="店名・地名で検索（例: 浅草 寿司）"
+            autoComplete="off"
             className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-black focus:outline-none"
           />
           {query && (
             <button
               type="button"
-              onClick={onClear}
+              onClick={() => {
+                setSug([]);
+                setOpen(false);
+                onClear();
+              }}
               aria-label="検索をクリア"
               className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
             >
@@ -149,6 +301,41 @@ export function PlaceSearch({
           {pending ? "検索中..." : "検索"}
         </button>
       </div>
+
+      {open && sug.length > 0 && (
+        <ul className="absolute left-0 right-[88px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+          {sug.map((s, i) => {
+            const pred = s.placePrediction!;
+            const isActive = i === active;
+            return (
+              <li key={pred.placeId ?? i}>
+                <button
+                  type="button"
+                  onMouseEnter={() => setActive(i)}
+                  onMouseDown={(e) => {
+                    // input が blur する前に確定する。
+                    e.preventDefault();
+                    pick(s);
+                  }}
+                  className={`block w-full px-3 py-2 text-left text-sm ${
+                    isActive ? "bg-zinc-100" : "hover:bg-zinc-100"
+                  }`}
+                >
+                  <span className="font-medium">
+                    {pred.mainText?.text ?? pred.text.text}
+                  </span>
+                  {pred.secondaryText?.text && (
+                    <span className="block truncate text-[11px] text-zinc-500">
+                      {pred.secondaryText.text}
+                    </span>
+                  )}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
       {!ready && (
         <p className="text-xs text-zinc-500">地図を読み込み中...</p>
       )}
