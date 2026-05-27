@@ -526,7 +526,7 @@ export function WeekCalendar({
                 // 前進する便は注記だけ出発日＋到着日の2列ぶんの幅で見せる
                 // （列は結合しない）。狭い時は2行まで折り返す。
                 <div
-                  className="line-clamp-2 text-[10px] leading-tight text-amber-700"
+                  className="line-clamp-2 text-[10px] leading-tight text-slate-600"
                   // 親の px-1（左右 4px）の内側に置かれるので、span*COL ぴったり
                   // だと左の 4px ぶん右にずれて隣の日付に食い込む。左右 8px を
                   // 引いてスパン内（4px インセット）に収める。
@@ -648,8 +648,8 @@ export function WeekCalendar({
                 }
                 className={`absolute truncate rounded px-1 text-left text-[11px] ${
                   selectedEventId === b.event.id
-                    ? "bg-amber-300 text-amber-950"
-                    : "bg-amber-200 text-amber-900 hover:bg-amber-300"
+                    ? "bg-blue-200 text-blue-950"
+                    : "bg-slate-200 text-slate-800 hover:bg-slate-300"
                 } ${isMyEvent(b.event) ? "" : "opacity-50"}`}
                 style={{
                   left: b.startColIndex * COL + 2,
@@ -670,7 +670,7 @@ export function WeekCalendar({
               const row = ghostAllDayRow ?? 0;
               return (
                 <div
-                  className="pointer-events-none absolute z-20 truncate rounded border border-amber-400 bg-amber-100/50 px-1 text-[11px] leading-tight text-amber-900"
+                  className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-[11px] leading-tight text-slate-800"
                   style={{
                     left: allDayGhost.columnIndex * COL + 2,
                     width: COL - 4,
@@ -958,7 +958,7 @@ export function WeekCalendar({
                 const w = COL / laneCount;
                 return (
                   <div
-                    className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
+                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-[11px] leading-tight text-slate-800"
                     style={{
                       left: ghost.columnIndex * COL + lane * w + 1,
                       width: w - 2,
@@ -982,7 +982,7 @@ export function WeekCalendar({
                 const w = COL / laneCount;
                 return (
                   <div
-                    className="pointer-events-none absolute z-20 rounded border border-emerald-400 bg-emerald-100/50 px-1 py-0.5 text-[11px] leading-tight text-emerald-900"
+                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-[11px] leading-tight text-slate-800"
                     style={{
                       left: pcDrag.columnIndex * COL + lane * w + 1,
                       width: w - 2,
@@ -1026,7 +1026,7 @@ export function WeekCalendar({
                       ? "z-10 border-blue-500 bg-blue-100 text-blue-950"
                       : p.event.visibility === "private"
                         ? `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`
-                        : `border-emerald-300 text-emerald-900 ${hov ? "bg-emerald-200" : "bg-emerald-100"}`
+                        : `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`
                   } ${isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
@@ -1055,8 +1055,8 @@ export function WeekCalendar({
               const fade = isMyEvent(t.event) ? "" : " opacity-50";
               const base =
                 (sel
-                  ? "border-violet-500 bg-violet-200 text-violet-950"
-                  : `border-violet-300 text-violet-900 ${hov ? "bg-violet-200" : "bg-violet-100"}`) +
+                  ? "border-blue-500 bg-blue-100 text-blue-950"
+                  : `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`) +
                 fade;
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。

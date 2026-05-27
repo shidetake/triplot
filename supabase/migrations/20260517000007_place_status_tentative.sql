@@ -21,6 +21,8 @@ begin
   insert into place_statuses (trip_id, name, color, sort_order, tentative)
   values
     (_trip_id, '候補', '#f59e0b', 1, true),
-    (_trip_id, '確定', '#10b981', 2, false);
+    -- 確定: メンバー色（blue/emerald/amber/rose/violet/sky/orange/teal）と
+    -- 被らない slate-600。メンバーの色とごっちゃにならないようニュートラルに。
+    (_trip_id, '確定', '#475569', 2, false);
 end;
 $body$;
