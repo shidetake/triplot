@@ -980,6 +980,41 @@ export async function removeMemberAction(
   return { error: null };
 }
 
+// 自分の display_name（この旅行内）を変える。RLS の trip_members_self_update
+// で自レコードのみ更新可なので RPC は不要。他人の名前は変更不可。
+export async function renameSelfAction(
+  tripId: string,
+  newName: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const name = newName.trim();
+  if (!name) {
+    return { error: "名前を入力してください" };
+  }
+  if (name.length > 32) {
+    return { error: "名前は32文字以内にしてください" };
+  }
+
+  const { error } = await supabase
+    .from("trip_members")
+    .update({ display_name: name })
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id);
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
 // ── TODO（やりたいこと） ─────────────────────────────────────────────
 // 共有リスト。作成だけ created_by_member_id 解決のため RPC、
 // 更新（チェック / 本文 / 優先度）と削除は RLS 配下の素の table 操作。
