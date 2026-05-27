@@ -7,7 +7,6 @@ import { removeMemberAction } from "@/app/trips/[tripId]/actions";
 type Member = {
   id: string;
   display_name: string;
-  kind: string;
 };
 
 export function MembersSection({
@@ -41,7 +40,6 @@ export function MembersSection({
           className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm"
         >
           <span>{m.display_name}</span>
-          <span className="text-xs text-zinc-500">({m.kind})</span>
           <button
             type="button"
             onClick={() => remove(m)}
