@@ -51,18 +51,18 @@ as $body$
 begin
   insert into trip_pin_options (trip_id, icon, label, sort_order)
   values
-    (_trip_id, 'pin',         'その他',     0),
-    (_trip_id, 'food',        '食事',       1),
-    (_trip_id, 'cafe',        'カフェ',     2),
-    (_trip_id, 'bar',         'バー',       3),
-    (_trip_id, 'shopping',    '買い物',     4),
-    (_trip_id, 'activity',    'レジャー',   5),
-    (_trip_id, 'nature',      '自然・公園', 6),
-    (_trip_id, 'sightseeing', '観光・名所', 7),
-    (_trip_id, 'lodging',     '宿',         8),
-    (_trip_id, 'onsen',       '温泉',       9),
-    (_trip_id, 'airport',     '空港',       10),
-    (_trip_id, 'station',     '駅',         11);
+    (_trip_id, 'pin',                 'その他',     0),
+    (_trip_id, 'food',                '食事',       1),
+    (_trip_id, 'cafe',                'カフェ',     2),
+    (_trip_id, 'bar',                 'バー',       3),
+    (_trip_id, 'local_grocery_store', 'スーパー',   4),
+    (_trip_id, 'activity',            'レジャー',   5),
+    (_trip_id, 'nature',              '自然・公園', 6),
+    (_trip_id, 'sightseeing',         '観光・名所', 7),
+    (_trip_id, 'lodging',             '宿',         8),
+    (_trip_id, 'onsen',               '温泉',       9),
+    (_trip_id, 'airport',             '空港',       10),
+    (_trip_id, 'station',             '駅',         11);
 end;
 $body$;
 

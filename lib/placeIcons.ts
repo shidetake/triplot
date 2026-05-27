@@ -105,13 +105,14 @@ export function getIconLabel(key: string): string {
 }
 
 // 新規 trip 作成時に seed する 12 個。駐車場は外す（追加で入れたい人だけ追加）。
+// 「買い物」は意外と使われないので外して「スーパー」を入れた。
 // SQL 側の seed_default_trip_pin_options と一致させること。
 export const DEFAULT_PIN_KEYS = [
   "pin",
   "food",
   "cafe",
   "bar",
-  "shopping",
+  "local_grocery_store",
   "activity",
   "nature",
   "sightseeing",
