@@ -44,9 +44,9 @@ export const PLACE_ICONS: { value: string; label: string }[] = [
   { value: "station", label: "駅" },
   { value: "parking", label: "駐車場" },
   // 旧「アクティビティ」(attractions=遊園地アイコン) と旧「ビーチ」を統合。
-  // local_activity (★付きチケット) で「遊び場所」全般 — 遊園地もビーチも
+  // local_activity (★付きチケット) で「レジャー」全般 — 遊園地もビーチも
   // アクティビティ体験も。
-  { value: "activity", label: "遊び" },
+  { value: "activity", label: "レジャー" },
 ];
 
 // 各カテゴリ → Google 公式 Material Symbols (Rounded, FILL) の SVG パス。
