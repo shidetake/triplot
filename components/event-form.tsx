@@ -132,7 +132,6 @@ export function EventForm({
   state: formMode,
   places,
   members,
-  myMemberId,
   biasCenter,
   onDone,
 }: {
@@ -143,7 +142,6 @@ export function EventForm({
   state: EventFormMode;
   places: { id: string; name: string }[];
   members: { id: string; display_name: string }[];
-  myMemberId: string;
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   onDone: () => void;
 }) {
@@ -597,7 +595,6 @@ export function EventForm({
             <div className="mt-1.5 flex flex-wrap gap-1">
               {members.map((m) => {
                 const on = pSelected.has(m.id);
-                const isMe = m.id === myMemberId;
                 return (
                   <button
                     key={m.id}
@@ -610,7 +607,7 @@ export function EventForm({
                         : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
                     }
                   >
-                    {isMe ? `${m.display_name}（自分）` : m.display_name}
+                    {m.display_name}
                   </button>
                 );
               })}
