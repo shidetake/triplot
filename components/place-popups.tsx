@@ -626,14 +626,17 @@ export function SavedInfo({
         </form>
       ) : (
         (canEdit || canDelete) && (
-          <div className="flex gap-2 border-t border-zinc-200 pt-2">
-            {deleteButton}
+          // 破壊的アクション(左)と primary(右)を意図的に離す = justify-between。
+          // 編集ボタンは普段使いなので幅広め (削除の約 3 倍)、削除はそのままの
+          // サイズで誤タップしにくく保つ。
+          <div className="flex items-center justify-between border-t border-zinc-200 pt-2">
+            {deleteButton ?? <span />}
             {canEdit && (
               <button
                 type="button"
                 onClick={() => setEditing(true)}
                 aria-label="編集"
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50"
+                className="flex h-9 w-28 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50"
               >
                 <EditIcon size={18} />
               </button>
