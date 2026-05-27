@@ -64,7 +64,7 @@ export default async function TripDetailPage({
       .single(),
     supabase
       .from("trip_members")
-      .select("id, user_id, display_name, kind, color")
+      .select("id, user_id, display_name, kind, color, is_admin")
       .eq("trip_id", tripId)
       .is("left_at", null)
       .order("joined_at", { ascending: true }),
@@ -323,7 +323,7 @@ export default async function TripDetailPage({
         <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
           ← 旅行一覧に戻る
         </Link>
-        <TripActions tripId={tripId} baseUrl={inviteBaseUrl} />
+        <TripActions tripId={tripId} baseUrl={inviteBaseUrl} iAmAdmin={me.is_admin} />
       </div>
 
       <header className="mt-4">

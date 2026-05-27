@@ -17,9 +17,11 @@ import { ShareIcon } from "./icons";
 export function TripActions({
   tripId,
   baseUrl,
+  iAmAdmin,
 }: {
   tripId: string;
   baseUrl: string;
+  iAmAdmin: boolean;
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
@@ -156,14 +158,16 @@ export function TripActions({
             >
               メンバー管理
             </Link>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={isPending}
-              className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-            >
-              この旅行を削除
-            </button>
+            {iAmAdmin && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={isPending}
+                className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+              >
+                この旅行を削除
+              </button>
+            )}
           </div>
         </FormPopover>
       )}

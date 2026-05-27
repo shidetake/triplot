@@ -14,7 +14,7 @@ import {
   type MemberColor,
 } from "@/lib/memberColors";
 
-import { CheckIcon, CloseIcon, EditIcon, TrashIcon } from "./icons";
+import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { MemberAvatar } from "./member-avatar";
 
 type Member = {
@@ -188,8 +188,13 @@ export function MembersManagementList({
               {m.display_name}
             </span>
             {m.is_admin && (
-              <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800">
-                管理者
+              <span
+                role="img"
+                aria-label="管理者"
+                title="管理者"
+                className="text-amber-500"
+              >
+                <CrownIcon size={16} />
               </span>
             )}
             {isMe && (

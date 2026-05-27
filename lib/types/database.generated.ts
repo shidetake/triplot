@@ -811,6 +811,7 @@ export type Database = {
       }
       is_active_trip_member: { Args: { _trip_id: string }; Returns: boolean }
       is_own_member: { Args: { _member_id: string }; Returns: boolean }
+      is_trip_admin: { Args: { _trip_id: string }; Returns: boolean }
       join_trip_via_invite: {
         Args: { p_display_name: string; p_token: string }
         Returns: string

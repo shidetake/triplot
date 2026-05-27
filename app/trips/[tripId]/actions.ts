@@ -1057,7 +1057,21 @@ export async function deleteTripAction(
     return { error: "ログインしてください" };
   }
 
-  // RLS（trips_member_delete）でアクティブメンバーのみ削除可。
+  // 事前 admin チェック（明確なエラーメッセージのため）。RLS でも
+  // 二重防御（is_trip_admin 限定）してるので、ここを抜けても DB 側で
+  // silently 0 rows になる。
+  const { data: me } = await supabase
+    .from("trip_members")
+    .select("is_admin")
+    .eq("trip_id", tripId)
+    .eq("user_id", user.id)
+    .is("left_at", null)
+    .maybeSingle();
+  if (!me?.is_admin) {
+    return { error: "旅行を削除できるのは管理者のみです" };
+  }
+
+  // RLS（trips_member_delete）で is_admin = true のメンバーのみ削除可。
   // 関連テーブルは on delete cascade。
   const { error } = await supabase.from("trips").delete().eq("id", tripId);
   if (error) {
