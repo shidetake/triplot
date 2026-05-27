@@ -210,6 +210,17 @@ export function ExpenseForm({
   const [splittable, setSplittable] = useState(initSplittable);
   const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
 
+  // 割り勘対象の "全員 / 一部" モード（event-form の参加者と同じ disclosure）。
+  // 編集時、保存済み split がアクティブメンバーと完全一致なら "all"、
+  // 1人でも欠けてる / 余分があれば "custom"。
+  const splitsMatchAll = (() => {
+    if (initSplits.size !== members.length) return false;
+    return members.every((m) => initSplits.has(m.id));
+  })();
+  const [splitMode, setSplitMode] = useState<"all" | "custom">(
+    isEdit && initSplittable && !splitsMatchAll ? "custom" : "all",
+  );
+
   // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。
   const rateFor = (c: Currency): string => {
     if (c === defaultCurrency) return "1";
@@ -241,11 +252,24 @@ export function ExpenseForm({
   const toggleSplit = (id: string) => {
     setSelectedSplits((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        // 最後の1人は外せない（0人で割り勘は無意味なので）
+        if (next.size > 1) next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };
+
+  // フォーム送信時に hidden で流す split_member_ids。"all" のときは全員、
+  // "custom" のときはチップ選択分。割り勘 OFF のときは何も送らない。
+  const submittedSplitIds: string[] =
+    visibility === "shared" && splittable
+      ? splitMode === "all"
+        ? members.map((m) => m.id)
+        : Array.from(selectedSplits)
+      : [];
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -543,36 +567,58 @@ export function ExpenseForm({
         </label>
       )}
 
+      {/* 割り勘対象。event-form の参加者と同じ disclosure + chip パターン。
+          デフォルトは「割り勘対象: 全員 ▼」。タップで展開してチップで選択。
+          展開状態は「割り勘対象: 一部 ▲」。▲ で畳むと全員に戻る。 */}
       {visibility === "shared" && splittable && (
-        <fieldset className="text-sm">
-          <legend className="font-medium">割り勘対象</legend>
-          <div className="mt-1 flex flex-wrap gap-2">
-            {members.map((m) => {
-              const checked = selectedSplits.has(m.id);
-              return (
-                <label
-                  key={m.id}
-                  className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 ${
-                    checked
-                      ? "border-black bg-black text-white"
-                      : "border-zinc-300 bg-white"
-                  }`}
-                >
-                  <input
-                    type="checkbox"
-                    name="split_member_ids"
-                    value={m.id}
-                    checked={checked}
-                    onChange={() => toggleSplit(m.id)}
-                    className="sr-only"
-                  />
-                  <span>{m.display_name}</span>
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
+        <div className="text-sm">
+          <button
+            type="button"
+            onClick={() => {
+              if (splitMode === "all") {
+                setSplitMode("custom");
+              } else {
+                setSplitMode("all");
+                setSelectedSplits(new Set(members.map((m) => m.id)));
+              }
+            }}
+            aria-expanded={splitMode === "custom"}
+            className="inline-flex items-center gap-1 rounded font-medium text-zinc-700 transition hover:text-zinc-900"
+          >
+            <span>割り勘対象: {splitMode === "all" ? "全員" : "一部"}</span>
+            <span className="text-[10px] text-zinc-500">
+              {splitMode === "all" ? "▼" : "▲"}
+            </span>
+          </button>
+          {splitMode === "custom" && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {members.map((m) => {
+                const on = selectedSplits.has(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => toggleSplit(m.id)}
+                    aria-pressed={on}
+                    className={
+                      on
+                        ? "rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-900 ring-1 ring-blue-300"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
+                    }
+                  >
+                    {m.display_name}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
+
+      {/* 送信用 hidden inputs。全員 / 一部 / 割り勘 OFF を集約して書く。 */}
+      {submittedSplitIds.map((id) => (
+        <input key={id} type="hidden" name="split_member_ids" value={id} />
+      ))}
 
       <div className="flex gap-2">
         {canDelete && (
