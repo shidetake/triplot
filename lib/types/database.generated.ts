@@ -779,6 +779,7 @@ export type Database = {
       }
       nanoid: { Args: { size?: number }; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
+      pick_member_color: { Args: { p_trip_id: string }; Returns: string }
       regenerate_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string

@@ -4,14 +4,22 @@ import { useState, useTransition } from "react";
 
 import {
   removeMemberAction,
-  renameSelfAction,
+  updateMyMemberAction,
 } from "@/app/trips/[tripId]/actions";
+import {
+  MEMBER_COLORS,
+  chipClass,
+  isMemberColor,
+  swatchClass,
+  type MemberColor,
+} from "@/lib/memberColors";
 
 import { CheckIcon, CloseIcon, EditIcon } from "./icons";
 
 type Member = {
   id: string;
   display_name: string;
+  color: string | null;
 };
 
 export function MembersSection({
@@ -25,28 +33,38 @@ export function MembersSection({
 }) {
   const [isPending, start] = useTransition();
   const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState("");
+  const [draftName, setDraftName] = useState("");
+  const [draftColor, setDraftColor] = useState<MemberColor>("blue");
 
   const me = members.find((m) => m.id === myMemberId);
 
+  // 自分以外のアクティブメンバーが使用中の色 → picker で disable する。
+  const othersColors = new Set(
+    members
+      .filter((m) => m.id !== myMemberId && m.color)
+      .map((m) => m.color as string),
+  );
+
   const startEdit = () => {
     if (!me) return;
-    setDraft(me.display_name);
+    setDraftName(me.display_name);
+    setDraftColor(isMemberColor(me.color) ? me.color : "blue");
     setEditing(true);
   };
   const cancelEdit = () => setEditing(false);
   const saveEdit = () => {
-    const name = draft.trim();
+    const name = draftName.trim();
     if (!name) {
       cancelEdit();
       return;
     }
-    if (me && name === me.display_name) {
+    // 変更なしなら no-op
+    if (me && name === me.display_name && draftColor === me.color) {
       cancelEdit();
       return;
     }
     start(async () => {
-      const { error } = await renameSelfAction(tripId, name);
+      const { error } = await updateMyMemberAction(tripId, name, draftColor);
       if (error) {
         alert(`変更に失敗しました: ${error}`);
         return;
@@ -73,16 +91,16 @@ export function MembersSection({
         const isMe = m.id === myMemberId;
 
         if (isMe && editing) {
-          // 自分の行を編集モード。chip 全体を input + 保存/キャンセル に置換。
+          // 編集モード: chip を panel に置き換え。名前 + 色を 1 回で保存。
           return (
             <li
               key={m.id}
-              className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm"
+              className="inline-flex flex-col gap-2 rounded-xl bg-white p-3 text-sm shadow ring-1 ring-zinc-200"
             >
               <input
                 autoFocus
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     e.preventDefault();
@@ -95,26 +113,53 @@ export function MembersSection({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className="w-28 min-w-0 rounded-sm border-b border-zinc-400 bg-transparent text-sm outline-none focus:border-black disabled:opacity-50"
+                className="w-36 rounded border-b border-zinc-400 bg-transparent text-sm outline-none focus:border-black disabled:opacity-50"
               />
-              <button
-                type="button"
-                onClick={saveEdit}
-                disabled={isPending}
-                aria-label="保存"
-                className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-800 disabled:opacity-50"
-              >
-                <CheckIcon size={12} />
-              </button>
-              <button
-                type="button"
-                onClick={cancelEdit}
-                disabled={isPending}
-                aria-label="キャンセル"
-                className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 disabled:opacity-50"
-              >
-                <CloseIcon size={12} />
-              </button>
+              <div className="flex flex-wrap gap-1.5">
+                {MEMBER_COLORS.map((c) => {
+                  const taken = othersColors.has(c);
+                  const selected = draftColor === c;
+                  return (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => {
+                        if (!taken) setDraftColor(c);
+                      }}
+                      disabled={taken || isPending}
+                      aria-label={c}
+                      aria-pressed={selected}
+                      className={`h-6 w-6 rounded-full ${swatchClass(c)} ${
+                        taken ? "cursor-not-allowed opacity-25" : ""
+                      } ${
+                        selected
+                          ? "outline-2 outline-offset-2 outline-zinc-900"
+                          : "outline-1 outline-black/10"
+                      }`}
+                    />
+                  );
+                })}
+              </div>
+              <div className="flex items-center justify-end gap-1">
+                <button
+                  type="button"
+                  onClick={cancelEdit}
+                  disabled={isPending}
+                  aria-label="キャンセル"
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600 disabled:opacity-50"
+                >
+                  <CloseIcon size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={saveEdit}
+                  disabled={isPending}
+                  aria-label="保存"
+                  className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-700 transition hover:bg-zinc-100 hover:text-zinc-900 disabled:opacity-50"
+                >
+                  <CheckIcon size={14} />
+                </button>
+              </div>
             </li>
           );
         }
@@ -122,7 +167,7 @@ export function MembersSection({
         return (
           <li
             key={m.id}
-            className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-3 py-1 text-sm"
+            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm ${chipClass(m.color)}`}
           >
             <span>{m.display_name}</span>
             {isMe && (
@@ -130,9 +175,9 @@ export function MembersSection({
                 type="button"
                 onClick={startEdit}
                 disabled={isPending}
-                aria-label="名前を変更"
-                title="名前を変更"
-                className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 disabled:opacity-50"
+                aria-label="名前と色を変更"
+                title="名前と色を変更"
+                className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
               >
                 <EditIcon size={12} />
               </button>
@@ -142,9 +187,9 @@ export function MembersSection({
               onClick={() => remove(m)}
               disabled={isPending}
               aria-label={
-                m.id === myMemberId ? "退出する" : `${m.display_name} を外す`
+                isMe ? "退出する" : `${m.display_name} を外す`
               }
-              className="ml-0.5 rounded-full px-1 text-zinc-400 transition hover:bg-zinc-200 hover:text-zinc-700 disabled:opacity-50"
+              className="ml-0.5 rounded-full px-1 text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
             >
               ×
             </button>

@@ -328,6 +328,7 @@ export default async function TripDetailPage({
           members={activeMembers.map((m) => ({
             id: m.id,
             display_name: m.display_name,
+            color: m.color,
           }))}
           myMemberId={me.id}
         />
