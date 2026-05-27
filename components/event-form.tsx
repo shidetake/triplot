@@ -15,7 +15,7 @@ import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
-import { TrashIcon, CloseIcon } from "./icons";
+import { TrashIcon, CloseIcon, PlusIcon, SaveIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
@@ -665,9 +665,11 @@ export function EventForm({
         <button
           type="submit"
           disabled={isPending}
-          className="h-9 flex-1 rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          aria-label={isEdit ? "保存" : "追加"}
+          title={isEdit ? "保存" : "追加"}
+          className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
-          {isPending ? "保存中..." : isEdit ? "保存" : "追加"}
+          {isEdit ? <SaveIcon size={18} /> : <PlusIcon size={20} />}
         </button>
       </div>
 

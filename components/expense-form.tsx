@@ -29,7 +29,7 @@ import { DatePopover } from "./date-popover";
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
-import { TrashIcon, CloseIcon } from "./icons";
+import { TrashIcon, CloseIcon, PlusIcon, SaveIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 function tzLabel(iana: string): string {
@@ -647,15 +647,11 @@ export function ExpenseForm({
         <button
           type="submit"
           disabled={isPending}
-          className="h-10 flex-1 rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          aria-label={isEdit ? "保存" : "追加"}
+          title={isEdit ? "保存" : "追加"}
+          className="flex h-10 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
-          {isPending
-            ? isEdit
-              ? "保存中..."
-              : "追加中..."
-            : isEdit
-              ? "保存"
-              : "費用を追加"}
+          {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={22} />}
         </button>
       </div>
 

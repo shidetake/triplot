@@ -13,7 +13,7 @@ import type { Visibility } from "@/lib/types/database";
 
 import { type PinOption } from "@/lib/placeIcons";
 
-import { TrashIcon, CloseIcon, EditIcon, PlusIcon } from "./icons";
+import { TrashIcon, CloseIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { PlaceIconPicker } from "./place-icon-picker";
 import {
   gmapsUrl,
@@ -274,9 +274,11 @@ export function CandidateInfo({
         <button
           type="submit"
           disabled={isPending}
-          className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          aria-label="この場所を追加"
+          title="この場所を追加"
+          className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
-          {isPending ? "追加中..." : "この場所を追加"}
+          <PlusIcon size={20} />
         </button>
         {state.error && (
           <p className="rounded bg-red-50 p-2 text-xs text-red-700">
@@ -382,9 +384,11 @@ export function DraftInfo({
         <button
           type="submit"
           disabled={isPending}
-          className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          aria-label="この地点を追加"
+          title="この地点を追加"
+          className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
-          {isPending ? "追加中..." : "この地点を追加"}
+          <PlusIcon size={20} />
         </button>
         {state.error && (
           <p className="rounded bg-red-50 p-2 text-xs text-red-700">
@@ -613,9 +617,11 @@ export function SavedInfo({
             <button
               type="submit"
               disabled={isPending}
-              className="h-9 flex-1 rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+              aria-label="保存"
+              title="保存"
+              className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
             >
-              {isPending ? "保存中..." : "保存"}
+              <SaveIcon size={18} />
             </button>
           </div>
           {state.error && (

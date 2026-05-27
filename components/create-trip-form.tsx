@@ -8,7 +8,7 @@ import {
 } from "@/app/trips/create-trip-action";
 
 import { DateRangePopover } from "./date-range-popover";
-import { CloseIcon } from "./icons";
+import { CloseIcon, PlusIcon } from "./icons";
 
 type Currency = "JPY" | "USD";
 
@@ -101,9 +101,11 @@ export function CreateTripForm({
       <button
         type="submit"
         disabled={isPending}
-        className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        aria-label="作成"
+        title="作成"
+        className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
       >
-        {isPending ? "作成中..." : "作成する"}
+        <PlusIcon size={20} />
       </button>
 
       {state.error && (
