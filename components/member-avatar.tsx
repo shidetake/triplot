@@ -22,9 +22,12 @@ export function MemberAvatar({
     size === "md"
       ? "h-6 w-6 text-xs"
       : "h-[18px] w-[18px] text-[10px]";
+  const label = name?.trim() || undefined;
   return (
     <span
-      aria-hidden="true"
+      title={label}
+      aria-label={label}
+      role={label ? "img" : undefined}
       className={[
         "inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium leading-none tracking-tight",
         dim,
@@ -34,7 +37,7 @@ export function MemberAvatar({
         .filter(Boolean)
         .join(" ")}
     >
-      {firstChar(name)}
+      <span aria-hidden="true">{firstChar(name)}</span>
     </span>
   );
 }

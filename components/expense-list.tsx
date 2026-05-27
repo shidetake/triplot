@@ -10,6 +10,7 @@ import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { type Anchor, FormPopover } from "./form-popover";
+import { MemberAvatar } from "./member-avatar";
 import { PlaceIcon } from "./place-list";
 
 export type ExpenseRow = {
@@ -33,6 +34,7 @@ export type ExpenseRow = {
 type Member = {
   id: string;
   display_name: string;
+  color: string | null;
 };
 
 export function ExpenseList({
@@ -147,12 +149,11 @@ function ExpenseRowItem({
   defaultCurrency: Currency;
   onEdit: (anchor: Anchor) => void;
 }) {
-  const payerName =
-    memberById.get(expense.payer_member_id)?.display_name ?? "?";
-  const splitNames = expense.splittable
+  const payer = memberById.get(expense.payer_member_id);
+  const splitMembers = expense.splittable
     ? expense.split_member_ids
-        .map((id) => memberById.get(id)?.display_name ?? "?")
-        .join(", ")
+        .map((id) => memberById.get(id))
+        .filter((m): m is Member => !!m)
     : null;
 
   const isForeign = expense.local_currency !== defaultCurrency;
@@ -196,14 +197,28 @@ function ExpenseRowItem({
               </span>
             )}
           </div>
-          <div className="mt-1 text-xs text-zinc-600">
-            <span>{formatDateTime(expense.paid_at)}</span>{" "}
-            <span>支払: {payerName}</span>
-            {splitNames && (
-              <>
-                {" "}
-                <span>割勘: {splitNames}</span>
-              </>
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600">
+            <span>{formatDateTime(expense.paid_at)}</span>
+            <span className="inline-flex items-center gap-1">
+              支払
+              <MemberAvatar
+                name={payer?.display_name}
+                color={payer?.color}
+              />
+            </span>
+            {splitMembers && splitMembers.length > 0 && (
+              <span className="inline-flex items-center gap-1">
+                割勘
+                <span className="inline-flex flex-wrap items-center gap-0.5">
+                  {splitMembers.map((m) => (
+                    <MemberAvatar
+                      key={m.id}
+                      name={m.display_name}
+                      color={m.color}
+                    />
+                  ))}
+                </span>
+              </span>
             )}
           </div>
           {placeName && (
