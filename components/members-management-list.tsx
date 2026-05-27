@@ -181,22 +181,27 @@ export function MembersManagementList({
             key={m.id}
             className="flex items-center gap-3 p-3"
           >
-            <MemberAvatar name={m.display_name} color={m.color} size="md" />
+            <span className="relative inline-flex shrink-0">
+              <MemberAvatar name={m.display_name} color={m.color} size="md" />
+              {m.is_admin && (
+                // アバター右上に乗せる王冠バッジ。管理画面でしか表示しない
+                // （他箇所の MemberAvatar 利用には影響なし）。白の外輪で
+                // アバター色から浮かせ、視認性を確保。
+                <span
+                  role="img"
+                  aria-label="管理者"
+                  title="管理者"
+                  className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-amber-500 ring-1 ring-white"
+                >
+                  <CrownIcon size={9} />
+                </span>
+              )}
+            </span>
             <span
               className={`inline-flex flex-1 items-center rounded-full px-3 py-1 text-sm ${chipClass(m.color)}`}
             >
               {m.display_name}
             </span>
-            {m.is_admin && (
-              <span
-                role="img"
-                aria-label="管理者"
-                title="管理者"
-                className="text-amber-500"
-              >
-                <CrownIcon size={16} />
-              </span>
-            )}
             {isMe && (
               <button
                 type="button"
