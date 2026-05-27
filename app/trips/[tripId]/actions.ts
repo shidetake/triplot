@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { generateInviteToken } from "@/lib/invite";
 import { isMemberColor } from "@/lib/memberColors";
+import { getIcon } from "@/lib/placeIcons";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@/lib/types/database";
 
@@ -412,6 +413,58 @@ export async function deletePlaceAction(
 
   const { error } = await supabase.from("places").delete().eq("id", placeId);
   if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+// 場所ピンの追加（trip_pin_options に 1 行 insert）。RLS は active member 限定
+// なので RPC は使わず素の table 操作で OK。label はカタログ既定値で固定（将来
+// 「ラベル編集 UI」を入れたら別アクションで update）。
+export async function addTripPinOptionAction(
+  tripId: string,
+  iconKey: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const entry = getIcon(iconKey);
+  if (!entry) {
+    return { error: "不明なアイコンです" };
+  }
+
+  // 末尾の sort_order を計算。並列追加時の衝突は unique(trip_id, icon) でリトライ
+  // 不要（同 icon は弾く前提）。sort_order の被りは検索性能にだけ影響して
+  // ロジックは壊れないので、ラフに max+1 で行く。
+  const { data: maxRow, error: maxErr } = await supabase
+    .from("trip_pin_options")
+    .select("sort_order")
+    .eq("trip_id", tripId)
+    .order("sort_order", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (maxErr) return { error: maxErr.message };
+  const nextSort = (maxRow?.sort_order ?? -1) + 1;
+
+  const { error } = await supabase.from("trip_pin_options").insert({
+    trip_id: tripId,
+    icon: entry.key,
+    label: entry.label,
+    sort_order: nextSort,
+  });
+  if (error) {
+    // unique 違反 = 既に追加済み。クライアント側が fade してれば来ない経路だが
+    // 念のためメッセージを和文で。
+    if (error.code === "23505") {
+      return { error: "そのアイコンは既に追加済みです" };
+    }
     return { error: error.message };
   }
 

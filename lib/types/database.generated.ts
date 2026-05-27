@@ -534,6 +534,41 @@ export type Database = {
           },
         ]
       }
+      trip_pin_options: {
+        Row: {
+          created_at: string
+          icon: string
+          id: string
+          label: string
+          sort_order: number
+          trip_id: string
+        }
+        Insert: {
+          created_at?: string
+          icon: string
+          id?: string
+          label: string
+          sort_order: number
+          trip_id: string
+        }
+        Update: {
+          created_at?: string
+          icon?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          trip_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trip_pin_options_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           created_at: string
@@ -790,6 +825,10 @@ export type Database = {
         Returns: undefined
       }
       seed_default_place_statuses: {
+        Args: { _trip_id: string }
+        Returns: undefined
+      }
+      seed_default_trip_pin_options: {
         Args: { _trip_id: string }
         Returns: undefined
       }

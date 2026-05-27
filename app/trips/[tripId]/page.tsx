@@ -53,6 +53,7 @@ export default async function TripDetailPage({
     { data: placesRaw },
     { data: eventsRaw },
     { data: todosRaw },
+    { data: pinOptionsRaw },
   ] = await Promise.all([
     supabase
       .from("trips")
@@ -110,6 +111,11 @@ export default async function TripDetailPage({
       .eq("trip_id", tripId)
       // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
       .order("created_at", { ascending: true }),
+    supabase
+      .from("trip_pin_options")
+      .select("id, icon, label, sort_order")
+      .eq("trip_id", tripId)
+      .order("sort_order", { ascending: true }),
   ]);
 
   if (tripError || !trip) notFound();
@@ -139,6 +145,13 @@ export default async function TripDetailPage({
     split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
     place_id: e.place_id,
     tz: e.tz,
+  }));
+
+  const pinOptions = (pinOptionsRaw ?? []).map((p) => ({
+    id: p.id,
+    icon: p.icon,
+    label: p.label,
+    sort_order: p.sort_order,
   }));
 
   const placeStatuses: PlaceStatus[] = (placeStatusesRaw ?? []).map((s) => ({
@@ -358,6 +371,7 @@ export default async function TripDetailPage({
           tripId={tripId}
           places={places}
           statuses={placeStatuses}
+          pinOptions={pinOptions}
           myMemberId={me.id}
         />
       </section>

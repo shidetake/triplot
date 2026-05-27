@@ -12,6 +12,7 @@ import {
   CandidateInfo,
   DraftInfo,
   LocateInfo,
+  type PinOption,
   SavedInfo,
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
@@ -20,11 +21,13 @@ export function PlacesSection({
   tripId,
   places,
   statuses,
+  pinOptions,
   myMemberId,
 }: {
   tripId: string;
   places: PlaceRow[];
   statuses: PlaceStatus[];
+  pinOptions: PinOption[];
   myMemberId: string;
 }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -164,6 +167,7 @@ export function PlacesSection({
           tripId={tripId}
           candidate={c}
           statuses={statuses}
+          pinOptions={pinOptions}
           onAdded={clearSearch}
         />
       );
@@ -178,6 +182,7 @@ export function PlacesSection({
           tripId={tripId}
           place={p}
           statuses={statuses}
+          pinOptions={pinOptions}
           canEdit={canEdit}
           canDelete={canEdit}
           canChangeVisibility={isCreator}
@@ -202,6 +207,7 @@ export function PlacesSection({
       tripId={tripId}
       draft={draft}
       statuses={statuses}
+      pinOptions={pinOptions}
       onAdded={clearSearch}
     />
   );

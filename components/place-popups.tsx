@@ -11,15 +11,23 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
-import { TrashIcon, CloseIcon, EditIcon } from "./icons";
+import { TrashIcon, CloseIcon, EditIcon, PlusIcon } from "./icons";
+import { PlaceIconPicker } from "./place-icon-picker";
 import {
   gmapsUrl,
-  PLACE_ICONS,
   PlaceIcon,
   type PlaceRow,
   type PlaceStatus,
 } from "./place-list";
 import type { CandidatePlace } from "./place-search";
+
+// トリップごとに保持してるピン集合（DB の trip_pin_options を server で fetch）。
+export type PinOption = {
+  id: string;
+  icon: string;
+  label: string;
+  sort_order: number;
+};
 
 const initialState: PlaceMutationState = { ok: false, error: null };
 
@@ -96,32 +104,58 @@ function VisibilityField({
 }
 
 function IconPicker({
+  tripId,
+  options,
   value,
   onChange,
 }: {
+  tripId: string;
+  options: PinOption[];
   value: string;
   onChange: (v: string) => void;
 }) {
+  const [addOpen, setAddOpen] = useState(false);
+  const sorted = [...options].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <fieldset className="text-xs">
       <legend className="font-medium text-zinc-700">ピンの形</legend>
       <div className="mt-1 flex flex-wrap gap-1">
-        {PLACE_ICONS.map((o) => (
+        {sorted.map((o) => (
           <button
-            key={o.value}
+            key={o.id}
             type="button"
-            onClick={() => onChange(o.value)}
+            onClick={() => onChange(o.icon)}
             title={o.label}
             className={`flex h-8 w-8 items-center justify-center rounded-md border ${
-              value === o.value
+              value === o.icon
                 ? "border-black bg-zinc-900 text-white"
                 : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
             }`}
           >
-            <PlaceIcon icon={o.value} size={22} />
+            <PlaceIcon icon={o.icon} size={22} />
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setAddOpen(true)}
+          title="アイコンを追加"
+          aria-label="アイコンを追加"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-zinc-300 text-blue-600 transition hover:bg-blue-50"
+        >
+          <PlusIcon size={16} />
+        </button>
       </div>
+      {addOpen && (
+        <PlaceIconPicker
+          tripId={tripId}
+          usedKeys={new Set(options.map((o) => o.icon))}
+          onAdded={(key) => {
+            setAddOpen(false);
+            onChange(key);
+          }}
+          onClose={() => setAddOpen(false)}
+        />
+      )}
     </fieldset>
   );
 }
@@ -130,11 +164,13 @@ export function CandidateInfo({
   tripId,
   candidate,
   statuses,
+  pinOptions,
   onAdded,
 }: {
   tripId: string;
   candidate: CandidatePlace;
   statuses: PlaceStatus[];
+  pinOptions: PinOption[];
   onAdded: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
@@ -216,7 +252,12 @@ export function CandidateInfo({
           value={statusId}
           onChange={setStatusId}
         />
-        <IconPicker value={icon} onChange={setIcon} />
+        <IconPicker
+          tripId={tripId}
+          options={pinOptions}
+          value={icon}
+          onChange={setIcon}
+        />
         <VisibilityField
           value={visibility}
           onChange={setVisibility}
@@ -256,11 +297,13 @@ export function DraftInfo({
   tripId,
   draft,
   statuses,
+  pinOptions,
   onAdded,
 }: {
   tripId: string;
   draft: { lat: number; lng: number };
   statuses: PlaceStatus[];
+  pinOptions: PinOption[];
   onAdded: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
@@ -317,7 +360,12 @@ export function DraftInfo({
           value={statusId}
           onChange={setStatusId}
         />
-        <IconPicker value={icon} onChange={setIcon} />
+        <IconPicker
+          tripId={tripId}
+          options={pinOptions}
+          value={icon}
+          onChange={setIcon}
+        />
         <VisibilityField
           value={visibility}
           onChange={setVisibility}
@@ -426,6 +474,7 @@ export function SavedInfo({
   tripId,
   place,
   statuses,
+  pinOptions,
   canEdit,
   canDelete,
   canChangeVisibility,
@@ -434,6 +483,7 @@ export function SavedInfo({
   tripId: string;
   place: PlaceRow;
   statuses: PlaceStatus[];
+  pinOptions: PinOption[];
   canEdit: boolean;
   canDelete: boolean;
   canChangeVisibility: boolean;
@@ -539,7 +589,12 @@ export function SavedInfo({
             value={statusId}
             onChange={setStatusId}
           />
-          <IconPicker value={icon} onChange={setIcon} />
+          <IconPicker
+          tripId={tripId}
+          options={pinOptions}
+          value={icon}
+          onChange={setIcon}
+        />
           <VisibilityField
             value={visibility}
             onChange={setVisibility}
