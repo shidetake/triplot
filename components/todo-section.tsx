@@ -21,6 +21,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@/components/icons";
+import { MemberAvatar } from "@/components/member-avatar";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
 import type { TodoKind, TodoPriority } from "@/lib/types/database";
@@ -225,10 +226,9 @@ export function TodoSection({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
-  const memberName = (id: string) =>
-    members.find((m) => m.id === id)?.display_name ?? "?";
-  const memberColor = (id: string) =>
-    members.find((m) => m.id === id)?.color ?? "#a1a1aa";
+  const memberOf = (id: string) => members.find((m) => m.id === id);
+  const memberName = (id: string) => memberOf(id)?.display_name ?? "?";
+  const memberColor = (id: string) => memberOf(id)?.color ?? null;
 
   const add = () => {
     const title = draft.trim();
@@ -412,12 +412,10 @@ export function TodoSection({
                 onChange={(p) => changePriority(todo, p)}
               />
 
-              <span className="flex shrink-0 items-center gap-1 text-xs text-zinc-400">
-                <span
-                  className="size-2 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor: memberColor(todo.created_by_member_id),
-                  }}
+              <span className="flex shrink-0 items-center gap-1 text-xs text-zinc-500">
+                <MemberAvatar
+                  name={memberName(todo.created_by_member_id)}
+                  color={memberColor(todo.created_by_member_id)}
                 />
                 <span className="hidden sm:inline">
                   {memberName(todo.created_by_member_id)}

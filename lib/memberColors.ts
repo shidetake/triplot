@@ -44,7 +44,21 @@ const SWATCH_CLASSES: Record<MemberColor, string> = {
   teal: "bg-teal-400",
 };
 
+// イニシャル円（MemberAvatar）用。chip と同じ light shade + 濃いめ text で
+// 並べた時に違和感ないトーンに。
+const AVATAR_CLASSES: Record<MemberColor, string> = {
+  blue: "bg-blue-100 text-blue-900",
+  emerald: "bg-emerald-100 text-emerald-900",
+  amber: "bg-amber-100 text-amber-900",
+  rose: "bg-rose-100 text-rose-900",
+  violet: "bg-violet-100 text-violet-900",
+  sky: "bg-sky-100 text-sky-900",
+  orange: "bg-orange-100 text-orange-900",
+  teal: "bg-teal-100 text-teal-900",
+};
+
 const FALLBACK_CHIP = "bg-zinc-100 text-zinc-700 ring-1 ring-zinc-200";
+const FALLBACK_AVATAR = "bg-zinc-200 text-zinc-700";
 
 export function chipClass(color: string | null | undefined): string {
   return isMemberColor(color) ? CHIP_CLASSES[color] : FALLBACK_CHIP;
@@ -52,4 +66,15 @@ export function chipClass(color: string | null | undefined): string {
 
 export function swatchClass(color: MemberColor): string {
   return SWATCH_CLASSES[color];
+}
+
+export function avatarClass(color: string | null | undefined): string {
+  return isMemberColor(color) ? AVATAR_CLASSES[color] : FALLBACK_AVATAR;
+}
+
+// 表示名から「省略形」を1文字取り出す。Spread でコードポイント単位に分割するので、
+// 絵文字 / サロゲートペアでも 1文字として正しく扱える（日本語は元から1コードポイント）。
+export function firstChar(name: string | null | undefined): string {
+  if (!name) return "?";
+  return [...name.trim()][0] ?? "?";
 }
