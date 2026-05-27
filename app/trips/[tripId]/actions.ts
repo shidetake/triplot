@@ -423,6 +423,8 @@ export async function deletePlaceAction(
 // 場所ピンの削除。既にそのピンを使ってる places.icon は catalog から直接
 // glyph を引くので、ピンを外しても各 place の表示は壊れない（picker から
 // 候補として出なくなるだけ）。
+// "pin"（その他）は常に存在するセーフティバケットなので削除不可で守る。
+// UI 側でも picker から非表示にしてるが、サーバ側でも念のため弾く。
 export async function removeTripPinOptionAction(
   tripId: string,
   optionId: string,
@@ -433,6 +435,18 @@ export async function removeTripPinOptionAction(
   } = await supabase.auth.getUser();
   if (!user) {
     return { error: "ログインしてください" };
+  }
+
+  // 削除対象が "pin" でないかを確認
+  const { data: target, error: lookupErr } = await supabase
+    .from("trip_pin_options")
+    .select("icon")
+    .eq("id", optionId)
+    .eq("trip_id", tripId)
+    .maybeSingle();
+  if (lookupErr) return { error: lookupErr.message };
+  if (target?.icon === "pin") {
+    return { error: "「その他」のピンは削除できません" };
   }
 
   const { error } = await supabase

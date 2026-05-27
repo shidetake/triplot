@@ -97,7 +97,7 @@ export function PlaceIconPicker({
             閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路あり。 */}
         <div className="flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-8 gap-px">
-            {ICON_CATALOG.map((it) => {
+            {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
               const used = optionByIcon.has(it.key);
               const sel = selected === it.key;
               // 選択ハイライトは状態で色を変える: 未追加=青(追加候補)、
