@@ -9,6 +9,7 @@ import {
 import {
   MEMBER_COLORS,
   chipClass,
+  firstChar,
   isMemberColor,
   swatchClass,
   type MemberColor,
@@ -167,9 +168,15 @@ export function MembersSection({
         return (
           <li
             key={m.id}
-            className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm ${chipClass(m.color)}`}
+            // チップ自体をアバター風（先頭1文字 + 色背景 + 丸端）にする。フル
+            // 表示名は title 属性で hover ツールチップ。自分のチップにだけ編集
+            // 鉛筆と退出 × が並ぶ。他人のチップには「外す」×。
+            title={m.display_name}
+            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-sm ${chipClass(m.color)}`}
           >
-            <span>{m.display_name}</span>
+            <span className="inline-flex h-5 w-5 items-center justify-center font-medium leading-none">
+              {firstChar(m.display_name)}
+            </span>
             {isMe && (
               <button
                 type="button"
@@ -177,7 +184,7 @@ export function MembersSection({
                 disabled={isPending}
                 aria-label="名前と色を変更"
                 title="名前と色を変更"
-                className="ml-0.5 flex h-5 w-5 items-center justify-center rounded-full text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
               >
                 <EditIcon size={12} />
               </button>
@@ -189,7 +196,7 @@ export function MembersSection({
               aria-label={
                 isMe ? "退出する" : `${m.display_name} を外す`
               }
-              className="ml-0.5 rounded-full px-1 text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
+              className="rounded-full px-1 text-current opacity-60 transition hover:bg-black/10 hover:opacity-100 disabled:opacity-50"
             >
               ×
             </button>
