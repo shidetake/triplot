@@ -420,6 +420,32 @@ export async function deletePlaceAction(
   return { error: null };
 }
 
+// 場所ピンの削除。既にそのピンを使ってる places.icon は catalog から直接
+// glyph を引くので、ピンを外しても各 place の表示は壊れない（picker から
+// 候補として出なくなるだけ）。
+export async function removeTripPinOptionAction(
+  tripId: string,
+  optionId: string,
+): Promise<{ error: string | null }> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: "ログインしてください" };
+  }
+
+  const { error } = await supabase
+    .from("trip_pin_options")
+    .delete()
+    .eq("id", optionId)
+    .eq("trip_id", tripId);
+  if (error) return { error: error.message };
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
 // 場所ピンの追加（trip_pin_options に 1 行 insert）。RLS は active member 限定
 // なので RPC は使わず素の table 操作で OK。label はカタログ既定値で固定（将来
 // 「ラベル編集 UI」を入れたら別アクションで update）。

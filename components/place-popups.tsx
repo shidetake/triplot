@@ -11,6 +11,8 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@/lib/types/database";
 
+import { type PinOption } from "@/lib/placeIcons";
+
 import { TrashIcon, CloseIcon, EditIcon, PlusIcon } from "./icons";
 import { PlaceIconPicker } from "./place-icon-picker";
 import {
@@ -21,13 +23,8 @@ import {
 } from "./place-list";
 import type { CandidatePlace } from "./place-search";
 
-// トリップごとに保持してるピン集合（DB の trip_pin_options を server で fetch）。
-export type PinOption = {
-  id: string;
-  icon: string;
-  label: string;
-  sort_order: number;
-};
+// 再 export（既存の `import { type PinOption } from "./place-popups"` を壊さない）。
+export type { PinOption };
 
 const initialState: PlaceMutationState = { ok: false, error: null };
 
@@ -148,7 +145,7 @@ function IconPicker({
       {addOpen && (
         <PlaceIconPicker
           tripId={tripId}
-          usedKeys={new Set(options.map((o) => o.icon))}
+          pinOptions={options}
           onAdded={(key) => {
             setAddOpen(false);
             onChange(key);
