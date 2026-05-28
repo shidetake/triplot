@@ -521,7 +521,7 @@ export type Database = {
       }
       trip_members: {
         Row: {
-          color: string | null
+          color: number | null
           display_name: string
           id: string
           is_admin: boolean
@@ -532,7 +532,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
-          color?: string | null
+          color?: number | null
           display_name: string
           id?: string
           is_admin?: boolean
@@ -543,7 +543,7 @@ export type Database = {
           user_id: string
         }
         Update: {
-          color?: string | null
+          color?: number | null
           display_name?: string
           id?: string
           is_admin?: boolean
@@ -851,7 +851,7 @@ export type Database = {
       }
       nanoid: { Args: { size?: number }; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
-      pick_member_color: { Args: { p_trip_id: string }; Returns: string }
+      pick_member_color: { Args: { p_trip_id: string }; Returns: number }
       regenerate_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string

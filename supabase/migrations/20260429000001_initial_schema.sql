@@ -60,7 +60,9 @@ create table trip_members (
   trip_id       text not null references trips(id) on delete cascade,
   user_id       uuid not null references users(id) on delete cascade,
   display_name  text not null,
-  color         text,
+  -- 色相角度 (0-359)。pick_member_color が自動算出して入れる。HSL の H 値で、
+  -- 描画は inline style で hsl(color, ...) を生成（Tailwind の palette には依存しない）。
+  color         int check (color is null or (color >= 0 and color < 360)),
   kind          text not null check (kind in ('member','guest')),
   joined_at     timestamptz not null default now(),
   left_at       timestamptz,

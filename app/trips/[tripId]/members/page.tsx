@@ -47,7 +47,7 @@ export default async function MembersPage({
       <header className="mb-4">
         <h1 className="text-2xl font-semibold">メンバー</h1>
         <p className="mt-2 text-xs text-zinc-500">
-          自分の表示名・色を編集できます。{me.is_admin ? "管理者として、他のメンバーの削除もできます。" : "他のメンバーを外せるのは管理者のみ。"}
+          自分の表示名を編集できます。{me.is_admin ? "管理者として、他のメンバーの削除もできます。" : "他のメンバーを外せるのは管理者のみ。"}
         </p>
       </header>
 

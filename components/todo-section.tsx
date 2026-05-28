@@ -46,7 +46,7 @@ export type TodoRow = {
 type MemberLite = {
   id: string;
   display_name: string;
-  color: string | null;
+  color: number | null;
 };
 
 // 優先度チップの配色（ライトモード固定）

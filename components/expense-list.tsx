@@ -34,7 +34,7 @@ export type ExpenseRow = {
 type Member = {
   id: string;
   display_name: string;
-  color: string | null;
+  color: number | null;
 };
 
 export function ExpenseList({

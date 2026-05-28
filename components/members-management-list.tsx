@@ -6,7 +6,7 @@ import {
   removeMemberAction,
   updateMyMemberAction,
 } from "@/app/trips/[tripId]/actions";
-import { chipClass } from "@/lib/memberColors";
+import { chipStyle } from "@/lib/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { MemberAvatar } from "./member-avatar";
@@ -14,7 +14,7 @@ import { MemberAvatar } from "./member-avatar";
 type Member = {
   id: string;
   display_name: string;
-  color: string | null;
+  color: number | null;
   is_admin: boolean;
 };
 
@@ -148,7 +148,8 @@ export function MembersManagementList({
               )}
             </span>
             <span
-              className={`inline-flex flex-1 items-center rounded-full px-3 py-1 text-sm ${chipClass(m.color)}`}
+              style={chipStyle(m.color)}
+              className="inline-flex flex-1 items-center rounded-full px-3 py-1 text-sm"
             >
               {m.display_name}
             </span>
