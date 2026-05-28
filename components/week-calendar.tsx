@@ -2,6 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  eventBarHueBg,
+  eventBarHueText,
+  eventBlockHueBg,
+  eventBlockHueBorder,
+  eventBlockHueText,
+  GREEN_HUE,
+  pickEventColor,
+  type EventColor,
+} from "@/lib/eventColor";
 import { MIN_EVENT_MIN, type Schedule, type ScheduleEvent } from "@/lib/schedule";
 
 import { CheckIcon } from "./icons";
@@ -56,6 +66,8 @@ export function WeekCalendar({
   placeName,
   selectedEventId,
   myMemberId,
+  activeMemberCount,
+  memberHueById,
   pcDrag,
   onPcDragChange,
   onSlotClick,
@@ -67,6 +79,9 @@ export function WeekCalendar({
   selectedEventId: string | null;
   // 自分が participants に含まれない予定（=別行動）を薄く描くために必要。
   myMemberId: string;
+  // ブロック色の判定に必要。全 active member 数と、id→hue の辞書。
+  activeMemberCount: number;
+  memberHueById: Map<string, number | null>;
   // PC ドラッグの可変長ゴースト。フォームが開いている間も残したいので
   // 状態は親(ScheduleSection)持ち。閉じる/確定で親が null クリアする。
   pcDrag: PcDragRender | null;
@@ -88,6 +103,73 @@ export function WeekCalendar({
   const isMyEvent = (e: ScheduleEvent): boolean => {
     if (e.participantMemberIds.length === 0) return true;
     return e.participantMemberIds.includes(myMemberId);
+  };
+
+  // 予定ブロックの色（参加者構成＋visibility で決まる、種別は問わない）。
+  const colorOf = (e: ScheduleEvent): EventColor =>
+    pickEventColor({
+      visibility: e.visibility,
+      participantMemberIds: e.participantMemberIds,
+      activeMemberCount,
+      memberHueById,
+    });
+
+  // timed / transit ブロック（枠線あり）のクラス + style を返す。
+  // selected / private / mixed は従来の Tailwind class、green と hue は inline style。
+  const blockAppearance = (
+    color: EventColor,
+    sel: boolean,
+    hov: boolean,
+  ): { className: string; style?: React.CSSProperties } => {
+    if (sel) {
+      return { className: "z-10 border-blue-500 bg-blue-100 text-blue-950" };
+    }
+    if (color.kind === "private") {
+      return {
+        className: `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
+      };
+    }
+    if (color.kind === "mixed") {
+      return {
+        className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
+      };
+    }
+    const hue = color.kind === "green" ? GREEN_HUE : color.hue;
+    return {
+      className: "",
+      style: {
+        backgroundColor: eventBlockHueBg(hue, hov),
+        borderColor: eventBlockHueBorder(hue),
+        color: eventBlockHueText(hue),
+      },
+    };
+  };
+
+  // 終日帯バー（枠線なし、地色濃いめ）用。selected/private/mixed は Tailwind class。
+  const barAppearance = (
+    color: EventColor,
+    sel: boolean,
+    hov: boolean,
+  ): { className: string; style?: React.CSSProperties } => {
+    if (sel) return { className: "bg-blue-200 text-blue-950" };
+    if (color.kind === "private") {
+      return {
+        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-zinc-800`,
+      };
+    }
+    if (color.kind === "mixed") {
+      return {
+        className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800`,
+      };
+    }
+    const hue = color.kind === "green" ? GREEN_HUE : color.hue;
+    return {
+      className: "",
+      style: {
+        backgroundColor: eventBarHueBg(hue, hov),
+        color: eventBarHueText(hue),
+      },
+    };
   };
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
@@ -639,30 +721,34 @@ export function WeekCalendar({
               setAllDayGhost(null);
             }}
           >
-            {allDayBars.map((b) => (
-              <button
-                key={b.event.id}
-                type="button"
-                onClick={(e) =>
-                  onEventClick(b.event.id, { x: e.clientX, y: e.clientY })
-                }
-                className={`absolute truncate rounded px-1 text-left text-[11px] ${
-                  selectedEventId === b.event.id
-                    ? "bg-blue-200 text-blue-950"
-                    : "bg-slate-200 text-slate-800 hover:bg-slate-300"
-                } ${isMyEvent(b.event) ? "" : "opacity-50"}`}
-                style={{
-                  left: b.startColIndex * COL + 2,
-                  width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
-                  top: b.row * ALLDAY_ROW + 2,
-                  height: ALLDAY_ROW - 2,
-                }}
-                title={b.event.title}
-              >
-                <ReservationMark ev={b.event} />
-                {b.event.title}
-              </button>
-            ))}
+            {allDayBars.map((b) => {
+              const sel = selectedEventId === b.event.id;
+              const hov = hoveredEventId === b.event.id;
+              const app = barAppearance(colorOf(b.event), sel, hov);
+              return (
+                <button
+                  key={b.event.id}
+                  type="button"
+                  onClick={(e) =>
+                    onEventClick(b.event.id, { x: e.clientX, y: e.clientY })
+                  }
+                  onMouseEnter={() => setHoveredEventId(b.event.id)}
+                  onMouseLeave={() => setHoveredEventId(null)}
+                  className={`absolute truncate rounded px-1 text-left text-[11px] ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
+                  style={{
+                    left: b.startColIndex * COL + 2,
+                    width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
+                    top: b.row * ALLDAY_ROW + 2,
+                    height: ALLDAY_ROW - 2,
+                    ...app.style,
+                  }}
+                  title={b.event.title}
+                >
+                  <ReservationMark ev={b.event} />
+                  {b.event.title}
+                </button>
+              );
+            })}
             {/* スマホ長押し中のゴースト枠（1日分・半透明）。同列に既存
                 バーがあればその下の段に積み上げる（足りなければバンドも伸びる）。 */}
             {allDayGhost && (() => {
@@ -1011,6 +1097,7 @@ export function WeekCalendar({
               const w = COL / laneCount;
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
+              const app = blockAppearance(colorOf(p.event), sel, hov);
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -1021,18 +1108,13 @@ export function WeekCalendar({
                   }}
                   onMouseEnter={() => setHoveredEventId(p.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${
-                    sel
-                      ? "z-10 border-blue-500 bg-blue-100 text-blue-950"
-                      : p.event.visibility === "private"
-                        ? `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`
-                        : `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`
-                  } ${isMyEvent(p.event) ? "" : "opacity-50"}`}
+                  className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
                     top,
                     height: h - 1,
+                    ...app.style,
                   }}
                 >
                   <span className="block text-[10px] tabular-nums opacity-70">
@@ -1053,11 +1135,9 @@ export function WeekCalendar({
               const sel = selectedEventId === t.event.id;
               const hov = hoveredEventId === t.event.id;
               const fade = isMyEvent(t.event) ? "" : " opacity-50";
-              const base =
-                (sel
-                  ? "border-blue-500 bg-blue-100 text-blue-950"
-                  : `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`) +
-                fade;
+              const app = blockAppearance(colorOf(t.event), sel, hov);
+              const baseClass = `${app.className}${fade}`;
+              const baseStyle = app.style;
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
                 return (
@@ -1070,12 +1150,13 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + 1,
                       width: COL - 2,
                       top: yd,
                       height: Math.max(ya - yd, MIN_BLOCK),
+                      ...baseStyle,
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
@@ -1099,12 +1180,13 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + 1,
                       width: COL - 2,
                       top: yd,
                       height: Math.max(bodyH - yd, MIN_BLOCK),
+                      ...baseStyle,
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
@@ -1124,12 +1206,13 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${base}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
                     style={{
                       left: ai * COL + 1,
                       width: COL - 2,
                       top: 0,
                       height: Math.max(ya, MIN_BLOCK),
+                      ...baseStyle,
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">

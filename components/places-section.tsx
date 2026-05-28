@@ -22,14 +22,21 @@ export function PlacesSection({
   places,
   statuses,
   pinOptions,
+  members,
   myMemberId,
 }: {
   tripId: string;
   places: PlaceRow[];
   statuses: PlaceStatus[];
   pinOptions: PinOption[];
+  // 候補ピン（tentative）の色を作成者の hue で塗るのに使う。
+  members: { id: string; color: number | null }[];
   myMemberId: string;
 }) {
+  const memberHueById = useMemo(
+    () => new Map(members.map((m) => [m.id, m.color])),
+    [members],
+  );
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const [query, setQuery] = useState("");
@@ -225,6 +232,7 @@ export function PlacesSection({
         <PlaceMap
           places={places}
           statuses={statuses}
+          memberHueById={memberHueById}
           candidates={candidates}
           selected={selected}
           draft={draft}

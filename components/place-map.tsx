@@ -217,6 +217,7 @@ function MapController({
 export function PlaceMap({
   places,
   statuses,
+  memberHueById,
   candidates,
   selected,
   draft,
@@ -233,6 +234,8 @@ export function PlaceMap({
 }: {
   places: PlaceRow[];
   statuses: PlaceStatus[];
+  // 候補ピン（status.tentative=true）の地色を作成者の hue で塗るのに使う。
+  memberHueById: Map<string, number | null>;
   candidates: CandidatePlace[];
   selected: Selection | null;
   draft: LatLng | null;
@@ -433,7 +436,14 @@ export function PlaceMap({
           {mapId &&
             mappedPlaces.map((p) => {
               const st = statusById[p.status_id];
-              // 未確定（候補）ステータスは半透明、確定はくっきり
+              // 未確定（候補）ステータスは半透明 + 地色を「作った人のメンバー
+              // カラー」で塗る。確定（tentative=false）は status.color のまま。
+              // メンバー hue が無ければ status.color にフォールバック。
+              const creatorHue = memberHueById.get(p.created_by_member_id);
+              const bg =
+                st?.tentative && typeof creatorHue === "number"
+                  ? `hsl(${creatorHue}, 70%, 50%)`
+                  : (st?.color ?? "#6b7280");
               return (
                 <AdvancedMarker
                   key={p.id}
@@ -445,7 +455,7 @@ export function PlaceMap({
                     className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow ${
                       st?.tentative ? "opacity-50" : ""
                     }`}
-                    style={{ backgroundColor: st?.color ?? "#6b7280" }}
+                    style={{ backgroundColor: bg }}
                   >
                     <PlaceIcon icon={p.icon} size={16} />
                   </div>

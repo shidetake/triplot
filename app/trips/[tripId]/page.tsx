@@ -361,6 +361,7 @@ export default async function TripDetailPage({
           members={activeMembers.map((m) => ({
             id: m.id,
             display_name: m.display_name,
+            color: m.color,
           }))}
           biasCenter={placesBiasCenter}
           myMemberId={me.id}
@@ -375,6 +376,10 @@ export default async function TripDetailPage({
           places={places}
           statuses={placeStatuses}
           pinOptions={pinOptions}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            color: m.color,
+          }))}
           myMemberId={me.id}
         />
       </section>

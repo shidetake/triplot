@@ -32,10 +32,16 @@ export function ScheduleSection({
   tripEnd: string | null;
   events: EventRow[];
   places: { id: string; name: string }[];
-  members: { id: string; display_name: string }[];
+  // color は予定ブロック色の決定（1人だけ参加 → その人の hue）に必要。
+  members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
 }) {
+  // 予定の色判定で使う、参加者 id → hue の引き辞書。
+  const memberHueById = useMemo(
+    () => new Map(members.map((m) => [m.id, m.color])),
+    [members],
+  );
   const [open, setOpen] = useState<OpenForm | null>(null);
   // PC ドラッグで作成中の可変長ゴースト。form 表示中も枠を残したいので
   // ScheduleSection で保持し、closeForm で同期的に消す。
@@ -189,6 +195,8 @@ export function ScheduleSection({
         placeName={placeName}
         selectedEventId={selectedEventId}
         myMemberId={myMemberId}
+        activeMemberCount={members.length}
+        memberHueById={memberHueById}
         pcDrag={pcDrag}
         onPcDragChange={setPcDrag}
         onSlotClick={onSlotClick}
