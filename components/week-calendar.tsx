@@ -114,6 +114,27 @@ export function WeekCalendar({
       memberHueById,
     });
 
+  // mixed（2名以上・全員未満）の予定に出す参加者ドット列。地色は中立のまま、
+  // 「誰が参加か」を各メンバーの hue ドットで示す。N 人でも横に並ぶだけで破綻
+  // しない。hue 未割当は中立グレーのドット。
+  const participantDots = (e: ScheduleEvent) => (
+    <span className="inline-flex shrink-0 items-center gap-0.5">
+      {e.participantMemberIds.map((id) => {
+        const hue = memberHueById.get(id);
+        return (
+          <span
+            key={id}
+            className="h-1.5 w-1.5 rounded-full"
+            style={{
+              backgroundColor:
+                typeof hue === "number" ? `hsl(${hue}, 70%, 50%)` : "#a1a1aa",
+            }}
+          />
+        );
+      })}
+    </span>
+  );
+
   // timed / transit ブロック（枠線あり）のクラス + style を返す。
   // selected / private / mixed は従来の Tailwind class、green と hue は inline style。
   const blockAppearance = (
@@ -724,7 +745,8 @@ export function WeekCalendar({
             {allDayBars.map((b) => {
               const sel = selectedEventId === b.event.id;
               const hov = hoveredEventId === b.event.id;
-              const app = barAppearance(colorOf(b.event), sel, hov);
+              const color = colorOf(b.event);
+              const app = barAppearance(color, sel, hov);
               return (
                 <button
                   key={b.event.id}
@@ -734,7 +756,7 @@ export function WeekCalendar({
                   }
                   onMouseEnter={() => setHoveredEventId(b.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute truncate rounded px-1 text-left text-[11px] ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
+                  className={`absolute flex items-center gap-1 rounded px-1 text-left text-[11px] ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
                   style={{
                     left: b.startColIndex * COL + 2,
                     width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
@@ -744,8 +766,9 @@ export function WeekCalendar({
                   }}
                   title={b.event.title}
                 >
+                  {color.kind === "mixed" && participantDots(b.event)}
                   <ReservationMark ev={b.event} />
-                  {b.event.title}
+                  <span className="truncate">{b.event.title}</span>
                 </button>
               );
             })}
@@ -1097,7 +1120,8 @@ export function WeekCalendar({
               const w = COL / laneCount;
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
-              const app = blockAppearance(colorOf(p.event), sel, hov);
+              const color = colorOf(p.event);
+              const app = blockAppearance(color, sel, hov);
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -1117,8 +1141,11 @@ export function WeekCalendar({
                     ...app.style,
                   }}
                 >
-                  <span className="block text-[10px] tabular-nums opacity-70">
-                    {hhmm(p.topMin)}
+                  <span className="flex items-center justify-between gap-1">
+                    <span className="text-[10px] tabular-nums opacity-70">
+                      {hhmm(p.topMin)}
+                    </span>
+                    {color.kind === "mixed" && participantDots(p.event)}
                   </span>
                   {blockLabel(p.event)}
                 </button>
@@ -1135,9 +1162,12 @@ export function WeekCalendar({
               const sel = selectedEventId === t.event.id;
               const hov = hoveredEventId === t.event.id;
               const fade = isMyEvent(t.event) ? "" : " opacity-50";
-              const app = blockAppearance(colorOf(t.event), sel, hov);
+              const color = colorOf(t.event);
+              const app = blockAppearance(color, sel, hov);
               const baseClass = `${app.className}${fade}`;
               const baseStyle = app.style;
+              const dots =
+                color.kind === "mixed" ? participantDots(t.event) : null;
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
                 return (
@@ -1159,8 +1189,11 @@ export function WeekCalendar({
                       ...baseStyle,
                     }}
                   >
-                    <span className="block text-[10px] tabular-nums opacity-70">
-                      {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                    <span className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] tabular-nums opacity-70">
+                        {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                      </span>
+                      {dots}
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
@@ -1189,8 +1222,11 @@ export function WeekCalendar({
                       ...baseStyle,
                     }}
                   >
-                    <span className="block text-[10px] tabular-nums opacity-70">
-                      {hhmm(t.departMin)} 発
+                    <span className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] tabular-nums opacity-70">
+                        {hhmm(t.departMin)} 発
+                      </span>
+                      {dots}
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
@@ -1215,8 +1251,11 @@ export function WeekCalendar({
                       ...baseStyle,
                     }}
                   >
-                    <span className="block text-[10px] tabular-nums opacity-70">
-                      {hhmm(t.arriveMin)} 着
+                    <span className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] tabular-nums opacity-70">
+                        {hhmm(t.arriveMin)} 着
+                      </span>
+                      {dots}
                     </span>
                     <span className="font-medium">
                       <ReservationMark ev={t.event} />
