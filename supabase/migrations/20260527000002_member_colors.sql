@@ -22,8 +22,7 @@ set search_path = public
 as $body$
 declare
   palette text[] := array[
-    'blue', 'emerald', 'amber', 'rose',
-    'violet', 'sky', 'orange', 'teal'
+    'red', 'amber', 'teal', 'blue', 'violet', 'pink'
   ];
   c text;
 begin
