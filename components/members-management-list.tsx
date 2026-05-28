@@ -6,13 +6,7 @@ import {
   removeMemberAction,
   updateMyMemberAction,
 } from "@/app/trips/[tripId]/actions";
-import {
-  MEMBER_COLORS,
-  chipClass,
-  isMemberColor,
-  swatchClass,
-  type MemberColor,
-} from "@/lib/memberColors";
+import { chipClass } from "@/lib/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { MemberAvatar } from "./member-avatar";
@@ -25,9 +19,9 @@ type Member = {
 };
 
 // メンバー管理画面のリスト。各行は MemberAvatar + 名前 + (管理者バッジ) +
-// アクション。自分の行は「編集」、他人の行は「削除」(自分が admin の時のみ)。
-// 自分も自分の行から「退出」できる（削除と同じアクションが、自分相手なら
-// admin 不要で通る = remove_trip_member RPC の権限ロジック）。
+// アクション。自分の行は「名前編集」、他人の行は「削除」(自分が admin の時のみ)。
+// 自分も自分の行から「退出」できる（同 RPC で自分相手なら admin 不要で通る）。
+// 色はメンバー側で変更不可（参加時に自動割当、変更 UI は持たない）。
 export function MembersManagementList({
   tripId,
   members,
@@ -42,21 +36,12 @@ export function MembersManagementList({
   const [isPending, start] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
-  const [draftColor, setDraftColor] = useState<MemberColor>("blue");
-
-  // 既に他のメンバーが使ってる色（自分の現在色は含めない）
-  const othersColors = new Set(
-    members
-      .filter((m) => m.id !== myMemberId && m.color)
-      .map((m) => m.color as string),
-  );
 
   const me = members.find((m) => m.id === myMemberId);
 
   const startEdit = () => {
     if (!me) return;
     setDraftName(me.display_name);
-    setDraftColor(isMemberColor(me.color) ? me.color : "blue");
     setEditingId(me.id);
   };
   const cancelEdit = () => setEditingId(null);
@@ -66,12 +51,12 @@ export function MembersManagementList({
       cancelEdit();
       return;
     }
-    if (me && name === me.display_name && draftColor === me.color) {
+    if (me && name === me.display_name) {
       cancelEdit();
       return;
     }
     start(async () => {
-      const { error } = await updateMyMemberAction(tripId, name, draftColor);
+      const { error } = await updateMyMemberAction(tripId, name);
       if (error) {
         alert(`変更に失敗しました: ${error}`);
         return;
@@ -98,95 +83,60 @@ export function MembersManagementList({
         const isMe = m.id === myMemberId;
         const showDelete = isMe || iAmAdmin;
         if (isMe && editingId === m.id) {
-          // 編集パネル: 名前 + 色 picker + 保存/キャンセル
+          // 編集パネル: 名前のみ。色は自動割当で変更不可。
           return (
-            <li key={m.id} className="flex flex-col gap-3 p-3">
-              <div className="flex items-center gap-3">
-                <MemberAvatar
-                  name={draftName || m.display_name}
-                  color={draftColor}
-                  size="md"
-                />
-                <input
-                  autoFocus
-                  value={draftName}
-                  onChange={(e) => setDraftName(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      saveEdit();
-                    } else if (e.key === "Escape") {
-                      e.preventDefault();
-                      cancelEdit();
-                    }
-                  }}
-                  maxLength={32}
-                  disabled={isPending}
-                  aria-label="表示名"
-                  className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none disabled:opacity-50"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-1.5">
-                {MEMBER_COLORS.map((c) => {
-                  const taken = othersColors.has(c);
-                  const selected = draftColor === c;
-                  return (
-                    <button
-                      key={c}
-                      type="button"
-                      onClick={() => {
-                        if (!taken) setDraftColor(c);
-                      }}
-                      disabled={taken || isPending}
-                      aria-label={c}
-                      aria-pressed={selected}
-                      className={`h-6 w-6 rounded-full ${swatchClass(c)} ${
-                        taken ? "cursor-not-allowed opacity-25" : ""
-                      } ${
-                        selected
-                          ? "outline-2 outline-offset-2 outline-zinc-900"
-                          : "outline-1 outline-black/10"
-                      }`}
-                    />
-                  );
-                })}
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={cancelEdit}
-                  disabled={isPending}
-                  aria-label="キャンセル"
-                  title="キャンセル"
-                  className="flex h-9 w-9 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-50"
-                >
-                  <CloseIcon size={16} />
-                </button>
-                <button
-                  type="button"
-                  onClick={saveEdit}
-                  disabled={isPending}
-                  aria-label="保存"
-                  title="保存"
-                  className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
-                >
-                  <CheckIcon size={18} />
-                </button>
-              </div>
+            <li key={m.id} className="flex items-center gap-3 p-3">
+              <MemberAvatar
+                name={draftName || m.display_name}
+                color={m.color}
+                size="md"
+              />
+              <input
+                autoFocus
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    saveEdit();
+                  } else if (e.key === "Escape") {
+                    e.preventDefault();
+                    cancelEdit();
+                  }
+                }}
+                maxLength={32}
+                disabled={isPending}
+                aria-label="表示名"
+                className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none disabled:opacity-50"
+              />
+              <button
+                type="button"
+                onClick={cancelEdit}
+                disabled={isPending}
+                aria-label="キャンセル"
+                title="キャンセル"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-50 disabled:opacity-50"
+              >
+                <CloseIcon size={16} />
+              </button>
+              <button
+                type="button"
+                onClick={saveEdit}
+                disabled={isPending}
+                aria-label="保存"
+                title="保存"
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800 disabled:opacity-50"
+              >
+                <CheckIcon size={16} />
+              </button>
             </li>
           );
         }
         return (
-          <li
-            key={m.id}
-            className="flex items-center gap-3 p-3"
-          >
+          <li key={m.id} className="flex items-center gap-3 p-3">
             <span className="relative inline-flex shrink-0">
               <MemberAvatar name={m.display_name} color={m.color} size="md" />
               {m.is_admin && (
-                // アバター右上に乗せる王冠バッジ。管理画面でしか表示しない
-                // （他箇所の MemberAvatar 利用には影響なし）。白の外輪で
-                // アバター色から浮かせ、視認性を確保。
                 <span
                   role="img"
                   aria-label="管理者"

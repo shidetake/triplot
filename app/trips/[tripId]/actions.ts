@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { generateInviteToken } from "@/lib/invite";
-import { isMemberColor } from "@/lib/memberColors";
 import { getIcon } from "@/lib/placeIcons";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@/lib/types/database";
@@ -1110,14 +1109,12 @@ export async function removeMemberAction(
   return { error: null };
 }
 
-// 自分の display_name と color（この旅行内）を変える。RLS の
-// trip_members_self_update で自レコードのみ更新可なので RPC は不要。
-// 色はパレットに含まれること + 同 trip の他アクティブメンバーに使われて
-// いないこと（自分の現在の色は OK）を action 層で検証。
+// 自分の display_name（この旅行内）を変える。RLS の trip_members_self_update
+// で自レコードのみ更新可なので RPC は不要。
+// 色は参加時に自動割当で決まり、後から変更する UI は持たない方針 → name のみ。
 export async function updateMyMemberAction(
   tripId: string,
   newName: string,
-  newColor: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -1134,28 +1131,10 @@ export async function updateMyMemberAction(
   if (name.length > 32) {
     return { error: "名前は32文字以内にしてください" };
   }
-  if (!isMemberColor(newColor)) {
-    return { error: "不正な色です" };
-  }
-
-  // 他のアクティブメンバーが同じ色を使ってないか。自分自身は user_id で除外。
-  const { data: conflicting, error: checkErr } = await supabase
-    .from("trip_members")
-    .select("id")
-    .eq("trip_id", tripId)
-    .eq("color", newColor)
-    .is("left_at", null)
-    .neq("user_id", user.id);
-  if (checkErr) {
-    return { error: checkErr.message };
-  }
-  if (conflicting && conflicting.length > 0) {
-    return { error: "その色は他のメンバーが使っています" };
-  }
 
   const { error } = await supabase
     .from("trip_members")
-    .update({ display_name: name, color: newColor })
+    .update({ display_name: name })
     .eq("trip_id", tripId)
     .eq("user_id", user.id);
   if (error) {

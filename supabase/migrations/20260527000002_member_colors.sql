@@ -10,8 +10,14 @@
 -- 編集 UI から色を選び直してもらう。
 
 -- ────────────────────────────────────────────────────────────
--- パレットから未使用色を1つ返す。全部使い切ったら最初に戻る（フォールバック）。
--- stable: 同一 tx 内で複数回呼んでも入力に対し結果は一定として扱える。
+-- 既存メンバー色 + 確定ステータス色 (green ~140°) から色相環で最も離れた色を
+-- 選ぶ。
+-- 1人目: green から一番遠い (pink あたり)
+-- 2人目: 1人目 + green から一番遠い (indigo あたり)
+-- ...
+-- 少人数なら明確に区別できる色が当たる。大人数になると詰まる（許容）。
+-- パレットには green 系 (green/emerald) を含めない方針 → 確定 status と
+-- 別物に保つ。teal は緑寄りだが色相 175° で green 140° から 35° 離れるので OK。
 -- ────────────────────────────────────────────────────────────
 create or replace function public.pick_member_color(p_trip_id text)
 returns text
@@ -21,23 +27,63 @@ security definer
 set search_path = public
 as $body$
 declare
+  -- Tailwind 色名と対応する色相 (度)。配列の i 番目同士が対応。
+  -- green (140°) は確定ステータス専用なのでパレットから外す。
+  -- emerald (155°) も green と隣接で見分けにくいので除外。
   palette text[] := array[
-    'red', 'amber', 'teal', 'blue', 'violet', 'pink'
+    'red', 'orange', 'amber', 'yellow', 'lime',
+    'teal', 'cyan', 'sky', 'blue',
+    'indigo', 'violet', 'purple', 'fuchsia', 'pink', 'rose'
   ];
-  c text;
+  hues int[] := array[
+    0, 25, 40, 55, 75,
+    175, 190, 205, 220,
+    235, 265, 275, 295, 330, 345
+  ];
+  reserved_hues int[] := array[140]; -- 確定ステータス (green-600)
+  used_colors text[];
+  used_hues int[];
+  best_color text := palette[1];
+  best_dist int := -1;
+  i int;
+  cand_hue int;
+  uh int;
+  d int;
+  min_d int;
 begin
-  foreach c in array palette loop
-    if not exists (
-      select 1 from trip_members
-      where trip_id = p_trip_id
-        and color = c
-        and left_at is null
-    ) then
-      return c;
+  -- 既存アクティブメンバーの色を集める
+  select coalesce(array_agg(color), array[]::text[])
+    into used_colors
+  from trip_members
+  where trip_id = p_trip_id and left_at is null and color is not null;
+
+  -- 距離計算の比較対象: 既存メンバー色の hue + 確定 (green)
+  used_hues := reserved_hues;
+  for i in 1..array_length(palette, 1) loop
+    if palette[i] = any(used_colors) then
+      used_hues := used_hues || hues[i];
     end if;
   end loop;
-  -- 全色使い切ったら衝突容認でパレット先頭。8人超えは想定外。
-  return palette[1];
+
+  -- 未使用色の中から「used_hues 全体への最小距離」が最大のものを選ぶ
+  for i in 1..array_length(palette, 1) loop
+    if palette[i] = any(used_colors) then continue; end if;
+    cand_hue := hues[i];
+
+    min_d := 360;
+    foreach uh in array used_hues loop
+      d := abs(cand_hue - uh);
+      if d > 180 then d := 360 - d; end if;
+      if d < min_d then min_d := d; end if;
+    end loop;
+
+    if min_d > best_dist then
+      best_dist := min_d;
+      best_color := palette[i];
+    end if;
+  end loop;
+
+  return best_color;
 end;
 $body$;
 
