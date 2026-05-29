@@ -8,22 +8,41 @@ import {
   ensureInviteAction,
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
+import { buildPlacesKml, type KmlPlacemark } from "@/lib/placeKml";
 
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon } from "./icons";
 
+// ブラウザで生成した文字列をファイルとしてダウンロードさせる。
+function downloadText(filename: string, content: string, mime: string) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // 旅行のアクション群。Notion 同様、共有アイコン（単体）と ⋯ メニューの
-// 両方から共有でき、⋯ メニューには削除も入れる（中身は今後増やす想定）。
+// 両方から共有でき、⋯ メニューには削除やエクスポートも入れる。
 export function TripActions({
   tripId,
   baseUrl,
   iAmAdmin,
+  tripTitle,
+  kmlPlacemarks,
 }: {
   tripId: string;
   baseUrl: string;
   iAmAdmin: boolean;
+  tripTitle: string;
+  // 座標を持つ place のみ（KML エクスポート対象）。
+  kmlPlacemarks: KmlPlacemark[];
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
+  // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる。
+  const [menuView, setMenuView] = useState<"main" | "export">("main");
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -94,8 +113,32 @@ export function TripActions({
     });
   };
 
+  // ⋯ メニューを閉じる時は次回 main から始まるよう view もリセット。
+  const closeMenu = () => {
+    setMenuAnchor(null);
+    setMenuView("main");
+  };
+
+  // ファイル名に使えない文字を _ に。タイトルが空なら trip。
+  const safeTitle = tripTitle.replace(/[\\/:*?"<>|]/g, "_").trim() || "trip";
+
+  const onExportMap = () => {
+    closeMenu();
+    if (kmlPlacemarks.length === 0) {
+      flashToast("地図に出せる場所がありません");
+      return;
+    }
+    const kml = buildPlacesKml(tripTitle, kmlPlacemarks);
+    downloadText(
+      `${safeTitle}-places.kml`,
+      kml,
+      "application/vnd.google-earth.kml+xml",
+    );
+  };
+
   const onDelete = () => {
     setMenuAnchor(null);
+    setMenuView("main");
     if (
       !confirm(
         "この旅行を削除します。予定・場所・費用・メンバーもすべて消え、元に戻せません。よろしいですか？",
@@ -136,39 +179,69 @@ export function TripActions({
         </button>
       </div>
 
-      {/* ⋯ メニュー（共有 / メンバー / 削除） */}
+      {/* ⋯ メニュー（共有 / メンバー / エクスポート / 削除）。
+          エクスポートは2段目で出力先（地図 / 費用）を選ばせる。 */}
       {menuAnchor && (
-        <FormPopover anchor={menuAnchor} onClose={() => setMenuAnchor(null)}>
-          <div className="py-1 text-sm">
-            <button
-              type="button"
-              onClick={() => {
-                const a = menuAnchor;
-                setMenuAnchor(null);
-                if (a) openShare(a);
-              }}
-              className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
-            >
-              共有
-            </button>
-            <Link
-              href={`/trips/${tripId}/members`}
-              onClick={() => setMenuAnchor(null)}
-              className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
-            >
-              メンバー管理
-            </Link>
-            {iAmAdmin && (
+        <FormPopover anchor={menuAnchor} onClose={closeMenu}>
+          {menuView === "main" ? (
+            <div className="py-1 text-sm">
               <button
                 type="button"
-                onClick={onDelete}
-                disabled={isPending}
-                className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                onClick={() => {
+                  const a = menuAnchor;
+                  closeMenu();
+                  if (a) openShare(a);
+                }}
+                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
               >
-                この旅行を削除
+                共有
               </button>
-            )}
-          </div>
+              <Link
+                href={`/trips/${tripId}/members`}
+                onClick={closeMenu}
+                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+              >
+                メンバー管理
+              </Link>
+              <button
+                type="button"
+                onClick={() => setMenuView("export")}
+                className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-zinc-100"
+              >
+                エクスポート
+                <span aria-hidden className="text-zinc-400">
+                  ›
+                </span>
+              </button>
+              {iAmAdmin && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  disabled={isPending}
+                  className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                >
+                  この旅行を削除
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="py-1 text-sm">
+              <button
+                type="button"
+                onClick={() => setMenuView("main")}
+                className="flex w-full items-center gap-1 px-4 py-2 text-left text-zinc-500 transition hover:bg-zinc-100"
+              >
+                <span aria-hidden>‹</span> 戻る
+              </button>
+              <button
+                type="button"
+                onClick={onExportMap}
+                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+              >
+                地図（Google マイマップ用 KML）
+              </button>
+            </div>
+          )}
         </FormPopover>
       )}
 

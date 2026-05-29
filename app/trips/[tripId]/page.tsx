@@ -21,6 +21,7 @@ import {
   calculateSettlements,
   type SettlementExpense,
 } from "@/lib/settlement";
+import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
 import type {
@@ -243,6 +244,16 @@ export default async function TripDetailPage({
   }));
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
+  // KML エクスポート用: 座標を持つ place のみ。説明は住所＋メモを改行で連結。
+  const kmlPlacemarks: KmlPlacemark[] = places
+    .filter((p) => p.lat != null && p.lng != null)
+    .map((p) => ({
+      name: p.name,
+      lat: p.lat as number,
+      lng: p.lng as number,
+      description:
+        [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
+    }));
   // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
   const tzTimeline = buildTripTzTimeline(scheduleEvents);
   // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
@@ -328,7 +339,13 @@ export default async function TripDetailPage({
         <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
           ← 旅行一覧に戻る
         </Link>
-        <TripActions tripId={tripId} baseUrl={inviteBaseUrl} iAmAdmin={me.is_admin} />
+        <TripActions
+          tripId={tripId}
+          baseUrl={inviteBaseUrl}
+          iAmAdmin={me.is_admin}
+          tripTitle={trip.title}
+          kmlPlacemarks={kmlPlacemarks}
+        />
       </div>
 
       <header className="mt-4">
