@@ -8,6 +8,7 @@ import {
   ensureInviteAction,
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
+import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { buildPlacesKml, type KmlPlacemark } from "@/lib/placeKml";
 
 import { type Anchor, FormPopover } from "./form-popover";
@@ -32,6 +33,7 @@ export function TripActions({
   iAmAdmin,
   tripTitle,
   kmlPlacemarks,
+  expenseCsvRows,
 }: {
   tripId: string;
   baseUrl: string;
@@ -39,6 +41,8 @@ export function TripActions({
   tripTitle: string;
   // 座標を持つ place のみ（KML エクスポート対象）。
   kmlPlacemarks: KmlPlacemark[];
+  // 名前解決済みの費用行（CSV エクスポート対象）。
+  expenseCsvRows: ExpenseCsvRow[];
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる。
@@ -134,6 +138,16 @@ export function TripActions({
       kml,
       "application/vnd.google-earth.kml+xml",
     );
+  };
+
+  const onExportExpenses = () => {
+    closeMenu();
+    if (expenseCsvRows.length === 0) {
+      flashToast("エクスポートする費用がありません");
+      return;
+    }
+    const csv = buildExpensesCsv(expenseCsvRows);
+    downloadText(`${safeTitle}-expenses.csv`, csv, "text/csv;charset=utf-8");
   };
 
   const onDelete = () => {
@@ -239,6 +253,13 @@ export function TripActions({
                 className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
               >
                 地図（Google マイマップ用 KML）
+              </button>
+              <button
+                type="button"
+                onClick={onExportExpenses}
+                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+              >
+                費用（CSV）
               </button>
             </div>
           )}

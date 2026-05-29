@@ -21,6 +21,7 @@ import {
   calculateSettlements,
   type SettlementExpense,
 } from "@/lib/settlement";
+import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
@@ -311,6 +312,28 @@ export default async function TripDetailPage({
 
   const summary = calculateExpenseSummary(summaryExpenses, me.id);
 
+  // CSV エクスポート用: ID を名前に解決した行。発生順（expenses は既に
+  // occurred_at 昇順）。
+  const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
+  const memberNameById = new Map(
+    activeMembers.map((m) => [m.id, m.display_name]),
+  );
+  const placeNameById = new Map(places.map((p) => [p.id, p.name]));
+  const expenseCsvRows: ExpenseCsvRow[] = expenses.map((e) => ({
+    date: e.paid_at.slice(0, 10),
+    category: categoryNameById.get(e.category_id) ?? "",
+    payer: memberNameById.get(e.payer_member_id) ?? "",
+    localAmount: e.local_price,
+    localCurrency: e.local_currency,
+    // 小数誤差を避けて精算通貨の最小単位想定で 2 桁に丸め。
+    defaultAmount: Math.round(e.local_price * e.rate_to_default * 100) / 100,
+    defaultCurrency,
+    splittable: e.splittable,
+    visibility: e.visibility,
+    place: e.place_id ? (placeNameById.get(e.place_id) ?? "") : "",
+    note: e.note ?? "",
+  }));
+
   // フォームの初期値は「最後に入力した費用」に揃える（通貨・カテゴリ・日付）。
   // 履歴が無いときだけ trip のデフォルトにフォールバック。
   const lastEntered = expenses.reduce<ExpenseRow | null>(
@@ -345,6 +368,7 @@ export default async function TripDetailPage({
           iAmAdmin={me.is_admin}
           tripTitle={trip.title}
           kmlPlacemarks={kmlPlacemarks}
+          expenseCsvRows={expenseCsvRows}
         />
       </div>
 
