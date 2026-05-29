@@ -112,26 +112,30 @@ export function WeekCalendar({
       participantMemberIds: e.participantMemberIds,
       activeMemberCount,
       memberHueById,
+      myMemberId,
     });
 
-  // mixed（2名以上・全員未満）の予定に出す参加者ドット列。地色は中立のまま、
-  // 「誰が参加か」を各メンバーの hue ドットで示す。N 人でも横に並ぶだけで破綻
-  // しない。hue 未割当は中立グレーのドット。
+  // mixed（2名以上・全員未満）の予定に出す参加者ドット列。「誰が参加か」を各
+  // メンバーの hue ドットで示す。N 人でも横に並ぶだけで破綻しない。hue 未割当は
+  // 中立グレーのドット。自分が参加している時は地色が自分の hue になるので、自分
+  // のドットは地色に埋もれて見えなくなる → 自分は除外する。
   const participantDots = (e: ScheduleEvent) => (
     <span className="inline-flex shrink-0 items-center gap-0.5">
-      {e.participantMemberIds.map((id) => {
-        const hue = memberHueById.get(id);
-        return (
-          <span
-            key={id}
-            className="h-1.5 w-1.5 rounded-full"
-            style={{
-              backgroundColor:
-                typeof hue === "number" ? `hsl(${hue}, 70%, 50%)` : "#a1a1aa",
-            }}
-          />
-        );
-      })}
+      {e.participantMemberIds
+        .filter((id) => id !== myMemberId)
+        .map((id) => {
+          const hue = memberHueById.get(id);
+          return (
+            <span
+              key={id}
+              className="h-1.5 w-1.5 rounded-full"
+              style={{
+                backgroundColor:
+                  typeof hue === "number" ? `hsl(${hue}, 70%, 50%)` : "#a1a1aa",
+              }}
+            />
+          );
+        })}
     </span>
   );
 
@@ -151,8 +155,20 @@ export function WeekCalendar({
       };
     }
     if (color.kind === "mixed") {
+      // 自分が参加していれば自分の hue を地色に（各自の画面で違って見える）。
+      // 不参加 or 自分の色未割当なら中立 slate。
+      if (color.selfHue == null) {
+        return {
+          className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
+        };
+      }
       return {
-        className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
+        className: "",
+        style: {
+          backgroundColor: eventBlockHueBg(color.selfHue, hov),
+          borderColor: eventBlockHueBorder(color.selfHue),
+          color: eventBlockHueText(color.selfHue),
+        },
       };
     }
     const hue = color.kind === "green" ? GREEN_HUE : color.hue;
@@ -179,8 +195,17 @@ export function WeekCalendar({
       };
     }
     if (color.kind === "mixed") {
+      if (color.selfHue == null) {
+        return {
+          className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800`,
+        };
+      }
       return {
-        className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800`,
+        className: "",
+        style: {
+          backgroundColor: eventBarHueBg(color.selfHue, hov),
+          color: eventBarHueText(color.selfHue),
+        },
       };
     }
     const hue = color.kind === "green" ? GREEN_HUE : color.hue;

@@ -17,6 +17,7 @@ describe("pickEventColor", () => {
         participantMemberIds: [],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
     ).toEqual({ kind: "private" });
   });
@@ -28,6 +29,7 @@ describe("pickEventColor", () => {
         participantMemberIds: ["m1"],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
     ).toEqual({ kind: "private" });
   });
@@ -39,6 +41,7 @@ describe("pickEventColor", () => {
         participantMemberIds: [],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
     ).toEqual({ kind: "green" });
   });
@@ -50,6 +53,7 @@ describe("pickEventColor", () => {
         participantMemberIds: ["m1", "m2", "m3"],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
     ).toEqual({ kind: "green" });
   });
@@ -61,30 +65,57 @@ describe("pickEventColor", () => {
         participantMemberIds: ["m2"],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
     ).toEqual({ kind: "hue", hue: 230 });
   });
 
-  it("1人だけだが hue 未割当 → mixed にフォールバック", () => {
+  it("1人だけだが hue 未割当 → mixed(selfHue=null) にフォールバック", () => {
     expect(
       pickEventColor({
         visibility: "shared",
         participantMemberIds: ["m4"],
         activeMemberCount: 4,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
-    ).toEqual({ kind: "mixed" });
+    ).toEqual({ kind: "mixed", selfHue: null });
   });
 
-  it("複数人（全員未満）→ mixed", () => {
+  it("複数人（全員未満）で自分が参加 → mixed(selfHue=自分の hue)", () => {
     expect(
       pickEventColor({
         visibility: "shared",
         participantMemberIds: ["m1", "m2"],
         activeMemberCount: 3,
         memberHueById: hues,
+        myMemberId: "m1",
       }),
-    ).toEqual({ kind: "mixed" });
+    ).toEqual({ kind: "mixed", selfHue: 50 });
+  });
+
+  it("複数人（全員未満）で自分は不参加 → mixed(selfHue=null, slate地色)", () => {
+    expect(
+      pickEventColor({
+        visibility: "shared",
+        participantMemberIds: ["m1", "m2"],
+        activeMemberCount: 3,
+        memberHueById: hues,
+        myMemberId: "m3",
+      }),
+    ).toEqual({ kind: "mixed", selfHue: null });
+  });
+
+  it("複数人で自分は参加だが自分の hue 未割当 → mixed(selfHue=null)", () => {
+    expect(
+      pickEventColor({
+        visibility: "shared",
+        participantMemberIds: ["m4", "m2"],
+        activeMemberCount: 3,
+        memberHueById: hues,
+        myMemberId: "m4",
+      }),
+    ).toEqual({ kind: "mixed", selfHue: null });
   });
 
   it("green は確定色 (140°) と同じ hue を期待", () => {

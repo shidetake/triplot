@@ -1,10 +1,14 @@
 // 予定ブロックの色決定。種別（通常 / 終日 / transit）は区別せず、
-// 「参加者の構成」と visibility だけで色を決める。
+// 「参加者の構成」と visibility だけで色を決める。閲覧者（自分）視点で変わる
+// 点に注意 —— mixed は「自分が参加しているか」で地色が変わる。
 //
 //   private    → 現状のまま zinc（後で詰める。今はプレースホルダ）
 //   全員参加   → 確定色と同じ green（hue=140°）
 //   1人だけ    → そのメンバーの hue
-//   複数〜全員未満 → 現状の slate のまま（後で詰める。今はプレースホルダ）
+//   複数〜全員未満（mixed）→
+//       自分が参加 → 自分の hue（各自の画面で違って見える）
+//       自分は不参加 → slate（中立）
+//     どちらも右肩に参加者ドットを出す（描画側で自分のドットは除外）。
 //
 // 「全員参加」のシュガー: `participantMemberIds` が空配列の場合、
 // もしくは明示的に全 active member が列挙されている場合の両方を含む。
@@ -14,7 +18,9 @@ export const GREEN_HUE = 140;
 
 export type EventColor =
   | { kind: "private" }
-  | { kind: "mixed" } // 複数人だが全員ではない
+  // 複数人だが全員ではない。selfHue=自分が参加かつ色ありなら自分の hue、
+  // それ以外（自分不参加 or 色未割当）は null（→ slate 地色）。
+  | { kind: "mixed"; selfHue: number | null }
   | { kind: "green" } // 全員参加
   | { kind: "hue"; hue: number }; // 1人だけ参加（その人の色）
 
@@ -23,6 +29,7 @@ export function pickEventColor(input: {
   participantMemberIds: string[];
   activeMemberCount: number;
   memberHueById: Map<string, number | null>;
+  myMemberId: string;
 }): EventColor {
   if (input.visibility === "private") return { kind: "private" };
 
@@ -33,11 +40,17 @@ export function pickEventColor(input: {
   if (n === 1) {
     const hue = input.memberHueById.get(input.participantMemberIds[0]);
     if (typeof hue === "number") return { kind: "hue", hue };
-    // 色未割当のメンバーは安全側で mixed と同じ見た目に倒す
-    return { kind: "mixed" };
+    // 色未割当のメンバーは安全側で mixed（slate 地色）に倒す
+    return { kind: "mixed", selfHue: null };
   }
 
-  return { kind: "mixed" };
+  // mixed: 自分が参加していれば自分の hue を地色に。
+  const includesMe = input.participantMemberIds.includes(input.myMemberId);
+  const myHue = includesMe ? input.memberHueById.get(input.myMemberId) : null;
+  return {
+    kind: "mixed",
+    selfHue: typeof myHue === "number" ? myHue : null,
+  };
 }
 
 // ─────────────────────────────────────────────────────────
