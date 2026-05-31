@@ -22,6 +22,7 @@ import {
   type SettlementExpense,
 } from "@/lib/settlement";
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
+import { type GcalEventInput } from "@/lib/gcalEvent";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
@@ -319,6 +320,30 @@ export default async function TripDetailPage({
     activeMembers.map((m) => [m.id, m.display_name]),
   );
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
+  // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ。
+  // 場所は名前＋住所を location に、メモを description に。end_tz が無い予定
+  // （normal）は start_tz を流用。RLS で既に shared+private(自分) に絞られている。
+  const placeAddressById = new Map(
+    places.map((p) => [p.id, p.formatted_address]),
+  );
+  const calendarEvents: GcalEventInput[] = scheduleEvents.map((e) => {
+    const placeName = e.placeId ? (placeNameById.get(e.placeId) ?? "") : "";
+    const placeAddr = e.placeId
+      ? (placeAddressById.get(e.placeId) ?? null)
+      : null;
+    const location =
+      [placeName, placeAddr].filter(Boolean).join(" ") || null;
+    return {
+      title: e.title,
+      allDay: e.allDay,
+      startAt: e.startAt,
+      endAt: e.endAt,
+      startTz: e.startTz,
+      endTz: e.endTz ?? e.startTz,
+      location,
+      description: e.note,
+    };
+  });
   const expenseCsvRows: ExpenseCsvRow[] = expenses.map((e) => ({
     date: e.paid_at.slice(0, 10),
     category: categoryNameById.get(e.category_id) ?? "",
@@ -369,6 +394,7 @@ export default async function TripDetailPage({
           tripTitle={trip.title}
           kmlPlacemarks={kmlPlacemarks}
           expenseCsvRows={expenseCsvRows}
+          calendarEvents={calendarEvents}
         />
       </div>
 

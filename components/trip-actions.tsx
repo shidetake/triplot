@@ -9,8 +9,10 @@ import {
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
+import { type GcalEventInput } from "@/lib/gcalEvent";
 import { buildPlacesKml, type KmlPlacemark } from "@/lib/placeKml";
 
+import { CalendarExportDialog } from "./calendar-export-dialog";
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon } from "./icons";
 
@@ -34,6 +36,7 @@ export function TripActions({
   tripTitle,
   kmlPlacemarks,
   expenseCsvRows,
+  calendarEvents,
 }: {
   tripId: string;
   baseUrl: string;
@@ -43,11 +46,15 @@ export function TripActions({
   kmlPlacemarks: KmlPlacemark[];
   // 名前解決済みの費用行（CSV エクスポート対象）。
   expenseCsvRows: ExpenseCsvRow[];
+  // Google カレンダー形式に変換可能な予定（自分に見えるもの）。
+  calendarEvents: GcalEventInput[];
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる。
   const [menuView, setMenuView] = useState<"main" | "export">("main");
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
+  // カレンダーエクスポートのダイアログ表示位置（null で非表示）。
+  const [calendarAnchor, setCalendarAnchor] = useState<Anchor | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isPending, start] = useTransition();
@@ -148,6 +155,15 @@ export function TripActions({
     }
     const csv = buildExpensesCsv(expenseCsvRows);
     downloadText(`${safeTitle}-expenses.csv`, csv, "text/csv;charset=utf-8");
+  };
+
+  const onExportCalendar = (anchor: Anchor) => {
+    closeMenu();
+    if (calendarEvents.length === 0) {
+      flashToast("エクスポートする予定がありません");
+      return;
+    }
+    setCalendarAnchor(anchor);
   };
 
   const onDelete = () => {
@@ -256,6 +272,13 @@ export function TripActions({
               </button>
               <button
                 type="button"
+                onClick={(e) => onExportCalendar({ x: e.clientX, y: e.clientY })}
+                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+              >
+                予定（Google カレンダー）
+              </button>
+              <button
+                type="button"
                 onClick={onExportExpenses}
                 className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
               >
@@ -291,6 +314,16 @@ export function TripActions({
             </button>
           </div>
         </FormPopover>
+      )}
+
+      {/* カレンダーエクスポートのダイアログ（GIS ポップアップトークンフロー） */}
+      {calendarAnchor && (
+        <CalendarExportDialog
+          anchor={calendarAnchor}
+          onClose={() => setCalendarAnchor(null)}
+          tripTitle={tripTitle}
+          events={calendarEvents}
+        />
       )}
 
       {toast && (
