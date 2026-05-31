@@ -25,14 +25,22 @@ export function FormPopover({
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const pad = 8;
-    const w = el.offsetWidth;
-    const h = el.offsetHeight;
-    const vw = window.innerWidth;
-    const vh = window.innerHeight;
-    const left = Math.max(pad, Math.min(anchor.x + 8, vw - w - pad));
-    const top = Math.max(pad, Math.min(anchor.y, vh - h - pad));
-    setPos({ left, top });
+    // モード切替などで中身の高さが変わると下にはみ出して下端のボタンが
+    // 押せなくなるので、サイズ変化のたびに測り直してクランプする。
+    const clamp = () => {
+      const pad = 8;
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      const vw = window.innerWidth;
+      const vh = window.innerHeight;
+      const left = Math.max(pad, Math.min(anchor.x + 8, vw - w - pad));
+      const top = Math.max(pad, Math.min(anchor.y, vh - h - pad));
+      setPos({ left, top });
+    };
+    clamp();
+    const ro = new ResizeObserver(clamp);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, [anchor.x, anchor.y]);
 
   return (
