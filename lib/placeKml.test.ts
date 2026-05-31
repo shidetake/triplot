@@ -51,4 +51,41 @@ describe("buildPlacesKml", () => {
     expect(out).toContain("</kml>");
     expect(out).not.toContain("<Placemark>");
   });
+
+  it("styles を渡すと <Style>・色・href・styleUrl を出す", () => {
+    const kml = buildPlacesKml(
+      "t",
+      [{ name: "A", lat: 1, lng: 2, styleId: "s0" }],
+      [{ id: "s0", color: "ff2222c3", iconHref: "files/pin-0.png" }],
+    );
+    expect(kml).toContain('<Style id="s0">');
+    expect(kml).toContain("<color>ff2222c3</color>");
+    expect(kml).toContain("<href>files/pin-0.png</href>");
+    expect(kml).toContain("<styleUrl>#s0</styleUrl>");
+  });
+
+  it("iconHref が無いスタイルは <Icon> を出さない（色だけ）", () => {
+    const kml = buildPlacesKml(
+      "t",
+      [{ name: "A", lat: 1, lng: 2, styleId: "s0" }],
+      [{ id: "s0", color: "ff2222c3" }],
+    );
+    expect(kml).toContain("<color>ff2222c3</color>");
+    expect(kml).not.toContain("<Icon>");
+  });
+
+  it("category があれば ExtendedData のデータ列を出す", () => {
+    const kml = buildPlacesKml("t", [
+      { name: "A", lat: 1, lng: 2, category: "宿泊" },
+    ]);
+    expect(kml).toContain('<Data name="category">');
+    expect(kml).toContain("<value>宿泊</value>");
+  });
+
+  it("category 無しは ExtendedData を出さない / styles 無しは <Style> を出さない", () => {
+    const kml = buildPlacesKml("t", [{ name: "A", lat: 1, lng: 2 }]);
+    expect(kml).not.toContain("<ExtendedData>");
+    expect(kml).not.toContain("<Style");
+    expect(kml).not.toContain("<styleUrl>");
+  });
 });

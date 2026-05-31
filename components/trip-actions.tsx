@@ -9,7 +9,15 @@ import {
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
-import { buildPlacesKml, type KmlPlacemark } from "@/lib/placeKml";
+import { hexToKmlColor } from "@/lib/placeColor";
+import { getIconPath } from "@/lib/placeIcons";
+import {
+  buildPlacesKml,
+  type KmlPlacemark,
+  type KmlStyle,
+} from "@/lib/placeKml";
+import { renderPinPng } from "@/lib/placePinImage";
+import { buildZip, type ZipEntry } from "@/lib/zip";
 
 import {
   CalendarExportDialog,
@@ -18,8 +26,12 @@ import {
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon } from "./icons";
 
-// ブラウザで生成した文字列をファイルとしてダウンロードさせる。
-function downloadText(filename: string, content: string, mime: string) {
+// ブラウザで生成したデータをファイルとしてダウンロードさせる。
+function downloadBlob(
+  filename: string,
+  content: BlobPart,
+  mime: string,
+) {
   const blob = new Blob([content], { type: mime });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -135,18 +147,73 @@ export function TripActions({
   // ファイル名に使えない文字を _ に。タイトルが空なら trip。
   const safeTitle = tripTitle.replace(/[\\/:*?"<>|]/g, "_").trim() || "trip";
 
-  const onExportMap = () => {
+  // 地図は KMZ（KML＋ピン画像の zip）で出す。色・アイコンを焼き込むので
+  // Google Earth/QGIS では色付きピンで、マイマップでは色・カテゴリ列が活きる。
+  const onExportMap = async () => {
     closeMenu();
     if (kmlPlacemarks.length === 0) {
       flashToast("地図に出せる場所がありません");
       return;
     }
-    const kml = buildPlacesKml(tripTitle, kmlPlacemarks);
-    downloadText(
-      `${safeTitle}-places.kml`,
-      kml,
-      "application/vnd.google-earth.kml+xml",
-    );
+    try {
+      // (アイコン × 色) の組み合わせごとに1スタイルを作る（dedupe）。
+      // 「その他」の汎用ピン（iconKey="pin"）はグリフを描かず、地図既定の
+      // マーカーに色だけ載せる（画像化しない）。それ以外は色付きピン画像を生成。
+      const keyOf = (p: KmlPlacemark) =>
+        `${p.iconKey ?? "pin"}|${p.colorHex ?? "none"}`;
+      const isPlainPin = (iconKey: string) => iconKey === "pin";
+      const styleByKey = new Map<
+        string,
+        { styleId: string; iconKey: string; colorHex: string | null }
+      >();
+      for (const p of kmlPlacemarks) {
+        const k = keyOf(p);
+        if (!styleByKey.has(k)) {
+          styleByKey.set(k, {
+            styleId: `s${styleByKey.size}`,
+            iconKey: p.iconKey ?? "pin",
+            colorHex: p.colorHex ?? null,
+          });
+        }
+      }
+
+      // 汎用ピン以外はピン画像を生成して KMZ に同梱。href も決める。
+      const files: ZipEntry[] = [];
+      const hrefByStyle = new Map<string, string>();
+      for (const s of styleByKey.values()) {
+        if (isPlainPin(s.iconKey)) continue; // 画像なし（既定マーカー＋色）
+        const href = `files/${s.styleId}.png`;
+        const png = await renderPinPng(getIconPath(s.iconKey), s.colorHex);
+        files.push({ name: href, data: png });
+        hrefByStyle.set(s.styleId, href);
+      }
+
+      // 各 placemark にスタイル ID を割り当て、styles を組む。
+      const marks: KmlPlacemark[] = kmlPlacemarks.map((p) => ({
+        ...p,
+        styleId: styleByKey.get(keyOf(p))!.styleId,
+      }));
+      const styles: KmlStyle[] = [...styleByKey.values()].map((s) => ({
+        id: s.styleId,
+        color: hexToKmlColor(s.colorHex),
+        iconHref: hrefByStyle.get(s.styleId), // 汎用ピンは undefined（<Icon> 無し）
+      }));
+
+      const kml = buildPlacesKml(tripTitle, marks, styles);
+      const zip = buildZip([
+        { name: "doc.kml", data: new TextEncoder().encode(kml) },
+        ...files,
+      ]);
+      // Uint8Array<ArrayBufferLike> は BlobPart のジェネリックと噛み合わないので
+      // ArrayBuffer 部分だけ取り出して渡す（zip は ArrayBuffer 裏付け）。
+      downloadBlob(
+        `${safeTitle}.kmz`,
+        zip.buffer as ArrayBuffer,
+        "application/vnd.google-earth.kmz",
+      );
+    } catch {
+      flashToast("地図の書き出しに失敗しました");
+    }
   };
 
   const onExportExpenses = () => {
@@ -156,7 +223,7 @@ export function TripActions({
       return;
     }
     const csv = buildExpensesCsv(expenseCsvRows);
-    downloadText(`${safeTitle}-expenses.csv`, csv, "text/csv;charset=utf-8");
+    downloadBlob(`${safeTitle}-expenses.csv`, csv, "text/csv;charset=utf-8");
   };
 
   const onExportCalendar = (anchor: Anchor) => {
@@ -277,7 +344,7 @@ export function TripActions({
                 onClick={onExportMap}
                 className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
               >
-                地図（Google マイマップ用 KML）
+                地図（Google マイマップ用 KMZ）
               </button>
               <button
                 type="button"

@@ -246,16 +246,24 @@ export default async function TripDetailPage({
   }));
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
-  // KML エクスポート用: 座標を持つ place のみ。説明は住所＋メモを改行で連結。
+  // KML/KMZ エクスポート用: 座標を持つ place のみ。説明は住所＋メモを改行で連結。
+  // 色（status の hue）・アイコン（icon）・カテゴリ（status 名）も載せる。
+  const statusById = new Map(placeStatuses.map((s) => [s.id, s]));
   const kmlPlacemarks: KmlPlacemark[] = places
     .filter((p) => p.lat != null && p.lng != null)
-    .map((p) => ({
-      name: p.name,
-      lat: p.lat as number,
-      lng: p.lng as number,
-      description:
-        [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
-    }));
+    .map((p) => {
+      const status = p.status_id ? statusById.get(p.status_id) : undefined;
+      return {
+        name: p.name,
+        lat: p.lat as number,
+        lng: p.lng as number,
+        description:
+          [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
+        colorHex: status?.color ?? null,
+        category: status?.name ?? null,
+        iconKey: p.icon,
+      };
+    });
   // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
   const tzTimeline = buildTripTzTimeline(scheduleEvents);
   // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
