@@ -87,7 +87,7 @@ async function CreateTripSection({
   const supabase = await createClient();
   const { data: memberships } = await supabase
     .from("trip_members")
-    .select("trips(id, title, default_currency)")
+    .select("trips(id, title, default_currency, start_date, end_date)")
     .eq("user_id", userId)
     .is("left_at", null)
     .order("joined_at", { ascending: false });
@@ -99,6 +99,8 @@ async function CreateTripSection({
       id: t.id,
       title: t.title,
       default_currency: t.default_currency,
+      start_date: t.start_date,
+      end_date: t.end_date,
     }));
 
   return (

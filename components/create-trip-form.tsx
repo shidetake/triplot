@@ -7,6 +7,8 @@ import {
   type CreateTripState,
 } from "@/app/trips/create-trip-action";
 
+import { buildCopySourceLabels } from "@/lib/copySourceLabel";
+
 import { DateRangePopover } from "./date-range-popover";
 import { CloseIcon, PlusIcon } from "./icons";
 
@@ -22,6 +24,8 @@ export type CopyableTrip = {
   id: string;
   title: string;
   default_currency: string;
+  start_date: string | null;
+  end_date: string | null;
 };
 
 const initialState: CreateTripState = { error: null };
@@ -41,6 +45,8 @@ export function CreateTripForm({
   );
 
   const canCopy = trips.length > 0;
+  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする。
+  const copyLabels = buildCopySourceLabels(trips);
   const [mode, setMode] = useState<"new" | "copy">("new");
   const [sourceId, setSourceId] = useState("");
   // タイトル・通貨はコピー元選択時にプリフィルしたいので制御する。
@@ -134,7 +140,7 @@ export function CreateTripForm({
             </option>
             {trips.map((t) => (
               <option key={t.id} value={t.id}>
-                {t.title}
+                {copyLabels.get(t.id) ?? t.title}
               </option>
             ))}
           </select>
