@@ -664,6 +664,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      copy_trip: {
+        Args: {
+          p_default_currency: string
+          p_display_name: string
+          p_end_date: string
+          p_events: Json
+          p_source_trip_id: string
+          p_start_date: string
+          p_title: string
+        }
+        Returns: string
+      }
       create_event: {
         Args: {
           p_all_day: boolean

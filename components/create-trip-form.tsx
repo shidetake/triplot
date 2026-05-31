@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 
 import {
   createTripAction,
@@ -17,19 +17,49 @@ const CURRENCIES: { value: Currency; label: string }[] = [
   { value: "USD", label: "USD 米ドル" },
 ];
 
+// コピー元に選べる過去の旅行。
+export type CopyableTrip = {
+  id: string;
+  title: string;
+  default_currency: string;
+};
+
 const initialState: CreateTripState = { error: null };
 
 export function CreateTripForm({
   defaultDisplayName,
+  trips,
   onDone,
 }: {
   defaultDisplayName?: string | null;
+  trips: CopyableTrip[];
   onDone: () => void;
 }) {
   const [state, formAction, isPending] = useActionState(
     createTripAction,
     initialState,
   );
+
+  const canCopy = trips.length > 0;
+  const [mode, setMode] = useState<"new" | "copy">("new");
+  const [sourceId, setSourceId] = useState("");
+  // タイトル・通貨はコピー元選択時にプリフィルしたいので制御する。
+  const [title, setTitle] = useState("");
+  const [currency, setCurrency] = useState<Currency>("JPY");
+
+  const pickSource = (id: string) => {
+    setSourceId(id);
+    const t = trips.find((x) => x.id === id);
+    if (t) {
+      setTitle(t.title);
+      if (t.default_currency === "JPY" || t.default_currency === "USD") {
+        setCurrency(t.default_currency);
+      }
+    }
+  };
+
+  const radio =
+    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition";
 
   return (
     <form
@@ -47,13 +77,98 @@ export function CreateTripForm({
         </button>
       </div>
 
-      <Field label="タイトル" name="title" required placeholder="ハワイ旅行" />
+      {/* 作り方の選択（過去の旅行が無ければ出さない） */}
+      {canCopy && (
+        <div className="flex gap-2">
+          <label
+            className={`${radio} ${
+              mode === "new"
+                ? "border-black bg-black text-white"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+            }`}
+          >
+            <input
+              type="radio"
+              name="__mode"
+              className="sr-only"
+              checked={mode === "new"}
+              onChange={() => {
+                setMode("new");
+                setSourceId("");
+              }}
+            />
+            ゼロから
+          </label>
+          <label
+            className={`${radio} ${
+              mode === "copy"
+                ? "border-black bg-black text-white"
+                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+            }`}
+          >
+            <input
+              type="radio"
+              name="__mode"
+              className="sr-only"
+              checked={mode === "copy"}
+              onChange={() => setMode("copy")}
+            />
+            過去の旅行をコピー
+          </label>
+        </div>
+      )}
+
+      {mode === "copy" && (
+        <label className="block text-sm">
+          <span className="font-medium">
+            コピー元<span className="ml-0.5 font-normal text-red-500">*</span>
+          </span>
+          <select
+            value={sourceId}
+            onChange={(e) => pickSource(e.target.value)}
+            required={mode === "copy"}
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          >
+            <option value="" disabled>
+              旅行を選択
+            </option>
+            {trips.map((t) => (
+              <option key={t.id} value={t.id}>
+                {t.title}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
+      {/* コピー時のみ source_trip_id を送る */}
+      <input
+        type="hidden"
+        name="source_trip_id"
+        value={mode === "copy" ? sourceId : ""}
+      />
+
+      <label className="block min-w-0 text-sm">
+        <span className="font-medium">
+          タイトル<span className="ml-0.5 font-normal text-red-500">*</span>
+        </span>
+        <input
+          name="title"
+          required
+          placeholder="ハワイ旅行"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+        />
+      </label>
+
       <Field
         label="あなたの表示名（旅行内）"
         name="display_name"
         required
         defaultValue={defaultDisplayName ?? ""}
       />
+
       <div className="text-sm">
         <span className="font-medium">日程</span>
         <div className="mt-1">
@@ -87,7 +202,8 @@ export function CreateTripForm({
         <select
           id="default_currency"
           name="default_currency"
-          defaultValue="JPY"
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value as Currency)}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         >
           {CURRENCIES.map((c) => (
@@ -107,6 +223,13 @@ export function CreateTripForm({
       >
         <PlusIcon size={20} />
       </button>
+
+      {mode === "copy" && (
+        <p className="text-xs leading-snug text-zinc-500">
+          場所と「全員参加」の予定をコピーします（費用は除く）。日数が違う場合は
+          両端を優先し、はみ出す中日の予定は省かれます。
+        </p>
+      )}
 
       {state.error && (
         <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { CreateTripForm } from "./create-trip-form";
+import { type CopyableTrip, CreateTripForm } from "./create-trip-form";
 import { type Anchor, FormPopover } from "./form-popover";
 
 // 予定追加・費用追加と同じ「ボタン → クリック位置にポップオーバー」スタイルで
@@ -10,8 +10,11 @@ import { type Anchor, FormPopover } from "./form-popover";
 // redirect するので、ポップオーバーは画面遷移で自然に消える。
 export function CreateTripButton({
   defaultDisplayName,
+  trips,
 }: {
   defaultDisplayName?: string | null;
+  // コピー元に選べる過去の旅行（無ければコピー UI は出ない）。
+  trips: CopyableTrip[];
 }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
@@ -29,6 +32,7 @@ export function CreateTripButton({
         <FormPopover anchor={anchor} onClose={() => setAnchor(null)}>
           <CreateTripForm
             defaultDisplayName={defaultDisplayName}
+            trips={trips}
             onDone={() => setAnchor(null)}
           />
         </FormPopover>

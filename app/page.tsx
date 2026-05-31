@@ -67,12 +67,42 @@ export default async function Home() {
             <SignOutButton />
           </div>
 
-          <CreateTripButton defaultDisplayName={defaultDisplayName} />
+          <CreateTripSection userId={user.id} defaultDisplayName={defaultDisplayName} />
 
           <TripList userId={user.id} />
         </section>
       )}
     </main>
+  );
+}
+
+// 作成ボタン＋コピー元候補（自分が在籍中の trip）を渡す。
+async function CreateTripSection({
+  userId,
+  defaultDisplayName,
+}: {
+  userId: string;
+  defaultDisplayName: string | null;
+}) {
+  const supabase = await createClient();
+  const { data: memberships } = await supabase
+    .from("trip_members")
+    .select("trips(id, title, default_currency)")
+    .eq("user_id", userId)
+    .is("left_at", null)
+    .order("joined_at", { ascending: false });
+
+  const trips = (memberships ?? [])
+    .map((m) => m.trips)
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      default_currency: t.default_currency,
+    }));
+
+  return (
+    <CreateTripButton defaultDisplayName={defaultDisplayName} trips={trips} />
   );
 }
 

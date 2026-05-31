@@ -12,6 +12,7 @@ import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
+import { CopyResultToast } from "@/components/copy-result-toast";
 import { TripActions } from "@/components/trip-actions";
 import {
   calculateExpenseSummary,
@@ -35,10 +36,14 @@ import type {
 
 export default async function TripDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tripId: string }>;
+  searchParams: Promise<{ copiedDropped?: string }>;
 }) {
   const { tripId } = await params;
+  const { copiedDropped } = await searchParams;
+  const copiedDroppedCount = Number(copiedDropped) || 0;
   const supabase = await createClient();
   const {
     data: { user },
@@ -538,6 +543,10 @@ export default async function TripDetailPage({
           myMemberId={me.id}
         />
       </section>
+
+      {copiedDroppedCount > 0 && (
+        <CopyResultToast count={copiedDroppedCount} />
+      )}
     </main>
   );
 }
