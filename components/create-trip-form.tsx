@@ -97,7 +97,7 @@ export function CreateTripForm({
                 setSourceId("");
               }}
             />
-            ゼロから
+            新規
           </label>
           <label
             className={`${radio} ${
