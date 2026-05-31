@@ -238,7 +238,7 @@ export function CalendarExportDialog({
                 checked={scope === "mine"}
                 onChange={() => setScope("mine")}
               />
-              <span>自分が参加する予定だけ（{mineEvents.length}件）</span>
+              <span>自分が参加する予定のみ（{mineEvents.length}件）</span>
             </label>
             <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
               <input
@@ -247,7 +247,7 @@ export function CalendarExportDialog({
                 checked={scope === "all"}
                 onChange={() => setScope("all")}
               />
-              <span>見えている全ての予定（{events.length}件）</span>
+              <span>全ての予定（{events.length}件）</span>
             </label>
           </div>
         )}
