@@ -344,7 +344,7 @@ export function TripActions({
                 onClick={onExportMap}
                 className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
               >
-                地図（Google マイマップ用 KMZ）
+                地図（KMZ）
               </button>
               <button
                 type="button"
