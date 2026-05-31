@@ -9,10 +9,12 @@ import {
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
-import { type GcalEventInput } from "@/lib/gcalEvent";
 import { buildPlacesKml, type KmlPlacemark } from "@/lib/placeKml";
 
-import { CalendarExportDialog } from "./calendar-export-dialog";
+import {
+  CalendarExportDialog,
+  type CalendarExportEvent,
+} from "./calendar-export-dialog";
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon } from "./icons";
 
@@ -46,8 +48,8 @@ export function TripActions({
   kmlPlacemarks: KmlPlacemark[];
   // 名前解決済みの費用行（CSV エクスポート対象）。
   expenseCsvRows: ExpenseCsvRow[];
-  // Google カレンダー形式に変換可能な予定（自分に見えるもの）。
-  calendarEvents: GcalEventInput[];
+  // Google カレンダー形式に変換可能な予定（自分に見えるもの）。mine フラグ付き。
+  calendarEvents: CalendarExportEvent[];
 }) {
   const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる。

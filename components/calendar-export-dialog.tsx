@@ -31,6 +31,10 @@ const SCOPE = "https://www.googleapis.com/auth/calendar";
 
 type CalendarItem = { id: string; summary: string; accessRole: string };
 
+// エクスポート対象の予定。mine = 自分が参加する予定か（全員予定 or 自分が当事者）。
+// 変換に必要な GcalEventInput に、スコープ絞り込み用の mine を足したもの。
+export type CalendarExportEvent = GcalEventInput & { mine: boolean };
+
 // GIS スクリプトを一度だけ読み込む。
 function loadGis(): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -80,7 +84,7 @@ export function CalendarExportDialog({
   anchor: Anchor;
   onClose: () => void;
   tripTitle: string;
-  events: GcalEventInput[];
+  events: CalendarExportEvent[];
 }) {
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID;
 
@@ -89,10 +93,16 @@ export function CalendarExportDialog({
   const [calendars, setCalendars] = useState<CalendarItem[]>([]);
   const [selected, setSelected] = useState<string>(NEW);
   const [newName, setNewName] = useState(`triplot_${tripTitle}`);
+  // 出力範囲。既定は「自分が参加する予定だけ」。
+  const [scope, setScope] = useState<"mine" | "all">("mine");
   const [progress, setProgress] = useState({ done: 0, total: 0, failed: 0 });
 
   const tokenRef = useRef<string | null>(null);
   const clientRef = useRef<TokenClient | null>(null);
+
+  // scope に応じた実際の出力対象。
+  const mineEvents = events.filter((e) => e.mine);
+  const targetEvents = scope === "mine" ? mineEvents : events;
 
   // 書き込み可能なカレンダーを取得。
   const fetchCalendars = useCallback(async (token: string) => {
@@ -179,9 +189,9 @@ export function CalendarExportDialog({
 
       let done = 0;
       let failed = 0;
-      setProgress({ done: 0, total: events.length, failed: 0 });
+      setProgress({ done: 0, total: targetEvents.length, failed: 0 });
       // 直列で投入（レート制限・部分失敗の把握を簡単にする）。
-      for (const ev of events) {
+      for (const ev of targetEvents) {
         const body = toGcalEvent(ev);
         const res = await fetch(
           `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
@@ -198,14 +208,14 @@ export function CalendarExportDialog({
         );
         if (res.ok) done += 1;
         else failed += 1;
-        setProgress({ done, total: events.length, failed });
+        setProgress({ done, total: targetEvents.length, failed });
       }
       setPhase("done");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase("error");
     }
-  }, [selected, newName, tripTitle, events]);
+  }, [selected, newName, tripTitle, targetEvents]);
 
   const btnBlack =
     "h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50";
@@ -218,9 +228,29 @@ export function CalendarExportDialog({
         <p className="text-sm font-medium text-zinc-900">
           Google カレンダーへエクスポート
         </p>
-        <p className="text-xs text-zinc-500">
-          あなたに見えている予定 {events.length} 件を書き出します。
-        </p>
+
+        {(phase === "connect" || phase === "pick") && (
+          <div className="space-y-1">
+            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
+              <input
+                type="radio"
+                name="scope"
+                checked={scope === "mine"}
+                onChange={() => setScope("mine")}
+              />
+              <span>自分が参加する予定だけ（{mineEvents.length}件）</span>
+            </label>
+            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
+              <input
+                type="radio"
+                name="scope"
+                checked={scope === "all"}
+                onChange={() => setScope("all")}
+              />
+              <span>見えている全ての予定（{events.length}件）</span>
+            </label>
+          </div>
+        )}
 
         {phase === "connect" && (
           <button type="button" onClick={connect} className={btnBlack}>
@@ -270,8 +300,13 @@ export function CalendarExportDialog({
                 </label>
               ))}
             </div>
-            <button type="button" onClick={runExport} className={btnBlack}>
-              エクスポート
+            <button
+              type="button"
+              onClick={runExport}
+              disabled={targetEvents.length === 0}
+              className={btnBlack}
+            >
+              {targetEvents.length} 件をエクスポート
             </button>
           </div>
         )}

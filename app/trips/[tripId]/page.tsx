@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
+import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
@@ -22,7 +23,6 @@ import {
   type SettlementExpense,
 } from "@/lib/settlement";
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
-import { type GcalEventInput } from "@/lib/gcalEvent";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@/lib/placeMap";
 import { createClient } from "@/lib/supabase/server";
@@ -326,13 +326,17 @@ export default async function TripDetailPage({
   const placeAddressById = new Map(
     places.map((p) => [p.id, p.formatted_address]),
   );
-  const calendarEvents: GcalEventInput[] = scheduleEvents.map((e) => {
+  const calendarEvents: CalendarExportEvent[] = scheduleEvents.map((e) => {
     const placeName = e.placeId ? (placeNameById.get(e.placeId) ?? "") : "";
     const placeAddr = e.placeId
       ? (placeAddressById.get(e.placeId) ?? null)
       : null;
     const location =
       [placeName, placeAddr].filter(Boolean).join(" ") || null;
+    // 参加者空配列 = 全員参加のシュガー。自分が当事者か全員予定なら mine。
+    const mine =
+      e.participantMemberIds.length === 0 ||
+      e.participantMemberIds.includes(me.id);
     return {
       title: e.title,
       allDay: e.allDay,
@@ -342,6 +346,7 @@ export default async function TripDetailPage({
       endTz: e.endTz ?? e.startTz,
       location,
       description: e.note,
+      mine,
     };
   });
   const expenseCsvRows: ExpenseCsvRow[] = expenses.map((e) => ({
