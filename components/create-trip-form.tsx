@@ -8,6 +8,7 @@ import {
 } from "@/app/trips/create-trip-action";
 
 import { buildCopySourceLabels } from "@/lib/copySourceLabel";
+import { tripDayCount } from "@/lib/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
 import { CloseIcon, PlusIcon } from "./icons";
@@ -45,13 +46,34 @@ export function CreateTripForm({
   );
 
   const canCopy = trips.length > 0;
-  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする。
-  const copyLabels = buildCopySourceLabels(trips);
   const [mode, setMode] = useState<"new" | "copy">("new");
   const [sourceId, setSourceId] = useState("");
   // タイトル・通貨はコピー元選択時にプリフィルしたいので制御する。
   const [title, setTitle] = useState("");
   const [currency, setCurrency] = useState<Currency>("JPY");
+  // 選択中の日程（コピー元より短いかの判定に使う）。
+  const [range, setRange] = useState<{
+    start: string | null;
+    end: string | null;
+  }>({ start: null, end: null });
+
+  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする。
+  const copyLabels = buildCopySourceLabels(trips);
+
+  // 新しい日程がコピー元より短いと、両端優先で中日の予定が省かれる。
+  // そのケースだけ注意を出す。
+  const source = trips.find((x) => x.id === sourceId);
+  const sourceDays =
+    source?.start_date && source.end_date
+      ? tripDayCount(source.start_date, source.end_date)
+      : null;
+  const newDays =
+    range.start && range.end ? tripDayCount(range.start, range.end) : null;
+  const showShorterWarning =
+    mode === "copy" &&
+    sourceDays !== null &&
+    newDays !== null &&
+    newDays < sourceDays;
 
   const pickSource = (id: string) => {
     setSourceId(id);
@@ -182,6 +204,7 @@ export function CreateTripForm({
             startName="start_date"
             endName="end_date"
             required
+            onChange={(start, end) => setRange({ start, end })}
           />
         </div>
       </div>
@@ -230,10 +253,9 @@ export function CreateTripForm({
         <PlusIcon size={20} />
       </button>
 
-      {mode === "copy" && (
-        <p className="text-xs leading-snug text-zinc-500">
-          場所と「全員参加」の予定をコピーします（費用は除く）。日数が違う場合は
-          両端を優先し、はみ出す中日の予定は省かれます。
+      {showShorterWarning && (
+        <p className="rounded-md bg-amber-50 p-3 text-xs leading-snug text-amber-800">
+          ⚠ 日程がコピー元より短いため、一部の予定はコピーされません。
         </p>
       )}
 

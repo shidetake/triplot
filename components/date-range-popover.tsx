@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
@@ -43,12 +43,15 @@ export function DateRangePopover({
   defaultStart,
   defaultEnd,
   required,
+  onChange,
 }: {
   startName: string;
   endName: string;
   defaultStart?: string | null;
   defaultEnd?: string | null;
   required?: boolean;
+  // 選択中の範囲（"YYYY-MM-DD" or null）を親に通知する。
+  onChange?: (start: string | null, end: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>(() => {
@@ -59,6 +62,12 @@ export function DateRangePopover({
 
   const f = range?.from;
   const t = range?.to;
+
+  useEffect(() => {
+    onChange?.(fmtYmd(f) || null, fmtYmd(t) || null);
+    // onChange は呼び出し側の inline 関数想定なので依存に入れない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [f, t]);
   const label =
     f && t
       ? `${format(f, "yyyy/M/d (EEE)", { locale: ja })} 〜 ${format(t, "M/d (EEE)", { locale: ja })}`

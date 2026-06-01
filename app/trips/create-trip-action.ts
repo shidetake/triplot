@@ -95,7 +95,6 @@ export async function createTripAction(
     place_id: string | null;
     note: string | null;
   }[] = [];
-  let dropped = 0;
   for (const e of shared) {
     const r = remapEventDate(
       { startAt: e.start_at, endAt: e.end_at },
@@ -103,10 +102,8 @@ export async function createTripAction(
       startDate,
       dayMap,
     );
-    if (!r) {
-      dropped += 1;
-      continue;
-    }
+    // 日程が短いと中日の予定は省かれる。フォーム側で事前に注意済み。
+    if (!r) continue;
     events.push({
       title: e.title,
       kind: e.kind,
@@ -134,9 +131,5 @@ export async function createTripAction(
   }
 
   revalidatePath("/");
-  redirect(
-    dropped > 0
-      ? `/trips/${tripId}?copiedDropped=${dropped}`
-      : `/trips/${tripId}`,
-  );
+  redirect(`/trips/${tripId}`);
 }
