@@ -78,9 +78,10 @@ begin
     end;
   end loop;
 
-  insert into trip_members (trip_id, user_id, display_name, kind, color)
+  -- 作成者を管理者として登録（create_trip と揃える）。
+  insert into trip_members (trip_id, user_id, display_name, kind, color, is_admin)
   values (v_trip_id, v_uid, p_display_name, 'member',
-          public.pick_member_color(v_trip_id))
+          public.pick_member_color(v_trip_id), true)
   returning id into v_member_id;
 
   -- 費用カテゴリとピンは既定 seed（費用はコピーしないので既定でよい）。
