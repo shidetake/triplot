@@ -1,4 +1,5 @@
 import PostalMime from "postal-mime";
+import { extractText } from "unpdf";
 
 // 受信レシートメール → LLM に渡すプレーンテキストへの前処理。
 // MIME パース（postal-mime）は副作用寄りなので薄く包み、HTML→テキスト整形は
@@ -24,12 +25,35 @@ export function htmlToText(html: string): string {
     .trim();
 }
 
+// PDF（Uint8Array）→ テキスト。unpdf は Node / ブラウザ / Worker で動く。
+async function pdfToText(data: Uint8Array): Promise<string> {
+  const { text } = await extractText(data, { mergePages: true });
+  return text;
+}
+
 // 生 MIME → { subject, text }。text/plain を優先し、無ければ html を整形する。
+// 添付の PDF（航空券・ホテル folio 等、金額が本文でなく添付にあるもの）は
+// テキスト化して本文末尾に付加し、LLM が読めるようにする。
 export async function mimeToText(
   raw: string | Uint8Array,
 ): Promise<{ subject: string; text: string }> {
   const email = await PostalMime.parse(raw);
   const plain = email.text?.trim();
-  const text = plain && plain.length > 0 ? plain : htmlToText(email.html ?? "");
+  let text = plain && plain.length > 0 ? plain : htmlToText(email.html ?? "");
+
+  for (const att of email.attachments ?? []) {
+    if (att.mimeType !== "application/pdf" || typeof att.content === "string") {
+      continue;
+    }
+    try {
+      const pdfText = (await pdfToText(new Uint8Array(att.content))).trim();
+      if (pdfText) {
+        text += `\n\n--- 添付PDF: ${att.filename ?? "attachment.pdf"} ---\n${pdfText}`;
+      }
+    } catch {
+      // 読めない PDF は無視（本文だけで続行）
+    }
+  }
+
   return { subject: email.subject ?? "", text };
 }
