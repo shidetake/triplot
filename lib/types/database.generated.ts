@@ -278,6 +278,39 @@ export type Database = {
           },
         ]
       }
+      inbound_emails: {
+        Row: {
+          id: string
+          message_id: string | null
+          raw: string
+          received_at: string
+          recipient: string
+          sender: string
+          size: number | null
+          subject: string | null
+        }
+        Insert: {
+          id?: string
+          message_id?: string | null
+          raw: string
+          received_at?: string
+          recipient: string
+          sender: string
+          size?: number | null
+          subject?: string | null
+        }
+        Update: {
+          id?: string
+          message_id?: string | null
+          raw?: string
+          received_at?: string
+          recipient?: string
+          sender?: string
+          size?: number | null
+          subject?: string | null
+        }
+        Relationships: []
+      }
       place_statuses: {
         Row: {
           color: string

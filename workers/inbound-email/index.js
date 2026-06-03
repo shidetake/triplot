@@ -9,16 +9,20 @@
 // デプロイ: 現状は Cloudflare ダッシュボードにこの内容を貼って作成している。
 // （リポジトリのこのファイルが原本。将来 wrangler 管理に移す）
 //
-// M1c では from / to / subject など封筒情報だけ送る。本文パースは M2 で追加。
+// M2: 生メール(MIME)全文も送り、サーバ側で inbound_emails に保存する。
 
 const handler = {
   async email(message, env) {
+    // message.raw は ReadableStream。全文をテキストとして読む（レシートは小さい）。
+    const raw = await new Response(message.raw).text();
+
     const payload = {
       from: message.from,
       to: message.to,
       subject: message.headers.get("subject") || "",
       rawSize: message.rawSize,
       messageId: message.headers.get("message-id") || "",
+      raw,
     };
 
     try {

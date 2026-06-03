@@ -2,11 +2,12 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { createServiceClient } from "@/lib/supabase/service";
+
 // Cloudflare Email Worker からの受信メール通知を受ける webhook。
-// M1c（疎通確認フェーズ）: まだ本文パース/保存はせず、メールが届いたことと
-// 封筒情報（from / to / subject）をログするだけ。M2 で本文パース＋下書き保存に
-// 置き換える。Worker とは共有シークレット（X-Inbound-Secret ヘッダ）で認証し、
-// 第三者が偽の受信を投げ込めないようにする。
+// M2: 生メール(MIME)を inbound_emails テーブルにそのまま保存する（サンプル蓄積）。
+// パースはまだしない。Worker とは共有シークレット（X-Inbound-Secret ヘッダ）で
+// 認証し、第三者が偽の受信を投げ込めないようにする。
 
 function secretMatches(provided: string | null, expected: string): boolean {
   if (!provided) return false;
@@ -38,13 +39,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "invalid json" }, { status: 400 });
   }
 
-  const { from, to, subject, rawSize, messageId } = body;
+  const from = typeof body.from === "string" ? body.from : null;
+  const to = typeof body.to === "string" ? body.to : null;
+  const raw = typeof body.raw === "string" ? body.raw : null;
+  if (!from || !to || !raw) {
+    return NextResponse.json(
+      { error: "missing from / to / raw" },
+      { status: 400 },
+    );
+  }
 
-  // 疎通確認用ログ。Vercel の runtime logs で確認する。
+  const subject = typeof body.subject === "string" ? body.subject : null;
+  const messageId =
+    typeof body.messageId === "string" ? body.messageId : null;
+  const size = typeof body.rawSize === "number" ? body.rawSize : raw.length;
+
+  const supabase = createServiceClient();
+  const { error } = await supabase.from("inbound_emails").insert({
+    sender: from,
+    recipient: to,
+    subject,
+    message_id: messageId,
+    raw,
+    size,
+  });
+
+  if (error) {
+    console.error("[inbound-email] insert failed", error.message);
+    return NextResponse.json({ error: "store failed" }, { status: 500 });
+  }
+
   console.log(
-    "[inbound-email]",
-    JSON.stringify({ from, to, subject, rawSize, messageId }),
+    "[inbound-email] stored",
+    JSON.stringify({ from, to, subject, size }),
   );
-
   return NextResponse.json({ ok: true });
 }
