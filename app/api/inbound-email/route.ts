@@ -66,7 +66,17 @@ export async function POST(request: Request) {
 
   if (error) {
     console.error("[inbound-email] insert failed", error.message);
-    return NextResponse.json({ error: "store failed" }, { status: 500 });
+    // 開発中: 原因切り分けのため詳細を返す（安定したら戻す）。
+    return NextResponse.json(
+      {
+        error: "store failed",
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint,
+      },
+      { status: 500 },
+    );
   }
 
   console.log(
