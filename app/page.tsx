@@ -64,7 +64,15 @@ export default async function Home() {
             <p className="text-sm text-zinc-600">
               ログイン中: {user.email ?? "(匿名)"}
             </p>
-            <SignOutButton />
+            <div className="flex items-center gap-4">
+              <Link
+                href="/settings"
+                className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
+              >
+                設定
+              </Link>
+              <SignOutButton />
+            </div>
           </div>
 
           <CreateTripSection userId={user.id} defaultDisplayName={defaultDisplayName} />
