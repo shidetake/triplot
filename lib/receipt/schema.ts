@@ -34,7 +34,15 @@ export const receiptSchema = z.object({
     .describe("ISO 4217 の通貨コード（大文字3字）。例: $ → USD、¥ → JPY"),
   date: z
     .string()
-    .describe("取引日。YYYY-MM-DD 形式。時刻は含めない。年が無ければ受信年で補う"),
+    .describe(
+      "支払った日（取引日）。YYYY-MM-DD。店頭購入では利用日と同じ。カード確定日・請求日ではない。年が無ければ文脈/受信年で補う",
+    ),
+  serviceDate: z
+    .string()
+    .nullable()
+    .describe(
+      "航空券の搭乗日・宿泊のチェックイン日など、購入日と別に『実際に使う日』がある場合のみ YYYY-MM-DD。店頭購入など該当しなければ null",
+    ),
   category: z
     .enum(RECEIPT_CATEGORIES)
     .describe("最も近いカテゴリを1つ。判断できなければ「その他」"),
