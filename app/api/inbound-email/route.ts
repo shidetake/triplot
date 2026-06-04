@@ -2,6 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { NextResponse } from "next/server";
 
+import { parseImportToken } from "@/lib/receipt/inboundAddress";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // Cloudflare Email Worker からの受信メール通知を受ける webhook。
@@ -55,6 +56,19 @@ export async function POST(request: Request) {
   const size = typeof body.rawSize === "number" ? body.rawSize : raw.length;
 
   const supabase = createServiceClient();
+
+  // 宛先トークンから本人を特定（From に依存しない）。不明なら user_id = null。
+  let userId: string | null = null;
+  const token = parseImportToken(to);
+  if (token) {
+    const { data: u } = await supabase
+      .from("users")
+      .select("id")
+      .eq("import_token", token)
+      .maybeSingle();
+    userId = u?.id ?? null;
+  }
+
   const { error } = await supabase.from("inbound_emails").insert({
     sender: from,
     recipient: to,
@@ -62,6 +76,7 @@ export async function POST(request: Request) {
     message_id: messageId,
     raw,
     size,
+    user_id: userId,
   });
 
   if (error) {

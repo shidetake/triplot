@@ -288,6 +288,7 @@ export type Database = {
           sender: string
           size: number | null
           subject: string | null
+          user_id: string | null
         }
         Insert: {
           id?: string
@@ -298,6 +299,7 @@ export type Database = {
           sender: string
           size?: number | null
           subject?: string | null
+          user_id?: string | null
         }
         Update: {
           id?: string
@@ -308,8 +310,17 @@ export type Database = {
           sender?: string
           size?: number | null
           subject?: string | null
+          user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "inbound_emails_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       place_statuses: {
         Row: {
@@ -674,6 +685,7 @@ export type Database = {
           display_name: string | null
           google_uid: string | null
           id: string
+          import_token: string | null
           is_anonymous: boolean
         }
         Insert: {
@@ -681,6 +693,7 @@ export type Database = {
           display_name?: string | null
           google_uid?: string | null
           id: string
+          import_token?: string | null
           is_anonymous?: boolean
         }
         Update: {
@@ -688,6 +701,7 @@ export type Database = {
           display_name?: string | null
           google_uid?: string | null
           id?: string
+          import_token?: string | null
           is_anonymous?: boolean
         }
         Relationships: []
@@ -864,6 +878,7 @@ export type Database = {
         }
         Returns: string
       }
+      ensure_import_token: { Args: never; Returns: string }
       ensure_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string
