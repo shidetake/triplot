@@ -78,6 +78,11 @@ export function ExpenseForm({
   editExpense,
   canChangeVisibility = true,
   onDone, // ポップオーバーで使うとき: 追加成功で閉じる
+  // 新規モードの事前入力（レシート取り込みの確定で使う）。通貨/カテゴリ/日付は
+  // 既存の initial* で渡すので、ここは価格・メモ・場所だけ。
+  initialPrice,
+  initialNote,
+  initialPlace,
 }: {
   tripId: string;
   members: Member[];
@@ -96,6 +101,9 @@ export function ExpenseForm({
   editExpense?: ExpenseRow;
   canChangeVisibility?: boolean;
   onDone?: () => void;
+  initialPrice?: number;
+  initialNote?: string;
+  initialPlace?: PlacePickerInitial;
 }) {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isEdit = !!editExpense;
@@ -306,7 +314,7 @@ export function ExpenseForm({
           name:
             places.find((p) => p.id === editExpense.place_id)?.name ?? "",
         }
-      : null;
+      : (initialPlace ?? null);
 
   return (
     <form
@@ -340,7 +348,7 @@ export function ExpenseForm({
             step="0.01"
             inputMode="decimal"
             placeholder="0"
-            defaultValue={isEdit ? editExpense.local_price : undefined}
+            defaultValue={isEdit ? editExpense.local_price : initialPrice}
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
           />
         </label>
@@ -427,7 +435,7 @@ export function ExpenseForm({
           type="text"
           name="note"
           placeholder="ランチ、空港バス、など"
-          defaultValue={isEdit ? (editExpense.note ?? "") : ""}
+          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
         />
       </label>
