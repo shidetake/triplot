@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
+import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
@@ -25,6 +26,8 @@ import {
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@/lib/placeMap";
+import { matchPlace, type TripPlace } from "@/lib/receipt/placeMatch";
+import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Currency,
@@ -394,6 +397,53 @@ export default async function TripDetailPage({
     ? lastEntered.paid_at.slice(0, 10)
     : (trip.start_date ?? today);
 
+  // この旅行に割り当て済み・未確定の取り込み下書き（自分の分。RLS で own のみ）。
+  // 確定（費用化）はここの事前入力フォームで行う。
+  const { data: tripDrafts } = await supabase
+    .from("inbound_emails")
+    .select("id, extracted")
+    .eq("trip_id", tripId)
+    .eq("status", "extracted")
+    .order("received_at", { ascending: false });
+
+  const placesForMatch: TripPlace[] = places.map((p) => ({
+    id: p.id,
+    name: p.name,
+    formattedAddress: null,
+  }));
+
+  const importDrafts = (tripDrafts ?? []).flatMap((d) => {
+    const r = d.extracted as unknown as Receipt | null;
+    if (!r) return [];
+    const currency: Currency =
+      r.currency === "JPY" || r.currency === "USD" ? r.currency : defaultCurrency;
+    const categoryId =
+      categories.find((c) => c.name === r.category)?.id ?? initialCategoryId;
+    const matched = matchPlace(
+      { merchant: r.merchant, location: r.location },
+      placesForMatch,
+    );
+    const place = matched
+      ? {
+          kind: "saved" as const,
+          id: matched.placeId,
+          name: places.find((p) => p.id === matched.placeId)?.name ?? "",
+        }
+      : null;
+    return [
+      {
+        id: d.id,
+        label: `${r.merchant || "(店名不明)"}・${r.total} ${r.currency}・${r.date}`,
+        initialPrice: r.total,
+        initialCurrency: currency,
+        initialCategoryId: categoryId,
+        initialPaidAt: r.date,
+        initialNote: r.merchant,
+        initialPlace: place,
+      },
+    ];
+  });
+
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <div className="flex items-start justify-between gap-3">
@@ -487,6 +537,46 @@ export default async function TripDetailPage({
             tripEnd={trip.end_date}
           />
         </div>
+
+        {importDrafts.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="text-sm font-medium text-amber-900">
+              未確定の取り込み（{importDrafts.length}）
+            </div>
+            <p className="mt-1 text-xs text-amber-800">
+              転送したレシートの下書きです。タップして内容を確認・確定すると費用になります。
+            </p>
+            <div className="mt-3 space-y-2">
+              {importDrafts.map((d) => (
+                <DraftConfirmButton
+                  key={d.id}
+                  draftId={d.id}
+                  label={d.label}
+                  tripId={tripId}
+                  members={activeMembers.map((m) => ({
+                    id: m.id,
+                    display_name: m.display_name,
+                  }))}
+                  myMemberId={me.id}
+                  defaultCurrency={defaultCurrency}
+                  initialCurrency={d.initialCurrency}
+                  categories={categories}
+                  initialCategoryId={d.initialCategoryId}
+                  averageRates={averageRates}
+                  initialPaidAt={d.initialPaidAt}
+                  places={placesForPicker}
+                  biasCenter={placesBiasCenter}
+                  tzTimeline={tzTimeline}
+                  tripStart={trip.start_date}
+                  tripEnd={trip.end_date}
+                  initialPrice={d.initialPrice}
+                  initialNote={d.initialNote}
+                  initialPlace={d.initialPlace}
+                />
+              ))}
+            </div>
+          </div>
+        )}
 
         <ExpenseSummaryView
           summary={summary}

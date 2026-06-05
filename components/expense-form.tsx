@@ -78,6 +78,7 @@ export function ExpenseForm({
   editExpense,
   canChangeVisibility = true,
   onDone, // ポップオーバーで使うとき: 追加成功で閉じる
+  onSuccess, // 追加/更新が成功したときだけ呼ぶ（× 閉じでは呼ばれない）
   // 新規モードの事前入力（レシート取り込みの確定で使う）。通貨/カテゴリ/日付は
   // 既存の initial* で渡すので、ここは価格・メモ・場所だけ。
   initialPrice,
@@ -101,6 +102,7 @@ export function ExpenseForm({
   editExpense?: ExpenseRow;
   canChangeVisibility?: boolean;
   onDone?: () => void;
+  onSuccess?: () => void;
   initialPrice?: number;
   initialNote?: string;
   initialPlace?: PlacePickerInitial;
@@ -252,9 +254,10 @@ export function ExpenseForm({
       // 通貨 / カテゴリ / 日付 / レート / 公開範囲 / 割り勘は controlled。
       // 連続入力で前回値を引き継ぐため保持する（form.reset() は uncontrolled だけリセット）。
       // 支払った人は uncontrolled なので毎回「自分」に戻る（仕様）。
+      onSuccess?.(); // 成功時のみ（取り込み下書きを確定済みにする等）
       onDone?.(); // ポップオーバー時は予定追加と同様、成功で閉じる
     }
-  }, [state.ok, onDone]);
+  }, [state.ok, onSuccess, onDone]);
 
   const onCurrencyChange = (c: Currency) => {
     setLocalCurrency(c);
