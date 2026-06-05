@@ -293,6 +293,7 @@ export type Database = {
           size: number | null
           status: string
           subject: string | null
+          trip_id: string | null
           user_id: string | null
         }
         Insert: {
@@ -309,6 +310,7 @@ export type Database = {
           size?: number | null
           status?: string
           subject?: string | null
+          trip_id?: string | null
           user_id?: string | null
         }
         Update: {
@@ -325,6 +327,7 @@ export type Database = {
           size?: number | null
           status?: string
           subject?: string | null
+          trip_id?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -333,6 +336,13 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_emails_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
             referencedColumns: ["id"]
           },
           {
@@ -733,6 +743,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      assign_inbound_email_trip: {
+        Args: { p_id: string; p_trip_id: string }
+        Returns: undefined
+      }
       copy_trip: {
         Args: {
           p_default_currency: string

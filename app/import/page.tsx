@@ -6,7 +6,7 @@ import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
 
-import { dismissDraftAction } from "./actions";
+import { assignTripAction, dismissDraftAction } from "./actions";
 
 export default async function ImportPage() {
   const supabase = await createClient();
@@ -15,7 +15,7 @@ export default async function ImportPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  // 旅行推測に使う、自分が在籍中の旅行。
+  // 自分が在籍中の旅行（割り当て先 ＋ 旅行推測）。
   const { data: memberships } = await supabase
     .from("trip_members")
     .select("trips(id, title, start_date, end_date)")
@@ -31,10 +31,10 @@ export default async function ImportPage() {
   }));
   const tripTitle = new Map(trips.map((t) => [t.id, t.title]));
 
-  // 自分の抽出済み下書き（RLS で自分の行のみ）。
+  // 自分の抽出済み下書き（RLS で自分の行のみ）。割当済も未割当もここに出す。
   const { data: drafts } = await supabase
     .from("inbound_emails")
-    .select("id, received_at, subject, extracted")
+    .select("id, received_at, subject, extracted, trip_id")
     .eq("status", "extracted")
     .order("received_at", { ascending: false });
 
@@ -44,16 +44,18 @@ export default async function ImportPage() {
       r != null
         ? guessTripForReceipt({ date: r.date, serviceDate: r.serviceDate }, tripRanges)
         : null;
-    let tripLabel: { text: string; kind: "ok" | "warn" } = {
-      text: "要割当",
-      kind: "warn",
+    const guessedTripId =
+      guess && guess.tripIds.length === 1 ? guess.tripIds[0] : "";
+    const ambiguous = !!guess && guess.tripIds.length > 1;
+    return {
+      id: d.id,
+      receipt: r,
+      assignedTripId: d.trip_id,
+      // 割当済ならそれ、未割当は単一推測を初期選択。
+      defaultTripId: d.trip_id ?? guessedTripId,
+      guessedTripId,
+      ambiguous,
     };
-    if (guess && guess.tripIds.length === 1) {
-      tripLabel = { text: tripTitle.get(guess.tripIds[0]) ?? "?", kind: "ok" };
-    } else if (guess && guess.tripIds.length > 1) {
-      tripLabel = { text: "要確認（複数候補）", kind: "warn" };
-    }
-    return { id: d.id, receipt: r, subject: d.subject, tripLabel };
   });
 
   return (
@@ -69,26 +71,24 @@ export default async function ImportPage() {
       </header>
 
       <p className="mt-3 text-sm text-zinc-600">
-        転送したレシートから自動で読み取った下書きです。
-        <Link href="/settings" className="underline underline-offset-2">
-          設定の取り込み用アドレス
-        </Link>
-        に転送すると、ここに溜まります。
+        転送したレシートの下書きです。まず<strong>どの旅行か</strong>を割り当てます。
+        費用としての確定（支払者・割り勘・レート）は旅行の画面で行います。
       </p>
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-zinc-500">
-          まだ下書きはありません。レシートを転送してみてください。
+          まだ下書きはありません。
+          <Link href="/settings" className="underline underline-offset-2">
+            取り込み用アドレス
+          </Link>
+          にレシートを転送してみてください。
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
           {rows.map((row) => (
-            <li
-              key={row.id}
-              className="rounded-lg border border-zinc-200 p-4"
-            >
+            <li key={row.id} className="rounded-lg border border-zinc-200 p-4">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
                     {row.receipt?.merchant || "(店名不明)"}
                   </div>
@@ -98,19 +98,55 @@ export default async function ImportPage() {
                       : "(読み取り内容なし)"}
                     {row.receipt?.location ? ` ・ ${row.receipt.location}` : ""}
                   </div>
-                  <div className="mt-2">
-                    <span
-                      className={
-                        "inline-block rounded-full px-2 py-0.5 text-xs " +
-                        (row.tripLabel.kind === "ok"
-                          ? "bg-zinc-100 text-zinc-700"
-                          : "bg-amber-50 text-amber-800")
-                      }
+
+                  {/* 旅行の割り当て */}
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <form
+                      action={assignTripAction}
+                      className="flex items-center gap-2"
                     >
-                      旅行: {row.tripLabel.text}
-                    </span>
+                      <input type="hidden" name="id" value={row.id} />
+                      <select
+                        name="trip_id"
+                        defaultValue={row.defaultTripId}
+                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-black focus:outline-none"
+                      >
+                        <option value="">（旅行を選択）</option>
+                        {trips.map((t) => (
+                          <option key={t.id} value={t.id}>
+                            {t.title}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="h-8 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+                      >
+                        {row.assignedTripId ? "変更" : "割り当て"}
+                      </button>
+                    </form>
+
+                    {row.assignedTripId ? (
+                      <Link
+                        href={`/trips/${row.assignedTripId}`}
+                        className="text-sm font-medium text-zinc-900 underline underline-offset-2"
+                      >
+                        → {tripTitle.get(row.assignedTripId) ?? "旅行"}で確定
+                      </Link>
+                    ) : row.ambiguous ? (
+                      <span className="text-xs text-amber-700">
+                        候補が複数。旅行を選んでください
+                      </span>
+                    ) : row.guessedTripId ? (
+                      <span className="text-xs text-zinc-500">
+                        推測: {tripTitle.get(row.guessedTripId)}
+                      </span>
+                    ) : (
+                      <span className="text-xs text-amber-700">要割当</span>
+                    )}
                   </div>
                 </div>
+
                 <form action={dismissDraftAction}>
                   <input type="hidden" name="id" value={row.id} />
                   <button
@@ -127,10 +163,6 @@ export default async function ImportPage() {
           ))}
         </ul>
       )}
-
-      <p className="mt-8 text-xs text-zinc-400">
-        ※ 費用としての確定（旅行・支払者・割り勘の確認）は次の段階で対応します。
-      </p>
     </main>
   );
 }
