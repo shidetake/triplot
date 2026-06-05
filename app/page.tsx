@@ -66,6 +66,12 @@ export default async function Home() {
             </p>
             <div className="flex items-center gap-4">
               <Link
+                href="/import"
+                className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
+              >
+                取り込み
+              </Link>
+              <Link
                 href="/settings"
                 className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
               >

@@ -280,6 +280,7 @@ export type Database = {
       }
       inbound_emails: {
         Row: {
+          expense_id: string | null
           extract_error: string | null
           extracted: Json | null
           extracted_at: string | null
@@ -295,6 +296,7 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
@@ -310,6 +312,7 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
@@ -325,6 +328,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "inbound_emails_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "inbound_emails_user_id_fkey"
             columns: ["user_id"]
@@ -929,6 +939,10 @@ export type Database = {
         Returns: string
       }
       remove_trip_member: { Args: { p_member_id: string }; Returns: undefined }
+      resolve_inbound_email: {
+        Args: { p_expense_id?: string; p_id: string; p_status: string }
+        Returns: undefined
+      }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
