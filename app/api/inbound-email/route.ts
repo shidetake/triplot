@@ -1,9 +1,63 @@
 import { timingSafeEqual } from "node:crypto";
 
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
+import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import { parseImportToken } from "@/lib/receipt/inboundAddress";
+import { extractReceiptFromEmail } from "@/lib/receipt/pipeline";
 import { createServiceClient } from "@/lib/supabase/service";
+
+type ServiceClient = ReturnType<typeof createServiceClient>;
+
+// 月初（UTC）の ISO 文字列。
+function monthStartIso(): string {
+  const d = new Date();
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+}
+
+// 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限を超えたら
+// 抽出せず over_quota にする（コスト保護）。失敗は error として残す。
+async function extractInBackground(
+  supabase: ServiceClient,
+  emailId: string,
+  userId: string,
+  raw: string,
+): Promise<void> {
+  const { count } = await supabase
+    .from("inbound_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "extracted")
+    .gte("received_at", monthStartIso());
+
+  if ((count ?? 0) >= MONTHLY_EMAIL_CAP) {
+    await supabase
+      .from("inbound_emails")
+      .update({ status: "over_quota" })
+      .eq("id", emailId);
+    return;
+  }
+
+  try {
+    const receipt = await extractReceiptFromEmail(raw, EXTRACT_MODEL);
+    await supabase
+      .from("inbound_emails")
+      .update({
+        status: "extracted",
+        extracted: receipt,
+        extracted_at: new Date().toISOString(),
+      })
+      .eq("id", emailId);
+  } catch (e) {
+    await supabase
+      .from("inbound_emails")
+      .update({
+        status: "error",
+        extract_error: e instanceof Error ? e.message : "extract failed",
+      })
+      .eq("id", emailId);
+  }
+}
 
 // Cloudflare Email Worker からの受信メール通知を受ける webhook。
 // M2: 生メール(MIME)を inbound_emails テーブルにそのまま保存する（サンプル蓄積）。
@@ -69,24 +123,36 @@ export async function POST(request: Request) {
     userId = u?.id ?? null;
   }
 
-  const { error } = await supabase.from("inbound_emails").insert({
-    sender: from,
-    recipient: to,
-    subject,
-    message_id: messageId,
-    raw,
-    size,
-    user_id: userId,
-  });
+  const { data: inserted, error } = await supabase
+    .from("inbound_emails")
+    .insert({
+      sender: from,
+      recipient: to,
+      subject,
+      message_id: messageId,
+      raw,
+      size,
+      user_id: userId,
+    })
+    .select("id")
+    .single();
 
-  if (error) {
-    console.error("[inbound-email] insert failed", error.message);
+  if (error || !inserted) {
+    console.error("[inbound-email] insert failed", error?.message);
     return NextResponse.json({ error: "store failed" }, { status: 500 });
   }
 
   console.log(
     "[inbound-email] stored",
-    JSON.stringify({ from, to, subject, size }),
+    JSON.stringify({ from, to, subject, size, user: Boolean(userId) }),
   );
+
+  // 本人が特定できたものはレスポンス後にバックグラウンド抽出（Worker は即 200）。
+  if (userId) {
+    const emailId = inserted.id;
+    const uid = userId;
+    after(() => extractInBackground(supabase, emailId, uid, raw));
+  }
+
   return NextResponse.json({ ok: true });
 }
