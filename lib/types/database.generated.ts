@@ -286,6 +286,7 @@ export type Database = {
           extracted: Json | null
           extracted_at: string | null
           id: string
+          merged_into: string | null
           message_id: string | null
           raw: string | null
           received_at: string
@@ -304,6 +305,7 @@ export type Database = {
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
+          merged_into?: string | null
           message_id?: string | null
           raw?: string | null
           received_at?: string
@@ -322,6 +324,7 @@ export type Database = {
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
+          merged_into?: string | null
           message_id?: string | null
           raw?: string | null
           received_at?: string
@@ -339,6 +342,13 @@ export type Database = {
             columns: ["expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_emails_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "inbound_emails"
             referencedColumns: ["id"]
           },
           {

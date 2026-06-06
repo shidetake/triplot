@@ -5,8 +5,17 @@ import { after, NextResponse } from "next/server";
 import { extractReceipt } from "@/lib/receipt/extract";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import { parseImportToken } from "@/lib/receipt/inboundAddress";
+import {
+  type DraftCandidate,
+  findMerge,
+  selectMergeCandidates,
+} from "@/lib/receipt/merge";
 import { gatherReceiptText } from "@/lib/receipt/pipeline";
+import type { Receipt } from "@/lib/receipt/schema";
 import { createServiceClient } from "@/lib/supabase/service";
+
+// 後からマージで遡る未確定下書きの範囲（受信日）。
+const MERGE_LOOKBACK_DAYS = 30;
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -14,6 +23,34 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 function monthStartIso(): string {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+}
+
+// 同じ取引の未確定下書きを探して合体結果を返す（無ければ null）。
+async function tryMerge(
+  supabase: ServiceClient,
+  userId: string,
+  emailId: string,
+  receipt: Receipt,
+  text: string,
+): Promise<{ targetId: string; merged: Receipt } | null> {
+  const since = new Date(
+    Date.now() - MERGE_LOOKBACK_DAYS * 86_400_000,
+  ).toISOString();
+  const { data: others } = await supabase
+    .from("inbound_emails")
+    .select("id, extracted")
+    .eq("user_id", userId)
+    .eq("status", "extracted")
+    .neq("id", emailId)
+    .gte("received_at", since);
+
+  const drafts: DraftCandidate[] = (others ?? []).flatMap((o) => {
+    const r = o.extracted as unknown as Receipt | null;
+    return r ? [{ id: o.id, receipt: r }] : [];
+  });
+  const candidates = selectMergeCandidates(receipt, drafts);
+  if (candidates.length === 0) return null;
+  return findMerge(EXTRACT_MODEL, { receipt, text }, candidates);
 }
 
 // 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限を超えたら
@@ -43,17 +80,50 @@ async function extractInBackground(
     // 本文＋PDFテキストを作り（これが痩せ版）、それを抽出に使う。
     const { subject, text } = await gatherReceiptText(raw);
     const receipt = await extractReceipt(EXTRACT_MODEL, { subject, text });
-    await supabase
-      .from("inbound_emails")
-      .update({
-        status: "extracted",
-        extracted: receipt,
-        extracted_at: new Date().toISOString(),
-        // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
-        body_text: text,
-        raw: null,
-      })
-      .eq("id", emailId);
+    const now = new Date().toISOString();
+
+    // 後からマージ: 同じ取引の未確定下書きがあれば合体する。
+    const merge = await tryMerge(supabase, userId, emailId, receipt, text);
+
+    if (merge) {
+      // ターゲットに合体結果を反映（本文も蓄積）。
+      const { data: target } = await supabase
+        .from("inbound_emails")
+        .select("body_text")
+        .eq("id", merge.targetId)
+        .single();
+      await supabase
+        .from("inbound_emails")
+        .update({
+          extracted: merge.merged,
+          body_text: [target?.body_text, text].filter(Boolean).join("\n\n---\n"),
+        })
+        .eq("id", merge.targetId);
+      // 来たメールは merged として畳む（痩せる）。
+      await supabase
+        .from("inbound_emails")
+        .update({
+          status: "merged",
+          merged_into: merge.targetId,
+          extracted: receipt,
+          extracted_at: now,
+          body_text: null,
+          raw: null,
+        })
+        .eq("id", emailId);
+    } else {
+      await supabase
+        .from("inbound_emails")
+        .update({
+          status: "extracted",
+          extracted: receipt,
+          extracted_at: now,
+          // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
+          body_text: text,
+          raw: null,
+        })
+        .eq("id", emailId);
+    }
   } catch (e) {
     await supabase
       .from("inbound_emails")
