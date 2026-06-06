@@ -44,9 +44,32 @@ async function tryMerge(
     .neq("id", emailId)
     .gte("received_at", since);
 
+  const candidateIds = (others ?? []).map((o) => o.id);
+  // 各候補に合体済みの子メールがあれば、その本文もマージ文脈に含める
+  // （merged_into で辿る。referenceId では辿らない）。
+  const childTextByParent = new Map<string, string[]>();
+  if (candidateIds.length > 0) {
+    const { data: children } = await supabase
+      .from("inbound_emails")
+      .select("merged_into, body_text")
+      .eq("user_id", userId)
+      .eq("status", "merged")
+      .in("merged_into", candidateIds);
+    for (const c of children ?? []) {
+      if (!c.merged_into || !c.body_text) continue;
+      const arr = childTextByParent.get(c.merged_into) ?? [];
+      arr.push(c.body_text);
+      childTextByParent.set(c.merged_into, arr);
+    }
+  }
+
   const drafts: DraftCandidate[] = (others ?? []).flatMap((o) => {
     const r = o.extracted as unknown as Receipt | null;
-    return r ? [{ id: o.id, receipt: r, text: o.body_text }] : [];
+    if (!r) return [];
+    const texts = [o.body_text, ...(childTextByParent.get(o.id) ?? [])].filter(
+      Boolean,
+    );
+    return [{ id: o.id, receipt: r, text: texts.join("\n\n---\n") }];
   });
   const candidates = selectMergeCandidates(receipt, drafts);
   if (candidates.length === 0) return null;
@@ -86,20 +109,12 @@ async function extractInBackground(
     const merge = await tryMerge(supabase, userId, emailId, receipt, text);
 
     if (merge) {
-      // ターゲットに合体結果を反映（本文も蓄積）。
-      const { data: target } = await supabase
-        .from("inbound_emails")
-        .select("body_text")
-        .eq("id", merge.targetId)
-        .single();
+      // ターゲットは抽出結果だけ更新（本文は各メールの行に残し merged_into で辿る）。
       await supabase
         .from("inbound_emails")
-        .update({
-          extracted: merge.merged,
-          body_text: [target?.body_text, text].filter(Boolean).join("\n\n---\n"),
-        })
+        .update({ extracted: merge.merged })
         .eq("id", merge.targetId);
-      // 来たメールは merged として畳む（痩せる）。
+      // 来たメールは merged として畳む。本文(body_text)は自分の行に残す。
       await supabase
         .from("inbound_emails")
         .update({
@@ -107,7 +122,7 @@ async function extractInBackground(
           merged_into: merge.targetId,
           extracted: receipt,
           extracted_at: now,
-          body_text: null,
+          body_text: text,
           raw: null,
         })
         .eq("id", emailId);
