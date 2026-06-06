@@ -409,7 +409,7 @@ export default async function TripDetailPage({
   const placesForMatch: TripPlace[] = places.map((p) => ({
     id: p.id,
     name: p.name,
-    formattedAddress: null,
+    formattedAddress: p.formatted_address,
   }));
 
   const importDrafts = (tripDrafts ?? []).flatMap((d) => {
