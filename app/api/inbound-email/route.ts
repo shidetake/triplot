@@ -84,12 +84,13 @@ async function extractInBackground(
   userId: string,
   raw: string,
 ): Promise<void> {
+  // 当月の抽出回数（コスト）。確定/合体後も extracted_at は残るので、確定で
+  // カウントが減らない（status ではなく extracted_at で数える）。
   const { count } = await supabase
     .from("inbound_emails")
     .select("id", { count: "exact", head: true })
     .eq("user_id", userId)
-    .eq("status", "extracted")
-    .gte("received_at", monthStartIso());
+    .gte("extracted_at", monthStartIso());
 
   if ((count ?? 0) >= MONTHLY_EMAIL_CAP) {
     await supabase

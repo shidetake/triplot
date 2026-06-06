@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CloseIcon } from "@/components/icons";
+import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -37,6 +38,19 @@ export default async function ImportPage() {
     .select("id, received_at, subject, extracted, trip_id")
     .eq("status", "extracted")
     .order("received_at", { ascending: false });
+
+  // 当月の取り込み使用量と、上限超過で保留中の件数。
+  const monthStart = new Date(
+    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
+  ).toISOString();
+  const { count: usedThisMonth } = await supabase
+    .from("inbound_emails")
+    .select("id", { count: "exact", head: true })
+    .gte("extracted_at", monthStart);
+  const { count: overQuota } = await supabase
+    .from("inbound_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "over_quota");
 
   const rows = (drafts ?? []).map((d) => {
     const r = d.extracted as unknown as Receipt | null;
@@ -74,6 +88,17 @@ export default async function ImportPage() {
         転送したレシートの下書きです。まず<strong>どの旅行か</strong>を割り当てます。
         費用としての確定（支払者・割り勘・レート）は旅行の画面で行います。
       </p>
+
+      <p className="mt-2 text-xs text-zinc-500">
+        今月の取り込み: {usedThisMonth ?? 0} / {MONTHLY_EMAIL_CAP} 件
+      </p>
+
+      {(overQuota ?? 0) > 0 && (
+        <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+          ⚠ 今月の上限（{MONTHLY_EMAIL_CAP}件）に達したため、{overQuota}件が未処理の
+          まま保留されています。翌月にリセットされます。
+        </p>
+      )}
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-zinc-500">
