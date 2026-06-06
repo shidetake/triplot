@@ -2,9 +2,10 @@ import { timingSafeEqual } from "node:crypto";
 
 import { after, NextResponse } from "next/server";
 
+import { extractReceipt } from "@/lib/receipt/extract";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import { parseImportToken } from "@/lib/receipt/inboundAddress";
-import { extractReceiptFromEmail } from "@/lib/receipt/pipeline";
+import { gatherReceiptText } from "@/lib/receipt/pipeline";
 import { createServiceClient } from "@/lib/supabase/service";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
@@ -39,13 +40,18 @@ async function extractInBackground(
   }
 
   try {
-    const receipt = await extractReceiptFromEmail(raw, EXTRACT_MODEL);
+    // 本文＋PDFテキストを作り（これが痩せ版）、それを抽出に使う。
+    const { subject, text } = await gatherReceiptText(raw);
+    const receipt = await extractReceipt(EXTRACT_MODEL, { subject, text });
     await supabase
       .from("inbound_emails")
       .update({
         status: "extracted",
         extracted: receipt,
         extracted_at: new Date().toISOString(),
+        // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
+        body_text: text,
+        raw: null,
       })
       .eq("id", emailId);
   } catch (e) {

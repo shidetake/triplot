@@ -280,13 +280,14 @@ export type Database = {
       }
       inbound_emails: {
         Row: {
+          body_text: string | null
           expense_id: string | null
           extract_error: string | null
           extracted: Json | null
           extracted_at: string | null
           id: string
           message_id: string | null
-          raw: string
+          raw: string | null
           received_at: string
           recipient: string
           sender: string
@@ -297,13 +298,14 @@ export type Database = {
           user_id: string | null
         }
         Insert: {
+          body_text?: string | null
           expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
           message_id?: string | null
-          raw: string
+          raw?: string | null
           received_at?: string
           recipient: string
           sender: string
@@ -314,13 +316,14 @@ export type Database = {
           user_id?: string | null
         }
         Update: {
+          body_text?: string | null
           expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
           message_id?: string | null
-          raw?: string
+          raw?: string | null
           received_at?: string
           recipient?: string
           sender?: string
