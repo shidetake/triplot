@@ -8,7 +8,12 @@ import { type Receipt, receiptSchema } from "./schema";
 // 近さ・pending→確定/差額調整の関係など）を LLM に任せる。候補の事前絞り込みだけ
 // 決定的に行う（LLM に渡す前の安いフィルタ）。
 
-export type DraftCandidate = { id: string; receipt: Receipt };
+// text = 候補下書きの痩せ版本文（body_text）。マージ精度のため LLM に渡す。
+export type DraftCandidate = {
+  id: string;
+  receipt: Receipt;
+  text?: string | null;
+};
 
 // "YYYY-MM-DD" の日数差（絶対値）。不正は Infinity。
 function dayDiff(a: string, b: string): number {
@@ -67,7 +72,12 @@ export async function findMerge(
   if (candidates.length === 0) return null;
 
   const candidateLines = candidates
-    .map((c) => `- id=${c.id}: ${JSON.stringify(c.receipt)}`)
+    .map((c) => {
+      const body = (c.text ?? "").trim().slice(0, 1500);
+      return `- id=${c.id}: ${JSON.stringify(c.receipt)}${
+        body ? `\n  本文: ${body}` : ""
+      }`;
+    })
     .join("\n");
   const prompt = [
     "新しく届いたメールの抽出結果:",

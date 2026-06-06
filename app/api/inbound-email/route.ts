@@ -38,7 +38,7 @@ async function tryMerge(
   ).toISOString();
   const { data: others } = await supabase
     .from("inbound_emails")
-    .select("id, extracted")
+    .select("id, extracted, body_text")
     .eq("user_id", userId)
     .eq("status", "extracted")
     .neq("id", emailId)
@@ -46,7 +46,7 @@ async function tryMerge(
 
   const drafts: DraftCandidate[] = (others ?? []).flatMap((o) => {
     const r = o.extracted as unknown as Receipt | null;
-    return r ? [{ id: o.id, receipt: r }] : [];
+    return r ? [{ id: o.id, receipt: r, text: o.body_text }] : [];
   });
   const candidates = selectMergeCandidates(receipt, drafts);
   if (candidates.length === 0) return null;
