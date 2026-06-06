@@ -56,6 +56,18 @@ export const receiptSchema = z.object({
     .string()
     .nullable()
     .describe("店舗の住所・地名（場所の手がかり）。無ければ null"),
+  // マージ用（決済元を問わない汎用フィールド）。
+  referenceId: z
+    .string()
+    .nullable()
+    .describe(
+      "取引を識別する番号があれば（承認番号・取引ID・注文番号・確認番号など、決済元・カード会社・サービスを問わない）。無ければ null",
+    ),
+  isUpdate: z
+    .boolean()
+    .describe(
+      "このメールが既存決済の確定・更新・差額調整の通知（pending→確定、金額の更新/調整など）なら true。新規の購入レシートなら false",
+    ),
 });
 
 export type Receipt = z.infer<typeof receiptSchema>;
