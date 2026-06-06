@@ -440,6 +440,7 @@ export default async function TripDetailPage({
         initialPaidAt: r.date,
         initialNote: r.merchant,
         initialPlace: place,
+        initialTime: r.time ?? undefined,
       },
     ];
   });
@@ -572,6 +573,7 @@ export default async function TripDetailPage({
                   initialPrice={d.initialPrice}
                   initialNote={d.initialNote}
                   initialPlace={d.initialPlace}
+                  initialTime={d.initialTime}
                 />
               ))}
             </div>

@@ -84,6 +84,7 @@ export function ExpenseForm({
   initialPrice,
   initialNote,
   initialPlace,
+  initialTime, // "HH:MM"。あれば時刻欄を開いて事前入力する。
 }: {
   tripId: string;
   members: Member[];
@@ -106,6 +107,7 @@ export function ExpenseForm({
   initialPrice?: number;
   initialNote?: string;
   initialPlace?: PlacePickerInitial;
+  initialTime?: string;
 }) {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isEdit = !!editExpense;
@@ -121,8 +123,12 @@ export function ExpenseForm({
   // 時刻は「指定したい人だけ」展開して入れるトグル方式。未展開時は 00:00
   // で送信し、一覧でも時刻表示が出ない（formatDateTime の挙動）。
   // 編集時は保存済み時刻が 00:00 以外なら最初から展開、新規は折りたたみ。
-  const initPaidAtTime = isEdit ? editExpense.paid_at.slice(11, 16) : "00:00";
-  const initShowTime = isEdit ? initPaidAtTime !== "00:00" : false;
+  const initPaidAtTime = isEdit
+    ? editExpense.paid_at.slice(11, 16)
+    : (initialTime ?? "00:00");
+  const initShowTime = isEdit
+    ? initPaidAtTime !== "00:00"
+    : !!initialTime && initialTime !== "00:00";
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";

@@ -43,6 +43,12 @@ export const receiptSchema = z.object({
     .describe(
       "航空券の搭乗日・宿泊のチェックイン日など、購入日と別に『実際に使う日』がある場合のみ YYYY-MM-DD。店頭購入など該当しなければ null",
     ),
+  time: z
+    .string()
+    .nullable()
+    .describe(
+      "レシートに購入時刻が記載されていれば HH:MM（24時間）。現地の壁時計の時刻をそのまま。不明なら null",
+    ),
   category: z
     .enum(RECEIPT_CATEGORIES)
     .describe("最も近いカテゴリを1つ。判断できなければ「その他」"),
