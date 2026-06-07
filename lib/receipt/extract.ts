@@ -1,5 +1,6 @@
 import { generateObject, type LanguageModel } from "ai";
 
+import { normalizeReceipt } from "./normalize";
 import { buildReceiptPrompt, RECEIPT_SYSTEM_PROMPT } from "./prompt";
 import { type Receipt, receiptSchema } from "./schema";
 
@@ -16,5 +17,6 @@ export async function extractReceipt(
     system: RECEIPT_SYSTEM_PROMPT,
     prompt: buildReceiptPrompt(input),
   });
-  return object;
+  // 店名等の全角ASCIIを半角に正規化（日本語・カタカナは保持）。
+  return normalizeReceipt(object);
 }

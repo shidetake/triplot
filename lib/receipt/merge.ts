@@ -1,6 +1,7 @@
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
+import { normalizeReceipt } from "./normalize";
 import { type Receipt, receiptSchema } from "./schema";
 
 // 後からマージ：新しく届いたメールが、既存の未確定下書きと「同じ取引」かを判定し、
@@ -102,5 +103,5 @@ export async function findMerge(
 
   if (!object.matchId || !object.merged) return null;
   if (!candidates.some((c) => c.id === object.matchId)) return null;
-  return { targetId: object.matchId, merged: object.merged };
+  return { targetId: object.matchId, merged: normalizeReceipt(object.merged) };
 }
