@@ -28,15 +28,41 @@ export const RECEIPT_SYSTEM_PROMPT = [
   "このメールが既存決済の確定・更新・差額調整の通知（pending→確定、金額更新など）なら",
   "isUpdate を true、新規の購入レシートなら false にする。",
   "読み取れない項目は無理に推測せず、不明は空文字 / null。",
+  // 旅行の割り当て（候補が渡されたときだけ）
+  "【旅行の割り当て】候補となる旅行（旅行名と日程）が与えられたら、このレシートが",
+  "どの旅行に属するかを判断し tripId にその旅行の id を入れる。メールには複数の日付",
+  "（受信日・決済/確定日・実際に利用する日）が混在しうるので、購入した時期ではなく",
+  "『実際にその費用が使われる旅行』で割り当てること。例: 旅行中に予約した将来の航空券は、",
+  "購入時の旅行ではなく搭乗日(利用日)の旅行に属する。店名・場所(location)・利用日を",
+  "手がかりにする。どの候補にも確信が持てなければ tripId は null（無理に割り当てない）。",
+  "候補が与えられなければ tripId は null。",
 ].join("");
 
-// 件名＋本文から、抽出対象のユーザメッセージを組み立てる。
+// 候補旅行のヒント（id・旅行名・日程）。割り当て推論に使う。
+export type TripHint = {
+  id: string;
+  title: string;
+  startDate: string | null;
+  endDate: string | null;
+};
+
+// 件名＋本文（＋候補旅行）から、抽出対象のユーザメッセージを組み立てる。
 export function buildReceiptPrompt(input: {
   subject: string;
   text: string;
+  trips?: TripHint[];
 }): string {
   const subject = input.subject.trim();
   const text = input.text.trim();
+  const trips = input.trips ?? [];
+  const tripLines = trips.length
+    ? trips
+        .map(
+          (t) =>
+            `- id=${t.id}: ${t.title}（${t.startDate ?? "?"}〜${t.endDate ?? "?"}）`,
+        )
+        .join("\n")
+    : "(候補なし)";
   return [
     "次のレシートメールから費用情報を抽出してください。",
     "",
@@ -44,5 +70,8 @@ export function buildReceiptPrompt(input: {
     "",
     "本文:",
     text,
+    "",
+    "候補の旅行（このレシートがどれに属するか tripId で答える。該当無し/不明は null）:",
+    tripLines,
   ].join("\n");
 }

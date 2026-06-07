@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 
 import { after, NextResponse } from "next/server";
 
-import { extractReceipt } from "@/lib/receipt/extract";
+import { extractReceipt, type TripHint } from "@/lib/receipt/extract";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import { parseImportToken } from "@/lib/receipt/inboundAddress";
 import {
@@ -12,7 +12,6 @@ import {
 } from "@/lib/receipt/merge";
 import { gatherReceiptText } from "@/lib/receipt/pipeline";
 import type { Receipt } from "@/lib/receipt/schema";
-import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // 後からマージで遡る未確定下書きの範囲（受信日）。
@@ -26,26 +25,25 @@ function monthStartIso(): string {
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
 }
 
-// 旅行推測が1つに確定すればその trip_id を返す（自動割り当て用）。複数/0 は null。
-async function guessSingleTrip(
+// 抽出に渡す候補旅行（在籍中の旅行）。LLM が tripId を推論する材料。
+async function fetchTripHints(
   supabase: ServiceClient,
   userId: string,
-  receipt: Receipt,
-): Promise<string | null> {
+): Promise<TripHint[]> {
   const { data: memberships } = await supabase
     .from("trip_members")
-    .select("trips(id, start_date, end_date)")
+    .select("trips(id, title, start_date, end_date)")
     .eq("user_id", userId)
     .is("left_at", null);
-  const tripRanges: TripRange[] = (memberships ?? [])
+  return (memberships ?? [])
     .map((m) => m.trips)
     .filter((t): t is NonNullable<typeof t> => t !== null)
-    .map((t) => ({ id: t.id, startDate: t.start_date, endDate: t.end_date }));
-  const guess = guessTripForReceipt(
-    { date: receipt.date, serviceDate: receipt.serviceDate },
-    tripRanges,
-  );
-  return guess.tripIds.length === 1 ? guess.tripIds[0] : null;
+    .map((t) => ({
+      id: t.id,
+      title: t.title,
+      startDate: t.start_date,
+      endDate: t.end_date,
+    }));
 }
 
 // 同じ取引の未確定下書きを探して合体結果を返す（無ければ null）。
@@ -125,9 +123,15 @@ async function extractInBackground(
   }
 
   try {
-    // 本文＋PDFテキストを作り（これが痩せ版）、それを抽出に使う。
+    // 本文＋PDFテキストを作り（これが痩せ版）、それを抽出に使う。候補旅行も渡して
+    // 抽出と同時にどの旅行かを推論させる（追加トークンは旅行リスト分だけ）。
     const { subject, text } = await gatherReceiptText(raw);
-    const receipt = await extractReceipt(EXTRACT_MODEL, { subject, text });
+    const trips = await fetchTripHints(supabase, userId);
+    const { receipt, tripId } = await extractReceipt(EXTRACT_MODEL, {
+      subject,
+      text,
+      trips,
+    });
     const now = new Date().toISOString();
 
     // 後からマージ: 同じ取引の未確定下書きがあれば合体する。
@@ -152,8 +156,7 @@ async function extractInBackground(
         })
         .eq("id", emailId);
     } else {
-      // 旅行推測が1つに確定するなら自動割り当て（受信箱でのクリックを省く）。
-      const tripId = await guessSingleTrip(supabase, userId, receipt);
+      // LLM が確信を持って旅行を割り当てたら自動割り当て（受信箱でのクリックを省く）。
       await supabase
         .from("inbound_emails")
         .update({

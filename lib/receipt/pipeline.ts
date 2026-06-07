@@ -1,8 +1,4 @@
-import type { LanguageModel } from "ai";
-
-import { extractReceipt } from "./extract";
 import { selectReceiptLinks } from "./links";
-import type { Receipt } from "./schema";
 import { mimeToText } from "./text";
 
 // 受信レシート（生 MIME）→ 構造化データ、までのオーケストレーション。
@@ -41,14 +37,4 @@ export async function gatherReceiptText(
     }
   }
   return { subject, text: enriched };
-}
-
-// 生 MIME ＋ モデル → Receipt。model はユーザのキーで作ったものを渡す（BYOK）。
-export async function extractReceiptFromEmail(
-  raw: string | Uint8Array,
-  model: LanguageModel,
-  opts: GatherOptions = {},
-): Promise<Receipt> {
-  const input = await gatherReceiptText(raw, opts);
-  return extractReceipt(model, input);
 }
