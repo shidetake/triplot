@@ -12,6 +12,7 @@ import {
 } from "@/lib/receipt/merge";
 import { gatherReceiptText } from "@/lib/receipt/pipeline";
 import type { Receipt } from "@/lib/receipt/schema";
+import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // 後からマージで遡る未確定下書きの範囲（受信日）。
@@ -23,6 +24,28 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 function monthStartIso(): string {
   const d = new Date();
   return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+}
+
+// 旅行推測が1つに確定すればその trip_id を返す（自動割り当て用）。複数/0 は null。
+async function guessSingleTrip(
+  supabase: ServiceClient,
+  userId: string,
+  receipt: Receipt,
+): Promise<string | null> {
+  const { data: memberships } = await supabase
+    .from("trip_members")
+    .select("trips(id, start_date, end_date)")
+    .eq("user_id", userId)
+    .is("left_at", null);
+  const tripRanges: TripRange[] = (memberships ?? [])
+    .map((m) => m.trips)
+    .filter((t): t is NonNullable<typeof t> => t !== null)
+    .map((t) => ({ id: t.id, startDate: t.start_date, endDate: t.end_date }));
+  const guess = guessTripForReceipt(
+    { date: receipt.date, serviceDate: receipt.serviceDate },
+    tripRanges,
+  );
+  return guess.tripIds.length === 1 ? guess.tripIds[0] : null;
 }
 
 // 同じ取引の未確定下書きを探して合体結果を返す（無ければ null）。
@@ -129,6 +152,8 @@ async function extractInBackground(
         })
         .eq("id", emailId);
     } else {
+      // 旅行推測が1つに確定するなら自動割り当て（受信箱でのクリックを省く）。
+      const tripId = await guessSingleTrip(supabase, userId, receipt);
       await supabase
         .from("inbound_emails")
         .update({
@@ -138,6 +163,7 @@ async function extractInBackground(
           // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
           body_text: text,
           raw: null,
+          trip_id: tripId,
         })
         .eq("id", emailId);
     }

@@ -84,17 +84,14 @@ export default async function ImportPage() {
       r != null
         ? guessTripForReceipt({ date: r.date, serviceDate: r.serviceDate }, tripRanges)
         : null;
-    const guessedTripId =
-      guess && guess.tripIds.length === 1 ? guess.tripIds[0] : "";
+    // 単一推測は抽出時に自動割り当て済み。ここに残る未割当は複数候補 or 一致なし。
     const ambiguous = !!guess && guess.tripIds.length > 1;
     return {
       id: d.id,
       receipt: r,
       own,
       assignedTripId: d.trip_id,
-      // 割当済ならそれ、未割当は単一推測を初期選択。
-      defaultTripId: d.trip_id ?? guessedTripId,
-      guessedTripId,
+      defaultTripId: d.trip_id ?? "",
       ambiguous,
       children: childrenByParent.get(d.id) ?? [],
     };
@@ -189,10 +186,6 @@ export default async function ImportPage() {
                     ) : row.ambiguous ? (
                       <span className="text-xs text-amber-700">
                         候補が複数。旅行を選んでください
-                      </span>
-                    ) : row.guessedTripId ? (
-                      <span className="text-xs text-zinc-500">
-                        推測: {tripTitle.get(row.guessedTripId)}
                       </span>
                     ) : (
                       <span className="text-xs text-amber-700">要割当</span>
