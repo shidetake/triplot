@@ -990,6 +990,7 @@ export type Database = {
         Args: { p_lat: number; p_lng: number; p_place_id: string }
         Returns: undefined
       }
+      unmerge_inbound_email: { Args: { p_id: string }; Returns: undefined }
       update_event: {
         Args: {
           p_all_day: boolean

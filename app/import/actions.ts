@@ -16,6 +16,15 @@ export async function dismissDraftAction(formData: FormData): Promise<void> {
   revalidatePath("/import");
 }
 
+// 誤マージを取り消す（合体された子を独立下書きに戻す）。
+export async function unmergeAction(formData: FormData): Promise<void> {
+  const id = formData.get("id");
+  if (typeof id !== "string" || !id) return;
+  const supabase = await createClient();
+  await supabase.rpc("unmerge_inbound_email", { p_id: id });
+  revalidatePath("/import");
+}
+
 // 下書きを旅行に割り当てる（費用化＝確定は旅行画面で行う）。
 export async function assignTripAction(formData: FormData): Promise<void> {
   const id = formData.get("id");

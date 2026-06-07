@@ -7,7 +7,11 @@ import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
 
-import { assignTripAction, dismissDraftAction } from "./actions";
+import {
+  assignTripAction,
+  dismissDraftAction,
+  unmergeAction,
+} from "./actions";
 
 export default async function ImportPage() {
   const supabase = await createClient();
@@ -52,6 +56,26 @@ export default async function ImportPage() {
     .select("id", { count: "exact", head: true })
     .eq("status", "over_quota");
 
+  // 各下書きに合体された子メール（誤マージ確認・split 用）。
+  const draftIds = (drafts ?? []).map((d) => d.id);
+  const childrenByParent = new Map<
+    string,
+    { id: string; receipt: Receipt | null }[]
+  >();
+  if (draftIds.length > 0) {
+    const { data: children } = await supabase
+      .from("inbound_emails")
+      .select("id, extracted, merged_into")
+      .eq("status", "merged")
+      .in("merged_into", draftIds);
+    for (const c of children ?? []) {
+      if (!c.merged_into) continue;
+      const arr = childrenByParent.get(c.merged_into) ?? [];
+      arr.push({ id: c.id, receipt: c.extracted as unknown as Receipt | null });
+      childrenByParent.set(c.merged_into, arr);
+    }
+  }
+
   const rows = (drafts ?? []).map((d) => {
     const r = d.extracted as unknown as Receipt | null;
     const guess =
@@ -69,6 +93,7 @@ export default async function ImportPage() {
       defaultTripId: d.trip_id ?? guessedTripId,
       guessedTripId,
       ambiguous,
+      children: childrenByParent.get(d.id) ?? [],
     };
   });
 
@@ -170,6 +195,38 @@ export default async function ImportPage() {
                       <span className="text-xs text-amber-700">要割当</span>
                     )}
                   </div>
+
+                  {row.children.length > 0 && (
+                    <details className="mt-2 text-sm">
+                      <summary className="cursor-pointer text-zinc-500">
+                        🔗 {row.children.length + 1}通を合体
+                      </summary>
+                      <div className="mt-2 space-y-1">
+                        {row.children.map((ch) => (
+                          <div
+                            key={ch.id}
+                            className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
+                          >
+                            <span className="min-w-0 truncate text-xs text-zinc-600">
+                              {ch.receipt?.merchant || "(店名不明)"} ・{" "}
+                              {ch.receipt?.total} {ch.receipt?.currency} ・{" "}
+                              {ch.receipt?.date}
+                              {ch.receipt?.isUpdate ? "（確定/更新）" : ""}
+                            </span>
+                            <form action={unmergeAction}>
+                              <input type="hidden" name="id" value={ch.id} />
+                              <button
+                                type="submit"
+                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 transition hover:bg-zinc-100"
+                              >
+                                分ける
+                              </button>
+                            </form>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  )}
                 </div>
 
                 <form action={dismissDraftAction}>
