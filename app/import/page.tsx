@@ -209,7 +209,7 @@ export default async function ImportPage() {
                         <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-zinc-600">
                           {row.own?.merchant || "(店名不明)"} ・ {row.own?.total}{" "}
                           {row.own?.currency} ・ {row.own?.date}
-                          {row.own?.isUpdate ? "（確定/更新）" : "（利用）"}
+                          {row.own?.isUpdate ? "（更新・確定）" : ""}
                         </div>
                         {/* 合体された子メール（分けられる） */}
                         {row.children.map((ch) => (
@@ -221,7 +221,7 @@ export default async function ImportPage() {
                               {ch.receipt?.merchant || "(店名不明)"} ・{" "}
                               {ch.receipt?.total} {ch.receipt?.currency} ・{" "}
                               {ch.receipt?.date}
-                              {ch.receipt?.isUpdate ? "（確定/更新）" : "（利用）"}
+                              {ch.receipt?.isUpdate ? "（更新・確定）" : ""}
                             </span>
                             <form action={unmergeAction}>
                               <input type="hidden" name="id" value={ch.id} />
