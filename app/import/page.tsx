@@ -147,9 +147,9 @@ export default async function ImportPage() {
                   </div>
                   <div className="mt-1 text-sm text-zinc-600">
                     {row.receipt
-                      ? `${row.receipt.total} ${row.receipt.currency} ・ ${row.receipt.date} ・ ${row.receipt.category}`
+                      ? `${row.receipt.total} ${row.receipt.currency} / ${row.receipt.date} / ${row.receipt.category}`
                       : "(読み取り内容なし)"}
-                    {row.receipt?.location ? ` ・ ${row.receipt.location}` : ""}
+                    {row.receipt?.location ? ` / ${row.receipt.location}` : ""}
                   </div>
 
                   {/* 旅行の割り当て */}
@@ -207,8 +207,8 @@ export default async function ImportPage() {
                       <div className="mt-2 space-y-1">
                         {/* この下書き自身の元メール（分けられない本体） */}
                         <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-zinc-600">
-                          {row.own?.merchant || "(店名不明)"} ・ {row.own?.total}{" "}
-                          {row.own?.currency} ・ {row.own?.date}
+                          {row.own?.merchant || "(店名不明)"} / {row.own?.total}{" "}
+                          {row.own?.currency} / {row.own?.date}
                           {row.own?.isUpdate ? "（調整）" : ""}
                         </div>
                         {/* 合体された子メール（分けられる） */}
@@ -218,8 +218,8 @@ export default async function ImportPage() {
                             className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
                           >
                             <span className="min-w-0 text-xs text-zinc-600">
-                              {ch.receipt?.merchant || "(店名不明)"} ・{" "}
-                              {ch.receipt?.total} {ch.receipt?.currency} ・{" "}
+                              {ch.receipt?.merchant || "(店名不明)"} /{" "}
+                              {ch.receipt?.total} {ch.receipt?.currency} /{" "}
                               {ch.receipt?.date}
                               {ch.receipt?.isUpdate ? "（調整）" : ""}
                             </span>
