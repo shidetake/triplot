@@ -434,7 +434,7 @@ export default async function TripDetailPage({
     return [
       {
         id: d.id,
-        label: `${r.merchant || "(店名不明)"}・${r.total} ${r.currency}・${r.date}`,
+        label: `${r.merchant || "(店名不明)"} / ${r.total} ${r.currency} / ${r.date}`,
         initialPrice: r.total,
         initialCurrency: currency,
         initialCategoryId: categoryId,
@@ -466,7 +466,7 @@ export default async function TripDetailPage({
       <header className="mt-4">
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
         <p className="mt-2 text-sm text-zinc-600">
-          {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}・精算通貨:{" "}
+          {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"} / 精算通貨:{" "}
           {trip.default_currency}
         </p>
       </header>
