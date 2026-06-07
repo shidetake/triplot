@@ -38,7 +38,7 @@ async function tryMerge(
   ).toISOString();
   const { data: others } = await supabase
     .from("inbound_emails")
-    .select("id, extracted, body_text")
+    .select("id, extracted, merged_extracted, body_text")
     .eq("user_id", userId)
     .eq("status", "extracted")
     .neq("id", emailId)
@@ -64,7 +64,8 @@ async function tryMerge(
   }
 
   const drafts: DraftCandidate[] = (others ?? []).flatMap((o) => {
-    const r = o.extracted as unknown as Receipt | null;
+    // 突き合わせは実効値（合体済みなら合体後）で行う。
+    const r = (o.merged_extracted ?? o.extracted) as unknown as Receipt | null;
     if (!r) return [];
     const texts = [o.body_text, ...(childTextByParent.get(o.id) ?? [])].filter(
       Boolean,
@@ -110,10 +111,10 @@ async function extractInBackground(
     const merge = await tryMerge(supabase, userId, emailId, receipt, text);
 
     if (merge) {
-      // ターゲットは抽出結果だけ更新（本文は各メールの行に残し merged_into で辿る）。
+      // ターゲットの「自分の」extracted は残し、合体結果は merged_extracted に。
       await supabase
         .from("inbound_emails")
-        .update({ extracted: merge.merged })
+        .update({ merged_extracted: merge.merged })
         .eq("id", merge.targetId);
       // 来たメールは merged として畳む。本文(body_text)は自分の行に残す。
       await supabase

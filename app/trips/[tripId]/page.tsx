@@ -401,7 +401,7 @@ export default async function TripDetailPage({
   // 確定（費用化）はここの事前入力フォームで行う。
   const { data: tripDrafts } = await supabase
     .from("inbound_emails")
-    .select("id, extracted")
+    .select("id, extracted, merged_extracted")
     .eq("trip_id", tripId)
     .eq("status", "extracted")
     .order("received_at", { ascending: false });
@@ -413,7 +413,8 @@ export default async function TripDetailPage({
   }));
 
   const importDrafts = (tripDrafts ?? []).flatMap((d) => {
-    const r = d.extracted as unknown as Receipt | null;
+    // 合体済みなら合体後の値で確定フォームを事前入力する。
+    const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
     if (!r) return [];
     const currency: Currency =
       r.currency === "JPY" || r.currency === "USD" ? r.currency : defaultCurrency;

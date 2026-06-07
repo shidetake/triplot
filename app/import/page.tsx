@@ -39,7 +39,7 @@ export default async function ImportPage() {
   // 自分の抽出済み下書き（RLS で自分の行のみ）。割当済も未割当もここに出す。
   const { data: drafts } = await supabase
     .from("inbound_emails")
-    .select("id, received_at, subject, extracted, trip_id")
+    .select("id, received_at, subject, extracted, merged_extracted, trip_id")
     .eq("status", "extracted")
     .order("received_at", { ascending: false });
 
@@ -77,7 +77,9 @@ export default async function ImportPage() {
   }
 
   const rows = (drafts ?? []).map((d) => {
-    const r = d.extracted as unknown as Receipt | null;
+    // 実効値（合体済みなら合体後）を表示・推測に使う。own は各メール「自分の」値。
+    const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
+    const own = d.extracted as unknown as Receipt | null;
     const guess =
       r != null
         ? guessTripForReceipt({ date: r.date, serviceDate: r.serviceDate }, tripRanges)
@@ -88,6 +90,7 @@ export default async function ImportPage() {
     return {
       id: d.id,
       receipt: r,
+      own,
       assignedTripId: d.trip_id,
       // 割当済ならそれ、未割当は単一推測を初期選択。
       defaultTripId: d.trip_id ?? guessedTripId,
@@ -199,19 +202,26 @@ export default async function ImportPage() {
                   {row.children.length > 0 && (
                     <details className="mt-2 text-sm">
                       <summary className="cursor-pointer text-zinc-500">
-                        🔗 {row.children.length + 1}通を合体
+                        🔗 {row.children.length + 1}通を合体（明細）
                       </summary>
                       <div className="mt-2 space-y-1">
+                        {/* この下書き自身の元メール（分けられない本体） */}
+                        <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-zinc-600">
+                          {row.own?.merchant || "(店名不明)"} ・ {row.own?.total}{" "}
+                          {row.own?.currency} ・ {row.own?.date}
+                          {row.own?.isUpdate ? "（確定/更新）" : "（利用）"}
+                        </div>
+                        {/* 合体された子メール（分けられる） */}
                         {row.children.map((ch) => (
                           <div
                             key={ch.id}
                             className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
                           >
-                            <span className="min-w-0 truncate text-xs text-zinc-600">
+                            <span className="min-w-0 text-xs text-zinc-600">
                               {ch.receipt?.merchant || "(店名不明)"} ・{" "}
                               {ch.receipt?.total} {ch.receipt?.currency} ・{" "}
                               {ch.receipt?.date}
-                              {ch.receipt?.isUpdate ? "（確定/更新）" : ""}
+                              {ch.receipt?.isUpdate ? "（確定/更新）" : "（利用）"}
                             </span>
                             <form action={unmergeAction}>
                               <input type="hidden" name="id" value={ch.id} />

@@ -286,6 +286,7 @@ export type Database = {
           extracted: Json | null
           extracted_at: string | null
           id: string
+          merged_extracted: Json | null
           merged_into: string | null
           message_id: string | null
           raw: string | null
@@ -305,6 +306,7 @@ export type Database = {
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
+          merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
           raw?: string | null
@@ -324,6 +326,7 @@ export type Database = {
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
+          merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
           raw?: string | null
