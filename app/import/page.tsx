@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 
 import { CloseIcon } from "@/components/icons";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
-import { guessTripForReceipt, type TripRange } from "@/lib/receipt/tripMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
 
@@ -29,11 +28,6 @@ export default async function ImportPage() {
   const trips = (memberships ?? [])
     .map((m) => m.trips)
     .filter((t): t is NonNullable<typeof t> => t !== null);
-  const tripRanges: TripRange[] = trips.map((t) => ({
-    id: t.id,
-    startDate: t.start_date,
-    endDate: t.end_date,
-  }));
   const tripTitle = new Map(trips.map((t) => [t.id, t.title]));
 
   // 自分の抽出済み下書き（RLS で自分の行のみ）。割当済も未割当もここに出す。
@@ -78,21 +72,15 @@ export default async function ImportPage() {
 
   const rows = (drafts ?? []).map((d) => {
     // 実効値（合体済みなら合体後）を表示・推測に使う。own は各メール「自分の」値。
+    // 単一推測は抽出時に自動割り当て済み。ここに残る未割当は人が選ぶだけ。
     const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
     const own = d.extracted as unknown as Receipt | null;
-    const guess =
-      r != null
-        ? guessTripForReceipt({ date: r.date, serviceDate: r.serviceDate }, tripRanges)
-        : null;
-    // 単一推測は抽出時に自動割り当て済み。ここに残る未割当は複数候補 or 一致なし。
-    const ambiguous = !!guess && guess.tripIds.length > 1;
     return {
       id: d.id,
       receipt: r,
       own,
       assignedTripId: d.trip_id,
       defaultTripId: d.trip_id ?? "",
-      ambiguous,
       children: childrenByParent.get(d.id) ?? [],
     };
   });
@@ -183,12 +171,10 @@ export default async function ImportPage() {
                       >
                         → {tripTitle.get(row.assignedTripId) ?? "旅行"}で確定
                       </Link>
-                    ) : row.ambiguous ? (
-                      <span className="text-xs text-amber-700">
-                        候補が複数。旅行を選んでください
-                      </span>
                     ) : (
-                      <span className="text-xs text-amber-700">要割当</span>
+                      <span className="text-xs text-amber-700">
+                        要割当（旅行を選んでください）
+                      </span>
                     )}
                   </div>
 
