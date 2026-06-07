@@ -1,10 +1,13 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
+import Link from "next/link";
+import { after } from "next/server";
 
 import { CloseIcon } from "@/components/icons";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
+import { retryDueErrors } from "@/lib/receipt/process";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 import {
   assignTripAction,
@@ -18,6 +21,10 @@ export default async function ImportPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
+
+  // レスポンス後に、期限の来た失敗の自動リトライを裏で回す（受信箱を見に来た＝
+  // レート枠が空いてる頃、というちょうど良いタイミング。失敗直後は backoff で走らない）。
+  after(() => retryDueErrors(createServiceClient(), { userId: user.id }));
 
   // 自分が在籍中の旅行（割り当て先 ＋ 旅行推測）。
   const { data: memberships } = await supabase
@@ -35,6 +42,13 @@ export default async function ImportPage() {
     .from("inbound_emails")
     .select("id, received_at, subject, extracted, merged_extracted, trip_id")
     .eq("status", "extracted")
+    .order("received_at", { ascending: false });
+
+  // 取り込みに失敗した行（RLS で自分の行のみ）。next_retry_at があれば自動リトライ待ち。
+  const { data: errorRows } = await supabase
+    .from("inbound_emails")
+    .select("id, subject, sender, received_at, extract_error, next_retry_at")
+    .eq("status", "error")
     .order("received_at", { ascending: false });
 
   // 当月の取り込み使用量と、上限超過で保留中の件数。
@@ -111,6 +125,39 @@ export default async function ImportPage() {
           ⚠ 今月の上限（{MONTHLY_EMAIL_CAP}件）に達したため、{overQuota}件が未処理の
           まま保留されています。翌月にリセットされます。
         </p>
+      )}
+
+      {(errorRows ?? []).length > 0 && (
+        <ul className="mt-6 space-y-2">
+          {(errorRows ?? []).map((e) => (
+            <li
+              key={e.id}
+              className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50/50 p-3"
+            >
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium text-zinc-800">
+                  {e.subject || e.sender || "(件名なし)"}
+                </div>
+                <div className="mt-0.5 text-xs text-red-700">
+                  {e.next_retry_at
+                    ? "取り込みに失敗しました。時間をおいて自動で再試行します。"
+                    : "取り込みに失敗しました（再試行できませんでした）。"}
+                </div>
+              </div>
+              <form action={dismissDraftAction}>
+                <input type="hidden" name="id" value={e.id} />
+                <button
+                  type="submit"
+                  aria-label="破棄"
+                  title="破棄"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+                >
+                  <CloseIcon size={14} />
+                </button>
+              </form>
+            </li>
+          ))}
+        </ul>
       )}
 
       {rows.length === 0 ? (

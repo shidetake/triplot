@@ -289,9 +289,11 @@ export type Database = {
           merged_extracted: Json | null
           merged_into: string | null
           message_id: string | null
+          next_retry_at: string | null
           raw: string | null
           received_at: string
           recipient: string
+          retry_count: number
           sender: string
           size: number | null
           status: string
@@ -309,9 +311,11 @@ export type Database = {
           merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
+          next_retry_at?: string | null
           raw?: string | null
           received_at?: string
           recipient: string
+          retry_count?: number
           sender: string
           size?: number | null
           status?: string
@@ -329,9 +333,11 @@ export type Database = {
           merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
+          next_retry_at?: string | null
           raw?: string | null
           received_at?: string
           recipient?: string
+          retry_count?: number
           sender?: string
           size?: number | null
           status?: string
