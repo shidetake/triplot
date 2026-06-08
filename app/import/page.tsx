@@ -105,8 +105,8 @@ export default async function ImportPage() {
       </header>
 
       <p className="mt-3 text-sm text-zinc-600">
-        転送したレシートの下書きです。まず<strong>どの旅行か</strong>を割り当てます。
-        費用としての確定（支払者・割り勘・レート）は旅行の画面で行います。
+        転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを
+        変更できます。確定は各旅行の画面で行ってください。
       </p>
 
       <p className="mt-2 text-xs text-zinc-500">
@@ -248,7 +248,7 @@ export default async function ImportPage() {
                                 type="submit"
                                 className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 transition hover:bg-zinc-100"
                               >
-                                分ける
+                                分割
                               </button>
                             </form>
                           </div>
