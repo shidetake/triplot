@@ -1,13 +1,10 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { after } from "next/server";
 
 import { CloseIcon } from "@/components/icons";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
-import { retryDueErrors } from "@/lib/receipt/process";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 
 import {
   assignTripAction,
@@ -21,10 +18,6 @@ export default async function ImportPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
-
-  // レスポンス後に、期限の来た失敗の自動リトライを裏で回す（受信箱を見に来た＝
-  // レート枠が空いてる頃、というちょうど良いタイミング。失敗直後は backoff で走らない）。
-  after(() => retryDueErrors(createServiceClient(), { userId: user.id }));
 
   // 自分が在籍中の旅行（割り当て先 ＋ 旅行推測）。
   const { data: memberships } = await supabase

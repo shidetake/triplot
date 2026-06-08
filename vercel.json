@@ -1,8 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["hnd1"],
-  "crons": [
-    { "path": "/api/cron/expire-inbound", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/retry-extract", "schedule": "30 3 * * *" }
-  ]
+  "crons": [{ "path": "/api/cron/expire-inbound", "schedule": "0 3 * * *" }]
 }

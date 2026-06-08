@@ -16,11 +16,12 @@ flowchart LR
     dns[DNS<br/>ネームサーバ]
     email[Email Routing<br/>catch-all]
     worker[Email Worker]
+    heartbeat[Cron Worker<br/>毎分の心拍]
   end
 
   subgraph vercel[Vercel ・ hnd1 東京]
     app[Next.js 16 アプリ<br/>App Router]
-    cron[Cron<br/>expire / retry]
+    cron[Cron<br/>expire（日次）]
   end
 
   subgraph supa[Supabase ・ 東京 ap-northeast-1]
@@ -38,7 +39,8 @@ flowchart LR
   email --> worker
   worker -->|POST /api/inbound-email| app
   app -->|抽出 / マージ| gw
-  cron -->|GET /api/cron/*| app
+  cron -->|GET /api/cron/expire-inbound| app
+  heartbeat -->|GET /api/cron/retry-extract| app
 ```
 
 ## 役割
@@ -46,7 +48,7 @@ flowchart LR
 | サービス | 役割 | 補足 |
 |---|---|---|
 | **Dynadot** | ドメインのレジストラ（`triplot.app` の登録・更新） | ネームサーバは Cloudflare に委任済み。DNS 自体は触らない |
-| **Cloudflare** | DNS（ネームサーバ）＋ メール受信（Email Routing → Email Worker） | レシート転送メールを受け、Worker が webhook で Vercel に push |
+| **Cloudflare** | DNS（ネームサーバ）＋ メール受信（Email Routing → Email Worker）＋ リトライ心拍（Cron Worker・毎分） | レシート転送メールを受けて Vercel に push。毎分 retry エンドポイントを叩く |
 | **Vercel** | Next.js 16 アプリのホスティング＋ Cron | リージョン `hnd1`（東京）に固定。`main` への push で自動デプロイ |
 | **Supabase** | Postgres（+ RLS）＋ Auth | 東京 `ap-northeast-1`。Vercel と同一都市圏に co-locate（RTT 削減） |
 | **Vercel AI Gateway** | LLM アクセス（レシート抽出・マージ判定） | 既定モデル `google/gemini-2.5-flash`。将来は BYOK（ユーザのキー）も |
@@ -62,13 +64,14 @@ flowchart LR
 - **デプロイ**: GitHub `main` への push がトリガーの自動デプロイ。`vercel` CLI の手動デプロイは使わない。
 - **リージョン**: Vercel 関数 `hnd1` × Supabase `ap-northeast-1` を東京に揃え、サーバ側 Supabase クエリの太平洋越え RTT 積み上げを避ける。複数の独立クエリは `Promise.all` で並列化する方針。
 
-## Cron（Vercel）
+## 定期実行（2系統）
 
-| パス | スケジュール | 役割 |
-|---|---|---|
-| `/api/cron/expire-inbound` | 日次 | 90日経った未確定/失敗/合体の受信メール行を削除（保持最小化） |
-| `/api/cron/retry-extract` | 日次 | 抽出失敗の自動リトライのバックストップ（主トリガは受信箱の `after()`） |
+| 駆動 | パス | 間隔 | 役割 |
+|---|---|---|---|
+| **Vercel Cron** | `/api/cron/expire-inbound` | 日次 | 90日経った未確定/失敗/合体の受信メール行を削除（保持最小化） |
+| **Cloudflare Cron Worker** | `/api/cron/retry-extract` | **毎分** | 抽出失敗の自動リトライ（期限の来た error 行を再抽出） |
 
-> **Hobby プランの制約**: Vercel Cron は最大2本・各1日1回（プラン全体）。現在2本で上限。
-> 分単位の自動実行が要るなら Cloudflare Cron Triggers / Supabase pg_cron など外部スケジューラで
-> Vercel エンドポイントを叩く（プラン非依存）。詳細は [`import-flow.md`](./import-flow.md) のリトライ節。
+> **なぜ2系統か**: Vercel Hobby の Cron は各1日1回（プラン全体）なので、分単位が要る
+> リトライは Cloudflare の Cron Worker（毎分・無料・プラン非依存）に逃がす。心拍 Worker は
+> 状態を持たず `/api/cron/retry-extract` を叩くだけの独立ユニット（メール Worker とは別物）。
+> リトライの設計は [`import-flow.md`](./import-flow.md) のリトライ節を参照。

@@ -1,3 +1,5 @@
+import { APICallError } from "ai";
+
 import { extractReceipt, type TripHint } from "./extract";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
 import {
@@ -97,9 +99,10 @@ async function tryMerge(
 }
 
 // 自動リトライ: レート制限など一時的な失敗のみ対象（パース不能等は恒久失敗で再試行
-// しない）。バックオフは 5min から倍々で 6h 上限、MAX_RETRIES 回で打ち切り。
+// しない）。次回時刻は 429 の Retry-After を優先し、無ければ exp backoff（1min から
+// 倍々、6h 上限）。MAX_RETRIES 回で打ち切り。実発火は Cloudflare の毎分 cron。
 const MAX_RETRIES = 6;
-const RETRY_BASE_MS = 5 * 60_000;
+const RETRY_BASE_MS = 60_000;
 const RETRY_MAX_MS = 6 * 3_600_000;
 
 function isRetryable(msg: string): boolean {
@@ -109,6 +112,22 @@ function isRetryable(msg: string): boolean {
 }
 function backoffMs(retryCount: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** retryCount, RETRY_MAX_MS);
+}
+
+// 429 が返す Retry-After（秒数 or HTTP-date）を尊重する。無ければ null。
+function parseRetryAfterMs(err: unknown): number | null {
+  if (!APICallError.isInstance(err)) return null;
+  const ra = err.responseHeaders?.["retry-after"];
+  if (!ra) return null;
+  const secs = Number(ra);
+  if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
+  const at = Date.parse(ra);
+  return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
+}
+
+// 次回リトライまでの待ち（Retry-After 優先、上限 RETRY_MAX_MS）。
+function nextRetryMs(err: unknown, attempt: number): number {
+  return Math.min(parseRetryAfterMs(err) ?? backoffMs(attempt), RETRY_MAX_MS);
 }
 
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
@@ -204,9 +223,9 @@ export async function extractInBackground(
       .update({
         status: "error",
         extract_error: msg,
-        // レート制限等の一時的失敗だけ自動リトライ対象にする。
+        // レート制限等の一時的失敗だけ自動リトライ対象にする（解禁時刻は Retry-After 優先）。
         next_retry_at: isRetryable(msg)
-          ? new Date(Date.now() + backoffMs(0)).toISOString()
+          ? new Date(Date.now() + nextRetryMs(e, 0)).toISOString()
           : null,
       })
       .eq("id", emailId);
@@ -247,7 +266,7 @@ export async function retryDueErrors(
           extract_error: msg,
           next_retry_at: giveUp
             ? null
-            : new Date(Date.now() + backoffMs(attempt)).toISOString(),
+            : new Date(Date.now() + nextRetryMs(e, attempt)).toISOString(),
         })
         .eq("id", row.id);
     }

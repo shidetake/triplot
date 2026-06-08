@@ -53,47 +53,48 @@ sequenceDiagram
 購入時期の旅行ではなく**搭乗日（利用日）の旅行**に属する、と意味で判断できる。確信が無ければ
 `tripId = null`（受信箱で人が選ぶ）。
 
-## 2. 自動リトライ
+## 2. 自動リトライ（リコンサイル型）
 
 抽出が**一時的に失敗**（AI Gateway 無料枠のレート制限など）したら、その場では再試行せず
-`next_retry_at`（「後で再試行して」の付箋）を立てて記録するだけ。失敗直後に再試行すると同じ
-レート制限にまた当たるため、backoff で時間を置く。実際の再実行は**別トリガ**が付箋を見て動く。
+`next_retry_at`（解禁時刻）を立てて記録するだけ。真実は DB（`status=error` の行）にあり、
+**Cloudflare の毎分 cron が解禁済みの行を拾って再抽出する**＝状態を見て埋めるリコンサイル型。
+失敗・cron・行は互いに直接話さず DB 越しに協調するので、cron は「叩くだけの独立した心拍」。
 
 ```mermaid
 sequenceDiagram
   participant API as 抽出処理
   participant DB as Supabase
-  participant U as ユーザー
-  participant Inbox as /import 受信箱
-  participant Cron as 日次 cron
+  participant HB as Cloudflare<br/>Cron Worker（毎分）
+  participant Cron as /api/cron/retry-extract
 
   Note over API: 抽出が一時的失敗（レート制限等）
-  API->>DB: status=error, next_retry_at = now + backoff
+  API->>DB: status=error, next_retry_at = 解禁時刻（Retry-After 優先 / 無ければ backoff）
 
-  alt ユーザーが受信箱を開く（主トリガ・タイミング良）
-    U->>Inbox: アクセス
-    Inbox-->>U: 一覧を表示
-    Inbox->>DB: status=error かつ next_retry_at <= now を取得
-    Inbox->>API: 再抽出（retryDueErrors）
-  else 日次 cron（バックストップ・取りこぼし回収）
-    Cron->>DB: 同上を取得（全ユーザ）
-    Cron->>API: 再抽出
-  end
-
-  alt 成功
-    API->>DB: status=extracted（付箋クリア）
-  else 再失敗
-    API->>DB: retry_count++ / next_retry_at 延長（恒久失敗・上限で打ち切り）
+  loop 毎分
+    HB->>Cron: GET（CRON_SECRET 認証）
+    Cron->>DB: status=error かつ next_retry_at <= now を取得
+    alt 解禁済みの行がある
+      Cron->>API: 再抽出（retryDueErrors）
+      alt 成功
+        API->>DB: status=extracted（next_retry_at クリア）
+      else 再失敗
+        API->>DB: retry_count++ / next_retry_at 延長（上限・恒久失敗で打ち切り）
+      end
+    end
   end
 ```
 
+- **解禁時刻は Retry-After 優先**。429 が返す `Retry-After` をそのまま `next_retry_at` にする
+  （こちらが制限値を知らなくてもサーバが解禁時刻を教えてくれる）。ヘッダが無ければ exp backoff
+  （1分から倍々、6時間上限）。`MAX_RETRIES` 回で打ち切り。
 - **リトライ対象は一時的失敗のみ**。レート制限/タイムアウト等は `next_retry_at` をセット、パース不能
   などの恒久失敗は `next_retry_at = null` で対象外（受信箱に「再試行できませんでした」と表示）。
-- **backoff**: 5分から倍々、6時間上限。`MAX_RETRIES` 回で打ち切り。
-- **手動リトライボタンは置かない**: 失敗直後に押すと同じレート制限に当たるため、裏でタイミングを
-  見て自動リトライする方が筋が良い。
-- **Hobby プランの cron は日次**なので、タイミング担保は受信箱の `after()` が主、cron はバックストップ。
-  数分以内の自動リトライが要るなら Cloudflare Cron Triggers などで `/api/cron/retry-extract` を叩く。
+- **トリガは Cloudflare の毎分 cron だけ**（受信箱を開いた時に動かす案は廃止：`after()` は応答後に
+  走るので、確認しに来たユーザに失敗状態をそのまま見せてしまうため筋が悪い）。
+- **手動リトライボタンは置かない**: 失敗直後に押すと同じレート制限に当たるため。
+- **なぜ Cloudflare か**: Vercel Hobby の cron は日次。分単位の自走タイマーが要るのでメール受信と
+  同じく Cloudflare に逃がす（毎分・無料）。状態は DB が持つので、心拍 Worker はメール Worker と
+  別の独立ユニット（[`architecture.md`](./architecture.md) の定期実行を参照）。
 
 ## 3. 確定（下書き → 費用）
 
