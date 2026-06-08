@@ -3,7 +3,7 @@
 triplot がどの外部サービスをどう使っているかの俯瞰図。詳細な機能設計は
 [`import-flow.md`](./import-flow.md) などの個別ドキュメントを参照。
 
-## サービス構成（1枚）
+## サービス構成
 
 ```mermaid
 flowchart LR
