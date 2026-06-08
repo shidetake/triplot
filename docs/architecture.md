@@ -69,7 +69,7 @@ flowchart LR
 | 駆動 | パス | 間隔 | 役割 |
 |---|---|---|---|
 | **Vercel Cron** | `/api/cron/expire-inbound` | 日次 | 90日経った未確定/失敗/合体の受信メール行を削除（保持最小化） |
-| **Cloudflare Cron Worker** | `/api/cron/retry-extract` | **毎分** | 抽出失敗の自動リトライ（期限の来た error 行を再抽出） |
+| **Cloudflare Cron Worker** | `/api/cron/retry-extract` | **毎分** | 保留中の抽出を reconcile（期限の来た error を再試行＋枠の空いた over_quota を再抽出） |
 
 > **なぜ2系統か**: Vercel Hobby の Cron は各1日1回（プラン全体）なので、分単位が要る
 > リトライは Cloudflare の Cron Worker（毎分・無料・プラン非依存）に逃がす。心拍 Worker は

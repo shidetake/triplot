@@ -189,31 +189,15 @@ async function runExtraction(
   }
 }
 
-// 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限を超えたら
-// 抽出せず over_quota にする（コスト保護）。一時的失敗は next_retry_at を立てて
-// 自動リトライ対象に、恒久失敗は next_retry_at = null で error のまま残す。
-export async function extractInBackground(
+// 初回の抽出試行（runExtraction を try/catch でくるむ）。失敗時はレート制限等の
+// 一時的失敗だけ next_retry_at を立てて自動リトライ対象にし、恒久失敗は null で残す。
+// 受信時の extractInBackground と over_quota の drain で共有する。
+async function attemptExtraction(
   supabase: ServiceClient,
   emailId: string,
   userId: string,
   raw: string,
 ): Promise<void> {
-  // 当月の抽出回数（コスト）。確定/合体後も extracted_at は残るので、確定で
-  // カウントが減らない（status ではなく extracted_at で数える）。
-  const { count } = await supabase
-    .from("inbound_emails")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", userId)
-    .gte("extracted_at", monthStartIso());
-
-  if ((count ?? 0) >= MONTHLY_EMAIL_CAP) {
-    await supabase
-      .from("inbound_emails")
-      .update({ status: "over_quota" })
-      .eq("id", emailId);
-    return;
-  }
-
   try {
     await runExtraction(supabase, emailId, userId, raw);
   } catch (e) {
@@ -223,7 +207,7 @@ export async function extractInBackground(
       .update({
         status: "error",
         extract_error: msg,
-        // レート制限等の一時的失敗だけ自動リトライ対象にする（解禁時刻は Retry-After 優先）。
+        // 解禁時刻は Retry-After 優先（無ければ exp backoff）。
         next_retry_at: isRetryable(msg)
           ? new Date(Date.now() + nextRetryMs(e, 0)).toISOString()
           : null,
@@ -232,10 +216,41 @@ export async function extractInBackground(
   }
 }
 
+// 当月の抽出回数（コスト）。確定/合体後も extracted_at は残るので、確定でカウントが
+// 減らない（status ではなく extracted_at で数える）。
+async function monthlyExtractCount(
+  supabase: ServiceClient,
+  userId: string,
+): Promise<number> {
+  const { count } = await supabase
+    .from("inbound_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .gte("extracted_at", monthStartIso());
+  return count ?? 0;
+}
+
+// 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限を超えたら
+// 抽出せず over_quota にする（コスト保護）。翌月に枠が空けば reprocessOverQuota が拾う。
+export async function extractInBackground(
+  supabase: ServiceClient,
+  emailId: string,
+  userId: string,
+  raw: string,
+): Promise<void> {
+  if ((await monthlyExtractCount(supabase, userId)) >= MONTHLY_EMAIL_CAP) {
+    await supabase
+      .from("inbound_emails")
+      .update({ status: "over_quota" })
+      .eq("id", emailId);
+    return;
+  }
+  await attemptExtraction(supabase, emailId, userId, raw);
+}
+
 // 期限の来たリトライ対象（status='error' かつ next_retry_at <= now）を再抽出する。
-// 受信箱を開いた時（userId 指定）と日次 cron（全ユーザ）から呼ぶ。成功すれば
-// runExtraction が status を進める。再び失敗したらバックオフを延ばし、上限/恒久
-// 失敗で打ち切る。
+// Cloudflare の毎分 cron（retry-extract）から呼ぶ。成功すれば runExtraction が status を
+// 進める。再び失敗したらバックオフを延ばし、上限/恒久失敗で打ち切る。
 export async function retryDueErrors(
   supabase: ServiceClient,
   opts: { userId?: string; limit?: number } = {},
@@ -270,5 +285,42 @@ export async function retryDueErrors(
         })
         .eq("id", row.id);
     }
+  }
+}
+
+// 月間上限で保留された over_quota 行を、枠が空いた分だけ抽出する（翌月の自動再抽出）。
+// 枠はユーザ単位で「CAP − 当月抽出数」。月替わりでカウントが 0 に戻ると drain される。
+// retry と同じく Cloudflare の毎分 cron から呼ぶ＝「保留中の抽出を reconcile」する。
+// 1 回の処理件数を絞り、少量ずつ消化してレート制限に優しくする。
+export async function reprocessOverQuota(
+  supabase: ServiceClient,
+  opts: { limit?: number } = {},
+): Promise<void> {
+  const limit = opts.limit ?? 10;
+  // 候補を多めに取り、ユーザごとの残り枠で絞る（古い順＝受信が早いものから）。
+  const { data: rows } = await supabase
+    .from("inbound_emails")
+    .select("id, user_id, raw")
+    .eq("status", "over_quota")
+    .order("received_at", { ascending: true })
+    .limit(limit * 4);
+  if (!rows || rows.length === 0) return;
+
+  const remainingByUser = new Map<string, number>();
+  let processed = 0;
+  for (const row of rows) {
+    if (processed >= limit) break;
+    if (!row.raw || !row.user_id) continue;
+    let remaining = remainingByUser.get(row.user_id);
+    if (remaining === undefined) {
+      remaining = MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
+    }
+    if (remaining <= 0) {
+      remainingByUser.set(row.user_id, 0);
+      continue;
+    }
+    await attemptExtraction(supabase, row.id, row.user_id, row.raw);
+    remainingByUser.set(row.user_id, remaining - 1);
+    processed++;
   }
 }

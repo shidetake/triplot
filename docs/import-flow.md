@@ -128,6 +128,8 @@ stateDiagram-v2
 
   error --> extracted: リトライ成功
   error --> error: 再失敗（backoff 延長）
+  over_quota --> extracted: 翌月に枠が空いて再抽出
+  over_quota --> error: 再抽出が失敗
 
   extracted --> confirmed: 費用化（旅行画面）
   extracted --> dismissed: 破棄
@@ -142,7 +144,9 @@ stateDiagram-v2
   end note
 ```
 
-> `over_quota` の翌月自動再抽出は将来課題（現状は手動 or 翌月の受信で解消）。
+> `over_quota` は月間上限超過で保留された行。毎分の reconcile（retry-extract）が、ユーザの
+> 枠（`CAP − 当月抽出数`）が空いた分だけ少量ずつ再抽出する。月替わりでカウントが 0 に戻ると
+> 自動で drain される（ユーザの再転送は不要）。
 
 ## データモデルの要点
 
