@@ -36,21 +36,28 @@
 - shadcn/ui 導入を検討
 - 形が整ってから
 
-### 7. 費用・予定の自動追加（メール取り込み）（大）
-予約確認メールから費用や予定を自動で取り込む。
+### 7. 費用の自動取り込み（メール転送）— [x] 実装済み
+ユーザが `receipts+<token>@triplot.app` にレシートを転送 → LLM 抽出 → どの旅行か自動割り当て
+→ 旅行画面で確定。後からマージ・自動リトライ（Cloudflare 毎分 reconcile＋Retry-After）・
+over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は `docs/import-flow.md` 参照。
+- [ ] 予定（events）の取り込みは未着手（今回は費用に絞った）
+- [ ] 候補ホスト昇格ビュー → 下の「10. Admin 管理ページ」
+- [ ] link enrichment の自動 fetch（未知ホストを人ゲート無しで取得・SSRF/サイズ制限で限定）
 
-- **制約**: Gmail を API で読むスコープ（`gmail.readonly` / `gmail.metadata` 等）は全部
-  **restricted**。本番公開には第三者セキュリティ監査（CASA, 年 $500〜$75,000・毎年更新）が
-  必要で、個人開発には金額的に重い。Gmail 直読みは当面やらない。
-- **現実的な方式（TripIt 方式 / スコープ・監査不要）**:
-  1. triplot 専用の取り込みアドレス（例 `trip-xxxx@in.triplot.com`）を発行
-  2. ユーザーが予約確認メールをそこへ**転送**
-  3. 受信したメールだけをパース（受信基盤は Cloudflare Email Routing〔受信無料〕や
-     Postmark / SendGrid inbound など）
-  4. 抽出 → 既存の費用 / 予定フォームへ**下書き提案**（ユーザー確認の上で確定）
-- **パース**: 航空・ホテルのメールは schema.org 構造化データ（`FlightReservation` 等）が
-  あれば確実に使う。無ければ本文を LLM に渡して `{日付, 金額, 通貨, 場所}` を抽出
-- 要詰め: 受信ドメイン設計 / パースパイプライン / 下書き提案 UI
+### 8. ヘッダ整理（着手予定）
+右上に **[受信箱アイコン（Lucide `inbox`）] + [アバター]**。アバター = Google 写真 or 頭文字、
+メニュー = email / 設定 / ログアウト。旅行内の ⋯（コンテキスト操作）はそのまま。
+
+### 9. Apple ログイン（iOS アプリ向け）
+Google 等のソーシャルログインを出すなら App Store 規約で必須。Apple は**アバター画像を提供しない**
+（名前・email も初回のみ・private relay の可能性）→ 頭文字フォールバックが必須。
+
+### 10. Admin 管理ページ
+最初の用途 = link enrichment の**候補ホスト昇格ビュー**（`receipt_link_candidates` を出現回数順で
+見て、本物のレシート基盤を `RECEIPT_LINK_HOSTS`〔コード定数〕に昇格＝PR ゲート）。
+
+### 11. BYOK ランタイム（LLM をユーザ自身のキーで）
+長期の既定。今は Vercel AI Gateway（loss-leader）。`llm-key-settings` 等の足場あり・未接続。
 
 ## 設計負債（機能が一巡したら必ず対処。放置するとデータ移行が辛くなる）
 
@@ -76,4 +83,5 @@
 
 ## 現在着手中
 
-B: 手動 UI 確認待ち → 終わったら次は D（週ビュー） or C（地図ピン）
+直近: メール取り込み（#7）実装完了。次は #8 ヘッダ整理。
+（#1 B の手動 UI 確認、#2 D/C は積み残しの可能性あり）
