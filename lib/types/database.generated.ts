@@ -490,6 +490,30 @@ export type Database = {
           },
         ]
       }
+      receipt_link_candidates: {
+        Row: {
+          first_seen: string
+          host: string
+          last_seen: string
+          sample_url: string | null
+          seen_count: number
+        }
+        Insert: {
+          first_seen?: string
+          host: string
+          last_seen?: string
+          sample_url?: string | null
+          seen_count?: number
+        }
+        Update: {
+          first_seen?: string
+          host?: string
+          last_seen?: string
+          sample_url?: string | null
+          seen_count?: number
+        }
+        Relationships: []
+      }
       todo_likes: {
         Row: {
           created_at: string
@@ -970,6 +994,10 @@ export type Database = {
       nanoid: { Args: { size?: number }; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
       pick_member_color: { Args: { p_trip_id: string }; Returns: number }
+      record_receipt_link_candidate: {
+        Args: { p_host: string; p_sample_url?: string }
+        Returns: undefined
+      }
       regenerate_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string

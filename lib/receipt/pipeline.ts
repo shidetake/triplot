@@ -2,12 +2,11 @@ import { selectReceiptLinks } from "./links";
 import { mimeToText } from "./text";
 
 // 受信レシート（生 MIME）→ 構造化データ、までのオーケストレーション。
-// 方針（合意済み）: ライブ経路はルールのみ。本文＋PDF を集め、ルール（許可ドメイン）に
-// 一致する明細リンクがあれば fetchLink で取得して本文に足し、最後に1回だけ抽出する。
-// fetchLink はブラウザでは /api/fetch-link を呼ぶ関数を注入（CORS 回避）。テストや
-// リンク不要な経路では省略できる。
+// 本文＋PDF を集め、許可ドメインに一致する明細リンクがあれば fetchLink で取得して
+// 本文に足し、最後に1回だけ抽出する。fetchLink はサーバ側の fetchReceiptLink を注入
+// （[[fetchLink.ts]]）。テストやリンク不要な経路では省略できる。
 
-// URL → テキスト（取得不可なら null）。ブラウザ側で /api/fetch-link を呼ぶ想定。
+// URL → テキスト（取得不可なら null）。
 export type FetchLink = (url: string) => Promise<string | null>;
 
 export type GatherOptions = {

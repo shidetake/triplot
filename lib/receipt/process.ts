@@ -1,7 +1,9 @@
 import { APICallError } from "ai";
 
 import { extractReceipt, type TripHint } from "./extract";
+import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
+import { isAllowedReceiptHost } from "./links";
 import {
   type DraftCandidate,
   findMerge,
@@ -130,6 +132,28 @@ function nextRetryMs(err: unknown, attempt: number): number {
   return Math.min(parseRetryAfterMs(err) ?? backoffMs(attempt), RETRY_MAX_MS);
 }
 
+// LLM が見つけた明細リンク(detailUrl)のうち、まだ許可リストに無いホストを学習用に
+// 記録する。残すのはホスト名と path だけ（クエリ/トークンは捨てる）。人が出現回数を見て
+// 本物のレシート基盤を RECEIPT_LINK_HOSTS に昇格させる（昇格 UI は将来の admin）。
+async function recordCandidateLink(
+  supabase: ServiceClient,
+  detailUrl: string | null,
+): Promise<void> {
+  if (!detailUrl) return;
+  let u: URL;
+  try {
+    u = new URL(detailUrl);
+  } catch {
+    return;
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return;
+  if (isAllowedReceiptHost(u.hostname)) return; // 既に許可済みは enrich 済みなので不要
+  await supabase.rpc("record_receipt_link_candidate", {
+    p_host: u.hostname,
+    p_sample_url: `${u.protocol}//${u.host}${u.pathname}`,
+  });
+}
+
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
 // （リトライ可否の判定は呼び出し側）。
 async function runExtraction(
@@ -138,15 +162,19 @@ async function runExtraction(
   userId: string,
   raw: string,
 ): Promise<void> {
-  // 本文＋PDFテキストを作り（これが痩せ版）、それを抽出に使う。候補旅行も渡して
-  // 抽出と同時にどの旅行かを推論させる（追加トークンは旅行リスト分だけ）。
-  const { subject, text } = await gatherReceiptText(raw);
+  // 本文＋PDFテキストを作り（これが痩せ版）、許可ホストの明細リンクは fetch して本文に
+  // 付加（enrichment）。候補旅行も渡して、抽出と同時にどの旅行か＋明細リンクを推論させる。
+  const { subject, text } = await gatherReceiptText(raw, {
+    fetchLink: fetchReceiptLink,
+  });
   const trips = await fetchTripHints(supabase, userId);
-  const { receipt, tripId } = await extractReceipt(EXTRACT_MODEL, {
+  const { receipt, tripId, detailUrl } = await extractReceipt(EXTRACT_MODEL, {
     subject,
     text,
     trips,
   });
+  // LLM が見つけた明細リンクのうち、未許可ホストを学習用に記録（ホスト名のみ）。
+  await recordCandidateLink(supabase, detailUrl);
   const now = new Date().toISOString();
 
   // 後からマージ: 同じ取引の未確定下書きがあれば合体する。
