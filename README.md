@@ -1,5 +1,10 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## ドキュメント
+
+- [アーキテクチャ概要](./docs/architecture.md) — 使っている外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway）と役割の1枚図
+- [費用インポート（メール転送）設計](./docs/import-flow.md) — シーケンス図・状態遷移図つきの機能設計
+
 ## Getting Started
 
 First, run the development server:
