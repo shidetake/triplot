@@ -48,9 +48,14 @@ over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は
 右上に **[受信箱アイコン（Lucide `inbox`）] + [アバター]**。アバター = Google 写真 or 頭文字、
 メニュー = email / 設定 / ログアウト。旅行内の ⋯（コンテキスト操作）はそのまま。
 
-### 9. Apple ログイン（iOS アプリ向け）
-Google 等のソーシャルログインを出すなら App Store 規約で必須。Apple は**アバター画像を提供しない**
-（名前・email も初回のみ・private relay の可能性）→ 頭文字フォールバックが必須。
+### 9. ログイン方式（結論: 最低限 Google ＋ Apple）
+- 現状は **Google OAuth**（Supabase）。
+- iOS アプリでは **Sign in with Apple が必須**: App Store Review 4.8 で「他のソーシャルログイン
+  （Google 等）を出すなら Apple ログインも提供」が要求される。Google を残すなら Apple 追加が要る。
+- **結論: 最低限のログインは Google ＋ Apple**（Google は web/クロスプラットフォームで継続、Apple は
+  iOS 要件）。それ以上（メール+パスワード等）は当面不要。
+- 注意: Apple は**アバター画像を提供しない**（名前・email も初回のみ・private relay の可能性）→
+  頭文字フォールバック必須（`docs/design-guidelines.md` のアバター項参照）。
 
 ### 10. Admin 管理ページ
 最初の用途 = link enrichment の**候補ホスト昇格ビュー**（`receipt_link_candidates` を出現回数順で
