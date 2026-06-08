@@ -30,8 +30,6 @@ sequenceDiagram
   CF->>API: POST raw MIME（X-Inbound-Secret 認証）
   API->>DB: inbound_emails に保存（status=pending, user_id=宛先トークンから特定）
   API-->>CF: 200 OK（即時）
-
-  Note over API,LLM: after() — 応答後に裏で
   API->>DB: 月間取り込み数チェック
   alt 上限超過
     API->>DB: status=over_quota（抽出せず保留）
@@ -75,7 +73,6 @@ sequenceDiagram
   alt ユーザーが受信箱を開く（主トリガ・タイミング良）
     U->>Inbox: アクセス
     Inbox-->>U: 一覧を表示
-    Note over Inbox,API: after() — 応答後に裏で
     Inbox->>DB: status=error かつ next_retry_at <= now を取得
     Inbox->>API: 再抽出（retryDueErrors）
   else 日次 cron（バックストップ・取りこぼし回収）
