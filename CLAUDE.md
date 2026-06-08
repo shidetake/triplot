@@ -96,39 +96,8 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 - 既存 migration ファイルの書き直し（破壊的変更）は OK。Git 履歴より最終的なスキーマの綺麗さ優先。
 - 「本番運用フェーズに入った」とユーザが明示的に言うまでこの方針。それ以降は backfill を真面目に書く。
 
-## 規約
+## 規約・デザインルール
 
-- UI は **MVP 期間中ライトモード固定**（`app/globals.css` の `color-scheme: light`）。固定が外れるまで `dark:` variant は追加しない。
-- アプリ内コピーは日本語、コメントは日英混在 — 周囲のファイルに合わせる。
+UI / アイコン / ボタン配色 / コピー / ナビの規約は **[docs/design-guidelines.md](docs/design-guidelines.md)** に集約（単一の真実）。下記 `@` で取り込む。
 
-### アイコンの 2 ファミリー
-
-役割で使い分け。混ぜない:
-
-| 用途 | ファミリー | ファイル | 形 |
-|---|---|---|---|
-| **操作系**（保存・追加・削除・編集・閉じる…） | Lucide line（ISC） | `components/icons.tsx` | viewBox `0 0 24 24` / 線画 stroke |
-| **場所カテゴリ**（ピンの形） | Material Symbols Rounded FILL | `lib/placeIcons.ts` → `components/place-list.tsx` の `PlaceIcon` | viewBox `0 -960 960 960` / 塗り |
-| **費用カテゴリ** | Material Symbols Rounded FILL | `components/expense-category-icon.tsx` | 同上 |
-
-理由: 操作系は中立な線画で「動作を表す」、カテゴリ系は Google Maps の POI と概念を揃えるため Material Symbols（塗り）。新規アイコンを足すときも上の表に従う。SVG は web フォントを使わずパスを inline 埋め込み（依存ゼロ・FOUT 無し）。MS パスの取得は `https://fonts.gstatic.com/s/i/short-term/release/materialsymbolsrounded/{name}/fill1/24px.svg`、Lucide は `https://unpkg.com/lucide-static/icons/{name}.svg` から拾える。
-
-### ローカライズ準備: 文言は極力アイコンに寄せる
-
-将来の i18n コストを下げるため、**動作を表すボタンはアイコンで表現する**のを既定とする。テキストラベルは「アイコンだけで意味が確実に伝わらない」場合だけ。例:
-
-- 保存／追加／作成／編集／削除／閉じる／検索 → アイコン
-- 「キャンセル」など他に表しようの無いものは現状テキスト可（必要なら後で見直し）
-- アクセシビリティ用に `aria-label` + ホバー用に `title` は必ず付ける（読み上げ・hover ツールチップが文言の代わり）
-
-### ボタンの配色
-
-ボタンの色はその文脈での **役割** を表す:
-
-| 役割 | 色 | 例 |
-|---|---|---|
-| **Primary**（その文脈で最も主要な動作） | 黒塗り (`bg-black text-white`) | 保存 / 追加 / 編集（その popup の主動作） / 検索 |
-| **Destructive**（破壊的・取り消せない） | 赤枠 (`border-red-200 text-red-600`)、サイズは小さめキープ | 削除 |
-| **Neutral / Navigate**（閉じる・キャンセル・タブ切替） | 白枠 or 透明 | × 閉じる / キャンセル / 鉛筆だけの "編集を始める" 系（タブ的） |
-
-「Primary は黒」がブレるとレイアウトが浮くので、新規ボタンを足す時は **その popup / form 内で何がその場の主動作か** を考えて選ぶこと。SavedInfo の編集 ✏️ もその popup の主動作なので黒。
+@docs/design-guidelines.md
