@@ -44,13 +44,7 @@ export default async function SettingsPage() {
       </header>
 
       <div className="mt-10 space-y-6">
-        <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
-          <div>
-            <h2 className="font-medium">アバター</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              プロフィール画像。設定すると Google の写真より優先されます。
-            </p>
-          </div>
+        <section className="rounded-lg border border-zinc-200 p-5">
           <AvatarUpload
             userId={user.id}
             currentUrl={effectiveAvatar}
