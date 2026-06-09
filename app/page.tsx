@@ -74,7 +74,7 @@ export default async function Home() {
           </p>
         </div>
         {user && (
-          <div className="flex shrink-0 items-center gap-1">
+          <div className="flex shrink-0 items-center gap-3">
             <Link
               href="/import"
               aria-label={
@@ -87,7 +87,7 @@ export default async function Home() {
             >
               <InboxIcon size={24} />
               {inboxCount > 0 && (
-                <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                <span className="absolute -right-1.5 -top-1.5 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-white">
                   {inboxCount > 9 ? "9+" : inboxCount}
                 </span>
               )}
