@@ -52,6 +52,18 @@ export default async function Home() {
     (user?.user_metadata?.name as string | undefined) ??
     defaultDisplayName;
 
+  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。
+  let inboxCount = 0;
+  if (user) {
+    const { count } = await supabase
+      .from("inbound_emails")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("status", "extracted")
+      .is("trip_id", null);
+    inboxCount = count ?? 0;
+  }
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
       <header className="flex items-start justify-between gap-4">
@@ -65,11 +77,20 @@ export default async function Home() {
           <div className="flex shrink-0 items-center gap-1">
             <Link
               href="/import"
-              aria-label="取り込み"
-              title="取り込み"
-              className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+              aria-label={
+                inboxCount > 0 ? `取り込み（未割当 ${inboxCount} 件）` : "取り込み"
+              }
+              title={
+                inboxCount > 0 ? `取り込み（未割当 ${inboxCount} 件）` : "取り込み"
+              }
+              className="relative flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
             >
               <InboxIcon size={24} />
+              {inboxCount > 0 && (
+                <span className="absolute right-0.5 top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                  {inboxCount > 9 ? "9+" : inboxCount}
+                </span>
+              )}
             </Link>
             <AccountMenu
               email={user.email ?? null}
