@@ -14,17 +14,22 @@ export default async function Home() {
 
   // 旅行作成フォームの既定の表示名 = 保存済みの display_name。サインアップ時に Google 名の
   // 先頭トークンだけを保存しているので、ここでは切り出さずそのまま使う（設定で編集可）。
+  // あわせてカスタムアバター（avatar_url）も取得する。
   let defaultDisplayName: string | null = null;
+  let customAvatar: string | null = null;
   if (user) {
     const { data: profile } = await supabase
       .from("users")
-      .select("display_name")
+      .select("display_name, avatar_url")
       .eq("id", user.id)
       .single();
     defaultDisplayName = profile?.display_name?.trim() || null;
+    customAvatar = profile?.avatar_url ?? null;
   }
 
+  // 実効アバター: カスタム > Google の写真。
   const avatarUrl =
+    customAvatar ??
     (user?.user_metadata?.avatar_url as string | undefined) ??
     (user?.user_metadata?.picture as string | undefined) ??
     null;

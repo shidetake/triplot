@@ -759,6 +759,7 @@ export type Database = {
       }
       users: {
         Row: {
+          avatar_url: string | null
           created_at: string
           display_name: string | null
           google_uid: string | null
@@ -767,6 +768,7 @@ export type Database = {
           is_anonymous: boolean
         }
         Insert: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           google_uid?: string | null
@@ -775,6 +777,7 @@ export type Database = {
           is_anonymous?: boolean
         }
         Update: {
+          avatar_url?: string | null
           created_at?: string
           display_name?: string | null
           google_uid?: string | null

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { AvatarUpload } from "@/components/avatar-upload";
 import { SaveIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/server";
 
@@ -13,12 +14,22 @@ export default async function SettingsPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  // 既定の表示名（旅行作成/参加時のデフォルト）。
+  // 既定の表示名（旅行作成/参加時のデフォルト）＋ カスタムアバター。
   const { data: profile } = await supabase
     .from("users")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("id", user.id)
     .single();
+
+  // 実効アバター: カスタム > Google の写真 > 頭文字。
+  const googleAvatar =
+    (user.user_metadata?.avatar_url as string | undefined) ??
+    (user.user_metadata?.picture as string | undefined) ??
+    null;
+  const effectiveAvatar = profile?.avatar_url ?? googleAvatar;
+  const avatarInitial =
+    (profile?.display_name ?? user.email ?? "?").trim().charAt(0).toUpperCase() ||
+    "?";
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -35,10 +46,24 @@ export default async function SettingsPage() {
       <div className="mt-10 space-y-6">
         <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
           <div>
-            <h2 className="font-medium">表示名（デフォルト）</h2>
+            <h2 className="font-medium">アバター</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              旅行を作る・参加するときに既定で入る名前です。旅行ごとに別の名前を付ける
-              こともできます（既存の旅行の名前はここでは変わりません）。
+              プロフィール画像。設定すると Google の写真より優先されます。
+            </p>
+          </div>
+          <AvatarUpload
+            userId={user.id}
+            currentUrl={effectiveAvatar}
+            hasCustom={Boolean(profile?.avatar_url)}
+            initial={avatarInitial}
+          />
+        </section>
+
+        <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
+          <div>
+            <h2 className="font-medium">デフォルト表示名</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
             </p>
           </div>
           <form
