@@ -33,8 +33,7 @@ export default async function SettingsPage() {
           <div>
             <h2 className="font-medium">レシート取り込み用アドレス</h2>
             <p className="mt-1 text-sm text-zinc-600">
-              レシートメールをこのアドレス（あなた専用・固定）に転送すると、費用として
-              取り込めます。
+              レシートメールをこのアドレスに転送すると、費用として取り込めます。
             </p>
           </div>
           {importAddress ? (
