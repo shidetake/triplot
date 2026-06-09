@@ -63,7 +63,8 @@ over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は
 見て、本物のレシート基盤を `RECEIPT_LINK_HOSTS`〔コード定数〕に昇格＝PR ゲート）。
 
 ### 11. BYOK ランタイム（LLM をユーザ自身のキーで）
-長期の既定。今は Vercel AI Gateway（loss-leader）。`llm-key-settings` 等の足場あり・未接続。
+長期の既定。今は Vercel AI Gateway（loss-leader）。※未接続の足場（設定画面の APIキー入力 UI =
+`llm-key-settings` / `llmSettings`）は残骸だったので撤去済み。実装時は新規に作る。
 
 ### 12. iOS アプリ化
 Web アプリを iOS アプリとして出す。方式未定（PWA ラップ / Capacitor / React Native / ネイティブ）。

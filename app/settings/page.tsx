@@ -2,7 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { ImportAddress } from "@/components/import-address";
-import { LlmKeySettings } from "@/components/llm-key-settings";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { createClient } from "@/lib/supabase/server";
 
@@ -46,8 +45,6 @@ export default async function SettingsPage() {
             </p>
           )}
         </section>
-
-        <LlmKeySettings />
       </div>
     </main>
   );
