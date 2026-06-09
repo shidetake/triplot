@@ -87,7 +87,7 @@ export default async function Home() {
             >
               <InboxIcon size={24} />
               {inboxCount > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[9px] font-semibold leading-none text-white ring-2 ring-white">
+                <span className="absolute right-0 top-0 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-zinc-900 px-1 text-[9px] font-semibold leading-none text-white ring-1 ring-white">
                   {inboxCount > 9 ? "9+" : inboxCount}
                 </span>
               )}
