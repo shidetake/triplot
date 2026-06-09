@@ -2,8 +2,6 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { SaveIcon } from "@/components/icons";
-import { ImportAddress } from "@/components/import-address";
-import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { createClient } from "@/lib/supabase/server";
 
 import { updateDisplayNameAction } from "./actions";
@@ -21,10 +19,6 @@ export default async function SettingsPage() {
     .select("display_name")
     .eq("id", user.id)
     .single();
-
-  // per-user の取り込みアドレス（無ければ発行）。
-  const { data: importToken } = await supabase.rpc("ensure_import_token");
-  const importAddress = importToken ? buildImportAddress(importToken) : null;
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
@@ -68,22 +62,6 @@ export default async function SettingsPage() {
               <SaveIcon size={18} />
             </button>
           </form>
-        </section>
-
-        <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
-          <div>
-            <h2 className="font-medium">レシート取り込み用アドレス</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              レシートメールをこのアドレスに転送すると、費用として取り込めます。
-            </p>
-          </div>
-          {importAddress ? (
-            <ImportAddress address={importAddress} />
-          ) : (
-            <p className="text-sm text-red-600">
-              アドレスの取得に失敗しました。再読み込みしてください。
-            </p>
-          )}
         </section>
       </div>
     </main>
