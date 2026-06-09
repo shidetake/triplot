@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { CloseIcon } from "@/components/icons";
+import { ImportAddress } from "@/components/import-address";
+import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -18,6 +20,10 @@ export default async function ImportPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
+
+  // 転送先アドレス（per-user・固定。無ければ発行）。受信箱ですぐ見えるように出す。
+  const { data: importToken } = await supabase.rpc("ensure_import_token");
+  const importAddress = importToken ? buildImportAddress(importToken) : null;
 
   // 自分が在籍中の旅行（割り当て先 ＋ 旅行推測）。
   const { data: memberships } = await supabase
@@ -109,7 +115,16 @@ export default async function ImportPage() {
         変更できます。確定は各旅行の画面で行ってください。
       </p>
 
-      <p className="mt-2 text-xs text-zinc-500">
+      {importAddress && (
+        <div className="mt-4 rounded-lg border border-zinc-200 p-4">
+          <p className="text-xs text-zinc-500">レシートメールの転送先</p>
+          <div className="mt-2">
+            <ImportAddress address={importAddress} />
+          </div>
+        </div>
+      )}
+
+      <p className="mt-3 text-xs text-zinc-500">
         今月の取り込み: {usedThisMonth ?? 0} / {MONTHLY_EMAIL_CAP} 件
       </p>
 
@@ -155,11 +170,7 @@ export default async function ImportPage() {
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-zinc-500">
-          まだ下書きはありません。
-          <Link href="/settings" className="underline underline-offset-2">
-            取り込み用アドレス
-          </Link>
-          にレシートを転送してみてください。
+          まだ下書きはありません。上の転送先アドレスにレシートを転送してみてください。
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
