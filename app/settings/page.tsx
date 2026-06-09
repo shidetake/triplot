@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { SaveIcon } from "@/components/icons";
 import { ImportAddress } from "@/components/import-address";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { createClient } from "@/lib/supabase/server";
+
+import { updateDisplayNameAction } from "./actions";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -11,6 +14,13 @@ export default async function SettingsPage() {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
+
+  // 既定の表示名（旅行作成/参加時のデフォルト）。
+  const { data: profile } = await supabase
+    .from("users")
+    .select("display_name")
+    .eq("id", user.id)
+    .single();
 
   // per-user の取り込みアドレス（無ければ発行）。
   const { data: importToken } = await supabase.rpc("ensure_import_token");
@@ -29,6 +39,37 @@ export default async function SettingsPage() {
       </header>
 
       <div className="mt-10 space-y-6">
+        <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
+          <div>
+            <h2 className="font-medium">表示名（デフォルト）</h2>
+            <p className="mt-1 text-sm text-zinc-600">
+              旅行を作る・参加するときに既定で入る名前です。旅行ごとに別の名前を付ける
+              こともできます（既存の旅行の名前はここでは変わりません）。
+            </p>
+          </div>
+          <form
+            action={updateDisplayNameAction}
+            className="flex items-center gap-2"
+          >
+            <input
+              type="text"
+              name="display_name"
+              defaultValue={profile?.display_name ?? ""}
+              placeholder="名前"
+              maxLength={50}
+              className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
+            />
+            <button
+              type="submit"
+              aria-label="保存"
+              title="保存"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
+            >
+              <SaveIcon size={18} />
+            </button>
+          </form>
+        </section>
+
         <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
           <div>
             <h2 className="font-medium">レシート取り込み用アドレス</h2>
