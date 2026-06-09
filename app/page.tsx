@@ -1,8 +1,9 @@
 import Link from "next/link";
 
+import { AccountMenu } from "@/components/account-menu";
 import { CreateTripButton } from "@/components/create-trip-button";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
-import { SignOutButton } from "@/components/sign-out-button";
+import { InboxIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function Home() {
@@ -42,13 +43,41 @@ export default async function Home() {
     }
   }
 
+  const avatarUrl =
+    (user?.user_metadata?.avatar_url as string | undefined) ??
+    (user?.user_metadata?.picture as string | undefined) ??
+    null;
+  const accountName =
+    (user?.user_metadata?.full_name as string | undefined) ??
+    (user?.user_metadata?.name as string | undefined) ??
+    defaultDisplayName;
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-16">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight">triplot</h1>
-        <p className="mt-2 text-sm text-zinc-600">
-          友達と旅行プランを立てて、思い出として残す。
-        </p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">triplot</h1>
+          <p className="mt-2 text-sm text-zinc-600">
+            友達と旅行プランを立てて、思い出として残す。
+          </p>
+        </div>
+        {user && (
+          <div className="flex shrink-0 items-center gap-1">
+            <Link
+              href="/import"
+              aria-label="取り込み"
+              title="取り込み"
+              className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
+            >
+              <InboxIcon size={20} />
+            </Link>
+            <AccountMenu
+              email={user.email ?? null}
+              name={accountName}
+              avatarUrl={avatarUrl}
+            />
+          </div>
+        )}
       </header>
 
       {!user ? (
@@ -60,27 +89,6 @@ export default async function Home() {
         </section>
       ) : (
         <section className="mt-12 space-y-8">
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-zinc-600">
-              ログイン中: {user.email ?? "(匿名)"}
-            </p>
-            <div className="flex items-center gap-4">
-              <Link
-                href="/import"
-                className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-              >
-                取り込み
-              </Link>
-              <Link
-                href="/settings"
-                className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-              >
-                設定
-              </Link>
-              <SignOutButton />
-            </div>
-          </div>
-
           <CreateTripSection userId={user.id} defaultDisplayName={defaultDisplayName} />
 
           <TripList userId={user.id} />
