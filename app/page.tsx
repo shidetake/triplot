@@ -69,7 +69,7 @@ export default async function Home() {
               title="取り込み"
               className="flex h-9 w-9 items-center justify-center rounded-full text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900"
             >
-              <InboxIcon size={20} />
+              <InboxIcon size={24} />
             </Link>
             <AccountMenu
               email={user.email ?? null}
