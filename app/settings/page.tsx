@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AvatarUpload } from "@/components/avatar-upload";
+import { HelpTip } from "@/components/help-tip";
 import { SaveIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/server";
 
@@ -43,45 +44,37 @@ export default async function SettingsPage() {
         </Link>
       </header>
 
-      <div className="mt-10 space-y-6">
-        <section className="rounded-lg border border-zinc-200 p-5">
-          <AvatarUpload
-            userId={user.id}
-            currentUrl={effectiveAvatar}
-            hasCustom={Boolean(profile?.avatar_url)}
-            initial={avatarInitial}
+      <div className="mt-10 flex items-center gap-4">
+        <AvatarUpload
+          userId={user.id}
+          currentUrl={effectiveAvatar}
+          hasCustom={Boolean(profile?.avatar_url)}
+          initial={avatarInitial}
+        />
+        <form
+          action={updateDisplayNameAction}
+          className="flex flex-1 items-center gap-2"
+        >
+          <input
+            type="text"
+            name="display_name"
+            defaultValue={profile?.display_name ?? ""}
+            placeholder="名前"
+            maxLength={50}
+            className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
           />
-        </section>
-
-        <section className="space-y-3 rounded-lg border border-zinc-200 p-5">
-          <div>
-            <h2 className="font-medium">デフォルト表示名</h2>
-            <p className="mt-1 text-sm text-zinc-600">
-              旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
-            </p>
-          </div>
-          <form
-            action={updateDisplayNameAction}
-            className="flex items-center gap-2"
+          <HelpTip label="デフォルト表示名について" align="right">
+            旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
+          </HelpTip>
+          <button
+            type="submit"
+            aria-label="保存"
+            title="保存"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
           >
-            <input
-              type="text"
-              name="display_name"
-              defaultValue={profile?.display_name ?? ""}
-              placeholder="名前"
-              maxLength={50}
-              className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
-            />
-            <button
-              type="submit"
-              aria-label="保存"
-              title="保存"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
-            >
-              <SaveIcon size={18} />
-            </button>
-          </form>
-        </section>
+            <SaveIcon size={18} />
+          </button>
+        </form>
       </div>
     </main>
   );

@@ -139,8 +139,8 @@ export function AvatarUpload({
   }
 
   return (
-    <div className="flex items-center gap-4">
-      <div className="relative shrink-0">
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative">
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
@@ -169,19 +169,18 @@ export function AvatarUpload({
           className="hidden"
         />
       </div>
-      <div className="space-y-1 text-xs">
-        {busy && <p className="text-zinc-500">処理中…</p>}
-        {hasCustom && !busy && (
-          <button
-            type="button"
-            onClick={onRemove}
-            className="text-red-600 underline-offset-2 hover:underline"
-          >
-            削除
-          </button>
-        )}
-        {error && <p className="text-red-600">{error}</p>}
-      </div>
+      {busy ? (
+        <p className="text-xs text-zinc-500">処理中…</p>
+      ) : hasCustom ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="text-xs text-red-600 underline-offset-2 hover:underline"
+        >
+          削除
+        </button>
+      ) : null}
+      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }
