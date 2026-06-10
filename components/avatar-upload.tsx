@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 
+import { EditIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 
 // アバターの変更。負債を避けるため:
@@ -139,48 +140,47 @@ export function AvatarUpload({
 
   return (
     <div className="flex items-center gap-4">
-      <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-zinc-200">
-        {currentUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={currentUrl} alt="" className="h-full w-full object-cover" />
-        ) : (
-          initial
-        )}
-      </div>
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <input
-            ref={fileRef}
-            id="avatar-file"
-            type="file"
-            accept="image/*"
-            onChange={onFile}
-            disabled={busy}
-            className="hidden"
-          />
-          <label
-            htmlFor="avatar-file"
-            className={`cursor-pointer rounded-md bg-black px-3 py-1.5 text-sm font-medium text-white transition hover:bg-zinc-800 ${
-              busy ? "pointer-events-none opacity-50" : ""
-            }`}
-          >
-            {busy ? "処理中…" : "画像を選ぶ"}
-          </label>
-          {hasCustom && (
-            <button
-              type="button"
-              onClick={onRemove}
-              disabled={busy}
-              className="rounded-md border border-red-200 px-3 py-1.5 text-sm text-red-600 transition hover:bg-red-50 disabled:opacity-50"
-            >
-              削除
-            </button>
+      <div className="relative shrink-0">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={busy}
+          aria-label="アバターを変更"
+          title="アバターを変更"
+          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-zinc-200 transition hover:opacity-90 disabled:opacity-50"
+        >
+          {currentUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={currentUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            initial
           )}
-        </div>
-        <p className="text-xs text-zinc-500">
-          正方形に切り抜いて 256px に縮小して保存します。
-        </p>
-        {error && <p className="text-xs text-red-600">{error}</p>}
+        </button>
+        {/* 右上の鉛筆マーク（編集できる感）。クリックは下のアバターボタンに通す。 */}
+        <span className="pointer-events-none absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black text-white ring-2 ring-white">
+          <EditIcon size={13} />
+        </span>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          onChange={onFile}
+          disabled={busy}
+          className="hidden"
+        />
+      </div>
+      <div className="space-y-1 text-xs">
+        {busy && <p className="text-zinc-500">処理中…</p>}
+        {hasCustom && !busy && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="text-red-600 underline-offset-2 hover:underline"
+          >
+            削除
+          </button>
+        )}
+        {error && <p className="text-red-600">{error}</p>}
       </div>
     </div>
   );
