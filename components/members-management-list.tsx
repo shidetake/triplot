@@ -107,7 +107,7 @@ export function MembersManagementList({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none disabled:opacity-50"
+                className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
               <button
                 type="button"
@@ -125,7 +125,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label="保存"
                 title="保存"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
               >
                 <CheckIcon size={16} />
               </button>

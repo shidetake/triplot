@@ -112,7 +112,7 @@ export function CreateTripForm({
           <label
             className={`${radio} ${
               mode === "new"
-                ? "border-black bg-black text-white"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
             }`}
           >
@@ -131,7 +131,7 @@ export function CreateTripForm({
           <label
             className={`${radio} ${
               mode === "copy"
-                ? "border-black bg-black text-white"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
             }`}
           >
@@ -156,7 +156,7 @@ export function CreateTripForm({
             value={sourceId}
             onChange={(e) => pickSource(e.target.value)}
             required={mode === "copy"}
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           >
             <option value="" disabled>
               旅行を選択
@@ -187,7 +187,7 @@ export function CreateTripForm({
           placeholder="ハワイ旅行"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         />
       </label>
 
@@ -224,7 +224,7 @@ export function CreateTripForm({
           name="default_currency"
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         >
           {CURRENCIES.map((c) => (
             <option key={c.value} value={c.value}>
@@ -239,7 +239,7 @@ export function CreateTripForm({
         disabled={isPending}
         aria-label="作成"
         title="作成"
-        className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+        className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
       >
         <PlusIcon size={20} />
       </button>
@@ -277,7 +277,7 @@ function Field({ label, name, type = "text", ...rest }: FieldProps) {
         {...rest}
         type={type}
         name={name}
-        className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+        className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
       />
     </label>
   );

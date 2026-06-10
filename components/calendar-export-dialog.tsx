@@ -218,7 +218,7 @@ export function CalendarExportDialog({
   }, [selected, newName, tripTitle, targetEvents]);
 
   const btnBlack =
-    "h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50";
+    "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";
   const btnGhost =
     "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100";
 

@@ -369,7 +369,7 @@ export function TripActions({
               type="button"
               onClick={onCopy}
               disabled={isPending || !inviteToken}
-              className="h-9 w-full rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+              className="h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
             </button>
@@ -396,7 +396,7 @@ export function TripActions({
       )}
 
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-zinc-900 px-4 py-2 text-sm text-white shadow-lg">
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground shadow-lg">
           {toast}
         </div>
       )}

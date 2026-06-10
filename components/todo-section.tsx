@@ -371,7 +371,7 @@ export function TodoSection({
           onClick={add}
           disabled={isPending || draft.trim() === ""}
           aria-label="追加"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-900 text-white transition hover:bg-zinc-700 disabled:opacity-40"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-zinc-700 disabled:opacity-40"
         >
           <PlusIcon size={16} />
         </button>
@@ -393,7 +393,7 @@ export function TodoSection({
                 onClick={() => toggle(todo)}
                 className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] border transition ${
                   todo.done
-                    ? "border-blue-500 bg-blue-500 text-white"
+                    ? "border-primary bg-primary text-primary-foreground"
                     : "border-zinc-300 bg-white hover:border-zinc-400"
                 }`}
               >

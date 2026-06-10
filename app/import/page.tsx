@@ -198,7 +198,7 @@ export default async function ImportPage() {
                       <select
                         name="trip_id"
                         defaultValue={row.defaultTripId}
-                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-black focus:outline-none"
+                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
                         <option value="">（旅行を選択）</option>
                         {trips.map((t) => (
@@ -209,7 +209,7 @@ export default async function ImportPage() {
                       </select>
                       <button
                         type="submit"
-                        className="h-8 rounded-md bg-black px-3 text-sm font-medium text-white transition hover:bg-zinc-800"
+                        className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
                       >
                         {row.assignedTripId ? "変更" : "割り当て"}
                       </button>

@@ -19,7 +19,7 @@ export function AddExpenseButton(props: Props) {
         type="button"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
         aria-label="費用を追加"
-        className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
+        className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
       >
         <PlusIcon size={18} />
       </button>

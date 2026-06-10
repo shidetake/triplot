@@ -70,6 +70,12 @@ over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は
 Web アプリを iOS アプリとして出す。方式未定（PWA ラップ / Capacitor / React Native / ネイティブ）。
 Apple ログイン（#9）が前提になる。デザインルールやコピーもアプリ前提で見直す箇所が出るかも。
 
+### 13. ダークモード対応（近いうちに）
+Primary / 選択・アクティブは既に `bg-primary` 等のテーマトークンに移行済み（ライト黒・ダーク反転）。
+残りの neutral 系（`bg-white` / `text-zinc-*` / `border-zinc-*` / 各 `bg-zinc-*`、amber/blue の
+セマンティック色など）をトークン or `dark:` 対応に置き換え、`.dark` の値を詰める。最後に
+`app/globals.css` の `color-scheme: light` 固定を外す。設計は `docs/design-guidelines.md` のボタン配色節。
+
 ## 設計負債（機能が一巡したら必ず対処。放置するとデータ移行が辛くなる）
 
 ### 通貨モデルが JPY/USD 固定問題

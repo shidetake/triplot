@@ -46,7 +46,7 @@ function StatusSelect({
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
       >
         {sorted.map((s) => (
           <option key={s.id} value={s.id}>
@@ -125,7 +125,7 @@ function IconPicker({
             title={o.label}
             className={`flex h-8 w-8 items-center justify-center rounded-md border ${
               value === o.icon
-                ? "border-black bg-zinc-900 text-white"
+                ? "border-primary bg-primary text-primary-foreground"
                 : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
             }`}
           >
@@ -267,7 +267,7 @@ export function CandidateInfo({
             type="text"
             name="note"
             placeholder="営業時間、予約要、など"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -276,7 +276,7 @@ export function CandidateInfo({
           disabled={isPending}
           aria-label="この場所を追加"
           title="この場所を追加"
-          className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           <PlusIcon size={20} />
         </button>
@@ -351,7 +351,7 @@ export function DraftInfo({
             required
             autoFocus
             placeholder="例: 集合場所、撮影スポット"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
         <StatusSelect
@@ -377,7 +377,7 @@ export function DraftInfo({
             type="text"
             name="note"
             placeholder="営業時間、予約要、など"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -386,7 +386,7 @@ export function DraftInfo({
           disabled={isPending}
           aria-label="この地点を追加"
           title="この地点を追加"
-          className="flex h-9 w-full items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           <PlusIcon size={20} />
         </button>
@@ -459,7 +459,7 @@ export function LocateInfo({
           type="button"
           onClick={onConfirm}
           disabled={isPending}
-          className="h-9 flex-1 rounded-md bg-black text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="h-9 flex-1 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {isPending ? "設定中..." : "ここに設定"}
         </button>
@@ -609,7 +609,7 @@ export function SavedInfo({
               name="note"
               defaultValue={place.note ?? ""}
               placeholder="営業時間、予約要、など"
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
             />
           </label>
           <div className="flex gap-2">
@@ -619,7 +619,7 @@ export function SavedInfo({
               disabled={isPending}
               aria-label="保存"
               title="保存"
-              className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+              className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
               <SaveIcon size={18} />
             </button>
@@ -642,7 +642,7 @@ export function SavedInfo({
                 onClick={() => setEditing(true)}
                 aria-label="編集"
                 title="編集"
-                className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800"
+                className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90"
               >
                 <EditIcon size={18} />
               </button>

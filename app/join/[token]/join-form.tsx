@@ -60,7 +60,7 @@ export function JoinForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="ゲスト"
-          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
+          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
         />
       </label>
 
@@ -69,7 +69,7 @@ export function JoinForm({
           type="button"
           onClick={joinDirect}
           disabled={isPending}
-          className="h-11 w-full rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="h-11 w-full rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {isPending ? "参加中..." : "この旅行に参加する"}
         </button>
@@ -79,7 +79,7 @@ export function JoinForm({
             type="button"
             onClick={joinAsGuest}
             disabled={isPending}
-            className="h-11 w-full rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+            className="h-11 w-full rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
           >
             {isPending ? "参加中..." : "ゲストとして参加（ログイン不要）"}
           </button>

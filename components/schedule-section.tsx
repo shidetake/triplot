@@ -174,7 +174,7 @@ export function ScheduleSection({
             type="button"
             onClick={openCreate}
             aria-label="予定を追加"
-            className="flex h-9 w-9 items-center justify-center rounded-md bg-black text-white transition hover:bg-zinc-800"
+            className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
           >
             <PlusIcon size={18} />
           </button>

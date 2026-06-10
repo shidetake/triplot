@@ -39,7 +39,7 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 const initialState: EventMutationState = { ok: false, error: null };
 
 const inputCls =
-  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none";
+  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none";
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
@@ -331,7 +331,7 @@ export function EventForm({
             onClick={() => setKind3(k)}
             className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
               kind3 === k
-                ? "bg-black text-white"
+                ? "bg-primary text-primary-foreground"
                 : "text-zinc-600 hover:bg-zinc-100"
             }`}
           >
@@ -667,7 +667,7 @@ export function EventForm({
           disabled={isPending}
           aria-label={isEdit ? "保存" : "追加"}
           title={isEdit ? "保存" : "追加"}
-          className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {isEdit ? <SaveIcon size={18} /> : <PlusIcon size={20} />}
         </button>

@@ -23,7 +23,7 @@ export function CreateTripButton({
       <button
         type="button"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
-        className="inline-flex h-12 items-center justify-center rounded-md bg-black px-6 font-medium text-white transition hover:bg-zinc-800"
+        className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-medium text-primary-foreground transition hover:bg-primary/90"
       >
         新しい旅行を作る
       </button>

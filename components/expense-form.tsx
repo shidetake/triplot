@@ -358,7 +358,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           />
         </label>
         <label className="block text-sm">
@@ -367,7 +367,7 @@ export function ExpenseForm({
             name="local_currency"
             value={localCurrency}
             onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
@@ -395,7 +395,7 @@ export function ExpenseForm({
                 ? String(averageRates[localCurrency])
                 : "例: 150"
             }
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           />
           {averageRates[localCurrency] !== undefined && (
             <span className="mt-1 block text-xs text-zinc-500">
@@ -445,7 +445,7 @@ export function ExpenseForm({
           name="note"
           placeholder="ランチ、空港バス、など"
           defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         />
       </label>
 
@@ -454,7 +454,7 @@ export function ExpenseForm({
         <select
           name="payer_member_id"
           defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         >
           {members.map((m) => (
             <option key={m.id} value={m.id}>
@@ -501,7 +501,7 @@ export function ExpenseForm({
               required
               value={paidAtTime}
               onChange={(e) => setPaidAtTime(e.target.value)}
-              className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-black focus:outline-none"
+              className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
             />
           </div>
         ) : (
@@ -626,7 +626,7 @@ export function ExpenseForm({
                     aria-pressed={on}
                     className={
                       on
-                        ? "rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-900 ring-1 ring-blue-300"
+                        ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
                         : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
                     }
                   >
@@ -666,7 +666,7 @@ export function ExpenseForm({
           disabled={isPending}
           aria-label={isEdit ? "保存" : "追加"}
           title={isEdit ? "保存" : "追加"}
-          className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={22} />}
         </button>

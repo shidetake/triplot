@@ -281,7 +281,7 @@ export function PlaceSearch({
             onKeyDown={onKeyDown}
             placeholder="店名・地名で検索（例: 浅草 寿司）"
             autoComplete="off"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-black focus:outline-none"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-primary focus:outline-none"
           />
           {query && (
             <button
@@ -301,7 +301,7 @@ export function PlaceSearch({
         <button
           type="submit"
           disabled={!ready || pending}
-          className="shrink-0 rounded-md bg-black px-4 py-2 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           {pending ? "検索中..." : "検索"}
         </button>

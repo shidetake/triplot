@@ -27,7 +27,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
       type="button"
       onClick={handleSignIn}
       disabled={isLoading}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-black px-6 font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-6 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
     >
       {isLoading ? "ログイン中..." : "Google でログイン"}
     </button>

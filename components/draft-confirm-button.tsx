@@ -41,7 +41,7 @@ export function DraftConfirmButton({ draftId, label, ...formProps }: Props) {
         className="flex w-full items-center justify-between gap-2 rounded-md border border-zinc-200 px-3 py-2 text-left text-sm transition hover:border-zinc-400 hover:bg-zinc-50"
       >
         <span className="min-w-0 truncate">{label}</span>
-        <span className="shrink-0 rounded bg-black px-2 py-0.5 text-xs font-medium text-white">
+        <span className="shrink-0 rounded bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
           確定
         </span>
       </button>
