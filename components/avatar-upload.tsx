@@ -172,12 +172,14 @@ export function AvatarUpload({
       <div className="relative" ref={menuRef}>
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() =>
+            hasCustom ? setOpen((o) => !o) : fileRef.current?.click()
+          }
           disabled={busy}
           aria-label="アバターを変更"
           title="アバターを変更"
-          aria-haspopup="menu"
-          aria-expanded={open}
+          aria-haspopup={hasCustom ? "menu" : undefined}
+          aria-expanded={hasCustom ? open : undefined}
           className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-zinc-200 transition hover:opacity-90 disabled:opacity-50"
         >
           {currentUrl ? (
