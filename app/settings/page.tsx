@@ -2,11 +2,8 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AvatarUpload } from "@/components/avatar-upload";
-import { HelpTip } from "@/components/help-tip";
-import { SaveIcon } from "@/components/icons";
+import { DisplayNameForm } from "@/components/display-name-form";
 import { createClient } from "@/lib/supabase/server";
-
-import { updateDisplayNameAction } from "./actions";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -51,30 +48,7 @@ export default async function SettingsPage() {
           hasCustom={Boolean(profile?.avatar_url)}
           initial={avatarInitial}
         />
-        <form
-          action={updateDisplayNameAction}
-          className="flex flex-1 items-center gap-3"
-        >
-          <input
-            type="text"
-            name="display_name"
-            defaultValue={profile?.display_name ?? ""}
-            placeholder="名前"
-            maxLength={50}
-            className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:border-primary focus:outline-none"
-          />
-          <HelpTip label="デフォルト表示名について" align="right">
-            旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
-          </HelpTip>
-          <button
-            type="submit"
-            aria-label="保存"
-            title="保存"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
-          >
-            <SaveIcon size={18} />
-          </button>
-        </form>
+        <DisplayNameForm defaultValue={profile?.display_name ?? ""} />
       </div>
     </main>
   );
