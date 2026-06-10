@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
 import type { LatLng } from "@/lib/placeMap";
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, SearchIcon } from "@/components/icons";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
 // 吹き出しに再利用するので、ピンごとの追加 Places 呼び出しは発生しない。
@@ -301,14 +301,16 @@ export function PlaceSearch({
         <button
           type="submit"
           disabled={!ready || pending}
-          className="shrink-0 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          aria-label="検索"
+          title="検索"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
-          {pending ? "検索中..." : "検索"}
+          <SearchIcon size={18} />
         </button>
       </div>
 
       {open && sug.length > 0 && (
-        <ul className="absolute left-0 right-[88px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
           {sug.map((s, i) => {
             const pred = s.placePrediction!;
             const isActive = i === active;

@@ -55,9 +55,6 @@ export default async function Home() {
       <header className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight">triplot</h1>
-          <p className="mt-2 text-sm text-zinc-600">
-            友達と旅行プランを立てて、思い出として残す。
-          </p>
         </div>
         {user && (
           <div className="flex shrink-0 items-center gap-3">

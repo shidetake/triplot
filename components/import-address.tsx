@@ -1,5 +1,6 @@
 "use client";
 
+import { CopyIcon } from "@/components/icons";
 import { toast } from "@/components/toast";
 
 // per-user の取り込みアドレスを表示してコピーできる小UI。
@@ -23,9 +24,9 @@ export function ImportAddress({ address }: { address: string }) {
         onClick={copy}
         aria-label="コピー"
         title="コピー"
-        className="h-9 shrink-0 rounded-md border border-zinc-300 px-3 text-sm text-zinc-700 transition hover:bg-zinc-100"
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-zinc-300 text-zinc-600 transition hover:bg-zinc-100 hover:text-zinc-900"
       >
-        コピー
+        <CopyIcon size={16} />
       </button>
     </div>
   );
