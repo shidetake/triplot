@@ -228,9 +228,19 @@ export function AvatarUpload({
           disabled={busy}
           className="hidden"
         />
+
+        {/* 状態表示は absolute にしてレイアウト高さを変えない（隣の入力/保存がカクつかない）。 */}
+        {busy && (
+          <p className="absolute left-0 top-full mt-1 whitespace-nowrap text-xs text-zinc-500">
+            処理中…
+          </p>
+        )}
+        {error && (
+          <p className="absolute left-0 top-full mt-1 w-44 text-xs text-red-600">
+            {error}
+          </p>
+        )}
       </div>
-      {busy && <p className="text-xs text-zinc-500">処理中…</p>}
-      {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
 }
