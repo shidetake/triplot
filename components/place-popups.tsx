@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useState, useTransition } from "react";
+import { toast } from "@/components/toast";
 
 import {
   createPlaceAction,
@@ -512,7 +513,7 @@ export function SavedInfo({
     startDelete(async () => {
       const { error } = await deletePlaceAction(tripId, place.id);
       if (error) {
-        alert(`削除に失敗しました: ${error}`);
+        toast(`削除に失敗しました: ${error}`);
         return;
       }
       onDone();

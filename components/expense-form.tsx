@@ -9,6 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { toast } from "@/components/toast";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -163,7 +164,7 @@ export function ExpenseForm({
     startDelete(async () => {
       const { error } = await deleteExpenseAction(tripId, editExpense.id);
       if (error) {
-        alert(`削除に失敗しました: ${error}`);
+        toast(`削除に失敗しました: ${error}`);
         return;
       }
       onDone?.();

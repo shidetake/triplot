@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 
 import {
   deleteTripAction,
   ensureInviteAction,
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
+import { toast } from "@/components/toast";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { hexToKmlColor } from "@/lib/placeColor";
 import { getIconPath } from "@/lib/placeIcons";
@@ -70,21 +71,7 @@ export function TripActions({
   // カレンダーエクスポートのダイアログ表示位置（null で非表示）。
   const [calendarAnchor, setCalendarAnchor] = useState<Anchor | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
-  const [toast, setToast] = useState<string | null>(null);
   const [isPending, start] = useTransition();
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  useEffect(() => {
-    return () => {
-      if (timer.current) clearTimeout(timer.current);
-    };
-  }, []);
-
-  const flashToast = (msg: string) => {
-    setToast(msg);
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = setTimeout(() => setToast(null), 2500);
-  };
 
   // 共有リンクは「ポップアップを開いた時点」で先に取得して state に持っておく。
   // こうすればコピーボタンのタップ時はネットワーク待ちが無く、navigator.clipboard を
@@ -94,7 +81,7 @@ export function TripActions({
     start(async () => {
       const res = await ensureInviteAction(tripId);
       if (res.error || !res.token) {
-        flashToast(res.error ?? "リンクの取得に失敗しました");
+        toast(res.error ?? "リンクの取得に失敗しました");
         return;
       }
       setInviteToken(res.token);
@@ -111,9 +98,9 @@ export function TripActions({
     try {
       await navigator.clipboard.writeText(`${baseUrl}/join/${inviteToken}`);
       setShareAnchor(null);
-      flashToast("リンクをコピーしました");
+      toast("リンクをコピーしました");
     } catch {
-      flashToast("コピーに失敗しました");
+      toast("コピーに失敗しました");
     }
   };
 
@@ -130,11 +117,11 @@ export function TripActions({
     start(async () => {
       const res = await regenerateInviteAction(tripId);
       if (res.error || !res.token) {
-        flashToast(res.error ?? "再生成に失敗しました");
+        toast(res.error ?? "再生成に失敗しました");
         return;
       }
       setInviteToken(res.token);
-      flashToast("新しいリンクを発行しました。「リンクをコピー」を押してください");
+      toast("新しいリンクを発行しました。「リンクをコピー」を押してください");
     });
   };
 
@@ -152,7 +139,7 @@ export function TripActions({
   const onExportMap = async () => {
     closeMenu();
     if (kmlPlacemarks.length === 0) {
-      flashToast("地図に出せる場所がありません");
+      toast("地図に出せる場所がありません");
       return;
     }
     try {
@@ -212,14 +199,14 @@ export function TripActions({
         "application/vnd.google-earth.kmz",
       );
     } catch {
-      flashToast("地図の書き出しに失敗しました");
+      toast("地図の書き出しに失敗しました");
     }
   };
 
   const onExportExpenses = () => {
     closeMenu();
     if (expenseCsvRows.length === 0) {
-      flashToast("エクスポートする費用がありません");
+      toast("エクスポートする費用がありません");
       return;
     }
     const csv = buildExpensesCsv(expenseCsvRows);
@@ -229,7 +216,7 @@ export function TripActions({
   const onExportCalendar = (anchor: Anchor) => {
     closeMenu();
     if (calendarEvents.length === 0) {
-      flashToast("エクスポートする予定がありません");
+      toast("エクスポートする予定がありません");
       return;
     }
     setCalendarAnchor(anchor);
@@ -246,7 +233,7 @@ export function TripActions({
       return;
     start(async () => {
       const { error } = await deleteTripAction(tripId);
-      if (error) alert(`削除に失敗しました: ${error}`);
+      if (error) toast(`削除に失敗しました: ${error}`);
     });
   };
 
@@ -395,11 +382,6 @@ export function TripActions({
         />
       )}
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground shadow-lg">
-          {toast}
-        </div>
-      )}
     </>
   );
 }

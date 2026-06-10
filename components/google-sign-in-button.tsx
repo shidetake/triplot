@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "@/components/toast";
 
 import { createClient } from "@/lib/supabase/client";
 
@@ -18,7 +19,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
     });
     if (error) {
       setIsLoading(false);
-      alert(`ログインに失敗しました: ${error.message}`);
+      toast(`ログインに失敗しました: ${error.message}`);
     }
   };
 

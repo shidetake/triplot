@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { toast } from "@/components/toast";
 
 import {
   removeMemberAction,
@@ -58,7 +59,7 @@ export function MembersManagementList({
     start(async () => {
       const { error } = await updateMyMemberAction(tripId, name);
       if (error) {
-        alert(`変更に失敗しました: ${error}`);
+        toast(`変更に失敗しました: ${error}`);
         return;
       }
       setEditingId(null);
@@ -73,7 +74,7 @@ export function MembersManagementList({
     if (!confirm(msg)) return;
     start(async () => {
       const { error } = await removeMemberAction(tripId, m.id, isSelf);
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 

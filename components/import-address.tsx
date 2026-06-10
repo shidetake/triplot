@@ -1,16 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { toast } from "@/components/toast";
 
 // per-user の取り込みアドレスを表示してコピーできる小UI。
 export function ImportAddress({ address }: { address: string }) {
-  const [copied, setCopied] = useState(false);
-
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(address);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      toast("コピーしました");
     } catch {
       // クリップボード不可の環境は無視（手動選択でコピー可能）
     }
@@ -24,9 +21,11 @@ export function ImportAddress({ address }: { address: string }) {
       <button
         type="button"
         onClick={copy}
+        aria-label="コピー"
+        title="コピー"
         className="h-9 shrink-0 rounded-md border border-zinc-300 px-3 text-sm text-zinc-700 transition hover:bg-zinc-100"
       >
-        {copied ? "コピー済" : "コピー"}
+        コピー
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Toaster } from "@/components/toast";
 import { getDeployEnv, getVersion } from "@/lib/version";
 
 const geistSans = Geist({
@@ -36,6 +37,7 @@ export default function RootLayout({
         <footer className="px-6 py-3 text-center text-xs text-zinc-400">
           {getDeployEnv()} · {getVersion()}
         </footer>
+        <Toaster />
       </body>
     </html>
   );

@@ -7,6 +7,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { toast } from "@/components/toast";
 
 import {
   createTodoAction,
@@ -270,7 +271,7 @@ export function TodoSection({
         draftPriority,
         kind,
       );
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
@@ -278,7 +279,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "toggle", id: todo.id, done: !todo.done });
       const { error } = await toggleTodoAction(tripId, todo.id, !todo.done);
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
@@ -287,7 +288,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "update", id: todo.id, priority });
       const { error } = await updateTodoAction(tripId, todo.id, { priority });
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
@@ -307,7 +308,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "update", id, title: text });
       const { error } = await updateTodoAction(tripId, id, { title: text });
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
@@ -316,7 +317,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "delete", id: todo.id });
       const { error } = await deleteTodoAction(tripId, todo.id);
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
@@ -324,7 +325,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "like", id: todo.id, liked: !todo.iLiked });
       const { error } = await toggleTodoLikeAction(tripId, todo.id);
-      if (error) alert(`失敗しました: ${error}`);
+      if (error) toast(`失敗しました: ${error}`);
     });
   };
 
