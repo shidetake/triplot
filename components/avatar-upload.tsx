@@ -175,9 +175,9 @@ export function AvatarUpload({
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs text-red-600 underline-offset-2 hover:underline"
+          className="text-xs text-zinc-500 underline-offset-2 transition hover:text-zinc-800 hover:underline"
         >
-          削除
+          デフォルトに戻す
         </button>
       ) : null}
       {error && <p className="text-xs text-red-600">{error}</p>}
