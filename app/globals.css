@@ -103,6 +103,18 @@ input[type="time"] {
   max-width: 100%;
 }
 
+/* iOS Safari は入力の文字が 16px 未満だとフォーカス時に勝手にズームする。モバイル幅では
+   フォームコントロールを 16px に固定してズームを防ぐ（PC 幅では各 text-* がそのまま効く）。
+   個々の input に text-base md:text-sm を付けて回る代わりに、ここ 1 箇所で担保する。
+   !important は Tailwind の text-sm 等のユーティリティを上書きするため。 */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 /* カレンダー（react-day-picker）の月切替時の高さブレ防止。Tripit のように
    5 行を基準にして、6 週月は行間 mt-2 → mt-0.5 に詰めて 5 行と同じ縦幅に
    揃える。4 週月は components/ui/calendar.tsx の Weeks override 側で空行を
