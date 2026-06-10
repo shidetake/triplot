@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { EditIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
@@ -76,6 +76,26 @@ export function AvatarUpload({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    function onDown(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
 
   // 固定パス（拡張子なし）＝毎回ここに上書きするので孤児が出ない。
   const path = `${userId}/avatar`;
@@ -138,15 +158,26 @@ export function AvatarUpload({
     }
   }
 
+  function pickImage() {
+    setOpen(false);
+    fileRef.current?.click();
+  }
+  function revert() {
+    setOpen(false);
+    onRemove();
+  }
+
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative">
+      <div className="relative" ref={menuRef}>
         <button
           type="button"
-          onClick={() => fileRef.current?.click()}
+          onClick={() => setOpen((o) => !o)}
           disabled={busy}
           aria-label="アバターを変更"
           title="アバターを変更"
+          aria-haspopup="menu"
+          aria-expanded={open}
           className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-zinc-200 transition hover:opacity-90 disabled:opacity-50"
         >
           {currentUrl ? (
@@ -156,10 +187,37 @@ export function AvatarUpload({
             initial
           )}
         </button>
-        {/* 右上の鉛筆マーク（編集できる感）。クリックは下のアバターボタンに通す。 */}
+        {/* 右上の鉛筆マーク（編集できる感）。クリックはアバターボタンに通してメニューを開く。 */}
         <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-white">
           <EditIcon size={11} />
         </span>
+
+        {open && (
+          <div
+            role="menu"
+            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg"
+          >
+            <button
+              type="button"
+              role="menuitem"
+              onClick={pickImage}
+              className="block w-full px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+            >
+              画像を選ぶ
+            </button>
+            {hasCustom && (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={revert}
+                className="block w-full px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+              >
+                デフォルトに戻す
+              </button>
+            )}
+          </div>
+        )}
+
         <input
           ref={fileRef}
           type="file"
@@ -169,17 +227,7 @@ export function AvatarUpload({
           className="hidden"
         />
       </div>
-      {busy ? (
-        <p className="text-xs text-zinc-500">処理中…</p>
-      ) : hasCustom ? (
-        <button
-          type="button"
-          onClick={onRemove}
-          className="text-xs text-zinc-500 underline-offset-2 transition hover:text-zinc-800 hover:underline"
-        >
-          デフォルトに戻す
-        </button>
-      ) : null}
+      {busy && <p className="text-xs text-zinc-500">処理中…</p>}
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>
   );
