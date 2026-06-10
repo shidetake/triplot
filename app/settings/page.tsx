@@ -53,7 +53,7 @@ export default async function SettingsPage() {
         />
         <form
           action={updateDisplayNameAction}
-          className="flex flex-1 items-center gap-2"
+          className="flex flex-1 items-center gap-3"
         >
           <input
             type="text"
@@ -61,7 +61,7 @@ export default async function SettingsPage() {
             defaultValue={profile?.display_name ?? ""}
             placeholder="名前"
             maxLength={50}
-            className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
+            className="min-w-0 max-w-[12rem] flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-black focus:outline-none"
           />
           <HelpTip label="デフォルト表示名について" align="right">
             旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
