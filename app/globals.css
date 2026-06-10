@@ -103,11 +103,12 @@ input[type="time"] {
   max-width: 100%;
 }
 
-/* iOS Safari は入力の文字が 16px 未満だとフォーカス時に勝手にズームする。モバイル幅では
-   フォームコントロールを 16px に固定してズームを防ぐ（PC 幅では各 text-* がそのまま効く）。
-   個々の input に text-base md:text-sm を付けて回る代わりに、ここ 1 箇所で担保する。
-   !important は Tailwind の text-sm 等のユーティリティを上書きするため。 */
-@media (max-width: 767px) {
+/* iOS Safari は入力の文字が 16px 未満だとフォーカス時に勝手にズームする（iPhone も iPad も）。
+   タッチ端末（any-pointer: coarse = 画面タッチを持つ）ではフォームコントロールを 16px に固定して
+   ズームを防ぐ。マウスのみの PC は対象外なので各 text-* がそのまま効く（14px のままコンパクト）。
+   ※ 画面幅(max-width)で分けると iPad（幅 768px 以上）を取りこぼすので、幅でなくポインタ種別で判定する。
+   個々の input に付けて回る代わりにここ 1 箇所で担保。!important は Tailwind の text-sm を上書きするため。 */
+@media (any-pointer: coarse) {
   input,
   select,
   textarea {
