@@ -656,7 +656,7 @@ export function ExpenseForm({
             disabled={isDeleting}
             aria-label="削除"
             title="削除"
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
           >
             <TrashIcon size={18} />
           </button>
@@ -666,7 +666,7 @@ export function ExpenseForm({
           disabled={isPending}
           aria-label={isEdit ? "保存" : "追加"}
           title={isEdit ? "保存" : "追加"}
-          className="flex h-10 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 flex-1 items-center justify-center rounded-md bg-black font-medium text-white transition hover:bg-zinc-800 disabled:opacity-50"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={22} />}
         </button>
