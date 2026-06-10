@@ -157,8 +157,8 @@ export function AvatarUpload({
           )}
         </button>
         {/* 右上の鉛筆マーク（編集できる感）。クリックは下のアバターボタンに通す。 */}
-        <span className="pointer-events-none absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black text-white ring-2 ring-white">
-          <EditIcon size={13} />
+        <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-black text-white ring-2 ring-white">
+          <EditIcon size={11} />
         </span>
         <input
           ref={fileRef}
