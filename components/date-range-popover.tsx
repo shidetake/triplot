@@ -73,7 +73,7 @@ export function DateRangePopover({
       ? `${format(f, "yyyy/M/d (EEE)", { locale: ja })} 〜 ${format(t, "M/d (EEE)", { locale: ja })}`
       : f
         ? `${format(f, "yyyy/M/d (EEE)", { locale: ja })} 〜 ?`
-        : "日程を選択";
+        : "";
 
   return (
     <>

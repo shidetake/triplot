@@ -168,7 +168,7 @@ export function TodoSection({
   myMemberId: string;
 }) {
   const placeholder =
-    kind === "prep" ? "準備することを追加" : "現地ですることを追加";
+    kind === "prep" ? "航空券の予約" : "両親にお土産買う";
 
   // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)。手動で開閉したら
   // localStorage に覚え、次回以降は既定より優先する。

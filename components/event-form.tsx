@@ -648,7 +648,7 @@ export function EventForm({
           name="note"
           defaultValue={ev?.note ?? ""}
           placeholder={
-            kind3 === "transit" ? "座席、予約番号、集合場所" : "日焼け止め持参"
+            kind3 === "transit" ? "ターミナル1" : "日焼け止め持参"
           }
           className={inputCls}
         />
