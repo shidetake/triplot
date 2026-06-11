@@ -92,7 +92,7 @@ export function DateRangePopover({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           className={cn(
-            "flex w-full min-w-0 items-center rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none",
+            "flex h-9 w-full min-w-0 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm focus:border-primary focus:outline-none",
           )}
         >
           <span
