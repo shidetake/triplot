@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
+import { ChevronIcon } from "@/components/icons";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
@@ -449,8 +450,12 @@ export default async function TripDetailPage({
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <div className="flex items-start justify-between gap-3">
-        <Link href="/trips" className="text-sm text-zinc-500 hover:text-zinc-900">
-          ← 旅行一覧に戻る
+        <Link
+          href="/trips"
+          className="inline-flex items-center gap-1 text-sm text-zinc-500 transition hover:text-zinc-900"
+        >
+          <ChevronIcon size={14} className="rotate-180" />
+          旅行一覧
         </Link>
         <TripActions
           tripId={tripId}
