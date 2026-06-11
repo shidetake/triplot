@@ -267,7 +267,7 @@ export function CandidateInfo({
             id={noteId}
             type="text"
             name="note"
-            placeholder="営業時間、予約要、など"
+            placeholder="22時まで"
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
@@ -351,7 +351,7 @@ export function DraftInfo({
             name="name"
             required
             autoFocus
-            placeholder="例: 集合場所、撮影スポット"
+            placeholder="集合場所"
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
@@ -377,7 +377,7 @@ export function DraftInfo({
             id={noteId}
             type="text"
             name="note"
-            placeholder="営業時間、予約要、など"
+            placeholder="22時まで"
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
           />
         </label>
@@ -609,7 +609,7 @@ export function SavedInfo({
               type="text"
               name="note"
               defaultValue={place.note ?? ""}
-              placeholder="営業時間、予約要、など"
+              placeholder="22時まで"
               className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
             />
           </label>

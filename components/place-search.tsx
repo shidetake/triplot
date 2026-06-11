@@ -279,7 +279,7 @@ export function PlaceSearch({
               if (sug.length > 0) setOpen(true);
             }}
             onKeyDown={onKeyDown}
-            placeholder="店名・地名で検索（例: 浅草 寿司）"
+            placeholder="パンケーキ"
             autoComplete="off"
             className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-primary focus:outline-none"
           />

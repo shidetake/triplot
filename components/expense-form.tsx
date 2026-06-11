@@ -444,7 +444,7 @@ export function ExpenseForm({
           id={noteId}
           type="text"
           name="note"
-          placeholder="ランチ、空港バス、など"
+          placeholder="ランチ"
           defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
           className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         />

@@ -356,7 +356,7 @@ export function EventForm({
           required
           defaultValue={ev?.title ?? ""}
           placeholder={
-            kind3 === "transit" ? "NRT-HNL ZG002" : "ハイキング"
+            kind3 === "transit" ? "NRT-HNL" : "ハイキング"
           }
           className={inputCls}
         />
@@ -370,6 +370,7 @@ export function EventForm({
               places={places}
               biasCenter={biasCenter}
               initial={placePickerInitial}
+              placeholder={kind3 === "transit" ? "成田国際空港" : "ダイヤモンドヘッド"}
             />
           </APIProvider>
         ) : (
@@ -377,6 +378,7 @@ export function EventForm({
             places={places}
             biasCenter={biasCenter}
             initial={placePickerInitial}
+            placeholder={kind3 === "transit" ? "成田国際空港" : "ダイヤモンドヘッド"}
           />
         )}
       </div>
@@ -645,7 +647,9 @@ export function EventForm({
           type="text"
           name="note"
           defaultValue={ev?.note ?? ""}
-          placeholder="座席、予約番号、集合場所、など"
+          placeholder={
+            kind3 === "transit" ? "座席、予約番号、集合場所" : "日焼け止め持参"
+          }
           className={inputCls}
         />
       </label>
