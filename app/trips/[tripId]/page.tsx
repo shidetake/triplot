@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
 import { ChevronIcon } from "@/components/icons";
+import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
@@ -547,12 +548,12 @@ export default async function TripDetailPage({
 
         {importDrafts.length > 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="text-sm font-medium text-amber-900">
-              未確定の取り込み（{importDrafts.length}）
+            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+              未確定の取り込み ({importDrafts.length})
+              <HelpTip label="取り込みとは" widthClass="w-52">
+                メールから抽出した下書きです。内容を確認・確定すると費用になります。
+              </HelpTip>
             </div>
-            <p className="mt-1 text-xs text-amber-800">
-              転送したレシートの下書きです。タップして内容を確認・確定すると費用になります。
-            </p>
             <div className="mt-3 space-y-2">
               {importDrafts.map((d) => (
                 <DraftConfirmButton
