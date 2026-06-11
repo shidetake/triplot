@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-import { CloseIcon } from "@/components/icons";
+import { CloseIcon, SaveIcon } from "@/components/icons";
 import { ImportAddress } from "@/components/import-address";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
@@ -207,9 +207,11 @@ export default async function ImportPage() {
                       </select>
                       <button
                         type="submit"
-                        className="h-8 rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
+                        aria-label="保存"
+                        title="保存"
+                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
                       >
-                        {row.assignedTripId ? "変更" : "割り当て"}
+                        <SaveIcon size={16} />
                       </button>
                     </form>
 
