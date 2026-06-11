@@ -448,7 +448,7 @@ export default async function TripDetailPage({
   });
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-12">
+    <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <div className="flex items-start justify-between gap-3">
         <Link
           href="/trips"

@@ -33,7 +33,7 @@ export default async function MembersPage({
   if (!me) notFound();
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-8">
+    <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <div className="mb-6">
         <Link
           href={`/trips/${tripId}`}
