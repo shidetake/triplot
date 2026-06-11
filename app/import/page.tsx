@@ -103,13 +103,12 @@ export default async function ImportPage() {
       <h1 className="text-2xl font-semibold tracking-tight">取り込み</h1>
 
       <p className="mt-3 text-sm text-zinc-600">
-        転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを
-        変更できます。確定は各旅行の画面で行ってください。
+        転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを変更できます。確定は各旅行の画面で行ってください。
       </p>
 
       {importAddress && (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-xs text-zinc-500">レシートメールの転送先</span>
+          <span className="text-xs text-zinc-500">メールの転送先</span>
           <ImportAddress address={importAddress} />
         </div>
       )}
@@ -216,7 +215,7 @@ export default async function ImportPage() {
                       </Link>
                     ) : (
                       <span className="text-xs text-amber-700">
-                        要割当（旅行を選んでください）
+                        要割当
                       </span>
                     )}
                   </div>
