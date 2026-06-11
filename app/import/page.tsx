@@ -116,11 +116,9 @@ export default async function ImportPage() {
       </p>
 
       {importAddress && (
-        <div className="mt-4 rounded-lg border border-zinc-200 p-4">
-          <p className="text-xs text-zinc-500">レシートメールの転送先</p>
-          <div className="mt-2">
-            <ImportAddress address={importAddress} />
-          </div>
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="text-xs text-zinc-500">レシートメールの転送先</span>
+          <ImportAddress address={importAddress} />
         </div>
       )}
 
