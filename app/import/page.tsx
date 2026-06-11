@@ -99,16 +99,8 @@ export default async function ImportPage() {
   });
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">取り込み</h1>
-        <Link
-          href="/trips"
-          className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-        >
-          ← ホーム
-        </Link>
-      </header>
+    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">取り込み</h1>
 
       <p className="mt-3 text-sm text-zinc-600">
         転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを

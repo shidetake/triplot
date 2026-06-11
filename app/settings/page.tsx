@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { AvatarUpload } from "@/components/avatar-upload";
@@ -30,16 +29,8 @@ export default async function SettingsPage() {
     "?";
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-16">
-      <header className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">設定</h1>
-        <Link
-          href="/trips"
-          className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
-        >
-          ← ホーム
-        </Link>
-      </header>
+    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+      <h1 className="text-2xl font-semibold tracking-tight">設定</h1>
 
       <div className="mt-10 flex items-center gap-4">
         <AvatarUpload
