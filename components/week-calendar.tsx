@@ -635,10 +635,12 @@ export function WeekCalendar({
       className="max-h-[70vh] select-none overflow-auto rounded-md border border-zinc-200 bg-white"
     >
       <div style={{ width: GUTTER + totalW }}>
+        {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}
+        <div className="sticky top-0 z-30">
         {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
-        <div className="sticky top-0 z-30 flex border-b border-zinc-200 bg-white">
+        <div className="flex border-b border-zinc-200 bg-white">
           <div
-            className="sticky left-0 z-40 shrink-0 border-r border-zinc-200 bg-white"
+            className="sticky left-0 z-10 shrink-0 border-r border-zinc-200 bg-white"
             style={{ width: GUTTER }}
           />
           {groups.map((g) => (
@@ -670,7 +672,7 @@ export function WeekCalendar({
         {/* ── 終日帯 ── */}
         <div className="flex border-b border-zinc-200 bg-zinc-50">
           <div
-            className="sticky left-0 z-[25] flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-zinc-500"
+            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-zinc-500"
             style={{ width: GUTTER }}
           >
             終日
@@ -818,6 +820,7 @@ export function WeekCalendar({
             })()}
           </div>
         </div>
+        </div>{/* ── ヘッダ + 終日帯 sticky ラッパー end ── */}
 
         {/* ── 本体（0:00〜24:00 固定グリッド） ── */}
         <div className="flex">
