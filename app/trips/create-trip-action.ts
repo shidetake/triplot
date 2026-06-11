@@ -51,7 +51,7 @@ export async function createTripAction(
     if (error || !tripId) {
       return { error: error?.message ?? "作成に失敗しました" };
     }
-    revalidatePath("/");
+    revalidatePath("/trips");
     redirect(`/trips/${tripId}`);
   }
 
@@ -130,6 +130,6 @@ export async function createTripAction(
     return { error: error?.message ?? "コピーに失敗しました" };
   }
 
-  revalidatePath("/");
+  revalidatePath("/trips");
   redirect(`/trips/${tripId}`);
 }

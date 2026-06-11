@@ -1077,7 +1077,7 @@ export async function deleteTripAction(
     return { error: error.message };
   }
 
-  redirect("/");
+  redirect("/trips");
 }
 
 export async function removeMemberAction(
@@ -1102,7 +1102,7 @@ export async function removeMemberAction(
 
   // 自分を外したらこの旅行はもう見えない → 一覧へ
   if (isSelf) {
-    redirect("/");
+    redirect("/trips");
   }
 
   revalidatePath(`/trips/${tripId}`);

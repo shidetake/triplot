@@ -34,7 +34,7 @@ export default async function SettingsPage() {
       <header className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold tracking-tight">設定</h1>
         <Link
-          href="/"
+          href="/trips"
           className="text-sm text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline"
         >
           ← ホーム

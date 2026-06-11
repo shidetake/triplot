@@ -449,7 +449,7 @@ export default async function TripDetailPage({
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-12">
       <div className="flex items-start justify-between gap-3">
-        <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-900">
+        <Link href="/trips" className="text-sm text-zinc-500 hover:text-zinc-900">
           ← 旅行一覧に戻る
         </Link>
         <TripActions
