@@ -20,7 +20,7 @@
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.510 0 0); /* Material Design medium-emphasis: 60% black */
-  --subtle-foreground: oklch(0.510 0 0); /* placeholder・非活性アイコン専用（将来 38% に変更可） */
+  --subtle-foreground: oklch(0.699 0 0); /* Material Design disabled/hint: 38% black */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
