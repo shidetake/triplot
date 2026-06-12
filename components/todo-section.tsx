@@ -450,8 +450,8 @@ export function TodoSection({
                   title={todo.iLiked ? "いいねを取り消す" : "いいね"}
                   className={`flex shrink-0 items-center gap-0.5 rounded p-1 text-xs transition ${
                     todo.iLiked
-                      ? "text-rose-500 hover:bg-rose-50"
-                      : "text-muted-foreground hover:bg-zinc-200 hover:text-foreground"
+                      ? "text-rose-500 hover:bg-rose-500/10"
+                      : "text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
                   }`}
                 >
                   <HeartIcon size={16} filled={todo.iLiked} />
@@ -473,7 +473,7 @@ export function TodoSection({
                 type="button"
                 onClick={() => remove(todo)}
                 aria-label="削除"
-                className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-zinc-200 hover:text-foreground"
+                className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
               >
                 <TrashIcon size={16} />
               </button>
