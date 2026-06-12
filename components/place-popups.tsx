@@ -138,7 +138,7 @@ function IconPicker({
           onClick={() => setAddOpen(true)}
           title="アイコンを追加"
           aria-label="アイコンを追加"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-zinc-300 text-blue-600 transition hover:bg-blue-50"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-zinc-300 text-blue-600 transition hover:bg-blue-600/10"
         >
           <PlusIcon size={16} />
         </button>
@@ -528,7 +528,7 @@ export function SavedInfo({
       disabled={isDeleting}
       aria-label="削除"
       title="削除"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
     >
       <TrashIcon size={18} />
     </button>

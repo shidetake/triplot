@@ -173,7 +173,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label={isMe ? "退出する" : `${m.display_name} を外す`}
                 title={isMe ? "退出する" : "外す"}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
               >
                 <TrashIcon size={16} />
               </button>

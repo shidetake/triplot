@@ -306,7 +306,7 @@ export function TripActions({
                   type="button"
                   onClick={onDelete}
                   disabled={isPending}
-                  className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-50 disabled:opacity-50"
+                  className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
                 >
                   この旅行を削除
                 </button>
