@@ -453,7 +453,7 @@ export default async function TripDetailPage({
       <div className="flex items-start justify-between gap-3">
         <Link
           href="/trips"
-          className="inline-flex items-center gap-1 text-sm text-zinc-500 transition hover:text-zinc-900"
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
         >
           <ChevronIcon size={14} className="rotate-180" />
           旅行一覧
@@ -471,14 +471,14 @@ export default async function TripDetailPage({
 
       <header className="mt-4">
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
-        <p className="mt-2 text-sm text-zinc-600">
+        <p className="mt-2 text-sm text-muted-foreground">
           {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"} / 精算通貨:{" "}
           {trip.default_currency}
         </p>
       </header>
 
       <section className="mt-8">
-        <h2 className="text-sm font-medium text-zinc-700">メンバー</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">メンバー</h2>
         <MembersSection
           members={activeMembers.map((m) => ({
             id: m.id,

@@ -9,7 +9,7 @@
      全 UI を dark: variant で書き分ける負荷を後回しにするため。 */
   color-scheme: light;
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: oklch(0.248 0 0); /* Material Design high-emphasis: 87% black */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
@@ -19,7 +19,8 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
+  --muted-foreground: oklch(0.510 0 0); /* Material Design medium-emphasis: 60% black */
+  --subtle-foreground: oklch(0.510 0 0); /* placeholder・非活性アイコン専用（将来 38% に変更可） */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -68,6 +69,7 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
+  --color-subtle-foreground: var(--subtle-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
   --color-secondary: var(--secondary);
@@ -178,6 +180,7 @@ gmp-advanced-marker:focus-visible {
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
+  --subtle-foreground: oklch(0.708 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);

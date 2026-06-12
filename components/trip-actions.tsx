@@ -238,7 +238,7 @@ export function TripActions({
   };
 
   const iconBtn =
-    "rounded-md p-2 text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-900";
+    "rounded-md p-2 text-muted-foreground transition hover:bg-zinc-100 hover:text-foreground";
 
   return (
     <>
@@ -246,6 +246,7 @@ export function TripActions({
         <button
           type="button"
           aria-label="共有"
+          title="共有"
           onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
           className={iconBtn}
         >
@@ -254,6 +255,7 @@ export function TripActions({
         <button
           type="button"
           aria-label="メニュー"
+          title="メニュー"
           onClick={(e) => setMenuAnchor({ x: e.clientX, y: e.clientY })}
           className={iconBtn}
         >
@@ -295,7 +297,7 @@ export function TripActions({
                 className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-zinc-100"
               >
                 エクスポート
-                <span aria-hidden className="text-zinc-400">
+                <span aria-hidden className="text-subtle-foreground">
                   ›
                 </span>
               </button>
@@ -315,7 +317,7 @@ export function TripActions({
               <button
                 type="button"
                 onClick={() => setMenuView("main")}
-                className="flex w-full items-center gap-1 px-4 py-2 text-left text-zinc-500 transition hover:bg-zinc-100"
+                className="flex w-full items-center gap-1 px-4 py-2 text-left text-muted-foreground transition hover:bg-zinc-100"
               >
                 <span aria-hidden>‹</span> 戻る
               </button>
@@ -349,14 +351,14 @@ export function TripActions({
       {shareAnchor && (
         <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)}>
           <div className="space-y-3 p-4">
-            <p className="text-xs text-zinc-500">
+            <p className="text-xs text-muted-foreground">
               リンクがあればログイン不要で参加できます。
             </p>
             <button
               type="button"
               onClick={onCopy}
               disabled={isPending || !inviteToken}
-              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100 disabled:opacity-50"
+              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-zinc-100 disabled:opacity-50"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
             </button>
@@ -364,7 +366,7 @@ export function TripActions({
               type="button"
               onClick={onRegenerate}
               disabled={isPending}
-              className="block w-full text-center text-xs text-zinc-500 underline-offset-2 hover:text-zinc-900 hover:underline disabled:opacity-50"
+              className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
             >
               リンクを再生成（旧リンクを無効化）
             </button>

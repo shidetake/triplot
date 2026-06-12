@@ -98,7 +98,7 @@ export function DateRangePopover({
           <span
             className={cn(
               "min-w-0 flex-1 truncate text-left",
-              f || t ? "text-zinc-900" : "text-zinc-400",
+              f || t ? "text-foreground" : "text-subtle-foreground",
             )}
           >
             {label}

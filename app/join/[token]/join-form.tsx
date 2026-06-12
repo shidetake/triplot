@@ -83,7 +83,7 @@ export function JoinForm({
           >
             {isPending ? "参加中..." : "ゲストとして参加（ログイン不要）"}
           </button>
-          <div className="flex items-center gap-3 text-xs text-zinc-400">
+          <div className="flex items-center gap-3 text-xs text-subtle-foreground">
             <span className="h-px flex-1 bg-zinc-200" />
             または
             <span className="h-px flex-1 bg-zinc-200" />

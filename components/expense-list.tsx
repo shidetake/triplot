@@ -186,18 +186,18 @@ function ExpenseRowItem({
               {formatAmount(amountInDefault, defaultCurrency)}
             </span>
             {isForeign && (
-              <span className="text-xs text-zinc-500">
+              <span className="text-xs text-muted-foreground">
                 ({formatAmount(expense.local_price, expense.local_currency)} @{" "}
                 {expense.rate_to_default})
               </span>
             )}
             {expense.visibility === "private" && (
-              <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
+              <span className="rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground">
                 プライベート
               </span>
             )}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{formatDateTime(expense.paid_at)}</span>
             <span className="inline-flex items-center gap-1">
               支払
@@ -222,13 +222,13 @@ function ExpenseRowItem({
             )}
           </div>
           {placeName && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-zinc-600">
+            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
               <PlaceIcon icon="pin" size={13} className="shrink-0" />
               <span className="min-w-0 truncate">{placeName}</span>
             </p>
           )}
           {expense.note && (
-            <p className="mt-1 text-xs text-zinc-700">{expense.note}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{expense.note}</p>
           )}
         </div>
       </button>

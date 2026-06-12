@@ -196,13 +196,13 @@ export function ScheduleSection({
       />
 
       {hasReservation && (
-        <div className="flex items-center gap-4 text-[11px] text-zinc-500">
+        <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <ReservationIcon size={12} />
             要予約
           </span>
           <span className="inline-flex items-center gap-1">
-            <CheckIcon size={12} className="text-zinc-400" />
+            <CheckIcon size={12} className="text-subtle-foreground" />
             予約済
           </span>
         </div>

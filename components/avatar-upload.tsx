@@ -203,7 +203,7 @@ export function AvatarUpload({
               type="button"
               role="menuitem"
               onClick={pickImage}
-              className="block w-full px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+              className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-zinc-50"
             >
               画像を選ぶ
             </button>
@@ -212,7 +212,7 @@ export function AvatarUpload({
                 type="button"
                 role="menuitem"
                 onClick={revert}
-                className="block w-full px-3 py-2 text-left text-sm text-zinc-700 transition hover:bg-zinc-50"
+                className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-zinc-50"
               >
                 デフォルトに戻す
               </button>
@@ -231,7 +231,7 @@ export function AvatarUpload({
 
         {/* 状態表示は absolute にしてレイアウト高さを変えない（隣の入力/保存がカクつかない）。 */}
         {busy && (
-          <p className="absolute left-0 top-full mt-1 whitespace-nowrap text-xs text-zinc-500">
+          <p className="absolute left-0 top-full mt-1 whitespace-nowrap text-xs text-muted-foreground">
             処理中…
           </p>
         )}

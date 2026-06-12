@@ -50,15 +50,15 @@ export function ExpenseSummaryView({
       <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm">
         <h3 className="font-medium">精算</h3>
         {settlements.length === 0 ? (
-          <p className="mt-2 text-zinc-500">—</p>
+          <p className="mt-2 text-muted-foreground">—</p>
         ) : (
           <ul className="mt-2 space-y-1">
             {settlements.map((s, i) => (
-              <li key={i} className="text-zinc-700">
+              <li key={i} className="text-muted-foreground">
                 <span className="font-medium">
                   {memberById.get(s.fromMemberId)?.display_name ?? "?"}
                 </span>
-                <span className="mx-1 text-zinc-400">→</span>
+                <span className="mx-1 text-subtle-foreground">→</span>
                 <span className="font-medium">
                   {memberById.get(s.toMemberId)?.display_name ?? "?"}
                 </span>
@@ -70,7 +70,7 @@ export function ExpenseSummaryView({
           </ul>
         )}
         {rateHints.length > 0 && (
-          <p className="mt-3 text-xs text-zinc-500">
+          <p className="mt-3 text-xs text-muted-foreground">
             平均レート: {rateHints.join(", ")}
           </p>
         )}
@@ -92,7 +92,7 @@ function SummaryCell({
 }) {
   return (
     <div>
-      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
       <div
         className={
           emphasized ? "mt-1 text-lg font-semibold" : "mt-1 font-medium"

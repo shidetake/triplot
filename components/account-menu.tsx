@@ -74,7 +74,7 @@ export function AccountMenu({
           className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg"
         >
           {email && (
-            <div className="truncate border-b border-zinc-100 px-3 py-2 text-xs text-zinc-500">
+            <div className="truncate border-b border-zinc-100 px-3 py-2 text-xs text-muted-foreground">
               {email}
             </div>
           )}
@@ -82,7 +82,7 @@ export function AccountMenu({
             href="/settings"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-zinc-50"
           >
             <SettingsIcon size={16} />
             設定
@@ -91,7 +91,7 @@ export function AccountMenu({
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-zinc-700 transition hover:bg-zinc-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-zinc-50"
           >
             <LogOutIcon size={16} />
             ログアウト

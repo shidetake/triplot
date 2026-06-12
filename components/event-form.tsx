@@ -311,7 +311,8 @@ export function EventForm({
           type="button"
           onClick={onDone}
           aria-label="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+          title="閉じる"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
         >
           <CloseIcon size={14} />
         </button>
@@ -333,7 +334,7 @@ export function EventForm({
             className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
               kind3 === k
                 ? "bg-primary text-primary-foreground"
-                : "text-zinc-600 hover:bg-zinc-100"
+                : "text-muted-foreground hover:bg-zinc-100"
             }`}
           >
             {KIND3_LABEL[k]}
@@ -341,7 +342,7 @@ export function EventForm({
         ))}
       </div>
       {kind3 === "transit" && (
-        <p className="-mt-1 text-[11px] text-zinc-500">
+        <p className="-mt-1 text-[11px] text-muted-foreground">
           フライトなど、出発と到着でタイムゾーンが変わる予定。
         </p>
       )}
@@ -389,7 +390,7 @@ export function EventForm({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
-              <span className="text-zinc-600">出発日</span>
+              <span className="text-muted-foreground">出発日</span>
               <DatePopover
                 name="depart_date"
                 value={departDate}
@@ -400,7 +401,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">出発時刻</span>
+              <span className="text-muted-foreground">出発時刻</span>
               <input
                 type="time"
                 name="depart_time"
@@ -410,7 +411,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">到着日</span>
+              <span className="text-muted-foreground">到着日</span>
               <DatePopover
                 name="arrive_date"
                 value={arriveDate}
@@ -421,7 +422,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">到着時刻</span>
+              <span className="text-muted-foreground">到着時刻</span>
               <input
                 type="time"
                 name="arrive_time"
@@ -432,11 +433,11 @@ export function EventForm({
             </label>
           </div>
           <label className={fieldCls}>
-            <span className="text-zinc-600">出発地タイムゾーン</span>
+            <span className="text-muted-foreground">出発地タイムゾーン</span>
             <TzSelect name="depart_tz" value={tzInit} />
           </label>
           <label className={fieldCls}>
-            <span className="text-zinc-600">到着地タイムゾーン</span>
+            <span className="text-muted-foreground">到着地タイムゾーン</span>
             <TzSelect name="arrive_tz" value={endTzInit} />
           </label>
         </div>
@@ -446,7 +447,7 @@ export function EventForm({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
-              <span className="text-zinc-600">開始日</span>
+              <span className="text-muted-foreground">開始日</span>
               <DatePopover
                 name="start_date"
                 value={alldayStart}
@@ -458,7 +459,7 @@ export function EventForm({
             </label>
             <div />
             <label className={fieldCls}>
-              <span className="text-zinc-600">終了日</span>
+              <span className="text-muted-foreground">終了日</span>
               <DatePopover
                 name="end_date"
                 value={alldayEnd}
@@ -483,7 +484,7 @@ export function EventForm({
         <div className="space-y-3">
           <div className="grid grid-cols-2 gap-2">
             <label className={fieldCls}>
-              <span className="text-zinc-600">開始日</span>
+              <span className="text-muted-foreground">開始日</span>
               <DatePopover
                 name="start_date"
                 value={sDate}
@@ -494,7 +495,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">開始時刻</span>
+              <span className="text-muted-foreground">開始時刻</span>
               <input
                 type="time"
                 name="start_time"
@@ -505,7 +506,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">終了日</span>
+              <span className="text-muted-foreground">終了日</span>
               <DatePopover
                 name="end_date"
                 value={eDate}
@@ -521,7 +522,7 @@ export function EventForm({
               />
             </label>
             <label className={fieldCls}>
-              <span className="text-zinc-600">終了時刻</span>
+              <span className="text-muted-foreground">終了時刻</span>
               <input
                 type="time"
                 name="end_time"
@@ -533,14 +534,14 @@ export function EventForm({
             </label>
           </div>
           <label className={fieldCls}>
-            <span className="text-zinc-600">タイムゾーン</span>
+            <span className="text-muted-foreground">タイムゾーン</span>
             <TzSelect name="tz" value={tzInit} />
           </label>
         </div>
       )}
 
       <fieldset className="text-xs">
-        <legend className="font-medium text-zinc-700">公開範囲</legend>
+        <legend className="font-medium text-muted-foreground">公開範囲</legend>
         {canChangeVis ? (
           <div className="mt-1 flex gap-3">
             <label className="inline-flex items-center gap-1">
@@ -587,10 +588,10 @@ export function EventForm({
               }
             }}
             aria-expanded={pMode === "custom"}
-            className="inline-flex items-center gap-1 rounded font-medium text-zinc-700 transition hover:text-zinc-900"
+            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>参加者: {pMode === "all" ? "全員" : "一部"}</span>
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-muted-foreground">
               {pMode === "all" ? "▼" : "▲"}
             </span>
           </button>
@@ -607,7 +608,7 @@ export function EventForm({
                     className={
                       on
                         ? "rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-900 ring-1 ring-blue-300"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-zinc-200"
                     }
                   >
                     {m.display_name}

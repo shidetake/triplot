@@ -34,7 +34,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <div className="flex-1">{children}</div>
-        <footer className="px-6 py-3 text-center text-xs text-zinc-400">
+        <footer className="px-6 py-3 text-center text-xs text-subtle-foreground">
           {getDeployEnv()} · {getVersion()}
         </footer>
         <Toaster />

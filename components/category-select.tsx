@@ -51,7 +51,7 @@ export function CategorySelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-left focus:border-black focus:outline-none"
+        className="flex w-full items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-left focus:border-primary focus:outline-none"
       >
         {selected && <CategoryChip category={selected} />}
         <span className="min-w-0 flex-1 truncate">
@@ -59,7 +59,7 @@ export function CategorySelect({
         </span>
         <ChevronIcon
           size={16}
-          className={`shrink-0 text-zinc-400 transition-transform ${
+          className={`shrink-0 text-subtle-foreground transition-transform ${
             open ? "-rotate-90" : "rotate-90"
           }`}
         />
@@ -87,7 +87,7 @@ export function CategorySelect({
                   <CategoryChip category={c} />
                   <span className="min-w-0 flex-1 truncate">{c.name}</span>
                   {isSel && (
-                    <CheckIcon size={14} className="shrink-0 text-zinc-500" />
+                    <CheckIcon size={14} className="shrink-0 text-muted-foreground" />
                   )}
                 </button>
               </li>

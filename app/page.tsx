@@ -15,7 +15,7 @@ export default async function LandingPage() {
     <main className="mx-auto w-full max-w-2xl px-6 py-24">
       <section className="space-y-6">
         <h1 className="text-4xl font-semibold tracking-tight">triplot</h1>
-        <p className="text-lg text-zinc-600">
+        <p className="text-lg text-muted-foreground">
           友達と旅行プランを立てて、思い出として残すアプリ。
         </p>
 
@@ -29,7 +29,7 @@ export default async function LandingPage() {
         ) : (
           <div className="space-y-4">
             <GoogleSignInButton next="/trips" />
-            <p className="text-sm text-zinc-500">
+            <p className="text-sm text-muted-foreground">
               ログイン不要で参加だけしたい場合は、共有リンクから直接アクセスしてください。
             </p>
           </div>

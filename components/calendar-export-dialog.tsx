@@ -220,12 +220,12 @@ export function CalendarExportDialog({
   const btnBlack =
     "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";
   const btnGhost =
-    "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-zinc-700 transition hover:bg-zinc-100";
+    "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-zinc-100";
 
   return (
     <FormPopover anchor={anchor} onClose={onClose}>
       <div className="space-y-3 p-4">
-        <p className="text-sm font-medium text-zinc-900">
+        <p className="text-sm font-medium text-foreground">
           Google カレンダーへエクスポート
         </p>
 
@@ -259,7 +259,7 @@ export function CalendarExportDialog({
         )}
 
         {phase === "loading" && (
-          <p className="py-2 text-center text-sm text-zinc-500">
+          <p className="py-2 text-center text-sm text-muted-foreground">
             カレンダーを取得中…
           </p>
         )}
@@ -312,7 +312,7 @@ export function CalendarExportDialog({
         )}
 
         {phase === "exporting" && (
-          <p className="py-2 text-center text-sm text-zinc-500">
+          <p className="py-2 text-center text-sm text-muted-foreground">
             書き込み中… {progress.done}/{progress.total}
             {progress.failed > 0 && `（失敗 ${progress.failed}）`}
           </p>
@@ -320,7 +320,7 @@ export function CalendarExportDialog({
 
         {phase === "done" && (
           <div className="space-y-3">
-            <p className="flex items-center justify-center gap-1.5 py-1 text-sm text-zinc-900">
+            <p className="flex items-center justify-center gap-1.5 py-1 text-sm text-foreground">
               <CheckIcon size={16} />
               {progress.done} 件をエクスポートしました
               {progress.failed > 0 && `（失敗 ${progress.failed}）`}

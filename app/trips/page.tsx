@@ -57,7 +57,7 @@ async function TripsSection({ userId }: { userId: string }) {
       </div>
 
       {trips.length === 0 ? (
-        <p className="text-sm text-zinc-500">
+        <p className="text-sm text-muted-foreground">
           まだ参加している旅行はありません。
         </p>
       ) : (
@@ -69,7 +69,7 @@ async function TripsSection({ userId }: { userId: string }) {
                 className="block rounded-md border border-zinc-200 p-4 transition hover:border-zinc-400 hover:bg-zinc-50"
               >
                 <div className="font-medium">{trip.title}</div>
-                <div className="mt-1 text-sm text-zinc-500">
+                <div className="mt-1 text-sm text-muted-foreground">
                   {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
                 </div>
               </Link>

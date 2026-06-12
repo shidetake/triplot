@@ -41,7 +41,7 @@ function StatusSelect({
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <label className="block text-xs">
-      <span className="font-medium text-zinc-700">ステータス</span>
+      <span className="font-medium text-muted-foreground">ステータス</span>
       <select
         name="status_id"
         required
@@ -74,7 +74,7 @@ function VisibilityField({
   }
   return (
     <fieldset className="text-xs">
-      <legend className="font-medium text-zinc-700">公開範囲</legend>
+      <legend className="font-medium text-muted-foreground">公開範囲</legend>
       <div className="mt-1 flex gap-3">
         <label className="inline-flex items-center gap-1">
           <input
@@ -116,7 +116,7 @@ function IconPicker({
   const sorted = [...options].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <fieldset className="text-xs">
-      <legend className="font-medium text-zinc-700">ピンの形</legend>
+      <legend className="font-medium text-muted-foreground">ピンの形</legend>
       <div className="mt-1 flex flex-wrap gap-1">
         {sorted.map((o) => (
           <button
@@ -127,7 +127,7 @@ function IconPicker({
             className={`flex h-8 w-8 items-center justify-center rounded-md border ${
               value === o.icon
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-zinc-600 hover:bg-zinc-50"
+                : "border-zinc-300 text-muted-foreground hover:bg-zinc-50"
             }`}
           >
             <PlaceIcon icon={o.icon} size={22} />
@@ -218,13 +218,13 @@ export function CandidateInfo({
             </svg>
             <span>{candidate.rating.toFixed(1)}</span>
             {candidate.userRatingCount != null && (
-              <span className="text-zinc-500">
+              <span className="text-muted-foreground">
                 ({candidate.userRatingCount})
               </span>
             )}
           </p>
         )}
-        <p className="mt-0.5 text-xs text-zinc-600">{candidate.address}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{candidate.address}</p>
       </div>
 
       <form action={formAction} className="space-y-2 border-t border-zinc-200 pt-2">
@@ -262,7 +262,7 @@ export function CandidateInfo({
           editable
         />
         <label className="block text-xs" htmlFor={noteId}>
-          <span className="font-medium text-zinc-700">メモ</span>
+          <span className="font-medium text-muted-foreground">メモ</span>
           <input
             id={noteId}
             type="text"
@@ -330,7 +330,7 @@ export function DraftInfo({
     <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pb-2 pr-1">
       <div>
         <p className="text-sm font-semibold">地図にピンを追加</p>
-        <p className="mt-0.5 text-xs text-zinc-500">
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
         </p>
       </div>
@@ -344,7 +344,7 @@ export function DraftInfo({
         <input type="hidden" name="icon" value={icon} />
 
         <label className="block text-xs" htmlFor={nameId}>
-          <span className="font-medium text-zinc-700">名前</span>
+          <span className="font-medium text-muted-foreground">名前</span>
           <input
             id={nameId}
             type="text"
@@ -372,7 +372,7 @@ export function DraftInfo({
           editable
         />
         <label className="block text-xs" htmlFor={noteId}>
-          <span className="font-medium text-zinc-700">メモ</span>
+          <span className="font-medium text-muted-foreground">メモ</span>
           <input
             id={noteId}
             type="text"
@@ -443,8 +443,8 @@ export function LocateInfo({
     <div className="flex w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 pr-1">
       <div>
         <p className="text-sm font-semibold">位置を設定</p>
-        <p className="mt-0.5 text-xs text-zinc-700">「{placeName}」</p>
-        <p className="mt-0.5 text-xs text-zinc-500">
+        <p className="mt-0.5 text-xs text-muted-foreground">「{placeName}」</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
           {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
         </p>
       </div>
@@ -541,7 +541,7 @@ export function SavedInfo({
           <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
             <span className="min-w-0 break-words">{place.name}</span>
             {place.visibility === "private" && (
-              <span className="shrink-0 rounded bg-zinc-100 px-1.5 text-xs font-normal text-zinc-600">
+              <span className="shrink-0 rounded bg-zinc-100 px-1.5 text-xs font-normal text-muted-foreground">
                 プライベート
               </span>
             )}
@@ -550,13 +550,14 @@ export function SavedInfo({
             type="button"
             onClick={onDone}
             aria-label="閉じる"
-            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+            title="閉じる"
+            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
           >
             <CloseIcon size={14} />
           </button>
         </div>
         {place.formatted_address ? (
-          <p className="mt-0.5 text-xs text-zinc-600">
+          <p className="mt-0.5 text-xs text-muted-foreground">
             {place.formatted_address}
           </p>
         ) : (
@@ -567,7 +568,7 @@ export function SavedInfo({
           )
         )}
         {!editing && place.note && (
-          <p className="mt-1 text-xs text-zinc-700">{place.note}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{place.note}</p>
         )}
         <a
           href={gmapsUrl(place)}
@@ -603,7 +604,7 @@ export function SavedInfo({
             editable={canChangeVisibility}
           />
           <label className="block text-xs" htmlFor={noteId}>
-            <span className="font-medium text-zinc-700">メモ</span>
+            <span className="font-medium text-muted-foreground">メモ</span>
             <input
               id={noteId}
               type="text"

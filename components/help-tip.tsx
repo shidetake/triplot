@@ -19,7 +19,7 @@ export function HelpTip({
         tabIndex={0}
         role="img"
         aria-label={label}
-        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-zinc-600"
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-muted-foreground"
       >
         ?
       </span>

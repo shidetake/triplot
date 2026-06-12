@@ -151,7 +151,7 @@ export function WeekCalendar({
     }
     if (color.kind === "private") {
       return {
-        className: `border-zinc-300 text-zinc-700 ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
+        className: `border-zinc-300 text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
       };
     }
     if (color.kind === "mixed") {
@@ -191,7 +191,7 @@ export function WeekCalendar({
     if (sel) return { className: "bg-blue-200 text-blue-950" };
     if (color.kind === "private") {
       return {
-        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-zinc-800`,
+        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground`,
       };
     }
     if (color.kind === "mixed") {
@@ -599,7 +599,7 @@ export function WeekCalendar({
 
   if (columns.length === 0) {
     return (
-      <p className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-zinc-500">
+      <p className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-muted-foreground">
         この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。
       </p>
     );
@@ -649,7 +649,7 @@ export function WeekCalendar({
               className="relative shrink-0 border-r border-zinc-200 px-1 py-1 text-center"
               style={{ width: g.columns.length * COL }}
             >
-              <div className="text-xs font-medium text-zinc-800">
+              <div className="text-xs font-medium text-foreground">
                 {g.label}
               </div>
               {g.tzNote && (
@@ -672,7 +672,7 @@ export function WeekCalendar({
         {/* ── 終日帯 ── */}
         <div className="flex border-b border-zinc-200 bg-zinc-50">
           <div
-            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-zinc-500"
+            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-muted-foreground"
             style={{ width: GUTTER }}
           >
             終日
@@ -833,7 +833,7 @@ export function WeekCalendar({
               {hourTicks.map((m) => (
                 <div
                   key={m}
-                  className="absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-zinc-400"
+                  className="absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-subtle-foreground"
                   style={{ top: y(m) }}
                 >
                   {m < winEnd ? hhmm(m) : ""}

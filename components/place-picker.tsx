@@ -273,7 +273,7 @@ export function PlacePicker({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-black focus:outline-none"
+        className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
       />
 
       {open && rows.length > 0 && (
@@ -293,7 +293,7 @@ export function PlacePicker({
                     className={base}
                   >
                     <span className="font-medium">{row.name}</span>
-                    <span className="ml-2 text-[11px] text-zinc-400">
+                    <span className="ml-2 text-[11px] text-subtle-foreground">
                       保存済み
                     </span>
                   </button>
@@ -313,7 +313,7 @@ export function PlacePicker({
                     {pred.mainText?.text ?? pred.text.text}
                   </span>
                   {pred.secondaryText?.text && (
-                    <span className="block truncate text-[11px] text-zinc-500">
+                    <span className="block truncate text-[11px] text-muted-foreground">
                       {pred.secondaryText.text}
                     </span>
                   )}

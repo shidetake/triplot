@@ -111,6 +111,7 @@ function PrioritySelect({
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
+        title={`優先度: ${PRIORITY_LABEL[value]}`}
         aria-haspopup="listbox"
         aria-expanded={open}
         className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-zinc-100 disabled:opacity-50"
@@ -138,7 +139,7 @@ function PrioritySelect({
                 >
                   <PriorityIcon p={p} size={15} />
                   <span className="flex-1">{PRIORITY_LABEL[p]}</span>
-                  {sel && <CheckIcon size={13} className="text-zinc-500" />}
+                  {sel && <CheckIcon size={13} className="text-muted-foreground" />}
                 </button>
               </li>
             );
@@ -337,11 +338,11 @@ export function TodoSection({
         type="button"
         onClick={toggleCollapsed}
         aria-expanded={!collapsed}
-        className="flex w-full items-center gap-1 text-left text-sm font-semibold text-zinc-700"
+        className="flex w-full items-center gap-1 text-left text-sm font-semibold text-muted-foreground"
       >
         <ChevronIcon
           size={16}
-          className={`shrink-0 text-zinc-400 transition-transform ${
+          className={`shrink-0 text-subtle-foreground transition-transform ${
             collapsed ? "" : "rotate-90"
           }`}
         />
@@ -364,7 +365,7 @@ export function TodoSection({
             }
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-zinc-400 focus:border-zinc-400"
+          className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-zinc-400"
         />
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
         <button
@@ -372,7 +373,7 @@ export function TodoSection({
           onClick={add}
           disabled={isPending || draft.trim() === ""}
           aria-label="追加"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-zinc-700 disabled:opacity-40"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
           <PlusIcon size={16} />
         </button>
@@ -424,8 +425,8 @@ export function TodoSection({
                     onClick={() => startEdit(todo)}
                     className={`block cursor-text truncate text-sm ${
                       todo.done
-                        ? "text-zinc-400 line-through"
-                        : "text-zinc-800"
+                        ? "text-subtle-foreground line-through"
+                        : "text-foreground"
                     }`}
                   >
                     {todo.event_id && <ReservationIcon size={13} className="mr-1" />}
@@ -450,7 +451,7 @@ export function TodoSection({
                   className={`flex shrink-0 items-center gap-0.5 rounded p-1 text-xs transition ${
                     todo.iLiked
                       ? "text-rose-500 hover:bg-rose-50"
-                      : "text-zinc-500 hover:bg-zinc-200 hover:text-zinc-700"
+                      : "text-muted-foreground hover:bg-zinc-200 hover:text-foreground"
                   }`}
                 >
                   <HeartIcon size={16} filled={todo.iLiked} />
@@ -460,7 +461,7 @@ export function TodoSection({
                 </button>
               )}
 
-              <span className="flex shrink-0 items-center gap-1 text-xs text-zinc-500">
+              <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                 <MemberAvatar
                   name={memberName(todo.created_by_member_id)}
                   color={memberColor(todo.created_by_member_id)}
@@ -472,7 +473,7 @@ export function TodoSection({
                 type="button"
                 onClick={() => remove(todo)}
                 aria-label="削除"
-                className="shrink-0 rounded p-1 text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-700"
+                className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-zinc-200 hover:text-foreground"
               >
                 <TrashIcon size={16} />
               </button>

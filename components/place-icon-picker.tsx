@@ -106,8 +106,8 @@ export function PlaceIconPicker({
                 ? "bg-red-100 text-red-900"
                 : "bg-blue-100 text-blue-900";
               const idleClass = used
-                ? "text-zinc-900 opacity-25 hover:opacity-40"
-                : "text-zinc-700 hover:bg-zinc-100";
+                ? "text-foreground opacity-25 hover:opacity-40"
+                : "text-muted-foreground hover:bg-zinc-100";
               return (
                 <button
                   key={it.key}
@@ -128,19 +128,19 @@ export function PlaceIconPicker({
         </div>
 
         <footer className="border-t border-zinc-100">
-          <div className="flex items-center gap-2 px-4 py-2 text-xs text-zinc-500">
+          <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
             選択中:
             {selectedEntry ? (
               <>
-                <span className="inline-flex items-center text-zinc-900">
+                <span className="inline-flex items-center text-foreground">
                   <PlaceIcon icon={selectedEntry.key} size={20} />
                 </span>
-                <span className="font-medium text-zinc-900">
+                <span className="font-medium text-foreground">
                   {selectedEntry.label}
                 </span>
               </>
             ) : (
-              <span className="text-zinc-400">未選択</span>
+              <span className="text-subtle-foreground">未選択</span>
             )}
           </div>
           {error && (
@@ -151,7 +151,7 @@ export function PlaceIconPicker({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="rounded-lg px-3 py-1.5 text-sm text-zinc-600 transition hover:bg-zinc-100 disabled:opacity-50"
+              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-zinc-100 disabled:opacity-50"
             >
               キャンセル
             </button>

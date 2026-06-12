@@ -338,7 +338,8 @@ export function ExpenseForm({
             type="button"
             onClick={onDone}
             aria-label="閉じる"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+            title="閉じる"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
           >
             <CloseIcon size={14} />
           </button>
@@ -399,7 +400,7 @@ export function ExpenseForm({
             className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           />
           {averageRates[localCurrency] !== undefined && (
-            <span className="mt-1 block text-xs text-zinc-500">
+            <span className="mt-1 block text-xs text-muted-foreground">
               この旅行の平均レート: {averageRates[localCurrency]}
             </span>
           )}
@@ -490,7 +491,8 @@ export function ExpenseForm({
                 type="button"
                 onClick={collapseTime}
                 aria-label="時刻をやめる"
-                className="flex h-5 w-5 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+                title="時刻をやめる"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
               >
                 <CloseIcon size={12} />
               </button>
@@ -514,7 +516,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={expandTime}
-              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-zinc-500 transition hover:border-zinc-400 hover:bg-zinc-50 hover:text-zinc-900"
+              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-muted-foreground transition hover:border-zinc-400 hover:bg-zinc-50 hover:text-foreground"
             >
               ＋ 時刻を指定
             </button>
@@ -531,7 +533,7 @@ export function ExpenseForm({
         multiTz &&
         (tzRes.kind === "ambiguous" ? (
           <fieldset className="text-sm">
-            <p className="text-[11px] text-zinc-500">
+            <p className="text-[11px] text-muted-foreground">
               移動日です。どちらのタイムゾーンで使ったか選んでください。
             </p>
             <div className="mt-1 flex flex-col gap-1">
@@ -556,7 +558,7 @@ export function ExpenseForm({
             </div>
           </fieldset>
         ) : (
-          <p className="text-xs text-zinc-500">
+          <p className="text-xs text-muted-foreground">
             現地タイムゾーン: {tzLabel(tz)}
           </p>
         ))}
@@ -608,10 +610,10 @@ export function ExpenseForm({
               }
             }}
             aria-expanded={splitMode === "custom"}
-            className="inline-flex items-center gap-1 rounded font-medium text-zinc-700 transition hover:text-zinc-900"
+            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>割り勘対象: {splitMode === "all" ? "全員" : splitLabel}</span>
-            <span className="text-[10px] text-zinc-500">
+            <span className="text-[10px] text-muted-foreground">
               {splitMode === "all" ? "▼" : "▲"}
             </span>
           </button>
@@ -628,7 +630,7 @@ export function ExpenseForm({
                     className={
                       on
                         ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-zinc-400 ring-1 ring-zinc-200"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-zinc-200"
                     }
                   >
                     {m.display_name}

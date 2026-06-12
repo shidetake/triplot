@@ -131,7 +131,7 @@ export function PlaceList({
                   )}
                   <span className="font-medium">{p.name}</span>
                   {p.visibility === "private" && (
-                    <span className="rounded bg-zinc-100 px-1.5 text-xs text-zinc-600">
+                    <span className="rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground">
                       プライベート
                     </span>
                   )}
@@ -142,7 +142,7 @@ export function PlaceList({
                   )}
                 </div>
                 {p.note && (
-                  <p className="mt-1 text-xs text-zinc-700">{p.note}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{p.note}</p>
                 )}
                 {isLocating && (
                   <p className="mt-1 text-xs text-amber-800">

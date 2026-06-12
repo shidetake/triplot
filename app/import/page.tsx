@@ -102,18 +102,18 @@ export default async function ImportPage() {
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">取り込み</h1>
 
-      <p className="mt-3 text-sm text-zinc-600">
+      <p className="mt-3 text-sm text-muted-foreground">
         転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを変更できます。確定は各旅行の画面で行ってください。
       </p>
 
       {importAddress && (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-xs text-zinc-500">メールの転送先</span>
+          <span className="text-xs text-muted-foreground">メールの転送先</span>
           <ImportAddress address={importAddress} />
         </div>
       )}
 
-      <p className="mt-3 text-xs text-zinc-500">
+      <p className="mt-3 text-xs text-muted-foreground">
         今月の取り込み: {usedThisMonth ?? 0} / {MONTHLY_EMAIL_CAP} 件
       </p>
 
@@ -132,7 +132,7 @@ export default async function ImportPage() {
               className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50/50 p-3"
             >
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-zinc-800">
+                <div className="truncate text-sm font-medium text-foreground">
                   {e.subject || e.sender || "(件名なし)"}
                 </div>
                 <div className="mt-0.5 text-xs text-red-700">
@@ -147,7 +147,7 @@ export default async function ImportPage() {
                   type="submit"
                   aria-label="破棄"
                   title="破棄"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
                 >
                   <CloseIcon size={14} />
                 </button>
@@ -158,7 +158,7 @@ export default async function ImportPage() {
       )}
 
       {rows.length === 0 ? (
-        <p className="mt-10 text-sm text-zinc-500">
+        <p className="mt-10 text-sm text-muted-foreground">
           まだ下書きはありません。上の転送先アドレスにレシートを転送してみてください。
         </p>
       ) : (
@@ -170,7 +170,7 @@ export default async function ImportPage() {
                   <div className="truncate font-medium">
                     {row.receipt?.merchant || "(店名不明)"}
                   </div>
-                  <div className="mt-1 text-sm text-zinc-600">
+                  <div className="mt-1 text-sm text-muted-foreground">
                     {row.receipt
                       ? `${row.receipt.total} ${row.receipt.currency} / ${row.receipt.date} / ${row.receipt.category}`
                       : "(読み取り内容なし)"}
@@ -209,7 +209,7 @@ export default async function ImportPage() {
                     {row.assignedTripId ? (
                       <Link
                         href={`/trips/${row.assignedTripId}`}
-                        className="text-sm font-medium text-zinc-900 underline underline-offset-2"
+                        className="text-sm font-medium text-foreground underline underline-offset-2"
                       >
                         → {tripTitle.get(row.assignedTripId) ?? "旅行"}で確定
                       </Link>
@@ -222,12 +222,12 @@ export default async function ImportPage() {
 
                   {row.children.length > 0 && (
                     <details className="mt-2 text-sm">
-                      <summary className="cursor-pointer text-zinc-500">
+                      <summary className="cursor-pointer text-muted-foreground">
                         🔗 {row.children.length + 1}通を合体（明細）
                       </summary>
                       <div className="mt-2 space-y-1">
                         {/* この下書き自身の元メール（分けられない本体） */}
-                        <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-zinc-600">
+                        <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-muted-foreground">
                           {row.own?.merchant || "(店名不明)"} / {row.own?.total}{" "}
                           {row.own?.currency} / {row.own?.date}
                           {row.own?.isUpdate ? "（調整）" : ""}
@@ -238,7 +238,7 @@ export default async function ImportPage() {
                             key={ch.id}
                             className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
                           >
-                            <span className="min-w-0 text-xs text-zinc-600">
+                            <span className="min-w-0 text-xs text-muted-foreground">
                               {ch.receipt?.merchant || "(店名不明)"} /{" "}
                               {ch.receipt?.total} {ch.receipt?.currency} /{" "}
                               {ch.receipt?.date}
@@ -248,7 +248,7 @@ export default async function ImportPage() {
                               <input type="hidden" name="id" value={ch.id} />
                               <button
                                 type="submit"
-                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-zinc-700 transition hover:bg-zinc-100"
+                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-zinc-100"
                               >
                                 分割
                               </button>
@@ -266,7 +266,7 @@ export default async function ImportPage() {
                     type="submit"
                     aria-label="破棄"
                     title="破棄"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
                   >
                     <CloseIcon size={16} />
                   </button>

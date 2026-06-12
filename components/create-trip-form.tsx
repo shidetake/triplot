@@ -100,7 +100,8 @@ export function CreateTripForm({
           type="button"
           onClick={onDone}
           aria-label="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-600"
+          title="閉じる"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
         >
           <CloseIcon size={14} />
         </button>
@@ -113,7 +114,7 @@ export function CreateTripForm({
             className={`${radio} ${
               mode === "new"
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                : "border-zinc-300 text-muted-foreground hover:bg-zinc-100"
             }`}
           >
             <input
@@ -132,7 +133,7 @@ export function CreateTripForm({
             className={`${radio} ${
               mode === "copy"
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-zinc-700 hover:bg-zinc-100"
+                : "border-zinc-300 text-muted-foreground hover:bg-zinc-100"
             }`}
           >
             <input
