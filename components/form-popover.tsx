@@ -48,7 +48,7 @@ export function FormPopover({
       <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
       <div
         ref={ref}
-        className="fixed z-50 max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-zinc-300 bg-white shadow-xl"
+        className="fixed z-50 max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl"
         style={{ left: pos.left, top: pos.top }}
       >
         {children}

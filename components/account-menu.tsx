@@ -57,7 +57,7 @@ export function AccountMenu({
         title={email ?? "アカウント"}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-sm font-medium text-white ring-1 ring-zinc-200 transition hover:ring-zinc-300"
+        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-sm font-medium text-white ring-1 ring-foreground/10 transition hover:ring-foreground/40"
       >
         {avatarUrl ? (
           // 外部（Google）のアバター URL。next/image のドメイン設定を増やさず素の img で。
@@ -71,10 +71,10 @@ export function AccountMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-lg border border-foreground/10 bg-white py-1 shadow-lg"
         >
           {email && (
-            <div className="truncate border-b border-zinc-100 px-3 py-2 text-xs text-muted-foreground">
+            <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
               {email}
             </div>
           )}

@@ -19,7 +19,7 @@ export function ImportAddress({ address }: { address: string }) {
     <button
       type="button"
       onClick={copy}
-      className="inline-flex h-9 items-center rounded-md border border-zinc-300 px-3 text-sm text-muted-foreground transition hover:bg-foreground/10"
+      className="inline-flex h-9 items-center rounded-md border border-foreground/20 px-3 text-sm text-muted-foreground transition hover:bg-foreground/10"
     >
       アドレスをコピー
     </button>

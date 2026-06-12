@@ -330,7 +330,7 @@ export function ExpenseForm({
     <form
       ref={formRef}
       action={formAction}
-      className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
+      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       {onDone && (
         <div className="flex justify-end">
@@ -360,7 +360,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           />
         </label>
         <label className="block text-sm">
@@ -369,7 +369,7 @@ export function ExpenseForm({
             name="local_currency"
             value={localCurrency}
             onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className="mt-1 block rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className="mt-1 block rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
@@ -397,7 +397,7 @@ export function ExpenseForm({
                 ? String(averageRates[localCurrency])
                 : "例: 150"
             }
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           />
           {averageRates[localCurrency] !== undefined && (
             <span className="mt-1 block text-xs text-muted-foreground">
@@ -447,7 +447,7 @@ export function ExpenseForm({
           name="note"
           placeholder="ランチ"
           defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         />
       </label>
 
@@ -456,7 +456,7 @@ export function ExpenseForm({
         <select
           name="payer_member_id"
           defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         >
           {members.map((m) => (
             <option key={m.id} value={m.id}>
@@ -504,7 +504,7 @@ export function ExpenseForm({
               required
               value={paidAtTime}
               onChange={(e) => setPaidAtTime(e.target.value)}
-              className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+              className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
             />
           </div>
         ) : (
@@ -516,7 +516,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={expandTime}
-              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-muted-foreground transition hover:border-zinc-400 hover:bg-foreground/10 hover:text-foreground"
+              className="mt-1 h-[42px] rounded-md border border-dashed border-foreground/20 px-3 text-xs text-muted-foreground transition hover:border-foreground/40 hover:bg-foreground/10 hover:text-foreground"
             >
               ＋ 時刻を指定
             </button>
@@ -630,7 +630,7 @@ export function ExpenseForm({
                     className={
                       on
                         ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-zinc-200"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-foreground/10"
                     }
                   >
                     {m.display_name}
@@ -659,7 +659,7 @@ export function ExpenseForm({
             disabled={isDeleting}
             aria-label="削除"
             title="削除"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
           >
             <TrashIcon size={18} />
           </button>

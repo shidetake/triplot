@@ -47,7 +47,7 @@ function StatusSelect({
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
       >
         {sorted.map((s) => (
           <option key={s.id} value={s.id}>
@@ -127,7 +127,7 @@ function IconPicker({
             className={`flex h-8 w-8 items-center justify-center rounded-md border ${
               value === o.icon
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-muted-foreground hover:bg-foreground/10"
+                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             <PlaceIcon icon={o.icon} size={22} />
@@ -138,7 +138,7 @@ function IconPicker({
           onClick={() => setAddOpen(true)}
           title="アイコンを追加"
           aria-label="アイコンを追加"
-          className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-zinc-300 text-blue-600 transition hover:bg-blue-600/10"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-foreground/20 text-blue-600 transition hover:bg-blue-600/10"
         >
           <PlusIcon size={16} />
         </button>
@@ -227,7 +227,7 @@ export function CandidateInfo({
         <p className="mt-0.5 text-xs text-muted-foreground">{candidate.address}</p>
       </div>
 
-      <form action={formAction} className="space-y-2 border-t border-zinc-200 pt-2">
+      <form action={formAction} className="space-y-2 border-t border-foreground/10 pt-2">
         <input type="hidden" name="name" value={candidate.name} />
         <input
           type="hidden"
@@ -268,7 +268,7 @@ export function CandidateInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -337,7 +337,7 @@ export function DraftInfo({
 
       <form
         action={formAction}
-        className="space-y-2 border-t border-zinc-200 pt-2"
+        className="space-y-2 border-t border-foreground/10 pt-2"
       >
         <input type="hidden" name="lat" value={draft.lat} />
         <input type="hidden" name="lng" value={draft.lng} />
@@ -352,7 +352,7 @@ export function DraftInfo({
             required
             autoFocus
             placeholder="集合場所"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
         <StatusSelect
@@ -378,7 +378,7 @@ export function DraftInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -448,11 +448,11 @@ export function LocateInfo({
           {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
         </p>
       </div>
-      <div className="flex gap-2 border-t border-zinc-200 pt-2">
+      <div className="flex gap-2 border-t border-foreground/10 pt-2">
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-foreground/10"
+          className="h-9 flex-1 rounded-md border border-foreground/20 text-sm font-medium transition hover:bg-foreground/10"
         >
           やめる
         </button>
@@ -528,7 +528,7 @@ export function SavedInfo({
       disabled={isDeleting}
       aria-label="削除"
       title="削除"
-      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
     >
       <TrashIcon size={18} />
     </button>
@@ -583,7 +583,7 @@ export function SavedInfo({
       {editing ? (
         <form
           action={formAction}
-          className="space-y-2 border-t border-zinc-200 pt-2"
+          className="space-y-2 border-t border-foreground/10 pt-2"
         >
           <input type="hidden" name="place_id" value={place.id} />
           <input type="hidden" name="icon" value={icon} />
@@ -611,7 +611,7 @@ export function SavedInfo({
               name="note"
               defaultValue={place.note ?? ""}
               placeholder="22時まで"
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
           </label>
           <div className="flex gap-2">
@@ -636,7 +636,7 @@ export function SavedInfo({
         (canEdit || canDelete) && (
           // 他のフォーム（expense/event/place create）と同じレイアウト:
           // 削除は固定幅で左、primary は flex-1 で残りを全部取る。
-          <div className="flex gap-2 border-t border-zinc-200 pt-2">
+          <div className="flex gap-2 border-t border-foreground/10 pt-2">
             {deleteButton}
             {canEdit && (
               <button

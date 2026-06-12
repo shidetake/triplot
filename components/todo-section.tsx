@@ -121,7 +121,7 @@ function PrioritySelect({
       {open && (
         <ul
           role="listbox"
-          className="absolute right-0 z-50 mt-1 w-24 overflow-hidden rounded-md border border-zinc-300 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-1 w-24 overflow-hidden rounded-md border border-foreground/20 bg-white py-1 shadow-lg"
         >
           {(["high", "medium", "low"] as const).map((p) => {
             const sel = p === value;
@@ -365,7 +365,7 @@ export function TodoSection({
             }
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-primary"
+          className="min-w-0 flex-1 rounded-md border border-foreground/10 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-primary"
         />
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
         <button
@@ -396,7 +396,7 @@ export function TodoSection({
                 className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] border transition ${
                   todo.done
                     ? "border-primary bg-primary text-primary-foreground"
-                    : "border-zinc-300 bg-white hover:border-zinc-400"
+                    : "border-foreground/20 bg-white hover:border-foreground/40"
                 }`}
               >
                 {todo.done && <CheckIcon size={12} />}

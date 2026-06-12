@@ -79,7 +79,7 @@ export function MembersManagementList({
   };
 
   return (
-    <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
+    <ul className="divide-y divide-zinc-200 rounded-md border border-foreground/10 bg-white">
       {members.map((m) => {
         const isMe = m.id === myMemberId;
         const showDelete = isMe || iAmAdmin;
@@ -108,7 +108,7 @@ export function MembersManagementList({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+                className="flex-1 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
               <button
                 type="button"
@@ -116,7 +116,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label="キャンセル"
                 title="キャンセル"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-foreground/20 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
               >
                 <CloseIcon size={16} />
               </button>
@@ -161,7 +161,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label="編集"
                 title="編集"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-foreground/20 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
               >
                 <EditIcon size={16} />
               </button>
@@ -173,7 +173,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label={isMe ? "退出する" : `${m.display_name} を外す`}
                 title={isMe ? "退出する" : "外す"}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
               >
                 <TrashIcon size={16} />
               </button>

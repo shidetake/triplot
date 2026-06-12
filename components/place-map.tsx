@@ -353,7 +353,7 @@ export function PlaceMap({
 
   return (
     <div className="space-y-1">
-      <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-zinc-200">
+      <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-foreground/10">
         <Map
           mapId={mapId}
           defaultCenter={initialCenter}
@@ -546,7 +546,7 @@ export function PlaceMap({
               className={`rounded-full border px-2 py-0.5 text-xs ${
                 activeIdx === i
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-zinc-300 bg-white text-muted-foreground"
+                  : "border-foreground/20 bg-white text-muted-foreground"
               }`}
             >
               {c.label ?? "その他"}
@@ -558,7 +558,7 @@ export function PlaceMap({
             className={`rounded-full border px-2 py-0.5 text-xs ${
               activeIdx === -1
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 bg-white text-muted-foreground"
+                : "border-foreground/20 bg-white text-muted-foreground"
             }`}
           >
             すべて

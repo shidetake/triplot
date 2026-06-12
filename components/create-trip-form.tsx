@@ -93,7 +93,7 @@ export function CreateTripForm({
   return (
     <form
       action={formAction}
-      className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
+      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       <div className="flex justify-end">
         <button
@@ -114,7 +114,7 @@ export function CreateTripForm({
             className={`${radio} ${
               mode === "new"
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-muted-foreground hover:bg-foreground/10"
+                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             <input
@@ -133,7 +133,7 @@ export function CreateTripForm({
             className={`${radio} ${
               mode === "copy"
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-muted-foreground hover:bg-foreground/10"
+                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             <input
@@ -157,7 +157,7 @@ export function CreateTripForm({
             value={sourceId}
             onChange={(e) => pickSource(e.target.value)}
             required={mode === "copy"}
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
           >
             <option value="" disabled>
               旅行を選択
@@ -188,7 +188,7 @@ export function CreateTripForm({
           placeholder="ハワイ旅行"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         />
       </label>
 
@@ -225,7 +225,7 @@ export function CreateTripForm({
           name="default_currency"
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
-          className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
         >
           {CURRENCIES.map((c) => (
             <option key={c.value} value={c.value}>
@@ -278,7 +278,7 @@ function Field({ label, name, type = "text", ...rest }: FieldProps) {
         {...rest}
         type={type}
         name={name}
-        className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+        className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
       />
     </label>
   );

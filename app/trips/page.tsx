@@ -66,7 +66,7 @@ async function TripsSection({ userId }: { userId: string }) {
             <li key={trip.id}>
               <Link
                 href={`/trips/${trip.id}`}
-                className="block rounded-md border border-zinc-200 p-4 transition hover:border-zinc-400 hover:bg-foreground/10"
+                className="block rounded-md border border-foreground/10 p-4 transition hover:border-foreground/40 hover:bg-foreground/10"
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">

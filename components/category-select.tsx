@@ -51,7 +51,7 @@ export function CategorySelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-md border border-zinc-300 bg-white px-3 py-2 text-left focus:border-primary focus:outline-none"
+        className="flex w-full items-center gap-2 rounded-md border border-foreground/20 bg-white px-3 py-2 text-left focus:border-primary focus:outline-none"
       >
         {selected && <CategoryChip category={selected} />}
         <span className="min-w-0 flex-1 truncate">
@@ -68,7 +68,7 @@ export function CategorySelect({
       {open && (
         <ul
           role="listbox"
-          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-zinc-300 bg-white py-1 shadow-lg"
+          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-foreground/20 bg-white py-1 shadow-lg"
         >
           {categories.map((c) => {
             const isSel = c.id === value;

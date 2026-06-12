@@ -28,7 +28,7 @@ export function ExpenseSummaryView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 rounded-md border border-zinc-200 bg-white p-4 text-sm">
+      <div className="grid grid-cols-3 gap-2 rounded-md border border-foreground/10 bg-white p-4 text-sm">
         <SummaryCell
           label="共有での自己負担"
           value={summary.sharedSelfShare}
@@ -47,7 +47,7 @@ export function ExpenseSummaryView({
         />
       </div>
 
-      <div className="rounded-md border border-zinc-200 bg-white p-4 text-sm">
+      <div className="rounded-md border border-foreground/10 bg-white p-4 text-sm">
         <h3 className="font-medium">精算</h3>
         {settlements.length === 0 ? (
           <p className="mt-2 text-muted-foreground">—</p>

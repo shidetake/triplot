@@ -281,7 +281,7 @@ export function PlaceSearch({
             onKeyDown={onKeyDown}
             placeholder="パンケーキ"
             autoComplete="off"
-            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 pr-9 text-sm focus:border-primary focus:outline-none"
+            className="w-full rounded-md border border-foreground/20 bg-white px-3 py-2 pr-9 text-sm focus:border-primary focus:outline-none"
           />
           {query && (
             <button
@@ -311,7 +311,7 @@ export function PlaceSearch({
       </div>
 
       {open && sug.length > 0 && (
-        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
           {sug.map((s, i) => {
             const pred = s.placePrediction!;
             const isActive = i === active;

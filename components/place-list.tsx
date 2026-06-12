@@ -99,7 +99,7 @@ export function PlaceList({
   }
 
   return (
-    <ul className="divide-y divide-zinc-200 rounded-md border border-zinc-200 bg-white">
+    <ul className="divide-y divide-zinc-200 rounded-md border border-foreground/10 bg-white">
       {places.map((p) => {
         const status = statusById.get(p.status_id);
         const isSelected = p.id === selectedId;

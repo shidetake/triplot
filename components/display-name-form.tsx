@@ -34,7 +34,7 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
         onChange={(e) => setValue(e.target.value)}
         placeholder="名前"
         maxLength={50}
-        className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-zinc-300 bg-white px-3 text-sm focus:border-primary focus:outline-none"
+        className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none"
       />
       <HelpTip label="デフォルト表示名について" align="right">
         旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。

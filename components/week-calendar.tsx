@@ -152,7 +152,7 @@ export function WeekCalendar({
     // 選択した瞬間に誰の予定か分からなくなる（design-guidelines の blue 節）。
     if (color.kind === "private") {
       return {
-        className: `${sel ? "z-10 border-zinc-500 ring-1 ring-zinc-500" : "border-zinc-300"} text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
+        className: `${sel ? "z-10 border-zinc-500 ring-1 ring-zinc-500" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {
@@ -597,7 +597,7 @@ export function WeekCalendar({
 
   if (columns.length === 0) {
     return (
-      <p className="rounded-md border border-zinc-200 bg-white p-6 text-sm text-muted-foreground">
+      <p className="rounded-md border border-foreground/10 bg-white p-6 text-sm text-muted-foreground">
         この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。
       </p>
     );
@@ -630,21 +630,21 @@ export function WeekCalendar({
       // 自前の長押し→ゴースト追加と被って使いにくい。カレンダー内は
       // 選択不要なので user-select:none / touch-callout:none で抑止する。
       style={{ WebkitTouchCallout: "none" }}
-      className="max-h-[70vh] select-none overflow-auto rounded-md border border-zinc-200 bg-white"
+      className="max-h-[70vh] select-none overflow-auto rounded-md border border-foreground/10 bg-white"
     >
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}
         <div className="sticky top-0 z-30">
         {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
-        <div className="flex border-b border-zinc-200 bg-white">
+        <div className="flex border-b border-foreground/10 bg-white">
           <div
-            className="sticky left-0 z-10 shrink-0 border-r border-zinc-200 bg-white"
+            className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-white"
             style={{ width: GUTTER }}
           />
           {groups.map((g) => (
             <div
               key={g.key}
-              className="relative shrink-0 border-r border-zinc-200 px-1 py-1 text-center"
+              className="relative shrink-0 border-r border-foreground/10 px-1 py-1 text-center"
               style={{ width: g.columns.length * COL }}
             >
               <div className="text-xs font-medium text-foreground">
@@ -668,9 +668,9 @@ export function WeekCalendar({
         </div>
 
         {/* ── 終日帯 ── */}
-        <div className="flex border-b border-zinc-200 bg-zinc-50">
+        <div className="flex border-b border-foreground/10 bg-zinc-50">
           <div
-            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-zinc-200 bg-zinc-50 text-[10px] text-muted-foreground"
+            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-zinc-50 text-[10px] text-muted-foreground"
             style={{ width: GUTTER }}
           >
             終日
@@ -824,7 +824,7 @@ export function WeekCalendar({
         <div className="flex">
           {/* 時刻ガター */}
           <div
-            className="sticky left-0 z-[25] shrink-0 border-r border-zinc-200 bg-white"
+            className="sticky left-0 z-[25] shrink-0 border-r border-foreground/10 bg-white"
             style={{ width: GUTTER, height: bodyH }}
           >
             <div className="relative h-full">
@@ -846,7 +846,7 @@ export function WeekCalendar({
             {hourTicks.map((m) => (
               <div
                 key={m}
-                className="absolute left-0 border-t border-zinc-100"
+                className="absolute left-0 border-t border-foreground/5"
                 style={{ top: y(m), width: totalW }}
               />
             ))}
@@ -855,7 +855,7 @@ export function WeekCalendar({
             {columns.map((c, i) => (
               <div
                 key={c.key}
-                className="absolute top-0 cursor-pointer border-r border-zinc-100"
+                className="absolute top-0 cursor-pointer border-r border-foreground/5"
                 style={{ left: i * COL, width: COL, height: bodyH }}
                 onPointerDown={(e) => {
                   // PC（マウス）専用。touch / pen は touch 系で扱うので無視。

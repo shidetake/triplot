@@ -127,7 +127,7 @@ export function PlaceIconPicker({
           </div>
         </div>
 
-        <footer className="border-t border-zinc-100">
+        <footer className="border-t border-foreground/5">
           <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
             選択中:
             {selectedEntry ? (

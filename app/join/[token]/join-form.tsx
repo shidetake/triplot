@@ -60,7 +60,7 @@ export function JoinForm({
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="ゲスト"
-          className="mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+          className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
         />
       </label>
 

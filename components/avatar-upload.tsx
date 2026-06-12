@@ -180,7 +180,7 @@ export function AvatarUpload({
           title="アバターを変更"
           aria-haspopup={hasCustom ? "menu" : undefined}
           aria-expanded={hasCustom ? open : undefined}
-          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-zinc-200 transition hover:opacity-90 disabled:opacity-50"
+          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
         >
           {currentUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -197,7 +197,7 @@ export function AvatarUpload({
         {open && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-lg border border-zinc-200 bg-white py-1 shadow-lg"
+            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-lg border border-foreground/10 bg-white py-1 shadow-lg"
           >
             <button
               type="button"

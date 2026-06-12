@@ -273,11 +273,11 @@ export function PlacePicker({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        className="block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
       />
 
       {open && rows.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-zinc-200 bg-white shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
           {rows.map((row, i) => {
             const isActive = i === active;
             const base = `block w-full px-2 py-1.5 text-left text-sm ${

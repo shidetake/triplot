@@ -40,7 +40,7 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 const initialState: EventMutationState = { ok: false, error: null };
 
 const inputCls =
-  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none";
+  "mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none";
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
@@ -304,7 +304,7 @@ export function EventForm({
   return (
     <form
       action={formAction}
-      className="space-y-3 rounded-md border border-zinc-200 bg-white p-4"
+      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       <div className="flex justify-end">
         <button
@@ -325,7 +325,7 @@ export function EventForm({
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
       {/* 種別セレクタ（通常／終日／タイムゾーン跨ぎ） */}
-      <div className="flex gap-1 rounded-md border border-zinc-200 p-1">
+      <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
         {(["timed", "allday", "transit"] as const).map((k) => (
           <button
             key={k}
@@ -608,7 +608,7 @@ export function EventForm({
                     className={
                       on
                         ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-zinc-200"
+                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-foreground/10"
                     }
                   >
                     {m.display_name}
@@ -663,7 +663,7 @@ export function EventForm({
             disabled={isDeleting}
             aria-label="削除"
             title="削除"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-200 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
           >
             <TrashIcon size={18} />
           </button>

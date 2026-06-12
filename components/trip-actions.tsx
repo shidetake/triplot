@@ -358,7 +358,7 @@ export function TripActions({
               type="button"
               onClick={onCopy}
               disabled={isPending || !inviteToken}
-              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+              className="h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
             </button>

@@ -92,7 +92,7 @@ export function DateRangePopover({
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
           className={cn(
-            "flex h-9 w-full min-w-0 items-center rounded-md border border-zinc-300 bg-white px-3 text-sm focus:border-primary focus:outline-none",
+            "flex h-9 w-full min-w-0 items-center rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none",
           )}
         >
           <span
@@ -131,7 +131,7 @@ export function DateRangePopover({
           {/* 範囲選択は片端だけ押したつもりが両端確定になって popover が閉じる
               のがミスりやすいので、自動クローズはやめて、ここの「確定」を明示
               タップで閉じる方式にしている。両端揃うまで disabled。 */}
-          <div className="flex justify-end border-t border-zinc-200 p-2">
+          <div className="flex justify-end border-t border-foreground/10 p-2">
             <button
               type="button"
               disabled={!f || !t}

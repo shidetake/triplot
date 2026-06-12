@@ -129,7 +129,7 @@ export default async function ImportPage() {
           {(errorRows ?? []).map((e) => (
             <li
               key={e.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-red-200 bg-red-50/50 p-3"
+              className="flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3"
             >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-foreground">
@@ -164,7 +164,7 @@ export default async function ImportPage() {
       ) : (
         <ul className="mt-8 space-y-3">
           {rows.map((row) => (
-            <li key={row.id} className="rounded-lg border border-zinc-200 p-4">
+            <li key={row.id} className="rounded-lg border border-foreground/10 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
@@ -187,7 +187,7 @@ export default async function ImportPage() {
                       <select
                         name="trip_id"
                         defaultValue={row.defaultTripId}
-                        className="rounded-md border border-zinc-300 bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                        className="rounded-md border border-foreground/20 bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
                         <option value="">（旅行を選択）</option>
                         {trips.map((t) => (
@@ -248,7 +248,7 @@ export default async function ImportPage() {
                               <input type="hidden" name="id" value={ch.id} />
                               <button
                                 type="submit"
-                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
+                                className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
                               >
                                 分割
                               </button>

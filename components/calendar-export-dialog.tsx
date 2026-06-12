@@ -220,7 +220,7 @@ export function CalendarExportDialog({
   const btnBlack =
     "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";
   const btnGhost =
-    "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10";
+    "h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10";
 
   return (
     <FormPopover anchor={anchor} onClose={onClose}>
@@ -282,7 +282,7 @@ export function CalendarExportDialog({
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   placeholder={`triplot_${tripTitle}`}
-                  className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-zinc-300 px-2 py-1.5 text-sm"
+                  className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-foreground/20 px-2 py-1.5 text-sm"
                 />
               )}
               {calendars.map((c) => (
