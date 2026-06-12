@@ -83,3 +83,9 @@ export function eventBarHueBg(hue: number, hovered: boolean): string {
 export function eventBarHueText(hue: number): string {
   return `hsl(${hue}, 45%, 25%)`;
 }
+
+export function eventHueSelectedBorder(hue: number): string {
+  // 選択中の強調枠。地色と同じ hue のまま濃く・太くする（黒枠は地色と
+  // 無関係な色が乗って野暮ったく、別色はメンバー色と衝突しうるため）。
+  return `hsl(${hue}, 65%, 50%)`;
+}

@@ -8,6 +8,7 @@ import {
   eventBlockHueBg,
   eventBlockHueBorder,
   eventBlockHueText,
+  eventHueSelectedBorder,
   GREEN_HUE,
   pickEventColor,
   type EventColor,
@@ -146,38 +147,35 @@ export function WeekCalendar({
     sel: boolean,
     hov: boolean,
   ): { className: string; style?: React.CSSProperties } => {
-    // 選択中も地色（メンバー色）は保ち、黒リングを重ねて示す。塗り替えると
+    // 選択中は地色（メンバー色）を保ったまま、同系色の濃い枠を太く
+    // （border 1px + ring 1px = 実質 2px。layout shift なし）。塗り替えると
     // 選択した瞬間に誰の予定か分からなくなる（design-guidelines の blue 節）。
-    const selCls = sel ? " z-10 ring-2 ring-primary" : "";
     if (color.kind === "private") {
       return {
-        className: `border-zinc-300 text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}${selCls}`,
+        className: `${sel ? "z-10 border-zinc-500 ring-1 ring-zinc-500" : "border-zinc-300"} text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
       };
     }
-    if (color.kind === "mixed") {
-      // 自分が参加していれば自分の hue を地色に（各自の画面で違って見える）。
-      // 不参加 or 自分の色未割当なら中立 slate。
-      if (color.selfHue == null) {
-        return {
-          className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}${selCls}`,
-        };
-      }
+    if (color.kind === "mixed" && color.selfHue == null) {
+      // 自分不参加 or 色未割当の mixed は中立 slate。
       return {
-        className: selCls.trim(),
-        style: {
-          backgroundColor: eventBlockHueBg(color.selfHue, hov),
-          borderColor: eventBlockHueBorder(color.selfHue),
-          color: eventBlockHueText(color.selfHue),
-        },
+        className: `${sel ? "z-10 border-slate-500 ring-1 ring-slate-500" : "border-slate-300"} text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
       };
     }
-    const hue = color.kind === "green" ? GREEN_HUE : color.hue;
+    // mixed（自分参加）は自分の hue を地色に（各自の画面で違って見える）。
+    const hue =
+      color.kind === "mixed"
+        ? color.selfHue!
+        : color.kind === "green"
+          ? GREEN_HUE
+          : color.hue;
+    const strong = eventHueSelectedBorder(hue);
     return {
-      className: selCls.trim(),
+      className: sel ? "z-10" : "",
       style: {
         backgroundColor: eventBlockHueBg(hue, hov),
-        borderColor: eventBlockHueBorder(hue),
+        borderColor: sel ? strong : eventBlockHueBorder(hue),
         color: eventBlockHueText(hue),
+        ...(sel ? { boxShadow: `0 0 0 1px ${strong}` } : null),
       },
     };
   };
@@ -188,34 +186,32 @@ export function WeekCalendar({
     sel: boolean,
     hov: boolean,
   ): { className: string; style?: React.CSSProperties } => {
-    // blockAppearance と同じく、選択は地色を保ったまま黒リング。帯は薄く
-    // 隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
-    const selCls = sel ? " z-10 ring-2 ring-inset ring-primary" : "";
+    // blockAppearance と同じく、選択は地色を保ったまま同系色の濃い枠。帯は
+    // 薄く隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
     if (color.kind === "private") {
       return {
-        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground${selCls}`,
+        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-zinc-500" : ""}`,
       };
     }
-    if (color.kind === "mixed") {
-      if (color.selfHue == null) {
-        return {
-          className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800${selCls}`,
-        };
-      }
+    if (color.kind === "mixed" && color.selfHue == null) {
       return {
-        className: selCls.trim(),
-        style: {
-          backgroundColor: eventBarHueBg(color.selfHue, hov),
-          color: eventBarHueText(color.selfHue),
-        },
+        className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800${sel ? " z-10 ring-2 ring-inset ring-slate-500" : ""}`,
       };
     }
-    const hue = color.kind === "green" ? GREEN_HUE : color.hue;
+    const hue =
+      color.kind === "mixed"
+        ? color.selfHue!
+        : color.kind === "green"
+          ? GREEN_HUE
+          : color.hue;
     return {
-      className: selCls.trim(),
+      className: sel ? "z-10" : "",
       style: {
         backgroundColor: eventBarHueBg(hue, hov),
         color: eventBarHueText(hue),
+        ...(sel
+          ? { boxShadow: `inset 0 0 0 2px ${eventHueSelectedBorder(hue)}` }
+          : null),
       },
     };
   };
