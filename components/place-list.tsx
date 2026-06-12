@@ -120,8 +120,8 @@ export function PlaceList({
                 isLocating
                   ? "border-l-4 border-amber-400 bg-amber-50"
                   : isSelected
-                    ? "bg-zinc-50 hover:bg-zinc-50"
-                    : "hover:bg-zinc-50"
+                    ? "bg-accent"
+                    : "hover:bg-accent"
               }`}
             >
               <div className="min-w-0 flex-1">

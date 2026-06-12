@@ -220,7 +220,7 @@ export function CalendarExportDialog({
   const btnBlack =
     "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";
   const btnGhost =
-    "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-zinc-100";
+    "h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-accent";
 
   return (
     <FormPopover anchor={anchor} onClose={onClose}>
@@ -231,7 +231,7 @@ export function CalendarExportDialog({
 
         {(phase === "connect" || phase === "pick") && (
           <div className="space-y-1">
-            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
+            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
               <input
                 type="radio"
                 name="scope"
@@ -240,7 +240,7 @@ export function CalendarExportDialog({
               />
               <span>自分が参加する予定のみ（{mineEvents.length}件）</span>
             </label>
-            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
+            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
               <input
                 type="radio"
                 name="scope"
@@ -267,7 +267,7 @@ export function CalendarExportDialog({
         {phase === "pick" && (
           <div className="space-y-3">
             <div className="max-h-48 space-y-1 overflow-y-auto">
-              <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100">
+              <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent">
                 <input
                   type="radio"
                   name="cal"
@@ -288,7 +288,7 @@ export function CalendarExportDialog({
               {calendars.map((c) => (
                 <label
                   key={c.id}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-zinc-100"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
                 >
                   <input
                     type="radio"

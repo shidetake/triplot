@@ -44,7 +44,7 @@ const inputCls =
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
-const fieldCls = "block min-w-0 text-xs";
+const fieldCls = "block min-w-0 text-sm";
 
 // 予定の3種別。フライトは「予定の一種」なので入口は分けず、ここで切り替える。
 //  - timed   : 通常（日付＋時刻。単一TZ）
@@ -312,7 +312,7 @@ export function EventForm({
           onClick={onDone}
           aria-label="閉じる"
           title="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
         >
           <CloseIcon size={14} />
         </button>
@@ -334,7 +334,7 @@ export function EventForm({
             className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
               kind3 === k
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-zinc-100"
+                : "text-muted-foreground hover:bg-accent"
             }`}
           >
             {KIND3_LABEL[k]}
@@ -607,7 +607,7 @@ export function EventForm({
                     aria-pressed={on}
                     className={
                       on
-                        ? "rounded-full bg-blue-100 px-2.5 py-0.5 text-xs text-blue-900 ring-1 ring-blue-300"
+                        ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
                         : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-zinc-200"
                     }
                   >

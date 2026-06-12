@@ -507,7 +507,7 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-medium">場所</h2>
+        <h2 className="text-lg font-semibold">場所</h2>
 
         <PlacesSection
           tripId={tripId}
@@ -524,7 +524,7 @@ export default async function TripDetailPage({
 
       <section className="mt-10 space-y-6">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-medium">費用</h2>
+          <h2 className="text-lg font-semibold">費用</h2>
           <AddExpenseButton
             tripId={tripId}
             members={activeMembers.map((m) => ({
@@ -615,7 +615,7 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-medium">TODOリスト</h2>
+        <h2 className="text-lg font-semibold">TODOリスト</h2>
 
         <TodoSection
           tripId={tripId}

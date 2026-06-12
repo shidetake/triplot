@@ -127,7 +127,7 @@ function IconPicker({
             className={`flex h-8 w-8 items-center justify-center rounded-md border ${
               value === o.icon
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-zinc-300 text-muted-foreground hover:bg-zinc-50"
+                : "border-zinc-300 text-muted-foreground hover:bg-accent"
             }`}
           >
             <PlaceIcon icon={o.icon} size={22} />
@@ -452,7 +452,7 @@ export function LocateInfo({
         <button
           type="button"
           onClick={onCancel}
-          className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-zinc-50"
+          className="h-9 flex-1 rounded-md border border-zinc-300 text-sm font-medium transition hover:bg-accent"
         >
           やめる
         </button>
@@ -551,7 +551,7 @@ export function SavedInfo({
             onClick={onDone}
             aria-label="閉じる"
             title="閉じる"
-            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
+            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
           >
             <CloseIcon size={14} />
           </button>

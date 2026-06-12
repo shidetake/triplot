@@ -107,7 +107,7 @@ export function PlaceIconPicker({
                 : "bg-blue-100 text-blue-900";
               const idleClass = used
                 ? "text-foreground opacity-25 hover:opacity-40"
-                : "text-muted-foreground hover:bg-zinc-100";
+                : "text-muted-foreground hover:bg-accent";
               return (
                 <button
                   key={it.key}
@@ -151,7 +151,7 @@ export function PlaceIconPicker({
               type="button"
               onClick={onClose}
               disabled={isPending}
-              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-zinc-100 disabled:opacity-50"
+              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-accent disabled:opacity-50"
             >
               キャンセル
             </button>

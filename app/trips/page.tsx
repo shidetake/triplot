@@ -43,7 +43,7 @@ async function TripsSection({ userId }: { userId: string }) {
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">旅行</h2>
+        <h2 className="text-lg font-semibold">旅行</h2>
         <CreateTripButton
           defaultDisplayName={defaultDisplayName}
           trips={trips.map((t) => ({
@@ -66,7 +66,7 @@ async function TripsSection({ userId }: { userId: string }) {
             <li key={trip.id}>
               <Link
                 href={`/trips/${trip.id}`}
-                className="block rounded-md border border-zinc-200 p-4 transition hover:border-zinc-400 hover:bg-zinc-50"
+                className="block rounded-md border border-zinc-200 p-4 transition hover:border-zinc-400 hover:bg-accent"
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">

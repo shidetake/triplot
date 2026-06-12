@@ -146,12 +146,12 @@ export function WeekCalendar({
     sel: boolean,
     hov: boolean,
   ): { className: string; style?: React.CSSProperties } => {
-    if (sel) {
-      return { className: "z-10 border-blue-500 bg-blue-100 text-blue-950" };
-    }
+    // 選択中も地色（メンバー色）は保ち、黒リングを重ねて示す。塗り替えると
+    // 選択した瞬間に誰の予定か分からなくなる（design-guidelines の blue 節）。
+    const selCls = sel ? " z-10 ring-2 ring-primary" : "";
     if (color.kind === "private") {
       return {
-        className: `border-zinc-300 text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
+        className: `border-zinc-300 text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}${selCls}`,
       };
     }
     if (color.kind === "mixed") {
@@ -159,11 +159,11 @@ export function WeekCalendar({
       // 不参加 or 自分の色未割当なら中立 slate。
       if (color.selfHue == null) {
         return {
-          className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
+          className: `border-slate-300 text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}${selCls}`,
         };
       }
       return {
-        className: "",
+        className: selCls.trim(),
         style: {
           backgroundColor: eventBlockHueBg(color.selfHue, hov),
           borderColor: eventBlockHueBorder(color.selfHue),
@@ -173,7 +173,7 @@ export function WeekCalendar({
     }
     const hue = color.kind === "green" ? GREEN_HUE : color.hue;
     return {
-      className: "",
+      className: selCls.trim(),
       style: {
         backgroundColor: eventBlockHueBg(hue, hov),
         borderColor: eventBlockHueBorder(hue),
@@ -188,20 +188,22 @@ export function WeekCalendar({
     sel: boolean,
     hov: boolean,
   ): { className: string; style?: React.CSSProperties } => {
-    if (sel) return { className: "bg-blue-200 text-blue-950" };
+    // blockAppearance と同じく、選択は地色を保ったまま黒リング。帯は薄く
+    // 隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
+    const selCls = sel ? " z-10 ring-2 ring-inset ring-primary" : "";
     if (color.kind === "private") {
       return {
-        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground`,
+        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground${selCls}`,
       };
     }
     if (color.kind === "mixed") {
       if (color.selfHue == null) {
         return {
-          className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800`,
+          className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800${selCls}`,
         };
       }
       return {
-        className: "",
+        className: selCls.trim(),
         style: {
           backgroundColor: eventBarHueBg(color.selfHue, hov),
           color: eventBarHueText(color.selfHue),
@@ -210,7 +212,7 @@ export function WeekCalendar({
     }
     const hue = color.kind === "green" ? GREEN_HUE : color.hue;
     return {
-      className: "",
+      className: selCls.trim(),
       style: {
         backgroundColor: eventBarHueBg(hue, hov),
         color: eventBarHueText(hue),

@@ -147,7 +147,7 @@ export default async function ImportPage() {
                   type="submit"
                   aria-label="破棄"
                   title="破棄"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
                 >
                   <CloseIcon size={14} />
                 </button>
@@ -248,7 +248,7 @@ export default async function ImportPage() {
                               <input type="hidden" name="id" value={ch.id} />
                               <button
                                 type="submit"
-                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-zinc-100"
+                                className="shrink-0 rounded border border-zinc-300 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-accent"
                               >
                                 分割
                               </button>
@@ -266,7 +266,7 @@ export default async function ImportPage() {
                     type="submit"
                     aria-label="破棄"
                     title="破棄"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
                   >
                     <CloseIcon size={16} />
                   </button>

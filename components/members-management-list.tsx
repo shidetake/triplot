@@ -116,7 +116,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label="キャンセル"
                 title="キャンセル"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-zinc-50 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-accent disabled:opacity-50"
               >
                 <CloseIcon size={16} />
               </button>
@@ -161,7 +161,7 @@ export function MembersManagementList({
                 disabled={isPending}
                 aria-label="編集"
                 title="編集"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-zinc-50 disabled:opacity-50"
+                className="flex h-8 w-8 items-center justify-center rounded-md border border-zinc-300 text-muted-foreground transition hover:bg-accent disabled:opacity-50"
               >
                 <EditIcon size={16} />
               </button>

@@ -80,8 +80,8 @@ export function CategorySelect({
                     onChange(c.id);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-zinc-50 ${
-                    isSel ? "bg-zinc-50 font-medium" : ""
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent ${
+                    isSel ? "bg-accent font-medium" : ""
                   }`}
                 >
                   <CategoryChip category={c} />

@@ -114,7 +114,7 @@ function PrioritySelect({
         title={`優先度: ${PRIORITY_LABEL[value]}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-zinc-100 disabled:opacity-50"
+        className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-accent disabled:opacity-50"
       >
         <PriorityIcon p={value} />
       </button>
@@ -133,8 +133,8 @@ function PrioritySelect({
                     onChange(p);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-50 ${
-                    sel ? "bg-zinc-50 font-medium" : ""
+                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-accent ${
+                    sel ? "bg-accent font-medium" : ""
                   }`}
                 >
                   <PriorityIcon p={p} size={15} />
@@ -385,7 +385,7 @@ export function TodoSection({
           {ordered.map((todo) => (
             <li
               key={todo.id}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-zinc-50"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-accent"
             >
               <button
                 type="button"

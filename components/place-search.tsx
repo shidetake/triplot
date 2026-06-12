@@ -293,7 +293,7 @@ export function PlaceSearch({
               }}
               aria-label="検索をクリア"
               title="検索をクリア"
-              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-zinc-100 hover:text-muted-foreground"
+              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
             >
               <CloseIcon size={14} />
             </button>
@@ -326,7 +326,7 @@ export function PlaceSearch({
                     pick(s);
                   }}
                   className={`block w-full px-3 py-2 text-left text-sm ${
-                    isActive ? "bg-zinc-100" : "hover:bg-zinc-100"
+                    isActive ? "bg-accent" : "hover:bg-accent"
                   }`}
                 >
                   <span className="font-medium">

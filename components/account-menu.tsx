@@ -82,7 +82,7 @@ export function AccountMenu({
             href="/settings"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-zinc-50"
+            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
           >
             <SettingsIcon size={16} />
             設定
@@ -91,7 +91,7 @@ export function AccountMenu({
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-zinc-50"
+            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-accent"
           >
             <LogOutIcon size={16} />
             ログアウト

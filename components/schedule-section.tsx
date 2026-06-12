@@ -165,7 +165,7 @@ export function ScheduleSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-medium">スケジュール</h2>
+        <h2 className="text-lg font-semibold">スケジュール</h2>
         <div className="flex items-center gap-3">
           <HelpTip label="予定の追加方法" align="right" widthClass="w-52">
             空き時間をクリック / 長押しでも追加できます

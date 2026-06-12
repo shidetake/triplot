@@ -238,7 +238,7 @@ export function TripActions({
   };
 
   const iconBtn =
-    "rounded-md p-2 text-muted-foreground transition hover:bg-zinc-100 hover:text-foreground";
+    "rounded-md p-2 text-muted-foreground transition hover:bg-accent hover:text-foreground";
 
   return (
     <>
@@ -280,21 +280,21 @@ export function TripActions({
                   closeMenu();
                   if (a) openShare(a);
                 }}
-                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="block w-full px-4 py-2 text-left transition hover:bg-accent"
               >
                 共有
               </button>
               <Link
                 href={`/trips/${tripId}/members`}
                 onClick={closeMenu}
-                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="block w-full px-4 py-2 text-left transition hover:bg-accent"
               >
                 メンバー管理
               </Link>
               <button
                 type="button"
                 onClick={() => setMenuView("export")}
-                className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-accent"
               >
                 エクスポート
                 <span aria-hidden className="text-subtle-foreground">
@@ -317,28 +317,28 @@ export function TripActions({
               <button
                 type="button"
                 onClick={() => setMenuView("main")}
-                className="flex w-full items-center gap-1 px-4 py-2 text-left text-muted-foreground transition hover:bg-zinc-100"
+                className="flex w-full items-center gap-1 px-4 py-2 text-left text-muted-foreground transition hover:bg-accent"
               >
                 <span aria-hidden>‹</span> 戻る
               </button>
               <button
                 type="button"
                 onClick={(e) => onExportCalendar({ x: e.clientX, y: e.clientY })}
-                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="block w-full px-4 py-2 text-left transition hover:bg-accent"
               >
                 予定（Google カレンダー）
               </button>
               <button
                 type="button"
                 onClick={onExportMap}
-                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="block w-full px-4 py-2 text-left transition hover:bg-accent"
               >
                 地図（KMZ）
               </button>
               <button
                 type="button"
                 onClick={onExportExpenses}
-                className="block w-full px-4 py-2 text-left transition hover:bg-zinc-100"
+                className="block w-full px-4 py-2 text-left transition hover:bg-accent"
               >
                 費用（CSV）
               </button>
@@ -358,7 +358,7 @@ export function TripActions({
               type="button"
               onClick={onCopy}
               disabled={isPending || !inviteToken}
-              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-zinc-100 disabled:opacity-50"
+              className="h-9 w-full rounded-md border border-zinc-300 text-sm font-medium text-muted-foreground transition hover:bg-accent disabled:opacity-50"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
             </button>
