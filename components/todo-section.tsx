@@ -365,7 +365,7 @@ export function TodoSection({
             }
           }}
           placeholder={placeholder}
-          className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-zinc-400"
+          className="min-w-0 flex-1 rounded-md border border-zinc-200 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-primary"
         />
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
         <button

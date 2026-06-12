@@ -40,7 +40,7 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 const initialState: EventMutationState = { ok: false, error: null };
 
 const inputCls =
-  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none";
+  "mt-1 block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none";
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。

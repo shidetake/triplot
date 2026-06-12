@@ -108,7 +108,7 @@ export function MembersManagementList({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className="flex-1 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+                className="flex-1 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
               />
               <button
                 type="button"

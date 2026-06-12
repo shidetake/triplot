@@ -273,7 +273,7 @@ export function PlacePicker({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+        className="block w-full min-w-0 rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
       />
 
       {open && rows.length > 0 && (

@@ -47,7 +47,7 @@ function StatusSelect({
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+        className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
       >
         {sorted.map((s) => (
           <option key={s.id} value={s.id}>
@@ -268,7 +268,7 @@ export function CandidateInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -352,7 +352,7 @@ export function DraftInfo({
             required
             autoFocus
             placeholder="集合場所"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
         <StatusSelect
@@ -378,7 +378,7 @@ export function DraftInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+            className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
           />
         </label>
 
@@ -611,7 +611,7 @@ export function SavedInfo({
               name="note"
               defaultValue={place.note ?? ""}
               placeholder="22時まで"
-              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 text-sm focus:border-primary focus:outline-none"
+              className="mt-1 block w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
             />
           </label>
           <div className="flex gap-2">
