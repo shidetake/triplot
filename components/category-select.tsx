@@ -80,7 +80,7 @@ export function CategorySelect({
                     onChange(c.id);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-accent ${
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-foreground/10 ${
                     isSel ? "bg-accent font-medium" : ""
                   }`}
                 >

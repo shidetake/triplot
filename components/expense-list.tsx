@@ -164,7 +164,7 @@ function ExpenseRowItem({
       <button
         type="button"
         onClick={(e) => onEdit({ x: e.clientX, y: e.clientY })}
-        className="flex w-full items-start p-3 text-left transition hover:bg-accent"
+        className="flex w-full items-start p-3 text-left transition hover:bg-foreground/10"
       >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">

@@ -339,7 +339,7 @@ export function ExpenseForm({
             onClick={onDone}
             aria-label="閉じる"
             title="閉じる"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
+            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
           >
             <CloseIcon size={14} />
           </button>
@@ -492,7 +492,7 @@ export function ExpenseForm({
                 onClick={collapseTime}
                 aria-label="時刻をやめる"
                 title="時刻をやめる"
-                className="flex h-5 w-5 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
+                className="flex h-5 w-5 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
               >
                 <CloseIcon size={12} />
               </button>
@@ -516,7 +516,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={expandTime}
-              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-muted-foreground transition hover:border-zinc-400 hover:bg-accent hover:text-foreground"
+              className="mt-1 h-[42px] rounded-md border border-dashed border-zinc-300 px-3 text-xs text-muted-foreground transition hover:border-zinc-400 hover:bg-foreground/10 hover:text-foreground"
             >
               ＋ 時刻を指定
             </button>

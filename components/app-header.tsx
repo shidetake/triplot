@@ -59,7 +59,7 @@ export async function AppHeader() {
             title={
               inboxCount > 0 ? `取り込み（未割当 ${inboxCount} 件）` : "取り込み"
             }
-            className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-accent hover:text-foreground"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
           >
             <InboxIcon size={24} />
             {inboxCount > 0 && (

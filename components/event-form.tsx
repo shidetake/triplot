@@ -312,7 +312,7 @@ export function EventForm({
           onClick={onDone}
           aria-label="閉じる"
           title="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-accent hover:text-muted-foreground"
+          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
         >
           <CloseIcon size={14} />
         </button>
@@ -334,7 +334,7 @@ export function EventForm({
             className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
               kind3 === k
                 ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-accent"
+                : "text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             {KIND3_LABEL[k]}

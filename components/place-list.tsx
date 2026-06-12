@@ -121,7 +121,7 @@ export function PlaceList({
                   ? "border-l-4 border-amber-400 bg-amber-50"
                   : isSelected
                     ? "bg-accent"
-                    : "hover:bg-accent"
+                    : "hover:bg-foreground/10"
               }`}
             >
               <div className="min-w-0 flex-1">

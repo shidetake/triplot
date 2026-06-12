@@ -281,7 +281,7 @@ export function PlacePicker({
           {rows.map((row, i) => {
             const isActive = i === active;
             const base = `block w-full px-2 py-1.5 text-left text-sm ${
-              isActive ? "bg-accent" : "hover:bg-accent"
+              isActive ? "bg-foreground/10" : "hover:bg-foreground/10"
             }`;
             if (row.type === "saved") {
               return (

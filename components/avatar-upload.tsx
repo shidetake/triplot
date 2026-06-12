@@ -203,7 +203,7 @@ export function AvatarUpload({
               type="button"
               role="menuitem"
               onClick={pickImage}
-              className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-accent"
+              className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-foreground/10"
             >
               画像を選ぶ
             </button>
@@ -212,7 +212,7 @@ export function AvatarUpload({
                 type="button"
                 role="menuitem"
                 onClick={revert}
-                className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-accent"
+                className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-foreground/10"
               >
                 デフォルトに戻す
               </button>
