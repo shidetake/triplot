@@ -136,7 +136,7 @@ export function DateRangePopover({
               type="button"
               disabled={!f || !t}
               onClick={() => setOpen(false)}
-              className="h-8 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-40"
+              className="h-8 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
               確定
             </button>

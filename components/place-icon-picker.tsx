@@ -164,7 +164,7 @@ export function PlaceIconPicker({
               type="button"
               onClick={submit}
               disabled={!selected || isPending}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition disabled:opacity-40 ${
+              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
                 mode === "remove"
                   ? "bg-red-600 text-white hover:bg-red-700"
                   : "bg-primary text-primary-foreground hover:bg-primary/90"
