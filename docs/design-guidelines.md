@@ -273,10 +273,18 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   `¥${n}` のような手書き整形はしない。
 - **「誰が」は `MemberAvatar`**（色丸＋表示名の先頭1文字。`sm`=18px / `md`=24px）。作成者・支払者・参加者など
   人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]）。
-- **必須フィールド**: ラベルの直後に赤アスタリスク `<span className="ml-0.5 font-normal text-red-500">*</span>`。
+- **必須フィールド**: ラベルの直後に赤アスタリスク `<span className="ml-0.5 font-normal text-red-600">*</span>`。
   任意フィールドには何も付けない（`*` の有無で必須/任意を示す）。
 - **切り詰め**: 1行省略は `truncate`（名前・タイトル・候補行）、複数行は `line-clamp-2`。リスト内の可変長
   テキストは必ずどちらかで止める（`min-w-0` を親に置かないと truncate が効かない点に注意）。
+- **「1つ選ぶ」コントロールの配色レシピ**（セグメント・選択ピル・トグルボタン等）:
+  選択中 = `border-primary bg-primary text-primary-foreground` ／
+  非選択 = `border-foreground/20 text-muted-foreground hover:bg-foreground/10`。
+  （「選択・アクティブ = primary」の具体形。器の構造はいくつかあるが配色はこの1レシピで統一）
+- **数字の揃えは `tabular-nums`**: 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける。
+- **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel` 等を使う。手書きしない）:
+  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h、`00:00`＝未設定は出さない）／
+  期間 = `M/D(曜) → M/D(曜)`。
 
 ## 非活性（disabled）
 
