@@ -297,6 +297,10 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   （shadcn の Tabs/ToggleGroup と同じ見た目。専用部品を入れず手書きで再現する標準形）。
   選択でフォーム内容が変わる多択（種別: 通常/終日/時差移動）も値の択一（新規/コピー）もこの形。
 - **数字の揃えは `tabular-nums`**: 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける。
+- **セクション見出し**: `<h2 className="text-lg font-semibold">`。右に操作（追加ボタン・HelpTip 等）を置くときは
+  `<div className="flex items-center justify-between gap-2">` で見出しと操作を両端に並べる。操作が無ければ素の h2。
+- **アバター画像**: 丸い容器（`rounded-full overflow-hidden`）の中に `<img className="h-full w-full object-cover" />`。
+  画像が無いときは頭文字フォールバック（[[色（メンバー・予定）]] の MemberAvatar / avatar-upload）。
 - **フォームのフィールド構造**: `<label className="block text-sm"><FieldLabel required?>ラベル</FieldLabel><input className="mt-1 ..." /></label>`。
   入力との間隔は `mt-1`、フィールド間は `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない）。
 - **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel` 等を使う。手書きしない）:

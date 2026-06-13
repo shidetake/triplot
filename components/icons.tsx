@@ -115,6 +115,23 @@ export function ShareIcon({
   );
 }
 
+// Lucide: more-horizontal（ミートボール ⋯ メニュー）
+export function EllipsisIcon({
+  size = 18,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+      <circle cx="5" cy="12" r="1" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: pencil（編集）
 export function EditIcon({
   size = 16,

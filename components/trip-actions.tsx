@@ -26,7 +26,7 @@ import {
   type CalendarExportEvent,
 } from "./calendar-export-dialog";
 import { type Anchor, FormPopover } from "./form-popover";
-import { ShareIcon } from "./icons";
+import { ShareIcon, EllipsisIcon } from "./icons";
 
 // ブラウザで生成したデータをファイルとしてダウンロードさせる。
 function downloadBlob(
@@ -259,11 +259,7 @@ export function TripActions({
           onClick={(e) => setMenuAnchor({ x: e.clientX, y: e.clientY })}
           className={iconBtn}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-            <circle cx="5" cy="12" r="1.7" />
-            <circle cx="12" cy="12" r="1.7" />
-            <circle cx="19" cy="12" r="1.7" />
-          </svg>
+          <EllipsisIcon size={18} />
         </button>
       </div>
 
