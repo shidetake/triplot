@@ -554,7 +554,7 @@ export function SavedInfo({
             title="閉じる"
             className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
           >
-            <CloseIcon size={14} />
+            <CloseIcon size={16} />
           </button>
         </div>
         {place.formatted_address ? (

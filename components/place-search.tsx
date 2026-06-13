@@ -295,7 +295,7 @@ export function PlaceSearch({
               title="検索をクリア"
               className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
             >
-              <CloseIcon size={14} />
+              <CloseIcon size={16} />
             </button>
           )}
         </div>

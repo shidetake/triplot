@@ -430,7 +430,7 @@ export function TodoSection({
                         : "text-foreground"
                     }`}
                   >
-                    {todo.event_id && <ReservationIcon size={14} className="mr-1" />}
+                    {todo.event_id && <ReservationIcon size={16} className="mr-1" />}
                     {todo.title}
                   </span>
                 )}

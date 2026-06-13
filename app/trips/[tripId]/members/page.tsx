@@ -39,7 +39,7 @@ export default async function MembersPage({
           href={`/trips/${tripId}`}
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
         >
-          <ChevronIcon size={14} className="rotate-180" />
+          <ChevronIcon size={16} className="rotate-180" />
           {trip.title}
         </Link>
       </div>
