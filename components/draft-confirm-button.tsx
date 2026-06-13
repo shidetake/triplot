@@ -47,7 +47,7 @@ export function DraftConfirmButton({ draftId, label, ...formProps }: Props) {
       </button>
 
       {anchor && (
-        <FormPopover anchor={anchor} onClose={() => setAnchor(null)}>
+        <FormPopover anchor={anchor} onClose={() => setAnchor(null)} label="取り込みを確定">
           <ExpenseForm
             {...formProps}
             onSuccess={onSuccess}

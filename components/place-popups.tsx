@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useId, useState, useTransition } from "react";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 import {
   createPlaceAction,
@@ -508,8 +509,8 @@ export function SavedInfo({
     if (state.ok) onDone();
   }, [state.ok, onDone]);
 
-  const onDelete = () => {
-    if (!confirm("この場所を削除しますか？")) return;
+  const onDelete = async () => {
+    if (!(await confirmDialog({ title: "この場所を削除しますか？" }))) return;
     startDelete(async () => {
       const { error } = await deletePlaceAction(tripId, place.id);
       if (error) {

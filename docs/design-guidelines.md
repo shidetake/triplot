@@ -173,10 +173,32 @@ hover と同じ「**自分の前景色の α 重ね**」で表す。`border-zinc
 |---|---|---|---|
 | インラインドロップダウン（入力直下のサジェスト・セレクト） | `z-20`〜`z-50` | `shadow-lg` | なし（クリックで閉じる） |
 | ポップオーバー（`FormPopover`） | 背景 `z-40` ＋ 本体 `z-50` | `shadow-xl` | 透明（クリックで閉じる） |
-| モーダル（`place-icon-picker` 等、選択を強制する） | `z-50` | — | `bg-black/40` |
+| モーダル（`place-icon-picker`・`confirmDialog` 等、選択を強制する） | `z-50` | — | `bg-black/40` |
 | トースト | `z-50` | `shadow-lg` | なし |
 
 背景の暗さはユーザを拘束する度合い: ドロップダウン＝作業の続き（遮らない）、モーダル＝決めるまで戻れない（暗くする）。中間のポップオーバーは透明オーバーレイで「外をクリックしたら閉じる」だけ提供する。
+
+**閉じる経路は3つ揃える**（オーバーレイ全般）: `Esc` キー・背景クリック・キャンセル/×ボタン。WAI-ARIA の
+dialog パターンに沿う。どれか1つだけにしない。
+
+**モーダルの ARIA**: `role="dialog"` ＋ `aria-modal="true"` ＋ アクセシブル名（`aria-label` か見出しへの
+`aria-labelledby`）の3点セットを必ず付ける。`FormPopover` は `label` prop を渡すと dialog として公開する
+（メニュー用途〔⋯〕は dialog ではないので label を省略）。ドロップダウンは `role="listbox"`、⋯ は `role="menu"`。
+
+## 確認ダイアログ（破壊的操作）
+
+**取り消せない操作の前には必ず確認を挟む**。素の `window.confirm()` は使わない（スタイル不能・
+同期ブロック・モバイルで URL が出る）。共通の `confirmDialog()`（`components/confirm-dialog.tsx`）を使う:
+
+```ts
+if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) return;
+```
+
+- 確定ボタンは既定で **Destructive（赤枠）**。非破壊な確認だけ `destructive: false`（Primary）にする。
+- 文言の型: 軽い削除は `title` だけ（「この◯◯を削除しますか？」）。影響が広い・不可逆なものは
+  `body` に影響範囲を書く（「予定・場所・費用…も消え、元に戻せません。」）。`confirmLabel` は動詞
+  （「削除」「外す」「退出」「再生成」）。
+- `<ConfirmDialogHost />` を root layout に1つ（`<Toaster />` と同じ imperative パターン）。
 
 ## 定型部品（de facto パターン）
 
@@ -196,6 +218,10 @@ hover と同じ「**自分の前景色の α 重ね**」で表す。`border-zinc
 - **空状態**: 枠・イラストは作らず `text-sm text-muted-foreground` のプレーン文。コピーは
   「まだ〜ありません。」＋可能なら次のアクションへの誘導を一文（例: 「上の転送先アドレスにレシートを転送してみてください」）。
 - **hover を持つ要素は素の `transition`** を付ける（`transition-colors` 等のプロパティ限定は使わない。短い汎用トランジションで統一）。
+- **金額表示は `Intl.NumberFormat("ja-JP", { style: "currency", currency })`**（JPY は小数なし・USD は2桁）。
+  `¥${n}` のような手書き整形はしない。
+- **「誰が」は `MemberAvatar`**（色丸＋表示名の先頭1文字。`sm`=18px / `md`=24px）。作成者・支払者・参加者など
+  人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]）。
 
 ## 非活性（disabled）
 

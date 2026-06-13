@@ -106,7 +106,7 @@ export function ExpenseList({
       </ul>
 
       {editing && (
-        <FormPopover anchor={editing.anchor} onClose={closeEdit}>
+        <FormPopover anchor={editing.anchor} onClose={closeEdit} label="費用を編集">
           <ExpenseForm
             tripId={tripId}
             members={members}

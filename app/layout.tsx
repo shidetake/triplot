@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/toast";
+import { ConfirmDialogHost } from "@/components/confirm-dialog";
 import { getDeployEnv, getVersion } from "@/lib/version";
 
 const geistSans = Geist({
@@ -38,6 +39,7 @@ export default function RootLayout({
           {getDeployEnv()} · {getVersion()}
         </footer>
         <Toaster />
+        <ConfirmDialogHost />
       </body>
     </html>
   );

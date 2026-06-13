@@ -223,7 +223,7 @@ export function CalendarExportDialog({
     "h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10";
 
   return (
-    <FormPopover anchor={anchor} onClose={onClose}>
+    <FormPopover anchor={anchor} onClose={onClose} label="カレンダーに書き出す">
       <div className="space-y-3 p-4">
         <p className="text-sm font-medium text-foreground">
           Google カレンダーへエクスポート

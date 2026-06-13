@@ -9,6 +9,7 @@ import {
   regenerateInviteAction,
 } from "@/app/trips/[tripId]/actions";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { hexToKmlColor } from "@/lib/placeColor";
 import { getIconPath } from "@/lib/placeIcons";
@@ -107,13 +108,13 @@ export function TripActions({
   // 再生成は prefetch できない（開くたびに旧リンクを無効化してしまう）。新トークンは
   // ネットワーク往復後にしか存在しないので、コピーと分離する: 再生成は state を更新して
   // ポップアップは開いたまま、ユーザーが続けて「リンクをコピー」を押す（同期コピー）。
-  const onRegenerate = () => {
-    if (
-      !confirm(
-        "リンクを再生成すると、今までのリンクは使えなくなります。よろしいですか？",
-      )
-    )
-      return;
+  const onRegenerate = async () => {
+    const ok = await confirmDialog({
+      title: "リンクを再生成しますか？",
+      body: "今までのリンクは使えなくなります。",
+      confirmLabel: "再生成",
+    });
+    if (!ok) return;
     start(async () => {
       const res = await regenerateInviteAction(tripId);
       if (res.error || !res.token) {
@@ -222,15 +223,14 @@ export function TripActions({
     setCalendarAnchor(anchor);
   };
 
-  const onDelete = () => {
+  const onDelete = async () => {
     setMenuAnchor(null);
     setMenuView("main");
-    if (
-      !confirm(
-        "この旅行を削除します。予定・場所・費用・メンバーもすべて消え、元に戻せません。よろしいですか？",
-      )
-    )
-      return;
+    const ok = await confirmDialog({
+      title: "この旅行を削除しますか？",
+      body: "予定・場所・費用・メンバーもすべて消え、元に戻せません。",
+    });
+    if (!ok) return;
     start(async () => {
       const { error } = await deleteTripAction(tripId);
       if (error) toast(`削除に失敗しました: ${error}`);
@@ -349,7 +349,7 @@ export function TripActions({
 
       {/* 共有ポップオーバー（アイコン・メニューどちらからも） */}
       {shareAnchor && (
-        <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)}>
+        <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)} label="共有">
           <div className="space-y-3 p-4">
             <p className="text-xs text-muted-foreground">
               リンクがあればログイン不要で参加できます。

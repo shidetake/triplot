@@ -8,6 +8,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 import {
   createTodoAction,
@@ -313,8 +314,8 @@ export function TodoSection({
     });
   };
 
-  const remove = (todo: TodoRow) => {
-    if (!confirm("このTODOを削除しますか？")) return;
+  const remove = async (todo: TodoRow) => {
+    if (!(await confirmDialog({ title: "このTODOを削除しますか？" }))) return;
     startTransition(async () => {
       applyOptimistic({ type: "delete", id: todo.id });
       const { error } = await deleteTodoAction(tripId, todo.id);

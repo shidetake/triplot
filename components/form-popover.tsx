@@ -11,10 +11,13 @@ export function FormPopover({
   anchor,
   onClose,
   children,
+  label,
 }: {
   anchor: Anchor;
   onClose: () => void;
   children: React.ReactNode;
+  // 渡すと dialog として公開する（aria-label）。メニュー用途では省略。
+  label?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number }>({
@@ -48,6 +51,9 @@ export function FormPopover({
       <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
       <div
         ref={ref}
+        role={label ? "dialog" : undefined}
+        aria-modal={label ? true : undefined}
+        aria-label={label}
         className="fixed z-50 max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl"
         style={{ left: pos.left, top: pos.top }}
       >

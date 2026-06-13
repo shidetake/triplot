@@ -8,6 +8,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import { ICON_CATALOG, getIcon, type PinOption } from "@/lib/placeIcons";
 
+import { confirmDialog } from "./confirm-dialog";
 import { PlaceIcon } from "./place-list";
 
 // 場所ピンの管理ピッカー。カタログ全件を 1 つの grid にフラットに並べる
@@ -50,18 +51,17 @@ export function PlaceIconPicker({
   const selectedOption = selected ? optionByIcon.get(selected) : null;
   const mode: "add" | "remove" = selectedOption ? "remove" : "add";
 
-  const submit = () => {
+  const submit = async () => {
     if (!selected || isPending) return;
     setError(null);
     if (selectedOption) {
       // 削除
-      if (
-        !confirm(
-          `「${selectedOption.label}」を外しますか？\n（既にこのアイコンを使ってる場所はそのまま残ります）`,
-        )
-      ) {
-        return;
-      }
+      const ok = await confirmDialog({
+        title: `「${selectedOption.label}」を外しますか？`,
+        body: "既にこのアイコンを使ってる場所はそのまま残ります。",
+        confirmLabel: "外す",
+      });
+      if (!ok) return;
       const opt = selectedOption;
       start(async () => {
         const { error } = await removeTripPinOptionAction(tripId, opt.id);
@@ -92,7 +92,12 @@ export function PlaceIconPicker({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="ピンのアイコンを選ぶ"
+        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
         {/* タイトル / 閉じる × は省略（grid と footer に面積を回す）。
             閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路あり。 */}
         <div className="flex-1 overflow-y-auto p-2">

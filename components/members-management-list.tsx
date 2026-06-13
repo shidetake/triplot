@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 import {
   removeMemberAction,
@@ -66,12 +67,19 @@ export function MembersManagementList({
     });
   };
 
-  const remove = (m: Member) => {
+  const remove = async (m: Member) => {
     const isSelf = m.id === myMemberId;
-    const msg = isSelf
-      ? "この旅行から退出しますか？（招待リンクから再参加できます）"
-      : `${m.display_name} をこの旅行から外しますか？`;
-    if (!confirm(msg)) return;
+    const ok = isSelf
+      ? await confirmDialog({
+          title: "この旅行から退出しますか？",
+          body: "招待リンクから再参加できます。",
+          confirmLabel: "退出",
+        })
+      : await confirmDialog({
+          title: `${m.display_name} をこの旅行から外しますか？`,
+          confirmLabel: "外す",
+        });
+    if (!ok) return;
     start(async () => {
       const { error } = await removeMemberAction(tripId, m.id, isSelf);
       if (error) toast(`失敗しました: ${error}`);

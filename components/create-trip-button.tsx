@@ -28,7 +28,7 @@ export function CreateTripButton({
       </button>
 
       {anchor && (
-        <FormPopover anchor={anchor} onClose={() => setAnchor(null)}>
+        <FormPopover anchor={anchor} onClose={() => setAnchor(null)} label="旅行を作成">
           <CreateTripForm
             defaultDisplayName={defaultDisplayName}
             trips={trips}

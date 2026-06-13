@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState, useTransition } from "react";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -285,9 +286,9 @@ export function EventForm({
 
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!ev) return;
-    if (!confirm("この予定を削除しますか？")) return;
+    if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) return;
     startDelete(async () => {
       const { error } = await deleteEventAction(tripId, ev.id);
       if (error) {

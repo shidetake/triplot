@@ -10,6 +10,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "@/components/toast";
+import { confirmDialog } from "@/components/confirm-dialog";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -158,9 +159,9 @@ export function ExpenseForm({
       ? editExpense.created_by_member_id === myMemberId
       : true);
   const [isDeleting, startDelete] = useTransition();
-  const onDelete = () => {
+  const onDelete = async () => {
     if (!editExpense) return;
-    if (!confirm("この費用を削除しますか？")) return;
+    if (!(await confirmDialog({ title: "この費用を削除しますか？" }))) return;
     startDelete(async () => {
       const { error } = await deleteExpenseAction(tripId, editExpense.id);
       if (error) {
