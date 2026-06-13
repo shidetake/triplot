@@ -17,7 +17,7 @@ import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
-import { TrashIcon, CloseIcon, PlusIcon, SaveIcon } from "./icons";
+import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
@@ -343,7 +343,7 @@ export function EventForm({
         ))}
       </div>
       {kind3 === "transit" && (
-        <p className="-mt-1 text-[11px] text-muted-foreground">
+        <p className="-mt-1 text-xs text-muted-foreground">
           フライトなど、出発と到着でタイムゾーンが変わる予定。
         </p>
       )}
@@ -572,12 +572,12 @@ export function EventForm({
       </fieldset>
 
       {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので
-          省略）。デフォルトは「参加者: 全員 ▼」の disclosure。タップで展開して
-          チップで選択できるようになる。展開状態は「参加者: 一部 ▲」表示で、再
+          省略）。デフォルトは「参加者: 全員」＋下向きシェブロンの disclosure。タップで展開して
+          チップで選択できるようになる。展開状態は「参加者: 一部」＋上向きシェブロンで、再
           タップでチップを畳んで全員に戻す。送信は pMode=custom の時だけ hidden
           input を生やし、それ以外は何も送らない（=全員のシュガー）。 */}
       {visibility === "shared" && members.length > 1 && (
-        <div className="text-xs">
+        <div className="text-sm">
           <button
             type="button"
             onClick={() => {
@@ -592,9 +592,10 @@ export function EventForm({
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>参加者: {pMode === "all" ? "全員" : "一部"}</span>
-            <span className="text-[10px] text-muted-foreground">
-              {pMode === "all" ? "▼" : "▲"}
-            </span>
+            <ChevronIcon
+              size={16}
+              className={`transition-transform ${pMode === "all" ? "rotate-90" : "-rotate-90"}`}
+            />
           </button>
           {pMode === "custom" && (
             <div className="mt-1.5 flex flex-wrap gap-1">

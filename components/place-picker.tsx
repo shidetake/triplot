@@ -293,7 +293,7 @@ export function PlacePicker({
                     className={base}
                   >
                     <span className="font-medium">{row.name}</span>
-                    <span className="ml-2 text-[11px] text-subtle-foreground">
+                    <span className="ml-2 text-xs text-subtle-foreground">
                       保存済み
                     </span>
                   </button>
@@ -313,7 +313,7 @@ export function PlacePicker({
                     {pred.mainText?.text ?? pred.text.text}
                   </span>
                   {pred.secondaryText?.text && (
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-xs text-muted-foreground">
                       {pred.secondaryText.text}
                     </span>
                   )}

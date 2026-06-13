@@ -26,7 +26,7 @@ export default async function JoinPage({
   if (!title) {
     return (
       <main className="mx-auto w-full max-w-md px-6 py-20">
-        <h1 className="text-xl font-semibold">無効な招待リンクです</h1>
+        <h1 className="text-2xl font-semibold">無効な招待リンクです</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           リンクが間違っているか、無効化された可能性があります。
         </p>

@@ -333,7 +333,7 @@ export function PlaceSearch({
                     {pred.mainText?.text ?? pred.text.text}
                   </span>
                   {pred.secondaryText?.text && (
-                    <span className="block truncate text-[11px] text-muted-foreground">
+                    <span className="block truncate text-xs text-muted-foreground">
                       {pred.secondaryText.text}
                     </span>
                   )}

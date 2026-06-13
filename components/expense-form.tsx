@@ -31,7 +31,7 @@ import { DatePopover } from "./date-popover";
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
-import { TrashIcon, CloseIcon, PlusIcon, SaveIcon } from "./icons";
+import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
 function tzLabel(iana: string): string {
@@ -534,7 +534,7 @@ export function ExpenseForm({
         multiTz &&
         (tzRes.kind === "ambiguous" ? (
           <fieldset className="text-sm">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs text-muted-foreground">
               移動日です。どちらのタイムゾーンで使ったか選んでください。
             </p>
             <div className="mt-1 flex flex-col gap-1">
@@ -595,8 +595,8 @@ export function ExpenseForm({
       )}
 
       {/* 割り勘対象。event-form の参加者と同じ disclosure + chip パターン。
-          デフォルトは「割り勘対象: 全員 ▼」。タップで展開してチップで選択。
-          展開状態は選択内容で「全員 ▲」「一部 ▲」「自分のみ ▲」に切り替わる。
+          デフォルトは「割り勘対象: 全員」＋下向きシェブロン。タップで展開してチップで選択。
+          展開状態は選択内容で「全員」「一部」「自分のみ」＋上向きシェブロンに切り替わる。
           自分のみ = 割り勘しない（=おごり/自分の費用）と同義。 */}
       {visibility === "shared" && members.length > 1 && (
         <div className="text-sm">
@@ -614,9 +614,10 @@ export function ExpenseForm({
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>割り勘対象: {splitMode === "all" ? "全員" : splitLabel}</span>
-            <span className="text-[10px] text-muted-foreground">
-              {splitMode === "all" ? "▼" : "▲"}
-            </span>
+            <ChevronIcon
+              size={16}
+              className={`transition-transform ${splitMode === "all" ? "rotate-90" : "-rotate-90"}`}
+            />
           </button>
           {splitMode === "custom" && (
             <div className="mt-1.5 flex flex-wrap gap-1">
