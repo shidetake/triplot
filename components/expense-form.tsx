@@ -672,7 +672,7 @@ export function ExpenseForm({
           title={isEdit ? "保存" : "追加"}
           className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
         >
-          {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={22} />}
+          {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}
         </button>
       </div>
 

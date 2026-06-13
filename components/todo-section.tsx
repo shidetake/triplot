@@ -138,7 +138,7 @@ function PrioritySelect({
                     sel ? "bg-accent font-medium" : ""
                   }`}
                 >
-                  <PriorityIcon p={p} size={15} />
+                  <PriorityIcon p={p} />
                   <span className="flex-1">{PRIORITY_LABEL[p]}</span>
                   {sel && <CheckIcon size={14} className="text-muted-foreground" />}
                 </button>
