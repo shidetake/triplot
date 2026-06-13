@@ -26,11 +26,11 @@ function ReservationMark({ ev }: { ev: ScheduleEvent }) {
   if (!ev.needsReservation) return null;
   return ev.reservationDone ? (
     <CheckIcon
-      size={11}
+      size={12}
       className="mr-0.5 inline-block shrink-0 align-middle opacity-70"
     />
   ) : (
-    <ReservationIcon size={11} className="mr-0.5" />
+    <ReservationIcon size={12} className="mr-0.5" />
   );
 }
 
