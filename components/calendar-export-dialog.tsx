@@ -266,7 +266,7 @@ export function CalendarExportDialog({
 
         {phase === "pick" && (
           <div className="space-y-3">
-            <div className="max-h-48 space-y-1 overflow-y-auto">
+            <div className="max-h-64 space-y-1 overflow-y-auto">
               <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-foreground/10">
                 <input
                   type="radio"

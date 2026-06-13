@@ -597,7 +597,7 @@ export function WeekCalendar({
 
   if (columns.length === 0) {
     return (
-      <p className="rounded-md border border-foreground/10 bg-white p-6 text-sm text-muted-foreground">
+      <p className="text-sm text-muted-foreground">
         この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。
       </p>
     );

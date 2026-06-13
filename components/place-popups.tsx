@@ -41,7 +41,7 @@ function StatusSelect({
 }) {
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   return (
-    <label className="block text-xs">
+    <label className="block text-sm">
       <span className="font-medium text-muted-foreground">ステータス</span>
       <select
         name="status_id"
@@ -74,7 +74,7 @@ function VisibilityField({
     return <input type="hidden" name="visibility" value={value} />;
   }
   return (
-    <fieldset className="text-xs">
+    <fieldset className="text-sm">
       <legend className="font-medium text-muted-foreground">公開範囲</legend>
       <div className="mt-1 flex gap-3">
         <label className="inline-flex items-center gap-1">
@@ -116,7 +116,7 @@ function IconPicker({
   const [addOpen, setAddOpen] = useState(false);
   const sorted = [...options].sort((a, b) => a.sort_order - b.sort_order);
   return (
-    <fieldset className="text-xs">
+    <fieldset className="text-sm">
       <legend className="font-medium text-muted-foreground">ピンの形</legend>
       <div className="mt-1 flex flex-wrap gap-1">
         {sorted.map((o) => (
@@ -262,7 +262,7 @@ export function CandidateInfo({
           onChange={setVisibility}
           editable
         />
-        <label className="block text-xs" htmlFor={noteId}>
+        <label className="block text-sm" htmlFor={noteId}>
           <span className="font-medium text-muted-foreground">メモ</span>
           <input
             id={noteId}
@@ -344,7 +344,7 @@ export function DraftInfo({
         <input type="hidden" name="lng" value={draft.lng} />
         <input type="hidden" name="icon" value={icon} />
 
-        <label className="block text-xs" htmlFor={nameId}>
+        <label className="block text-sm" htmlFor={nameId}>
           <span className="font-medium text-muted-foreground">名前</span>
           <input
             id={nameId}
@@ -372,7 +372,7 @@ export function DraftInfo({
           onChange={setVisibility}
           editable
         />
-        <label className="block text-xs" htmlFor={noteId}>
+        <label className="block text-sm" htmlFor={noteId}>
           <span className="font-medium text-muted-foreground">メモ</span>
           <input
             id={noteId}
@@ -604,7 +604,7 @@ export function SavedInfo({
             onChange={setVisibility}
             editable={canChangeVisibility}
           />
-          <label className="block text-xs" htmlFor={noteId}>
+          <label className="block text-sm" htmlFor={noteId}>
             <span className="font-medium text-muted-foreground">メモ</span>
             <input
               id={noteId}

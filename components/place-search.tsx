@@ -311,7 +311,7 @@ export function PlaceSearch({
       </div>
 
       {open && sug.length > 0 && (
-        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-72 overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-64 overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
           {sug.map((s, i) => {
             const pred = s.placePrediction!;
             const isActive = i === active;

@@ -277,7 +277,7 @@ export function PlacePicker({
       />
 
       {open && rows.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-60 w-full overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
           {rows.map((row, i) => {
             const isActive = i === active;
             const base = `block w-full px-2 py-1.5 text-left text-sm ${
