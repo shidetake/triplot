@@ -1101,7 +1101,7 @@ export function WeekCalendar({
                       height: HOUR_PX,
                     }}
                   >
-                    <span className="block text-[10px] tabular-nums opacity-80">
+                    <span className="block text-[10px] tabular-nums opacity-70">
                       {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
                     </span>
                   </div>
@@ -1125,7 +1125,7 @@ export function WeekCalendar({
                       height: y(pcDrag.endMin) - y(pcDrag.startMin),
                     }}
                   >
-                    <span className="block text-[10px] tabular-nums opacity-80">
+                    <span className="block text-[10px] tabular-nums opacity-70">
                       {hhmm(pcDrag.startMin)}–{hhmm(pcDrag.endMin)}
                     </span>
                   </div>
