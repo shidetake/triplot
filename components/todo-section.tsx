@@ -8,6 +8,7 @@ import {
   useTransition,
 } from "react";
 import { toast } from "@/components/toast";
+import { menuItemClass } from "./menu-item";
 import { confirmDialog } from "@/components/confirm-dialog";
 
 import {
@@ -134,7 +135,7 @@ function PrioritySelect({
                     onChange(p);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-foreground/10 ${
+                  className={`flex items-center gap-2 ${menuItemClass} ${
                     sel ? "bg-accent font-medium" : ""
                   }`}
                 >

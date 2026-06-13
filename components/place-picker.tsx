@@ -7,6 +7,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { LatLng } from "@/lib/placeMap";
 
 import { extractRegion } from "./place-search";
+import { menuItemClass } from "./menu-item";
 
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
 // 混ぜて出す、よくあるコンボボックス（Google カレンダーの場所欄や
@@ -280,8 +281,8 @@ export function PlacePicker({
         <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
           {rows.map((row, i) => {
             const isActive = i === active;
-            const base = `block w-full px-2 py-1.5 text-left text-sm ${
-              isActive ? "bg-foreground/10" : "hover:bg-foreground/10"
+            const base = `block ${menuItemClass} ${
+              isActive ? "bg-foreground/10" : ""
             }`;
             if (row.type === "saved") {
               return (

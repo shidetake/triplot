@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { LogOutIcon, SettingsIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
+import { menuItemClass } from "./menu-item";
 
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
 // タップするとドロップダウンで email / 設定 / ログアウト。Apple ログインは写真を返さない
@@ -82,7 +83,7 @@ export function AccountMenu({
             href="/settings"
             role="menuitem"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-foreground/10"
+            className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
           >
             <SettingsIcon size={16} />
             設定
@@ -91,7 +92,7 @@ export function AccountMenu({
             type="button"
             role="menuitem"
             onClick={handleSignOut}
-            className="flex w-full items-center gap-2 px-3 py-2 text-sm text-muted-foreground transition hover:bg-foreground/10"
+            className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
           >
             <LogOutIcon size={16} />
             ログアウト

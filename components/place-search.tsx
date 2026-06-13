@@ -6,6 +6,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
 import type { LatLng } from "@/lib/placeMap";
 import { CloseIcon, SearchIcon } from "@/components/icons";
+import { menuItemClass } from "./menu-item";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
 // 吹き出しに再利用するので、ピンごとの追加 Places 呼び出しは発生しない。
@@ -325,8 +326,8 @@ export function PlaceSearch({
                     e.preventDefault();
                     pick(s);
                   }}
-                  className={`block w-full px-3 py-2 text-left text-sm ${
-                    isActive ? "bg-foreground/10" : "hover:bg-foreground/10"
+                  className={`block ${menuItemClass} ${
+                    isActive ? "bg-foreground/10" : ""
                   }`}
                 >
                   <span className="font-medium">

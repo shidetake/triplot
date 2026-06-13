@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { EditIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
+import { menuItemClass } from "./menu-item";
 
 // アバターの変更。負債を避けるため:
 //  - アップロード前にクライアントで 256px 正方形にリサイズ（数十KB・容量/転送ほぼゼロ）
@@ -203,7 +204,7 @@ export function AvatarUpload({
               type="button"
               role="menuitem"
               onClick={pickImage}
-              className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-foreground/10"
+              className={`block text-muted-foreground ${menuItemClass}`}
             >
               画像を選ぶ
             </button>
@@ -212,7 +213,7 @@ export function AvatarUpload({
                 type="button"
                 role="menuitem"
                 onClick={revert}
-                className="block w-full px-3 py-2 text-left text-sm text-muted-foreground transition hover:bg-foreground/10"
+                className={`block text-muted-foreground ${menuItemClass}`}
               >
                 デフォルトに戻す
               </button>

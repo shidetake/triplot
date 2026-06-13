@@ -301,6 +301,10 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   選択中 = `border-primary bg-primary text-primary-foreground` ／
   非選択 = `border-foreground/20 text-muted-foreground hover:bg-foreground/10`。
   （「選択・アクティブ = primary」の具体形。配色はこの1レシピで統一）
+- **メニュー/ドロップダウンの選択行**（アカウント/⋯メニュー・セレクト・オートコンプリート候補・チェックリスト等、
+  浮遊パネルに並ぶ選択可能な行）: 共通定数 **`menuItemClass`**（`components/menu-item.ts`）= `w-full px-3 py-2 text-left text-sm transition hover:bg-foreground/10`。
+  各行は display（単一行 `flex items-center gap-2` / 候補2行 `block`）・文字色（補助は `text-muted-foreground`）・選択状態（`bg-accent font-medium`）だけ足す。
+  **パディングは px-3 py-2 で統一**（px-4/px-2/py-1.5 を作らない）。器の幅だけは中身依存（`w-24`〜`w-full`）。destructive な行は hover 色が違う（`hover:bg-red-600/10`）ので定数を使わず個別に書く。
 - **セグメントトラック（横並びで1つ選ぶ標準構造）**:
   器 = `flex gap-1 rounded-md border border-foreground/10 p-1`、各セグメント = `flex-1 rounded px-2 py-1.5 text-xs font-medium`（**セグメント自身に枠は付けない**）。
   選択色は上の配色レシピ（選択 = `bg-primary text-primary-foreground` の塗り）。

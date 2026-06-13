@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Category } from "./expense-form";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon } from "./icons";
+import { menuItemClass } from "./menu-item";
 
 // 費用カテゴリの選択。native <select> は <option> に SVG を描けないため、
 // MS ピクト＋名前を出せる軽量カスタムドロップダウンにしている。見た目は
@@ -80,7 +81,7 @@ export function CategorySelect({
                     onChange(c.id);
                     setOpen(false);
                   }}
-                  className={`flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-foreground/10 ${
+                  className={`flex items-center gap-2 ${menuItemClass} ${
                     isSel ? "bg-accent font-medium" : ""
                   }`}
                 >

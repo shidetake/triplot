@@ -27,6 +27,7 @@ import {
 } from "./calendar-export-dialog";
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon, EllipsisIcon } from "./icons";
+import { menuItemClass } from "./menu-item";
 
 // ブラウザで生成したデータをファイルとしてダウンロードさせる。
 function downloadBlob(
@@ -276,21 +277,21 @@ export function TripActions({
                   closeMenu();
                   if (a) openShare(a);
                 }}
-                className="block w-full px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`block ${menuItemClass}`}
               >
                 共有
               </button>
               <Link
                 href={`/trips/${tripId}/members`}
                 onClick={closeMenu}
-                className="block w-full px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`block ${menuItemClass}`}
               >
                 メンバー管理
               </Link>
               <button
                 type="button"
                 onClick={() => setMenuView("export")}
-                className="flex w-full items-center justify-between px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`flex items-center justify-between ${menuItemClass}`}
               >
                 エクスポート
                 <span aria-hidden className="text-subtle-foreground">
@@ -302,7 +303,7 @@ export function TripActions({
                   type="button"
                   onClick={onDelete}
                   disabled={isPending}
-                  className="block w-full px-4 py-2 text-left text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+                  className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
                 >
                   この旅行を削除
                 </button>
@@ -313,28 +314,28 @@ export function TripActions({
               <button
                 type="button"
                 onClick={() => setMenuView("main")}
-                className="flex w-full items-center gap-1 px-4 py-2 text-left text-muted-foreground transition hover:bg-foreground/10"
+                className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
               >
                 <span aria-hidden>‹</span> 戻る
               </button>
               <button
                 type="button"
                 onClick={(e) => onExportCalendar({ x: e.clientX, y: e.clientY })}
-                className="block w-full px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`block ${menuItemClass}`}
               >
                 予定（Google カレンダー）
               </button>
               <button
                 type="button"
                 onClick={onExportMap}
-                className="block w-full px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`block ${menuItemClass}`}
               >
                 地図（KMZ）
               </button>
               <button
                 type="button"
                 onClick={onExportExpenses}
-                className="block w-full px-4 py-2 text-left transition hover:bg-foreground/10"
+                className={`block ${menuItemClass}`}
               >
                 費用（CSV）
               </button>

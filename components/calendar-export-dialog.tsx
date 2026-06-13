@@ -6,6 +6,7 @@ import { type GcalEventInput, toGcalEvent } from "@/lib/gcalEvent";
 
 import { type Anchor, FormPopover } from "./form-popover";
 import { CheckIcon } from "./icons";
+import { menuItemClass } from "./menu-item";
 
 // Google Identity Services（GIS）のトークンクライアント最小型。
 // 公式 d.ts は使わず、使う分だけ宣言する。
@@ -231,7 +232,7 @@ export function CalendarExportDialog({
 
         {(phase === "connect" || phase === "pick") && (
           <div className="space-y-1">
-            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-foreground/10">
+            <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
               <input
                 type="radio"
                 name="scope"
@@ -240,7 +241,7 @@ export function CalendarExportDialog({
               />
               <span>自分が参加する予定のみ（{mineEvents.length}件）</span>
             </label>
-            <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-foreground/10">
+            <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
               <input
                 type="radio"
                 name="scope"
@@ -267,7 +268,7 @@ export function CalendarExportDialog({
         {phase === "pick" && (
           <div className="space-y-3">
             <div className="max-h-64 space-y-1 overflow-y-auto">
-              <label className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-foreground/10">
+              <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
                 <input
                   type="radio"
                   name="cal"
@@ -288,7 +289,7 @@ export function CalendarExportDialog({
               {calendars.map((c) => (
                 <label
                   key={c.id}
-                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-foreground/10"
+                  className={`flex items-center gap-2 rounded-md ${menuItemClass}`}
                 >
                   <input
                     type="radio"
