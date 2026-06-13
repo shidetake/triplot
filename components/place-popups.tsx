@@ -131,7 +131,7 @@ function IconPicker({
                 : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
             }`}
           >
-            <PlaceIcon icon={o.icon} size={22} />
+            <PlaceIcon icon={o.icon} size={20} />
           </button>
         ))}
         <button
