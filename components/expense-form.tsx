@@ -31,6 +31,7 @@ import { DatePopover } from "./date-popover";
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
+import { FieldLabel } from "./field-label";
 import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
@@ -349,9 +350,7 @@ export function ExpenseForm({
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
-          <span className="font-medium">
-            価格<span className="ml-0.5 font-normal text-red-600">*</span>
-          </span>
+          <FieldLabel required>価格</FieldLabel>
           <input
             type="number"
             name="local_price"
@@ -365,7 +364,7 @@ export function ExpenseForm({
           />
         </label>
         <label className="block text-sm">
-          <span className="font-medium">通貨</span>
+          <FieldLabel>通貨</FieldLabel>
           <select
             name="local_currency"
             value={localCurrency}
@@ -380,10 +379,9 @@ export function ExpenseForm({
 
       {localCurrency !== defaultCurrency && (
         <label className="block text-sm">
-          <span className="font-medium">
+          <FieldLabel required>
             為替レート（1 {localCurrency} = ? {defaultCurrency}）
-            <span className="ml-0.5 font-normal text-red-600">*</span>
-          </span>
+          </FieldLabel>
           <input
             type="number"
             name="rate_to_default"
@@ -412,7 +410,7 @@ export function ExpenseForm({
       )}
 
       <div className="block text-sm">
-        <span className="font-medium">カテゴリ</span>
+        <FieldLabel>カテゴリ</FieldLabel>
         <CategorySelect
           name="category_id"
           categories={sortedCategories}
@@ -422,7 +420,7 @@ export function ExpenseForm({
       </div>
 
       <div className="block text-sm">
-        <span className="font-medium">場所</span>
+        <FieldLabel>場所</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
@@ -441,7 +439,7 @@ export function ExpenseForm({
       </div>
 
       <label className="block text-sm" htmlFor={noteId}>
-        <span className="font-medium">メモ</span>
+        <FieldLabel>メモ</FieldLabel>
         <input
           id={noteId}
           type="text"
@@ -453,7 +451,7 @@ export function ExpenseForm({
       </label>
 
       <label className="block text-sm">
-        <span className="font-medium">支払った人</span>
+        <FieldLabel>支払った人</FieldLabel>
         <select
           name="payer_member_id"
           defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
@@ -470,9 +468,7 @@ export function ExpenseForm({
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
         <label className="block min-w-0 text-sm">
-          <span className="font-medium">
-            日付<span className="ml-0.5 font-normal text-red-600">*</span>
-          </span>
+          <FieldLabel required>日付</FieldLabel>
           <div className="mt-1">
             <DatePopover
               name="paid_at_date"
@@ -487,7 +483,7 @@ export function ExpenseForm({
         {showTime ? (
           <div className="block min-w-0 text-sm">
             <div className="flex items-center justify-between">
-              <span className="font-medium">時刻</span>
+              <FieldLabel>時刻</FieldLabel>
               <button
                 type="button"
                 onClick={collapseTime}

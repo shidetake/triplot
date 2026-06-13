@@ -11,6 +11,7 @@ import { buildCopySourceLabels } from "@/lib/copySourceLabel";
 import { tripDayCount } from "@/lib/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
+import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
 import { CloseIcon, PlusIcon } from "./icons";
 
@@ -151,9 +152,7 @@ export function CreateTripForm({
 
       {mode === "copy" && (
         <label className="block text-sm">
-          <span className="font-medium">
-            コピー元<span className="ml-0.5 font-normal text-red-600">*</span>
-          </span>
+          <FieldLabel required>コピー元</FieldLabel>
           <select
             value={sourceId}
             onChange={(e) => pickSource(e.target.value)}
@@ -180,9 +179,7 @@ export function CreateTripForm({
       />
 
       <label className="block min-w-0 text-sm">
-        <span className="font-medium">
-          タイトル<span className="ml-0.5 font-normal text-red-600">*</span>
-        </span>
+        <FieldLabel required>タイトル</FieldLabel>
         <input
           name="title"
           required
@@ -201,7 +198,7 @@ export function CreateTripForm({
       />
 
       <div className="text-sm">
-        <span className="font-medium">日程</span>
+        <FieldLabel>日程</FieldLabel>
         <div className="mt-1">
           <DateRangePopover
             startName="start_date"
@@ -269,12 +266,7 @@ type FieldProps = React.InputHTMLAttributes<HTMLInputElement> & {
 function Field({ label, name, type = "text", ...rest }: FieldProps) {
   return (
     <label className="block min-w-0 text-sm">
-      <span className="font-medium">
-        {label}
-        {rest.required && (
-          <span className="ml-0.5 font-normal text-red-600">*</span>
-        )}
-      </span>
+      <FieldLabel required={rest.required}>{label}</FieldLabel>
       <input
         {...rest}
         type={type}

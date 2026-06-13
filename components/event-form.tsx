@@ -17,6 +17,7 @@ import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
+import { FieldLabel } from "./field-label";
 import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 
@@ -349,9 +350,7 @@ export function EventForm({
       )}
 
       <label className="block text-sm">
-        <span className="font-medium">
-          タイトル<span className="ml-0.5 font-normal text-red-600">*</span>
-        </span>
+        <FieldLabel required>タイトル</FieldLabel>
         <input
           type="text"
           name="title"
@@ -365,7 +364,7 @@ export function EventForm({
       </label>
 
       <div className="block text-sm">
-        <span className="font-medium">場所</span>
+        <FieldLabel>場所</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
@@ -640,12 +639,12 @@ export function EventForm({
             checked={needsReservation}
             onChange={(e) => setNeedsReservation(e.target.checked)}
           />
-          <span className="font-medium">要予約</span>
+          <FieldLabel>要予約</FieldLabel>
         </label>
       )}
 
       <label className="block text-sm">
-        <span className="font-medium">メモ</span>
+        <FieldLabel>メモ</FieldLabel>
         <input
           type="text"
           name="note"

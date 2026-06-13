@@ -280,8 +280,10 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   `¥${n}` のような手書き整形はしない。
 - **「誰が」は `MemberAvatar`**（色丸＋表示名の先頭1文字。`sm`=18px / `md`=24px）。作成者・支払者・参加者など
   人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]）。
-- **必須フィールド**: ラベルの直後に赤アスタリスク `<span className="ml-0.5 font-normal text-red-600">*</span>`。
+- **フォームのフィールドラベルは `<FieldLabel>`**（`components/field-label.tsx`）。`font-medium`（foreground 87%）の
+  ラベル span を集約した最小プリミティブ。必須は `<FieldLabel required>` で赤アスタリスク（`*` 直書きはしない）。
   任意フィールドには何も付けない（`*` の有無で必須/任意を示す）。
+  外側の `<label className="block text-sm">` と入力はインラインのまま（フィールドのレイアウトは多様なので包まない）。
 - **切り詰め**: 1行省略は `truncate`（名前・タイトル・候補行）、複数行は `line-clamp-2`。リスト内の可変長
   テキストは必ずどちらかで止める（`min-w-0` を親に置かないと truncate が効かない点に注意）。
 - **「1つ選ぶ」コントロールの配色レシピ**（セグメント・選択ピル・トグルボタン等）:
@@ -295,8 +297,8 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   （shadcn の Tabs/ToggleGroup と同じ見た目。専用部品を入れず手書きで再現する標準形）。
   選択でフォーム内容が変わる多択（種別: 通常/終日/時差移動）も値の択一（新規/コピー）もこの形。
 - **数字の揃えは `tabular-nums`**: 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける。
-- **フォームのフィールド構造**: `<label className="block text-sm"><span className="font-medium">ラベル{必須なら *}</span><input className="mt-1 ..." /></label>`。
-  ラベルは `font-medium`（**色指定なし＝foreground 87%**。muted にしない）、入力との間隔は `mt-1`。フィールド間は `space-y-3`。
+- **フォームのフィールド構造**: `<label className="block text-sm"><FieldLabel required?>ラベル</FieldLabel><input className="mt-1 ..." /></label>`。
+  入力との間隔は `mt-1`、フィールド間は `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない）。
 - **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel` 等を使う。手書きしない）:
   日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h、`00:00`＝未設定は出さない）／
   期間 = `M/D(曜) → M/D(曜)`。
