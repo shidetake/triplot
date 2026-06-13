@@ -542,7 +542,7 @@ export function EventForm({
       )}
 
       <fieldset className="text-xs">
-        <legend className="font-medium text-muted-foreground">公開範囲</legend>
+        <legend className="font-medium">公開範囲</legend>
         {canChangeVis ? (
           <div className="mt-1 flex gap-3">
             <label className="inline-flex items-center gap-1">
