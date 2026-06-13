@@ -781,7 +781,7 @@ export function WeekCalendar({
                   }
                   onMouseEnter={() => setHoveredEventId(b.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute flex items-center gap-1 rounded px-1 text-left text-[11px] ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
+                  className={`absolute flex items-center gap-1 rounded px-1 text-left text-xs ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
                   style={{
                     left: b.startColIndex * COL + 2,
                     width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
@@ -804,7 +804,7 @@ export function WeekCalendar({
               const row = ghostAllDayRow ?? 0;
               return (
                 <div
-                  className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-[11px] leading-tight text-slate-800"
+                  className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-xs leading-tight text-slate-800"
                   style={{
                     left: allDayGhost.columnIndex * COL + 2,
                     width: COL - 4,
@@ -1093,7 +1093,7 @@ export function WeekCalendar({
                 const w = COL / laneCount;
                 return (
                   <div
-                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-[11px] leading-tight text-slate-800"
+                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-xs leading-tight text-slate-800"
                     style={{
                       left: ghost.columnIndex * COL + lane * w + 1,
                       width: w - 2,
@@ -1117,7 +1117,7 @@ export function WeekCalendar({
                 const w = COL / laneCount;
                 return (
                   <div
-                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-[11px] leading-tight text-slate-800"
+                    className="pointer-events-none absolute z-20 rounded border border-slate-400 bg-slate-100/50 px-1 py-0.5 text-xs leading-tight text-slate-800"
                     style={{
                       left: pcDrag.columnIndex * COL + lane * w + 1,
                       width: w - 2,
@@ -1158,7 +1158,7 @@ export function WeekCalendar({
                   }}
                   onMouseEnter={() => setHoveredEventId(p.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
+                  className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
@@ -1206,7 +1206,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + 1,
                       width: COL - 2,
@@ -1239,7 +1239,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + 1,
                       width: COL - 2,
@@ -1268,7 +1268,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-[11px] leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: ai * COL + 1,
                       width: COL - 2,
