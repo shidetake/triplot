@@ -197,7 +197,7 @@ export function AvatarUpload({
         {open && (
           <div
             role="menu"
-            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-lg border border-foreground/10 bg-white py-1 shadow-lg"
+            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg"
           >
             <button
               type="button"

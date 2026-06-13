@@ -96,7 +96,7 @@ export function PlaceIconPicker({
         role="dialog"
         aria-modal="true"
         aria-label="ピンのアイコンを選ぶ"
-        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl"
       >
         {/* タイトル / 閉じる × は省略（grid と footer に面積を回す）。
             閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路あり。 */}

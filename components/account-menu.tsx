@@ -71,7 +71,7 @@ export function AccountMenu({
       {open && (
         <div
           role="menu"
-          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-lg border border-foreground/10 bg-white py-1 shadow-lg"
+          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg"
         >
           {email && (
             <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
