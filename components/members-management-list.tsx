@@ -152,7 +152,7 @@ export function MembersManagementList({
                   title="管理者"
                   className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-amber-500 ring-1 ring-white"
                 >
-                  <CrownIcon size={9} />
+                  <CrownIcon size={10} />
                 </span>
               )}
             </span>

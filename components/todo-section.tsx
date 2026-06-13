@@ -140,7 +140,7 @@ function PrioritySelect({
                 >
                   <PriorityIcon p={p} size={15} />
                   <span className="flex-1">{PRIORITY_LABEL[p]}</span>
-                  {sel && <CheckIcon size={13} className="text-muted-foreground" />}
+                  {sel && <CheckIcon size={14} className="text-muted-foreground" />}
                 </button>
               </li>
             );
@@ -430,7 +430,7 @@ export function TodoSection({
                         : "text-foreground"
                     }`}
                   >
-                    {todo.event_id && <ReservationIcon size={13} className="mr-1" />}
+                    {todo.event_id && <ReservationIcon size={14} className="mr-1" />}
                     {todo.title}
                   </span>
                 )}
