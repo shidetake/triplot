@@ -318,9 +318,20 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h、`00:00`＝未設定は出さない）／
   期間 = `M/D(曜) → M/D(曜)`。
 
-## 非活性（disabled）
+## 薄くする手段：色トークン vs opacity
 
-`disabled:opacity-50` で統一。`opacity-40` や `opacity-60` は使わない。
+「薄く見せる／de-emphasize する」手段は2つあり、**対象で使い分ける**（混ぜない）:
+
+| 手段 | 対象 | 例 |
+|---|---|---|
+| **色トークン**（`text-subtle-foreground` 38% / `text-muted-foreground` 60%） | **中立背景の上のテキスト・アイコン単体**（インクの濃さを変えるだけ） | プレースホルダ・補助テキスト・非活性アイコン・控えめなアイコン |
+| **opacity** | **色付き／複合の要素を丸ごと**（単一の文字色が無く、全体をまとめて薄くする） | disabled ボタン（塗り＋文字＋アイコン）・自分が不参加の予定ブロック（hue 地色）・未確定の地図マーカー（member 色） |
+
+判断基準: **「文字色を変えるだけで薄くできるか？」** できる（中立のテキスト/アイコン）→ 色トークン。できない（地色が member 色・hue・primary 塗りなどで、要素を丸ごと薄くしたい）→ opacity。shadcn/Material と同じ分担（disabled=opacity・テキスト=色）。
+
+### 非活性（disabled）
+
+`disabled:opacity-50` で統一。`opacity-40` や `opacity-60` は使わない（コントロールは色付き/複合なので opacity 側）。
 
 ## HelpTip の使いどころ
 
