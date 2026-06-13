@@ -624,7 +624,7 @@ export function SavedInfo({
               title="保存"
               className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
-              <SaveIcon size={18} />
+              <SaveIcon size={20} />
             </button>
           </div>
           {state.error && (

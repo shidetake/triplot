@@ -140,7 +140,7 @@ function PrioritySelect({
                 >
                   <PriorityIcon p={p} />
                   <span className="flex-1">{PRIORITY_LABEL[p]}</span>
-                  {sel && <CheckIcon size={14} className="text-muted-foreground" />}
+                  {sel && <CheckIcon size={16} className="text-muted-foreground" />}
                 </button>
               </li>
             );

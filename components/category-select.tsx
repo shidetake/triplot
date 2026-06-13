@@ -87,7 +87,7 @@ export function CategorySelect({
                   <CategoryChip category={c} />
                   <span className="min-w-0 flex-1 truncate">{c.name}</span>
                   {isSel && (
-                    <CheckIcon size={14} className="shrink-0 text-muted-foreground" />
+                    <CheckIcon size={16} className="shrink-0 text-muted-foreground" />
                   )}
                 </button>
               </li>
