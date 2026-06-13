@@ -350,7 +350,7 @@ export function EventForm({
 
       <label className="block text-sm">
         <span className="font-medium">
-          タイトル<span className="ml-0.5 font-normal text-red-500">*</span>
+          タイトル<span className="ml-0.5 font-normal text-red-600">*</span>
         </span>
         <input
           type="text"

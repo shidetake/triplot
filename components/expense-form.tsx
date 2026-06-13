@@ -350,7 +350,7 @@ export function ExpenseForm({
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
           <span className="font-medium">
-            価格<span className="ml-0.5 font-normal text-red-500">*</span>
+            価格<span className="ml-0.5 font-normal text-red-600">*</span>
           </span>
           <input
             type="number"
@@ -382,7 +382,7 @@ export function ExpenseForm({
         <label className="block text-sm">
           <span className="font-medium">
             為替レート（1 {localCurrency} = ? {defaultCurrency}）
-            <span className="ml-0.5 font-normal text-red-500">*</span>
+            <span className="ml-0.5 font-normal text-red-600">*</span>
           </span>
           <input
             type="number"
@@ -471,7 +471,7 @@ export function ExpenseForm({
       <div className="grid grid-cols-2 gap-2">
         <label className="block min-w-0 text-sm">
           <span className="font-medium">
-            日付<span className="ml-0.5 font-normal text-red-500">*</span>
+            日付<span className="ml-0.5 font-normal text-red-600">*</span>
           </span>
           <div className="mt-1">
             <DatePopover

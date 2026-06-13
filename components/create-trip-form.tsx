@@ -151,7 +151,7 @@ export function CreateTripForm({
       {mode === "copy" && (
         <label className="block text-sm">
           <span className="font-medium">
-            コピー元<span className="ml-0.5 font-normal text-red-500">*</span>
+            コピー元<span className="ml-0.5 font-normal text-red-600">*</span>
           </span>
           <select
             value={sourceId}
@@ -180,7 +180,7 @@ export function CreateTripForm({
 
       <label className="block min-w-0 text-sm">
         <span className="font-medium">
-          タイトル<span className="ml-0.5 font-normal text-red-500">*</span>
+          タイトル<span className="ml-0.5 font-normal text-red-600">*</span>
         </span>
         <input
           name="title"
@@ -271,7 +271,7 @@ function Field({ label, name, type = "text", ...rest }: FieldProps) {
       <span className="font-medium">
         {label}
         {rest.required && (
-          <span className="ml-0.5 font-normal text-red-500">*</span>
+          <span className="ml-0.5 font-normal text-red-600">*</span>
         )}
       </span>
       <input
