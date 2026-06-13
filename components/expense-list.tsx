@@ -5,6 +5,7 @@ import { useState } from "react";
 import type { LatLng } from "@/lib/placeMap";
 import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
+import { formatAmount } from "@/lib/formatAmount";
 
 import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";
@@ -236,14 +237,6 @@ function ExpenseRowItem({
   );
 }
 
-function formatAmount(amount: number, currency: Currency): string {
-  const formatter = new Intl.NumberFormat("ja-JP", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: currency === "JPY" ? 0 : 2,
-  });
-  return formatter.format(amount);
-}
 
 // paid_at は wall clock として保存している（フォームで送る文字列に TZ を
 // 付けず Supabase session(UTC) で解釈させ、読み戻しの UTC 表現がそのまま

@@ -1,6 +1,7 @@
 import type { ExpenseSummary } from "@/lib/expenseSummary";
 import type { Settlement } from "@/lib/settlement";
 import type { Currency } from "@/lib/types/database";
+import { formatAmount } from "@/lib/formatAmount";
 
 type Member = {
   id: string;
@@ -104,11 +105,3 @@ function SummaryCell({
   );
 }
 
-function formatAmount(amount: number, currency: Currency): string {
-  const formatter = new Intl.NumberFormat("ja-JP", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: currency === "JPY" ? 0 : 2,
-  });
-  return formatter.format(amount);
-}

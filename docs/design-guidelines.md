@@ -287,8 +287,8 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 - **空状態**: 枠・イラストは作らず `text-sm text-muted-foreground` のプレーン文。コピーは
   「まだ〜ありません。」＋可能なら次のアクションへの誘導を一文（例: 「上の転送先アドレスにレシートを転送してみてください」）。
 - **hover を持つ要素は素の `transition`** を付ける（`transition-colors` 等のプロパティ限定は使わない。短い汎用トランジションで統一）。
-- **金額表示は `Intl.NumberFormat("ja-JP", { style: "currency", currency })`**（JPY は小数なし・USD は2桁）。
-  `¥${n}` のような手書き整形はしない。
+- **金額表示は `formatAmount`**（`lib/formatAmount.ts`）。`Intl.NumberFormat("ja-JP", { style: "currency" })` で
+  JPY は小数なし・USD は2桁。`¥${n}` のような手書き整形や、各コンポーネントでの再定義はしない（単一の真実）。
 - **「誰が」は `MemberAvatar`**（色丸＋表示名の先頭1文字。`sm`=18px / `md`=24px）。作成者・支払者・参加者など
   人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]）。
 - **フォームのフィールドラベルは `<FieldLabel>`**（`components/field-label.tsx`）。`font-medium`（foreground 87%）の
