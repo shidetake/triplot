@@ -87,8 +87,9 @@ export function CreateTripForm({
     }
   };
 
-  const radio =
-    "flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm transition";
+  // セグメントトラックの各セグメント（design-guidelines「定型部品」）。
+  const seg =
+    "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition";
 
   return (
     <form
@@ -107,14 +108,14 @@ export function CreateTripForm({
         </button>
       </div>
 
-      {/* 作り方の選択（過去の旅行が無ければ出さない） */}
+      {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型 */}
       {canCopy && (
-        <div className="flex gap-2">
+        <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
           <label
-            className={`${radio} ${
+            className={`${seg} ${
               mode === "new"
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             <input
@@ -130,10 +131,10 @@ export function CreateTripForm({
             新規
           </label>
           <label
-            className={`${radio} ${
+            className={`${seg} ${
               mode === "copy"
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
+                ? "bg-primary text-primary-foreground"
+                : "text-muted-foreground hover:bg-foreground/10"
             }`}
           >
             <input

@@ -280,7 +280,13 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 - **「1つ選ぶ」コントロールの配色レシピ**（セグメント・選択ピル・トグルボタン等）:
   選択中 = `border-primary bg-primary text-primary-foreground` ／
   非選択 = `border-foreground/20 text-muted-foreground hover:bg-foreground/10`。
-  （「選択・アクティブ = primary」の具体形。器の構造はいくつかあるが配色はこの1レシピで統一）
+  （「選択・アクティブ = primary」の具体形。配色はこの1レシピで統一）
+- **セグメントトラック（横並びで1つ選ぶ標準構造）**:
+  器 = `flex gap-1 rounded-md border border-foreground/10 p-1`、各セグメント = `flex-1 rounded px-2 py-1.5 text-xs font-medium`（**セグメント自身に枠は付けない**）。
+  選択色は上の配色レシピ（選択 = `bg-primary text-primary-foreground` の塗り）。
+  「各ボタンが自前の枠を持つ独立ボタン型」は使わず、**1つの器にピルを内包するトラック型に寄せる**
+  （shadcn の Tabs/ToggleGroup と同じ見た目。専用部品を入れず手書きで再現する標準形）。
+  選択でフォーム内容が変わる多択（種別: 通常/終日/時差移動）も値の択一（新規/コピー）もこの形。
 - **数字の揃えは `tabular-nums`**: 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける。
 - **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel` 等を使う。手書きしない）:
   日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h、`00:00`＝未設定は出さない）／
