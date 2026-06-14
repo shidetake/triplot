@@ -9,8 +9,12 @@ import { CloseIcon } from "./icons";
 export function CloseButton({
   label = "閉じる",
   className,
+  iconSize = 16,
   ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { label?: string }) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  label?: string;
+  iconSize?: number;
+}) {
   return (
     <button
       type="button"
@@ -22,7 +26,7 @@ export function CloseButton({
         className,
       )}
     >
-      <CloseIcon size={16} />
+      <CloseIcon size={iconSize} />
     </button>
   );
 }

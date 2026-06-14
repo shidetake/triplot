@@ -33,7 +33,7 @@ import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
 import { FieldLabel } from "./field-label";
-import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
+import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "./close-button";
@@ -479,15 +479,12 @@ export function ExpenseForm({
           <div className="block min-w-0 text-sm">
             <div className="flex items-center justify-between">
               <FieldLabel>時刻</FieldLabel>
-              <button
-                type="button"
+              <CloseButton
                 onClick={collapseTime}
-                aria-label="時刻をやめる"
-                title="時刻をやめる"
-                className="flex h-5 w-5 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-              >
-                <CloseIcon size={12} />
-              </button>
+                label="時刻をやめる"
+                className="h-5 w-5"
+                iconSize={12}
+              />
             </div>
             <input
               ref={timeInputCallback}
