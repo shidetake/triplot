@@ -9,6 +9,7 @@ import {
 } from "react";
 import { toast } from "@/components/toast";
 import { menuItemClass } from "./menu-item";
+import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/confirm-dialog";
 
 import {
@@ -108,18 +109,20 @@ function PrioritySelect({
 
   return (
     <div ref={ref} className="relative shrink-0">
-      <button
+      <Button
         type="button"
+        variant="ghost"
+        size="iconDense"
         disabled={disabled}
         onClick={() => setOpen((o) => !o)}
         aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
         title={`優先度: ${PRIORITY_LABEL[value]}`}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex h-7 w-7 items-center justify-center rounded-full transition hover:bg-foreground/10 disabled:opacity-50"
+        className="rounded-full"
       >
         <PriorityIcon p={value} />
-      </button>
+      </Button>
       {open && (
         <ul
           role="listbox"
@@ -370,15 +373,16 @@ export function TodoSection({
           className="min-w-0 flex-1 rounded-md border border-foreground/10 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-primary"
         />
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
-        <button
+        <Button
           type="button"
+          size="iconSm"
           onClick={add}
           disabled={isPending || draft.trim() === ""}
           aria-label="追加"
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="shrink-0"
         >
           <PlusIcon size={16} />
-        </button>
+        </Button>
       </div>
 
       {/* リスト */}

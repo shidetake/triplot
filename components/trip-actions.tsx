@@ -239,30 +239,29 @@ export function TripActions({
     });
   };
 
-  const iconBtn =
-    "rounded-md p-2 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground";
-
   return (
     <>
       <div className="inline-flex items-center gap-1">
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label="共有"
           title="共有"
           onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-          className={iconBtn}
         >
           <ShareIcon size={18} />
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           aria-label="メニュー"
           title="メニュー"
           onClick={(e) => setMenuAnchor({ x: e.clientX, y: e.clientY })}
-          className={iconBtn}
         >
           <EllipsisIcon size={18} />
-        </button>
+        </Button>
       </div>
 
       {/* ⋯ メニュー（共有 / メンバー / エクスポート / 削除）。
