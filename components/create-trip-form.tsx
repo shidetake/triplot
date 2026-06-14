@@ -92,8 +92,9 @@ export function CreateTripForm({
   };
 
   // セグメントトラックの各セグメント（design-guidelines「定型部品」）。
+  // sr-only の radio に focus が当たるので、ラベル側で has-[:focus-visible] のリングを出す（a11y）。
   const seg =
-    "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition";
+    "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
 
   return (
     <form

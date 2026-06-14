@@ -9,4 +9,4 @@
 //   <button className={`flex items-center gap-2 ${menuItemClass}`}>…</button>
 //   <button className={`block ${menuItemClass} ${sel ? "bg-accent font-medium" : ""}`}>…</button>
 export const menuItemClass =
-  "w-full px-3 py-2 text-left text-sm transition hover:bg-foreground/10";
+  "w-full px-3 py-2 text-left text-sm transition hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring";
