@@ -11,6 +11,7 @@ import { buildCopySourceLabels } from "@/lib/copySourceLabel";
 import { tripDayCount } from "@/lib/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
+import { Button } from "@/components/ui/button";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
@@ -234,15 +235,15 @@ export function CreateTripForm({
         </select>
       </div>
 
-      <button
+      <Button
         type="submit"
         disabled={isPending}
         aria-label="作成"
         title="作成"
-        className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+        className="w-full"
       >
         <PlusIcon size={20} />
-      </button>
+      </Button>
 
       {showShorterWarning && (
         <p className="rounded-md bg-amber-50 p-3 text-xs leading-snug text-amber-800">

@@ -1,58 +1,56 @@
-import { Button as ButtonPrimitive } from "@base-ui/react/button"
-import { cva, type VariantProps } from "class-variance-authority"
+import { cva, type VariantProps } from "class-variance-authority";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
+// triplot のボタン。design-guidelines「ボタンの配色」の役割を variant で実装。
+// 角丸は rounded-md（入力欄＝コントロールと揃える）、フォーカスは
+// `focus-visible:ring`（キーボード操作時だけリングを出す＝a11y）。
+// type は付けない（呼び出し側で type="button"/"submit" を明示。未指定だと
+// ブラウザ既定の submit になるため）。
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-lg border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center rounded-md font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground [a]:hover:bg-primary/80",
-        outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
-        ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+        // Primary: その UI の主目的を完了/送信する1動作（保存・追加・確定）
+        primary: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // Destructive: 破壊的・取り消せない（削除）。赤枠（塗りでなく）
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "border border-red-600/20 text-red-600 hover:bg-red-600/10",
+        // Neutral/Navigate: 補助・キャンセル・取得（白枠）
+        outline:
+          "border border-foreground/20 text-muted-foreground hover:bg-foreground/10 hover:text-foreground",
+        // Ghost: 枠なしの単独アイコン操作子（ツールバー・×閉じる等）
+        ghost: "text-muted-foreground hover:bg-foreground/10 hover:text-foreground",
       },
       size: {
-        default:
-          "h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        xs: "h-6 gap-1 rounded-[min(var(--radius-md),10px)] px-2 text-xs in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3",
-        sm: "h-7 gap-1 rounded-[min(var(--radius-md),12px)] px-2.5 text-[0.8rem] in-data-[slot=button-group]:rounded-lg has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
-        lg: "h-9 gap-1.5 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
-        icon: "size-8",
-        "icon-xs":
-          "size-6 rounded-[min(var(--radius-md),10px)] in-data-[slot=button-group]:rounded-lg [&_svg:not([class*='size-'])]:size-3",
-        "icon-sm":
-          "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
-        "icon-lg": "size-9",
+        default: "h-9 px-4 text-sm", // テキストボタン標準
+        sm: "h-8 px-3 text-xs", // 小
+        icon: "h-9 w-9", // アイコンのみ（標準）
+        iconSm: "h-8 w-8", // アイコンのみ（小）
+        iconDense: "h-7 w-7", // 密なリスト内
       },
     },
     defaultVariants: {
-      variant: "default",
+      variant: "primary",
       size: "default",
     },
-  }
-)
+  },
+);
 
-function Button({
+export function Button({
   className,
-  variant = "default",
-  size = "default",
+  variant,
+  size,
   ...props
-}: ButtonPrimitive.Props & VariantProps<typeof buttonVariants>) {
+}: React.ButtonHTMLAttributes<HTMLButtonElement> &
+  VariantProps<typeof buttonVariants>) {
   return (
-    <ButtonPrimitive
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
+    <button
+      className={cn(buttonVariants({ variant, size }), className)}
       {...props}
     />
-  )
+  );
 }
 
-export { Button, buttonVariants }
+export { buttonVariants };

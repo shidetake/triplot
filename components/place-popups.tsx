@@ -19,6 +19,7 @@ import { TrashIcon, CloseIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { PlaceIconPicker } from "./place-icon-picker";
+import { Button } from "@/components/ui/button";
 import {
   gmapsUrl,
   PlaceIcon,
@@ -275,15 +276,15 @@ export function CandidateInfo({
           />
         </label>
 
-        <button
+        <Button
           type="submit"
           disabled={isPending}
           aria-label="この場所を追加"
           title="この場所を追加"
-          className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="w-full"
         >
           <PlusIcon size={20} />
-        </button>
+        </Button>
         {state.error && (
           <p className="rounded bg-red-50 p-2 text-xs text-red-700">
             {state.error}
@@ -385,15 +386,15 @@ export function DraftInfo({
           />
         </label>
 
-        <button
+        <Button
           type="submit"
           disabled={isPending}
           aria-label="この地点を追加"
           title="この地点を追加"
-          className="flex h-9 w-full items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="w-full"
         >
           <PlusIcon size={20} />
-        </button>
+        </Button>
         {state.error && (
           <p className="rounded bg-red-50 p-2 text-xs text-red-700">
             {state.error}
@@ -619,15 +620,15 @@ export function SavedInfo({
           </label>
           <div className="flex gap-2">
             {deleteButton}
-            <button
+            <Button
               type="submit"
               disabled={isPending}
               aria-label="保存"
               title="保存"
-              className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+              className="flex-1"
             >
               <SaveIcon size={20} />
-            </button>
+            </Button>
           </div>
           {state.error && (
             <p className="rounded bg-red-50 p-2 text-xs text-red-700">
@@ -642,15 +643,15 @@ export function SavedInfo({
           <div className="flex gap-2 border-t border-foreground/10 pt-2">
             {deleteButton}
             {canEdit && (
-              <button
+              <Button
                 type="button"
                 onClick={() => setEditing(true)}
                 aria-label="編集"
                 title="編集"
-                className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90"
+                className="flex-1"
               >
                 <EditIcon size={18} />
-              </button>
+              </Button>
             )}
           </div>
         )

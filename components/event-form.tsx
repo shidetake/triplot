@@ -21,6 +21,7 @@ import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
+import { Button } from "@/components/ui/button";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
@@ -669,15 +670,15 @@ export function EventForm({
             <TrashIcon size={18} />
           </button>
         )}
-        <button
+        <Button
           type="submit"
           disabled={isPending}
           aria-label={isEdit ? "保存" : "追加"}
           title={isEdit ? "保存" : "追加"}
-          className="flex h-9 flex-1 items-center justify-center rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="flex-1"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}
-        </button>
+        </Button>
       </div>
 
       {state.error && (
