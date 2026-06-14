@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 
-import { CloseIcon, SaveIcon } from "@/components/icons";
+import { SaveIcon } from "@/components/icons";
+import { Button } from "@/components/ui/button";
+import { CloseButton } from "@/components/close-button";
 import { ImportAddress } from "@/components/import-address";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
@@ -143,14 +145,7 @@ export default async function ImportPage() {
               </div>
               <form action={dismissDraftAction}>
                 <input type="hidden" name="id" value={e.id} />
-                <button
-                  type="submit"
-                  aria-label="破棄"
-                  title="破棄"
-                  className="flex h-7 w-7 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-                >
-                  <CloseIcon size={16} />
-                </button>
+                <CloseButton type="submit" label="破棄" className="h-7 w-7" />
               </form>
             </li>
           ))}
@@ -196,14 +191,15 @@ export default async function ImportPage() {
                           </option>
                         ))}
                       </select>
-                      <button
+                      <Button
                         type="submit"
+                        size="iconSm"
                         aria-label="保存"
                         title="保存"
-                        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
+                        className="shrink-0"
                       >
                         <SaveIcon size={16} />
-                      </button>
+                      </Button>
                     </form>
 
                     {row.assignedTripId ? (
@@ -262,14 +258,7 @@ export default async function ImportPage() {
 
                 <form action={dismissDraftAction}>
                   <input type="hidden" name="id" value={row.id} />
-                  <button
-                    type="submit"
-                    aria-label="破棄"
-                    title="破棄"
-                    className="flex h-8 w-8 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-                  >
-                    <CloseIcon size={16} />
-                  </button>
+                  <CloseButton type="submit" label="破棄" className="h-8 w-8" />
                 </form>
               </div>
             </li>

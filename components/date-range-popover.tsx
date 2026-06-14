@@ -5,6 +5,7 @@ import { format } from "date-fns";
 import { ja } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
 
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -132,14 +133,14 @@ export function DateRangePopover({
               のがミスりやすいので、自動クローズはやめて、ここの「確定」を明示
               タップで閉じる方式にしている。両端揃うまで disabled。 */}
           <div className="flex justify-end border-t border-foreground/10 p-2">
-            <button
+            <Button
               type="button"
+              size="sm"
               disabled={!f || !t}
               onClick={() => setOpen(false)}
-              className="h-8 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
             >
               確定
-            </button>
+            </Button>
           </div>
         </PopoverContent>
       </Popover>
