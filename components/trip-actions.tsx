@@ -28,6 +28,7 @@ import {
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon, EllipsisIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
+import { Button } from "@/components/ui/button";
 
 // ブラウザで生成したデータをファイルとしてダウンロードさせる。
 function downloadBlob(
@@ -351,14 +352,15 @@ export function TripActions({
             <p className="text-xs text-muted-foreground">
               リンクがあればログイン不要で参加できます。
             </p>
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onCopy}
               disabled={isPending || !inviteToken}
-              className="h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+              className="w-full"
             >
               {isPending ? "処理中..." : "リンクをコピー"}
-            </button>
+            </Button>
             <button
               type="button"
               onClick={onRegenerate}

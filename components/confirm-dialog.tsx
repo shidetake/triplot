@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+
 // 破壊的操作の確認ダイアログ。素の window.confirm の代替で、見た目を
 // triplot のデザイン体系（ライトモード・トークン）に乗せるための共通部品。
 // toast() と同じく imperative に呼ぶ:
@@ -89,25 +91,21 @@ export function ConfirmDialogHost() {
           </p>
         )}
         <div className="mt-5 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => close(false)}
-            className="h-9 rounded-md border border-foreground/20 px-4 text-sm font-medium transition hover:bg-foreground/10"
           >
             {cancelLabel}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant={destructive ? "destructive" : "primary"}
             autoFocus
             onClick={() => close(true)}
-            className={
-              destructive
-                ? "h-9 rounded-md border border-red-600/20 px-4 text-sm font-medium text-red-600 transition hover:bg-red-600/10"
-                : "h-9 rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground transition hover:bg-primary/90"
-            }
           >
             {confirmLabel}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

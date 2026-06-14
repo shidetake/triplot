@@ -454,21 +454,22 @@ export function LocateInfo({
         </p>
       </div>
       <div className="flex gap-2 border-t border-foreground/10 pt-2">
-        <button
+        <Button
           type="button"
+          variant="outline"
           onClick={onCancel}
-          className="h-9 flex-1 rounded-md border border-foreground/20 text-sm font-medium transition hover:bg-foreground/10"
+          className="flex-1"
         >
           やめる
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={onConfirm}
           disabled={isPending}
-          className="h-9 flex-1 rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="flex-1"
         >
           {isPending ? "設定中..." : "ここに設定"}
-        </button>
+        </Button>
       </div>
       {error && (
         <p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>

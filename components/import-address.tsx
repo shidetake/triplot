@@ -2,6 +2,8 @@
 
 import { toast } from "@/components/toast";
 
+import { Button } from "@/components/ui/button";
+
 // per-user の取り込みアドレスは「読むもの」でなく「コピーして使うもの」なので、
 // 値は出さずコピーボタンだけにする（design-guidelines フィードバック/文言）。
 // 値が無い＝対象を文字で示す必要があり、「コピー」と書くのでアイコンは付けない。
@@ -16,12 +18,8 @@ export function ImportAddress({ address }: { address: string }) {
   };
 
   return (
-    <button
-      type="button"
-      onClick={copy}
-      className="inline-flex h-9 items-center rounded-md border border-foreground/20 px-3 text-sm text-muted-foreground transition hover:bg-foreground/10"
-    >
+    <Button type="button" variant="outline" onClick={copy}>
       アドレスをコピー
-    </button>
+    </Button>
   );
 }
