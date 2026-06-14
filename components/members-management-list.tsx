@@ -11,6 +11,7 @@ import {
 import { chipStyle } from "@/lib/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
+import { inputClass } from "./input-class";
 import { MemberAvatar } from "./member-avatar";
 
 type Member = {
@@ -87,7 +88,7 @@ export function MembersManagementList({
   };
 
   return (
-    <ul className="divide-y divide-zinc-200 rounded-md border border-foreground/10 bg-white">
+    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-white">
       {members.map((m) => {
         const isMe = m.id === myMemberId;
         const showDelete = isMe || iAmAdmin;
@@ -116,7 +117,7 @@ export function MembersManagementList({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className="flex-1 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none disabled:opacity-50"
+                className={`flex-1 ${inputClass} disabled:opacity-50`}
               />
               <button
                 type="button"

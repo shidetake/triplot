@@ -28,6 +28,7 @@ import {
 import type { Currency, Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
+import { inputClass } from "./input-class";
 import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
@@ -360,7 +361,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           />
         </label>
         <label className="block text-sm">
@@ -369,7 +370,7 @@ export function ExpenseForm({
             name="local_currency"
             value={localCurrency}
             onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className="mt-1 block rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className={`mt-1 block ${inputClass}`}
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
@@ -396,7 +397,7 @@ export function ExpenseForm({
                 ? String(averageRates[localCurrency])
                 : "例: 150"
             }
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           />
           {averageRates[localCurrency] !== undefined && (
             <span className="mt-1 block text-xs text-muted-foreground">
@@ -446,7 +447,7 @@ export function ExpenseForm({
           name="note"
           placeholder="ランチ"
           defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className={`mt-1 block w-full ${inputClass}`}
         />
       </label>
 
@@ -455,7 +456,7 @@ export function ExpenseForm({
         <select
           name="payer_member_id"
           defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
-          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className={`mt-1 block w-full ${inputClass}`}
         >
           {members.map((m) => (
             <option key={m.id} value={m.id}>
@@ -501,7 +502,7 @@ export function ExpenseForm({
               required
               value={paidAtTime}
               onChange={(e) => setPaidAtTime(e.target.value)}
-              className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+              className={`mt-1 block w-full min-w-0 ${inputClass}`}
             />
           </div>
         ) : (

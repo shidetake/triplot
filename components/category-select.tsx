@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { Category } from "./expense-form";
+import { inputClass } from "./input-class";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
@@ -52,7 +53,7 @@ export function CategorySelect({
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        className="flex w-full items-center gap-2 rounded-md border border-foreground/20 bg-white px-3 py-2 text-left focus:border-primary focus:outline-none"
+        className={`flex w-full items-center gap-2 text-left ${inputClass}`}
       >
         {selected && <CategoryChip category={selected} />}
         <span className="min-w-0 flex-1 truncate">

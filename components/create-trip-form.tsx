@@ -11,6 +11,7 @@ import { buildCopySourceLabels } from "@/lib/copySourceLabel";
 import { tripDayCount } from "@/lib/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
+import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
 import { CloseIcon, PlusIcon } from "./icons";
@@ -157,7 +158,7 @@ export function CreateTripForm({
             value={sourceId}
             onChange={(e) => pickSource(e.target.value)}
             required={mode === "copy"}
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           >
             <option value="" disabled>
               旅行を選択
@@ -186,7 +187,7 @@ export function CreateTripForm({
           placeholder="ハワイ旅行"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className={`mt-1 block w-full min-w-0 ${inputClass}`}
         />
       </label>
 
@@ -223,7 +224,7 @@ export function CreateTripForm({
           name="default_currency"
           value={currency}
           onChange={(e) => setCurrency(e.target.value as Currency)}
-          className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+          className={`mt-1 block w-full ${inputClass}`}
         >
           {CURRENCIES.map((c) => (
             <option key={c.value} value={c.value}>
@@ -271,7 +272,7 @@ function Field({ label, name, type = "text", ...rest }: FieldProps) {
         {...rest}
         type={type}
         name={name}
-        className="mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 focus:border-primary focus:outline-none"
+        className={`mt-1 block w-full min-w-0 ${inputClass}`}
       />
     </label>
   );

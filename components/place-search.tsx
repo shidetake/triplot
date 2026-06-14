@@ -7,6 +7,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { LatLng } from "@/lib/placeMap";
 import { CloseIcon, SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
+import { inputClass } from "./input-class";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
 // 吹き出しに再利用するので、ピンごとの追加 Places 呼び出しは発生しない。
@@ -282,7 +283,7 @@ export function PlaceSearch({
             onKeyDown={onKeyDown}
             placeholder="パンケーキ"
             autoComplete="off"
-            className="w-full rounded-md border border-foreground/20 bg-white px-3 py-2 pr-9 text-sm focus:border-primary focus:outline-none"
+            className={`w-full pr-9 ${inputClass}`}
           />
           {query && (
             <button

@@ -7,6 +7,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { LatLng } from "@/lib/placeMap";
 
 import { extractRegion } from "./place-search";
+import { inputClass } from "./input-class";
 import { menuItemClass } from "./menu-item";
 
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
@@ -274,7 +275,7 @@ export function PlacePicker({
         onKeyDown={onKeyDown}
         placeholder={placeholder}
         autoComplete="off"
-        className="block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        className={`block w-full min-w-0 ${inputClass}`}
       />
 
       {open && rows.length > 0 && (

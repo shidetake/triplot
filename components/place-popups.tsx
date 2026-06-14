@@ -16,6 +16,7 @@ import type { Visibility } from "@/lib/types/database";
 import { type PinOption } from "@/lib/placeIcons";
 
 import { TrashIcon, CloseIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
+import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { PlaceIconPicker } from "./place-icon-picker";
 import {
@@ -49,7 +50,7 @@ function StatusSelect({
         required
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+        className={`mt-1 block w-full ${inputClass}`}
       >
         {sorted.map((s) => (
           <option key={s.id} value={s.id}>
@@ -270,7 +271,7 @@ export function CandidateInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           />
         </label>
 
@@ -354,7 +355,7 @@ export function DraftInfo({
             required
             autoFocus
             placeholder="集合場所"
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           />
         </label>
         <StatusSelect
@@ -380,7 +381,7 @@ export function DraftInfo({
             type="text"
             name="note"
             placeholder="22時まで"
-            className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+            className={`mt-1 block w-full ${inputClass}`}
           />
         </label>
 
@@ -613,7 +614,7 @@ export function SavedInfo({
               name="note"
               defaultValue={place.note ?? ""}
               placeholder="22時まで"
-              className="mt-1 block w-full rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none"
+              className={`mt-1 block w-full ${inputClass}`}
             />
           </label>
           <div className="flex gap-2">

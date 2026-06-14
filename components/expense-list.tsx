@@ -90,7 +90,7 @@ export function ExpenseList({
 
   return (
     <>
-      <ul className="divide-y divide-zinc-200 rounded-md border border-foreground/10 bg-white">
+      <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-white">
         {expenses.map((e) => (
           <ExpenseRowItem
             key={e.id}

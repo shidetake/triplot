@@ -17,6 +17,7 @@ import type { ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
+import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
@@ -41,8 +42,7 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 
 const initialState: EventMutationState = { ok: false, error: null };
 
-const inputCls =
-  "mt-1 block w-full min-w-0 rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none";
+const inputCls = `mt-1 block w-full min-w-0 ${inputClass}`;
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
