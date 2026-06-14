@@ -12,11 +12,19 @@ import {
 } from "./schedule";
 
 describe("formatMinutes: 通算分 → HH:MM", () => {
-  it("時もゼロ埋めした 24h 表記にする", () => {
+  it("既定は時もゼロ埋めした 24h 表記（アプリ標準）", () => {
     expect(formatMinutes(0)).toBe("00:00");
     expect(formatMinutes(9 * 60)).toBe("09:00");
     expect(formatMinutes(9 * 60 + 5)).toBe("09:05");
     expect(formatMinutes(23 * 60 + 59)).toBe("23:59");
+  });
+
+  it("padHour=false は時のゼロ埋めを落とす（週カレンダー軸の例外）", () => {
+    expect(formatMinutes(9 * 60, false)).toBe("9:00");
+    expect(formatMinutes(9 * 60 + 5, false)).toBe("9:05");
+    expect(formatMinutes(0, false)).toBe("0:00");
+    // 分は常にゼロ埋め、2桁の時は変わらない
+    expect(formatMinutes(13 * 60 + 7, false)).toBe("13:07");
   });
 });
 

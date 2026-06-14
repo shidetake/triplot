@@ -341,9 +341,10 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 - **フォームのフィールド構造**: `<label className="block text-sm"><FieldLabel required?>ラベル</FieldLabel><input className="mt-1 ..." /></label>`。
   入力との間隔は `mt-1`、フィールド間は `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない）。
 - **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel`・`formatMinutes` 等を使う。手書きしない）:
-  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h・**時もゼロ埋め**〔`9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／
+  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h・**時もゼロ埋め**〔標準は `9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／
   期間 = `M/D(曜) → M/D(曜)`。
-  - **0時からの通算分 → `HH:MM` は `formatMinutes(min)`**（カレンダー軸・予定時刻・フォーム初期値の単一ソース）。各所で `Math.floor(min/60)` を手書きしない。
+  - **0時からの通算分 → 時刻文字列は `formatMinutes(min)`**（予定時刻・フォーム初期値・カレンダー軸の単一ソース）。各所で `Math.floor(min/60)` を手書きしない。
+  - **例外: 高密度な週カレンダーは時の先頭ゼロを落として横幅を詰める**（`9:00`）＝`formatMinutes(min, false)`。`text-[10px]` 等と同じ「高密度グリッドの例外」。標準（フォーム・一覧）は既定の `09:00`。
   - **react-day-picker 用のローカル日付 ↔ `"YYYY-MM-DD"` は `lib/ymd.ts` の `parseYmd` / `formatYmd`**（DatePopover/DateRangePopover/EventForm 共通）。schedule.ts は UTC 専用なので date-picker のローカル `Date` 変換はこちら。
 
 ## 薄くする手段：色トークン vs opacity

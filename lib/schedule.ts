@@ -51,11 +51,16 @@ export function parseWall(s: string): { date: string; minutes: number } {
   };
 }
 
-/** 0時からの通算分 → "HH:MM"（24h・時もゼロ埋め）。時刻表示の単一ソース。 */
-export function formatMinutes(min: number): string {
+/**
+ * 0時からの通算分 → "H:MM"。時刻表示の単一ソース（分は常にゼロ埋め）。
+ * padHour=true（既定）は時もゼロ埋めの "09:00"＝アプリ標準。
+ * padHour=false は "9:00"＝高密度な週カレンダー軸だけが横幅を詰める例外。
+ */
+export function formatMinutes(min: number, padHour = true): string {
   const h = Math.floor(min / 60);
   const m = min % 60;
-  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  const hh = padHour ? String(h).padStart(2, "0") : String(h);
+  return `${hh}:${String(m).padStart(2, "0")}`;
 }
 
 function dateToUtc(date: string): number {

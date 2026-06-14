@@ -61,6 +61,10 @@ function colWidth(n: number): number {
   return 72;
 }
 
+// 高密度な週ビューは時の先頭ゼロを落として横幅を詰める（"9:00"）。
+// 整形ロジックは lib の formatMinutes 一本（ここは padHour=false の部分適用だけ）。
+const hhmm = (min: number) => formatMinutes(min, false);
+
 export function WeekCalendar({
   schedule,
   placeName,
@@ -833,7 +837,7 @@ export function WeekCalendar({
                   className="absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-subtle-foreground"
                   style={{ top: y(m) }}
                 >
-                  {m < winEnd ? formatMinutes(m) : ""}
+                  {m < winEnd ? hhmm(m) : ""}
                 </div>
               ))}
             </div>
@@ -1101,7 +1105,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      {formatMinutes(ghost.startMin)}–{formatMinutes(ghost.startMin + 60)}
+                      {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
                     </span>
                   </div>
                 );
@@ -1125,7 +1129,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      {formatMinutes(pcDrag.startMin)}–{formatMinutes(pcDrag.endMin)}
+                      {hhmm(pcDrag.startMin)}–{hhmm(pcDrag.endMin)}
                     </span>
                   </div>
                 );
@@ -1168,7 +1172,7 @@ export function WeekCalendar({
                 >
                   <span className="flex items-center justify-between gap-1">
                     <span className="text-[10px] tabular-nums opacity-70">
-                      {formatMinutes(p.topMin)}
+                      {hhmm(p.topMin)}
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
@@ -1216,7 +1220,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {formatMinutes(t.departMin)}–{formatMinutes(t.arriveMin)}
+                        {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>
@@ -1249,7 +1253,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {formatMinutes(t.departMin)} 発
+                        {hhmm(t.departMin)} 発
                       </span>
                       {dots}
                     </span>
@@ -1278,7 +1282,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {formatMinutes(t.arriveMin)} 着
+                        {hhmm(t.arriveMin)} 着
                       </span>
                       {dots}
                     </span>
