@@ -51,6 +51,13 @@ export function parseWall(s: string): { date: string; minutes: number } {
   };
 }
 
+/** 0時からの通算分 → "HH:MM"（24h・時もゼロ埋め）。時刻表示の単一ソース。 */
+export function formatMinutes(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
 function dateToUtc(date: string): number {
   const [y, mo, d] = date.split("-").map(Number);
   return Date.UTC(y, mo - 1, d);

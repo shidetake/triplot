@@ -13,8 +13,9 @@ import {
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@/lib/placeMap";
-import type { ScheduleEvent } from "@/lib/schedule";
+import { formatMinutes, type ScheduleEvent } from "@/lib/schedule";
 import type { Visibility } from "@/lib/types/database";
+import { parseYmd } from "@/lib/ymd";
 
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";
@@ -63,15 +64,6 @@ const KIND3_LABEL: Record<Kind3, string> = {
   transit: "時差移動",
 };
 
-// "YYYY-MM-DD" → Date。DatePopover の disabled マッチャ（{before: Date}）用。
-// ローカルTZの 00:00 で生成する（floating time を保つ意図と一致）。
-function ymdToDate(s: string): Date | undefined {
-  if (!s) return undefined;
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-}
-
 // 壁時計の (date,time) ↔ 通算分。Date.UTC を計算専用に使い、ローカルTZは
 // 一切経由しない（floating time を保つ）。
 function dtToMin(date: string, time: string): number {
@@ -87,10 +79,7 @@ function minToDt(min: number): { date: string; time: string } {
     "0",
   )}-${String(d.getUTCDate()).padStart(2, "0")}`;
   const rem = min - dayMin;
-  const time = `${String(Math.floor(rem / 60)).padStart(2, "0")}:${String(
-    rem % 60,
-  ).padStart(2, "0")}`;
-  return { date, time };
+  return { date, time: formatMinutes(rem) };
 }
 
 export type EventFormMode =
@@ -463,8 +452,8 @@ export function EventForm({
                 tripStart={tripStart}
                 tripEnd={tripEnd}
                 disabled={
-                  ymdToDate(alldayStart)
-                    ? { before: ymdToDate(alldayStart)! }
+                  parseYmd(alldayStart)
+                    ? { before: parseYmd(alldayStart)! }
                     : undefined
                 }
               />
@@ -510,8 +499,8 @@ export function EventForm({
                 tripStart={tripStart}
                 tripEnd={tripEnd}
                 disabled={
-                  ymdToDate(sDate)
-                    ? { before: ymdToDate(sDate)! }
+                  parseYmd(sDate)
+                    ? { before: parseYmd(sDate)! }
                     : undefined
                 }
               />

@@ -13,7 +13,12 @@ import {
   pickEventColor,
   type EventColor,
 } from "@/lib/eventColor";
-import { MIN_EVENT_MIN, type Schedule, type ScheduleEvent } from "@/lib/schedule";
+import {
+  formatMinutes,
+  MIN_EVENT_MIN,
+  type Schedule,
+  type ScheduleEvent,
+} from "@/lib/schedule";
 
 import { CheckIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
@@ -54,12 +59,6 @@ function colWidth(n: number): number {
   if (n <= 3) return 120;
   if (n <= 6) return 90;
   return 72;
-}
-
-function hhmm(min: number): string {
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return `${h}:${String(m).padStart(2, "0")}`;
 }
 
 export function WeekCalendar({
@@ -834,7 +833,7 @@ export function WeekCalendar({
                   className="absolute right-1 -translate-y-1/2 text-[10px] tabular-nums text-subtle-foreground"
                   style={{ top: y(m) }}
                 >
-                  {m < winEnd ? hhmm(m) : ""}
+                  {m < winEnd ? formatMinutes(m) : ""}
                 </div>
               ))}
             </div>
@@ -1102,7 +1101,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
+                      {formatMinutes(ghost.startMin)}–{formatMinutes(ghost.startMin + 60)}
                     </span>
                   </div>
                 );
@@ -1126,7 +1125,7 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="block text-[10px] tabular-nums opacity-70">
-                      {hhmm(pcDrag.startMin)}–{hhmm(pcDrag.endMin)}
+                      {formatMinutes(pcDrag.startMin)}–{formatMinutes(pcDrag.endMin)}
                     </span>
                   </div>
                 );
@@ -1169,7 +1168,7 @@ export function WeekCalendar({
                 >
                   <span className="flex items-center justify-between gap-1">
                     <span className="text-[10px] tabular-nums opacity-70">
-                      {hhmm(p.topMin)}
+                      {formatMinutes(p.topMin)}
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
@@ -1217,7 +1216,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                        {formatMinutes(t.departMin)}–{formatMinutes(t.arriveMin)}
                       </span>
                       {dots}
                     </span>
@@ -1250,7 +1249,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} 発
+                        {formatMinutes(t.departMin)} 発
                       </span>
                       {dots}
                     </span>
@@ -1279,7 +1278,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.arriveMin)} 着
+                        {formatMinutes(t.arriveMin)} 着
                       </span>
                       {dots}
                     </span>

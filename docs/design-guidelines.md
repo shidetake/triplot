@@ -336,11 +336,15 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
   `<div className="flex items-center justify-between gap-2">` で見出しと操作を両端に並べる。操作が無ければ素の h2。
 - **アバター画像**: 丸い容器（`rounded-full overflow-hidden`）の中に `<img className="h-full w-full object-cover" />`。
   画像が無いときは頭文字フォールバック（[[色（メンバー・予定）]] の MemberAvatar / avatar-upload）。
+  - **自分（ログインユーザ）のアバターは中立グレー**＝`bg-zinc-700 text-white font-medium ring-1 ring-foreground/10` の丸（写真があれば object-cover、無ければ頭文字）。
+    これは**メンバー色（hue）とは別系統**：`MemberAvatar` の hue 丸は「旅行内で誰か」を色で識別する用途、アカウント自身のアバター（右上メニュー `account-menu` / 設定の `avatar-upload`）は識別不要なので中立 zinc で統一する。自分のアバターに hue を当てない。
 - **フォームのフィールド構造**: `<label className="block text-sm"><FieldLabel required?>ラベル</FieldLabel><input className="mt-1 ..." /></label>`。
   入力との間隔は `mt-1`、フィールド間は `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない）。
-- **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel` 等を使う。手書きしない）:
-  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h、`00:00`＝未設定は出さない）／
+- **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel`・`formatMinutes` 等を使う。手書きしない）:
+  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h・**時もゼロ埋め**〔`9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／
   期間 = `M/D(曜) → M/D(曜)`。
+  - **0時からの通算分 → `HH:MM` は `formatMinutes(min)`**（カレンダー軸・予定時刻・フォーム初期値の単一ソース）。各所で `Math.floor(min/60)` を手書きしない。
+  - **react-day-picker 用のローカル日付 ↔ `"YYYY-MM-DD"` は `lib/ymd.ts` の `parseYmd` / `formatYmd`**（DatePopover/DateRangePopover/EventForm 共通）。schedule.ts は UTC 専用なので date-picker のローカル `Date` 変換はこちら。
 
 ## 薄くする手段：色トークン vs opacity
 

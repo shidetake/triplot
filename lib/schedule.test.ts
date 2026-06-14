@@ -5,10 +5,20 @@ import {
   buildSchedule,
   buildTripTzTimeline,
   formatDayLabel,
+  formatMinutes,
   parseWall,
   resolveExpenseTz,
   type ScheduleEvent,
 } from "./schedule";
+
+describe("formatMinutes: 通算分 → HH:MM", () => {
+  it("時もゼロ埋めした 24h 表記にする", () => {
+    expect(formatMinutes(0)).toBe("00:00");
+    expect(formatMinutes(9 * 60)).toBe("09:00");
+    expect(formatMinutes(9 * 60 + 5)).toBe("09:05");
+    expect(formatMinutes(23 * 60 + 59)).toBe("23:59");
+  });
+});
 
 function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEvent {
   return {

@@ -12,6 +12,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { formatYmd, parseYmd } from "@/lib/ymd";
 
 import { inputClass } from "./input-class";
 
@@ -21,19 +22,6 @@ const TODAY = new Date();
 const RANGE_START = new Date(TODAY.getFullYear() - 10, 0, 1);
 const RANGE_END = new Date(TODAY.getFullYear() + 10, 11, 1);
 
-function parseYmd(s?: string | null): Date | undefined {
-  if (!s) return undefined;
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-}
-function fmtYmd(d?: Date): string {
-  if (!d) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-}
 
 // 単発の日付選択ポップオーバー。タップでカレンダーが開く。フォーム送信は
 // hidden input(name) で "YYYY-MM-DD" を流す。tripStart/tripEnd を渡すと
@@ -91,7 +79,7 @@ export function DatePopover({
             selected={date}
             onSelect={(d) => {
               if (d) {
-                onChange(fmtYmd(d));
+                onChange(formatYmd(d));
                 setOpen(false);
               }
             }}

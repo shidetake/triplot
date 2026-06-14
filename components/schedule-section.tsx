@@ -3,7 +3,11 @@
 import { useCallback, useMemo, useState } from "react";
 
 import type { LatLng } from "@/lib/placeMap";
-import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
+import {
+  buildSchedule,
+  formatMinutes,
+  type ScheduleEvent,
+} from "@/lib/schedule";
 
 import { Button } from "@/components/ui/button";
 import { EventForm, type EventFormMode } from "./event-form";
@@ -100,21 +104,15 @@ export function ScheduleSection({
       anchor: Anchor,
       endMinutes?: number,
     ) => {
-      const h = String(Math.floor(minutes / 60)).padStart(2, "0");
-      const m = String(minutes % 60).padStart(2, "0");
       // PC ドラッグで終了時刻も指定された時はそれを form に渡す。
-      let endTime: string | undefined;
-      if (endMinutes != null) {
-        const eh = String(Math.floor(endMinutes / 60)).padStart(2, "0");
-        const em = String(endMinutes % 60).padStart(2, "0");
-        endTime = `${eh}:${em}`;
-      }
+      const endTime =
+        endMinutes != null ? formatMinutes(endMinutes) : undefined;
       // 列のTZ（旅程から導出）を初期値に。情報が無い列(UTC)なら前回入力TZ。
       setOpen({
         form: {
           mode: "create",
           date,
-          time: `${h}:${m}`,
+          time: formatMinutes(minutes),
           tz: tz === "UTC" ? defaultTz : tz,
           ...(endTime ? { endTime } : {}),
         },

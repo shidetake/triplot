@@ -13,6 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { formatYmd, parseYmd } from "@/lib/ymd";
 
 // 年プルダウン（captionLayout="dropdown-years"）の選択肢範囲＝カレンダーの
 // ＜ ＞ ナビが動ける範囲。今日から±10年。旅行プランの文脈では十分。
@@ -20,19 +21,6 @@ const TODAY = new Date();
 const RANGE_START = new Date(TODAY.getFullYear() - 10, 0, 1);
 const RANGE_END = new Date(TODAY.getFullYear() + 10, 11, 1);
 
-function parseYmd(s?: string | null): Date | undefined {
-  if (!s) return undefined;
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return undefined;
-  return new Date(y, m - 1, d);
-}
-function fmtYmd(d?: Date): string {
-  if (!d) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
-}
 
 // 範囲日付のポップオーバー。トリガーをタップ → カレンダーが popover で開き、
 // 範囲（from, to）を選ぶ。両方選び終わると自動で閉じる。フォーム送信は2つの
@@ -65,7 +53,7 @@ export function DateRangePopover({
   const t = range?.to;
 
   useEffect(() => {
-    onChange?.(fmtYmd(f) || null, fmtYmd(t) || null);
+    onChange?.(formatYmd(f) || null, formatYmd(t) || null);
     // onChange は呼び出し側の inline 関数想定なので依存に入れない。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [f, t]);
@@ -81,13 +69,13 @@ export function DateRangePopover({
       <input
         type="hidden"
         name={startName}
-        value={fmtYmd(f)}
+        value={formatYmd(f)}
         required={required}
       />
       <input
         type="hidden"
         name={endName}
-        value={fmtYmd(t)}
+        value={formatYmd(t)}
         required={required}
       />
       <Popover open={open} onOpenChange={setOpen}>
