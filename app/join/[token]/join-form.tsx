@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 
 import { joinAction } from "./actions";
@@ -65,24 +66,14 @@ export function JoinForm({
       </label>
 
       {hasSession ? (
-        <button
-          type="button"
-          onClick={joinDirect}
-          disabled={isPending}
-          className="h-11 w-full rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
-        >
+        <Button type="button" onClick={joinDirect} disabled={isPending} className="h-11 w-full">
           {isPending ? "参加中..." : "この旅行に参加する"}
-        </button>
+        </Button>
       ) : (
         <div className="space-y-3">
-          <button
-            type="button"
-            onClick={joinAsGuest}
-            disabled={isPending}
-            className="h-11 w-full rounded-md bg-primary font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
-          >
+          <Button type="button" onClick={joinAsGuest} disabled={isPending} className="h-11 w-full">
             {isPending ? "参加中..." : "ゲストとして参加（ログイン不要）"}
-          </button>
+          </Button>
           <div className="flex items-center gap-3 text-xs text-subtle-foreground">
             <span className="h-px flex-1 bg-zinc-200" />
             または

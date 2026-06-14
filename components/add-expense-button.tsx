@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+
 import { ExpenseForm } from "./expense-form";
 import { type Anchor, FormPopover } from "./form-popover";
 import { PlusIcon } from "./icons";
@@ -15,14 +17,15 @@ export function AddExpenseButton(props: Props) {
 
   return (
     <div>
-      <button
+      <Button
         type="button"
+        size="icon"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
         aria-label="費用を追加"
-        className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
+        title="費用を追加"
       >
         <PlusIcon size={18} />
-      </button>
+      </Button>
 
       {anchor && (
         <FormPopover anchor={anchor} onClose={() => setAnchor(null)} label="費用を追加">

@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 
 import { updateDisplayNameAction } from "@/app/settings/actions";
+import { Button } from "@/components/ui/button";
 import { HelpTip } from "@/components/help-tip";
 import { SaveIcon } from "@/components/icons";
 import { toast } from "@/components/toast";
@@ -39,15 +40,16 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
       <HelpTip label="デフォルト表示名について" align="right">
         旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
       </HelpTip>
-      <button
+      <Button
         type="submit"
+        size="icon"
         disabled={pending || !dirty}
         aria-label="保存"
         title="保存"
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+        className="shrink-0"
       >
         <SaveIcon size={18} />
-      </button>
+      </Button>
     </form>
   );
 }

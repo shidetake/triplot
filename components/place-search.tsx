@@ -7,6 +7,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import type { LatLng } from "@/lib/placeMap";
 import { CloseIcon, SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
+import { Button } from "@/components/ui/button";
 import { inputClass } from "./input-class";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
@@ -301,15 +302,16 @@ export function PlaceSearch({
             </button>
           )}
         </div>
-        <button
+        <Button
           type="submit"
+          size="icon"
           disabled={!ready || pending}
           aria-label="検索"
           title="検索"
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+          className="shrink-0"
         >
           <SearchIcon size={18} />
-        </button>
+        </Button>
       </div>
 
       {open && sug.length > 0 && (

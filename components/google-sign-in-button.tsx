@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "@/components/toast";
 
 import { createClient } from "@/lib/supabase/client";
+import { Button } from "@/components/ui/button";
 
 export function GoogleSignInButton({ next }: { next?: string }) {
   const [isLoading, setIsLoading] = useState(false);
@@ -24,13 +25,13 @@ export function GoogleSignInButton({ next }: { next?: string }) {
   };
 
   return (
-    <button
+    <Button
       type="button"
       onClick={handleSignIn}
       disabled={isLoading}
-      className="inline-flex h-12 items-center justify-center gap-2 rounded-md bg-primary px-6 font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
+      className="h-12 gap-2 px-6"
     >
       {isLoading ? "ログイン中..." : "Google でログイン"}
-    </button>
+    </Button>
   );
 }

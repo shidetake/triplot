@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 import type { LatLng } from "@/lib/placeMap";
 import { buildSchedule, type ScheduleEvent } from "@/lib/schedule";
 
+import { Button } from "@/components/ui/button";
 import { EventForm, type EventFormMode } from "./event-form";
 import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
@@ -170,14 +171,15 @@ export function ScheduleSection({
           <HelpTip label="予定の追加方法" align="right" widthClass="w-52">
             空き時間をクリック / 長押しでも追加できます
           </HelpTip>
-          <button
+          <Button
             type="button"
+            size="icon"
             onClick={openCreate}
             aria-label="予定を追加"
-            className="flex h-9 w-9 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90"
+            title="予定を追加"
           >
             <PlusIcon size={18} />
-          </button>
+          </Button>
         </div>
       </div>
 
