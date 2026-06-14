@@ -19,6 +19,7 @@ import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { PlaceIconPicker } from "./place-icon-picker";
+import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "./close-button";
 import {
@@ -549,9 +550,7 @@ export function SavedInfo({
           <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
             <span className="min-w-0 break-words">{place.name}</span>
             {place.visibility === "private" && (
-              <span className="shrink-0 rounded bg-zinc-100 px-1.5 text-xs font-normal text-muted-foreground">
-                プライベート
-              </span>
+              <PrivateBadge className="shrink-0" />
             )}
           </p>
           <CloseButton onClick={onDone} className="-mr-0.5 -mt-0.5 shrink-0" />

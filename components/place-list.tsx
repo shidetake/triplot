@@ -4,6 +4,7 @@ import { getIconPath } from "@/lib/placeIcons";
 import type { Visibility } from "@/lib/types/database";
 
 import { ColorBadge } from "./color-badge";
+import { PrivateBadge } from "./private-badge";
 
 export type PlaceStatus = {
   id: string;
@@ -130,11 +131,7 @@ export function PlaceList({
                     <ColorBadge color={status.color}>{status.name}</ColorBadge>
                   )}
                   <span className="font-medium">{p.name}</span>
-                  {p.visibility === "private" && (
-                    <span className="rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground">
-                      プライベート
-                    </span>
-                  )}
+                  {p.visibility === "private" && <PrivateBadge />}
                   {unmapped && (
                     <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700">
                       地図未登録

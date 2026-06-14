@@ -233,7 +233,7 @@ export function AvatarUpload({
         {/* 状態表示は absolute にしてレイアウト高さを変えない（隣の入力/保存がカクつかない）。 */}
         {busy && (
           <p className="absolute left-0 top-full mt-1 whitespace-nowrap text-xs text-muted-foreground">
-            処理中…
+            処理中...
           </p>
         )}
         {error && (

@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 
 import type { LatLng } from "@/lib/placeMap";
-import { CloseIcon, SearchIcon } from "@/components/icons";
+import { SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "./close-button";
 import { inputClass } from "./input-class";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
@@ -287,19 +288,15 @@ export function PlaceSearch({
             className={`w-full pr-9 ${inputClass}`}
           />
           {query && (
-            <button
-              type="button"
+            <CloseButton
+              label="検索をクリア"
               onClick={() => {
                 setSug([]);
                 setOpen(false);
                 onClear();
               }}
-              aria-label="検索をクリア"
-              title="検索をクリア"
-              className="absolute right-1.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-            >
-              <CloseIcon size={16} />
-            </button>
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
+            />
           )}
         </div>
         <Button

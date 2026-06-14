@@ -261,7 +261,7 @@ export function CalendarExportDialog({
 
         {phase === "loading" && (
           <p className="py-2 text-center text-sm text-muted-foreground">
-            カレンダーを取得中…
+            カレンダーを取得中...
           </p>
         )}
 
@@ -314,7 +314,7 @@ export function CalendarExportDialog({
 
         {phase === "exporting" && (
           <p className="py-2 text-center text-sm text-muted-foreground">
-            書き込み中… {progress.done}/{progress.total}
+            書き込み中... {progress.done}/{progress.total}
             {progress.failed > 0 && `（失敗 ${progress.failed}）`}
           </p>
         )}

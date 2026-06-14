@@ -13,6 +13,7 @@ import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { MemberAvatar } from "./member-avatar";
 import { PlaceIcon } from "./place-list";
+import { PrivateBadge } from "./private-badge";
 
 export type ExpenseRow = {
   id: string;
@@ -192,11 +193,7 @@ function ExpenseRowItem({
                 {expense.rate_to_default})
               </span>
             )}
-            {expense.visibility === "private" && (
-              <span className="rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground">
-                プライベート
-              </span>
-            )}
+            {expense.visibility === "private" && <PrivateBadge />}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{formatDateTime(expense.paid_at)}</span>

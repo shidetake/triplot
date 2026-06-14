@@ -23,6 +23,7 @@ import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "./close-button";
+import { ToggleChip } from "./toggle-chip";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
@@ -595,19 +596,13 @@ export function EventForm({
               {members.map((m) => {
                 const on = pSelected.has(m.id);
                 return (
-                  <button
+                  <ToggleChip
                     key={m.id}
-                    type="button"
+                    on={on}
                     onClick={() => toggleParticipant(m.id)}
-                    aria-pressed={on}
-                    className={
-                      on
-                        ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-foreground/10"
-                    }
                   >
                     {m.display_name}
-                  </button>
+                  </ToggleChip>
                 );
               })}
             </div>

@@ -37,6 +37,7 @@ import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "./close-button";
+import { ToggleChip } from "./toggle-chip";
 
 function tzLabel(iana: string): string {
   return (
@@ -612,19 +613,13 @@ export function ExpenseForm({
               {members.map((m) => {
                 const on = selectedSplits.has(m.id);
                 return (
-                  <button
+                  <ToggleChip
                     key={m.id}
-                    type="button"
+                    on={on}
                     onClick={() => toggleSplit(m.id)}
-                    aria-pressed={on}
-                    className={
-                      on
-                        ? "rounded-full bg-primary px-2.5 py-0.5 text-xs text-primary-foreground"
-                        : "rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs text-subtle-foreground ring-1 ring-foreground/10"
-                    }
                   >
                     {m.display_name}
-                  </button>
+                  </ToggleChip>
                 );
               })}
             </div>

@@ -294,12 +294,14 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 - **× 閉じるボタン**（フォーム・ポップアップ右上）:
   `flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground` ＋ `aria-label`/`title="閉じる"`
 - **インラインバッジ**（件数・状態の小さな添え物）:
-  `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`
+  `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`。
+  「プライベート」可視性バッジ（private な場所/費用の名前の隣）は専用部品 **`<PrivateBadge>`**（`components/private-badge.tsx`）で
+  レシピ＋文言を1ソース化済み。private 表示はこれを使う（手書きの span で再現しない）。
 - **破線ボーダー＝「ここに追加できる」**: 控えめな追加アクション（割り勘の行追加・地図への登録）は
   `border border-dashed border-foreground/20` で枠だけ描く。実線ボタンより一段弱い「空きスロット」の表現。
-- **トグルチップ**（参加者・割り勘対象などの複数選択）:
+- **トグルチップ**（参加者・割り勘対象などの複数選択）: 共通部品 **`<ToggleChip on=...>`**（`components/toggle-chip.tsx`）。
   `rounded-full px-2.5 py-0.5 text-xs` ＋ `aria-pressed`。選択 = `bg-primary text-primary-foreground`、
-  非選択 = `bg-zinc-100 text-subtle-foreground ring-1 ring-foreground/10`
+  非選択 = `bg-zinc-100 text-subtle-foreground ring-1 ring-foreground/10`。手書きで再現せず ToggleChip を使う。
 - **フォームフッター**（ポップオーバーフォーム下部）: `flex gap-2` で［削除 `h-9 w-9` Destructive（編集時のみ）］＋
   ［送信 `h-9 flex-1` Primary・アイコン］。送信が flex-1 で主役、削除は正方形で控えめ。
 - **空状態**: 枠・イラストは作らず `text-sm text-muted-foreground` のプレーン文。コピーは
@@ -436,7 +438,8 @@ hue は色相環上の角度（HSL, 0–359°）。
 - **変更がある時だけ保存ボタンを有効**にする（無駄押し防止のユーザビリティ）。これは状態表示が目的ではないので、**成功トーストは別途出す**（有効/無効 ＋ トーストの両方）。
 
 ### 処理中（ローディング）
-- **スピナー・スケルトンは使わない**（現状アプリ全体で不使用）。処理中はボタンの**文言を「○○中…」に差し替え**（参加→参加中… / 設定→設定中… / 削除→削除中…、末尾は `...`）＋ `disabled` にする。
+- **スピナー・スケルトンは使わない**（現状アプリ全体で不使用）。処理中はボタンの**文言を「○○中...」に差し替え**（参加→参加中... / 設定→設定中... / 削除→削除中...）＋ `disabled` にする。
+  - **末尾は ASCII ピリオド3つ `...`**（三点リーダ `…`〔U+2026〕は使わない）。アプリ内の「○○中」「読み込み中」は全てこの表記で揃える。
 - ボタンが無い待ち（地図ロード等）は短い注記テキスト（「地図を読み込み中...」）で代替。
 - 長い待ちが恒常的に出るようになったらスケルトン導入を検討（今は速いので不要）。
 
