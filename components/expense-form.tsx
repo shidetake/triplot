@@ -36,6 +36,7 @@ import { FieldLabel } from "./field-label";
 import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "./close-button";
 
 function tzLabel(iana: string): string {
   return (
@@ -338,15 +339,7 @@ export function ExpenseForm({
     >
       {onDone && (
         <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={onDone}
-            aria-label="閉じる"
-            title="閉じる"
-            className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-          >
-            <CloseIcon size={16} />
-          </button>
+          <CloseButton onClick={onDone} />
         </div>
       )}
 

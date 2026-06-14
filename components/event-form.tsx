@@ -19,9 +19,10 @@ import type { Visibility } from "@/lib/types/database";
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
-import { TrashIcon, CloseIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
+import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "./close-button";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
@@ -310,15 +311,7 @@ export function EventForm({
       className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onDone}
-          aria-label="閉じる"
-          title="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-        >
-          <CloseIcon size={16} />
-        </button>
+        <CloseButton onClick={onDone} />
       </div>
 
       <input type="hidden" name="kind" value={submitKind} />

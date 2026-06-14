@@ -15,11 +15,12 @@ import type { Visibility } from "@/lib/types/database";
 
 import { type PinOption } from "@/lib/placeIcons";
 
-import { TrashIcon, CloseIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
+import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { PlaceIconPicker } from "./place-icon-picker";
 import { Button } from "@/components/ui/button";
+import { CloseButton } from "./close-button";
 import {
   gmapsUrl,
   PlaceIcon,
@@ -552,15 +553,7 @@ export function SavedInfo({
               </span>
             )}
           </p>
-          <button
-            type="button"
-            onClick={onDone}
-            aria-label="閉じる"
-            title="閉じる"
-            className="-mr-0.5 -mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-          >
-            <CloseIcon size={16} />
-          </button>
+          <CloseButton onClick={onDone} className="-mr-0.5 -mt-0.5 shrink-0" />
         </div>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-muted-foreground">

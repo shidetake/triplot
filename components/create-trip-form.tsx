@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
-import { CloseIcon, PlusIcon } from "./icons";
+import { PlusIcon } from "./icons";
+import { CloseButton } from "./close-button";
 
 type Currency = "JPY" | "USD";
 
@@ -100,15 +101,7 @@ export function CreateTripForm({
       className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       <div className="flex justify-end">
-        <button
-          type="button"
-          onClick={onDone}
-          aria-label="閉じる"
-          title="閉じる"
-          className="flex h-6 w-6 items-center justify-center rounded-full text-subtle-foreground transition hover:bg-foreground/10 hover:text-muted-foreground"
-        >
-          <CloseIcon size={16} />
-        </button>
+        <CloseButton onClick={onDone} />
       </div>
 
       {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型 */}
