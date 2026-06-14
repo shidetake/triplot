@@ -13,6 +13,7 @@ import { chipStyle } from "@/lib/memberColors";
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { inputClass } from "./input-class";
 import { MemberAvatar } from "./member-avatar";
+import { Button } from "@/components/ui/button";
 
 type Member = {
   id: string;
@@ -119,26 +120,27 @@ export function MembersManagementList({
                 aria-label="表示名"
                 className={`flex-1 ${inputClass} disabled:opacity-50`}
               />
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="iconSm"
                 onClick={cancelEdit}
                 disabled={isPending}
                 aria-label="キャンセル"
                 title="キャンセル"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-foreground/20 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
               >
                 <CloseIcon size={16} />
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                size="iconSm"
                 onClick={saveEdit}
                 disabled={isPending}
                 aria-label="保存"
                 title="保存"
-                className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50"
               >
                 <CheckIcon size={16} />
-              </button>
+              </Button>
             </li>
           );
         }
@@ -164,28 +166,30 @@ export function MembersManagementList({
               {m.display_name}
             </span>
             {isMe && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
+                size="iconSm"
                 onClick={startEdit}
                 disabled={isPending}
                 aria-label="編集"
                 title="編集"
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-foreground/20 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
               >
                 <EditIcon size={16} />
-              </button>
+              </Button>
             )}
             {showDelete && (
-              <button
+              <Button
                 type="button"
+                variant="destructive"
+                size="iconSm"
                 onClick={() => remove(m)}
                 disabled={isPending}
                 aria-label={isMe ? "退出する" : `${m.display_name} を外す`}
                 title={isMe ? "退出する" : "外す"}
-                className="flex h-8 w-8 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
               >
                 <TrashIcon size={16} />
-              </button>
+              </Button>
             )}
           </li>
         );

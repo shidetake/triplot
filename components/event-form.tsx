@@ -659,16 +659,18 @@ export function EventForm({
 
       <div className="flex gap-2">
         {isEdit && (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="icon"
             onClick={onDelete}
             disabled={isDeleting}
             aria-label="削除"
             title="削除"
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-red-600/20 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+            className="shrink-0"
           >
             <TrashIcon size={18} />
-          </button>
+          </Button>
         )}
         <Button
           type="submit"
