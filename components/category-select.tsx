@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Select } from "@base-ui/react/select";
 
 import type { Category } from "./expense-form";
 import { inputClass } from "./input-class";
@@ -8,10 +8,10 @@ import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
 
-// 費用カテゴリの選択。native <select> は <option> に SVG を描けないため、
-// MS ピクト＋名前を出せる軽量カスタムドロップダウンにしている。見た目は
-// 費用リストのチップ（色丸＋白アイコン）と揃える。選択値は hidden input
-// （name）でフォーム送信する。
+// 費用カテゴリの選択。native <select> は <option> に SVG を描けないため、Base UI の
+// Select（design-guidelines「部品の作り方」step2＝native で出せない中身は shadcn/Base UI を使う）
+// で MS ピクト＋名前を出す。トリガは inputClass、候補行は menuItemClass で他のドロップダウンと揃える。
+// 選択値は Select.Root の name で hidden input が自動生成されフォーム送信される。
 export function CategorySelect({
   name,
   categories,
@@ -23,81 +23,59 @@ export function CategorySelect({
   value: string;
   onChange: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  const selected = categories.find((c) => c.id === value);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative mt-1">
-      <input type="hidden" name={name} value={value} />
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className={`flex w-full items-center gap-2 text-left ${inputClass}`}
+    <Select.Root
+      name={name}
+      value={value}
+      onValueChange={(v) => onChange((v as string | null) ?? "")}
+    >
+      <Select.Trigger
+        className={`mt-1 flex w-full items-center gap-2 text-left ${inputClass}`}
       >
-        {selected && <CategoryChip category={selected} />}
-        <span className="min-w-0 flex-1 truncate">
-          {selected?.name ?? "選択してください"}
-        </span>
-        <ChevronIcon
-          size={16}
-          className={`shrink-0 text-subtle-foreground transition-transform ${
-            open ? "-rotate-90" : "rotate-90"
-          }`}
-        />
-      </button>
-
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute z-50 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-foreground/20 bg-white py-1 shadow-lg"
-        >
-          {categories.map((c) => {
-            const isSel = c.id === value;
+        <Select.Value>
+          {(val) => {
+            const c = categories.find((x) => x.id === val);
             return (
-              <li key={c.id} role="option" aria-selected={isSel}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(c.id);
-                    setOpen(false);
-                  }}
-                  className={`flex items-center gap-2 ${menuItemClass} ${
-                    isSel ? "bg-accent font-medium" : ""
-                  }`}
-                >
-                  <CategoryChip category={c} />
-                  <span className="min-w-0 flex-1 truncate">{c.name}</span>
-                  {isSel && (
-                    <CheckIcon size={16} className="shrink-0 text-muted-foreground" />
-                  )}
-                </button>
-              </li>
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                {c && <CategoryChip category={c} />}
+                <span className="min-w-0 flex-1 truncate">
+                  {c?.name ?? "選択してください"}
+                </span>
+              </span>
             );
-          })}
-        </ul>
-      )}
-    </div>
+          }}
+        </Select.Value>
+        <Select.Icon className="shrink-0 text-subtle-foreground">
+          <ChevronIcon size={16} className="rotate-90" />
+        </Select.Icon>
+      </Select.Trigger>
+
+      <Select.Portal>
+        <Select.Positioner
+          className="z-50"
+          sideOffset={4}
+          alignItemWithTrigger={false}
+        >
+          <Select.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/20 bg-white py-1 shadow-lg">
+            {categories.map((c) => (
+              <Select.Item
+                key={c.id}
+                value={c.id}
+                className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+              >
+                <CategoryChip category={c} />
+                <Select.ItemText className="min-w-0 flex-1 truncate">
+                  {c.name}
+                </Select.ItemText>
+                <Select.ItemIndicator className="shrink-0 text-muted-foreground">
+                  <CheckIcon size={16} />
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
   );
 }
 
