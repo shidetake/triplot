@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
+import { Dialog } from "@base-ui/react/dialog";
 
 import { Button } from "@/components/ui/button";
 
@@ -10,8 +12,9 @@ import { Button } from "@/components/ui/button";
 //
 //   if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) return;
 //
-// <ConfirmDialogHost /> を root layout に1つだけ置く。閉じ方は Esc・背景
-// クリック・キャンセルの3経路（design-guidelines「レイヤーと影」「定型部品」）。
+// <ConfirmDialogHost /> を root layout に1つだけ置く。モーダルの開閉・フォーカス
+// トラップ・Esc・背景クリックは Base UI Dialog に委ねる（design-guidelines
+// 「部品の作り方」step2＝native 相当の無いダイアログは shadcn/Base UI）。
 
 type ConfirmOptions = {
   title: string;
@@ -38,76 +41,75 @@ export function confirmDialog(opts: ConfirmOptions): Promise<boolean> {
 }
 
 export function ConfirmDialogHost() {
-  const [pending, setPending] = useState<Pending | null>(null);
-
-  const close = (ok: boolean) => {
-    pending?.resolve(ok);
-    setPending(null);
-  };
+  // opts は閉じアニメーション中も内容を保持するため open と分けて持つ。
+  const [opts, setOpts] = useState<Pending | null>(null);
+  const [open, setOpen] = useState(false);
+  const confirmRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    listener = setPending;
+    listener = (p) => {
+      setOpts(p);
+      setOpen(true);
+    };
     return () => {
       listener = null;
     };
   }, []);
 
-  useEffect(() => {
-    if (!pending) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-    // close は pending を閉じるだけなので依存は pending のみで十分。
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending]);
+  // ok を resolve して閉じる。opts のクリアは閉じ切ってから（onOpenChangeComplete）。
+  const close = (ok: boolean) => {
+    opts?.resolve(ok);
+    setOpen(false);
+  };
 
-  if (!pending) return null;
   const {
-    title,
+    title = "",
     body,
     confirmLabel = "削除",
     cancelLabel = "キャンセル",
     destructive = true,
-  } = pending;
+  } = opts ?? {};
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onClick={() => close(false)}
+    <Dialog.Root
+      open={open}
+      onOpenChange={(next) => {
+        // Esc・背景クリックでの閉じ（next=false）はキャンセル扱い。
+        if (!next) close(false);
+      }}
+      onOpenChangeComplete={(isOpen) => {
+        if (!isOpen) setOpts(null);
+      }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={title}
-        onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-sm rounded-lg bg-white p-5 shadow-xl"
-      >
-        <p className="text-sm font-semibold text-foreground">{title}</p>
-        {body && (
-          <p className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
-            {body}
-          </p>
-        )}
-        <div className="mt-5 flex justify-end gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => close(false)}
-          >
-            {cancelLabel}
-          </Button>
-          <Button
-            type="button"
-            variant={destructive ? "destructive" : "primary"}
-            autoFocus
-            onClick={() => close(true)}
-          >
-            {confirmLabel}
-          </Button>
-        </div>
-      </div>
-    </div>
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
+        <Dialog.Popup
+          initialFocus={confirmRef}
+          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-5 shadow-xl outline-none"
+        >
+          <Dialog.Title className="text-sm font-semibold text-foreground">
+            {title}
+          </Dialog.Title>
+          {body && (
+            <Dialog.Description className="mt-2 whitespace-pre-line text-sm text-muted-foreground">
+              {body}
+            </Dialog.Description>
+          )}
+          <div className="mt-5 flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => close(false)}>
+              {cancelLabel}
+            </Button>
+            <Button
+              ref={confirmRef}
+              type="button"
+              variant={destructive ? "destructive" : "primary"}
+              onClick={() => close(true)}
+            >
+              {confirmLabel}
+            </Button>
+          </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }
