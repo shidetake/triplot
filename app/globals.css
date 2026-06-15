@@ -94,6 +94,15 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* チェックボックス・ラジオの塗り色をブランド色（--primary）に統一する。トークン参照なので
+   ダークモード（.dark で --primary 反転）にも自動追従し、ベタ黒のように片モードで浮かない。
+   全 native checkbox/radio に一括で効くので個々に accent-* を付けて回らない。
+   design-guidelines「部品の作り方」1b（native＋スタイル）。 */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+}
+
 /* iOS Safari の date/time input は既定 appearance のままだと固有幅を持ち、
    width:100% / min-width:0 を入れてもグリッド/フレックス内で縮まず
    コンテナからはみ出す。appearance を外すと CSS 幅に従う。 */

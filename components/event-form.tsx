@@ -50,6 +50,11 @@ const initialState: EventMutationState = { ok: false, error: null };
 const inputLayout = "mt-1 block w-full min-w-0"; // <Input>／native <select> 共通レイアウト
 const inputCls = `${inputLayout} ${inputClass}`; // native <select> 用（recipe 込み）
 
+// セグメントトラックの各ピル（sr-only native radio を内包）。design-guidelines「セグメントトラック」。
+// sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
+const seg =
+  "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
+
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
 const fieldCls = "block min-w-0 text-sm";
@@ -312,21 +317,27 @@ export function EventForm({
       )}
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
-      {/* 種別セレクタ（通常／終日／タイムゾーン跨ぎ） */}
+      {/* 種別の切り替え（通常／終日／タイムゾーン跨ぎ）。
+          sr-only の native radio group ＋装飾ラベル（新規/コピーと同じ 1b パターン）。 */}
       <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
         {(["timed", "allday", "transit"] as const).map((k) => (
-          <button
+          <label
             key={k}
-            type="button"
-            onClick={() => setKind3(k)}
-            className={`flex-1 rounded px-2 py-1.5 text-xs font-medium transition ${
+            className={`${seg} ${
               kind3 === k
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:bg-foreground/10"
             }`}
           >
+            <input
+              type="radio"
+              name="__kind3"
+              className="sr-only"
+              checked={kind3 === k}
+              onChange={() => setKind3(k)}
+            />
             {KIND3_LABEL[k]}
-          </button>
+          </label>
         ))}
       </div>
       {kind3 === "transit" && (

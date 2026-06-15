@@ -393,20 +393,13 @@ export function TodoSection({
               key={todo.id}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-foreground/10"
             >
-              <button
-                type="button"
-                role="checkbox"
-                aria-checked={todo.done}
+              <input
+                type="checkbox"
+                checked={todo.done}
+                onChange={() => toggle(todo)}
                 aria-label={todo.done ? "未完了に戻す" : "完了にする"}
-                onClick={() => toggle(todo)}
-                className={`grid size-[18px] shrink-0 place-items-center rounded-[5px] border transition ${
-                  todo.done
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-foreground/20 bg-white hover:border-foreground/40"
-                }`}
-              >
-                {todo.done && <CheckIcon size={12} />}
-              </button>
+                className="size-[18px] shrink-0 cursor-pointer"
+              />
 
               <div className="min-w-0 flex-1">
                 {editingId === todo.id ? (
