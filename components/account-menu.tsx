@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+
+import { Menu } from "@base-ui/react/menu";
 
 import { LogOutIcon, SettingsIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
@@ -11,6 +12,8 @@ import { menuItemClass } from "./menu-item";
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
 // タップするとドロップダウンで email / 設定 / ログアウト。Apple ログインは写真を返さない
 // ので頭文字フォールバックが効く（docs/design-guidelines.md のアバター項）。
+// 開閉・外側クリック・Esc・キーボード操作・フォーカスは Base UI Menu に委ねる
+// （design-guidelines「部品の作り方」step2＝native 相当の無いメニューは shadcn/Base UI）。
 export function AccountMenu({
   email,
   name,
@@ -21,43 +24,19 @@ export function AccountMenu({
   avatarUrl: string | null;
 }) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   const initial = (name ?? email ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   const handleSignOut = async () => {
     const supabase = createClient();
     await supabase.auth.signOut();
-    setOpen(false);
     router.refresh();
   };
 
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+    <Menu.Root>
+      <Menu.Trigger
         aria-label="アカウント"
         title={email ?? "アカウント"}
-        aria-haspopup="menu"
-        aria-expanded={open}
         className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-sm font-medium text-white ring-1 ring-foreground/10 transition hover:ring-foreground/40"
       >
         {avatarUrl ? (
@@ -67,38 +46,33 @@ export function AccountMenu({
         ) : (
           initial
         )}
-      </button>
+      </Menu.Trigger>
 
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 z-20 mt-2 w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg"
-        >
-          {email && (
-            <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
-              {email}
-            </div>
-          )}
-          <Link
-            href="/settings"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
-          >
-            <SettingsIcon size={16} />
-            設定
-          </Link>
-          <button
-            type="button"
-            role="menuitem"
-            onClick={handleSignOut}
-            className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
-          >
-            <LogOutIcon size={16} />
-            ログアウト
-          </button>
-        </div>
-      )}
-    </div>
+      <Menu.Portal>
+        <Menu.Positioner align="end" sideOffset={8} className="z-50">
+          <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg">
+            {email && (
+              <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+                {email}
+              </div>
+            )}
+            <Menu.Item
+              render={<Link href="/settings" />}
+              className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+            >
+              <SettingsIcon size={16} />
+              設定
+            </Menu.Item>
+            <Menu.Item
+              onClick={handleSignOut}
+              className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+            >
+              <LogOutIcon size={16} />
+              ログアウト
+            </Menu.Item>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
