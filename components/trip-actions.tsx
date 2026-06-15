@@ -21,6 +21,8 @@ import {
 import { renderPinPng } from "@/lib/placePinImage";
 import { buildZip, type ZipEntry } from "@/lib/zip";
 
+import { Menu } from "@base-ui/react/menu";
+
 import {
   CalendarExportDialog,
   type CalendarExportEvent,
@@ -67,8 +69,8 @@ export function TripActions({
   // Google カレンダー形式に変換可能な予定（自分に見えるもの）。mine フラグ付き。
   calendarEvents: CalendarExportEvent[];
 }) {
-  const [menuAnchor, setMenuAnchor] = useState<Anchor | null>(null);
-  // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる。
+  // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる
+  // （ドリルイン式。Base UI Menu の closeOnClick=false で枠内ビューを切り替える）。
   const [menuView, setMenuView] = useState<"main" | "export">("main");
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
   // カレンダーエクスポートのダイアログ表示位置（null で非表示）。
@@ -128,11 +130,8 @@ export function TripActions({
     });
   };
 
-  // ⋯ メニューを閉じる時は次回 main から始まるよう view もリセット。
-  const closeMenu = () => {
-    setMenuAnchor(null);
-    setMenuView("main");
-  };
+  // 次回開く時は main から始まるよう view をリセット（開閉自体は Base UI Menu 管理）。
+  const closeMenu = () => setMenuView("main");
 
   // ファイル名に使えない文字を _ に。タイトルが空なら trip。
   const safeTitle = tripTitle.replace(/[\\/:*?"<>|]/g, "_").trim() || "trip";
@@ -226,7 +225,6 @@ export function TripActions({
   };
 
   const onDelete = async () => {
-    setMenuAnchor(null);
     setMenuView("main");
     const ok = await confirmDialog({
       title: "この旅行を削除しますか？",
@@ -252,97 +250,95 @@ export function TripActions({
         >
           <ShareIcon size={18} />
         </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label="メニュー"
-          title="メニュー"
-          onClick={(e) => setMenuAnchor({ x: e.clientX, y: e.clientY })}
-        >
-          <EllipsisIcon size={18} />
-        </Button>
+        <Menu.Root onOpenChange={(open) => { if (!open) setMenuView("main"); }}>
+          <Menu.Trigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="メニュー"
+                title="メニュー"
+              >
+                <EllipsisIcon size={18} />
+              </Button>
+            }
+          />
+          {/* ⋯ メニュー（共有 / メンバー / エクスポート / 削除）。
+              エクスポートはドリルインで2段目（出力先）を出す。 */}
+          <Menu.Portal>
+            <Menu.Positioner align="end" sideOffset={8} className="z-50">
+              <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 text-sm shadow-lg">
+                {menuView === "main" ? (
+                  <>
+                    <Menu.Item
+                      onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
+                      className={`block ${menuItemClass}`}
+                    >
+                      共有
+                    </Menu.Item>
+                    <Menu.Item
+                      render={<Link href={`/trips/${tripId}/members`} />}
+                      className={`block ${menuItemClass}`}
+                    >
+                      メンバー管理
+                    </Menu.Item>
+                    <Menu.Item
+                      closeOnClick={false}
+                      onClick={() => setMenuView("export")}
+                      className={`flex items-center justify-between ${menuItemClass}`}
+                    >
+                      エクスポート
+                      <span aria-hidden className="text-subtle-foreground">
+                        ›
+                      </span>
+                    </Menu.Item>
+                    {iAmAdmin && (
+                      <Menu.Item
+                        onClick={onDelete}
+                        disabled={isPending}
+                        className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+                      >
+                        この旅行を削除
+                      </Menu.Item>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Menu.Item
+                      closeOnClick={false}
+                      onClick={() => setMenuView("main")}
+                      className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
+                    >
+                      <span aria-hidden>‹</span> 戻る
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={(e) =>
+                        onExportCalendar({ x: e.clientX, y: e.clientY })
+                      }
+                      className={`block ${menuItemClass}`}
+                    >
+                      予定（Google カレンダー）
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={onExportMap}
+                      className={`block ${menuItemClass}`}
+                    >
+                      地図（KMZ）
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={onExportExpenses}
+                      className={`block ${menuItemClass}`}
+                    >
+                      費用（CSV）
+                    </Menu.Item>
+                  </>
+                )}
+              </Menu.Popup>
+            </Menu.Positioner>
+          </Menu.Portal>
+        </Menu.Root>
       </div>
-
-      {/* ⋯ メニュー（共有 / メンバー / エクスポート / 削除）。
-          エクスポートは2段目で出力先（地図 / 費用）を選ばせる。 */}
-      {menuAnchor && (
-        <FormPopover anchor={menuAnchor} onClose={closeMenu}>
-          {menuView === "main" ? (
-            <div className="py-1 text-sm">
-              <button
-                type="button"
-                onClick={() => {
-                  const a = menuAnchor;
-                  closeMenu();
-                  if (a) openShare(a);
-                }}
-                className={`block ${menuItemClass}`}
-              >
-                共有
-              </button>
-              <Link
-                href={`/trips/${tripId}/members`}
-                onClick={closeMenu}
-                className={`block ${menuItemClass}`}
-              >
-                メンバー管理
-              </Link>
-              <button
-                type="button"
-                onClick={() => setMenuView("export")}
-                className={`flex items-center justify-between ${menuItemClass}`}
-              >
-                エクスポート
-                <span aria-hidden className="text-subtle-foreground">
-                  ›
-                </span>
-              </button>
-              {iAmAdmin && (
-                <button
-                  type="button"
-                  onClick={onDelete}
-                  disabled={isPending}
-                  className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
-                >
-                  この旅行を削除
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="py-1 text-sm">
-              <button
-                type="button"
-                onClick={() => setMenuView("main")}
-                className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
-              >
-                <span aria-hidden>‹</span> 戻る
-              </button>
-              <button
-                type="button"
-                onClick={(e) => onExportCalendar({ x: e.clientX, y: e.clientY })}
-                className={`block ${menuItemClass}`}
-              >
-                予定（Google カレンダー）
-              </button>
-              <button
-                type="button"
-                onClick={onExportMap}
-                className={`block ${menuItemClass}`}
-              >
-                地図（KMZ）
-              </button>
-              <button
-                type="button"
-                onClick={onExportExpenses}
-                className={`block ${menuItemClass}`}
-              >
-                費用（CSV）
-              </button>
-            </div>
-          )}
-        </FormPopover>
-      )}
 
       {/* 共有ポップオーバー（アイコン・メニューどちらからも） */}
       {shareAnchor && (
