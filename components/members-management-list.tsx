@@ -11,9 +11,9 @@ import {
 import { chipStyle } from "@/lib/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
-import { inputClass } from "./input-class";
 import { MemberAvatar } from "./member-avatar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Member = {
   id: string;
@@ -102,7 +102,7 @@ export function MembersManagementList({
                 color={m.color}
                 size="md"
               />
-              <input
+              <Input
                 autoFocus
                 value={draftName}
                 onChange={(e) => setDraftName(e.target.value)}
@@ -118,7 +118,7 @@ export function MembersManagementList({
                 maxLength={32}
                 disabled={isPending}
                 aria-label="表示名"
-                className={`flex-1 ${inputClass} disabled:opacity-50`}
+                className="flex-1 disabled:opacity-50"
               />
               <Button
                 type="button"

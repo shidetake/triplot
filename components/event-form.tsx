@@ -23,6 +23,7 @@ import { FieldLabel } from "./field-label";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 
@@ -46,7 +47,8 @@ export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
 
 const initialState: EventMutationState = { ok: false, error: null };
 
-const inputCls = `mt-1 block w-full min-w-0 ${inputClass}`;
+const inputLayout = "mt-1 block w-full min-w-0"; // <Input>／native <select> 共通レイアウト
+const inputCls = `${inputLayout} ${inputClass}`; // native <select> 用（recipe 込み）
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
@@ -335,7 +337,7 @@ export function EventForm({
 
       <label className="block text-sm">
         <FieldLabel required>タイトル</FieldLabel>
-        <input
+        <Input
           type="text"
           name="title"
           required
@@ -343,7 +345,7 @@ export function EventForm({
           placeholder={
             kind3 === "transit" ? "NRT-HNL" : "ハイキング"
           }
-          className={inputCls}
+          className={inputLayout}
         />
       </label>
 
@@ -386,12 +388,12 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-muted-foreground">出発時刻</span>
-              <input
+              <Input
                 type="time"
                 name="depart_time"
                 required
                 defaultValue={startInit.time || "09:00"}
-                className={inputCls}
+                className={inputLayout}
               />
             </label>
             <label className={fieldCls}>
@@ -407,12 +409,12 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-muted-foreground">到着時刻</span>
-              <input
+              <Input
                 type="time"
                 name="arrive_time"
                 required
                 defaultValue={endInit.time || transitArriveInit.time}
-                className={inputCls}
+                className={inputLayout}
               />
             </label>
           </div>
@@ -480,13 +482,13 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-muted-foreground">開始時刻</span>
-              <input
+              <Input
                 type="time"
                 name="start_time"
                 required
                 value={sTime}
                 onChange={(e) => moveStart(sDate, e.target.value)}
-                className={inputCls}
+                className={inputLayout}
               />
             </label>
             <label className={fieldCls}>
@@ -507,13 +509,13 @@ export function EventForm({
             </label>
             <label className={fieldCls}>
               <span className="text-muted-foreground">終了時刻</span>
-              <input
+              <Input
                 type="time"
                 name="end_time"
                 required
                 value={eTime}
                 onChange={(e) => setEnd(eDate, e.target.value)}
-                className={inputCls}
+                className={inputLayout}
               />
             </label>
           </div>
@@ -623,14 +625,14 @@ export function EventForm({
 
       <label className="block text-sm">
         <FieldLabel>メモ</FieldLabel>
-        <input
+        <Input
           type="text"
           name="note"
           defaultValue={ev?.note ?? ""}
           placeholder={
             kind3 === "transit" ? "ターミナル1" : "日焼け止め持参"
           }
-          className={inputCls}
+          className={inputLayout}
         />
       </label>
 

@@ -4,8 +4,8 @@ import { useState, useTransition } from "react";
 
 import { FieldLabel } from "@/components/field-label";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
-import { inputClass } from "@/components/input-class";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
 
 import { joinAction } from "./actions";
@@ -58,12 +58,12 @@ export function JoinForm({
     <div className="space-y-4">
       <label className="block text-sm">
         <FieldLabel>あなたの表示名（この旅行内）</FieldLabel>
-        <input
+        <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder="ゲスト"
-          className={`mt-1 block w-full min-w-0 ${inputClass}`}
+          className="mt-1 block w-full min-w-0"
         />
       </label>
 

@@ -8,8 +8,8 @@ import type { LatLng } from "@/lib/placeMap";
 import { SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
-import { inputClass } from "./input-class";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
 // 吹き出しに再利用するので、ピンごとの追加 Places 呼び出しは発生しない。
@@ -274,7 +274,7 @@ export function PlaceSearch({
     >
       <div className="flex gap-2">
         <div className="relative min-w-0 flex-1">
-          <input
+          <Input
             ref={inputRef}
             type="text"
             value={query}
@@ -285,7 +285,7 @@ export function PlaceSearch({
             onKeyDown={onKeyDown}
             placeholder="パンケーキ"
             autoComplete="off"
-            className={`w-full pr-9 ${inputClass}`}
+            className="w-full pr-9"
           />
           {query && (
             <CloseButton

@@ -21,6 +21,7 @@ import { FieldLabel } from "./field-label";
 import { PlaceIconPicker } from "./place-icon-picker";
 import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import {
   gmapsUrl,
@@ -269,12 +270,12 @@ export function CandidateInfo({
         />
         <label className="block text-sm" htmlFor={noteId}>
           <FieldLabel>メモ</FieldLabel>
-          <input
+          <Input
             id={noteId}
             type="text"
             name="note"
             placeholder="22時まで"
-            className={`mt-1 block w-full ${inputClass}`}
+            className="mt-1 block w-full"
           />
         </label>
 
@@ -351,14 +352,14 @@ export function DraftInfo({
 
         <label className="block text-sm" htmlFor={nameId}>
           <FieldLabel>名前</FieldLabel>
-          <input
+          <Input
             id={nameId}
             type="text"
             name="name"
             required
             autoFocus
             placeholder="集合場所"
-            className={`mt-1 block w-full ${inputClass}`}
+            className="mt-1 block w-full"
           />
         </label>
         <StatusSelect
@@ -379,12 +380,12 @@ export function DraftInfo({
         />
         <label className="block text-sm" htmlFor={noteId}>
           <FieldLabel>メモ</FieldLabel>
-          <input
+          <Input
             id={noteId}
             type="text"
             name="note"
             placeholder="22時まで"
-            className={`mt-1 block w-full ${inputClass}`}
+            className="mt-1 block w-full"
           />
         </label>
 
@@ -604,13 +605,13 @@ export function SavedInfo({
           />
           <label className="block text-sm" htmlFor={noteId}>
             <FieldLabel>メモ</FieldLabel>
-            <input
+            <Input
               id={noteId}
               type="text"
               name="note"
               defaultValue={place.note ?? ""}
               placeholder="22時まで"
-              className={`mt-1 block w-full ${inputClass}`}
+              className="mt-1 block w-full"
             />
           </label>
           <div className="flex gap-2">

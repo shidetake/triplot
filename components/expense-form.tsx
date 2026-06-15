@@ -36,6 +36,7 @@ import { FieldLabel } from "./field-label";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 
@@ -347,7 +348,7 @@ export function ExpenseForm({
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
           <FieldLabel required>価格</FieldLabel>
-          <input
+          <Input
             type="number"
             name="local_price"
             required
@@ -356,7 +357,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className={`mt-1 block w-full ${inputClass}`}
+            className="mt-1 block w-full"
           />
         </label>
         <label className="block text-sm">
@@ -378,7 +379,7 @@ export function ExpenseForm({
           <FieldLabel required>
             為替レート（1 {localCurrency} = ? {defaultCurrency}）
           </FieldLabel>
-          <input
+          <Input
             type="number"
             name="rate_to_default"
             required
@@ -392,7 +393,7 @@ export function ExpenseForm({
                 ? String(averageRates[localCurrency])
                 : "例: 150"
             }
-            className={`mt-1 block w-full ${inputClass}`}
+            className="mt-1 block w-full"
           />
           {averageRates[localCurrency] !== undefined && (
             <span className="mt-1 block text-xs text-muted-foreground">
@@ -436,13 +437,13 @@ export function ExpenseForm({
 
       <label className="block text-sm" htmlFor={noteId}>
         <FieldLabel>メモ</FieldLabel>
-        <input
+        <Input
           id={noteId}
           type="text"
           name="note"
           placeholder="ランチ"
           defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className={`mt-1 block w-full ${inputClass}`}
+          className="mt-1 block w-full"
         />
       </label>
 
@@ -487,14 +488,14 @@ export function ExpenseForm({
                 iconSize={12}
               />
             </div>
-            <input
+            <Input
               ref={timeInputCallback}
               type="time"
               name="paid_at_time"
               required
               value={paidAtTime}
               onChange={(e) => setPaidAtTime(e.target.value)}
-              className={`mt-1 block w-full min-w-0 ${inputClass}`}
+              className="mt-1 block w-full min-w-0"
             />
           </div>
         ) : (

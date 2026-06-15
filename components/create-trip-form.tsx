@@ -12,6 +12,7 @@ import { tripDayCount } from "@/lib/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
@@ -176,13 +177,13 @@ export function CreateTripForm({
 
       <label className="block min-w-0 text-sm">
         <FieldLabel required>タイトル</FieldLabel>
-        <input
+        <Input
           name="title"
           required
           placeholder="ハワイ旅行"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className={`mt-1 block w-full min-w-0 ${inputClass}`}
+          className="mt-1 block w-full min-w-0"
         />
       </label>
 
@@ -263,11 +264,11 @@ function Field({ label, name, type = "text", ...rest }: FieldProps) {
   return (
     <label className="block min-w-0 text-sm">
       <FieldLabel required={rest.required}>{label}</FieldLabel>
-      <input
+      <Input
         {...rest}
         type={type}
         name={name}
-        className={`mt-1 block w-full min-w-0 ${inputClass}`}
+        className="mt-1 block w-full min-w-0"
       />
     </label>
   );
