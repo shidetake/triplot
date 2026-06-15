@@ -1,7 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
+
+import { Menu } from "@base-ui/react/menu";
 
 import { EditIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
@@ -77,27 +79,6 @@ export function AvatarUpload({
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    function onDown(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
   // 固定パス（拡張子なし）＝毎回ここに上書きするので孤児が出ない。
   const path = `${userId}/avatar`;
 
@@ -160,66 +141,68 @@ export function AvatarUpload({
   }
 
   function pickImage() {
-    setOpen(false);
     fileRef.current?.click();
   }
   function revert() {
-    setOpen(false);
     onRemove();
   }
 
   return (
     <div className="flex flex-col items-center gap-1">
-      <div className="relative" ref={menuRef}>
-        <button
-          type="button"
-          onClick={() =>
-            hasCustom ? setOpen((o) => !o) : fileRef.current?.click()
-          }
-          disabled={busy}
-          aria-label="アバターを変更"
-          title="アバターを変更"
-          aria-haspopup={hasCustom ? "menu" : undefined}
-          aria-expanded={hasCustom ? open : undefined}
-          className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
-        >
-          {currentUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={currentUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initial
-          )}
-        </button>
-        {/* 右上の鉛筆マーク（編集できる感）。クリックはアバターボタンに通してメニューを開く。 */}
+      <div className="relative">
+        {/* カスタム画像があるとき＝変更/削除の Base UI Menu。無いとき＝直接ファイル選択。 */}
+        {hasCustom ? (
+          <Menu.Root>
+            <Menu.Trigger
+              disabled={busy}
+              aria-label="アバターを変更"
+              title="アバターを変更"
+              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={currentUrl!} alt="" className="h-full w-full object-cover" />
+            </Menu.Trigger>
+            <Menu.Portal>
+              <Menu.Positioner align="start" sideOffset={8} className="z-20">
+                <Menu.Popup className="w-40 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg">
+                  <Menu.Item
+                    onClick={pickImage}
+                    className={`block text-muted-foreground ${menuItemClass}`}
+                  >
+                    画像を選ぶ
+                  </Menu.Item>
+                  <Menu.Item
+                    onClick={revert}
+                    className={`block text-muted-foreground ${menuItemClass}`}
+                  >
+                    デフォルトに戻す
+                  </Menu.Item>
+                </Menu.Popup>
+              </Menu.Positioner>
+            </Menu.Portal>
+          </Menu.Root>
+        ) : (
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={busy}
+            aria-label="アバターを変更"
+            title="アバターを変更"
+            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
+          >
+            {currentUrl ? (
+              // Google 写真など（hasCustom=false でも実効アバターはありうる）。
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={currentUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
+          </button>
+        )}
+        {/* 右上の鉛筆マーク（編集できる感）。pointer-events-none でクリックは下のボタンに通す。 */}
         <span className="pointer-events-none absolute -right-0.5 -top-0.5 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-2 ring-white">
           <EditIcon size={12} />
         </span>
-
-        {open && (
-          <div
-            role="menu"
-            className="absolute left-0 top-full z-20 mt-2 w-40 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg"
-          >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={pickImage}
-              className={`block text-muted-foreground ${menuItemClass}`}
-            >
-              画像を選ぶ
-            </button>
-            {hasCustom && (
-              <button
-                type="button"
-                role="menuitem"
-                onClick={revert}
-                className={`block text-muted-foreground ${menuItemClass}`}
-              >
-                デフォルトに戻す
-              </button>
-            )}
-          </div>
-        )}
 
         <input
           ref={fileRef}

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
+
+import { Dialog } from "@base-ui/react/dialog";
 
 import {
   addTripPinOptionAction,
@@ -38,14 +40,6 @@ export function PlaceIconPicker({
     () => new Map(pinOptions.map((o) => [o.icon, o])),
     [pinOptions],
   );
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
 
   const selectedEntry = selected ? getIcon(selected) : null;
   const selectedOption = selected ? optionByIcon.get(selected) : null;
@@ -86,20 +80,20 @@ export function PlaceIconPicker({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
-      onMouseDown={(e) => {
-        if (e.target === e.currentTarget) onClose();
+    <Dialog.Root
+      open
+      onOpenChange={(next) => {
+        if (!next) onClose();
       }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label="ピンのアイコンを選ぶ"
-        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-lg bg-white shadow-xl"
-      >
+      <Dialog.Portal>
+        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
         {/* タイトル / 閉じる × は省略（grid と footer に面積を回す）。
-            閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路あり。 */}
+            閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路（Base UI が担保）。 */}
+        <Dialog.Popup
+          aria-label="ピンのアイコンを選ぶ"
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-white shadow-xl outline-none"
+        >
         <div className="flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-8 gap-px">
             {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
@@ -186,7 +180,8 @@ export function PlaceIconPicker({
             </button>
           </div>
         </footer>
-      </div>
-    </div>
+        </Dialog.Popup>
+      </Dialog.Portal>
+    </Dialog.Root>
   );
 }

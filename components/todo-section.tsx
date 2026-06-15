@@ -3,10 +3,11 @@
 import {
   useEffect,
   useOptimistic,
-  useRef,
   useState,
   useTransition,
 } from "react";
+import { Select } from "@base-ui/react/select";
+
 import { toast } from "@/components/toast";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";
@@ -86,72 +87,56 @@ function PrioritySelect({
   onChange: (p: TodoPriority) => void;
   disabled?: boolean;
 }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-
+  // 開閉・外側クリック・Esc・キーボードは Base UI Select に委ねる
+  // （design-guidelines「部品の作り方」step2）。トリガは優先度アイコンだけ。
   return (
-    <div ref={ref} className="relative shrink-0">
-      <Button
-        type="button"
-        variant="ghost"
-        size="iconDense"
-        disabled={disabled}
-        onClick={() => setOpen((o) => !o)}
-        aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
-        title={`優先度: ${PRIORITY_LABEL[value]}`}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className="rounded-full"
-      >
-        <PriorityIcon p={value} />
-      </Button>
-      {open && (
-        <ul
-          role="listbox"
-          className="absolute right-0 z-50 mt-1 w-24 overflow-hidden rounded-md border border-foreground/20 bg-white py-1 shadow-lg"
+    <Select.Root
+      value={value}
+      onValueChange={(v) => onChange(v as TodoPriority)}
+      disabled={disabled}
+    >
+      <Select.Trigger
+        render={
+          <Button
+            type="button"
+            variant="ghost"
+            size="iconDense"
+            disabled={disabled}
+            aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
+            title={`優先度: ${PRIORITY_LABEL[value]}`}
+            className="shrink-0 rounded-full"
+          >
+            <PriorityIcon p={value} />
+          </Button>
+        }
+      />
+      <Select.Portal>
+        <Select.Positioner
+          align="end"
+          sideOffset={4}
+          alignItemWithTrigger={false}
+          className="z-50"
         >
-          {(["high", "medium", "low"] as const).map((p) => {
-            const sel = p === value;
-            return (
-              <li key={p} role="option" aria-selected={sel}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    onChange(p);
-                    setOpen(false);
-                  }}
-                  className={`flex items-center gap-2 ${menuItemClass} ${
-                    sel ? "bg-accent font-medium" : ""
-                  }`}
-                >
-                  <PriorityIcon p={p} />
-                  <span className="flex-1">{PRIORITY_LABEL[p]}</span>
-                  {sel && <CheckIcon size={16} className="text-muted-foreground" />}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
+          <Select.Popup className="w-24 overflow-hidden rounded-md border border-foreground/20 bg-white py-1 shadow-lg">
+            {(["high", "medium", "low"] as const).map((p) => (
+              <Select.Item
+                key={p}
+                value={p}
+                className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+              >
+                <PriorityIcon p={p} />
+                <Select.ItemText className="flex-1">
+                  {PRIORITY_LABEL[p]}
+                </Select.ItemText>
+                <Select.ItemIndicator className="text-muted-foreground">
+                  <CheckIcon size={16} />
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
   );
 }
 
