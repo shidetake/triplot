@@ -40,8 +40,15 @@ export function FormPopover({
     <Popover.Root
       open
       modal={false}
-      onOpenChange={(next) => {
-        if (!next) onClose();
+      onOpenChange={(next, details) => {
+        if (next) return;
+        // 入力データを失わないよう、外側タッチ／スクロール（outside-press）や
+        // フォーカス外れ（focus-out）では閉じない。閉じるのは Esc と、フォーム内の
+        // × / キャンセル / 送信（それぞれ onClose を直接呼ぶ）だけ。
+        if (details.reason === "outside-press" || details.reason === "focus-out") {
+          return;
+        }
+        onClose();
       }}
     >
       <Popover.Portal>
