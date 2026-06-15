@@ -1,12 +1,15 @@
 "use client";
 
-import { useLayoutEffect, useRef, useState } from "react";
+import { Popover } from "@base-ui/react/popover";
 
 export type Anchor = { x: number; y: number };
 
-// クリック位置の近くに出すポップオーバー。背景クリックで閉じ、画面外に
-// はみ出さないようマウント後に実寸を測ってクランプする。予定追加・費用追加
-// など入力フォームを同じ見た目で出すための共通部品。
+// クリック位置の近くに出すポップオーバー。予定追加・費用追加など入力フォームを
+// 同じ見た目で出すための共通部品。開閉・外側クリック・Esc・はみ出し回避の位置決めは
+// Base UI Popover に委ねる（design-guidelines「部品の作り方」step2）。
+// クリック座標を virtual anchor にして、その点を基準に開く（トリガ要素は無い）。
+// 非 modal（フォーカスを閉じ込めない）= 中の DatePopover 等ネストした popover や
+// 自由なスクロールを邪魔しない。外側クリック／Esc では閉じる。
 export function FormPopover({
   anchor,
   onClose,
@@ -16,49 +19,48 @@ export function FormPopover({
   anchor: Anchor;
   onClose: () => void;
   children: React.ReactNode;
-  // 渡すと dialog として公開する（aria-label）。メニュー用途では省略。
+  // 渡すと dialog のアクセシブル名にする。
   label?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [pos, setPos] = useState<{ left: number; top: number }>({
-    left: anchor.x,
-    top: anchor.y,
-  });
-
-  useLayoutEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    // モード切替などで中身の高さが変わると下にはみ出して下端のボタンが
-    // 押せなくなるので、サイズ変化のたびに測り直してクランプする。
-    const clamp = () => {
-      const pad = 8;
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      const vw = window.innerWidth;
-      const vh = window.innerHeight;
-      const left = Math.max(pad, Math.min(anchor.x + 8, vw - w - pad));
-      const top = Math.max(pad, Math.min(anchor.y, vh - h - pad));
-      setPos({ left, top });
-    };
-    clamp();
-    const ro = new ResizeObserver(clamp);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [anchor.x, anchor.y]);
+  const virtualAnchor = {
+    getBoundingClientRect: () =>
+      ({
+        x: anchor.x,
+        y: anchor.y,
+        width: 0,
+        height: 0,
+        top: anchor.y,
+        left: anchor.x,
+        right: anchor.x,
+        bottom: anchor.y,
+      }) as DOMRect,
+  };
 
   return (
-    <>
-      <div className="fixed inset-0 z-40" onClick={onClose} aria-hidden />
-      <div
-        ref={ref}
-        role={label ? "dialog" : undefined}
-        aria-modal={label ? true : undefined}
-        aria-label={label}
-        className="fixed z-50 max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl"
-        style={{ left: pos.left, top: pos.top }}
-      >
-        {children}
-      </div>
-    </>
+    <Popover.Root
+      open
+      modal={false}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      <Popover.Portal>
+        <Popover.Positioner
+          anchor={virtualAnchor}
+          side="bottom"
+          align="start"
+          alignOffset={8}
+          sideOffset={0}
+          className="z-50"
+        >
+          <Popover.Popup
+            aria-label={label}
+            className="max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl outline-none"
+          >
+            {children}
+          </Popover.Popup>
+        </Popover.Positioner>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
