@@ -15,6 +15,8 @@ import {
 import { cn } from "@/lib/utils";
 import { formatYmd, parseYmd } from "@/lib/ymd";
 
+import { inputClass } from "./input-class";
+
 // 年プルダウン（captionLayout="dropdown-years"）の選択肢範囲＝カレンダーの
 // ＜ ＞ ナビが動ける範囲。今日から±10年。旅行プランの文脈では十分。
 const TODAY = new Date();
@@ -80,9 +82,7 @@ export function DateRangePopover({
       />
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger
-          className={cn(
-            "flex h-9 w-full min-w-0 items-center rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none",
-          )}
+          className={`flex w-full min-w-0 items-center ${inputClass}`}
         >
           <span
             className={cn(
