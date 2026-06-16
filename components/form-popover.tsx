@@ -1,6 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
+import { createPortal } from "react-dom";
 
 import { Popover } from "@base-ui/react/popover";
 import { Drawer } from "vaul";
@@ -42,13 +49,87 @@ function makeOnOpenChange(onClose: () => void) {
   };
 }
 
+// 狭い画面のボトムシート（Vaul）。下からせり上がり・ドラッグで下に弾いて閉じられ、
+// 上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる（全画面だと文脈が
+// 消える問題への対応。Google マップ等と同じ世の中標準）。
+//
+// 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
+//  - フォームの ×/保存は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
+//  - Vaul のドラッグ↓/Esc は onOpenChange(false) 経由で内部クローズ。
+//  - 内部クローズ＝open を false に → Vaul がシートを下げ・dim が opacity でフェードアウト
+//    → アニメ分待ってから親へ通知（アンマウント）。
+function NarrowSheet({
+  label,
+  onClose,
+  children,
+}: {
+  label?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(true);
+
+  const requestClose = useCallback(() => setOpen(false), []);
+
+  // 閉じ始めたら、Vaul の下降と dim フェードアウト（~500ms）の後に親へ通知してアンマウント。
+  useEffect(() => {
+    if (open) return;
+    const t = setTimeout(onClose, 550);
+    return () => clearTimeout(t);
+  }, [open, onClose]);
+
+  // フォームの ×/保存（onDone）を内部クローズに差し替える（閉じアニメを通すため）。
+  const child = isValidElement<{ onDone?: () => void }>(children)
+    ? cloneElement(children, { onDone: requestClose })
+    : children;
+
+  return (
+    <>
+      {/* 自前の dim。Vaul の Portal の外＝body に出して自分でライフサイクル管理する
+          （Portal 内だと閉じる時 Vaul が即撤去してフェードアウトが切れる）。せり上がりに
+          合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト（明るさが
+          急変しない）。クリックは捕まえるが閉じない（データ保護）。modal=false なので body の
+          pointer-events は触られず、フォーム内のポータル popover は生きる。 */}
+      {typeof document !== "undefined" &&
+        createPortal(
+          <div
+            className={`fixed inset-0 z-40 bg-black/40 duration-500 ${
+              open
+                ? "animate-in fade-in-0"
+                : "animate-out fade-out-0 [animation-fill-mode:forwards]"
+            }`}
+            aria-hidden
+          />,
+          document.body,
+        )}
+      <Drawer.Root
+        open={open}
+        modal={false}
+        onOpenChange={(next) => {
+          if (!next) setOpen(false);
+        }}
+      >
+        <Drawer.Portal>
+          <Drawer.Content
+            aria-label={label}
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[60vh] flex-col rounded-t-lg bg-white outline-none"
+          >
+            <Drawer.Handle className="mt-2 mb-1 shrink-0" />
+            <Drawer.Title className="sr-only">{label}</Drawer.Title>
+            <div className="min-h-0 flex-1 overflow-y-auto">{child}</div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
+    </>
+  );
+}
+
 // クリック位置の近くに出すポップオーバー。予定追加・費用追加など入力フォームを
 // 同じ見た目で出すための共通部品。開閉・Esc・はみ出し回避の位置決めは Base UI に委ねる
 // （design-guidelines「部品の作り方」step2）。
 //
-// fullScreenOnNarrow=true の大きいフォームは、狭い画面（< 640px）では全画面で出す
-// （22rem のカードが画面に対して大きすぎて窮屈なため。design-guidelines のレスポンシブ＝
-// 「切り替えたい事柄の本質軸＝ここでは幅」で判定）。広い画面ではタップ位置のポップアップ。
+// fullScreenOnNarrow=true の大きいフォームは、狭い画面（< 640px）ではボトムシートで出す
+// （22rem のカードが画面に対して大きすぎて窮屈なため）。広い画面ではタップ位置のポップアップ。
 export function FormPopover({
   anchor,
   onClose,
@@ -61,44 +142,16 @@ export function FormPopover({
   children: React.ReactNode;
   // 渡すと dialog のアクセシブル名にする。
   label?: string;
-  // 大きい入力フォーム: 狭い画面で全画面表示する。
+  // 大きい入力フォーム: 狭い画面でボトムシート表示する。
   fullScreenOnNarrow?: boolean;
 }) {
   const narrow = useMediaQuery(FULLSCREEN_BELOW);
 
   if (fullScreenOnNarrow && narrow) {
-    // 狭い画面＝ボトムシート（Vaul）。下からせり上がり・ドラッグで下に弾いて閉じられ、
-    // 上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる（全画面だと文脈が
-    // 消える問題への対応。Google マップ等と同じ世の中標準）。閉じる: ドラッグ↓/背景タップ/Esc/×。
     return (
-      <Drawer.Root
-        open
-        // modal=false: body に pointer-events:none を当てないので、フォーム内の
-        // DatePopover 等（body へポータルされる Base UI popover）がクリックできる。
-        modal={false}
-        onOpenChange={(next) => {
-          if (!next) onClose();
-        }}
-      >
-        <Drawer.Portal>
-          {/* 自前の dim。Vaul は modal=false だと Overlay を出さないので 1 枚敷く。
-              せり上がりに合わせてフェードイン（先に灰色がパッと出てチカチカしないように）。
-              クリックは捕まえるが閉じない（データ保護＝× / ドラッグ↓ / Esc のみで閉じる）。
-              body の pointer-events を触らないので、フォーム内のポータル popover は生きる。 */}
-          <div
-            className="fixed inset-0 z-40 bg-black/40 animate-in fade-in-0 duration-500"
-            aria-hidden
-          />
-          <Drawer.Content
-            aria-label={label}
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[60vh] flex-col rounded-t-lg bg-white outline-none"
-          >
-            <Drawer.Handle className="mt-2 mb-1 shrink-0" />
-            <Drawer.Title className="sr-only">{label}</Drawer.Title>
-            <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
-          </Drawer.Content>
-        </Drawer.Portal>
-      </Drawer.Root>
+      <NarrowSheet label={label} onClose={onClose}>
+        {children}
+      </NarrowSheet>
     );
   }
 
