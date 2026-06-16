@@ -118,7 +118,12 @@ function NarrowSheet({
           >
             <Drawer.Handle className="mt-2 mb-1 shrink-0" />
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
-            <div className="min-h-0 flex-1 overflow-y-auto">{child}</div>
+            {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない
+                （フォーム上のスワイプで背景が動くのを防ぐ）。一方で上の dim 帯のスワイプは
+                素通しのまま背景がスクロールできる＝modal=false の利点を保つ。 */}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              {child}
+            </div>
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
