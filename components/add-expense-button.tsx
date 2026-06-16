@@ -28,7 +28,12 @@ export function AddExpenseButton(props: Props) {
       </Button>
 
       {anchor && (
-        <FormPopover anchor={anchor} onClose={() => setAnchor(null)} label="費用を追加">
+        <FormPopover
+          anchor={anchor}
+          onClose={() => setAnchor(null)}
+          label="費用を追加"
+          fullScreenOnNarrow
+        >
           <ExpenseForm {...props} onDone={() => setAnchor(null)} />
         </FormPopover>
       )}

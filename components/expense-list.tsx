@@ -108,7 +108,12 @@ export function ExpenseList({
       </ul>
 
       {editing && (
-        <FormPopover anchor={editing.anchor} onClose={closeEdit} label="費用を編集">
+        <FormPopover
+          anchor={editing.anchor}
+          onClose={closeEdit}
+          label="費用を編集"
+          fullScreenOnNarrow
+        >
           <ExpenseForm
             tripId={tripId}
             members={members}

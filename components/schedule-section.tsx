@@ -209,7 +209,12 @@ export function ScheduleSection({
       )}
 
       {open && (
-        <FormPopover anchor={open.anchor} onClose={closeForm} label="予定">
+        <FormPopover
+          anchor={open.anchor}
+          onClose={closeForm}
+          label="予定"
+          fullScreenOnNarrow
+        >
           <EventForm
             tripId={tripId}
             defaultTz={defaultTz}
