@@ -105,6 +105,8 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
+        // 最初は中央あたり(0.6)で開き、上に引っ張ると拡大(0.95)。下に弾くと閉じる。
+        snapPoints={[0.6, 0.95]}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
@@ -112,7 +114,7 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[60vh] flex-col rounded-t-lg bg-white outline-none"
+            className="fixed inset-x-0 bottom-0 z-50 flex h-[95vh] flex-col rounded-t-lg bg-white outline-none"
           >
             <Drawer.Handle className="mt-2 mb-1 shrink-0" />
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
