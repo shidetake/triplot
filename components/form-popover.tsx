@@ -7,6 +7,12 @@ import { Popover } from "@base-ui/react/popover";
 
 export type Anchor = { x: number; y: number };
 
+// 全画面に切り替える幅の閾値。マジックナンバーではなく**フォーム幅から導く**:
+// ポップアップ時のフォームは w-[22rem]=352px。352px のカードが余白付きで“浮いてる
+// カード”として読める下限が ~640px（352px が画面幅の ~55%）。これ未満は窮屈なので全画面。
+// ＝下の Popup の w-[22rem] を変えるならこの閾値も見直す。
+const FULLSCREEN_BELOW = "(max-width: 639px)";
+
 // メディアクエリの一致を購読する小フック（クライアント専用。FormPopover は
 // 開いた時だけ client でマウントされるので SSR フォールバックは不要だが一応ガード）。
 function useMediaQuery(query: string): boolean {
@@ -58,7 +64,7 @@ export function FormPopover({
   // 大きい入力フォーム: 狭い画面で全画面表示する。
   fullScreenOnNarrow?: boolean;
 }) {
-  const narrow = useMediaQuery("(max-width: 639px)");
+  const narrow = useMediaQuery(FULLSCREEN_BELOW);
 
   if (fullScreenOnNarrow && narrow) {
     // 狭い画面＝全画面モーダル（背景に出す“外側”が無いので outside-press は実質発生しない）。
