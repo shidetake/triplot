@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 
-import { Dialog } from "@base-ui/react/dialog";
 import { Popover } from "@base-ui/react/popover";
+import { Drawer } from "vaul";
 
 export type Anchor = { x: number; y: number };
 
@@ -67,21 +67,34 @@ export function FormPopover({
   const narrow = useMediaQuery(FULLSCREEN_BELOW);
 
   if (fullScreenOnNarrow && narrow) {
-    // 狭い画面＝ボトムシート。下からせり上がり、上に元画面が薄暗く残るので「どこに居て
-    // どこから開いたか」が分かる（全画面だと文脈が消える問題への対応）。閉じるは × / Esc
-    // （背景タップ＝outside-press では閉じない＝入力データを失わない。makeOnOpenChange）。
+    // 狭い画面＝ボトムシート（Vaul）。下からせり上がり・ドラッグで下に弾いて閉じられ、
+    // 上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる（全画面だと文脈が
+    // 消える問題への対応。Google マップ等と同じ世の中標準）。閉じる: ドラッグ↓/背景タップ/Esc/×。
     return (
-      <Dialog.Root open onOpenChange={makeOnOpenChange(onClose)}>
-        <Dialog.Portal>
-          <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 data-[starting-style]:opacity-0" />
-          <Dialog.Popup
+      <Drawer.Root
+        open
+        // modal=false: body に pointer-events:none を当てないので、フォーム内の
+        // DatePopover 等（body へポータルされる Base UI popover）がクリックできる。
+        modal={false}
+        onOpenChange={(next) => {
+          if (!next) onClose();
+        }}
+      >
+        <Drawer.Portal>
+          {/* 自前の dim。Vaul は modal=false だと Overlay を出さないので 1 枚敷く。
+              クリックは捕まえるが閉じない（データ保護＝× / ドラッグ↓ / Esc のみで閉じる）。
+              body の pointer-events を触らないので、フォーム内のポータル popover は生きる。 */}
+          <div className="fixed inset-0 z-40 bg-black/40" aria-hidden />
+          <Drawer.Content
             aria-label={label}
-            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col overflow-y-auto rounded-t-lg bg-white shadow-xl outline-none transition-transform duration-300 ease-out data-[starting-style]:translate-y-full"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] flex-col rounded-t-lg bg-white outline-none"
           >
-            {children}
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
+            <Drawer.Handle className="mt-2 mb-1 shrink-0" />
+            <Drawer.Title className="sr-only">{label}</Drawer.Title>
+            <div className="min-h-0 flex-1 overflow-y-auto">{children}</div>
+          </Drawer.Content>
+        </Drawer.Portal>
+      </Drawer.Root>
     );
   }
 
