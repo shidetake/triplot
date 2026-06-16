@@ -67,13 +67,16 @@ export function FormPopover({
   const narrow = useMediaQuery(FULLSCREEN_BELOW);
 
   if (fullScreenOnNarrow && narrow) {
-    // 狭い画面＝全画面モーダル（背景に出す“外側”が無いので outside-press は実質発生しない）。
+    // 狭い画面＝ボトムシート。下からせり上がり、上に元画面が薄暗く残るので「どこに居て
+    // どこから開いたか」が分かる（全画面だと文脈が消える問題への対応）。閉じるは × / Esc
+    // （背景タップ＝outside-press では閉じない＝入力データを失わない。makeOnOpenChange）。
     return (
       <Dialog.Root open onOpenChange={makeOnOpenChange(onClose)}>
         <Dialog.Portal>
+          <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40 transition-opacity duration-300 data-[starting-style]:opacity-0" />
           <Dialog.Popup
             aria-label={label}
-            className="fixed inset-0 z-50 flex flex-col overflow-y-auto bg-white outline-none"
+            className="fixed inset-x-0 bottom-0 z-50 flex max-h-[92vh] flex-col overflow-y-auto rounded-t-lg bg-white shadow-xl outline-none transition-transform duration-300 ease-out data-[starting-style]:translate-y-full"
           >
             {children}
           </Dialog.Popup>
