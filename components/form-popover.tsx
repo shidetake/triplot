@@ -114,14 +114,16 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            className="fixed inset-x-0 bottom-0 z-50 flex h-[95vh] flex-col rounded-t-lg bg-white outline-none"
+            // 高さは dvh（実表示ビューポート＝Vaul の位置決め基準と同じ）。vh だと iOS で
+            // ツールバー込みの“大きいビューポート”基準になり下端が Safari ツールバーの裏に潜る。
+            className="fixed inset-x-0 bottom-0 z-50 flex h-[95dvh] flex-col rounded-t-lg bg-white outline-none"
           >
             <Drawer.Handle className="mt-2 mb-1 shrink-0" />
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
             {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない
                 （フォーム上のスワイプで背景が動くのを防ぐ）。一方で上の dim 帯のスワイプは
                 素通しのまま背景がスクロールできる＝modal=false の利点を保つ。 */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[max(env(safe-area-inset-bottom),0.5rem)]">
               {child}
             </div>
           </Drawer.Content>
