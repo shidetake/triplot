@@ -3,17 +3,18 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { Combobox } from "@base-ui/react/combobox";
 
 import type { LatLng } from "@/lib/placeMap";
 
-import { Input } from "@/components/ui/input";
-
+import { inputClass } from "./input-class";
 import { extractRegion } from "./place-search";
 import { menuItemClass } from "./menu-item";
 
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
-// 混ぜて出す、よくあるコンボボックス（Google カレンダーの場所欄や
-// Notion / Linear の作成サジェストと同系統）。
+// 混ぜて出すコンボボックス（Google カレンダーの場所欄や Notion/Linear の作成サジェスト同系）。
+// 殻（入力欄＋候補リスト＋キーボード操作＋開閉＋外側クリック＋a11y）は Base UI Combobox に委ね、
+// 「保存済み/Google/自由入力」の解決・Google 非同期取得・hidden input 導出は従来どおり自前。
 //
 // 区別の付け方:
 //  - ドロップダウンから保存済み行を選ぶ      → place_id 連携
@@ -64,13 +65,10 @@ export function PlacePicker({
   const [resolved, setResolved] = useState<Resolved | null>(
     initial ? { kind: "saved", id: initial.id, name: initial.name } : null,
   );
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
   const [gSug, setGSug] = useState<
     google.maps.places.AutocompleteSuggestion[]
   >([]);
 
-  const boxRef = useRef<HTMLDivElement>(null);
   const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
     null,
   );
@@ -80,12 +78,7 @@ export function PlacePicker({
   const invalidate = () => setResolved(null);
 
   useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
@@ -121,11 +114,10 @@ export function PlacePicker({
     })();
   };
 
-  const onChange = (v: string) => {
+  // 入力テキストが変わった（タイピング）時。確定を無効化＋デバウンスで Google 取得。
+  const onType = (v: string) => {
     setQuery(v);
     invalidate();
-    setOpen(true);
-    setActive(0);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchGoogle(v), 300);
   };
@@ -143,7 +135,7 @@ export function PlacePicker({
     return q ? (places.find((p) => p.name.toLowerCase() === q) ?? null) : null;
   }, [places, query]);
 
-  // ドロップダウンの行（フラット化。キーボード操作のため index で扱う）
+  // ドロップダウンの行（保存済み → Google の順でフラット化）。
   const rows: Row[] = useMemo(() => {
     const r: Row[] = savedMatches.map((p) => ({
       type: "saved",
@@ -159,7 +151,6 @@ export function PlacePicker({
       setResolved({ kind: "saved", id: row.id, name: row.name });
       setQuery(row.name);
       setGSug([]);
-      setOpen(false);
       return;
     }
     // google: 詳細取得（セッショントークンは自動付与され、ここで課金）
@@ -192,31 +183,16 @@ export function PlacePicker({
       } finally {
         tokenRef.current = null; // セッション終了 → 次回は新トークン
         setGSug([]);
-        setOpen(false);
       }
     })();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
-      setOpen(true);
-      return;
-    }
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((a) => Math.min(a + 1, rows.length - 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => Math.max(a - 1, 0));
-    } else if (e.key === "Enter") {
-      if (open && rows[active]) {
-        e.preventDefault();
-        choose(rows[active]);
-      }
-    } else if (e.key === "Escape") {
-      setOpen(false);
-    }
-  };
+  const rowLabel = (row: Row) =>
+    row.type === "saved"
+      ? row.name
+      : (row.sug.placePrediction?.mainText?.text ??
+        row.sug.placePrediction?.text.text ??
+        "");
 
   // hidden input 値を (resolved, query) から導出。
   //  resolved 有 → それ。無 & 完全一致する保存済み有 → その保存済み。
@@ -256,7 +232,7 @@ export function PlacePicker({
   }
 
   return (
-    <div ref={boxRef} className="relative mt-1">
+    <div className="relative mt-1">
       <input type="hidden" name="place_mode" value={mode} />
       <input type="hidden" name="place_id" value={placeId} />
       <input type="hidden" name="place_label" value={placeLabel} />
@@ -268,64 +244,67 @@ export function PlacePicker({
       <input type="hidden" name="g_region" value={g.region} />
       <input type="hidden" name="g_locality" value={g.locality} />
 
-      <Input
-        type="text"
-        value={query}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder}
-        autoComplete="off"
-        className="block w-full min-w-0"
-      />
-
-      {open && rows.length > 0 && (
-        <ul className="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
-          {rows.map((row, i) => {
-            const isActive = i === active;
-            const base = `block ${menuItemClass} ${
-              isActive ? "bg-foreground/10" : ""
-            }`;
-            if (row.type === "saved") {
-              return (
-                <li key={`s-${row.id}`}>
-                  <button
-                    type="button"
-                    onMouseEnter={() => setActive(i)}
-                    onClick={() => choose(row)}
-                    className={base}
+      <Combobox.Root
+        items={rows}
+        // 候補は自前で用意（保存済み絞り込み＋Google 非同期）。内部フィルタは無効化。
+        filter={null}
+        itemToStringLabel={rowLabel}
+        // 入力テキストは query で制御。タイピング時だけ onType（選択時の自動入力は無視）。
+        inputValue={query}
+        onInputValueChange={(value, details) => {
+          if (details.reason === "input-change") onType(value);
+        }}
+        // 行の選択（クリック/Enter）→ row オブジェクトを受けて解決。
+        onValueChange={(row) => {
+          if (row) choose(row as Row);
+        }}
+      >
+        <Combobox.Input
+          placeholder={placeholder}
+          autoComplete="off"
+          className={`block w-full min-w-0 ${inputClass}`}
+        />
+        <Combobox.Portal>
+          <Combobox.Positioner sideOffset={4} className="z-20">
+            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+              <Combobox.List>
+                {(row: Row) => (
+                  <Combobox.Item
+                    key={
+                      row.type === "saved"
+                        ? `s-${row.id}`
+                        : `g-${row.sug.placePrediction?.placeId ?? rowLabel(row)}`
+                    }
+                    value={row}
+                    className={`block ${menuItemClass} data-[highlighted]:bg-foreground/10`}
                   >
-                    <span className="font-medium">{row.name}</span>
-                    <span className="ml-2 text-xs text-subtle-foreground">
-                      保存済み
-                    </span>
-                  </button>
-                </li>
-              );
-            }
-            const pred = row.sug.placePrediction!;
-            return (
-              <li key={`g-${pred.placeId ?? i}`}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setActive(i)}
-                  onClick={() => choose(row)}
-                  className={base}
-                >
-                  <span className="font-medium">
-                    {pred.mainText?.text ?? pred.text.text}
-                  </span>
-                  {pred.secondaryText?.text && (
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {pred.secondaryText.text}
-                    </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    {row.type === "saved" ? (
+                      <>
+                        <span className="font-medium">{row.name}</span>
+                        <span className="ml-2 text-xs text-subtle-foreground">
+                          保存済み
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-medium">
+                          {row.sug.placePrediction!.mainText?.text ??
+                            row.sug.placePrediction!.text.text}
+                        </span>
+                        {row.sug.placePrediction!.secondaryText?.text && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {row.sug.placePrediction!.secondaryText.text}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </Combobox.Item>
+                )}
+              </Combobox.List>
+            </Combobox.Popup>
+          </Combobox.Positioner>
+        </Combobox.Portal>
+      </Combobox.Root>
     </div>
   );
 }
