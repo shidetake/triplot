@@ -45,7 +45,9 @@ export async function AppHeader() {
 
   return (
     // z-30: ページ内容より上、ポップオーバー/モーダル（z-40/50）より下。
-    <header className="sticky top-0 z-30 border-b border-foreground/10 bg-white">
+    // pt-[env(safe-area-inset-top)]: viewport-fit=cover で島/ステータスバーの裏まで描くので、
+    // 中身（h-12 の行）が島に潜らないよう上に余白。bg-white が島の領域も埋める。
+    <header className="sticky top-0 z-30 border-b border-foreground/10 bg-white pt-[env(safe-area-inset-top)]">
       <div className="flex h-12 items-center justify-between px-6">
         <Link href="/trips" className="text-lg font-semibold tracking-tight">
           triplot

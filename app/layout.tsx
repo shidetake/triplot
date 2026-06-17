@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/toast";
@@ -18,6 +18,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "triplot",
   description: "友達と旅行プランを立てて思い出として残すアプリ",
+};
+
+// 端まで描画（島・ホームインジケータの裏まで）。これで safe-area-inset が有効化され、
+// ボトムシートの dim 等が端まで届く。各所の env(safe-area-inset-*) 余白とセット。
+export const viewport: Viewport = {
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
