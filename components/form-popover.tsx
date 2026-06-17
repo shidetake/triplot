@@ -71,26 +71,6 @@ function NarrowSheet({
 
   const requestClose = useCallback(() => setOpen(false), []);
 
-  // iOS の status bar（島）背景は fixed オーバーレイ（dim）では塗りきれず白いまま残るので、
-  // シート表示中だけ theme-color を dim 相当のグレーにして上端の白帯を消す（閉じたら元に戻す）。
-  // 白ページに bg-black/40 を重ねた見た目 ≈ #999。
-  useEffect(() => {
-    const head = document.head;
-    let meta = head.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    const prev = meta?.getAttribute("content") ?? null;
-    const created = !meta;
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.name = "theme-color";
-      head.appendChild(meta);
-    }
-    meta.setAttribute("content", "#999999");
-    return () => {
-      if (created) meta!.remove();
-      else if (prev !== null) meta!.setAttribute("content", prev);
-    };
-  }, []);
-
   // 閉じ始めたら、Vaul の下降と dim フェードアウト（~500ms）の後に親へ通知してアンマウント。
   useEffect(() => {
     if (open) return;
@@ -143,7 +123,7 @@ function NarrowSheet({
             {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない
                 （フォーム上のスワイプで背景が動くのを防ぐ）。一方で上の dim 帯のスワイプは
                 素通しのまま背景がスクロールできる＝modal=false の利点を保つ。 */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-[calc(env(safe-area-inset-bottom)+1.25rem)]">
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
               {child}
             </div>
           </Drawer.Content>
