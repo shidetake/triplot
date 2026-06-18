@@ -3,12 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { Combobox } from "@base-ui/react/combobox";
 
 import type { LatLng } from "@/lib/placeMap";
 import { SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { inputClass } from "./input-class";
 import { CloseButton } from "./close-button";
 
 // 検索結果の候補（保存前）。searchByText 1 回のレスポンスをそのまま
@@ -81,15 +82,13 @@ export function PlaceSearch({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // event-form の PlacePicker と同方針の autocomplete ドロップダウン。
-  // 入力中に候補を出し、選ぶと「その1件だけが検索結果」として扱う。
-  // 検索ボタンは温存（曖昧語で20件並べたいケース用）。
-  const [open, setOpen] = useState(false);
-  const [active, setActive] = useState(0);
+  // event-form の PlacePicker と同方針の autocomplete。入力中に候補を出し、
+  // 選ぶと「その1件だけが検索結果」として扱う。検索ボタンは温存（曖昧語で
+  // 20件並べたいケース用）。殻（候補リスト＋開閉＋キーボード＋外側クリック＋
+  // a11y）は Base UI Combobox に委ね、Google 非同期取得と詳細解決だけ自前。
   const [sug, setSug] = useState<google.maps.places.AutocompleteSuggestion[]>(
     [],
   );
-  const boxRef = useRef<HTMLFormElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
     null,
@@ -98,14 +97,8 @@ export function PlaceSearch({
 
   const ready = !!placesLib;
 
-  // 外側クリックでドロップダウンを閉じる
   useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener("mousedown", onDocClick);
     return () => {
-      document.removeEventListener("mousedown", onDocClick);
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
   }, []);
@@ -143,10 +136,8 @@ export function PlaceSearch({
     })();
   };
 
-  const onChange = (v: string) => {
+  const onType = (v: string) => {
     onQueryChange(v);
-    setOpen(true);
-    setActive(0);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchSuggestions(v), 300);
   };
@@ -157,7 +148,6 @@ export function PlaceSearch({
     const pred = sug.placePrediction;
     if (!pred) return;
     const place = pred.toPlace();
-    setOpen(false);
     setSug([]);
     setPending(true);
     setError(null);
@@ -199,7 +189,7 @@ export function PlaceSearch({
 
     // 検索ボタン経路では autocomplete セッションは「中断」扱い。新しいトークンに。
     tokenRef.current = null;
-    setOpen(false);
+    setSug([]);
     setPending(true);
     setError(null);
     void (async () => {
@@ -240,115 +230,90 @@ export function PlaceSearch({
     })();
   };
 
-  const onKeyDown = (e: React.KeyboardEvent) => {
-    if (open && sug.length > 0) {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setActive((a) => Math.min(a + 1, sug.length - 1));
-        return;
-      }
-      if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setActive((a) => Math.max(a - 1, 0));
-        return;
-      }
-      if (e.key === "Enter") {
-        // 候補が開いてる時は Enter で候補確定（テキスト検索を発火しない）
-        e.preventDefault();
-        pick(sug[active]);
-        return;
-      }
-      if (e.key === "Escape") {
-        setOpen(false);
-        return;
-      }
-    }
-  };
+  const sugLabel = (s: google.maps.places.AutocompleteSuggestion) =>
+    s.placePrediction?.mainText?.text ?? s.placePrediction?.text.text ?? "";
 
   return (
-    <form
-      ref={boxRef}
-      onSubmit={onSubmit}
-      className="relative space-y-1"
-      autoComplete="off"
+    <Combobox.Root
+      items={sug}
+      // 候補は自前で用意（Google 非同期取得）。内部フィルタは無効化。
+      filter={null}
+      itemToStringLabel={sugLabel}
+      // 入力テキストは query で制御。タイピング時だけ onType（選択時の自動入力は無視）。
+      inputValue={query}
+      onInputValueChange={(value, details) => {
+        if (details.reason === "input-change") onType(value);
+      }}
+      // 候補の選択（クリック/Enter）→ その1件を詳細取得して onResults。
+      onValueChange={(s) => {
+        if (s) pick(s as google.maps.places.AutocompleteSuggestion);
+      }}
     >
-      <div className="flex gap-2">
-        <div className="relative min-w-0 flex-1">
-          <Input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => onChange(e.target.value)}
-            onFocus={() => {
-              if (sug.length > 0) setOpen(true);
-            }}
-            onKeyDown={onKeyDown}
-            placeholder="パンケーキ"
-            autoComplete="off"
-            className="w-full pr-9"
-          />
-          {query && (
-            <CloseButton
-              label="検索をクリア"
-              onClick={() => {
-                setSug([]);
-                setOpen(false);
-                onClear();
-              }}
-              className="absolute right-1.5 top-1/2 -translate-y-1/2"
+      {/* 検索ボタン（テキスト検索）は form の submit で温存。候補が開いていて
+          ハイライト中なら Combobox が Enter を奪って候補確定する（submit しない）。 */}
+      <form onSubmit={onSubmit} className="space-y-1" autoComplete="off">
+        <div className="flex gap-2">
+          <div className="relative min-w-0 flex-1">
+            <Combobox.Input
+              ref={inputRef}
+              placeholder="パンケーキ"
+              autoComplete="off"
+              className={`block w-full min-w-0 pr-9 ${inputClass}`}
             />
-          )}
+            {query && (
+              <CloseButton
+                label="検索をクリア"
+                onClick={() => {
+                  setSug([]);
+                  onClear();
+                }}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2"
+              />
+            )}
+          </div>
+          <Button
+            type="submit"
+            size="icon"
+            disabled={!ready || pending}
+            aria-label="検索"
+            title="検索"
+            className="shrink-0"
+          >
+            <SearchIcon size={18} />
+          </Button>
         </div>
-        <Button
-          type="submit"
-          size="icon"
-          disabled={!ready || pending}
-          aria-label="検索"
-          title="検索"
-          className="shrink-0"
-        >
-          <SearchIcon size={18} />
-        </Button>
-      </div>
 
-      {open && sug.length > 0 && (
-        <ul className="absolute left-0 right-[44px] top-[42px] z-20 max-h-64 overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
-          {sug.map((s, i) => {
-            const pred = s.placePrediction!;
-            const isActive = i === active;
-            return (
-              <li key={pred.placeId ?? i}>
-                <button
-                  type="button"
-                  onMouseEnter={() => setActive(i)}
-                  onMouseDown={(e) => {
-                    // input が blur する前に確定する。
-                    e.preventDefault();
-                    pick(s);
-                  }}
-                  className={`block ${menuItemClass} ${
-                    isActive ? "bg-foreground/10" : ""
-                  }`}
-                >
-                  <span className="font-medium">
-                    {pred.mainText?.text ?? pred.text.text}
-                  </span>
-                  {pred.secondaryText?.text && (
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {pred.secondaryText.text}
+        <Combobox.Portal>
+          <Combobox.Positioner sideOffset={4} className="z-20">
+            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+              <Combobox.List>
+                {(s: google.maps.places.AutocompleteSuggestion) => (
+                  <Combobox.Item
+                    key={s.placePrediction?.placeId ?? sugLabel(s)}
+                    value={s}
+                    className={`block ${menuItemClass} data-[highlighted]:bg-foreground/10`}
+                  >
+                    <span className="font-medium">
+                      {s.placePrediction!.mainText?.text ??
+                        s.placePrediction!.text.text}
                     </span>
-                  )}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+                    {s.placePrediction!.secondaryText?.text && (
+                      <span className="block truncate text-xs text-muted-foreground">
+                        {s.placePrediction!.secondaryText.text}
+                      </span>
+                    )}
+                  </Combobox.Item>
+                )}
+              </Combobox.List>
+            </Combobox.Popup>
+          </Combobox.Positioner>
+        </Combobox.Portal>
 
-      {!ready && (
-        <p className="text-xs text-muted-foreground">地図を読み込み中...</p>
-      )}
-      {error && <p className="text-xs text-red-600">{error}</p>}
-    </form>
+        {!ready && (
+          <p className="text-xs text-muted-foreground">地図を読み込み中...</p>
+        )}
+        {error && <p className="text-xs text-red-600">{error}</p>}
+      </form>
+    </Combobox.Root>
   );
 }
