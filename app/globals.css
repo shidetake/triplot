@@ -127,6 +127,28 @@ input[type="time"] {
   }
 }
 
+/* Base UI Toast の動き。意匠（色・角丸・配置）は components/toast.tsx の className、
+   ここは「出入りのフェード＋せり上がり」と「スワイプ追従」の transform だけ担う。
+   Base UI が公開する CSS 変数（--toast-swipe-movement-x/y）を transform に流し込む。
+   下中央スタックなので index/offset-y 系の重なり変形は使わない（縦に gap で並べる）。 */
+.toast-root {
+  transform: translateX(var(--toast-swipe-movement-x, 0px))
+    translateY(var(--toast-swipe-movement-y, 0px));
+  transition:
+    transform 0.25s,
+    opacity 0.25s;
+}
+.toast-root[data-starting-style],
+.toast-root[data-ending-style] {
+  opacity: 0;
+  transform: translateY(1rem);
+}
+/* stack 上限(3)を超えて待機中のトーストは隠す。枠が空くと Base UI が data-limited を
+   外すので、そのとき starting-style のフェードで現れる。 */
+.toast-root[data-limited] {
+  display: none;
+}
+
 /* カレンダー（react-day-picker）の月切替時の高さブレ防止。Tripit のように
    5 行を基準にして、6 週月は行間 mt-2 → mt-0.5 に詰めて 5 行と同じ縦幅に
    揃える。4 週月は components/ui/calendar.tsx の Weeks override 側で空行を

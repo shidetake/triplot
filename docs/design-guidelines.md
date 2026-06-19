@@ -495,8 +495,9 @@ hue は色相環上の角度（HSL, 0–359°）。
 
 ### トースト
 - 位置：画面下中央（`fixed bottom-6 left-1/2 -translate-x-1/2 z-50`）。
-- 見た目：`bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm shadow-lg`。約2.5秒で自動消滅、同時に1つ（新しいのが出たら差し替え）。
-- 実装：root layout に `<Toaster />` を1つ。どこからでも `toast("…")`（`components/toast.tsx`）。サーバアクションは呼んだクライアント側で `await` 後に `toast()`。
+- 見た目：`bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm shadow-lg`。
+- 挙動は **Base UI Toast** に委ねる（design-guidelines「部品の作り方」step2）＝**約5秒で自動消滅・最大3件まで重ねる（超過は枠が空くまで待機）・ホバー/フォーカスで自動消滅を一時停止・×/スワイプで手動クローズ・live region で読み上げ**。いずれも Base UI の既定が世間の慣例どおりなので**数値は上書きしない**（旧「2.5秒・単発・差し替え」は世間より短く/簡素だったため廃止）。
+- 実装：root layout に `<Toaster />` を1つ。どこからでも `toast("…")`（`components/toast.tsx`、React 外からも呼べる standalone manager）。サーバアクションは呼んだクライアント側で `await` 後に `toast()`。出入りのフェード/スワイプ追従の transform だけ `globals.css` の `.toast-root`（Base UI の `--toast-swipe-movement-*` を流し込む）。
 
 ### その場保存フォーム
 - **変更がある時だけ保存ボタンを有効**にする（無駄押し防止のユーザビリティ）。これは状態表示が目的ではないので、**成功トーストは別途出す**（有効/無効 ＋ トーストの両方）。
