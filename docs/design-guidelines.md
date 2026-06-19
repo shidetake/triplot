@@ -494,10 +494,14 @@ hue は色相環上の角度（HSL, 0–359°）。
 | エラー | トースト |
 
 ### トースト
-- 位置：画面下中央（`fixed bottom-6 left-1/2 -translate-x-1/2 z-50`）。
+挙動（表示時間・重ね・ホバー一時停止・スワイプ/×・live region）は **Base UI Toast の既定に乗る**。
+既定値はここに書かない — 書くと陳腐化するし、「ドキュメントが言うから」と明示固定して既定に乗る利点を潰す。
+唯一のルールは **`timeout`/`limit` 等を上書きしてカスタムしない**こと（旧「2.5秒・単発・差し替え」のような手書き化に戻さない）。
+ここに書くのは「Base UI 既定では決まらない＝我々が決めた差分」だけ:
+
+- 位置：画面下中央（`fixed bottom-6 left-1/2 -translate-x-1/2 z-50`）。Base UI は位置を決めないので明示。
 - 見た目：`bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm shadow-lg`。
-- 挙動は **Base UI Toast** に委ねる（design-guidelines「部品の作り方」step2）＝**約5秒で自動消滅・最大3件まで重ねる（超過は枠が空くまで待機）・ホバー/フォーカスで自動消滅を一時停止・×/スワイプで手動クローズ・live region で読み上げ**。いずれも Base UI の既定が世間の慣例どおりなので**数値は上書きしない**（旧「2.5秒・単発・差し替え」は世間より短く/簡素だったため廃止）。
-- 実装：root layout に `<Toaster />` を1つ。どこからでも `toast("…")`（`components/toast.tsx`、React 外からも呼べる standalone manager）。サーバアクションは呼んだクライアント側で `await` 後に `toast()`。出入りのフェード/スワイプ追従の transform だけ `globals.css` の `.toast-root`（Base UI の `--toast-swipe-movement-*` を流し込む）。
+- 実装：root layout に `<Toaster />` を1つ。どこからでも `toast("…")`（`components/toast.tsx`、React 外からも呼べる standalone manager）。サーバアクションは呼んだクライアント側で `await` 後に `toast()`。
 
 ### その場保存フォーム
 - **変更がある時だけ保存ボタンを有効**にする（無駄押し防止のユーザビリティ）。これは状態表示が目的ではないので、**成功トーストは別途出す**（有効/無効 ＋ トーストの両方）。
