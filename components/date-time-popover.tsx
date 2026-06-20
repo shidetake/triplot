@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { formatYmd, parseYmd } from "@/lib/ymd";
 
 import { inputClass } from "./input-class";
+import { TimeSelect } from "./time-select";
 
 // 年プルダウンのナビ範囲（DatePopover と揃える）。今日から±10年。
 const TODAY = new Date();
@@ -109,12 +110,7 @@ export function DateTimePopover({
         />
         <div className="flex items-center gap-2 border-t border-foreground/10 p-3">
           <span className="text-sm text-muted-foreground">時刻</span>
-          <input
-            type="time"
-            value={time}
-            onChange={(e) => onChange(date, e.target.value)}
-            className={cn("w-24", inputClass)}
-          />
+          <TimeSelect value={time} onChange={(t) => onChange(date, t)} />
         </div>
       </PopoverContent>
     </Popover>
