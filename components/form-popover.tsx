@@ -36,15 +36,16 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// 入力データを失わないよう、外側タッチ／スクロール（outside-press）やフォーカス
-// 外れ（focus-out）では閉じない。閉じるのは Esc と、フォーム内の × / キャンセル /
-// 送信（onClose を直接呼ぶ）だけ。Popover/Dialog 共通のロジック。
+// 閉じる経路は design-guidelines の3つ＝Esc・背景クリック（outside-press）・フォーム内の
+// ×/キャンセル/送信（onClose を直接呼ぶ）。それ以外の focus-out（タブ移動などフォーカスが
+// 外れただけ）では閉じない（入力途中に意図せず消えるのを防ぐ。3経路の外）。
+// 背景クリックで閉じても誤爆しないのは Base UI Popover が outsidePressEvent の mouse を
+// `intentional`（pointerup＝本物のクリックで発火・ホイールスクロールやドラッグでは発火しない）
+// に固定しているため（PopoverRoot.js 参照）。
 function makeOnOpenChange(onClose: () => void) {
   return (next: boolean, details: { reason: string }) => {
     if (next) return;
-    if (details.reason === "outside-press" || details.reason === "focus-out") {
-      return;
-    }
+    if (details.reason === "focus-out") return;
     onClose();
   };
 }
