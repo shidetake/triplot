@@ -122,6 +122,51 @@ function TzSelect({ name, value }: { name: string; value: string }) {
   );
 }
 
+// 通常予定のタイムゾーンは disclosure（「参加者: 全員 ▾」と同じパターン）。国内旅行では
+// まず触らないのでフル行を畳み、`タイムゾーン: ハワイ ▾` だけ出す。変える時だけ展開。
+// tz は常に hidden で送る（畳んだ状態でも値が落ちないよう、表示 select は name 無し）。
+function TzDisclosure({ value }: { value: string }) {
+  const [tz, setTz] = useState(value);
+  const [open, setOpen] = useState(false);
+  const opts = [...TIMEZONE_OPTIONS];
+  if (tz && !opts.some((o) => o.value === tz)) {
+    opts.unshift({ value: tz, label: tz });
+  }
+  // 「日本 (Asia/Tokyo)」→「日本」。括弧内の IANA 名は畳んだ表示では省く。
+  const short = (opts.find((o) => o.value === tz)?.label ?? tz).split(" (")[0];
+
+  return (
+    <div className="text-sm">
+      <input type="hidden" name="tz" value={tz} />
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
+      >
+        <span>タイムゾーン: {short}</span>
+        <ChevronIcon
+          size={16}
+          className={`transition-transform ${open ? "-rotate-90" : "rotate-90"}`}
+        />
+      </button>
+      {open && (
+        <select
+          value={tz}
+          onChange={(e) => setTz(e.target.value)}
+          className={`mt-1.5 block w-full ${inputClass}`}
+        >
+          {opts.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
 function initialKind3(ev: ScheduleEvent | null, allDayHint: boolean): Kind3 {
   if (!ev) return allDayHint ? "allday" : "timed";
   if (ev.kind === "transit") return "transit";
@@ -517,42 +562,54 @@ export function EventForm({
           <input type="hidden" name="end_date" value={eDate} />
           <input type="hidden" name="end_time" value={eTime} />
 
-          <label className={fieldCls}>
-            <span className="text-muted-foreground">タイムゾーン</span>
-            <TzSelect name="tz" value={tzInit} />
-          </label>
+          <TzDisclosure value={tzInit} />
         </div>
       )}
 
-      <fieldset className="text-xs">
-        <legend className="font-medium">公開範囲</legend>
-        {canChangeVis ? (
-          <div className="mt-1 flex gap-3">
-            <label className="inline-flex items-center gap-1">
-              <input
-                type="radio"
-                name="visibility"
-                value="shared"
-                checked={visibility === "shared"}
-                onChange={() => setVisibility("shared")}
-              />
-              <span>共有</span>
-            </label>
-            <label className="inline-flex items-center gap-1">
-              <input
-                type="radio"
-                name="visibility"
-                value="private"
-                checked={visibility === "private"}
-                onChange={() => setVisibility("private")}
-              />
-              <span>自分のみ</span>
-            </label>
-          </div>
-        ) : (
-          <input type="hidden" name="visibility" value={visibility} />
+      {/* 公開範囲 と 要予約 を同一行に（縦を1行詰める）。要予約は共有予定のみ
+          （private は共有TODOリストに出せない）。 */}
+      <div className="flex items-end justify-between gap-3 text-xs">
+        <fieldset>
+          <legend className="font-medium">公開範囲</legend>
+          {canChangeVis ? (
+            <div className="mt-1 flex gap-3">
+              <label className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="shared"
+                  checked={visibility === "shared"}
+                  onChange={() => setVisibility("shared")}
+                />
+                <span>共有</span>
+              </label>
+              <label className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="visibility"
+                  value="private"
+                  checked={visibility === "private"}
+                  onChange={() => setVisibility("private")}
+                />
+                <span>自分のみ</span>
+              </label>
+            </div>
+          ) : (
+            <input type="hidden" name="visibility" value={visibility} />
+          )}
+        </fieldset>
+        {visibility === "shared" && (
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              name="needs_reservation"
+              checked={needsReservation}
+              onChange={(e) => setNeedsReservation(e.target.checked)}
+            />
+            <FieldLabel>要予約</FieldLabel>
+          </label>
         )}
-      </fieldset>
+      </div>
 
       {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので
           省略）。デフォルトは「参加者: 全員」＋下向きシェブロンの disclosure。タップで展開して
@@ -606,19 +663,6 @@ export function EventForm({
               />
             ))}
         </div>
-      )}
-
-      {/* 要予約。共有予定のみ（private は共有TODOリストに出せない）。 */}
-      {visibility === "shared" && (
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            name="needs_reservation"
-            checked={needsReservation}
-            onChange={(e) => setNeedsReservation(e.target.checked)}
-          />
-          <FieldLabel>要予約</FieldLabel>
-        </label>
       )}
 
       <label className="block text-sm">
