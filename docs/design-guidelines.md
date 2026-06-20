@@ -369,7 +369,7 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 
 | パターン | 使う部品・クラス・関数 | レシピ・ルール・注意 |
 |---|---|---|
-| **× 閉じるボタン**（フォーム・ポップアップ右上） | `<CloseButton>`（`components/close-button.tsx`） | subtle 色・rounded-full・h-6 ＋ `aria-label`/`title`（既定「閉じる」）を内包。位置・サイズは `className` で渡す |
+| **× 閉じるボタン**（フォーム・ポップアップ右上） | `<CloseButton>`（`components/close-button.tsx`） | subtle 色・rounded-full・h-6 ＋ `aria-label`/`title`（既定「閉じる」）を内包。**専用行を作らず form 右上角に重ねる**＝ form を `relative`、`<CloseButton className="absolute right-2 top-2 z-10" />`（`flex justify-end` の独立行は使わない＝縦を 1 行ぶん詰める）。**先頭要素が × の下に潜るとき（全幅のセグメントトラック等）だけ、その要素に右クリアランス `mr-7` を足す**。先頭が「短いラベル＋全幅入力」なら × はラベル行の空いた右側に乗るだけなのでクリアランス不要 |
 | **インラインバッジ**（件数・状態の小さな添え物） | 素のクラス／private 可視性は `<PrivateBadge>`（`components/private-badge.tsx`） | `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`。private な場所/費用名の隣の「プライベート」バッジは PrivateBadge でレシピ＋文言を1ソース化 |
 | **破線ボーダー＝「ここに追加できる」** | `border border-dashed border-foreground/20` | 控えめな追加アクション（割り勘の行追加・地図への登録）。実線ボタンより一段弱い「空きスロット」の表現 |
 | **トグルチップ**（参加者・割り勘対象などの複数選択） | `<ToggleChip on=...>`（`components/toggle-chip.tsx`） | 選択＝primary 塗り／非選択＝zinc+ring ＋ `aria-pressed` を内包 |

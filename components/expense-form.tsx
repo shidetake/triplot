@@ -338,12 +338,11 @@ export function ExpenseForm({
     <form
       ref={formRef}
       action={formAction}
-      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
+      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。 */}
       {onDone && (
-        <div className="flex justify-end">
-          <CloseButton onClick={onDone} />
-        </div>
+        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
       <div className="grid grid-cols-[1fr_auto] gap-2">

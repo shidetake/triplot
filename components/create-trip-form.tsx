@@ -101,15 +101,15 @@ export function CreateTripForm({
   return (
     <form
       action={formAction}
-      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
-      <div className="flex justify-end">
-        <CloseButton onClick={onDone} />
-      </div>
+      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。
+          先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。 */}
+      <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
 
       {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型 */}
       {canCopy && (
-        <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
+        <div className="mr-7 flex gap-1 rounded-md border border-foreground/10 p-1">
           <label
             className={`${seg} ${
               mode === "new"
