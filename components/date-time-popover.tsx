@@ -89,6 +89,12 @@ export function DateTimePopover({
         )}
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
+        {/* 時刻を上に置く（開いた瞬間に見える・届く＝時刻だけ変えたい時に最短。iOS で下端が
+            隠れて触れない問題も避ける）。下にカレンダー。 */}
+        <div className="flex items-center gap-2 p-3">
+          <span className="text-sm text-muted-foreground">時刻</span>
+          <TimeSelect value={time} onChange={(t) => onChange(date, t)} />
+        </div>
         <Calendar
           mode="single"
           selected={d}
@@ -107,11 +113,8 @@ export function DateTimePopover({
               : undefined
           }
           modifiersClassNames={{ trip: "bg-blue-50" }}
+          className="border-t border-foreground/10"
         />
-        <div className="flex items-center gap-2 border-t border-foreground/10 p-3">
-          <span className="text-sm text-muted-foreground">時刻</span>
-          <TimeSelect value={time} onChange={(t) => onChange(date, t)} />
-        </div>
       </PopoverContent>
     </Popover>
   );
