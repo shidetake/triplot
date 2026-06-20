@@ -245,11 +245,16 @@ export function EventForm({
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
   const transitArriveInit = minToDt(initSMin + 60);
 
-  // 時差移動 / 終日の日付は DatePopover（カスタム）に置換したので、フォーム送信用に
-  // それぞれ controlled state を持つ。日付追従ロジックは入れない（"とりあえず"の既定）。
+  // 時差移動は出発・到着をそれぞれ DateTimePopover（日付＋時刻チップ＝通常予定と同じ仕様）で
+  // 編集するので、日付・時刻とも controlled state を持つ。出発と到着は別TZ・別日が当たり前
+  // なので追従/ガードは入れない（独立。チップは両方とも日付＋時刻をフル表示する）。
   const [departDate, setDepartDate] = useState(startInit.date);
+  const [departTime, setDepartTime] = useState(startInit.time || "09:00");
   const [arriveDate, setArriveDate] = useState(
     endInit.date || transitArriveInit.date,
+  );
+  const [arriveTime, setArriveTime] = useState(
+    endInit.time || transitArriveInit.time,
   );
   const [alldayStart, setAlldayStart] = useState(startInit.date);
   const [alldayEnd, setAlldayEnd] = useState(endInit.date || startInit.date);
@@ -384,54 +389,46 @@ export function EventForm({
         )}
       </div>
 
-      {/* 日時。3種別とも同じ2列グリッド。差は「右に時刻を入れるか」
-          「TZ行が付くか」だけ。 */}
+      {/* 出発・到着の日時。通常予定と同じ DateTimePopover チップ（タップでカレンダー＋ホイール）。
+          出発と到着は別TZ・別日が前提なので、両方フル日付＋時刻を表示し独立（追従/ガードなし）。 */}
       {kind3 === "transit" && (
         <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">出発日</span>
-              <DatePopover
-                name="depart_date"
-                value={departDate}
-                onChange={setDepartDate}
-                required
-                tripStart={tripStart}
-                tripEnd={tripEnd}
-              />
-            </label>
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">出発時刻</span>
-              <Input
-                type="time"
-                name="depart_time"
-                required
-                defaultValue={startInit.time || "09:00"}
-                className={inputLayout}
-              />
-            </label>
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">到着日</span>
-              <DatePopover
-                name="arrive_date"
-                value={arriveDate}
-                onChange={setArriveDate}
-                required
-                tripStart={tripStart}
-                tripEnd={tripEnd}
-              />
-            </label>
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">到着時刻</span>
-              <Input
-                type="time"
-                name="arrive_time"
-                required
-                defaultValue={endInit.time || transitArriveInit.time}
-                className={inputLayout}
-              />
-            </label>
-          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="w-8 text-muted-foreground">出発</span>
+            <DateTimePopover
+              variant="start"
+              date={departDate}
+              time={departTime}
+              onChange={(d, t) => {
+                setDepartDate(d);
+                setDepartTime(t);
+              }}
+              tripStart={tripStart}
+              tripEnd={tripEnd}
+              label="出発日時"
+            />
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <span className="w-8 text-muted-foreground">到着</span>
+            <DateTimePopover
+              variant="start"
+              date={arriveDate}
+              time={arriveTime}
+              onChange={(d, t) => {
+                setArriveDate(d);
+                setArriveTime(t);
+              }}
+              tripStart={tripStart}
+              tripEnd={tripEnd}
+              label="到着日時"
+            />
+          </label>
+
+          <input type="hidden" name="depart_date" value={departDate} />
+          <input type="hidden" name="depart_time" value={departTime} />
+          <input type="hidden" name="arrive_date" value={arriveDate} />
+          <input type="hidden" name="arrive_time" value={arriveTime} />
+
           <label className={fieldCls}>
             <span className="text-muted-foreground">出発地タイムゾーン</span>
             <TzSelect name="depart_tz" value={tzInit} />
