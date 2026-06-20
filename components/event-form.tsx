@@ -31,21 +31,23 @@ import { ToggleChip } from "./toggle-chip";
 import { MessageBox } from "./message-box";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
+// label は日本語の短縮名のみ（IANA 名は出さない＝横幅を詰めて時差移動の出発地/到着地TZを
+// 1行2列に収めるため）。送信・内部値は value の IANA 文字列なので機能は不変。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
-  { value: "Asia/Tokyo", label: "日本 (Asia/Tokyo)" },
-  { value: "Pacific/Honolulu", label: "ハワイ (Pacific/Honolulu)" },
-  { value: "America/Los_Angeles", label: "米国西海岸 (America/Los_Angeles)" },
-  { value: "America/New_York", label: "米国東海岸 (America/New_York)" },
-  { value: "Europe/London", label: "イギリス (Europe/London)" },
-  { value: "Europe/Paris", label: "中央欧州 (Europe/Paris)" },
-  { value: "Asia/Bangkok", label: "タイ (Asia/Bangkok)" },
-  { value: "Asia/Seoul", label: "韓国 (Asia/Seoul)" },
-  { value: "Asia/Singapore", label: "シンガポール (Asia/Singapore)" },
-  { value: "Asia/Taipei", label: "台湾 (Asia/Taipei)" },
-  { value: "Asia/Shanghai", label: "中国 (Asia/Shanghai)" },
-  { value: "Asia/Hong_Kong", label: "香港 (Asia/Hong_Kong)" },
-  { value: "Australia/Sydney", label: "シドニー (Australia/Sydney)" },
-  { value: "Pacific/Guam", label: "グアム (Pacific/Guam)" },
+  { value: "Asia/Tokyo", label: "日本" },
+  { value: "Pacific/Honolulu", label: "ハワイ" },
+  { value: "America/Los_Angeles", label: "米国西海岸" },
+  { value: "America/New_York", label: "米国東海岸" },
+  { value: "Europe/London", label: "イギリス" },
+  { value: "Europe/Paris", label: "中央欧州" },
+  { value: "Asia/Bangkok", label: "タイ" },
+  { value: "Asia/Seoul", label: "韓国" },
+  { value: "Asia/Singapore", label: "シンガポール" },
+  { value: "Asia/Taipei", label: "台湾" },
+  { value: "Asia/Shanghai", label: "中国" },
+  { value: "Asia/Hong_Kong", label: "香港" },
+  { value: "Australia/Sydney", label: "シドニー" },
+  { value: "Pacific/Guam", label: "グアム" },
 ];
 
 const initialState: EventMutationState = { ok: false, error: null };
@@ -477,14 +479,17 @@ export function EventForm({
           <input type="hidden" name="arrive_date" value={arriveDate} />
           <input type="hidden" name="arrive_time" value={arriveTime} />
 
-          <label className={fieldCls}>
-            <span className="text-muted-foreground">出発地タイムゾーン</span>
-            <TzSelect name="depart_tz" value={tzInit} />
-          </label>
-          <label className={fieldCls}>
-            <span className="text-muted-foreground">到着地タイムゾーン</span>
-            <TzSelect name="arrive_tz" value={endTzInit} />
-          </label>
+          {/* 出発地/到着地のタイムゾーンを1行2列に（短縮ラベルで値の横幅が収まるようになった）。 */}
+          <div className="grid grid-cols-2 gap-2">
+            <label className={fieldCls}>
+              <span className="text-muted-foreground">出発地タイムゾーン</span>
+              <TzSelect name="depart_tz" value={tzInit} />
+            </label>
+            <label className={fieldCls}>
+              <span className="text-muted-foreground">到着地タイムゾーン</span>
+              <TzSelect name="arrive_tz" value={endTzInit} />
+            </label>
+          </div>
         </div>
       )}
 
