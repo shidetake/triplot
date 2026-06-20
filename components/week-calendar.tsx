@@ -19,6 +19,7 @@ import {
   type Schedule,
   type ScheduleEvent,
 } from "@/lib/schedule";
+import { vividColor } from "@/lib/memberColors";
 
 import { CheckIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
@@ -133,10 +134,7 @@ export function WeekCalendar({
             <span
               key={id}
               className="h-1.5 w-1.5 rounded-full"
-              style={{
-                backgroundColor:
-                  typeof hue === "number" ? `hsl(${hue}, 70%, 50%)` : "#a1a1aa",
-              }}
+              style={{ backgroundColor: vividColor(hue) ?? "#a1a1aa" }}
             />
           );
         })}

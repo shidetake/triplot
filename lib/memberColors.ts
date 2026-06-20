@@ -45,6 +45,15 @@ export function avatarStyle(
   };
 }
 
+// ドット/マーカー用: 濃いベタ塗りの単色（チップの薄い面とは別トーン）。地図の仮ピン・
+// カレンダーの参加者ドットなど「小さな点で人を示す」所。hue が無効なら null を返す
+// ＝チップ/アバターと違い空 style にはできない（点が消える）ので、呼び出し側が文脈に
+// 応じた中立グレーをフォールバックに当てる。
+export function vividColor(hue: number | null | undefined): string | null {
+  const h = normalizeHue(hue);
+  return h == null ? null : `hsl(${h}, 70%, 50%)`;
+}
+
 // 表示名から「省略形」を1文字取り出す。Spread でコードポイント単位に分割するので、
 // 絵文字 / サロゲートペアでも 1文字として正しく扱える（日本語は元から1コードポイント）。
 export function firstChar(name: string | null | undefined): string {

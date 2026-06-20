@@ -28,6 +28,8 @@ import {
   TOKYO,
 } from "@/lib/placeMap";
 
+import { vividColor } from "@/lib/memberColors";
+
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
 
@@ -441,9 +443,9 @@ export function PlaceMap({
               // メンバー hue が無ければ status.color にフォールバック。
               const creatorHue = memberHueById.get(p.created_by_member_id);
               const bg =
-                st?.tentative && typeof creatorHue === "number"
-                  ? `hsl(${creatorHue}, 70%, 50%)`
-                  : (st?.color ?? "#6b7280");
+                (st?.tentative ? vividColor(creatorHue) : null) ??
+                st?.color ??
+                "#6b7280";
               return (
                 <AdvancedMarker
                   key={p.id}
