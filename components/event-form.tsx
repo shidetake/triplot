@@ -566,50 +566,47 @@ export function EventForm({
         </div>
       )}
 
-      {/* 公開範囲 と 要予約 を同一行に（縦を1行詰める）。要予約は共有予定のみ
-          （private は共有TODOリストに出せない）。 */}
-      <div className="flex items-end justify-between gap-3 text-xs">
-        <fieldset>
-          <legend className="font-medium">公開範囲</legend>
-          {canChangeVis ? (
-            <div className="mt-1 flex gap-3">
-              <label className="inline-flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="shared"
-                  checked={visibility === "shared"}
-                  onChange={() => setVisibility("shared")}
-                />
-                <span>共有</span>
-              </label>
-              <label className="inline-flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="visibility"
-                  value="private"
-                  checked={visibility === "private"}
-                  onChange={() => setVisibility("private")}
-                />
-                <span>自分のみ</span>
-              </label>
-            </div>
-          ) : (
-            <input type="hidden" name="visibility" value={visibility} />
-          )}
-        </fieldset>
-        {visibility === "shared" && (
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              name="needs_reservation"
-              checked={needsReservation}
-              onChange={(e) => setNeedsReservation(e.target.checked)}
-            />
-            <FieldLabel>要予約</FieldLabel>
-          </label>
+      <fieldset className="text-xs">
+        <legend className="font-medium">公開範囲</legend>
+        {canChangeVis ? (
+          <div className="mt-1 flex gap-3">
+            <label className="inline-flex items-center gap-1">
+              <input
+                type="radio"
+                name="visibility"
+                value="shared"
+                checked={visibility === "shared"}
+                onChange={() => setVisibility("shared")}
+              />
+              <span>共有</span>
+            </label>
+            <label className="inline-flex items-center gap-1">
+              <input
+                type="radio"
+                name="visibility"
+                value="private"
+                checked={visibility === "private"}
+                onChange={() => setVisibility("private")}
+              />
+              <span>自分のみ</span>
+            </label>
+          </div>
+        ) : (
+          <input type="hidden" name="visibility" value={visibility} />
         )}
-      </div>
+      </fieldset>
+
+      {/* 要予約は公開範囲に依らず常に出す（private 予定でも予約は要る）。ON で予約TODOが
+          紐づき、その可視範囲は予定の公開範囲を継承する（private→作成者だけに見える）。 */}
+      <label className="flex items-center gap-2 text-sm">
+        <input
+          type="checkbox"
+          name="needs_reservation"
+          checked={needsReservation}
+          onChange={(e) => setNeedsReservation(e.target.checked)}
+        />
+        <FieldLabel>要予約</FieldLabel>
+      </label>
 
       {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので
           省略）。デフォルトは「参加者: 全員」＋下向きシェブロンの disclosure。タップで展開して

@@ -764,10 +764,9 @@ export async function createEventAction(
   }
 
   const place = parsed.place;
-  // 要予約は共有予定のみ（private は共有TODOリストに漏れる）。
-  const needsReservation =
-    formData.get("needs_reservation") === "on" &&
-    parsed.visibility === "shared";
+  // 要予約は共有/private どちらでも可。予約TODOは予定の公開範囲を継承する
+  // （private 予定の予約TODOは作成者だけに見える。set_event_reservation で同期）。
+  const needsReservation = formData.get("needs_reservation") === "on";
   // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）。
   // 場所は kind で 3 分岐: google→確定 place、自由入力→未マップ place、
   // 保存済み/無し→ place_id 直指定。いずれもサーバ側で place_id に解決する。
@@ -883,10 +882,9 @@ export async function updateEventAction(
   }
 
   const place = parsed.place;
-  // 要予約は共有予定のみ（private は共有TODOリストに漏れる）。
-  const needsReservation =
-    formData.get("needs_reservation") === "on" &&
-    parsed.visibility === "shared";
+  // 要予約は共有/private どちらでも可。予約TODOは予定の公開範囲を継承する
+  // （private 予定の予約TODOは作成者だけに見える。set_event_reservation で同期）。
+  const needsReservation = formData.get("needs_reservation") === "on";
   // create と同じ 3 分岐（google / 自由入力 / 保存済み・無し）。
   let error: { message: string } | null = null;
   if (place.kind === "google") {
