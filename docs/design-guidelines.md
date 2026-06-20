@@ -126,10 +126,10 @@ flowchart TD
   Q1 -->|"YES（native で良い）"| Q1a{"shadcn/ui に<br/>type-I ラップがある？"}
   Q1 -->|"NO（リッチな中身/挙動が要る）"| Q2{"Q2. shadcn/ui の type-II で<br/>そのまま実現できる？"}
 
-  Q1a -->|YES| R1a["<b>1a.</b> shadcn/ui を使う<br/>（type-I = Button / Input）"]
-  Q1a -->|"NO（無い／type-II しか無い）"| R1b["<b>1b.</b> native を直接使う ＋ クラス<br/>（select・checkbox・radio）"]
+  Q1a -->|YES| R1a["<b>1a.</b> shadcn/ui を使う"]
+  Q1a -->|"NO（無い／type-II しか無い）"| R1b["<b>1b.</b> native を直接使う ＋ クラス"]
 
-  Q2 -->|YES| R2["<b>2.</b> shadcn/ui をそのまま使う<br/>（Dialog・DropdownMenu・Combobox…）"]
+  Q2 -->|YES| R2["<b>2.</b> shadcn/ui をそのまま使う"]
   Q2 -->|NO| Q3{"shadcn/ui にあり、<br/>改造すれば実現できる？"}
 
   Q3 -->|YES| R3["<b>3.</b> shadcn/ui を持ってきて改造"]
