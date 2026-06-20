@@ -33,6 +33,7 @@ import { TIMEZONE_OPTIONS } from "./event-form";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
 import { FieldLabel } from "./field-label";
+import { MessageBox } from "./message-box";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
@@ -664,9 +665,7 @@ export function ExpenseForm({
       </div>
 
       {state.error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {state.error}
-        </p>
+        <MessageBox kind="error">{state.error}</MessageBox>
       )}
     </form>
   );

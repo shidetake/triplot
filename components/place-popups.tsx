@@ -18,6 +18,7 @@ import { type PinOption } from "@/lib/placeIcons";
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
+import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
 import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
@@ -289,9 +290,9 @@ export function CandidateInfo({
           <PlusIcon size={20} />
         </Button>
         {state.error && (
-          <p className="rounded bg-red-50 p-2 text-xs text-red-700">
+          <MessageBox kind="error" dense>
             {state.error}
-          </p>
+          </MessageBox>
         )}
       </form>
     </div>
@@ -399,9 +400,9 @@ export function DraftInfo({
           <PlusIcon size={20} />
         </Button>
         {state.error && (
-          <p className="rounded bg-red-50 p-2 text-xs text-red-700">
+          <MessageBox kind="error" dense>
             {state.error}
-          </p>
+          </MessageBox>
         )}
       </form>
     </div>
@@ -474,7 +475,7 @@ export function LocateInfo({
         </Button>
       </div>
       {error && (
-        <p className="rounded bg-red-50 p-2 text-xs text-red-700">{error}</p>
+        <MessageBox kind="error" dense>{error}</MessageBox>
       )}
     </div>
   );
@@ -627,9 +628,9 @@ export function SavedInfo({
             </Button>
           </div>
           {state.error && (
-            <p className="rounded bg-red-50 p-2 text-xs text-red-700">
+            <MessageBox kind="error" dense>
               {state.error}
-            </p>
+            </MessageBox>
           )}
         </form>
       ) : (

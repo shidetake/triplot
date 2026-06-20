@@ -5,6 +5,7 @@ import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/close-button";
 import { ImportAddress } from "@/components/import-address";
+import { MessageBox } from "@/components/message-box";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
 import type { Receipt } from "@/lib/receipt/schema";
@@ -120,10 +121,10 @@ export default async function ImportPage() {
       </p>
 
       {(overQuota ?? 0) > 0 && (
-        <p className="mt-3 rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+        <MessageBox kind="warning" className="mt-3">
           ⚠ 今月の上限（{MONTHLY_EMAIL_CAP}件）に達したため、{overQuota}件が未処理の
           まま保留されています。翌月にリセットされます。
-        </p>
+        </MessageBox>
       )}
 
       {(errorRows ?? []).length > 0 && (

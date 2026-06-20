@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
+import { MessageBox } from "./message-box";
 
 // 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
@@ -674,9 +675,9 @@ export function EventForm({
       </div>
 
       {state.error && (
-        <p className="rounded bg-red-50 p-2 text-xs text-red-700">
+        <MessageBox kind="error" dense>
           {state.error}
-        </p>
+        </MessageBox>
       )}
     </form>
   );

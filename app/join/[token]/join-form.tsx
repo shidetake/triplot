@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 
 import { FieldLabel } from "@/components/field-label";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { MessageBox } from "@/components/message-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/lib/supabase/client";
@@ -86,9 +87,7 @@ export function JoinForm({
       )}
 
       {error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </p>
+        <MessageBox kind="error">{error}</MessageBox>
       )}
     </div>
   );

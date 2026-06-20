@@ -16,6 +16,7 @@ import {
   SavedInfo,
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
+import { MessageBox } from "./message-box";
 
 export function PlacesSection({
   tripId,
@@ -146,9 +147,9 @@ export function PlacesSection({
   if (!apiKey) {
     return (
       <div className="space-y-4">
-        <p className="rounded-md bg-amber-50 p-3 text-sm text-amber-800">
+        <MessageBox kind="warning">
           Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。
-        </p>
+        </MessageBox>
         <PlaceList
           places={places}
           statuses={statuses}

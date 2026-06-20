@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { HelpTip } from "./help-tip";
+import { MessageBox } from "./message-box";
 import { PlusIcon } from "./icons";
 import { CloseButton } from "./close-button";
 
@@ -241,15 +242,13 @@ export function CreateTripForm({
       </Button>
 
       {showShorterWarning && (
-        <p className="rounded-md bg-amber-50 p-3 text-xs leading-snug text-amber-800">
+        <MessageBox kind="warning" className="text-xs leading-snug">
           ⚠ 日程がコピー元より短いため、一部の予定はコピーされません。
-        </p>
+        </MessageBox>
       )}
 
       {state.error && (
-        <p className="rounded-md bg-red-50 p-3 text-sm text-red-700">
-          {state.error}
-        </p>
+        <MessageBox kind="error">{state.error}</MessageBox>
       )}
     </form>
   );
