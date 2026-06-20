@@ -306,11 +306,11 @@ export function EventForm({
   return (
     <form
       action={formAction}
-      className="space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
-      <div className="flex justify-end">
-        <CloseButton onClick={onDone} />
-      </div>
+      {/* × は専用行を作らず右上角に重ねる（縦を 1 行ぶん詰める）。先頭の種別トラックが
+          下に潜らないよう、トラック側に右クリアランス（mr）を入れる。 */}
+      <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
 
       <input type="hidden" name="kind" value={submitKind} />
       {kind3 === "allday" && (
@@ -320,7 +320,7 @@ export function EventForm({
 
       {/* 種別の切り替え（通常／終日／タイムゾーン跨ぎ）。
           sr-only の native radio group ＋装飾ラベル（新規/コピーと同じ 1b パターン）。 */}
-      <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
+      <div className="mr-7 flex gap-1 rounded-md border border-foreground/10 p-1">
         {(["timed", "allday", "transit"] as const).map((k) => (
           <label
             key={k}
