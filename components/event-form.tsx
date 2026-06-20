@@ -18,15 +18,10 @@ import type { Visibility } from "@/lib/types/database";
 import { parseYmd } from "@/lib/ymd";
 
 import { DatePopover } from "./date-popover";
+import { DateTimePopover } from "./date-time-popover";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
-import {
-  TrashIcon,
-  PlusIcon,
-  SaveIcon,
-  ChevronIcon,
-  CalendarRangeIcon,
-} from "./icons";
+import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -96,15 +91,6 @@ function minToDt(min: number): { date: string; time: string } {
   return { date, time: formatMinutes(rem) };
 }
 
-// "HH:MM" → 0時からの分（壁時計の時刻のみ。日付は別管理）
-function timeToMin(t: string): number {
-  const [h, m] = t.split(":").map(Number);
-  return h * 60 + m;
-}
-// "YYYY-MM-DD" の翌日
-function addOneDay(ymd: string): string {
-  return minToDt(dtToMin(ymd, "00:00") + 1440).date;
-}
 
 export type EventFormMode =
   | {
@@ -268,50 +254,28 @@ export function EventForm({
   const [alldayStart, setAlldayStart] = useState(startInit.date);
   const [alldayEnd, setAlldayEnd] = useState(endInit.date || startInit.date);
 
-  // timed の終了日は既定で隠す（同日前提）。日をまたぐ時だけ「期間」トグルで
-  // 終了日ピッカーを開く（multiDay）。初期表示で展開するのは「終了日が開始日と
-  // 違い、かつ単純な日跨ぎ（＝翌日 かつ 終了時刻 < 開始時刻）ではない」とき
-  // ＝本当に複数日にわたる予定の編集時だけ。23:00→翌01:00 のような日跨ぎは
-  // 折りたたんだまま終了時刻の隣に「+1日」を出す。
-  const initialMultiDay =
-    isEdit &&
-    eDate !== sDate &&
-    !(
-      eDate === addOneDay(sDate) &&
-      timeToMin(eTime) < timeToMin(sTime)
-    );
-  const [multiDay, setMultiDay] = useState(initialMultiDay);
-
-  // 折りたたみ時：終了時刻 < 開始時刻なら「翌日に終了」とみなす（日跨ぎ）。
-  const wrapped = !multiDay && timeToMin(eTime) < timeToMin(sTime);
-  // 送信する終了日：展開時は明示の eDate、折りたたみ時は開始日（日跨ぎなら翌日）。
-  const submitEndDate = multiDay ? eDate : wrapped ? addOneDay(sDate) : sDate;
-
-  const onStartDate = (nd: string) => {
+  // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
+  const moveStart = (nd: string, nt: string) => {
+    const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
     setSDate(nd);
-    // 展開時に開始が終了を追い越したら終了日を開始日に揃える
-    if (multiDay && nd > eDate) setEDate(nd);
-  };
-  const onStartTime = (nt: string) => {
-    if (multiDay) {
-      setSTime(nt);
-      return;
-    }
-    // 折りたたみ時は長さ（壁時計の差・日跨ぎ込み）を保って終了時刻が追従。
-    const dur = (timeToMin(eTime) - timeToMin(sTime) + 1440) % 1440;
     setSTime(nt);
-    setETime(formatMinutes((timeToMin(nt) + dur) % 1440));
+    const ne = minToDt(dtToMin(nd, nt) + dur);
+    setEDate(ne.date);
+    setETime(ne.time);
   };
-  const onEndTime = (nt: string) => setETime(nt);
-  const onEndDate = (nd: string) => setEDate(nd);
 
-  const toggleMultiDay = () => {
-    if (multiDay) {
-      setMultiDay(false);
+  // 終了ガード。終了 ≤ 開始になったら開始+1時間に snap する（同日に終了時刻だけ
+  // 開始より前にした／前の日付を選んだケースを最小1時間で吸収）。
+  const setEnd = (nd: string, nt: string) => {
+    const sMin = dtToMin(sDate, sTime);
+    const eMin = dtToMin(nd, nt);
+    if (eMin <= sMin) {
+      const ne = minToDt(sMin + 60);
+      setEDate(ne.date);
+      setETime(ne.time);
     } else {
-      // 現在の折りたたみ終了日（同日 or 翌日）を引き継いで終了日ピッカーを開く
-      setEDate(wrapped ? addOneDay(sDate) : sDate);
-      setMultiDay(true);
+      setEDate(nd);
+      setETime(nt);
     }
   };
 
@@ -518,79 +482,42 @@ export function EventForm({
 
       {kind3 === "timed" && (
         <div className="space-y-3">
-          {/* 日付＋開始–終了時刻を 1 行に。終了日は既定で隠し（同日前提）、日をまたぐ時だけ
-              右端の「期間」トグルで終了日ピッカーを開く。終了時刻＜開始時刻の日跨ぎは折り
-              たたんだまま「+1日」を出す。 */}
+          {/* 開始＝日付＋時刻、終了＝時刻（＋別日なら「+N日」）の 2 つの要約チップ。
+              どちらをタップしても同じ結合エディタ（カレンダー＋時刻）が開く＝iOS カレンダー方式。
+              送信値は hidden で流す（チップは UI 専用の controlled 部品）。 */}
           <div>
             <span className="text-sm text-muted-foreground">日時</span>
             <div className="mt-1 flex items-center gap-2">
-              <DatePopover
-                name="start_date"
-                value={sDate}
-                onChange={onStartDate}
-                required
-                compact
-                className="w-auto shrink-0"
+              <DateTimePopover
+                variant="start"
+                date={sDate}
+                time={sTime}
+                onChange={moveStart}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
-              />
-              <Input
-                type="time"
-                name="start_time"
-                required
-                value={sTime}
-                onChange={(e) => onStartTime(e.target.value)}
-                className="w-[4.5rem] shrink-0 px-2"
+                label="開始日時"
               />
               <span className="shrink-0 text-muted-foreground">–</span>
-              <div className="relative shrink-0">
-                <Input
-                  type="time"
-                  name="end_time"
-                  required
-                  value={eTime}
-                  onChange={(e) => onEndTime(e.target.value)}
-                  className="w-[4.5rem] px-2"
-                />
-                {wrapped && (
-                  <span className="pointer-events-none absolute -right-1 -top-2 rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600">
-                    +1日
-                  </span>
-                )}
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="iconSm"
-                onClick={toggleMultiDay}
-                aria-pressed={multiDay}
-                aria-label="終了日を別の日にする"
-                title="終了日を別の日にする"
-                className={`ml-auto shrink-0 ${multiDay ? "bg-accent text-foreground" : "text-muted-foreground"}`}
-              >
-                <CalendarRangeIcon size={16} />
-              </Button>
-            </div>
-          </div>
-
-          {multiDay ? (
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">終了日</span>
-              <DatePopover
-                name="end_date"
-                value={eDate}
-                onChange={onEndDate}
-                required
+              <DateTimePopover
+                variant="end"
+                date={eDate}
+                time={eTime}
+                baseDate={sDate}
+                onChange={setEnd}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
                 disabled={
                   parseYmd(sDate) ? { before: parseYmd(sDate)! } : undefined
                 }
+                label="終了日時"
               />
-            </label>
-          ) : (
-            <input type="hidden" name="end_date" value={submitEndDate} />
-          )}
+            </div>
+          </div>
+
+          <input type="hidden" name="start_date" value={sDate} />
+          <input type="hidden" name="start_time" value={sTime} />
+          <input type="hidden" name="end_date" value={eDate} />
+          <input type="hidden" name="end_time" value={eTime} />
 
           <label className={fieldCls}>
             <span className="text-muted-foreground">タイムゾーン</span>
