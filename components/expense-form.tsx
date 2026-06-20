@@ -29,7 +29,7 @@ import type { Currency, Visibility } from "@/lib/types/database";
 
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";
-import { TIMEZONE_OPTIONS } from "./event-form";
+import { tzDisplayLabel } from "./timezone-picker";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
 import { FieldLabel } from "./field-label";
@@ -41,13 +41,7 @@ import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 
-function tzLabel(iana: string): string {
-  return (
-    TIMEZONE_OPTIONS.find((o) => o.value === iana)?.label ??
-    iana.split("/").pop()?.replace(/_/g, " ") ??
-    iana
-  );
-}
+const tzLabel = tzDisplayLabel;
 
 type Member = {
   id: string;

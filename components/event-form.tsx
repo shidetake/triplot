@@ -20,7 +20,7 @@ import { parseYmd } from "@/lib/ymd";
 import { DatePopover } from "./date-popover";
 import { DateTimePopover } from "./date-time-popover";
 import { InlineDivider } from "./inline-divider";
-import { inputClass } from "./input-class";
+import { TimezonePicker, tzDisplayLabel } from "./timezone-picker";
 import { FieldLabel } from "./field-label";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
@@ -30,30 +30,9 @@ import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 import { MessageBox } from "./message-box";
 
-// 旅行でよく使うTZの短いリスト。先頭は旅行の既定TZ（呼び出し側で差し込む）。
-// label は日本語の短縮名のみ（IANA 名は出さない＝横幅を詰めて時差移動の出発地/到着地TZを
-// 1行2列に収めるため）。送信・内部値は value の IANA 文字列なので機能は不変。
-export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
-  { value: "Asia/Tokyo", label: "日本" },
-  { value: "Pacific/Honolulu", label: "ハワイ" },
-  { value: "America/Los_Angeles", label: "米国西海岸" },
-  { value: "America/New_York", label: "米国東海岸" },
-  { value: "Europe/London", label: "イギリス" },
-  { value: "Europe/Paris", label: "中央欧州" },
-  { value: "Asia/Bangkok", label: "タイ" },
-  { value: "Asia/Seoul", label: "韓国" },
-  { value: "Asia/Singapore", label: "シンガポール" },
-  { value: "Asia/Taipei", label: "台湾" },
-  { value: "Asia/Shanghai", label: "中国" },
-  { value: "Asia/Hong_Kong", label: "香港" },
-  { value: "Australia/Sydney", label: "シドニー" },
-  { value: "Pacific/Guam", label: "グアム" },
-];
-
 const initialState: EventMutationState = { ok: false, error: null };
 
 const inputLayout = "mt-1 block w-full min-w-0"; // <Input>／native <select> 共通レイアウト
-const inputCls = `${inputLayout} ${inputClass}`; // native <select> 用（recipe 込み）
 
 // セグメントトラックの各ピル（sr-only native radio を内包）。design-guidelines「セグメントトラック」。
 // sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
@@ -109,34 +88,13 @@ export type EventFormMode =
     }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
-function TzSelect({ name, value }: { name: string; value: string }) {
-  const opts = [...TIMEZONE_OPTIONS];
-  if (value && !opts.some((o) => o.value === value)) {
-    opts.unshift({ value, label: value });
-  }
-  return (
-    <select name={name} defaultValue={value} className={inputCls}>
-      {opts.map((o) => (
-        <option key={o.value} value={o.value}>
-          {o.label}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 // 通常予定のタイムゾーンは disclosure（「参加者: 全員 ▾」と同じパターン）。国内旅行では
-// まず触らないのでフル行を畳み、`タイムゾーン: ハワイ ▾` だけ出す。変える時だけ展開。
-// tz は常に hidden で送る（畳んだ状態でも値が落ちないよう、表示 select は name 無し）。
+// まず触らないのでフル行を畳み、`タイムゾーン: ハワイ ▾` だけ出す。変える時だけ展開して
+// 検索式の TimezonePicker を出す。tz は常に hidden で送る（畳んでも値が落ちないよう
+// disclosure 側で hidden を出し、TimezonePicker には name を渡さない）。
 function TzDisclosure({ value }: { value: string }) {
   const [tz, setTz] = useState(value);
   const [open, setOpen] = useState(false);
-  const opts = [...TIMEZONE_OPTIONS];
-  if (tz && !opts.some((o) => o.value === tz)) {
-    opts.unshift({ value: tz, label: tz });
-  }
-  // 「日本 (Asia/Tokyo)」→「日本」。括弧内の IANA 名は畳んだ表示では省く。
-  const short = (opts.find((o) => o.value === tz)?.label ?? tz).split(" (")[0];
 
   return (
     <div className="text-sm">
@@ -147,24 +105,16 @@ function TzDisclosure({ value }: { value: string }) {
         aria-expanded={open}
         className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
       >
-        <span>タイムゾーン: {short}</span>
+        <span>タイムゾーン: {tzDisplayLabel(tz)}</span>
         <ChevronIcon
           size={16}
           className={`transition-transform ${open ? "-rotate-90" : "rotate-90"}`}
         />
       </button>
       {open && (
-        <select
-          value={tz}
-          onChange={(e) => setTz(e.target.value)}
-          className={`mt-1.5 block w-full ${inputClass}`}
-        >
-          {opts.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </select>
+        <div className="mt-1.5">
+          <TimezonePicker value={tz} onChange={setTz} />
+        </div>
       )}
     </div>
   );
@@ -304,6 +254,8 @@ export function EventForm({
   const [arriveTime, setArriveTime] = useState(
     endInit.time || transitArriveInit.time,
   );
+  const [departTz, setDepartTz] = useState(tzInit);
+  const [arriveTz, setArriveTz] = useState(endTzInit);
   const [alldayStart, setAlldayStart] = useState(startInit.date);
   const [alldayEnd, setAlldayEnd] = useState(endInit.date || startInit.date);
 
@@ -479,15 +431,27 @@ export function EventForm({
           <input type="hidden" name="arrive_date" value={arriveDate} />
           <input type="hidden" name="arrive_time" value={arriveTime} />
 
-          {/* 出発地/到着地のタイムゾーンを1行2列に（短縮ラベルで値の横幅が収まるようになった）。 */}
+          {/* 出発地/到着地のタイムゾーンを1行2列に。検索式ピッカーで全ゾーンから選べる。 */}
           <div className="grid grid-cols-2 gap-2">
-            <label className={fieldCls}>
+            <label className={`${fieldCls} mt-1 block`}>
               <span className="text-muted-foreground">出発地タイムゾーン</span>
-              <TzSelect name="depart_tz" value={tzInit} />
+              <div className="mt-1">
+                <TimezonePicker
+                  name="depart_tz"
+                  value={departTz}
+                  onChange={setDepartTz}
+                />
+              </div>
             </label>
-            <label className={fieldCls}>
+            <label className={`${fieldCls} mt-1 block`}>
               <span className="text-muted-foreground">到着地タイムゾーン</span>
-              <TzSelect name="arrive_tz" value={endTzInit} />
+              <div className="mt-1">
+                <TimezonePicker
+                  name="arrive_tz"
+                  value={arriveTz}
+                  onChange={setArriveTz}
+                />
+              </div>
             </label>
           </div>
         </div>
