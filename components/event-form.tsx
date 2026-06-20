@@ -144,7 +144,7 @@ export function EventForm({
   tripEnd: string | null;
   state: EventFormMode;
   places: { id: string; name: string }[];
-  members: { id: string; display_name: string }[];
+  members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   onDone: () => void;
 }) {
@@ -621,6 +621,7 @@ export function EventForm({
                   <ToggleChip
                     key={m.id}
                     on={on}
+                    hue={m.color}
                     onClick={() => toggleParticipant(m.id)}
                   >
                     {m.display_name}
