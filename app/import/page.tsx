@@ -258,11 +258,17 @@ export default async function ImportPage() {
                             key={ch.id}
                             className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
                           >
-                            <span className="min-w-0 text-xs text-muted-foreground">
-                              {ch.receipt?.merchant || "(店名不明)"} /{" "}
-                              {ch.receipt?.total} {ch.receipt?.currency} /{" "}
-                              {ch.receipt?.date}
-                              {ch.receipt?.isUpdate ? "（調整）" : ""}
+                            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                              <span>{ch.receipt?.merchant || "(店名不明)"}</span>
+                              <InlineDivider />
+                              <span>
+                                {ch.receipt?.total} {ch.receipt?.currency}
+                              </span>
+                              <InlineDivider />
+                              <span>
+                                {ch.receipt?.date}
+                                {ch.receipt?.isUpdate ? "（調整）" : ""}
+                              </span>
                             </span>
                             <form action={unmergeAction}>
                               <input type="hidden" name="id" value={ch.id} />
