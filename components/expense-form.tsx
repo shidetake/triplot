@@ -46,6 +46,7 @@ const tzLabel = tzDisplayLabel;
 type Member = {
   id: string;
   display_name: string;
+  color: number | null; // メンバー色 hue（チップの色付けに使う）
 };
 
 export type Category = {
@@ -603,6 +604,7 @@ export function ExpenseForm({
                 <ToggleChip
                   key={m.id}
                   on={m.id === payer}
+                  hue={m.color}
                   onClick={() => setPayer(m.id)}
                 >
                   {m.display_name}
@@ -646,6 +648,7 @@ export function ExpenseForm({
                   <ToggleChip
                     key={m.id}
                     on={on}
+                    hue={m.color}
                     onClick={() => toggleSplit(m.id)}
                   >
                     {m.display_name}
