@@ -389,40 +389,42 @@ export function EventForm({
         )}
       </div>
 
-      {/* 出発・到着の日時。通常予定と同じ DateTimePopover チップ（タップでカレンダー＋ホイール）。
-          出発と到着は別TZ・別日が前提なので、両方フル日付＋時刻を表示し独立（追従/ガードなし）。 */}
+      {/* 出発＝日付＋時刻、到着＝時刻（別日なら ±N日）の横並び。通常予定の「開始 – 終了」と同じ表示。
+          出発・到着は別TZが前提なので追従/ガードは入れず独立（到着は前日 -1日もあり得るので
+          到着エディタの日付制限もしない）。 */}
       {kind3 === "transit" && (
         <div className="space-y-3">
-          <label className="flex items-center gap-2 text-sm">
-            <span className="w-8 text-muted-foreground">出発</span>
-            <DateTimePopover
-              variant="start"
-              date={departDate}
-              time={departTime}
-              onChange={(d, t) => {
-                setDepartDate(d);
-                setDepartTime(t);
-              }}
-              tripStart={tripStart}
-              tripEnd={tripEnd}
-              label="出発日時"
-            />
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <span className="w-8 text-muted-foreground">到着</span>
-            <DateTimePopover
-              variant="start"
-              date={arriveDate}
-              time={arriveTime}
-              onChange={(d, t) => {
-                setArriveDate(d);
-                setArriveTime(t);
-              }}
-              tripStart={tripStart}
-              tripEnd={tripEnd}
-              label="到着日時"
-            />
-          </label>
+          <div>
+            <span className="text-sm text-muted-foreground">日時</span>
+            <div className="mt-1 flex items-center gap-2">
+              <DateTimePopover
+                variant="start"
+                date={departDate}
+                time={departTime}
+                onChange={(d, t) => {
+                  setDepartDate(d);
+                  setDepartTime(t);
+                }}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
+                label="出発日時"
+              />
+              <span className="shrink-0 text-muted-foreground">–</span>
+              <DateTimePopover
+                variant="end"
+                date={arriveDate}
+                time={arriveTime}
+                baseDate={departDate}
+                onChange={(d, t) => {
+                  setArriveDate(d);
+                  setArriveTime(t);
+                }}
+                tripStart={tripStart}
+                tripEnd={tripEnd}
+                label="到着日時"
+              />
+            </div>
+          </div>
 
           <input type="hidden" name="depart_date" value={departDate} />
           <input type="hidden" name="depart_time" value={departTime} />

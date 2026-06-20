@@ -80,9 +80,9 @@ export function DateTimePopover({
         ) : (
           <span className="flex items-center gap-1">
             <span className="text-foreground">{time}</span>
-            {dayDelta > 0 && (
+            {dayDelta !== 0 && (
               <span className="rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600">
-                +{dayDelta}日
+                {dayDelta > 0 ? `+${dayDelta}` : dayDelta}日
               </span>
             )}
           </span>
