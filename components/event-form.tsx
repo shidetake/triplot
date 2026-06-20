@@ -441,39 +441,38 @@ export function EventForm({
       )}
 
       {kind3 === "allday" && (
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 gap-2">
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">開始日</span>
-              <DatePopover
-                name="start_date"
-                value={alldayStart}
-                onChange={setAlldayStartG}
-                required
-                tripStart={tripStart}
-                tripEnd={tripEnd}
-              />
-            </label>
-            <div />
-            <label className={fieldCls}>
-              <span className="text-muted-foreground">終了日</span>
-              <DatePopover
-                name="end_date"
-                value={alldayEnd}
-                onChange={setAlldayEnd}
-                required
-                tripStart={tripStart}
-                tripEnd={tripEnd}
-                disabled={
-                  parseYmd(alldayStart)
-                    ? { before: parseYmd(alldayStart)! }
-                    : undefined
-                }
-              />
-            </label>
-            <div />
+        // 開始日–終了日を横並び（通常予定の日時と同じ並び・年なし M/d(曜)・時刻なし）。
+        // 入力は従来どおりカレンダーのみ（DatePopover）。終日はTZ無関係（tz は送らない）。
+        <div>
+          <span className="text-sm text-muted-foreground">日付</span>
+          <div className="mt-1 flex items-center gap-2">
+            <DatePopover
+              name="start_date"
+              value={alldayStart}
+              onChange={setAlldayStartG}
+              required
+              compact
+              className="w-auto shrink-0"
+              tripStart={tripStart}
+              tripEnd={tripEnd}
+            />
+            <span className="shrink-0 text-muted-foreground">–</span>
+            <DatePopover
+              name="end_date"
+              value={alldayEnd}
+              onChange={setAlldayEnd}
+              required
+              compact
+              className="w-auto shrink-0"
+              tripStart={tripStart}
+              tripEnd={tripEnd}
+              disabled={
+                parseYmd(alldayStart)
+                  ? { before: parseYmd(alldayStart)! }
+                  : undefined
+              }
+            />
           </div>
-          {/* 終日はTZ無関係。サーバ側で UTC 固定にする（tz は送らない） */}
         </div>
       )}
 
