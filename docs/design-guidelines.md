@@ -347,64 +347,30 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 
 ## 定型部品（de facto パターン）
 
-繰り返し使う小さい部品の標準形。新しく似たものを作るときはこれをコピーする:
+繰り返し使う小さい部品の標準形。新しく似たものを作るときはこれをコピーする。
+**「使う部品・クラス」列のものを必ず使い、手書きの span / 独自クラスで再現しない**（単一の真実）。
 
-- **× 閉じるボタン**（フォーム・ポップアップ右上）: 専用部品 **`<CloseButton>`**（`components/close-button.tsx`）。
-  subtle 色・rounded-full・h-6 のレシピと `aria-label`/`title`（既定「閉じる」）を内包。位置・サイズ調整は `className` で渡す（手書きの span で再現しない）。
-- **インラインバッジ**（件数・状態の小さな添え物）:
-  `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`。
-  「プライベート」可視性バッジ（private な場所/費用の名前の隣）は専用部品 **`<PrivateBadge>`**（`components/private-badge.tsx`）で
-  レシピ＋文言を1ソース化済み。private 表示はこれを使う（手書きの span で再現しない）。
-- **破線ボーダー＝「ここに追加できる」**: 控えめな追加アクション（割り勘の行追加・地図への登録）は
-  `border border-dashed border-foreground/20` で枠だけ描く。実線ボタンより一段弱い「空きスロット」の表現。
-- **トグルチップ**（参加者・割り勘対象などの複数選択）: 共通部品 **`<ToggleChip on=...>`**（`components/toggle-chip.tsx`）。
-  選択＝primary 塗り／非選択＝zinc+ring のレシピと `aria-pressed` を内包（クラスの中身は同ファイル）。手書きで再現せず ToggleChip を使う。
-- **フォームフッター**（ポップオーバーフォーム下部）: `flex gap-2` で［削除 `h-9 w-9` Destructive（編集時のみ）］＋
-  ［送信 `h-9 flex-1` Primary・アイコン］。送信が flex-1 で主役、削除は正方形で控えめ。
-- **空状態**: 枠・イラストは作らず `text-sm text-muted-foreground` のプレーン文。コピーは
-  「まだ〜ありません。」＋可能なら次のアクションへの誘導を一文（例: 「上の転送先アドレスにレシートを転送してみてください」）。
-- **hover を持つ要素は素の `transition`** を付ける（`transition-colors` 等のプロパティ限定は使わない。短い汎用トランジションで統一）。
-- **金額表示は `formatAmount`**（`lib/formatAmount.ts`）。`Intl.NumberFormat("ja-JP", { style: "currency" })` で
-  JPY は小数なし・USD は2桁。`¥${n}` のような手書き整形や、各コンポーネントでの再定義はしない（単一の真実）。
-- **「誰が」は `MemberAvatar`**（色丸＋表示名の先頭1文字。`sm`=18px / `md`=24px）。作成者・支払者・参加者など
-  人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]）。
-- **フォームのフィールドラベルは `<FieldLabel>`**（`components/field-label.tsx`）。`font-medium`（foreground 87%）の
-  ラベル span を集約した最小プリミティブ。必須は `<FieldLabel required>` で赤アスタリスク（`*` 直書きはしない）。
-  任意フィールドには何も付けない（`*` の有無で必須/任意を示す）。
-  外側の `<label className="block text-sm">` と入力はインラインのまま（フィールドのレイアウトは多様なので包まない）。
-- **切り詰め**: 1行省略は `truncate`（名前・タイトル・候補行）、複数行は `line-clamp-2`。リスト内の可変長
-  テキストは必ずどちらかで止める（`min-w-0` を親に置かないと truncate が効かない点に注意）。
-- **「1つ選ぶ」コントロールの配色レシピ**（セグメント・選択ピル・トグルボタン等）:
-  選択中 = `border-primary bg-primary text-primary-foreground` ／
-  非選択 = `border-foreground/20 text-muted-foreground hover:bg-foreground/10`。
-  （「選択・アクティブ = primary」の具体形。配色はこの1レシピで統一）
-- **メニュー/ドロップダウンの選択行**（アカウント/⋯メニュー・セレクト・オートコンプリート候補・チェックリスト等、
-  浮遊パネルに並ぶ選択可能な行）: 共通定数 **`menuItemClass`**（中身は `components/menu-item.ts`。幅・padding・hover・focus リングを内包）。
-  各行は display（単一行 `flex items-center gap-2` / 候補2行 `block`）・文字色（補助は `text-muted-foreground`）・選択状態（`bg-accent font-medium`）だけ足す。
-  **パディングは `menuItemClass` で統一**（独自の padding を作らない）。器の幅だけは中身依存（`w-24`〜`w-full`）。destructive な行は hover 色が違う（`hover:bg-red-600/10`）ので定数を使わず個別に書く。
-- **セグメントトラック（横並びで1つ選ぶ標準構造）**:
-  器 = `flex gap-1 rounded-md border border-foreground/10 p-1`、各セグメント = `flex-1 rounded px-2 py-1.5 text-xs font-medium`（**セグメント自身に枠は付けない**）。
-  選択色は上の配色レシピ（選択 = `bg-primary text-primary-foreground` の塗り）。
-  「各ボタンが自前の枠を持つ独立ボタン型」は使わず、**1つの器にピルを内包するトラック型に寄せる**。
-  - **下に敷くのは `sr-only` の native radio group ＋装飾した `<label>`**（「部品の作り方」の 1b＝native radio を styling）。
-    こうすると radiogroup セマンティクス・矢印キー移動・フォーカスが native のまま効く。種別（通常/終日/時差移動）も
-    new/copy（旅行作成）もこの形。**素の `<button>` を並べる実装は a11y が弱いので使わない。**
-  - 選択でフォーム内容が変わる多択（種別: 通常/終日/時差移動）も値の択一（新規/コピー）もこの形。
-- **数字の揃えは `tabular-nums`**: 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける。
-- **セクション見出し**: `<h2 className="text-lg font-semibold">`。右に操作（追加ボタン・HelpTip 等）を置くときは
-  `<div className="flex items-center justify-between gap-2">` で見出しと操作を両端に並べる。操作が無ければ素の h2。
-- **アバター画像**: 丸い容器（`rounded-full overflow-hidden`）の中に `<img className="h-full w-full object-cover" />`。
-  画像が無いときは頭文字フォールバック（[[色（メンバー・予定）]] の MemberAvatar / avatar-upload）。
-  - **自分（ログインユーザ）のアバターは中立グレー**＝共通定数 **`selfAvatarClass`**（中身は `components/self-avatar.ts`。中立 zinc の丸）。サイズ・hover・中身（写真は object-cover／無ければ頭文字）は各ホストが足す。
-    これは**メンバー色（hue）とは別系統**：`MemberAvatar` の hue 丸は「旅行内で誰か」を色で識別する用途、アカウント自身のアバター（右上メニュー `account-menu` / 設定の `avatar-upload`）は識別不要なので中立 zinc で統一する。自分のアバターに hue を当てない。
-- **フォームのフィールド構造**: `<label className="block text-sm"><FieldLabel required?>ラベル</FieldLabel><input className="mt-1 ..." /></label>`。
-  入力との間隔は `mt-1`、フィールド間は `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない）。
-- **日時の表示整形**（`lib/schedule.ts` の `formatDayLabel`・`formatMinutes` 等を使う。手書きしない）:
-  日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き = `M/D(曜)`／時刻 = `HH:MM`（24h・**時もゼロ埋め**〔標準は `9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／
-  期間 = `M/D(曜) → M/D(曜)`。
-  - **0時からの通算分 → 時刻文字列は `formatMinutes(min)`**（予定時刻・フォーム初期値・カレンダー軸の単一ソース）。各所で `Math.floor(min/60)` を手書きしない。
-  - **例外: 高密度な週カレンダーは時の先頭ゼロを落として横幅を詰める**（`9:00`）＝`formatMinutes(min, false)`。`text-[10px]` 等と同じ「高密度グリッドの例外」。標準（フォーム・一覧）は既定の `09:00`。
-  - **react-day-picker 用のローカル日付 ↔ `"YYYY-MM-DD"` は `lib/ymd.ts` の `parseYmd` / `formatYmd`**（DatePopover/DateRangePopover/EventForm 共通）。schedule.ts は UTC 専用なので date-picker のローカル `Date` 変換はこちら。
+| パターン | 使う部品・クラス・関数 | レシピ・ルール・注意 |
+|---|---|---|
+| **× 閉じるボタン**（フォーム・ポップアップ右上） | `<CloseButton>`（`components/close-button.tsx`） | subtle 色・rounded-full・h-6 ＋ `aria-label`/`title`（既定「閉じる」）を内包。位置・サイズは `className` で渡す |
+| **インラインバッジ**（件数・状態の小さな添え物） | 素のクラス／private 可視性は `<PrivateBadge>`（`components/private-badge.tsx`） | `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`。private な場所/費用名の隣の「プライベート」バッジは PrivateBadge でレシピ＋文言を1ソース化 |
+| **破線ボーダー＝「ここに追加できる」** | `border border-dashed border-foreground/20` | 控えめな追加アクション（割り勘の行追加・地図への登録）。実線ボタンより一段弱い「空きスロット」の表現 |
+| **トグルチップ**（参加者・割り勘対象などの複数選択） | `<ToggleChip on=...>`（`components/toggle-chip.tsx`） | 選択＝primary 塗り／非選択＝zinc+ring ＋ `aria-pressed` を内包 |
+| **フォームフッター**（ポップオーバーフォーム下部） | `flex gap-2` レイアウト | ［削除 `h-9 w-9` Destructive（編集時のみ）］＋［送信 `h-9 flex-1` Primary・アイコン］。送信が flex-1 で主役、削除は正方形で控えめ |
+| **空状態** | `text-sm text-muted-foreground` のプレーン文 | 枠・イラストは作らない。「まだ〜ありません。」＋可能なら次のアクションへの誘導を一文（例:「上の転送先アドレスにレシートを転送してみてください」） |
+| **hover を持つ要素** | 素の `transition` | `transition-colors` 等のプロパティ限定は使わない（短い汎用トランジションで統一） |
+| **金額表示** | `formatAmount`（`lib/formatAmount.ts`） | `Intl.NumberFormat("ja-JP", { style: "currency" })`。JPY は小数なし・USD は2桁。`¥${n}` の手書き整形・各所での再定義はしない |
+| **「誰が」**（作成者・支払者・参加者） | `MemberAvatar`（`sm`=18px / `md`=24px） | 色丸＋表示名の先頭1文字。人を示す箇所は必ずこれ（色トーンはメンバーチップと統一、[[色（メンバー・予定）]]） |
+| **フォームのフィールドラベル** | `<FieldLabel>`（`components/field-label.tsx`） | `font-medium`（foreground 87%）の最小プリミティブ。必須は `<FieldLabel required>` で赤 `*`（直書きしない）。任意は何も付けない（`*` の有無で必須/任意を示す）。外側 `<label className="block text-sm">` と入力はインラインのまま |
+| **切り詰め** | 1行 `truncate` ／ 複数行 `line-clamp-2` | リスト内の可変長テキスト（名前・タイトル・候補行）は必ずどちらかで止める。親に `min-w-0` が無いと truncate が効かない |
+| **「1つ選ぶ」コントロールの配色レシピ**（セグメント・選択ピル・トグルボタン等） | 配色レシピ（クラス） | 選択中 = `border-primary bg-primary text-primary-foreground`／非選択 = `border-foreground/20 text-muted-foreground hover:bg-foreground/10`。「選択・アクティブ = primary」の具体形 |
+| **メニュー/ドロップダウンの選択行**（アカウント/⋯メニュー・セレクト・候補・チェックリスト等の浮遊パネルの行） | `menuItemClass`（`components/menu-item.ts`） | 幅・padding・hover・focus リングを内包。各行は display（単一行 `flex items-center gap-2` / 候補2行 `block`）・文字色（補助は `text-muted-foreground`）・選択状態（`bg-accent font-medium`）だけ足す。padding は統一（独自に作らない）。器の幅だけ中身依存（`w-24`〜`w-full`）。destructive な行は hover 色が違う（`hover:bg-red-600/10`）ので定数を使わず個別に書く |
+| **セグメントトラック**（横並びで1つ選ぶ標準構造） | `sr-only` の native radio group ＋装飾した `<label>` | 器 = `flex gap-1 rounded-md border border-foreground/10 p-1`、各セグメント = `flex-1 rounded px-2 py-1.5 text-xs font-medium`（セグメント自身に枠は付けない）。選択色は上の配色レシピ。独立ボタン型は使わずトラック型に寄せる。native radio を敷くと radiogroup セマンティクス・矢印キー移動・フォーカスが native のまま効く（種別 通常/終日/時差移動・新規/コピー）。素の `<button>` 並べは a11y が弱いので使わない |
+| **数字の揃え** | `tabular-nums` | 桁がガタつくと困る数字（時刻・件数・金額の縦並び）に付ける |
+| **セクション見出し** | `<h2 className="text-lg font-semibold">` | 右に操作（追加ボタン・HelpTip 等）を置くときは `<div className="flex items-center justify-between gap-2">` で両端に並べる。操作が無ければ素の h2 |
+| **アバター画像** | 丸い容器＋`<img className="h-full w-full object-cover" />` ／ 自分は `selfAvatarClass`（`components/self-avatar.ts`） | 画像が無いときは頭文字フォールバック。自分（ログインユーザ）のアバターは中立 zinc（`selfAvatarClass`）＝メンバー色 hue とは別系統。`MemberAvatar` の hue 丸は旅行内で誰かを色で識別する用途、アカウント自身（`account-menu` / `avatar-upload`）は識別不要なので中立。自分のアバターに hue を当てない |
+| **フォームのフィールド構造** | `<label className="block text-sm">…</label>` | `<FieldLabel required?>ラベル</FieldLabel>` ＋入力 `<input className="mt-1 ..." />`。入力との間隔 `mt-1`、フィールド間 `space-y-3`。ラベル色は FieldLabel が foreground(87%) を担保（muted にしない） |
+| **日時の表示整形** | `lib/schedule.ts`（`formatDayLabel`・`formatMinutes` 等）／ローカル日付は `lib/ymd.ts`（`parseYmd`/`formatYmd`） | 手書きしない。日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き `M/D(曜)`／時刻 `HH:MM`（24h・時もゼロ埋め〔`9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／期間 `M/D(曜) → M/D(曜)`。0時からの通算分→時刻は `formatMinutes(min)`（`Math.floor(min/60)` を手書きしない）。例外: 高密度な週カレンダーは時の先頭ゼロを落とす `formatMinutes(min, false)`（`9:00`）。react-day-picker のローカル `Date` ↔ `"YYYY-MM-DD"` は ymd.ts（schedule.ts は UTC 専用） |
 
 ## 薄くする手段：色トークン vs opacity
 
