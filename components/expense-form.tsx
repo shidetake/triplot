@@ -596,17 +596,19 @@ export function ExpenseForm({
             />
           </button>
           {payerOpen && (
-            <select
-              value={payer}
-              onChange={(e) => setPayer(e.target.value)}
-              className={`mt-1.5 block w-full ${inputClass}`}
-            >
+            // 割り勘対象と同じチップ選択に揃える（UI 統一）。ただし支払者は1人なので
+            // 単一選択＝タップしたメンバーだけ on になり他は外れる。
+            <div className="mt-1.5 flex flex-wrap gap-1">
               {members.map((m) => (
-                <option key={m.id} value={m.id}>
+                <ToggleChip
+                  key={m.id}
+                  on={m.id === payer}
+                  onClick={() => setPayer(m.id)}
+                >
                   {m.display_name}
-                </option>
+                </ToggleChip>
               ))}
-            </select>
+            </div>
           )}
         </div>
       )}
