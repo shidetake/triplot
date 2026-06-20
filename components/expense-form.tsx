@@ -446,40 +446,8 @@ export function ExpenseForm({
         />
       </label>
 
-      {/* 支払った人。既定は自分＝普通は入力者なので折りたたみ（割り勘対象と同じ disclosure）。
-          タップで展開して別の人に変更。値は常に hidden で送る（畳んでも落ちない）。 */}
+      {/* 支払者は常に hidden で送る（UI は公開範囲の下＝割り勘対象の隣に置く。下記参照）。 */}
       <input type="hidden" name="payer_member_id" value={payer} />
-      {members.length > 1 ? (
-        <div className="text-sm">
-          <button
-            type="button"
-            onClick={() => setPayerOpen((v) => !v)}
-            aria-expanded={payerOpen}
-            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
-          >
-            <span>
-              支払った人: {members.find((m) => m.id === payer)?.display_name ?? "?"}
-            </span>
-            <ChevronIcon
-              size={16}
-              className={`transition-transform ${payerOpen ? "-rotate-90" : "rotate-90"}`}
-            />
-          </button>
-          {payerOpen && (
-            <select
-              value={payer}
-              onChange={(e) => setPayer(e.target.value)}
-              className={`mt-1.5 block w-full ${inputClass}`}
-            >
-              {members.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.display_name}
-                </option>
-              ))}
-            </select>
-          )}
-        </div>
-      ) : null}
 
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
@@ -601,6 +569,41 @@ export function ExpenseForm({
         </fieldset>
       ) : (
         <input type="hidden" name="visibility" value={visibility} />
+      )}
+
+      {/* 支払った人。割り勘対象と同じ「メンバー選択」なので隣に置く。既定は自分＝普通は
+          入力者なので折りたたみ（あまり触らない）。タップで展開して別の人に変更。
+          メンバー1人の旅行では常に自分なので UI 省略（hidden は上で送る）。 */}
+      {members.length > 1 && (
+        <div className="text-sm">
+          <button
+            type="button"
+            onClick={() => setPayerOpen((v) => !v)}
+            aria-expanded={payerOpen}
+            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            <span>
+              支払った人: {members.find((m) => m.id === payer)?.display_name ?? "?"}
+            </span>
+            <ChevronIcon
+              size={16}
+              className={`transition-transform ${payerOpen ? "-rotate-90" : "rotate-90"}`}
+            />
+          </button>
+          {payerOpen && (
+            <select
+              value={payer}
+              onChange={(e) => setPayer(e.target.value)}
+              className={`mt-1.5 block w-full ${inputClass}`}
+            >
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.display_name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
       )}
 
       {/* 割り勘対象。event-form の参加者と同じ disclosure + chip パターン。
