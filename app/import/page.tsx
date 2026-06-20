@@ -5,6 +5,7 @@ import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { CloseButton } from "@/components/close-button";
 import { ImportAddress } from "@/components/import-address";
+import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
 import { buildImportAddress } from "@/lib/receipt/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
@@ -166,11 +167,26 @@ export default async function ImportPage() {
                   <div className="truncate font-medium">
                     {row.receipt?.merchant || "(店名不明)"}
                   </div>
-                  <div className="mt-1 text-sm text-muted-foreground">
-                    {row.receipt
-                      ? `${row.receipt.total} ${row.receipt.currency} / ${row.receipt.date} / ${row.receipt.category}`
-                      : "(読み取り内容なし)"}
-                    {row.receipt?.location ? ` / ${row.receipt.location}` : ""}
+                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                    {row.receipt ? (
+                      <>
+                        <span>
+                          {row.receipt.total} {row.receipt.currency}
+                        </span>
+                        <InlineDivider />
+                        <span>{row.receipt.date}</span>
+                        <InlineDivider />
+                        <span>{row.receipt.category}</span>
+                        {row.receipt.location ? (
+                          <>
+                            <InlineDivider />
+                            <span>{row.receipt.location}</span>
+                          </>
+                        ) : null}
+                      </>
+                    ) : (
+                      "(読み取り内容なし)"
+                    )}
                   </div>
 
                   {/* 旅行の割り当て */}
@@ -224,10 +240,17 @@ export default async function ImportPage() {
                       </summary>
                       <div className="mt-2 space-y-1">
                         {/* この下書き自身の元メール（分けられない本体） */}
-                        <div className="rounded bg-zinc-50 px-2 py-1 text-xs text-muted-foreground">
-                          {row.own?.merchant || "(店名不明)"} / {row.own?.total}{" "}
-                          {row.own?.currency} / {row.own?.date}
-                          {row.own?.isUpdate ? "（調整）" : ""}
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-zinc-50 px-2 py-1 text-xs text-muted-foreground">
+                          <span>{row.own?.merchant || "(店名不明)"}</span>
+                          <InlineDivider />
+                          <span>
+                            {row.own?.total} {row.own?.currency}
+                          </span>
+                          <InlineDivider />
+                          <span>
+                            {row.own?.date}
+                            {row.own?.isUpdate ? "（調整）" : ""}
+                          </span>
                         </div>
                         {/* 合体された子メール（分けられる） */}
                         {row.children.map((ch) => (

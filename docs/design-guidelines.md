@@ -372,6 +372,7 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 | **× 閉じるボタン**（フォーム・ポップアップ右上） | `<CloseButton>`（`components/close-button.tsx`） | subtle 色・rounded-full・h-6 ＋ `aria-label`/`title`（既定「閉じる」）を内包。**専用行を作らず form 右上角に重ねる**＝ form を `relative`、`<CloseButton className="absolute right-2 top-2 z-10" />`（`flex justify-end` の独立行は使わない＝縦を 1 行ぶん詰める）。**先頭要素が × の下に潜るとき（全幅のセグメントトラック等）だけ、その要素に右クリアランス `mr-7` を足す**。先頭が「短いラベル＋全幅入力」なら × はラベル行の空いた右側に乗るだけなのでクリアランス不要 |
 | **インラインバッジ**（件数・状態の小さな添え物） | 素のクラス／private 可視性は `<PrivateBadge>`（`components/private-badge.tsx`） | `rounded bg-zinc-100 px-1.5 text-xs text-muted-foreground`。private な場所/費用名の隣の「プライベート」バッジは PrivateBadge でレシピ＋文言を1ソース化 |
 | **破線ボーダー＝「ここに追加できる」** | `border border-dashed border-foreground/20` | 控えめな追加アクション（割り勘の行追加・地図への登録）。実線ボタンより一段弱い「空きスロット」の表現 |
+| **横並び要素の区切り（縦棒）** | `<InlineDivider>`（`components/inline-divider.tsx`） | 横に並ぶ複数要素を区切る縦棒は **`/`・`・` のテキスト区切りでなく `<InlineDivider>`**（1px 幅・`bg-foreground/10`＝ボーダーの仕切り段。アイコンではない）。`flex items-center gap-2` の要素間に挟む。例: 旅行ヘッダの「日程 ｜ 精算通貨」、取り込み行の「金額 ｜ 日付 ｜ カテゴリ」、公開範囲 ｜ 要予約。**ただし分数（`3 / 10 件`）やパス・URL の `/` は区切りではないので変えない** |
 | **トグルチップ**（参加者・割り勘対象などの複数選択） | `<ToggleChip on=...>`（`components/toggle-chip.tsx`） | 選択＝primary 塗り／非選択＝zinc+ring ＋ `aria-pressed` を内包 |
 | **フォームフッター**（ポップオーバーフォーム下部） | `flex gap-2` レイアウト | ［削除 `h-9 w-9` Destructive（編集時のみ）］＋［送信 `h-9 flex-1` Primary・アイコン］。送信が flex-1 で主役、削除は正方形で控えめ |
 | **空状態** | `text-sm text-muted-foreground` のプレーン文 | 枠・イラストは作らない。「まだ〜ありません。」＋可能なら次のアクションへの誘導を一文（例:「上の転送先アドレスにレシートを転送してみてください」） |

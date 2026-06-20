@@ -19,6 +19,7 @@ import { parseYmd } from "@/lib/ymd";
 
 import { DatePopover } from "./date-popover";
 import { DateTimePopover } from "./date-time-popover";
+import { InlineDivider } from "./inline-divider";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
@@ -605,7 +606,7 @@ export function EventForm({
             </>
           )}
         </div>
-        <div aria-hidden className="h-4 w-px bg-foreground/10" />
+        <InlineDivider className="h-4" />
         <label className="flex items-center gap-2">
           <input
             type="checkbox"

@@ -10,6 +10,7 @@ import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
+import { InlineDivider } from "@/components/inline-divider";
 import { MembersSection } from "@/components/members-section";
 import type { PlaceRow, PlaceStatus } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
@@ -472,9 +473,12 @@ export default async function TripDetailPage({
 
       <header className="mt-4">
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"} / 精算通貨:{" "}
-          {trip.default_currency}
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+          <span>
+            {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
+          </span>
+          <InlineDivider />
+          <span>精算通貨: {trip.default_currency}</span>
         </p>
       </header>
 
