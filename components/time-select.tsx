@@ -15,9 +15,11 @@ const MINUTE_STEP = 5;
 const pad = (n: number) => String(n).padStart(2, "0");
 
 const ITEM_H = 32; // 各行の高さ(px)
-const VISIBLE = 3; // 同時に見える行数（縦幅 = VISIBLE * ITEM_H）
+// 縦幅。中央行はフル表示で、上下の隣行が ~1/3 ずつ切れて覗く「ホイールらしい」高さ。
+// (WHEEL_H - ITEM_H)/2 = 隣行の見える量 = 22px ≒ 2/3（1/3 が切れる）。
+const WHEEL_H = 76;
 const COPIES = 9; // 無限ループ用の複製数（奇数。中央コピーを基準に上下へバッファ）
-const CENTER_OFFSET = ((VISIBLE - 1) / 2) * ITEM_H; // 選択行を中央に置く上オフセット
+const CENTER_OFFSET = (WHEEL_H - ITEM_H) / 2; // 選択行を中央に置く上オフセット
 
 function Wheel({
   values,
@@ -61,7 +63,7 @@ function Wheel({
       role="listbox"
       aria-label={label}
       className="w-14 overflow-y-auto overscroll-contain rounded-md border border-foreground/20"
-      style={{ height: VISIBLE * ITEM_H }}
+      style={{ height: WHEEL_H }}
     >
       {Array.from({ length: COPIES * len }, (_, i) => {
         const v = values[i % len];
