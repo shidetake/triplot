@@ -8,6 +8,7 @@ import { Menu } from "@base-ui/react/menu";
 import { EditIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { menuItemClass } from "./menu-item";
+import { selfAvatarClass } from "./self-avatar";
 
 // アバターの変更。負債を避けるため:
 //  - アップロード前にクライアントで 256px 正方形にリサイズ（数十KB・容量/転送ほぼゼロ）
@@ -157,7 +158,7 @@ export function AvatarUpload({
               disabled={busy}
               aria-label="アバターを変更"
               title="アバターを変更"
-              className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
+              className={`${selfAvatarClass} h-16 w-16 text-xl transition hover:opacity-90 disabled:opacity-50`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={currentUrl!} alt="" className="h-full w-full object-cover" />
@@ -188,7 +189,7 @@ export function AvatarUpload({
             disabled={busy}
             aria-label="アバターを変更"
             title="アバターを変更"
-            className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-xl font-medium text-white ring-1 ring-foreground/10 transition hover:opacity-90 disabled:opacity-50"
+            className={`${selfAvatarClass} h-16 w-16 text-xl transition hover:opacity-90 disabled:opacity-50`}
           >
             {currentUrl ? (
               // Google 写真など（hasCustom=false でも実効アバターはありうる）。

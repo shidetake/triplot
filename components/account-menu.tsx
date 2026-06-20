@@ -8,6 +8,7 @@ import { Menu } from "@base-ui/react/menu";
 import { LogOutIcon, SettingsIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { menuItemClass } from "./menu-item";
+import { selfAvatarClass } from "./self-avatar";
 
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
 // タップするとドロップダウンで email / 設定 / ログアウト。Apple ログインは写真を返さない
@@ -37,7 +38,7 @@ export function AccountMenu({
       <Menu.Trigger
         aria-label="アカウント"
         title={email ?? "アカウント"}
-        className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-zinc-700 text-sm font-medium text-white ring-1 ring-foreground/10 transition hover:ring-foreground/40"
+        className={`${selfAvatarClass} h-8 w-8 text-sm transition hover:ring-foreground/40`}
       >
         {avatarUrl ? (
           // 外部（Google）のアバター URL。next/image のドメイン設定を増やさず素の img で。

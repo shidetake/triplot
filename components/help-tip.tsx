@@ -39,7 +39,7 @@ export function HelpTip({
           className="z-50"
         >
           <Tooltip.Popup
-            className={`${widthClass} rounded-md bg-zinc-800 px-2 py-1.5 text-xs leading-snug text-white shadow-lg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0`}
+            className={`${widthClass} rounded-md bg-primary px-2 py-1.5 text-xs leading-snug text-primary-foreground shadow-lg transition-opacity duration-150 data-[ending-style]:opacity-0 data-[starting-style]:opacity-0`}
           >
             {children}
           </Tooltip.Popup>

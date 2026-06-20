@@ -9,6 +9,7 @@ import {
   removeTripPinOptionAction,
 } from "@/app/trips/[tripId]/actions";
 import { ICON_CATALOG, getIcon, type PinOption } from "@/lib/placeIcons";
+import { Button } from "@/components/ui/button";
 
 import { confirmDialog } from "./confirm-dialog";
 import { PlaceIcon } from "./place-list";
@@ -152,23 +153,19 @@ export function PlaceIconPicker({
             <p className="px-4 pb-2 text-xs text-red-600">{error}</p>
           )}
           <div className="flex justify-end gap-2 px-4 pb-3">
-            <button
+            <Button
               type="button"
+              variant="outline"
               onClick={onClose}
               disabled={isPending}
-              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
             >
               キャンセル
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant={mode === "remove" ? "destructive" : "primary"}
               onClick={submit}
               disabled={!selected || isPending}
-              className={`rounded-lg px-4 py-1.5 text-sm font-medium transition disabled:opacity-50 ${
-                mode === "remove"
-                  ? "bg-red-600 text-white hover:bg-red-700"
-                  : "bg-primary text-primary-foreground hover:bg-primary/90"
-              }`}
             >
               {isPending
                 ? mode === "remove"
@@ -177,7 +174,7 @@ export function PlaceIconPicker({
                 : mode === "remove"
                   ? "削除"
                   : "追加"}
-            </button>
+            </Button>
           </div>
         </footer>
         </Dialog.Popup>
