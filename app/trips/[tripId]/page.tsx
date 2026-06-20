@@ -114,7 +114,7 @@ export default async function TripDetailPage({
     supabase
       .from("todos")
       .select(
-        "id, title, priority, done, created_at, created_by_member_id, kind, event_id, todo_likes(member_id)",
+        "id, title, priority, done, created_at, created_by_member_id, kind, event_id, visibility, todo_likes(member_id)",
       )
       .eq("trip_id", tripId)
       // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
@@ -238,6 +238,7 @@ export default async function TripDetailPage({
       created_by_member_id: t.created_by_member_id,
       kind: t.kind as TodoKind,
       event_id: t.event_id,
+      visibility: t.visibility as Visibility,
       likeCount: likes.length,
       iLiked: likes.some((l) => l.member_id === me.id),
     };

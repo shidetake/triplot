@@ -31,7 +31,12 @@ import {
 import { MemberAvatar } from "@/components/member-avatar";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
-import type { TodoKind, TodoPriority } from "@/lib/types/database";
+import type {
+  TodoKind,
+  TodoPriority,
+  Visibility,
+} from "@/lib/types/database";
+import { PrivateBadge } from "@/components/private-badge";
 
 export type TodoRow = {
   id: string;
@@ -43,6 +48,8 @@ export type TodoRow = {
   kind: TodoKind;
   // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
   event_id: string | null;
+  // private 予約TODO（private 予定由来）は作成者だけに見える。手動TODOは常に shared。
+  visibility: Visibility;
   // 現地TODO のいいね（prep は常に 0/false）。
   likeCount: number;
   iLiked: boolean;
@@ -250,6 +257,7 @@ export function TodoSection({
       created_by_member_id: myMemberId,
       kind,
       event_id: null,
+      visibility: "shared", // 手動追加TODOは常に共有（private は予約TODO経由のみ）
       likeCount: 0,
       iLiked: false,
     };
@@ -405,17 +413,24 @@ export function TodoSection({
                     className="w-full bg-transparent text-sm outline-none"
                   />
                 ) : (
-                  <span
-                    onClick={() => startEdit(todo)}
-                    className={`block cursor-text truncate text-sm ${
-                      todo.done
-                        ? "text-subtle-foreground line-through"
-                        : "text-foreground"
-                    }`}
-                  >
-                    {todo.event_id && <ReservationIcon size={16} className="mr-1" />}
-                    {todo.title}
-                  </span>
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      onClick={() => startEdit(todo)}
+                      className={`min-w-0 cursor-text truncate text-sm ${
+                        todo.done
+                          ? "text-subtle-foreground line-through"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {todo.event_id && (
+                        <ReservationIcon size={16} className="mr-1" />
+                      )}
+                      {todo.title}
+                    </span>
+                    {todo.visibility === "private" && (
+                      <PrivateBadge className="shrink-0" />
+                    )}
+                  </div>
                 )}
               </div>
 
