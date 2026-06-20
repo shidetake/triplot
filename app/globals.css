@@ -5,8 +5,8 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* MVP 中は OS のダークモードに追従させず、ライト UI で固定する。
-     全 UI を dark: variant で書き分ける負荷を後回しにするため。 */
+  /* OS のダークモードに追従させず、ライト UI で固定する。
+     全 UI を dark: variant で書き分ける負荷を後回しにするため（固定が外れるまで dark: は足さない）。 */
   color-scheme: light;
   --background: #ffffff;
   --foreground: oklch(0.248 0 0); /* Material Design high-emphasis: 87% black */
