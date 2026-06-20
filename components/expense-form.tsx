@@ -175,6 +175,11 @@ export function ExpenseForm({
 
   const [localCurrency, setLocalCurrency] = useState<Currency>(initCurrency);
   const [categoryId, setCategoryId] = useState<string>(initCategoryId);
+  // 支払った人。普通は入力者＝支払者なので既定は自分＋折りたたみ表示（あまり触らない）。
+  const [payer, setPayer] = useState<string>(
+    isEdit ? editExpense.payer_member_id : myMemberId,
+  );
+  const [payerOpen, setPayerOpen] = useState<boolean>(false);
   const [paidAtDate, setPaidAtDate] = useState<string>(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
   const [showTime, setShowTime] = useState<boolean>(initShowTime);
@@ -441,20 +446,40 @@ export function ExpenseForm({
         />
       </label>
 
-      <label className="block text-sm">
-        <FieldLabel>支払った人</FieldLabel>
-        <select
-          name="payer_member_id"
-          defaultValue={isEdit ? editExpense.payer_member_id : myMemberId}
-          className={`mt-1 block w-full ${inputClass}`}
-        >
-          {members.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.display_name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* 支払った人。既定は自分＝普通は入力者なので折りたたみ（割り勘対象と同じ disclosure）。
+          タップで展開して別の人に変更。値は常に hidden で送る（畳んでも落ちない）。 */}
+      <input type="hidden" name="payer_member_id" value={payer} />
+      {members.length > 1 ? (
+        <div className="text-sm">
+          <button
+            type="button"
+            onClick={() => setPayerOpen((v) => !v)}
+            aria-expanded={payerOpen}
+            className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
+          >
+            <span>
+              支払った人: {members.find((m) => m.id === payer)?.display_name ?? "?"}
+            </span>
+            <ChevronIcon
+              size={16}
+              className={`transition-transform ${payerOpen ? "-rotate-90" : "rotate-90"}`}
+            />
+          </button>
+          {payerOpen && (
+            <select
+              value={payer}
+              onChange={(e) => setPayer(e.target.value)}
+              className={`mt-1.5 block w-full ${inputClass}`}
+            >
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.display_name}
+                </option>
+              ))}
+            </select>
+          )}
+        </div>
+      ) : null}
 
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
