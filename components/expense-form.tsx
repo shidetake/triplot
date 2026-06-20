@@ -446,8 +446,13 @@ export function ExpenseForm({
         />
       </label>
 
-      {/* 支払者は常に hidden で送る（UI は公開範囲の下＝割り勘対象の隣に置く。下記参照）。 */}
-      <input type="hidden" name="payer_member_id" value={payer} />
+      {/* 支払者は常に hidden で送る（UI は公開範囲の下＝割り勘対象の隣に置く。下記参照）。
+          自分のみ（private）の費用は自分の記録なので支払者は必ず自分に固定する。 */}
+      <input
+        type="hidden"
+        name="payer_member_id"
+        value={visibility === "private" ? myMemberId : payer}
+      />
 
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
@@ -573,8 +578,8 @@ export function ExpenseForm({
 
       {/* 支払った人。割り勘対象と同じ「メンバー選択」なので隣に置く。既定は自分＝普通は
           入力者なので折りたたみ（あまり触らない）。タップで展開して別の人に変更。
-          メンバー1人の旅行では常に自分なので UI 省略（hidden は上で送る）。 */}
-      {members.length > 1 && (
+          自分のみ（private）や メンバー1人の旅行では常に自分なので UI 省略（hidden は上で送る）。 */}
+      {visibility === "shared" && members.length > 1 && (
         <div className="text-sm">
           <button
             type="button"
