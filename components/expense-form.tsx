@@ -376,9 +376,9 @@ export function ExpenseForm({
 
       {localCurrency !== defaultCurrency && (
         <label className="block text-sm">
-          <FieldLabel required>
-            為替レート（1 {localCurrency} = ? {defaultCurrency}）
-          </FieldLabel>
+          {/* ラベルは単位/方向を持たず「為替レート」だけ。方向は下のヒント行に実値付きで
+              出す（平均があれば平均、無ければ ? のガイド）＝ `1 USD = 148 JPY` 形が一番明快。 */}
+          <FieldLabel required>為替レート</FieldLabel>
           <Input
             type="number"
             name="rate_to_default"
@@ -395,9 +395,14 @@ export function ExpenseForm({
             }
             className="mt-1 block w-full"
           />
-          {averageRates[localCurrency] !== undefined && (
+          {averageRates[localCurrency] !== undefined ? (
             <span className="mt-1 block text-xs text-muted-foreground">
-              この旅行の平均レート: {averageRates[localCurrency]}
+              この旅行の平均レート: 1 {localCurrency} ={" "}
+              {averageRates[localCurrency]} {defaultCurrency}
+            </span>
+          ) : (
+            <span className="mt-1 block text-xs text-muted-foreground">
+              1 {localCurrency} = ? {defaultCurrency}
             </span>
           )}
         </label>
