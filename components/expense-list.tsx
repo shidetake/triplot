@@ -6,6 +6,7 @@ import type { LatLng } from "@/lib/placeMap";
 import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
 import { formatAmount } from "@/lib/formatAmount";
+import { formatRate } from "@/lib/formatRate";
 
 import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";
@@ -195,7 +196,7 @@ function ExpenseRowItem({
             {isForeign && (
               <span className="text-xs text-muted-foreground">
                 ({formatAmount(expense.local_price, expense.local_currency)} @{" "}
-                {expense.rate_to_default})
+                {formatRate(expense.rate_to_default)})
               </span>
             )}
             {expense.visibility === "private" && <PrivateBadge />}

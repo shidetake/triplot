@@ -2,6 +2,7 @@ import type { ExpenseSummary } from "@/lib/expenseSummary";
 import type { Settlement } from "@/lib/settlement";
 import type { Currency } from "@/lib/types/database";
 import { formatAmount } from "@/lib/formatAmount";
+import { formatRate } from "@/lib/formatRate";
 
 type Member = {
   id: string;
@@ -25,7 +26,7 @@ export function ExpenseSummaryView({
 
   const rateHints = Object.entries(averageRates)
     .filter(([c]) => c !== defaultCurrency)
-    .map(([c, r]) => `1 ${c} ≈ ${r} ${defaultCurrency}`);
+    .map(([c, r]) => `1 ${c} ≈ ${formatRate(r as number)} ${defaultCurrency}`);
 
   return (
     <div className="space-y-4">
