@@ -120,16 +120,33 @@ UI 部品が要るときは下のフローで**上から**選ぶ。**「shadcn/u
 
 **フロー（上から順に検討。上で済むなら上を採る）:**
 
-1. **native 要素の挙動/UX で要件を満たせる？**（やりたいことが native の部品で足りるか）
-   - **YES（native で良い）:**
-     - 1a. shadcn/ui にその **type-I ラップ**がある → **shadcn/ui を使う**（`<Button>` `<Input>`）。中身は native なので何も失わない。
-     - 1b. shadcn/ui に無い／shadcn/ui 版が type-II しか無い → **native を直接使う＋クラス**（`<select>`・checkbox・radio）。
-       *type-II を取ると native のモバイル UI を無駄に失うので取らない。*
-   - **NO（native では足りない＝リッチな中身/挙動が要る）→ 2 へ。**
-2. **shadcn/ui(type-II) でそのまま実現できる？** → **YES: shadcn/ui をそのまま使う**（Dialog・DropdownMenu・Combobox 等。a11y もタダで付く）。**NO → 3。**
-3. **shadcn/ui にコンポーネントはあり、改造すれば実現できる？**（source は自分の物なので改変可）→ **YES: shadcn/ui を持ってきて改造**。**NO → 4。**
-4. **その領域に枯れた 3rd-party ライブラリがあるか？**（カレンダー・地図・チャート・リッチエディタ等）→ **YES: それを使う**（必要なら薄くラップ）。ゼロから作らない。**NO → 5。**
-5. **完全自作**（最終手段）。native も shadcn/ui もライブラリも無い、このアプリ固有のもの。
+```mermaid
+flowchart TD
+  Q1{"Q1. native 要素の挙動/UX で<br/>要件を満たせる？"}
+  Q1 -->|"YES（native で良い）"| Q1a{"shadcn/ui に<br/>type-I ラップがある？"}
+  Q1 -->|"NO（リッチな中身/挙動が要る）"| Q2{"Q2. shadcn/ui の type-II で<br/>そのまま実現できる？"}
+
+  Q1a -->|YES| R1a["<b>1a.</b> shadcn/ui を使う<br/>（type-I = Button / Input）"]
+  Q1a -->|"NO（無い／type-II しか無い）"| R1b["<b>1b.</b> native を直接使う ＋ クラス<br/>（select・checkbox・radio）"]
+
+  Q2 -->|YES| R2["<b>2.</b> shadcn/ui をそのまま使う<br/>（Dialog・DropdownMenu・Combobox…）"]
+  Q2 -->|NO| Q3{"shadcn/ui にあり、<br/>改造すれば実現できる？"}
+
+  Q3 -->|YES| R3["<b>3.</b> shadcn/ui を持ってきて改造"]
+  Q3 -->|NO| Q4{"その領域に枯れた<br/>3rd-party ライブラリがあるか？"}
+
+  Q4 -->|YES| R4["<b>4.</b> ライブラリを使う<br/>（必要なら薄くラップ）"]
+  Q4 -->|NO| R5["<b>5.</b> 完全自作（最終手段）"]
+```
+
+各ステップの勘所（チャートに載せきれない注記）:
+
+- **1a**: 中身は native なので何も失わない。
+- **1b**: type-II を取ると native のモバイル UI を無駄に失うので取らない。
+- **2**: a11y もタダで付く。
+- **3**: source は自分の物なので改変可。
+- **4**: ゼロから作らない（カレンダー・地図・チャート・リッチエディタ等）。
+- **5**: native も shadcn/ui もライブラリも無い、このアプリ固有のもの。
 
 **順序の理由:** 下へ行くほど「自分で書く量」と「**a11y を落とすリスク**」が増える。だから native → shadcn/ui → shadcn/ui 改造 → ライブラリ → 自作 の順。
 
