@@ -114,6 +114,14 @@ input[type="time"] {
   max-width: 100%;
 }
 
+/* ネイティブの時計／カレンダーのピッカー指示子（右端のアイコン）を消す。視覚ノイズを
+   減らし横幅を稼ぐ（狭いポップアップで日付＋時刻レンジを 1 行に収めるため）。タップ／
+   キーボードでの編集・モバイルの OS ピッカーは指示子が無くても効く。 */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="time"]::-webkit-calendar-picker-indicator {
+  display: none;
+}
+
 /* iOS Safari は入力の文字が 16px 未満だとフォーカス時に勝手にズームする（iPhone も iPad も）。
    タッチ端末（any-pointer: coarse = 画面タッチを持つ）ではフォームコントロールを 16px に固定して
    ズームを防ぐ。マウスのみの PC は対象外なので各 text-* がそのまま効く（14px のままコンパクト）。

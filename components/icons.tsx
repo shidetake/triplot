@@ -305,3 +305,25 @@ export function SearchIcon({
     </LucideIcon>
   );
 }
+
+// Lucide: calendar-range（日付の範囲＝予定を複数日にまたがせるトグル）
+export function CalendarRangeIcon({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <rect width="18" height="18" x="3" y="4" rx="2" />
+      <path d="M16 2v4" />
+      <path d="M3 10h18" />
+      <path d="M8 2v4" />
+      <path d="M17 14h-6" />
+      <path d="M13 18H7" />
+      <path d="M7 14h.01" />
+      <path d="M17 18h.01" />
+    </LucideIcon>
+  );
+}
