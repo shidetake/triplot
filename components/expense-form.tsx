@@ -20,6 +20,7 @@ import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
+import { formatRate } from "@/lib/formatRate";
 import type { LatLng } from "@/lib/placeMap";
 import {
   resolveExpenseTz,
@@ -250,11 +251,13 @@ export function ExpenseForm({
     isEdit && !splitsMatchAll ? "custom" : "all",
   );
 
-  // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。
+  // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。平均は丸めて入れる
+  // （未変更ならこの値が送信される＝半端な桁を残さない。編集時の保存済み値は実データ
+  // なので丸めずそのまま表示）。
   const rateFor = (c: Currency): string => {
     if (c === defaultCurrency) return "1";
     const avg = averageRates[c];
-    return avg !== undefined ? String(avg) : "";
+    return avg !== undefined ? formatRate(avg) : "";
   };
   const [rateInput, setRateInput] = useState<string>(() =>
     isEdit ? String(editExpense.rate_to_default) : rateFor(initCurrency),
@@ -390,7 +393,7 @@ export function ExpenseForm({
             onChange={(e) => setRateInput(e.target.value)}
             placeholder={
               averageRates[localCurrency] !== undefined
-                ? String(averageRates[localCurrency])
+                ? formatRate(averageRates[localCurrency]!)
                 : "例: 150"
             }
             className="mt-1 block w-full"
@@ -398,7 +401,7 @@ export function ExpenseForm({
           {averageRates[localCurrency] !== undefined ? (
             <span className="mt-1 block text-xs text-muted-foreground">
               この旅行の平均レート: 1 {localCurrency} ={" "}
-              {averageRates[localCurrency]} {defaultCurrency}
+              {formatRate(averageRates[localCurrency]!)} {defaultCurrency}
             </span>
           ) : (
             <span className="mt-1 block text-xs text-muted-foreground">
