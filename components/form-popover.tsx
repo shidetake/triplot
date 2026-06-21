@@ -5,6 +5,7 @@ import {
   isValidElement,
   useCallback,
   useEffect,
+  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -56,7 +57,7 @@ function makeOnOpenChange(onClose: () => void) {
 // 元画面が dim で残る。snapPoints の上点を 1.0 未満にする手もあるが、それだとシートが常時 translate
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
-const SHEET_MAX_DVH = 90;
+const SHEET_MAX_DVH = 85;
 // 開いたときの可視高（viewport 比）。
 const SHEET_OPEN_VISIBLE = 0.72;
 // snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
@@ -66,10 +67,17 @@ const SHEET_SNAP_POINTS: number[] = [
   1,
 ];
 
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約9割)まで拡大」。挙動は vaul の素のまま:
+// 下方向に「画面のこの割合」以上ドラッグして離したら、スナップに関係なく一気に閉じる。
+// vaul は snapPoints があると「速い velocity>2 のフリック」でしか拡大状態から閉じられず、
+// ゆっくり下までスワイプしても下スナップに戻ってしまう（＝閉じにくい）。それを距離基準で補う。
+const SHEET_CLOSE_DRAG_FRACTION = 0.4;
+
+// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約85%)まで拡大」。挙動は概ね vaul の素のまま:
 //  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
-//  - 上スナップ(Content が全部見える＝約9割)では、ボディは中身をスクロールし、スクロール上端で下に
+//  - 上スナップ(Content が全部見える＝約85%)では、ボディは中身をスクロールし、スクロール上端で下に
 //    引くと縮小→閉じる。
+//  - 下までスワイプしたら一気に閉じる挙動は vaul に無いので onDrag/onRelease で距離基準の閉じを足す
+//    （下記 SHEET_CLOSE_DRAG_FRACTION）。スクロール直後の閉じの固さは scrollLockTimeout=0 で緩める。
 //  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（下スナップのボディ
 //    ドラッグが拡大と閉じを兼ねるため）。handleOnly にするとボディ操作が全部死ぬので使わない。
 //  - 背景 dim はタップで閉じる。触ってもスクロールしない（overflow 固定＋dim が touch を飲む）。× は出さない。
@@ -94,6 +102,12 @@ function NarrowSheet({
   const [open, setOpen] = useState(true);
 
   const requestClose = useCallback(() => setOpen(false), []);
+
+  // シートを下にどれだけドラッグしたかの追跡（距離基準の一気閉じ用）。onDrag は vaul が
+  // シートを掴んで動かしている間だけ呼ばれる（中身スクロール中は呼ばれない）ので、ここで
+  // 拾う移動量は純粋にシートのドラッグ量＝スクロールとは混ざらない。
+  const dragStartY = useRef<number | null>(null);
+  const dragLastY = useRef(0);
 
   // 閉じ始めたら、Vaul の下降と dim フェードアウト（~500ms）の後に親へ通知してアンマウント。
   useEffect(() => {
@@ -141,9 +155,30 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
-        // 約3/4 で開き、全画面まで拡大できる。handleOnly は付けない＝中間スナップのボディ
-        // ドラッグ（拡大/閉じ）と全画面でのスクロール（vaul の素の挙動）を生かす。
+        // 約3/4 で開き、上限まで拡大できる。handleOnly は付けない＝中間スナップのボディ
+        // ドラッグ（拡大/閉じ）と上限スナップでのスクロール（vaul の素の挙動）を生かす。
         snapPoints={SHEET_SNAP_POINTS}
+        // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
+        // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
+        scrollLockTimeout={0}
+        // 距離基準の一気閉じ。シートドラッグ中の指の移動量を覚えておき…
+        onDrag={(e) => {
+          if (dragStartY.current === null) dragStartY.current = e.pageY;
+          dragLastY.current = e.pageY;
+        }}
+        // …離した時点で「下に画面の SHEET_CLOSE_DRAG_FRACTION 以上」動いていたら閉じる
+        // （vaul の snap 復帰を上書き。ゆっくり下までスワイプ＝閉じる／途中で離す＝既定サイズに戻る）。
+        onRelease={() => {
+          const start = dragStartY.current;
+          dragStartY.current = null;
+          if (start === null) return;
+          if (
+            dragLastY.current - start >
+            window.innerHeight * SHEET_CLOSE_DRAG_FRACTION
+          ) {
+            requestClose();
+          }
+        }}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
