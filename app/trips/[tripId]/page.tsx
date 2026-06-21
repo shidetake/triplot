@@ -627,7 +627,12 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-semibold">TODOリスト</h2>
+        <div className="flex items-center gap-1.5">
+          <h2 className="text-lg font-semibold">TODOリスト</h2>
+          <HelpTip label="プライベートTODOとは" widthClass="w-60">
+            鍵アイコンでTODOごとに公開範囲を切り替えられます。オン＝自分だけに見える（プライベート）、オフ（既定）＝旅行メンバー全員に共有。
+          </HelpTip>
+        </div>
 
         <TodoSection
           tripId={tripId}
