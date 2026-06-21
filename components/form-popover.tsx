@@ -150,6 +150,11 @@ function NarrowSheet({
         // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
         // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
         scrollLockTimeout={0}
+        // vaul のキーボード追従（input フォーカス時に drawer の height/bottom を直接書き換える）を
+        // 切る。固定高 dvh＋snapPoints と衝突して、低い位置の input に入力すると sheet が上にズレて
+        // 中身が消える不具合になるため。代わりに内側の overflow-y-auto に input をネイティブで
+        // スクロールインさせる（ブラウザ標準の挙動）。
+        repositionInputs={false}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
