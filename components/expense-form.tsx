@@ -443,18 +443,6 @@ export function ExpenseForm({
         )}
       </div>
 
-      <label className="block text-sm" htmlFor={noteId}>
-        <FieldLabel>メモ</FieldLabel>
-        <Input
-          id={noteId}
-          type="text"
-          name="note"
-          placeholder="ランチ"
-          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className="mt-1 block w-full"
-        />
-      </label>
-
       {/* 支払者は常に hidden で送る（UI は公開範囲の下＝割り勘対象の隣に置く。下記参照）。
           自分のみ（private）の費用は自分の記録なので支払者は必ず自分に固定する。 */}
       <input
@@ -676,6 +664,20 @@ export function ExpenseForm({
       {submittedSplitIds.map((id) => (
         <input key={id} type="hidden" name="split_member_ids" value={id} />
       ))}
+
+      {/* メモは自由記述なので最下（予定フォームと並びを揃える＝場所→日付の下、構造化
+          フィールドの後）。 */}
+      <label className="block text-sm" htmlFor={noteId}>
+        <FieldLabel>メモ</FieldLabel>
+        <Input
+          id={noteId}
+          type="text"
+          name="note"
+          placeholder="ランチ"
+          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
+          className="mt-1 block w-full"
+        />
+      </label>
 
       <div className="flex gap-2">
         {canDelete && (
