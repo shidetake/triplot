@@ -218,7 +218,7 @@ export function CreateTripForm({
       />
 
       <div className="text-sm">
-        <FieldLabel>日程</FieldLabel>
+        <FieldLabel required>日程</FieldLabel>
         <div className="mt-1">
           <DateRangePopover
             startName="start_date"
