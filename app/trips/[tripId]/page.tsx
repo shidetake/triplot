@@ -438,7 +438,12 @@ export default async function TripDetailPage({
     return [
       {
         id: d.id,
-        label: `${r.merchant || "(店名不明)"} / ${r.total} ${r.currency} / ${r.date}`,
+        // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
+        labelParts: [
+          r.merchant || "(店名不明)",
+          `${r.total} ${r.currency}`,
+          r.date,
+        ],
         initialPrice: r.total,
         initialCurrency: currency,
         initialCategoryId: categoryId,
@@ -565,7 +570,7 @@ export default async function TripDetailPage({
                 <DraftConfirmButton
                   key={d.id}
                   draftId={d.id}
-                  label={d.label}
+                  labelParts={d.labelParts}
                   tripId={tripId}
                   members={activeMembers.map((m) => ({
                     id: m.id,
