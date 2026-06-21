@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useState } from "react";
 
+import { chipStyle } from "@/lib/memberColors";
 import type { LatLng } from "@/lib/placeMap";
 import type { TripTzTimeline } from "@/lib/schedule";
 import type { Currency, Visibility } from "@/lib/types/database";
@@ -205,25 +206,41 @@ function ExpenseRowItem({
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
             <span>{formatDateTime(expense.paid_at)}</span>
+            {/* 狭い画面は写真アバター、広い画面は色付きフルネームチップ（TODO 作成者と同じ）。 */}
             <span className="inline-flex items-center gap-1">
               支払
               <MemberAvatar
                 name={payer?.display_name}
                 color={payer?.color}
                 imageUrl={payer?.avatarUrl}
+                className="sm:hidden"
               />
+              <span
+                style={chipStyle(payer?.color)}
+                className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+              >
+                {payer?.display_name ?? "?"}
+              </span>
             </span>
             {splitMembers && splitMembers.length > 0 && (
               <span className="inline-flex items-center gap-1">
                 割勘
-                <span className="inline-flex flex-wrap items-center gap-0.5">
+                <span className="inline-flex flex-wrap items-center gap-0.5 sm:gap-1">
                   {splitMembers.map((m) => (
-                    <MemberAvatar
-                      key={m.id}
-                      name={m.display_name}
-                      color={m.color}
-                      imageUrl={m.avatarUrl}
-                    />
+                    <Fragment key={m.id}>
+                      <MemberAvatar
+                        name={m.display_name}
+                        color={m.color}
+                        imageUrl={m.avatarUrl}
+                        className="sm:hidden"
+                      />
+                      <span
+                        style={chipStyle(m.color)}
+                        className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+                      >
+                        {m.display_name}
+                      </span>
+                    </Fragment>
                   ))}
                 </span>
               </span>
