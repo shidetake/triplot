@@ -30,6 +30,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { MemberAvatar } from "@/components/member-avatar";
+import { chipStyle } from "@/lib/memberColors";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { sortTodos } from "@/lib/todoSort";
 import type {
@@ -495,12 +496,18 @@ export function TodoSection({
                 </button>
               )}
 
-              <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
-                <MemberAvatar
-                  name={memberName(todo.created_by_member_id)}
-                  color={memberColor(todo.created_by_member_id)}
-                />
-                <span>{memberName(todo.created_by_member_id)}</span>
+              {/* 作成者: 狭い画面は色アバター（イニシャル）だけ、広い画面は名前の色チップだけ。
+                  どちらもメンバー色のバッジ風。しきい値はボトムシートと同じ 640px（Tailwind sm）。 */}
+              <MemberAvatar
+                name={memberName(todo.created_by_member_id)}
+                color={memberColor(todo.created_by_member_id)}
+                className="shrink-0 sm:hidden"
+              />
+              <span
+                style={chipStyle(memberColor(todo.created_by_member_id))}
+                className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+              >
+                {memberName(todo.created_by_member_id)}
               </span>
 
               <button
