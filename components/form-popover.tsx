@@ -5,7 +5,6 @@ import {
   isValidElement,
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from "react";
 import { createPortal } from "react-dom";
@@ -57,7 +56,7 @@ function makeOnOpenChange(onClose: () => void) {
 // 元画面が dim で残る。snapPoints の上点を 1.0 未満にする手もあるが、それだとシートが常時 translate
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
-const SHEET_MAX_DVH = 95;
+const SHEET_MAX_DVH = 92;
 // 開いたときの可視高（viewport 比）。
 const SHEET_OPEN_VISIBLE = 0.72;
 // snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
@@ -67,22 +66,16 @@ const SHEET_SNAP_POINTS: number[] = [
   1,
 ];
 
-// 「縮小する／一気に閉じる」は下スワイプの“速度だけ”で決める（離した位置では決めない）。
-// 下方向の平均速度（px/ms＝ドラッグ開始から離すまでの移動量÷時間。途中で止めて離せば速度は
-// 落ちる）がこの値を超えたら一気に閉じ、下回れば vaul の snap（縮小）に委ねる。
-const SHEET_CLOSE_VELOCITY = 0.5;
-
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約95%)まで拡大」。挙動は概ね vaul の素のまま:
+// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約92%)まで拡大」。
+// 拡大/縮小/閉じの挙動は vaul のデフォルトに任せる（自前の閉じ override は安定優先で持たない）:
 //  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
-//  - 上スナップ(Content が全部見える＝約95%)では、ボディは中身をスクロールし、スクロール上端で下に
-//    引くと縮小→閉じる。
-//  - 拡大状態からの閉じ: vaul 標準は velocity>2 の速いフリックでしか一段で閉じず固い。閾値を下げた
-//    “速度だけ”の判定を onDrag/onRelease で足す＝下スワイプの平均速度が SHEET_CLOSE_VELOCITY 超で
-//    一段閉じ、下回れば vaul の snap（縮小）に任せる。位置では判定しない（ゆっくり下まで行って止めて
-//    離しても閉じない）。スクロール直後の閉じの固さは scrollLockTimeout=0 で緩める。
+//  - 上スナップ(Content が全部見える＝約92%)では、ボディは中身をスクロールし、スクロール上端で下に引くと縮小→閉じる。
+//  - 「閉じる/縮小する」は vaul が下スワイプの平均速度で決める: 速いフリック→閉じる／中速→1段下げる
+//    （最下段からは閉じる）／遅い→近い段にスナップ（＝ゆっくり止めて離しても閉じない）。位置では閉じない。
 //  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（下スナップのボディ
 //    ドラッグが拡大と閉じを兼ねるため）。handleOnly にするとボディ操作が全部死ぬので使わない。
-//  - 背景 dim はタップで閉じる。触ってもスクロールしない（overflow 固定＋dim が touch を飲む）。× は出さない。
+//  - 背景 dim はタップで閉じる（vaul 標準には無い・自前で追加）。触ってもスクロールしない
+//    （overflow 固定＋dim が touch を飲む）。× は出さない。スクロール直後の固さは scrollLockTimeout=0 で緩める。
 //  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから閉じ操作は気軽。
 //
 // 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
@@ -104,10 +97,6 @@ function NarrowSheet({
   const [open, setOpen] = useState(true);
 
   const requestClose = useCallback(() => setOpen(false), []);
-
-  // 一段閉じ用。ドラッグ開始の位置と時刻だけ覚える（onDrag は vaul がシートを掴んで動かしている
-  // 間だけ呼ばれる＝中身スクロールとは混ざらない）。離した時に下方向の平均速度を出して判定する。
-  const dragStart = useRef<{ y: number; t: number } | null>(null);
 
   // 閉じ始めたら、Vaul の下降と dim フェードアウト（~500ms）の後に親へ通知してアンマウント。
   useEffect(() => {
@@ -161,24 +150,6 @@ function NarrowSheet({
         // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
         // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
         scrollLockTimeout={0}
-        // 一段閉じ。ドラッグ開始点（位置・時刻）を記録し…
-        onDrag={(e) => {
-          if (!dragStart.current) {
-            dragStart.current = { y: e.pageY, t: performance.now() };
-          }
-        }}
-        // …離した時、下方向の平均速度“だけ”で「閉じる/縮小する」を決める（位置では決めない）。
-        // 途中で止めてから離すと平均速度が落ちるので閉じず、vaul の snap（縮小）に委ねる。
-        onRelease={(e) => {
-          const start = dragStart.current;
-          dragStart.current = null;
-          if (!start) return;
-          const dy = e.pageY - start.y; // 下向き正
-          const dt = performance.now() - start.t;
-          if (dy > 0 && dt > 0 && dy / dt > SHEET_CLOSE_VELOCITY) {
-            requestClose();
-          }
-        }}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
