@@ -125,9 +125,12 @@ export function CreateTripForm({
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
-      {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型 */}
+      {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型。
+          右クリアランス mr-7 は × がある時（PC ポップオーバー）だけ＝シートは × が無いので端まで。 */}
       {canCopy && (
-        <div className="mr-7 flex gap-1 rounded-md border border-foreground/10 p-1">
+        <div
+          className={`${inSheet ? "" : "mr-7"} flex gap-1 rounded-md border border-foreground/10 p-1`}
+        >
           <label
             className={`${seg} ${
               mode === "new"

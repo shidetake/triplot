@@ -356,8 +356,11 @@ export function EventForm({
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
       {/* 種別の切り替え（通常／終日／タイムゾーン跨ぎ）。
-          sr-only の native radio group ＋装飾ラベル（新規/コピーと同じ 1b パターン）。 */}
-      <div className="mr-7 flex gap-1 rounded-md border border-foreground/10 p-1">
+          sr-only の native radio group ＋装飾ラベル（新規/コピーと同じ 1b パターン）。
+          右クリアランス mr-7 は × がある時（PC ポップオーバー）だけ＝シートは × が無いので端まで。 */}
+      <div
+        className={`${inSheet ? "" : "mr-7"} flex gap-1 rounded-md border border-foreground/10 p-1`}
+      >
         {(["timed", "allday", "transit"] as const).map((k) => (
           <label
             key={k}
