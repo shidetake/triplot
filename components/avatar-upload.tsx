@@ -174,7 +174,7 @@ export function AvatarUpload({
                     onClick={onRemove}
                     className={`block text-muted-foreground ${menuItemClass}`}
                   >
-                    削除（頭文字に戻す）
+                    削除
                   </Menu.Item>
                 </Menu.Popup>
               </Menu.Positioner>
