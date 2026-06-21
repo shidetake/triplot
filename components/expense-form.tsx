@@ -360,7 +360,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className="mt-1 block h-9 w-full"
+            className="mt-1 block w-full"
           />
         </label>
         <label className="block text-sm">
@@ -369,7 +369,7 @@ export function ExpenseForm({
             name="local_currency"
             value={localCurrency}
             onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className={`mt-1 block h-9 ${inputClass}`}
+            className={`mt-1 block ${inputClass}`}
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
@@ -496,7 +496,7 @@ export function ExpenseForm({
             <button
               type="button"
               onClick={expandTime}
-              className="mt-1 h-[42px] rounded-md border border-dashed border-foreground/20 px-3 text-xs text-muted-foreground transition hover:border-foreground/40 hover:bg-foreground/10 hover:text-foreground"
+              className="mt-1 h-9 rounded-md border border-dashed border-foreground/20 px-3 text-xs text-muted-foreground transition hover:border-foreground/40 hover:bg-foreground/10 hover:text-foreground"
             >
               ＋ 時刻を指定
             </button>

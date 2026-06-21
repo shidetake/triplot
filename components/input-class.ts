@@ -5,8 +5,11 @@
 // 内容に合わせて足す:
 //   <input className={`mt-1 block w-full ${inputClass}`} />
 //   <input className={`mt-1 block w-full min-w-0 ${inputClass}`} />
+// 高さは固定 h-9（36px＝design-guidelines のコントロール高さ／shadcn の既定）。py-2 だと
+// input と native select で実高さがズレる（select が低く描画される）うえ、iOS の 16px 強制
+// フォントで膨らんで 36px から外れるため、固定高で全コントロールを 36px に揃える。
 // 先頭の `input-control` は素のクラス名マーカー（Tailwind ではない）。globals.css の
 // `@media (any-pointer: coarse)` がこれを拾い、入力風トリガ（button の日時チップ・場所
 // ピッカー等）も実入力と同じ 16px に揃える（タッチ端末で周りより小さく見えるのを防ぐ）。
 export const inputClass =
-  "input-control rounded-md border border-foreground/20 bg-white px-3 py-2 text-sm focus:border-primary focus:outline-none";
+  "input-control h-9 rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none";

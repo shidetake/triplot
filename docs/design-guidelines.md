@@ -211,8 +211,8 @@ flowchart TD
 | **コントロール高さ** | `h-9`（36px） | ボタン・入力・セレクト。小さめは `h-8`（32px） |
 | **テキストボタン** | `h-9 px-4 text-sm rounded-md` | 小: `h-8 px-3 text-xs`。配色は「ボタンの配色」節 |
 | **アイコンボタン** | `h-9 w-9`、アイコンは 18–20px、密なリスト内のみ `h-7 w-7` 可 | 形は用途で決める → **`rounded-full`**＝単独アイコンの操作子（×閉じる・ナビ/ツールバー〔受信箱〕・トグル〔優先度・いいね〕・アバター。枠なし＋円形ホバー）／**`rounded-md`**＝フォーム/リストのアクション（送信・追加・削除・編集・検索。テキストコントロールと角丸を揃える） |
-| **入力・セレクト** | 共通定数 **`inputClass`**（中身は `components/input-class.ts`。枠・bg・padding・text・focus を1ソース化） | レイアウト（`mt-1 block w-full`・`min-w-0`・`flex-1`・`pr-9` 等）は呼び出し側が足す。入力風トリガ（カスタムセレクト）も同じ（`flex items-center ${inputClass}`）。**手書きで枠・bg・focus を並べず必ず `inputClass` を使う**。iOS のフォーカス時ズーム防止は **globals.css がタッチ端末（`any-pointer: coarse`）で 16px を強制**するので入力は `text-sm` のままで可 |
-| **ボタンと横並びの入力の高さ** | 既定は `inputClass`（縦 `py-2`）。ただし**同じ行でボタンと隣り合う入力／コンパクトなインライン入力は、隣のボタンと高さを揃えるため明示 `h-9`（`h-8` の隣なら `h-8`）＋ `px-3`** にしてよい（`py-2` でなく固定高） | 例: 表示名のその場編集（送信ボタン `h-9` の隣）→ 入力も `h-9 px-3`／取り込み行のコンパクトな旅行セレクト（`iconSm` ボタンの隣）→ `px-2 py-1`。**縦積みフィールド（ラベルが上）は常に `inputClass`** |
+| **入力・セレクト** | 共通定数 **`inputClass`**（中身は `components/input-class.ts`。枠・bg・**固定高 `h-9`**・padding・text・focus を1ソース化） | レイアウト（`mt-1 block w-full`・`min-w-0`・`flex-1`・`pr-9` 等）は呼び出し側が足す。入力風トリガ（カスタムセレクト）も同じ（`flex items-center ${inputClass}`）。**手書きで枠・bg・focus を並べず必ず `inputClass` を使う**。iOS のフォーカス時ズーム防止は **globals.css がタッチ端末（`any-pointer: coarse`）で 16px を強制**するので入力は `text-sm` のままで可 |
+| **入力の高さ** | `inputClass` が**固定 `h-9`（36px）を内包**＝全コントロール一律 36px | 以前は `py-2`（可変高）だったが、native `<input>` と `<select>` で実高さがズレる（select が低い）うえ iOS の 16px 強制フォントで膨らんで 36px から外れたため、**固定高に統一**。ボタンと横並びでも縦積みでも `inputClass` だけで高さが揃う（個別 `h-9` の付与は不要）。隣に置くボタンも `h-9`、コンパクト行のみ `h-8` で両者を合わせる |
 | **角丸** | 小インライン `rounded`(4px) / コントロール・ドロップダウン `rounded-md`(6px) / カード・枠・ダイアログ・モーダル `rounded-lg`(8px) / 円形 `rounded-full` | `rounded`(4px) はバッジ・カレンダーブロック・小さいメッセージ箱。`rounded-2xl` 等は使わない |
 | **gap（要素間）** | 既定 `gap-2`(8px) / ゆとり `gap-3`(12px) | `?` や補助要素があるとき `gap-3` |
 | **ページコンテナ** | `mx-auto w-full max-w-2xl px-6 py-10` | AppHeader 配下の全ページ共通。情報量の多い旅行詳細のみ `max-w-3xl`、モーダルは `max-w-md` |
