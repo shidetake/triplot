@@ -74,6 +74,10 @@ export function PlacePicker({
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // 候補リストの開閉。Base UI に任せると（特に iOS のボトムシート内で）キーボードを
+  // 閉じても候補が残るので、controlled にして「キーボードが閉じたら閉じる」を足す。
+  const [open, setOpen] = useState(false);
+
   // 入力を編集したら確定済み選択は無効化（= 自由入力候補に戻る）。
   const invalidate = () => setResolved(null);
 
@@ -81,6 +85,21 @@ export function PlacePicker({
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
+  }, []);
+
+  // ソフトウェアキーボードが閉じたら候補も閉じる。visualViewport の高さが大きく戻った＝
+  // キーボードが下がった、と判定（vaul と同じ 60px 閾値）。
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    let prevHeight = vv.height;
+    const onResize = () => {
+      const grew = vv.height - prevHeight > 60;
+      prevHeight = vv.height;
+      if (grew) setOpen(false);
+    };
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
   }, []);
 
   const ensureToken = () => {
@@ -246,6 +265,9 @@ export function PlacePicker({
 
       <Combobox.Root
         items={rows}
+        // 開閉は controlled（Base UI の判断をそのまま反映しつつ、キーボード閉じでも閉じる）。
+        open={open}
+        onOpenChange={setOpen}
         // 候補は自前で用意（保存済み絞り込み＋Google 非同期）。内部フィルタは無効化。
         filter={null}
         itemToStringLabel={rowLabel}
