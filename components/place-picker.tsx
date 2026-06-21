@@ -12,9 +12,9 @@ import { extractRegion } from "./place-search";
 import { menuItemClass } from "./menu-item";
 import { matchPlace } from "@/lib/receipt/placeMatch";
 
-// 取り込みの自動解決で「Google の場所に丸める」最低スコア。保存済みマッチ(0.5)より高めにして、
-// 高確信のときだけ丸める（外したらレシート店名のテキストのまま残す）。閾値は実データで調整可。
-const AUTO_ROUND_THRESHOLD = 0.7;
+// 取り込みの自動解決で「Google の場所に丸める」最低スコア。高すぎると近い候補も丸まらないので
+// 0.6（候補は上位複数をスコアして最良を採るので、ほどほどで誤丸めしにくい）。実データで調整可。
+const AUTO_ROUND_THRESHOLD = 0.6;
 
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
 // 混ぜて出すコンボボックス（Google カレンダーの場所欄や Notion/Linear の作成サジェスト同系）。
@@ -149,9 +149,31 @@ export function PlacePicker({
             sessionToken,
             locationBias: { center: biasCenter, radius: 30000 },
           });
-        const top = suggestions.find((s) => s.placePrediction)?.placePrediction;
-        if (!top) return; // 候補なし → レシート名のテキストのまま
-        const place = top.toPlace();
+        // 先頭だけでなく上位候補をスコアして最良を採る（正しい店が #1 とは限らないため）。
+        // スコアは prediction の表示名(mainText)＋住所(secondaryText)で計算（詳細取得は勝者だけ）。
+        const preds = suggestions
+          .map((s) => s.placePrediction)
+          .filter((p): p is NonNullable<typeof p> => !!p)
+          .slice(0, 5);
+        let bestPred: (typeof preds)[number] | null = null;
+        let bestScore = -1;
+        for (const p of preds) {
+          const name = p.mainText?.text ?? p.text.text;
+          const addr = p.secondaryText?.text ?? "";
+          const r = matchPlace(
+            { merchant, location },
+            [{ id: "g", name, formattedAddress: addr }],
+            0,
+          );
+          const score = r?.score ?? 0;
+          if (score > bestScore) {
+            bestScore = score;
+            bestPred = p;
+          }
+        }
+        // 最良が閾値未満なら丸めない（レシート店名のテキストのまま）。
+        if (!bestPred || bestScore < AUTO_ROUND_THRESHOLD) return;
+        const place = bestPred.toPlace();
         await place.fetchFields({
           fields: [
             "id",
@@ -162,15 +184,9 @@ export function PlacePicker({
           ],
         });
         const loc = place.location;
-        const candName = place.displayName ?? top.text.text;
+        const candName = place.displayName ?? bestPred.text.text;
         const candAddr = place.formattedAddress ?? "";
-        // 「丸めるか」は自前スコア（名前＋住所の近さ）で判定。高確信のときだけ Google に寄せる。
-        const matched = matchPlace(
-          { merchant, location },
-          [{ id: "g", name: candName, formattedAddress: candAddr }],
-          AUTO_ROUND_THRESHOLD,
-        );
-        if (matched && place.id && loc) {
+        if (place.id && loc) {
           setResolved({
             kind: "google",
             placeId: place.id,
@@ -182,7 +198,6 @@ export function PlacePicker({
           });
           setQuery(candName);
         }
-        // else: 低確信 → 丸めない（レシート店名のテキストのまま）。
       } catch {
         // 取得失敗 → レシート店名のまま。
       } finally {

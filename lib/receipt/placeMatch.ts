@@ -9,7 +9,7 @@ export type TripPlace = {
   formattedAddress: string | null;
 };
 
-// 店名/法人格/店舗番号などのノイズ語。比較から除く。
+// 店名/法人格/店舗番号などのノイズ語＋繋ぎ語（"Coffee at Moana" の at 等）。比較から除く。
 const NOISE_TOKENS = new Set([
   "llc",
   "inc",
@@ -17,6 +17,10 @@ const NOISE_TOKENS = new Set([
   "ltd",
   "corp",
   "the",
+  "at",
+  "of",
+  "and",
+  "by",
   "kk",
   "株式会社",
   "有限会社",
