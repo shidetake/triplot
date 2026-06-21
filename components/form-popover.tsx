@@ -52,13 +52,25 @@ function makeOnOpenChange(onClose: () => void) {
   };
 }
 
-// ボトムシートのスナップ点（viewport 比）。やや高め(約3/4)で開き、全画面(1.0)まで広げられる。
-const SHEET_SNAP_POINTS: number[] = [0.72, 1];
+// 拡大の上限（dvh）。Content の高さで頭打ちにする＝全画面まで行かず上に (100-この値)dvh ほど
+// 元画面が dim で残る。snapPoints の上点を 1.0 未満にする手もあるが、それだとシートが常時 translate
+// された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
+// 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
+const SHEET_MAX_DVH = 90;
+// 開いたときの可視高（viewport 比）。
+const SHEET_OPEN_VISIBLE = 0.72;
+// snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
+// 逆算する（上点は 1.0 固定＝そこでだけボディがスクロールする）。
+const SHEET_SNAP_POINTS: number[] = [
+  SHEET_OPEN_VISIBLE - SHEET_MAX_DVH / 100 + 1,
+  1,
+];
 
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約3/4 で開く→全画面まで拡大」。挙動は vaul の素のまま:
-//  - 中間スナップ(3/4)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
-//  - 最上スナップ(全画面)では、ボディは中身をスクロールし、スクロール上端で下に引くと縮小→閉じる。
-//  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（中間スナップのボディ
+// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約9割)まで拡大」。挙動は vaul の素のまま:
+//  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
+//  - 上スナップ(Content が全部見える＝約9割)では、ボディは中身をスクロールし、スクロール上端で下に
+//    引くと縮小→閉じる。
+//  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（下スナップのボディ
 //    ドラッグが拡大と閉じを兼ねるため）。handleOnly にするとボディ操作が全部死ぬので使わない。
 //  - 背景 dim はタップで閉じる。触ってもスクロールしない（overflow 固定＋dim が touch を飲む）。× は出さない。
 //  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから閉じ操作は気軽。
@@ -139,10 +151,12 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            // Content は全画面高（h-[100dvh]）。snapPoints は viewport 比で translate するので、
-            // これで全画面スナップ時に画面いっぱいまで広がる。dvh＝実表示ビューポート基準
+            // 高さ = 拡大上限（SHEET_MAX_DVH）。これがそのまま「最上スナップ時の可視高」＝拡大の上限に
+            // なり、上に (100-値)dvh の隙間が残って元画面が dim で覗く。最上スナップ(1.0)では translate0
+            // になり、そこでだけ中身がネイティブスクロールする。dvh＝実表示ビューポート基準
             // （vh だと iOS でツールバーの裏に下端が潜る）。
-            className="fixed inset-x-0 bottom-0 z-50 flex h-[100dvh] flex-col rounded-t-lg bg-white outline-none"
+            style={{ height: `${SHEET_MAX_DVH}dvh` }}
+            className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-lg bg-white outline-none"
           >
             {/* 掴みやすいよう上下に余白を取った厚めのグリップ帯（タップミス防止）。 */}
             <div className="flex shrink-0 cursor-grab justify-center pt-4 pb-3 active:cursor-grabbing">
