@@ -52,16 +52,22 @@ function makeOnOpenChange(onClose: () => void) {
   };
 }
 
+// ボトムシートのスナップ点（viewport 比）。2/3 で開き、ハンドルで全画面(1.0)まで広げられる。
+const SHEET_SNAP_POINTS: number[] = [0.66, 1];
+// グリップ帯（pt-4 + ハンドル + pb-3）の概算高。スクロール領域の高さからこれを差し引く。
+const SHEET_HANDLE_BAND = "2.25rem";
+
 // 狭い画面のボトムシート（Vaul）。Instagram のコメントシートに挙動を揃える:
-//  - 上端ハンドルだけがシートを動かす（handleOnly）＝ハンドルを下にドラッグで閉じる。ボディは
-//    シート内スクロール専用＝「シートを動かす」のか「中身をスクロールする」のかが指で混ざらない。
-//  - 高さは固定（画面 2/3 ほど＝上に元画面が dim で残る）。はみ出す中身はボディがスクロールする。
-//    ※ Vaul の snapPoints は「最上スナップでしか中身がスクロールしない」制約があり、2/3 で開くと
-//      ボディが動かせず詰む。なので snapPoints は使わず固定高＋ネイティブスクロールにする。
-//  - 背景 dim はタップで閉じる（Instagram と同じ）。触ってもスクロールしない（ドキュメントの
-//    overflow を固定＋dim が touch を飲む）。× は出さない＝閉じるのは下スワイプか背景タップ。
-//  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから閉じ操作を
-//    気軽にできる（スワイプ／背景タップ）。
+//  - 開く高さは画面 2/3（snapPoints[0]）。ハンドルを上にドラッグすると全画面(1.0)まで拡大。
+//    拡大はハンドルのみ（ボディを上に引いても拡大せずスクロールするのが vaul の素の挙動）。
+//  - ボディはスクロール。スクロールしきって上端で更に下へ引くとシートが縮小→閉じる（Instagram と
+//    同じ＝vaul の素の挙動。handleOnly にするとこのボディ操作が死ぬので使わない）。
+//  - Vaul の制約「snapPoints だと中身は最上スナップでしか overflow スクロールしない」を回避するため、
+//    スクロール領域の高さを現在スナップの可視高に詰める。snapPoints は viewport 比なので、Content を
+//    h-[100dvh] にすると可視高 = snap × 100dvh（＝下の maxHeight 計算）。
+//  - 背景 dim はタップで閉じる。触ってもスクロールしない（overflow 固定＋dim が touch を飲む）。
+//    × は出さない＝閉じるのは「ハンドル/ボディ下スワイプ」か「背景タップ」。
+//  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから閉じ操作は気軽。
 //
 // 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
 //  - フォームの保存/削除成功は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
@@ -80,6 +86,9 @@ function NarrowSheet({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+  // 現在のスナップ（2/3 ↔ 全画面）。スクロール領域の高さ算出に使う。
+  const [snap, setSnap] = useState<number | string | null>(SHEET_SNAP_POINTS[0]);
+  const snapFraction = typeof snap === "number" ? snap : 1;
 
   const requestClose = useCallback(() => setOpen(false), []);
 
@@ -129,8 +138,11 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
-        // ハンドルだけがシートを動かす＝ボディはネイティブスクロール専用。
-        handleOnly
+        // 2/3 で開き、ハンドルで全画面まで拡大。handleOnly は付けない＝ボディの
+        // スクロール／スクロール上端での下スワイプ閉じ（vaul の素の挙動）を生かす。
+        snapPoints={SHEET_SNAP_POINTS}
+        activeSnapPoint={snap}
+        setActiveSnapPoint={setSnap}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
@@ -138,19 +150,25 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            // 高さは固定（dvh＝実表示ビューポート基準。vh だと iOS でツールバー込みの“大きい
-            // ビューポート”基準になり下端が Safari ツールバーの裏に潜る）。snapPoints を使わず
-            // 固定高にすることで、はみ出すフォームを内側の overflow-y-auto がネイティブに
-            // スクロールできる（snapPoints だと 2/3 表示時にボディがスクロールしない）。
-            className="fixed inset-x-0 bottom-0 z-50 flex h-[66dvh] flex-col rounded-t-lg bg-white outline-none"
+            // Content は全画面高（h-[100dvh]）に固定。snapPoints は viewport 比で translate する
+            // ので、これで可視高 = snap × 100dvh になり、下のスクロール領域の高さ計算が成立する。
+            // dvh＝実表示ビューポート基準（vh だと iOS でツールバーの裏に下端が潜る）。
+            className="fixed inset-x-0 bottom-0 z-50 flex h-[100dvh] flex-col rounded-t-lg bg-white outline-none"
           >
             {/* 掴みやすいよう上下に余白を取った厚めのグリップ帯（タップミス防止）。 */}
             <div className="flex shrink-0 cursor-grab justify-center pt-4 pb-3 active:cursor-grabbing">
               <Drawer.Handle className="!h-1.5 !w-12" />
             </div>
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
-            {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない。 */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
+            {/* スクロール領域は「現在スナップの可視高ぶん」に詰める＝snapPoints でも 2/3 表示の
+                まま中身がネイティブスクロールできる（vaul の最上スナップ制約を回避）。
+                overscroll-contain: 末端まで来てもスクロールが背景に伝わらない。 */}
+            <div
+              className="overflow-y-auto overscroll-contain pb-5"
+              style={{
+                maxHeight: `calc(100dvh * ${snapFraction} - ${SHEET_HANDLE_BAND})`,
+              }}
+            >
               {child}
             </div>
           </Drawer.Content>
