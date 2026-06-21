@@ -30,6 +30,8 @@ import {
 import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon, EllipsisIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
+import { EditTripForm } from "./edit-trip-form";
+import type { Currency } from "@/lib/types/database";
 import { Button } from "@/components/ui/button";
 
 // ブラウザで生成したデータをファイルとしてダウンロードさせる。
@@ -54,6 +56,9 @@ export function TripActions({
   baseUrl,
   iAmAdmin,
   tripTitle,
+  tripStartDate,
+  tripEndDate,
+  tripDefaultCurrency,
   kmlPlacemarks,
   expenseCsvRows,
   calendarEvents,
@@ -62,6 +67,10 @@ export function TripActions({
   baseUrl: string;
   iAmAdmin: boolean;
   tripTitle: string;
+  // 編集フォームのプリフィル用（タイトル・日程・精算通貨）。
+  tripStartDate: string | null;
+  tripEndDate: string | null;
+  tripDefaultCurrency: Currency;
   // 座標を持つ place のみ（KML エクスポート対象）。
   kmlPlacemarks: KmlPlacemark[];
   // 名前解決済みの費用行（CSV エクスポート対象）。
@@ -73,6 +82,7 @@ export function TripActions({
   // （ドリルイン式。Base UI Menu の closeOnClick=false で枠内ビューを切り替える）。
   const [menuView, setMenuView] = useState<"main" | "export">("main");
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
+  const [editAnchor, setEditAnchor] = useState<Anchor | null>(null);
   // カレンダーエクスポートのダイアログ表示位置（null で非表示）。
   const [calendarAnchor, setCalendarAnchor] = useState<Anchor | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
@@ -295,6 +305,16 @@ export function TripActions({
                     </Menu.Item>
                     {iAmAdmin && (
                       <Menu.Item
+                        onClick={(e) =>
+                          setEditAnchor({ x: e.clientX, y: e.clientY })
+                        }
+                        className={`block ${menuItemClass}`}
+                      >
+                        旅行を編集
+                      </Menu.Item>
+                    )}
+                    {iAmAdmin && (
+                      <Menu.Item
                         onClick={onDelete}
                         disabled={isPending}
                         className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
@@ -339,6 +359,26 @@ export function TripActions({
           </Menu.Portal>
         </Menu.Root>
       </div>
+
+      {/* 旅行を編集（admin のみ。タイトル・日程・精算通貨） */}
+      {editAnchor && (
+        <FormPopover
+          anchor={editAnchor}
+          onClose={() => setEditAnchor(null)}
+          label="旅行を編集"
+          fullScreenOnNarrow
+        >
+          <EditTripForm
+            tripId={tripId}
+            title={tripTitle}
+            startDate={tripStartDate}
+            endDate={tripEndDate}
+            defaultCurrency={tripDefaultCurrency}
+            hasExpenses={expenseCsvRows.length > 0}
+            onDone={() => setEditAnchor(null)}
+          />
+        </FormPopover>
+      )}
 
       {/* 共有ポップオーバー（アイコン・メニューどちらからも） */}
       {shareAnchor && (

@@ -13,6 +13,53 @@ export type CreateExpenseState = {
   ok: boolean;
 };
 
+export type UpdateTripState = { ok: boolean; error: string | null };
+
+// 旅行のタイトル・日程・精算通貨を更新（admin のみ）。権限は RLS（trips_admin_update＝
+// is_trip_admin）で担保。非 admin は更新が 0 行になるので .select() の結果で検知してエラーにする。
+export async function updateTripAction(
+  tripId: string,
+  _prevState: UpdateTripState,
+  formData: FormData,
+): Promise<UpdateTripState> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "ログインが必要です" };
+
+  const title = String(formData.get("title") ?? "").trim();
+  const startDate = String(formData.get("start_date") ?? "");
+  const endDate = String(formData.get("end_date") ?? "");
+  const currency = String(formData.get("default_currency") ?? "") as Currency;
+
+  if (!title) return { ok: false, error: "タイトルを入力してください" };
+  if (!startDate || !endDate) {
+    return { ok: false, error: "日程を入力してください" };
+  }
+  if (!["JPY", "USD"].includes(currency)) {
+    return { ok: false, error: "精算通貨が不正です" };
+  }
+
+  const { data, error } = await supabase
+    .from("trips")
+    .update({
+      title,
+      start_date: startDate,
+      end_date: endDate,
+      default_currency: currency,
+    })
+    .eq("id", tripId)
+    .select("id");
+  if (error) return { ok: false, error: error.message };
+  if (!data || data.length === 0) {
+    return { ok: false, error: "編集できる権限がありません（管理者のみ）" };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { ok: true, error: null };
+}
+
 export async function createExpenseAction(
   tripId: string,
   _prevState: CreateExpenseState,

@@ -473,6 +473,9 @@ export default async function TripDetailPage({
           baseUrl={inviteBaseUrl}
           iAmAdmin={me.is_admin}
           tripTitle={trip.title}
+          tripStartDate={trip.start_date}
+          tripEndDate={trip.end_date}
+          tripDefaultCurrency={defaultCurrency}
           kmlPlacemarks={kmlPlacemarks}
           expenseCsvRows={expenseCsvRows}
           calendarEvents={calendarEvents}
