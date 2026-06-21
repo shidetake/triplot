@@ -543,11 +543,26 @@ export function ExpenseForm({
           </p>
         ))}
 
-      {canChangeVisibility ? (
-        <fieldset className="text-sm">
-          <legend className="font-medium">公開範囲</legend>
-          <div className="mt-1 flex gap-4">
-            <label className="inline-flex items-center gap-2">
+      {/* メモは費用の説明を兼ねるので「細々したオプション（公開範囲・支払者・割り勘）」より
+          上に置く（日付の下）。最下は設定系オプションに固める。 */}
+      <label className="block text-sm" htmlFor={noteId}>
+        <FieldLabel>メモ</FieldLabel>
+        <Input
+          id={noteId}
+          type="text"
+          name="note"
+          placeholder="ランチ"
+          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
+          className="mt-1 block w-full"
+        />
+      </label>
+
+      {/* 公開範囲は予定フォームと同じくラベル＋選択肢を1行インラインに。 */}
+      <div className="flex items-center gap-2 text-xs">
+        <span className="font-medium">公開範囲</span>
+        {canChangeVisibility ? (
+          <div className="flex gap-3" role="radiogroup" aria-label="公開範囲">
+            <label className="inline-flex items-center gap-1">
               <input
                 type="radio"
                 name="visibility"
@@ -557,7 +572,7 @@ export function ExpenseForm({
               />
               <span>共有</span>
             </label>
-            <label className="inline-flex items-center gap-2">
+            <label className="inline-flex items-center gap-1">
               <input
                 type="radio"
                 name="visibility"
@@ -568,10 +583,15 @@ export function ExpenseForm({
               <span>自分のみ</span>
             </label>
           </div>
-        </fieldset>
-      ) : (
-        <input type="hidden" name="visibility" value={visibility} />
-      )}
+        ) : (
+          <>
+            <span className="text-muted-foreground">
+              {visibility === "shared" ? "共有" : "自分のみ"}
+            </span>
+            <input type="hidden" name="visibility" value={visibility} />
+          </>
+        )}
+      </div>
 
       {/* 支払った人。割り勘対象と同じ「メンバー選択」なので隣に置く。既定は自分＝普通は
           入力者なので折りたたみ（あまり触らない）。タップで展開して別の人に変更。
@@ -664,20 +684,6 @@ export function ExpenseForm({
       {submittedSplitIds.map((id) => (
         <input key={id} type="hidden" name="split_member_ids" value={id} />
       ))}
-
-      {/* メモは自由記述なので最下（予定フォームと並びを揃える＝場所→日付の下、構造化
-          フィールドの後）。 */}
-      <label className="block text-sm" htmlFor={noteId}>
-        <FieldLabel>メモ</FieldLabel>
-        <Input
-          id={noteId}
-          type="text"
-          name="note"
-          placeholder="ランチ"
-          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
-          className="mt-1 block w-full"
-        />
-      </label>
 
       <div className="flex gap-2">
         {canDelete && (
