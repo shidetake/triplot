@@ -52,6 +52,7 @@ export function DraftConfirmButton({ draftId, label, ...formProps }: Props) {
           onClose={() => setAnchor(null)}
           label="取り込みを確定"
           fullScreenOnNarrow
+          draftKey={`expense:import:${draftId}`}
         >
           <ExpenseForm
             {...formProps}

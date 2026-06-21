@@ -114,6 +114,7 @@ export function ExpenseList({
           onClose={closeEdit}
           label="費用を編集"
           fullScreenOnNarrow
+          draftKey={`expense:edit:${editing.expense.id}`}
         >
           <ExpenseForm
             tripId={tripId}

@@ -35,6 +35,7 @@ export function CreateTripButton({
           onClose={() => setAnchor(null)}
           label="旅行を作成"
           fullScreenOnNarrow
+          draftKey="trip:new"
         >
           <CreateTripForm
             defaultDisplayName={defaultDisplayName}

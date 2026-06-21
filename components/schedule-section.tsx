@@ -214,6 +214,15 @@ export function ScheduleSection({
           onClose={closeForm}
           label="予定"
           fullScreenOnNarrow
+          // ボトムシート時の下書き保持キー。編集は予定ごと、新規はタップした
+          // スロット（日付・時刻・種別）ごとに別の下書きにする（別スロットを開くと真っさら）。
+          draftKey={
+            open.form.mode === "edit"
+              ? `event:edit:${open.form.event.id}`
+              : `event:new:${tripId}:${open.form.date}:${open.form.time}:${
+                  open.form.allDay ? "allday" : "timed"
+                }:${open.form.endTime ?? ""}`
+          }
         >
           <EventForm
             tripId={tripId}

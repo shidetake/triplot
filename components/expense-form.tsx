@@ -41,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
+import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 const tzLabel = tzDisplayLabel;
 
@@ -171,20 +172,52 @@ export function ExpenseForm({
         toast(`削除に失敗しました: ${error}`);
         return;
       }
+      clearDraft(); // 対象が消えたので下書きも破棄
       onDone?.();
     });
   };
 
-  const [localCurrency, setLocalCurrency] = useState<Currency>(initCurrency);
-  const [categoryId, setCategoryId] = useState<string>(initCategoryId);
+  // ボトムシート時は入力途中で閉じても残るよう、データ系 state は useDraft で保持する
+  // （ポップオーバー時は draftKey が無いので素の useState 相当）。clearDraft は送信/削除成功で破棄。
+  const inSheet = useInSheet();
+  const clearDraft = useClearDraft();
+
+  // 価格・メモは元々 uncontrolled（defaultValue）だったが、シートのアンマウントを跨いで
+  // 残すには controlled にする必要があるので useDraft の controlled 値にする。
+  const [price, setPrice] = useDraft<string>("price", () =>
+    isEdit
+      ? String(editExpense.local_price)
+      : initialPrice != null
+        ? String(initialPrice)
+        : "",
+  );
+  const [note, setNote] = useDraft<string>("note", () =>
+    isEdit ? (editExpense.note ?? "") : (initialNote ?? ""),
+  );
+
+  const [localCurrency, setLocalCurrency] = useDraft<Currency>(
+    "localCurrency",
+    initCurrency,
+  );
+  const [categoryId, setCategoryId] = useDraft<string>(
+    "categoryId",
+    initCategoryId,
+  );
   // 支払った人。普通は入力者＝支払者なので既定は自分＋折りたたみ表示（あまり触らない）。
-  const [payer, setPayer] = useState<string>(
+  const [payer, setPayer] = useDraft<string>("payer", () =>
     isEdit ? editExpense.payer_member_id : myMemberId,
   );
+  // 開閉トグルは純粋な表示状態なので保持しない（毎回畳んで開く）。
   const [payerOpen, setPayerOpen] = useState<boolean>(false);
-  const [paidAtDate, setPaidAtDate] = useState<string>(initPaidAtDate);
-  const [paidAtTime, setPaidAtTime] = useState<string>(initPaidAtTime);
-  const [showTime, setShowTime] = useState<boolean>(initShowTime);
+  const [paidAtDate, setPaidAtDate] = useDraft<string>(
+    "paidAtDate",
+    initPaidAtDate,
+  );
+  const [paidAtTime, setPaidAtTime] = useDraft<string>(
+    "paidAtTime",
+    initPaidAtTime,
+  );
+  const [showTime, setShowTime] = useDraft<boolean>("showTime", initShowTime);
 
   // 費用の発生TZ。編集時は保存値、新規は日付から旅程推測（乗継日は出発側を
   // 既定にして、下の2択でユーザが変えられる）。日付変更時に追従させる。
@@ -194,7 +227,7 @@ export function ExpenseForm({
         const r = resolveExpenseTz(initPaidAtDate, tzTimeline);
         return r.kind === "single" ? r.tz : r.departTz;
       })();
-  const [tz, setTz] = useState<string>(initTz);
+  const [tz, setTz] = useDraft<string>("tz", initTz);
   // 今選ばれている日付に対する解決結果（single か 乗継日 ambiguous か）。
   const tzRes = useMemo(
     () => resolveExpenseTz(paidAtDate, tzTimeline),
@@ -237,8 +270,14 @@ export function ExpenseForm({
     setPaidAtTime("00:00");
     setShowTime(false);
   };
-  const [visibility, setVisibility] = useState<Visibility>(initVisibility);
-  const [selectedSplits, setSelectedSplits] = useState<Set<string>>(initSplits);
+  const [visibility, setVisibility] = useDraft<Visibility>(
+    "visibility",
+    initVisibility,
+  );
+  const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
+    "selectedSplits",
+    initSplits,
+  );
 
   // 割り勘対象の "全員 / 一部" モード（event-form の参加者と同じ disclosure）。
   // 編集時、保存済み split がアクティブメンバーと完全一致なら "all"。
@@ -247,7 +286,8 @@ export function ExpenseForm({
     if (initSplits.size !== members.length) return false;
     return members.every((m) => initSplits.has(m.id));
   })();
-  const [splitMode, setSplitMode] = useState<"all" | "custom">(
+  const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
+    "splitMode",
     isEdit && !splitsMatchAll ? "custom" : "all",
   );
 
@@ -259,7 +299,7 @@ export function ExpenseForm({
     const avg = averageRates[c];
     return avg !== undefined ? formatRate(avg) : "";
   };
-  const [rateInput, setRateInput] = useState<string>(() =>
+  const [rateInput, setRateInput] = useDraft<string>("rateInput", () =>
     isEdit ? String(editExpense.rate_to_default) : rateFor(initCurrency),
   );
 
@@ -269,13 +309,11 @@ export function ExpenseForm({
   useEffect(() => {
     if (state.ok) {
       formRef.current?.reset();
-      // 通貨 / カテゴリ / 日付 / レート / 公開範囲 / 割り勘は controlled。
-      // 連続入力で前回値を引き継ぐため保持する（form.reset() は uncontrolled だけリセット）。
-      // 支払った人は uncontrolled なので毎回「自分」に戻る（仕様）。
+      clearDraft(); // 成功＝この下書きは用済み。次に開いたら真っさら（シート時のみ実体あり）。
       onSuccess?.(); // 成功時のみ（取り込み下書きを確定済みにする等）
-      onDone?.(); // ポップオーバー時は予定追加と同様、成功で閉じる
+      onDone?.(); // 成功で閉じる
     }
-  }, [state.ok, onSuccess, onDone]);
+  }, [state.ok, onSuccess, onDone, clearDraft]);
 
   const onCurrencyChange = (c: Currency) => {
     setLocalCurrency(c);
@@ -343,8 +381,9 @@ export function ExpenseForm({
       action={formAction}
       className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
-      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。 */}
-      {onDone && (
+      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。
+          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
+      {onDone && !inSheet && (
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
@@ -359,7 +398,8 @@ export function ExpenseForm({
             step="0.01"
             inputMode="decimal"
             placeholder="0"
-            defaultValue={isEdit ? editExpense.local_price : initialPrice}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
             className="mt-1 block w-full"
           />
         </label>
@@ -552,7 +592,8 @@ export function ExpenseForm({
           type="text"
           name="note"
           placeholder="ランチ"
-          defaultValue={isEdit ? (editExpense.note ?? "") : (initialNote ?? "")}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
           className="mt-1 block w-full"
         />
       </label>

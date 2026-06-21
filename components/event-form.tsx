@@ -29,6 +29,7 @@ import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 import { MessageBox } from "./message-box";
+import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 const initialState: EventMutationState = { ok: false, error: null };
 
@@ -93,7 +94,7 @@ export type EventFormMode =
 // 検索式の TimezonePicker を出す。tz は常に hidden で送る（畳んでも値が落ちないよう
 // disclosure 側で hidden を出し、TimezonePicker には name を渡さない）。
 function TzDisclosure({ value }: { value: string }) {
-  const [tz, setTz] = useState(value);
+  const [tz, setTz] = useDraft("tz", value);
   const [open, setOpen] = useState(false);
 
   return (
@@ -167,27 +168,41 @@ export function EventForm({
     : createEventAction.bind(null, tripId);
   const [state, formAction, isPending] = useActionState(action, initialState);
 
-  const [kind3, setKind3] = useState<Kind3>(
+  // ボトムシート時は入力途中で閉じても残るよう、データ系 state は useDraft で保持する
+  // （ポップオーバー時は draftKey が無いので素の useState 相当）。
+  const inSheet = useInSheet();
+  const clearDraft = useClearDraft();
+
+  const [kind3, setKind3] = useDraft<Kind3>(
+    "kind3",
     initialKind3(ev, formMode.mode === "create" && formMode.allDay === true),
   );
-  const [visibility, setVisibility] = useState<Visibility>(
+  const [visibility, setVisibility] = useDraft<Visibility>(
+    "visibility",
     isEdit ? ev!.visibility : "shared",
   );
   // 要予約。ON で「〇〇の予約」TODO（優先度:高）が紐づく。共有予定のみ
   // （private は共有TODOリストに漏れるため）。
-  const [needsReservation, setNeedsReservation] = useState<boolean>(
+  const [needsReservation, setNeedsReservation] = useDraft<boolean>(
+    "needsReservation",
     isEdit ? ev!.needsReservation : false,
   );
+
+  // タイトル・メモは元々 uncontrolled（defaultValue）だが、シートのアンマウントを跨いで
+  // 残すため controlled にする。
+  const [title, setTitle] = useDraft<string>("title", ev?.title ?? "");
+  const [note, setNote] = useDraft<string>("note", ev?.note ?? "");
 
   // 参加者。「全員」モードと「個別」モードの2状態。
   //  - "all"    = 全員参加（送信時は participant_member_ids を一切送らない）
   //  - "custom" = 部分集合（選んだメンバーIDだけ hidden input で送る）
   // 編集モードで既存参加者が居れば最初から custom 開始。
   const initialCustom = isEdit && (ev?.participantMemberIds.length ?? 0) > 0;
-  const [pMode, setPMode] = useState<"all" | "custom">(
+  const [pMode, setPMode] = useDraft<"all" | "custom">(
+    "pMode",
     initialCustom ? "custom" : "all",
   );
-  const [pSelected, setPSelected] = useState<Set<string>>(() => {
+  const [pSelected, setPSelected] = useDraft<Set<string>>("pSelected", () => {
     if (initialCustom) return new Set(ev!.participantMemberIds);
     return new Set(members.map((m) => m.id));
   });
@@ -207,8 +222,11 @@ export function EventForm({
   const [isDeleting, startDelete] = useTransition();
 
   useEffect(() => {
-    if (state.ok) onDone();
-  }, [state.ok, onDone]);
+    if (state.ok) {
+      clearDraft(); // 成功＝この下書きは用済み（シート時のみ実体あり）
+      onDone();
+    }
+  }, [state.ok, onDone, clearDraft]);
 
   // 壁時計文字列を date / time に割る
   const splitWall = (s: string | null) => {
@@ -228,16 +246,16 @@ export function EventForm({
     startInit.date || "2026-01-01",
     startInit.time || "09:00",
   );
-  const [sDate, setSDate] = useState(startInit.date || "2026-01-01");
-  const [sTime, setSTime] = useState(startInit.time || "09:00");
+  const [sDate, setSDate] = useDraft("sDate", startInit.date || "2026-01-01");
+  const [sTime, setSTime] = useDraft("sTime", startInit.time || "09:00");
   const initEMin =
     isEdit && endInit.date
       ? dtToMin(endInit.date, endInit.time || "00:00")
       : formMode.mode === "create" && formMode.endTime
         ? dtToMin(formMode.date, formMode.endTime)
         : initSMin + 60;
-  const [eDate, setEDate] = useState(minToDt(initEMin).date);
-  const [eTime, setETime] = useState(minToDt(initEMin).time);
+  const [eDate, setEDate] = useDraft("eDate", minToDt(initEMin).date);
+  const [eTime, setETime] = useDraft("eTime", minToDt(initEMin).time);
 
   // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
@@ -246,18 +264,26 @@ export function EventForm({
   // 時差移動は出発・到着をそれぞれ DateTimePopover（日付＋時刻チップ＝通常予定と同じ仕様）で
   // 編集するので、日付・時刻とも controlled state を持つ。出発と到着は別TZ・別日が当たり前
   // なので追従/ガードは入れない（独立。チップは両方とも日付＋時刻をフル表示する）。
-  const [departDate, setDepartDate] = useState(startInit.date);
-  const [departTime, setDepartTime] = useState(startInit.time || "09:00");
-  const [arriveDate, setArriveDate] = useState(
+  const [departDate, setDepartDate] = useDraft("departDate", startInit.date);
+  const [departTime, setDepartTime] = useDraft(
+    "departTime",
+    startInit.time || "09:00",
+  );
+  const [arriveDate, setArriveDate] = useDraft(
+    "arriveDate",
     endInit.date || transitArriveInit.date,
   );
-  const [arriveTime, setArriveTime] = useState(
+  const [arriveTime, setArriveTime] = useDraft(
+    "arriveTime",
     endInit.time || transitArriveInit.time,
   );
-  const [departTz, setDepartTz] = useState(tzInit);
-  const [arriveTz, setArriveTz] = useState(endTzInit);
-  const [alldayStart, setAlldayStart] = useState(startInit.date);
-  const [alldayEnd, setAlldayEnd] = useState(endInit.date || startInit.date);
+  const [departTz, setDepartTz] = useDraft("departTz", tzInit);
+  const [arriveTz, setArriveTz] = useDraft("arriveTz", endTzInit);
+  const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
+  const [alldayEnd, setAlldayEnd] = useDraft(
+    "alldayEnd",
+    endInit.date || startInit.date,
+  );
 
   // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
   const moveStart = (nd: string, nt: string) => {
@@ -303,6 +329,7 @@ export function EventForm({
         toast(`削除に失敗しました: ${error}`);
         return;
       }
+      clearDraft(); // 対象が消えたので下書きも破棄
       onDone();
     });
   };
@@ -316,8 +343,11 @@ export function EventForm({
       className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       {/* × は専用行を作らず右上角に重ねる（縦を 1 行ぶん詰める）。先頭の種別トラックが
-          下に潜らないよう、トラック側に右クリアランス（mr）を入れる。 */}
-      <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
+          下に潜らないよう、トラック側に右クリアランス（mr）を入れる。
+          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
+      {!inSheet && (
+        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
+      )}
 
       <input type="hidden" name="kind" value={submitKind} />
       {kind3 === "allday" && (
@@ -360,7 +390,8 @@ export function EventForm({
           type="text"
           name="title"
           required
-          defaultValue={ev?.title ?? ""}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder={
             kind3 === "transit" ? "NRT-HNL" : "ハイキング"
           }
@@ -542,7 +573,8 @@ export function EventForm({
         <Input
           type="text"
           name="note"
-          defaultValue={ev?.note ?? ""}
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
           placeholder={kind3 === "transit" ? "ターミナル1" : "日焼け止め持参"}
           className={inputLayout}
         />

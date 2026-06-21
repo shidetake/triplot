@@ -12,6 +12,8 @@ import { createPortal } from "react-dom";
 import { Popover } from "@base-ui/react/popover";
 import { Drawer } from "vaul";
 
+import { FormHostProvider } from "./form-host";
+
 export type Anchor = { x: number; y: number };
 
 // 全画面に切り替える幅の閾値。マジックナンバーではなく**フォーム幅から導く**:
@@ -55,20 +57,24 @@ function makeOnOpenChange(onClose: () => void) {
 //    「シートを引っ張りたい」のか「中身をスクロールしたい」のかが指で混ざらない。
 //  - 開いたら画面 2/3 くらい（snapPoints[0]）。ハンドルを上に引くとほぼ全画面、下に弾くと閉じる。
 //  - 背景は dim でグレイアウトし、触ってもスクロールしない（ドキュメントの overflow を固定＋
-//    dim が touch を飲む）。上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる。
+//    dim が touch を飲む）。× も背景クリック閉じも無い＝閉じるのは下スワイプだけ。
+//  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから「うっかり閉じ」
+//    のケアが軽くなり、× を消してスワイプ一本化できる。
 //
 // 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
-//  - フォームの ×/保存は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
+//  - フォームの保存/削除成功は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
 //  - Vaul のドラッグ↓は onOpenChange(false) 経由で内部クローズ。
 //  - 内部クローズ＝open を false に → Vaul がシートを下げ・dim が opacity でフェードアウト
 //    → アニメ分待ってから親へ通知（アンマウント）。
 function NarrowSheet({
   label,
   onClose,
+  draftKey,
   children,
 }: {
   label?: string;
   onClose: () => void;
+  draftKey?: string;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -100,12 +106,12 @@ function NarrowSheet({
     : children;
 
   return (
-    <>
+    <FormHostProvider draftKey={draftKey} inSheet>
       {/* 自前の dim。Vaul の Portal の外＝body に出して自分でライフサイクル管理する
           （Portal 内だと閉じる時 Vaul が即撤去してフェードアウトが切れる）。せり上がりに
           合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト。
           touch-none＝この帯を触っても背景はスクロールしない（背景はグレイアウトして不活性）。
-          クリックでは閉じない（データ保護）。 */}
+          クリックでは閉じない＝閉じるのは下スワイプだけ（Instagram と同じ）。 */}
       {typeof document !== "undefined" &&
         createPortal(
           <div
@@ -146,7 +152,7 @@ function NarrowSheet({
           </Drawer.Content>
         </Drawer.Portal>
       </Drawer.Root>
-    </>
+    </FormHostProvider>
   );
 }
 
@@ -162,6 +168,7 @@ export function FormPopover({
   children,
   label,
   fullScreenOnNarrow,
+  draftKey,
 }: {
   anchor: Anchor;
   onClose: () => void;
@@ -170,12 +177,15 @@ export function FormPopover({
   label?: string;
   // 大きい入力フォーム: 狭い画面でボトムシート表示する。
   fullScreenOnNarrow?: boolean;
+  // ボトムシート時の下書き保持キー（同じフォームを閉じて開き直すと入力が残る）。
+  // 一意な文字列にする（例 `expense:new:${tripId}`）。ポップオーバー時は無視される。
+  draftKey?: string;
 }) {
   const narrow = useMediaQuery(FULLSCREEN_BELOW);
 
   if (fullScreenOnNarrow && narrow) {
     return (
-      <NarrowSheet label={label} onClose={onClose}>
+      <NarrowSheet label={label} onClose={onClose} draftKey={draftKey}>
         {children}
       </NarrowSheet>
     );

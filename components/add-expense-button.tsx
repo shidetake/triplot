@@ -33,6 +33,7 @@ export function AddExpenseButton(props: Props) {
           onClose={() => setAnchor(null)}
           label="費用を追加"
           fullScreenOnNarrow
+          draftKey={`expense:new:${props.tripId}`}
         >
           <ExpenseForm {...props} onDone={() => setAnchor(null)} />
         </FormPopover>

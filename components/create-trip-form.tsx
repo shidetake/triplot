@@ -19,6 +19,7 @@ import { HelpTip } from "./help-tip";
 import { MessageBox } from "./message-box";
 import { PlusIcon } from "./icons";
 import { CloseButton } from "./close-button";
+import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 type Currency = "JPY" | "USD";
 
@@ -52,13 +53,23 @@ export function CreateTripForm({
     initialState,
   );
 
+  // ボトムシート時は入力途中で閉じても残るよう、データ系 state は useDraft で保持する。
+  const inSheet = useInSheet();
+  const clearDraft = useClearDraft();
+
   const canCopy = trips.length > 0;
-  const [mode, setMode] = useState<"new" | "copy">("new");
-  const [sourceId, setSourceId] = useState("");
+  const [mode, setMode] = useDraft<"new" | "copy">("mode", "new");
+  const [sourceId, setSourceId] = useDraft("sourceId", "");
   // タイトル・通貨はコピー元選択時にプリフィルしたいので制御する。
-  const [title, setTitle] = useState("");
-  const [currency, setCurrency] = useState<Currency>("JPY");
-  // 選択中の日程（コピー元より短いかの判定に使う）。
+  const [title, setTitle] = useDraft("title", "");
+  const [displayName, setDisplayName] = useDraft(
+    "displayName",
+    defaultDisplayName ?? "",
+  );
+  const [currency, setCurrency] = useDraft<Currency>("currency", "JPY");
+  // 選択中の日程（コピー元より短いかの判定に使う）。日程の真の値は DateRangePopover が
+  // 内部に持ち（remount でリセットされる）、これはその警告判定用ミラーなので保持しない
+  // （保持すると picker 表示が空なのに警告だけ出る不整合になる）。
   const [range, setRange] = useState<{
     start: string | null;
     end: string | null;
@@ -101,11 +112,18 @@ export function CreateTripForm({
   return (
     <form
       action={formAction}
+      // 成功時は createTripAction が redirect するので state.ok の通知が無い。送信時に下書きを
+      // 破棄しておけば、成功（=このまま遷移してアンマウント）後に残らない。HTML バリデーションで
+      // 弾かれた時は onSubmit 自体が発火しないので消えない。
+      onSubmit={() => clearDraft()}
       className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
       {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。
-          先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。 */}
-      <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
+          先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。
+          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
+      {!inSheet && (
+        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
+      )}
 
       {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型 */}
       {canCopy && (
@@ -192,7 +210,8 @@ export function CreateTripForm({
         label="あなたの表示名（旅行内）"
         name="display_name"
         required
-        defaultValue={defaultDisplayName ?? ""}
+        value={displayName}
+        onChange={(e) => setDisplayName(e.target.value)}
       />
 
       <div className="text-sm">
