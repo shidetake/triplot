@@ -1,19 +1,20 @@
 import { cn } from "@/lib/utils";
 
-// private な場所/費用の名前の隣に出す「プライベート」可視性バッジ。
-// design-guidelines「定型部品」インラインバッジのレシピ＋文言を1ソース化する
-// （expense-list / place-list / place-popups で逐語コピーされていたのを集約）。
-// font-normal を内包し、見出し（font-semibold）の隣に置いても太らない。
-// レイアウト（`shrink-0` 等）は className で渡す。
+import { LockIcon } from "./icons";
+
+// private な場所/費用/予定/TODO の名前の隣に出す可視性インジケータ。
+// 「プライベート」テキストだとモバイルで面積を取りすぎるので、世界的に通じる鍵アイコンにする
+// （design-guidelines「文言は極力アイコンに寄せる」）。意味は title（ホバー）＋ aria-label（読み上げ）で担保。
+// レイアウト（位置取り等）は className で渡す。色は muted で控えめに（状態の添え物）。
 export function PrivateBadge({ className }: { className?: string }) {
   return (
     <span
-      className={cn(
-        "rounded bg-zinc-100 px-1.5 text-xs font-normal text-muted-foreground",
-        className,
-      )}
+      role="img"
+      aria-label="プライベート"
+      title="プライベート"
+      className={cn("inline-flex shrink-0 text-muted-foreground", className)}
     >
-      プライベート
+      <LockIcon size={16} />
     </span>
   );
 }

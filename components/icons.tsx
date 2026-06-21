@@ -52,6 +52,22 @@ export function TrashIcon({
   );
 }
 
+// Lucide: lock（private 可視性インジケータ＝PrivateBadge）
+export function LockIcon({
+  size = 16,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: check
 export function CheckIcon({
   size = 14,
