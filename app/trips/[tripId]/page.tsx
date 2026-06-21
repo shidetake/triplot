@@ -611,7 +611,12 @@ export default async function TripDetailPage({
         <ExpenseList
           tripId={tripId}
           expenses={expenses}
-          members={activeMembers}
+          members={activeMembers.map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+            color: m.color,
+            avatarUrl: m.users?.avatar_url ?? null,
+          }))}
           categories={categories}
           places={placesForPicker}
           defaultCurrency={defaultCurrency}

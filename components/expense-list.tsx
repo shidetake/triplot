@@ -38,6 +38,7 @@ type Member = {
   id: string;
   display_name: string;
   color: number | null;
+  avatarUrl?: string | null;
 };
 
 export function ExpenseList({
@@ -209,6 +210,7 @@ function ExpenseRowItem({
               <MemberAvatar
                 name={payer?.display_name}
                 color={payer?.color}
+                imageUrl={payer?.avatarUrl}
               />
             </span>
             {splitMembers && splitMembers.length > 0 && (
@@ -220,6 +222,7 @@ function ExpenseRowItem({
                       key={m.id}
                       name={m.display_name}
                       color={m.color}
+                      imageUrl={m.avatarUrl}
                     />
                   ))}
                 </span>
