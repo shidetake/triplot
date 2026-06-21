@@ -53,13 +53,15 @@ function makeOnOpenChange(onClose: () => void) {
 }
 
 // 狭い画面のボトムシート（Vaul）。Instagram のコメントシートに挙動を揃える:
-//  - 上端ハンドルだけで拡大縮小・クローズ（handleOnly）。ボディはシート内スクロール専用＝
-//    「シートを引っ張りたい」のか「中身をスクロールしたい」のかが指で混ざらない。
-//  - 開いたら画面 2/3 くらい（snapPoints[0]）。ハンドルを上に引くとほぼ全画面、下に弾くと閉じる。
-//  - 背景は dim でグレイアウトし、触ってもスクロールしない（ドキュメントの overflow を固定＋
-//    dim が touch を飲む）。× も背景クリック閉じも無い＝閉じるのは下スワイプだけ。
-//  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから「うっかり閉じ」
-//    のケアが軽くなり、× を消してスワイプ一本化できる。
+//  - 上端ハンドルだけがシートを動かす（handleOnly）＝ハンドルを下にドラッグで閉じる。ボディは
+//    シート内スクロール専用＝「シートを動かす」のか「中身をスクロールする」のかが指で混ざらない。
+//  - 高さは固定（画面 2/3 ほど＝上に元画面が dim で残る）。はみ出す中身はボディがスクロールする。
+//    ※ Vaul の snapPoints は「最上スナップでしか中身がスクロールしない」制約があり、2/3 で開くと
+//      ボディが動かせず詰む。なので snapPoints は使わず固定高＋ネイティブスクロールにする。
+//  - 背景 dim はタップで閉じる（Instagram と同じ）。触ってもスクロールしない（ドキュメントの
+//    overflow を固定＋dim が touch を飲む）。× は出さない＝閉じるのは下スワイプか背景タップ。
+//  - 閉じても入力途中の下書きは消えない（各フォームが draftKey で保持）。だから閉じ操作を
+//    気軽にできる（スワイプ／背景タップ）。
 //
 // 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
 //  - フォームの保存/削除成功は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
@@ -110,8 +112,7 @@ function NarrowSheet({
       {/* 自前の dim。Vaul の Portal の外＝body に出して自分でライフサイクル管理する
           （Portal 内だと閉じる時 Vaul が即撤去してフェードアウトが切れる）。せり上がりに
           合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト。
-          touch-none＝この帯を触っても背景はスクロールしない（背景はグレイアウトして不活性）。
-          クリックでは閉じない＝閉じるのは下スワイプだけ（Instagram と同じ）。 */}
+          touch-none＝この帯を触っても背景はスクロールしない。タップで閉じる（Instagram と同じ）。 */}
       {typeof document !== "undefined" &&
         createPortal(
           <div
@@ -120,6 +121,7 @@ function NarrowSheet({
                 ? "animate-in fade-in-0"
                 : "animate-out fade-out-0 [animation-fill-mode:forwards]"
             }`}
+            onClick={requestClose}
             aria-hidden
           />,
           document.body,
@@ -127,11 +129,8 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
-        // ハンドルだけでドラッグ＝ボディはスクロール専用。
+        // ハンドルだけがシートを動かす＝ボディはネイティブスクロール専用。
         handleOnly
-        // 開く高さは Instagram のコメントシート相当（画面 2/3 ほど＝上に元画面が dim で残る）。
-        // ハンドルを上に引くと 0.95 まで拡大、下に弾くと閉じる。
-        snapPoints={[0.66, 0.95]}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
@@ -139,11 +138,16 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            // 高さは dvh（実表示ビューポート＝Vaul の位置決め基準と同じ）。vh だと iOS で
-            // ツールバー込みの“大きいビューポート”基準になり下端が Safari ツールバーの裏に潜る。
-            className="fixed inset-x-0 bottom-0 z-50 flex h-[95dvh] flex-col rounded-t-lg bg-white outline-none"
+            // 高さは固定（dvh＝実表示ビューポート基準。vh だと iOS でツールバー込みの“大きい
+            // ビューポート”基準になり下端が Safari ツールバーの裏に潜る）。snapPoints を使わず
+            // 固定高にすることで、はみ出すフォームを内側の overflow-y-auto がネイティブに
+            // スクロールできる（snapPoints だと 2/3 表示時にボディがスクロールしない）。
+            className="fixed inset-x-0 bottom-0 z-50 flex h-[66dvh] flex-col rounded-t-lg bg-white outline-none"
           >
-            <Drawer.Handle className="mt-2 mb-1 shrink-0" />
+            {/* 掴みやすいよう上下に余白を取った厚めのグリップ帯（タップミス防止）。 */}
+            <div className="flex shrink-0 cursor-grab justify-center pt-4 pb-3 active:cursor-grabbing">
+              <Drawer.Handle className="!h-1.5 !w-12" />
+            </div>
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
             {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない。 */}
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
