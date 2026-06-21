@@ -90,6 +90,7 @@ export function ExpenseForm({
   initialPrice,
   initialNote,
   initialPlace,
+  autoResolvePlace,
   initialTime, // "HH:MM"。あれば時刻欄を開いて事前入力する。
 }: {
   tripId: string;
@@ -113,6 +114,8 @@ export function ExpenseForm({
   initialPrice?: number;
   initialNote?: string;
   initialPlace?: PlacePickerInitial;
+  // 取り込み用: 場所欄を開いた時に店名を Google 自動解決（高確信なら丸める）。
+  autoResolvePlace?: { name: string; location?: string | null } | null;
   initialTime?: string;
 }) {
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -472,6 +475,7 @@ export function ExpenseForm({
               places={places}
               biasCenter={biasCenter}
               initial={placePickerInitial}
+              autoResolve={autoResolvePlace}
             />
           </APIProvider>
         ) : (
@@ -479,6 +483,7 @@ export function ExpenseForm({
             places={places}
             biasCenter={biasCenter}
             initial={placePickerInitial}
+            autoResolve={autoResolvePlace}
           />
         )}
       </div>

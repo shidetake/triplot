@@ -449,8 +449,10 @@ export default async function TripDetailPage({
         initialCurrency: currency,
         initialCategoryId: categoryId,
         initialPaidAt: r.date,
-        initialNote: r.merchant,
+        // 店名はメモではなく場所へ。保存済みにマッチすればそれを使い、無ければ確定フォームで
+        // Google に自動解決して（高確信なら）丸める。低確信は店名のままテキスト場所になる。
         initialPlace: place,
+        autoResolvePlace: place ? null : { name: r.merchant, location: r.location },
         initialTime: r.time ?? undefined,
       },
     ];
@@ -591,8 +593,8 @@ export default async function TripDetailPage({
                   tripStart={trip.start_date}
                   tripEnd={trip.end_date}
                   initialPrice={d.initialPrice}
-                  initialNote={d.initialNote}
                   initialPlace={d.initialPlace}
+                  autoResolvePlace={d.autoResolvePlace}
                   initialTime={d.initialTime}
                 />
               ))}

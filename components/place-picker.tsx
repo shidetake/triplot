@@ -10,6 +10,11 @@ import type { LatLng } from "@/lib/placeMap";
 import { inputClass } from "./input-class";
 import { extractRegion } from "./place-search";
 import { menuItemClass } from "./menu-item";
+import { matchPlace } from "@/lib/receipt/placeMatch";
+
+// 取り込みの自動解決で「Google の場所に丸める」最低スコア。保存済みマッチ(0.5)より高めにして、
+// 高確信のときだけ丸める（外したらレシート店名のテキストのまま残す）。閾値は実データで調整可。
+const AUTO_ROUND_THRESHOLD = 0.7;
 
 // 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
 // 混ぜて出すコンボボックス（Google カレンダーの場所欄や Notion/Linear の作成サジェスト同系）。
@@ -53,15 +58,21 @@ export function PlacePicker({
   biasCenter,
   initial,
   placeholder = "Eggs 'n Things",
+  autoResolve,
 }: {
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   initial: PlacePickerInitial;
   placeholder?: string;
+  // 取り込み用: 開いた時にこの店名を Google で自動解決し、高確信なら Google の場所に丸める
+  // （低確信なら店名のままテキスト場所）。initial（保存済みマッチ）が有る時は無視。
+  autoResolve?: { name: string; location?: string | null } | null;
 }) {
   const placesLib = useMapsLibrary("places");
 
-  const [query, setQuery] = useState(initial ? initial.name : "");
+  const [query, setQuery] = useState(
+    initial ? initial.name : (autoResolve?.name ?? ""),
+  );
   const [resolved, setResolved] = useState<Resolved | null>(
     initial ? { kind: "saved", id: initial.id, name: initial.name } : null,
   );
@@ -73,6 +84,8 @@ export function PlacePicker({
     null,
   );
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // 自動解決は1マウント1回だけ（毎レンダー走らないように）。フォームを開き直すと remount=再実行。
+  const autoResolveTried = useRef(false);
 
   // 候補リストの開閉。Base UI に任せると（特に iOS のボトムシート内で）キーボードを
   // 閉じても候補が残るので、controlled にして「キーボードが閉じたら閉じる」を足す。
@@ -109,6 +122,74 @@ export function PlacePicker({
     }
     return tokenRef.current;
   };
+
+  // 取り込みの自動解決：開いた時に店名を Google 補完→先頭候補を取得→自前スコアで判定し、
+  // 高確信なら Google の場所に丸める（座標付き＝ピン）。低確信/候補無しはレシート店名のまま
+  // （query は初期値で店名が入っているのでテキスト場所になる）。initial（保存済み）が有る時は何もしない。
+  useEffect(() => {
+    if (autoResolveTried.current) return;
+    if (initial) return;
+    const merchant = autoResolve?.name?.trim();
+    if (!merchant) return;
+    if (!placesLib) return; // placesLib が来るまで待つ（来たら再実行）
+    autoResolveTried.current = true;
+    const location = autoResolve?.location ?? null;
+    void (async () => {
+      // セッショントークンはここで直接用意（ensureToken を deps に乗せないため）。
+      if (!tokenRef.current) {
+        tokenRef.current = new placesLib.AutocompleteSessionToken();
+      }
+      const sessionToken = tokenRef.current;
+      try {
+        const { suggestions } =
+          await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+            input: merchant,
+            language: "ja",
+            region: "jp",
+            sessionToken,
+            locationBias: { center: biasCenter, radius: 30000 },
+          });
+        const top = suggestions.find((s) => s.placePrediction)?.placePrediction;
+        if (!top) return; // 候補なし → レシート名のテキストのまま
+        const place = top.toPlace();
+        await place.fetchFields({
+          fields: [
+            "id",
+            "displayName",
+            "formattedAddress",
+            "addressComponents",
+            "location",
+          ],
+        });
+        const loc = place.location;
+        const candName = place.displayName ?? top.text.text;
+        const candAddr = place.formattedAddress ?? "";
+        // 「丸めるか」は自前スコア（名前＋住所の近さ）で判定。高確信のときだけ Google に寄せる。
+        const matched = matchPlace(
+          { merchant, location },
+          [{ id: "g", name: candName, formattedAddress: candAddr }],
+          AUTO_ROUND_THRESHOLD,
+        );
+        if (matched && place.id && loc) {
+          setResolved({
+            kind: "google",
+            placeId: place.id,
+            name: candName,
+            address: candAddr,
+            lat: loc.lat(),
+            lng: loc.lng(),
+            ...extractRegion(place.addressComponents),
+          });
+          setQuery(candName);
+        }
+        // else: 低確信 → 丸めない（レシート店名のテキストのまま）。
+      } catch {
+        // 取得失敗 → レシート店名のまま。
+      } finally {
+        tokenRef.current = null; // セッション終了
+      }
+    })();
+  }, [placesLib, initial, autoResolve, biasCenter]);
 
   const fetchGoogle = (q: string) => {
     if (!placesLib || q.trim().length < 2) {
