@@ -281,17 +281,27 @@ export function TripActions({
               <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 text-sm shadow-lg">
                 {menuView === "main" ? (
                   <>
-                    <Menu.Item
-                      onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-                      className={`block ${menuItemClass}`}
-                    >
-                      共有
-                    </Menu.Item>
+                    {iAmAdmin && (
+                      <Menu.Item
+                        onClick={(e) =>
+                          setEditAnchor({ x: e.clientX, y: e.clientY })
+                        }
+                        className={`block ${menuItemClass}`}
+                      >
+                        旅行を編集
+                      </Menu.Item>
+                    )}
                     <Menu.Item
                       render={<Link href={`/trips/${tripId}/members`} />}
                       className={`block ${menuItemClass}`}
                     >
                       メンバー管理
+                    </Menu.Item>
+                    <Menu.Item
+                      onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
+                      className={`block ${menuItemClass}`}
+                    >
+                      共有
                     </Menu.Item>
                     <Menu.Item
                       closeOnClick={false}
@@ -305,21 +315,11 @@ export function TripActions({
                     </Menu.Item>
                     {iAmAdmin && (
                       <Menu.Item
-                        onClick={(e) =>
-                          setEditAnchor({ x: e.clientX, y: e.clientY })
-                        }
-                        className={`block ${menuItemClass}`}
-                      >
-                        旅行を編集
-                      </Menu.Item>
-                    )}
-                    {iAmAdmin && (
-                      <Menu.Item
                         onClick={onDelete}
                         disabled={isPending}
                         className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
                       >
-                        この旅行を削除
+                        旅行を削除
                       </Menu.Item>
                     )}
                   </>
