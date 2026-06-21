@@ -953,6 +953,7 @@ export type Database = {
           p_priority: string
           p_title: string
           p_trip_id: string
+          p_visibility: string
         }
         Returns: string
       }

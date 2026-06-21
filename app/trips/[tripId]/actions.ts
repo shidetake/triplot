@@ -1149,12 +1149,14 @@ export async function updateMyMemberAction(
 
 const TODO_PRIORITIES = ["high", "medium", "low"];
 const TODO_KINDS = ["prep", "onsite"];
+const TODO_VISIBILITIES = ["shared", "private"];
 
 export async function createTodoAction(
   tripId: string,
   title: string,
   priority: string,
   kind: string,
+  visibility: string,
 ): Promise<{ error: string | null }> {
   const supabase = await createClient();
   const {
@@ -1170,12 +1172,16 @@ export async function createTodoAction(
   if (!TODO_KINDS.includes(kind)) {
     return { error: "区分が不正です" };
   }
+  if (!TODO_VISIBILITIES.includes(visibility)) {
+    return { error: "公開範囲が不正です" };
+  }
 
   const { error } = await supabase.rpc("create_todo", {
     p_trip_id: tripId,
     p_title: trimmed,
     p_priority: priority,
     p_kind: kind,
+    p_visibility: visibility,
   });
   if (error) return { error: error.message };
 

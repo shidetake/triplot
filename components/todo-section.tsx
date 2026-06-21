@@ -25,6 +25,7 @@ import {
   CheckIcon,
   EqualIcon,
   HeartIcon,
+  LockIcon,
   PlusIcon,
   TrashIcon,
 } from "@/components/icons";
@@ -238,6 +239,8 @@ export function TodoSection({
 
   const [draft, setDraft] = useState("");
   const [draftPriority, setDraftPriority] = useState<TodoPriority>("medium");
+  // 追加時の公開範囲。既定は公開（共有）。鍵トグルで private に。
+  const [draftVisibility, setDraftVisibility] = useState<Visibility>("shared");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
@@ -257,11 +260,12 @@ export function TodoSection({
       created_by_member_id: myMemberId,
       kind,
       event_id: null,
-      visibility: "shared", // 手動追加TODOは常に共有（private は予約TODO経由のみ）
+      visibility: draftVisibility,
       likeCount: 0,
       iLiked: false,
     };
     setDraft("");
+    setDraftVisibility("shared"); // 次回の追加は既定の公開に戻す
     startTransition(async () => {
       applyOptimistic({ type: "add", todo: temp });
       const { error } = await createTodoAction(
@@ -269,6 +273,7 @@ export function TodoSection({
         title,
         draftPriority,
         kind,
+        draftVisibility,
       );
       if (error) toast(`失敗しました: ${error}`);
     });
@@ -365,6 +370,36 @@ export function TodoSection({
           placeholder={placeholder}
           className="min-w-0 flex-1 rounded-md border border-foreground/10 px-3 py-1.5 text-sm outline-none placeholder:text-subtle-foreground focus:border-primary"
         />
+        {/* 公開範囲トグル（優先度の左）。既定は公開＝グレーアウトの鍵、押すと private＝濃い鍵。 */}
+        <Button
+          type="button"
+          variant="ghost"
+          size="iconDense"
+          onClick={() =>
+            setDraftVisibility((v) => (v === "private" ? "shared" : "private"))
+          }
+          aria-pressed={draftVisibility === "private"}
+          aria-label={
+            draftVisibility === "private"
+              ? "プライベート（自分のみ）"
+              : "公開（共有）"
+          }
+          title={
+            draftVisibility === "private"
+              ? "プライベート（自分のみ）"
+              : "公開（共有）"
+          }
+          className="shrink-0 rounded-full"
+        >
+          <LockIcon
+            size={16}
+            className={
+              draftVisibility === "private"
+                ? "text-foreground"
+                : "text-subtle-foreground"
+            }
+          />
+        </Button>
         <PrioritySelect value={draftPriority} onChange={setDraftPriority} />
         <Button
           type="button"
