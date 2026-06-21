@@ -207,8 +207,8 @@ export function FormPopover({
   label?: string;
   // 大きい入力フォーム: 狭い画面でボトムシート表示する。
   fullScreenOnNarrow?: boolean;
-  // ボトムシート時の下書き保持キー（同じフォームを閉じて開き直すと入力が残る）。
-  // 一意な文字列にする（例 `expense:new:${tripId}`）。ポップオーバー時は無視される。
+  // 下書き保持キー（同じフォームを閉じて開き直すと入力が残る）。シート・ポップオーバー両方で効く。
+  // 一意な文字列にする（例 `expense:new:${tripId}`）。同じキーなので幅をまたいで切り替わっても残る。
   draftKey?: string;
 }) {
   const narrow = useMediaQuery(FULLSCREEN_BELOW);
@@ -251,7 +251,11 @@ export function FormPopover({
             aria-label={label}
             className="max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl outline-none"
           >
-            {children}
+            {/* ポップオーバーでも下書きを保持する（draftKey 経由）。inSheet=false なので × は出す
+                ＝シートと違い保持＋×の両方。外側クリックの誤爆で入力が消えなくなる。 */}
+            <FormHostProvider draftKey={draftKey} inSheet={false}>
+              {children}
+            </FormHostProvider>
           </Popover.Popup>
         </Popover.Positioner>
       </Popover.Portal>
