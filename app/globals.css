@@ -112,6 +112,10 @@ input[type="time"] {
   appearance: none;
   min-width: 0;
   max-width: 100%;
+  /* 固定高(h-9)だと値が上揃えになるため、flex で縦中央に寄せる
+     （text/number input は自動で中央だが date/time は中身が pseudo なので明示）。 */
+  display: flex;
+  align-items: center;
 }
 
 /* ネイティブの時計／カレンダーのピッカー指示子（右端のアイコン）を消す。視覚ノイズを

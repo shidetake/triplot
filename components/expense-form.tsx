@@ -516,7 +516,7 @@ export function ExpenseForm({
             <p className="text-xs text-muted-foreground">
               移動日です。どちらのタイムゾーンで使ったか選んでください。
             </p>
-            <div className="mt-1 flex flex-col gap-1">
+            <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
               <label className="inline-flex items-center gap-2">
                 <input
                   type="radio"
