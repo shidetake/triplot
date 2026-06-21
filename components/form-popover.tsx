@@ -50,13 +50,16 @@ function makeOnOpenChange(onClose: () => void) {
   };
 }
 
-// 狭い画面のボトムシート（Vaul）。下からせり上がり・ドラッグで下に弾いて閉じられ、
-// 上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる（全画面だと文脈が
-// 消える問題への対応。Google マップ等と同じ世の中標準）。
+// 狭い画面のボトムシート（Vaul）。Instagram のコメントシートに挙動を揃える:
+//  - 上端ハンドルだけで拡大縮小・クローズ（handleOnly）。ボディはシート内スクロール専用＝
+//    「シートを引っ張りたい」のか「中身をスクロールしたい」のかが指で混ざらない。
+//  - 開いたら画面 2/3 くらい（snapPoints[0]）。ハンドルを上に引くとほぼ全画面、下に弾くと閉じる。
+//  - 背景は dim でグレイアウトし、触ってもスクロールしない（ドキュメントの overflow を固定＋
+//    dim が touch を飲む）。上に元画面が薄暗く残る＝「どこに居て・どこから開いたか」が分かる。
 //
 // 閉じアニメ（dim フェードアウト＋シート下降）を全経路で出すため、open を内部に持つ:
 //  - フォームの ×/保存は onDone を呼ぶので、子の onDone を「内部クローズ」に差し替える。
-//  - Vaul のドラッグ↓/Esc は onOpenChange(false) 経由で内部クローズ。
+//  - Vaul のドラッグ↓は onOpenChange(false) 経由で内部クローズ。
 //  - 内部クローズ＝open を false に → Vaul がシートを下げ・dim が opacity でフェードアウト
 //    → アニメ分待ってから親へ通知（アンマウント）。
 function NarrowSheet({
@@ -79,7 +82,19 @@ function NarrowSheet({
     return () => clearTimeout(t);
   }, [open, onClose]);
 
-  // フォームの ×/保存（onDone）を内部クローズに差し替える（閉じアニメを通すため）。
+  // 背景スクロールの固定。modal=false（フォーム内のポータル popover を生かすため）なので
+  // Vaul の scroll-lock には乗れない。代わりにドキュメントスクローラの overflow を自前で固定する。
+  // 開いている間ずっと（閉じアニメ中も）ロックし、アンマウントで元に戻す。
+  useEffect(() => {
+    const el = document.documentElement;
+    const prev = el.style.overflow;
+    el.style.overflow = "hidden";
+    return () => {
+      el.style.overflow = prev;
+    };
+  }, []);
+
+  // フォームの保存/削除成功（onDone）を内部クローズに差し替える（閉じアニメを通すため）。
   const child = isValidElement<{ onDone?: () => void }>(children)
     ? cloneElement(children, { onDone: requestClose })
     : children;
@@ -88,13 +103,13 @@ function NarrowSheet({
     <>
       {/* 自前の dim。Vaul の Portal の外＝body に出して自分でライフサイクル管理する
           （Portal 内だと閉じる時 Vaul が即撤去してフェードアウトが切れる）。せり上がりに
-          合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト（明るさが
-          急変しない）。クリックは捕まえるが閉じない（データ保護）。modal=false なので body の
-          pointer-events は触られず、フォーム内のポータル popover は生きる。 */}
+          合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト。
+          touch-none＝この帯を触っても背景はスクロールしない（背景はグレイアウトして不活性）。
+          クリックでは閉じない（データ保護）。 */}
       {typeof document !== "undefined" &&
         createPortal(
           <div
-            className={`fixed inset-0 z-40 bg-black/40 duration-500 ${
+            className={`fixed inset-0 z-40 touch-none bg-black/40 duration-500 ${
               open
                 ? "animate-in fade-in-0"
                 : "animate-out fade-out-0 [animation-fill-mode:forwards]"
@@ -106,8 +121,11 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
-        // 最初は中央あたり(0.6)で開き、上に引っ張ると拡大(0.95)。下に弾くと閉じる。
-        snapPoints={[0.6, 0.95]}
+        // ハンドルだけでドラッグ＝ボディはスクロール専用。
+        handleOnly
+        // 開く高さは Instagram のコメントシート相当（画面 2/3 ほど＝上に元画面が dim で残る）。
+        // ハンドルを上に引くと 0.95 まで拡大、下に弾くと閉じる。
+        snapPoints={[0.66, 0.95]}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
         }}
@@ -121,9 +139,7 @@ function NarrowSheet({
           >
             <Drawer.Handle className="mt-2 mb-1 shrink-0" />
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
-            {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない
-                （フォーム上のスワイプで背景が動くのを防ぐ）。一方で上の dim 帯のスワイプは
-                素通しのまま背景がスクロールできる＝modal=false の利点を保つ。 */}
+            {/* overscroll-contain: フォーム末端まで来てもスクロールが背景に伝わらない。 */}
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
               {child}
             </div>
