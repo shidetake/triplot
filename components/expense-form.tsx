@@ -360,7 +360,7 @@ export function ExpenseForm({
             inputMode="decimal"
             placeholder="0"
             defaultValue={isEdit ? editExpense.local_price : initialPrice}
-            className="mt-1 block w-full"
+            className="mt-1 block h-9 w-full"
           />
         </label>
         <label className="block text-sm">
@@ -369,7 +369,7 @@ export function ExpenseForm({
             name="local_currency"
             value={localCurrency}
             onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className={`mt-1 block ${inputClass}`}
+            className={`mt-1 block h-9 ${inputClass}`}
           >
             <option value="JPY">JPY</option>
             <option value="USD">USD</option>
@@ -557,8 +557,9 @@ export function ExpenseForm({
         />
       </label>
 
-      {/* 公開範囲は予定フォームと同じくラベル＋選択肢を1行インラインに。 */}
-      <div className="flex items-center gap-2 text-xs">
+      {/* 公開範囲は予定フォームと同じくラベル＋選択肢を1行インラインに（ラベルは text-sm で
+          他のフィールドラベルと揃える）。 */}
+      <div className="flex items-center gap-2 text-sm">
         <span className="font-medium">公開範囲</span>
         {canChangeVisibility ? (
           <div className="flex gap-3" role="radiogroup" aria-label="公開範囲">
