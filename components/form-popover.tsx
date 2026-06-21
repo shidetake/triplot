@@ -57,7 +57,7 @@ function makeOnOpenChange(onClose: () => void) {
 // 元画面が dim で残る。snapPoints の上点を 1.0 未満にする手もあるが、それだとシートが常時 translate
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
-const SHEET_MAX_DVH = 85;
+const SHEET_MAX_DVH = 95;
 // 開いたときの可視高（viewport 比）。
 const SHEET_OPEN_VISIBLE = 0.72;
 // snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
@@ -67,17 +67,19 @@ const SHEET_SNAP_POINTS: number[] = [
   1,
 ];
 
-// 下方向に「画面のこの割合」以上ドラッグして離したら、スナップに関係なく一気に閉じる。
-// vaul は snapPoints があると「速い velocity>2 のフリック」でしか拡大状態から閉じられず、
-// ゆっくり下までスワイプしても下スナップに戻ってしまう（＝閉じにくい）。それを距離基準で補う。
-const SHEET_CLOSE_DRAG_FRACTION = 0.4;
+// 一段閉じの境目。下スワイプが「既定サイズ(下スナップ)の上端より、さらに画面のこの割合ぶん下」
+// までシートを連れて行ったら一気に閉じる。＝二段階(拡大→既定→閉じ)を、既定を飛び越えたら一段で
+// 閉じられるようにする。0 だと既定ちょうどで閉じ判定に触れて誤爆するので少しだけ余白を取る。
+const SHEET_CLOSE_BELOW_MARGIN = 0.04;
 
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約85%)まで拡大」。挙動は概ね vaul の素のまま:
+// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約95%)まで拡大」。挙動は概ね vaul の素のまま:
 //  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
-//  - 上スナップ(Content が全部見える＝約85%)では、ボディは中身をスクロールし、スクロール上端で下に
+//  - 上スナップ(Content が全部見える＝約95%)では、ボディは中身をスクロールし、スクロール上端で下に
 //    引くと縮小→閉じる。
-//  - 下までスワイプしたら一気に閉じる挙動は vaul に無いので onDrag/onRelease で距離基準の閉じを足す
-//    （下記 SHEET_CLOSE_DRAG_FRACTION）。スクロール直後の閉じの固さは scrollLockTimeout=0 で緩める。
+//  - 拡大状態からの閉じ: vaul は速いフリックか「拡大→既定→閉じ」の二段でしか閉じられない。一段で
+//    閉じられるよう、下スワイプが既定サイズ(下スナップ)を飛び越えて下に来たら閉じる処理を
+//    onDrag/onRelease で足す（既定より上で離せば既定に戻る＝サイズ/速度ではなく“既定を越えたか”で判定）。
+//    スクロール直後の閉じの固さは scrollLockTimeout=0 で緩める。
 //  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（下スナップのボディ
 //    ドラッグが拡大と閉じを兼ねるため）。handleOnly にするとボディ操作が全部死ぬので使わない。
 //  - 背景 dim はタップで閉じる。触ってもスクロールしない（overflow 固定＋dim が touch を飲む）。× は出さない。
@@ -103,11 +105,10 @@ function NarrowSheet({
 
   const requestClose = useCallback(() => setOpen(false), []);
 
-  // シートを下にどれだけドラッグしたかの追跡（距離基準の一気閉じ用）。onDrag は vaul が
-  // シートを掴んで動かしている間だけ呼ばれる（中身スクロール中は呼ばれない）ので、ここで
-  // 拾う移動量は純粋にシートのドラッグ量＝スクロールとは混ざらない。
-  const dragStartY = useRef<number | null>(null);
-  const dragLastY = useRef(0);
+  // 一段閉じ用の追跡。onDrag は vaul がシートを掴んで動かしている間だけ呼ばれる（中身スクロール中は
+  // 呼ばれない）ので、ここで見るシート上端位置は純粋にシートのドラッグ結果＝スクロールとは混ざらない。
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const lastSheetTop = useRef<number | null>(null);
 
   // 閉じ始めたら、Vaul の下降と dim フェードアウト（~500ms）の後に親へ通知してアンマウント。
   useEffect(() => {
@@ -161,23 +162,22 @@ function NarrowSheet({
         // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
         // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
         scrollLockTimeout={0}
-        // 距離基準の一気閉じ。シートドラッグ中の指の移動量を覚えておき…
-        onDrag={(e) => {
-          if (dragStartY.current === null) dragStartY.current = e.pageY;
-          dragLastY.current = e.pageY;
-        }}
-        // …離した時点で「下に画面の SHEET_CLOSE_DRAG_FRACTION 以上」動いていたら閉じる
-        // （vaul の snap 復帰を上書き。ゆっくり下までスワイプ＝閉じる／途中で離す＝既定サイズに戻る）。
-        onRelease={() => {
-          const start = dragStartY.current;
-          dragStartY.current = null;
-          if (start === null) return;
-          if (
-            dragLastY.current - start >
-            window.innerHeight * SHEET_CLOSE_DRAG_FRACTION
-          ) {
-            requestClose();
+        // 一段閉じ。シートを掴んで動かしている間、シート上端の viewport 位置を覚えておき…
+        onDrag={() => {
+          if (sheetRef.current) {
+            lastSheetTop.current = sheetRef.current.getBoundingClientRect().top;
           }
+        }}
+        // …離した時点で「既定サイズの上端より下」までシートが来ていたら一気に閉じる（vaul の snap
+        // 復帰を上書き）。既定サイズの上端 =(1−可視高) ぶん下。それより上で離せば vaul が既定/拡大へ snap。
+        onRelease={() => {
+          const top = lastSheetTop.current;
+          lastSheetTop.current = null;
+          if (top === null) return;
+          const closeBelowPx =
+            window.innerHeight *
+            (1 - SHEET_OPEN_VISIBLE + SHEET_CLOSE_BELOW_MARGIN);
+          if (top > closeBelowPx) requestClose();
         }}
         onOpenChange={(next) => {
           if (!next) setOpen(false);
@@ -185,6 +185,7 @@ function NarrowSheet({
       >
         <Drawer.Portal>
           <Drawer.Content
+            ref={sheetRef}
             aria-label={label}
             // 高さ = 拡大上限（SHEET_MAX_DVH）。これがそのまま「最上スナップ時の可視高」＝拡大の上限に
             // なり、上に (100-値)dvh の隙間が残って元画面が dim で覗く。最上スナップ(1.0)では translate0
