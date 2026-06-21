@@ -18,12 +18,9 @@ export default async function SettingsPage() {
     .eq("id", user.id)
     .single();
 
-  // 実効アバター: カスタム > Google の写真 > 頭文字。
-  const googleAvatar =
-    (user.user_metadata?.avatar_url as string | undefined) ??
-    (user.user_metadata?.picture as string | undefined) ??
-    null;
-  const effectiveAvatar = profile?.avatar_url ?? googleAvatar;
+  // 実効アバター: users.avatar_url（登録時に OAuth 写真をコピー／カスタムで上書き）> 頭文字。
+  // auth メタデータには fallback しない（全メンバー共通の単一ソースに揃える）。
+  const effectiveAvatar = profile?.avatar_url ?? null;
   const avatarInitial =
     (profile?.display_name ?? user.email ?? "?").trim().charAt(0).toUpperCase() ||
     "?";
@@ -36,7 +33,7 @@ export default async function SettingsPage() {
         <AvatarUpload
           userId={user.id}
           currentUrl={effectiveAvatar}
-          hasCustom={Boolean(profile?.avatar_url)}
+          hasAvatar={Boolean(profile?.avatar_url)}
           initial={avatarInitial}
         />
         <DisplayNameForm defaultValue={profile?.display_name ?? ""} />

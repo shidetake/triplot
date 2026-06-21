@@ -11,31 +11,51 @@ export function MemberAvatar({
   color,
   size = "sm",
   className,
+  imageUrl,
 }: {
   name: string | null | undefined;
   color: number | null | undefined;
   /** sm = 18px (text-[10px])、md = 24px (text-xs) */
   size?: "sm" | "md";
   className?: string;
+  /** 指定すると色丸＋イニシャルの代わりに写真を出す（無ければイニシャルにフォールバック）。 */
+  imageUrl?: string | null;
 }) {
   const dim =
     size === "md"
       ? "h-6 w-6 text-xs"
       : "h-[18px] w-[18px] text-[10px]";
   const label = name?.trim() || undefined;
+  const base = [
+    "inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium leading-none tracking-tight",
+    dim,
+    className ?? "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
+  if (imageUrl) {
+    return (
+      <span
+        title={label}
+        aria-label={label}
+        role={label ? "img" : undefined}
+        className={`${base} overflow-hidden`}
+      >
+        {/* 外部（Google）のアバター URL。next/image のドメイン設定を増やさず素の img で。 */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+      </span>
+    );
+  }
+
   return (
     <span
       title={label}
       aria-label={label}
       role={label ? "img" : undefined}
       style={avatarStyle(color)}
-      className={[
-        "inline-flex shrink-0 select-none items-center justify-center rounded-full font-medium leading-none tracking-tight",
-        dim,
-        className ?? "",
-      ]
-        .filter(Boolean)
-        .join(" ")}
+      className={base}
     >
       <span aria-hidden="true">{firstChar(name)}</span>
     </span>

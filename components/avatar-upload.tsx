@@ -15,7 +15,8 @@ import { selfAvatarClass } from "./self-avatar";
 //  - 固定パス uid/avatar に upsert で上書き（古い画像が溜まらない＝孤児ゼロ）
 //  - 保存 URL に ?v=時刻 を付けてキャッシュ無効化（上書きしても新画像が出る）
 //  - 削除時は Storage のファイルも消す
-// users.avatar_url が設定済みなら Google の写真より優先表示。削除で Google（or 頭文字）へ。
+// users.avatar_url が表示アバター（登録時に OAuth 写真をコピー／カスタムで上書き）。削除すると
+// avatar_url=null＝頭文字に戻る（OAuth 写真には戻らない＝追従しない新仕様）。
 
 const AVATAR_SIZE = 256;
 const MAX_INPUT_BYTES = 10 * 1024 * 1024; // 入力ファイルの上限（リサイズ前）
@@ -68,12 +69,12 @@ async function resizeAvatar(
 export function AvatarUpload({
   userId,
   currentUrl,
-  hasCustom,
+  hasAvatar,
   initial,
 }: {
   userId: string;
-  currentUrl: string | null; // 今表示中の実効アバター（カスタム or Google）
-  hasCustom: boolean; // users.avatar_url が設定済みか
+  currentUrl: string | null; // 今表示中のアバター（avatar_url）
+  hasAvatar: boolean; // users.avatar_url が設定済みか（登録時の OAuth 写真 or カスタム）
   initial: string; // 写真が無いときの頭文字
 }) {
   const router = useRouter();
@@ -144,15 +145,12 @@ export function AvatarUpload({
   function pickImage() {
     fileRef.current?.click();
   }
-  function revert() {
-    onRemove();
-  }
 
   return (
     <div className="flex flex-col items-center gap-1">
       <div className="relative">
         {/* カスタム画像があるとき＝変更/削除の Base UI Menu。無いとき＝直接ファイル選択。 */}
-        {hasCustom ? (
+        {hasAvatar ? (
           <Menu.Root>
             <Menu.Trigger
               disabled={busy}
@@ -173,10 +171,10 @@ export function AvatarUpload({
                     画像を選ぶ
                   </Menu.Item>
                   <Menu.Item
-                    onClick={revert}
+                    onClick={onRemove}
                     className={`block text-muted-foreground ${menuItemClass}`}
                   >
-                    デフォルトに戻す
+                    削除（頭文字に戻す）
                   </Menu.Item>
                 </Menu.Popup>
               </Menu.Positioner>
@@ -192,7 +190,7 @@ export function AvatarUpload({
             className={`${selfAvatarClass} h-16 w-16 text-xl transition hover:opacity-90 disabled:opacity-50`}
           >
             {currentUrl ? (
-              // Google 写真など（hasCustom=false でも実効アバターはありうる）。
+              // hasAvatar=false（avatar_url=null）なら currentUrl も null＝頭文字を出す。
               // eslint-disable-next-line @next/next/no-img-element
               <img src={currentUrl} alt="" className="h-full w-full object-cover" />
             ) : (

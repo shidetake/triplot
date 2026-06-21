@@ -73,7 +73,7 @@ export default async function TripDetailPage({
       .single(),
     supabase
       .from("trip_members")
-      .select("id, user_id, display_name, kind, color, is_admin")
+      .select("id, user_id, display_name, kind, color, is_admin, users(avatar_url)")
       .eq("trip_id", tripId)
       .is("left_at", null)
       .order("joined_at", { ascending: true }),
@@ -250,6 +250,7 @@ export default async function TripDetailPage({
     id: m.id,
     display_name: m.display_name,
     color: m.color,
+    avatarUrl: m.users?.avatar_url ?? null,
   }));
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));

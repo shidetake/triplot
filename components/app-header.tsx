@@ -22,12 +22,10 @@ export async function AppHeader() {
     .eq("id", user.id)
     .single();
 
-  // 実効アバター: カスタム > Google の写真。
-  const avatarUrl =
-    profile?.avatar_url ??
-    (user.user_metadata?.avatar_url as string | undefined) ??
-    (user.user_metadata?.picture as string | undefined) ??
-    null;
+  // 実効アバター: users.avatar_url（登録時に OAuth 写真をコピー／カスタムで上書き）。無ければ頭文字。
+  // 全メンバー共通の単一ソースなので、ここでも auth メタデータには fallback しない（自分だけ見え方が
+  // 違うのを避ける）。
+  const avatarUrl = profile?.avatar_url ?? null;
   const accountName =
     (user.user_metadata?.full_name as string | undefined) ??
     (user.user_metadata?.name as string | undefined) ??

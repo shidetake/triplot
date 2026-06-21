@@ -61,6 +61,7 @@ type MemberLite = {
   id: string;
   display_name: string;
   color: number | null;
+  avatarUrl?: string | null;
 };
 
 // 優先度チップの配色（ライトモード固定）
@@ -248,6 +249,7 @@ export function TodoSection({
   const memberOf = (id: string) => members.find((m) => m.id === id);
   const memberName = (id: string) => memberOf(id)?.display_name ?? "?";
   const memberColor = (id: string) => memberOf(id)?.color ?? null;
+  const memberAvatar = (id: string) => memberOf(id)?.avatarUrl ?? null;
 
   const add = () => {
     const title = draft.trim();
@@ -501,6 +503,8 @@ export function TodoSection({
               <MemberAvatar
                 name={memberName(todo.created_by_member_id)}
                 color={memberColor(todo.created_by_member_id)}
+                // 全メンバーの写真。無ければイニシャル色丸にフォールバック。
+                imageUrl={memberAvatar(todo.created_by_member_id)}
                 className="shrink-0 sm:hidden"
               />
               <span
