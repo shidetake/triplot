@@ -159,7 +159,8 @@ flowchart TD
   ※ Base UI Collapsible/Accordion は **type-II**（`<button>`＋`<div>` で再構築＝native `<details>` のラッパーではない）。native で足りるので 1a ではなく 1b＝native を直接使う。
 - 2（shadcn/ui/Base UI）: メニュー＝Base UI Menu（⋯/アカウント）、ダイアログ＝Base UI Dialog（確認・場所アイコン）、
   リッチな選択＝Base UI Select（費用カテゴリ・TODO 優先度）、フォーム popover＝Base UI Popover、
-  オートコンプリート＝Base UI Combobox（`place-picker`/`place-search`）、`?` ヒント＝Base UI Tooltip（`HelpTip`）。
+  オートコンプリート＝Base UI Combobox（`place-picker`/`place-search`）、`?` ヒント＝Base UI Popover の
+  `openOnHover`（`HelpTip`）＝ホバー（PC）でもタップ（モバイル）でも開く。Tooltip はタップで開かないので使わない。
 - 4（ライブラリ）: 日付＝`react-day-picker`（Base UI Popover 内）、地図＝Google Maps、
   **狭い画面のフォームのボトムシート＝`vaul` を直接使う**。Base UI にシート部品が無いため。
   なお **shadcn の Drawer も中身はこの vaul** だが、そのラッパーは modal＋専用 Overlay 前提で、

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Tooltip } from "@base-ui/react/tooltip";
 import "./globals.css";
 import { Toaster } from "@/components/toast";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
@@ -35,14 +34,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {/* HelpTip（Base UI Tooltip）の共有遅延。既定 600ms は「?」ヒントには
-            鈍いので 150ms に。Provider があると tip 間の移動で再遅延しない。 */}
-        <Tooltip.Provider delay={150}>
-          <div className="flex-1">{children}</div>
-          <footer className="px-6 py-3 text-center text-xs text-subtle-foreground">
-            {getDeployEnv()} · {getVersion()}
-          </footer>
-        </Tooltip.Provider>
+        <div className="flex-1">{children}</div>
+        <footer className="px-6 py-3 text-center text-xs text-subtle-foreground">
+          {getDeployEnv()} · {getVersion()}
+        </footer>
         <Toaster />
         <ConfirmDialogHost />
       </body>
