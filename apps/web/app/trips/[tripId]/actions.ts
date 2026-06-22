@@ -3,8 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { generateInviteToken } from "@triplot/shared/invite";
 import { getIcon } from "@triplot/shared/placeIcons";
+import {
+  ensureTripInvite,
+  regenerateTripInvite,
+} from "@triplot/shared/data/invites";
+import {
+  removeTripMember,
+  updateMyMemberName,
+} from "@triplot/shared/data/members";
+import {
+  createTodo,
+  deleteTodo,
+  setTodoDone,
+  toggleTodoLike,
+  updateTodo,
+} from "@triplot/shared/data/todos";
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
@@ -1046,15 +1060,9 @@ export async function ensureInviteAction(
     return { token: null, error: "ログインしてください" };
   }
 
-  const { data: token, error } = await supabase.rpc("ensure_trip_invite", {
-    p_trip_id: tripId,
-    p_token: generateInviteToken(),
-  });
-
-  if (error || !token) {
-    return { token: null, error: error?.message ?? "発行に失敗しました" };
-  }
-  return { token, error: null };
+  const result = await ensureTripInvite(supabase, tripId);
+  if (!result.ok) return { token: null, error: result.error };
+  return { token: result.data.token, error: null };
 }
 
 // 再生成（旧リンク即失効）。
@@ -1069,15 +1077,9 @@ export async function regenerateInviteAction(
     return { token: null, error: "ログインしてください" };
   }
 
-  const { data: token, error } = await supabase.rpc("regenerate_trip_invite", {
-    p_trip_id: tripId,
-    p_token: generateInviteToken(),
-  });
-
-  if (error || !token) {
-    return { token: null, error: error?.message ?? "再生成に失敗しました" };
-  }
-  return { token, error: null };
+  const result = await regenerateTripInvite(supabase, tripId);
+  if (!result.ok) return { token: null, error: result.error };
+  return { token: result.data.token, error: null };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -1114,12 +1116,8 @@ export async function removeMemberAction(
     return { error: "ログインしてください" };
   }
 
-  const { error } = await supabase.rpc("remove_trip_member", {
-    p_member_id: memberId,
-  });
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await removeTripMember(supabase, memberId);
+  if (!result.ok) return { error: result.error };
 
   // 自分を外したらこの旅行はもう見えない → 一覧へ
   if (isSelf) {
@@ -1153,14 +1151,8 @@ export async function updateMyMemberAction(
     return { error: "名前は32文字以内にしてください" };
   }
 
-  const { error } = await supabase
-    .from("trip_members")
-    .update({ display_name: name })
-    .eq("trip_id", tripId)
-    .eq("user_id", user.id);
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await updateMyMemberName(supabase, tripId, user.id, name);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1199,14 +1191,14 @@ export async function createTodoAction(
     return { error: "公開範囲が不正です" };
   }
 
-  const { error } = await supabase.rpc("create_todo", {
-    p_trip_id: tripId,
-    p_title: trimmed,
-    p_priority: priority,
-    p_kind: kind,
-    p_visibility: visibility,
+  const result = await createTodo(supabase, {
+    tripId,
+    title: trimmed,
+    priority,
+    kind,
+    visibility,
   });
-  if (error) return { error: error.message };
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1223,11 +1215,8 @@ export async function toggleTodoAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "ログインしてください" };
 
-  const { error } = await supabase
-    .from("todos")
-    .update({ done })
-    .eq("id", todoId);
-  if (error) return { error: error.message };
+  const result = await setTodoDone(supabase, todoId, done);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1258,8 +1247,8 @@ export async function updateTodoAction(
   }
   if (Object.keys(patch).length === 0) return { error: null };
 
-  const { error } = await supabase.from("todos").update(patch).eq("id", todoId);
-  if (error) return { error: error.message };
+  const result = await updateTodo(supabase, todoId, patch);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1275,8 +1264,8 @@ export async function deleteTodoAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "ログインしてください" };
 
-  const { error } = await supabase.from("todos").delete().eq("id", todoId);
-  if (error) return { error: error.message };
+  const result = await deleteTodo(supabase, todoId);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1295,41 +1284,9 @@ export async function toggleTodoLikeAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: "ログインしてください", liked: false };
 
-  // 自分の member_id を引く
-  const { data: meMember } = await supabase
-    .from("trip_members")
-    .select("id")
-    .eq("trip_id", tripId)
-    .eq("user_id", user.id)
-    .is("left_at", null)
-    .maybeSingle();
-  if (!meMember) {
-    return { error: "このトリップのメンバーではありません", liked: false };
-  }
+  const result = await toggleTodoLike(supabase, tripId, todoId, user.id);
+  if (!result.ok) return { error: result.error, liked: result.liked };
 
-  // 既存いいね？
-  const { data: existing } = await supabase
-    .from("todo_likes")
-    .select("todo_id")
-    .eq("todo_id", todoId)
-    .eq("member_id", meMember.id)
-    .maybeSingle();
-
-  if (existing) {
-    const { error } = await supabase
-      .from("todo_likes")
-      .delete()
-      .eq("todo_id", todoId)
-      .eq("member_id", meMember.id);
-    if (error) return { error: error.message, liked: true };
-    revalidatePath(`/trips/${tripId}`);
-    return { error: null, liked: false };
-  } else {
-    const { error } = await supabase
-      .from("todo_likes")
-      .insert({ todo_id: todoId, member_id: meMember.id });
-    if (error) return { error: error.message, liked: false };
-    revalidatePath(`/trips/${tripId}`);
-    return { error: null, liked: true };
-  }
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null, liked: result.liked };
 }

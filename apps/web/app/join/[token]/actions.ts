@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 
+import { joinTripViaInvite } from "@triplot/shared/data/invites";
 import { createClient } from "@/lib/supabase/server";
 
 // 参加を確定する。セッション（匿名 or Google）必須。成功で trip へ redirect。
@@ -17,14 +18,8 @@ export async function joinAction(
     return { error: "セッションがありません。もう一度お試しください。" };
   }
 
-  const { data: tripId, error } = await supabase.rpc("join_trip_via_invite", {
-    p_token: token,
-    p_display_name: displayName,
-  });
+  const result = await joinTripViaInvite(supabase, token, displayName);
+  if (!result.ok) return { error: result.error };
 
-  if (error || !tripId) {
-    return { error: error?.message ?? "参加に失敗しました" };
-  }
-
-  redirect(`/trips/${tripId}`);
+  redirect(`/trips/${result.data.tripId}`);
 }
