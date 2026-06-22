@@ -7,13 +7,17 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ ! -f .env.local ]; then
-  echo "check-db-types: .env.local 無し、スキップ" >&2
+# モノレポのパス（変わったらここだけ直す）
+ENV_FILE="apps/web/.env.local"
+OUT="apps/web/lib/types/database.generated.ts"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "check-db-types: $ENV_FILE 無し、スキップ" >&2
   exit 0
 fi
 
-TOKEN=$(grep -E '^SUPABASE_ACCESS_TOKEN=' .env.local | cut -d= -f2- || true)
-URL=$(grep -E '^NEXT_PUBLIC_SUPABASE_URL=' .env.local | cut -d= -f2- || true)
+TOKEN=$(grep -E '^SUPABASE_ACCESS_TOKEN=' "$ENV_FILE" | cut -d= -f2- || true)
+URL=$(grep -E '^NEXT_PUBLIC_SUPABASE_URL=' "$ENV_FILE" | cut -d= -f2- || true)
 REF=$(echo "$URL" | sed -E 's|.*https?://([^.]+)\.supabase\.co.*|\1|')
 
 if [ -z "$TOKEN" ] || [ -z "$REF" ]; then
@@ -27,12 +31,12 @@ trap 'rm -f "$TMP"' EXIT
 SUPABASE_ACCESS_TOKEN="$TOKEN" npx supabase gen types typescript \
   --project-id "$REF" > "$TMP" 2>/dev/null
 
-if ! diff -q "$TMP" lib/types/database.generated.ts >/dev/null 2>&1; then
+if ! diff -q "$TMP" "$OUT" >/dev/null 2>&1; then
   echo "" >&2
   echo "✖ database.generated.ts が実 DB とズレています。" >&2
   echo "  migration を変えたら \`npm run db:types\` で再生成してコミットしてください。" >&2
   echo "  差分:" >&2
-  diff lib/types/database.generated.ts "$TMP" >&2 || true
+  diff "$OUT" "$TMP" >&2 || true
   exit 1
 fi
 

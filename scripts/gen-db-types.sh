@@ -1,17 +1,21 @@
 #!/usr/bin/env bash
-# 実 DB から lib/types/database.generated.ts を再生成する。
-# SUPABASE_ACCESS_TOKEN と NEXT_PUBLIC_SUPABASE_URL は .env.local から読む。
+# 実 DB から DB 型定義を再生成する。
+# SUPABASE_ACCESS_TOKEN と NEXT_PUBLIC_SUPABASE_URL は ENV_FILE から読む。
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [ ! -f .env.local ]; then
-  echo "gen-db-types: .env.local が無い" >&2
+# モノレポのパス（変わったらここだけ直す）
+ENV_FILE="apps/web/.env.local"
+OUT="apps/web/lib/types/database.generated.ts"
+
+if [ ! -f "$ENV_FILE" ]; then
+  echo "gen-db-types: $ENV_FILE が無い" >&2
   exit 1
 fi
 
-TOKEN=$(grep -E '^SUPABASE_ACCESS_TOKEN=' .env.local | cut -d= -f2- || true)
-URL=$(grep -E '^NEXT_PUBLIC_SUPABASE_URL=' .env.local | cut -d= -f2- || true)
+TOKEN=$(grep -E '^SUPABASE_ACCESS_TOKEN=' "$ENV_FILE" | cut -d= -f2- || true)
+URL=$(grep -E '^NEXT_PUBLIC_SUPABASE_URL=' "$ENV_FILE" | cut -d= -f2- || true)
 REF=$(echo "$URL" | sed -E 's|.*https?://([^.]+)\.supabase\.co.*|\1|')
 
 if [ -z "$TOKEN" ] || [ -z "$REF" ]; then
@@ -20,6 +24,6 @@ if [ -z "$TOKEN" ] || [ -z "$REF" ]; then
 fi
 
 SUPABASE_ACCESS_TOKEN="$TOKEN" npx supabase gen types typescript \
-  --project-id "$REF" > lib/types/database.generated.ts
+  --project-id "$REF" > "$OUT"
 
-echo "gen-db-types: lib/types/database.generated.ts を更新した"
+echo "gen-db-types: $OUT を更新した"
