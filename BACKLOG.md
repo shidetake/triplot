@@ -28,7 +28,7 @@ over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は
 - iOS アプリでは **Sign in with Apple が必須**: App Store Review 4.8 で「他のソーシャルログイン
   （Google 等）を出すなら Apple ログインも提供」が要求される。
 - 注意: Apple は**アバター画像を提供しない**（名前・email も初回のみ・private relay の可能性）→
-  頭文字フォールバック必須（`docs/design-guidelines.md` のアバター項参照）。
+  頭文字フォールバック必須（`docs/ui-guidelines.md` のアバター項参照）。
 
 ### 10. Admin 管理ページ
 最初の用途 = link enrichment の**候補ホスト昇格ビュー**（`receipt_link_candidates` を出現回数順で
@@ -45,7 +45,7 @@ Apple ログイン（#9）が前提になる。デザインルールやコピー
 Primary / 選択・アクティブは既に `bg-primary` 等のテーマトークンに移行済み（ライト黒・ダーク反転）。
 残りの neutral 系（`bg-white` / `text-zinc-*` / `border-zinc-*` / 各 `bg-zinc-*`、amber/blue の
 セマンティック色など）をトークン or `dark:` 対応に置き換え、`.dark` の値を詰める。最後に
-`app/globals.css` の `color-scheme: light` 固定を外す。設計は `docs/design-guidelines.md` のボタン配色節。
+`app/globals.css` の `color-scheme: light` 固定を外す。設計は `docs/ui-guidelines.md` のボタン配色節。
 
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。

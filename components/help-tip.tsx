@@ -9,7 +9,7 @@ import { Popover } from "@base-ui/react/popover";
 // （base-ui の更新でタップ時の focus 開きも効かなくなった）。openOnHover を付けた Popover に
 // すると、ホバー＝ツールチップ風／クリック・タップ＝ポップオーバー風、の両対応になる。
 // 殻（開閉・外側クリック・Esc・はみ出し位置決め・a11y）は Base UI Popover に委ねる
-// （design-guidelines「部品の作り方」step2）。
+// （ui-guidelines「部品の作り方」step2）。
 export function HelpTip({
   label,
   align = "left",

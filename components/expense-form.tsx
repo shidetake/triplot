@@ -384,7 +384,7 @@ export function ExpenseForm({
       action={formAction}
       className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
-      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。
+      {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
           ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
       {onDone && !inSheet && (
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />

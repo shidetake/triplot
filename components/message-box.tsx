@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
-// セマンティックなメッセージ面（design-guidelines「セマンティック色」）。
+// セマンティックなメッセージ面（ui-guidelines「セマンティック色」）。
 // error=赤（操作が失敗・進めない）/ warning=amber（進めるが要注意）。面の色＋文字色を
 // 1ソース化（bg-red-50 text-red-700 等を各所で逐語コピーしていたのを集約）。
 //

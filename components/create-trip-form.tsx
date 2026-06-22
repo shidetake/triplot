@@ -104,7 +104,7 @@ export function CreateTripForm({
     }
   };
 
-  // セグメントトラックの各セグメント（design-guidelines「定型部品」）。
+  // セグメントトラックの各セグメント（ui-guidelines「定型部品」）。
   // sr-only の radio に focus が当たるので、ラベル側で has-[:focus-visible] のリングを出す（a11y）。
   const seg =
     "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
@@ -118,7 +118,7 @@ export function CreateTripForm({
       onSubmit={() => clearDraft()}
       className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
     >
-      {/* × は専用行を作らず右上角に重ねる（design-guidelines「× 閉じるは右上角」）。
+      {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
           先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。
           ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
       {!inSheet && (

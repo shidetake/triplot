@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 //   if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) return;
 //
 // <ConfirmDialogHost /> を root layout に1つだけ置く。モーダルの開閉・フォーカス
-// トラップ・Esc・背景クリックは Base UI Dialog に委ねる（design-guidelines
+// トラップ・Esc・背景クリックは Base UI Dialog に委ねる（ui-guidelines
 // 「部品の作り方」step2＝native 相当の無いダイアログは shadcn/Base UI）。
 
 type ConfirmOptions = {

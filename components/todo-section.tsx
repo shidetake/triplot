@@ -98,7 +98,7 @@ function PrioritySelect({
   disabled?: boolean;
 }) {
   // 開閉・外側クリック・Esc・キーボードは Base UI Select に委ねる
-  // （design-guidelines「部品の作り方」step2）。トリガは優先度アイコンだけ。
+  // （ui-guidelines「部品の作り方」step2）。トリガは優先度アイコンだけ。
   return (
     <Select.Root
       value={value}

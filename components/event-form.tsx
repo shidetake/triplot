@@ -35,7 +35,7 @@ const initialState: EventMutationState = { ok: false, error: null };
 
 const inputLayout = "mt-1 block w-full min-w-0"; // <Input>／native <select> 共通レイアウト
 
-// セグメントトラックの各ピル（sr-only native radio を内包）。design-guidelines「セグメントトラック」。
+// セグメントトラックの各ピル（sr-only native radio を内包）。ui-guidelines「セグメントトラック」。
 // sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
 const seg =
   "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";

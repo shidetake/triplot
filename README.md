@@ -60,13 +60,13 @@ Husky フック: `pre-commit` で lint + tsc、`pre-push` で lint + tsc + test 
 | `lib/` | ビジネスロジック（`settlement.ts` 等の純粋関数）・Supabase クライアント・型 |
 | `supabase/migrations/` | DB スキーマ・RLS・RPC（単一の真実） |
 | `proxy.ts` | Next.js 16 の旧 middleware 相当。認証 cookie をリフレッシュ |
-| `docs/` | アーキテクチャ・機能設計・デザインガイドライン |
+| `docs/` | アーキテクチャ・機能設計・UI ガイドライン |
 
 ## ドキュメント
 
-- [アーキテクチャ概要](./docs/architecture.md) — 使っている外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway）と役割の 1 枚図
+- [アーキテクチャ概要](./docs/architecture.md) — クライアント構成（web ＋ Expo ネイティブ）と外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway）の俯瞰
 - [費用インポート（メール転送）設計](./docs/import-flow.md) — シーケンス図・状態遷移図つきの機能設計
-- [デザインガイドライン](./docs/design-guidelines.md) — UI / アイコン / 配色 / コピーの規約（単一の真実）
+- [UI ガイドライン](./docs/ui-guidelines.md) — UI / アイコン / 配色 / コピー / インタラクションの規約（単一の真実）
 - [CLAUDE.md](./CLAUDE.md) / [AGENTS.md](./AGENTS.md) — AI エージェント・開発者向けの作業ガイドとアーキテクチャの要点
 
 ## デプロイ

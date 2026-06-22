@@ -150,7 +150,7 @@ export function WeekCalendar({
   ): { className: string; style?: React.CSSProperties } => {
     // 選択中は地色（メンバー色）を保ったまま、同系色の濃い枠を太く
     // （border 1px + ring 1px = 実質 2px。layout shift なし）。塗り替えると
-    // 選択した瞬間に誰の予定か分からなくなる（design-guidelines の blue 節）。
+    // 選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
     if (color.kind === "private") {
       return {
         className: `${sel ? "z-10 border-zinc-500 ring-1 ring-zinc-500" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,

@@ -1,7 +1,7 @@
 import { chipStyle } from "@/lib/memberColors";
 import { cn } from "@/lib/utils";
 
-// 複数選択のトグルチップ（design-guidelines「定型部品」トグルチップ）。
+// 複数選択のトグルチップ（ui-guidelines「定型部品」トグルチップ）。
 // 参加者・割り勘対象・支払者など「メンバーを選ぶ/外す」用途のレシピを1ソース化。
 // 非選択 = zinc-100 + ring。選択は2系統:
 //   - hue を渡す（メンバー選択）→ そのメンバー色（chipStyle＝アバター/メンバーチップと同じ

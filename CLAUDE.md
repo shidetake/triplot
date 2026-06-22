@@ -30,6 +30,9 @@ Husky フック:
 
 ## アーキテクチャ
 
+全体構成（クライアント＝web＋Expo ネイティブの段構え／外部サービス）は **[docs/architecture.md](docs/architecture.md)** を参照。
+方針: web（Next.js）は残し、iOS+Android は Expo（RN）で統一、ロジックは `packages/shared` で共有（Discord 流＝DOM↔native は越えない）。以下はこのリポジトリ（web）内部の事情。
+
 ### Next.js 16 固有の事情（Next 14/15 の常識を持ち込まない）
 
 - **`proxy.ts`** がリポジトリルートにあり、これが旧 `middleware.ts` の役割。`lib/supabase/proxy.ts` の `updateSession` を呼んで、静的アセット以外の全リクエストで Supabase 認証 cookie をリフレッシュする。export 名は `proxy`（`middleware` ではない）。
@@ -96,8 +99,9 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 - 既存 migration ファイルの書き直し（破壊的変更）は OK。Git 履歴より最終的なスキーマの綺麗さ優先。
 - 「本番運用フェーズに入った」とユーザが明示的に言うまでこの方針。それ以降は backfill を真面目に書く。
 
-## 規約・デザインルール
+## UI 規約
 
-UI / アイコン / ボタン配色 / コピー / ナビの規約は **[docs/design-guidelines.md](docs/design-guidelines.md)** に集約（単一の真実）。下記 `@` で取り込む。
+UI / アイコン / ボタン配色 / コピー / ナビ / インタラクションの規約は **[docs/ui-guidelines.md](docs/ui-guidelines.md)** に集約（単一の真実）。下記 `@` で取り込む。
+（"design" は設計＝[システム構成](docs/architecture.md)と紛れるので、見た目側はこの「UI ガイドライン」に名前を分けている。）
 
-@docs/design-guidelines.md
+@docs/ui-guidelines.md

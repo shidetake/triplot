@@ -4,13 +4,13 @@ import { Toast } from "@base-ui/react/toast";
 
 import { CloseIcon } from "@/components/icons";
 
-// グローバルなトースト。design-guidelines「フィードバック」節の方針:
+// グローバルなトースト。ui-guidelines「フィードバック」節の方針:
 // 結果が見えない成功（その場編集・コピー）やエラーを、画面下中央に出す。
 // どこからでも toast("保存しました") で呼べる。<Toaster /> を root layout に1つだけ置く。
 //
 // 殻（live region の常設＝SR 告知・自動消滅タイマー・ホバー/フォーカスで一時停止・
 // スワイプ/× で手動クローズ・重ね表示〔最大3〕）は Base UI Toast に委ねる
-// （design-guidelines「部品の作り方」step2）。表示時間 5s・stack 3 等は Base UI の
+// （ui-guidelines「部品の作り方」step2）。表示時間 5s・stack 3 等は Base UI の
 // 既定が世間の慣例どおりなので上書きしない。意匠（primary 配色・下中央）だけ書く。
 
 // React 外（サーバアクションのコールバック等）からも呼べる standalone manager。

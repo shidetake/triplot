@@ -9,7 +9,7 @@ import { CheckIcon, ChevronIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
 
 // 費用カテゴリの選択。native <select> は <option> に SVG を描けないため、Base UI の
-// Select（design-guidelines「部品の作り方」step2＝native で出せない中身は shadcn/Base UI を使う）
+// Select（ui-guidelines「部品の作り方」step2＝native で出せない中身は shadcn/Base UI を使う）
 // で MS ピクト＋名前を出す。トリガは inputClass、候補行は menuItemClass で他のドロップダウンと揃える。
 // 選択値は Select.Root の name で hidden input が自動生成されフォーム送信される。
 export function CategorySelect({

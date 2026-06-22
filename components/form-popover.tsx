@@ -38,7 +38,7 @@ function useMediaQuery(query: string): boolean {
   return matches;
 }
 
-// 閉じる経路は design-guidelines の3つ＝Esc・背景クリック（outside-press）・フォーム内の
+// 閉じる経路は ui-guidelines の3つ＝Esc・背景クリック（outside-press）・フォーム内の
 // ×/キャンセル/送信（onClose を直接呼ぶ）。それ以外の focus-out（タブ移動などフォーカスが
 // 外れただけ）では閉じない（入力途中に意図せず消えるのを防ぐ。3経路の外）。
 // 背景クリックで閉じても誤爆しないのは Base UI Popover が outsidePressEvent の mouse を
@@ -188,7 +188,7 @@ function NarrowSheet({
 
 // クリック位置の近くに出すポップオーバー。予定追加・費用追加など入力フォームを
 // 同じ見た目で出すための共通部品。開閉・Esc・はみ出し回避の位置決めは Base UI に委ねる
-// （design-guidelines「部品の作り方」step2）。
+// （ui-guidelines「部品の作り方」step2）。
 //
 // fullScreenOnNarrow=true の大きいフォームは、狭い画面（< 640px）ではボトムシートで出す
 // （22rem のカードが画面に対して大きすぎて窮屈なため）。広い画面ではタップ位置のポップアップ。

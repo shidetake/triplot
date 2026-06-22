@@ -1,7 +1,43 @@
 # アーキテクチャ概要
 
-triplot がどの外部サービスをどう使っているかの俯瞰図。詳細な機能設計は
+triplot のアーキテクチャ俯瞰（クライアント構成 ＋ 外部サービス）。詳細な機能設計は
 [`import-flow.md`](./import-flow.md) などの個別ドキュメントを参照。
+
+## クライアント構成（web ＋ ネイティブ）
+
+triplot は **1 バックエンド（Supabase）＋ 複数クライアント**。方針は「**同じ描画ターゲット内では統一し、
+ターゲットをまたぐ境界では分ける**」（**Discord と同じ思想**）。web を捨てて 1 UI に畳むことはしない。
+
+- **web（広い画面＝PC/iPad ・ 狭い画面＝モバイル）** … Next.js 16（React DOM ＋ Tailwind）。Responsive で
+  出し分ける（モバイル＝ボトムシート、広い画面＝ポップオーバー等）。この 2 つは **同一コードベース**。
+- **ネイティブ（iOS ＋ Android）** … **Expo（React Native）** で UI を別実装。iOS/Android はここで **統一**
+  （1 モバイルコードベース）。地図は react-native-maps（native）。
+- **共有するもの** … 型・純ロジック（`settlement` 等）・データアクセス層・Zod スキーマを `packages/shared`
+  に置き web/native 双方から import（モノレポ）。**backend（Supabase の RLS/RPC）は全クライアント共通**。
+- **共有しないもの** … UI。React DOM（web）と RN の native 部品（mobile）は描画層が別物なので **統一しない**
+  （`react-native-web` で web まで畳むのは、良くできた既存 web を作り直す割に劣化するため不採用）。
+
+```mermaid
+flowchart TD
+  subgraph clients[クライアント（UI は分ける）]
+    web["web（Next.js / React DOM）<br/>広い画面 ＋ モバイル＝Responsive"]
+    native["native（Expo / React Native）<br/>iOS ＋ Android＝統一"]
+  end
+  shared["packages/shared<br/>型・純ロジック・データ層・スキーマ"]
+  be[("Supabase<br/>Postgres + RLS/RPC + Auth")]
+  web --> shared
+  native --> shared
+  web --> be
+  native --> be
+```
+
+> 「完全 1 コードベース」の意味は **(a) iOS＋Android の統一（RN）** と **(b) ロジック共有**であって、
+> **web まで含めた 1 UI ではない**。Discord も web/desktop＝React DOM（Electron）、mobile＝RN で、有名な
+> 「90% 共有」は iOS↔Android 間の話。triplot も同様に web は残す。
+
+**移行の段取り（未着手）**: ① モノレポ化して `packages/shared` にロジック抽出 → ② Expo アプリ雛形＋Supabase 接続
+→ ③ タブ（日程/地図/費用/TODO）を 1 つずつ移植。変更系は今 Next.js の server action 中心なので、RN からも
+使えるよう「Supabase client を受け取る共有関数」か API エンドポイントに出すのが要点。
 
 ## サービス構成
 

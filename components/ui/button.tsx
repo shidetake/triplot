@@ -2,7 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "@/lib/utils";
 
-// triplot のボタン。design-guidelines「ボタンの配色」の役割を variant で実装。
+// triplot のボタン。ui-guidelines「ボタンの配色」の役割を variant で実装。
 // 角丸は rounded-md（入力欄＝コントロールと揃える）、フォーカスは
 // `focus-visible:ring`（キーボード操作時だけリングを出す＝a11y）。
 // type は付けない（呼び出し側で type="button"/"submit" を明示。未指定だと

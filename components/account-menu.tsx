@@ -12,9 +12,9 @@ import { selfAvatarClass } from "./self-avatar";
 
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
 // タップするとドロップダウンで email / 設定 / ログアウト。Apple ログインは写真を返さない
-// ので頭文字フォールバックが効く（docs/design-guidelines.md のアバター項）。
+// ので頭文字フォールバックが効く（docs/ui-guidelines.md のアバター項）。
 // 開閉・外側クリック・Esc・キーボード操作・フォーカスは Base UI Menu に委ねる
-// （design-guidelines「部品の作り方」step2＝native 相当の無いメニューは shadcn/Base UI）。
+// （ui-guidelines「部品の作り方」step2＝native 相当の無いメニューは shadcn/Base UI）。
 export function AccountMenu({
   email,
   name,
