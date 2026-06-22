@@ -3,11 +3,29 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { getIcon } from "@triplot/shared/placeIcons";
+import {
+  createEvent,
+  deleteEvent,
+  updateEvent,
+} from "@triplot/shared/data/events";
+import {
+  createExpense,
+  deleteExpense,
+  updateExpense,
+} from "@triplot/shared/data/expenses";
+import {
+  addTripPinOption,
+  createPlace,
+  deletePlace,
+  removeTripPinOption,
+  setPlaceLocation,
+  updatePlace,
+} from "@triplot/shared/data/places";
 import {
   ensureTripInvite,
   regenerateTripInvite,
 } from "@triplot/shared/data/invites";
+import { type PlaceInput } from "@triplot/shared/data/place";
 import {
   removeTripMember,
   updateMyMemberName,
@@ -132,60 +150,21 @@ export async function createExpenseAction(
     return { ok: false, error: place.error };
   }
 
-  // 費用に共通の引数。場所は events と同じ 3 分岐でサーバ側 place_id 解決。
-  const base = {
-    p_trip_id: tripId,
-    p_local_price: localPrice,
-    p_local_currency: localCurrency,
-    p_rate_to_default: rateToDefault,
-    p_category_id: categoryId,
-    p_payer_member_id: payerMemberId,
-    p_visibility: visibility,
-    p_splittable: splittable,
-    p_note: note, // 空文字は DB 側 nullif で NULL になる
-    p_paid_at: paidAt,
-    p_split_member_ids: splittable ? splitMemberIds : [],
-    p_tz: tz,
-  };
-
-  let error: { message: string } | null = null;
-  if (place.kind === "google") {
-    error = (
-      await supabase.rpc("create_expense_with_place", {
-        ...base,
-        p_google_place_id: place.placeId,
-        p_place_name: place.name,
-        p_lat: place.lat,
-        p_lng: place.lng,
-        p_formatted_address: place.address,
-        p_icon: "",
-        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
-        p_region: place.region ?? "",
-        p_locality: place.locality ?? "",
-      })
-    ).error;
-  } else if (place.kind === "free" && place.label) {
-    error = (
-      await supabase.rpc("create_expense_with_freetext_place", {
-        ...base,
-        p_place_name: place.label,
-      })
-    ).error;
-  } else {
-    // 保存済み、または場所なし（自由入力が空 / saved が null）
-    error = (
-      await supabase.rpc("create_expense", {
-        ...base,
-        p_place_id: (place.kind === "saved"
-          ? place.placeId
-          : null) as unknown as string,
-      })
-    ).error;
-  }
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  const result = await createExpense(supabase, tripId, {
+    localPrice,
+    localCurrency,
+    rateToDefault,
+    categoryId,
+    payerMemberId,
+    visibility,
+    splittable,
+    note,
+    paidAt,
+    tz,
+    splitMemberIds,
+    place,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -254,58 +233,21 @@ export async function updateExpenseAction(
     return { ok: false, error: place.error };
   }
 
-  const base = {
-    p_expense_id: expenseId,
-    p_local_price: localPrice,
-    p_local_currency: localCurrency,
-    p_rate_to_default: rateToDefault,
-    p_category_id: categoryId,
-    p_payer_member_id: payerMemberId,
-    p_visibility: visibility,
-    p_splittable: splittable,
-    p_note: note,
-    p_paid_at: paidAt,
-    p_split_member_ids: splittable ? splitMemberIds : [],
-    p_tz: tz,
-  };
-
-  let error: { message: string } | null = null;
-  if (place.kind === "google") {
-    error = (
-      await supabase.rpc("update_expense_with_place", {
-        ...base,
-        p_google_place_id: place.placeId,
-        p_place_name: place.name,
-        p_lat: place.lat,
-        p_lng: place.lng,
-        p_formatted_address: place.address,
-        p_icon: "",
-        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
-        p_region: place.region ?? "",
-        p_locality: place.locality ?? "",
-      })
-    ).error;
-  } else if (place.kind === "free" && place.label) {
-    error = (
-      await supabase.rpc("update_expense_with_freetext_place", {
-        ...base,
-        p_place_name: place.label,
-      })
-    ).error;
-  } else {
-    error = (
-      await supabase.rpc("update_expense", {
-        ...base,
-        p_place_id: (place.kind === "saved"
-          ? place.placeId
-          : null) as unknown as string,
-      })
-    ).error;
-  }
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  const result = await updateExpense(supabase, expenseId, {
+    localPrice,
+    localCurrency,
+    rateToDefault,
+    categoryId,
+    payerMemberId,
+    visibility,
+    splittable,
+    note,
+    paidAt,
+    tz,
+    splitMemberIds,
+    place,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -323,10 +265,8 @@ export async function deleteExpenseAction(
     return { error: "ログインしてください" };
   }
 
-  const { error } = await supabase.from("expenses").delete().eq("id", expenseId);
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await deleteExpense(supabase, expenseId);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -384,24 +324,20 @@ export async function createPlaceAction(
     return { ok: false, error: "公開範囲が不正です" };
   }
 
-  const { error } = await supabase.rpc("create_place", {
-    p_trip_id: tripId,
-    p_name: name,
-    p_status_id: statusId,
-    p_visibility: visibility,
-    p_note: note, // 空文字は DB 側 nullif で NULL になる
-    p_google_place_id: googlePlaceId,
-    p_lat: lat,
-    p_lng: lng,
-    p_formatted_address: formattedAddress,
-    p_icon: icon, // 空なら DB 側で 'pin'
-    p_region: region, // 空文字は DB 側 nullif で NULL
-    p_locality: locality,
+  const result = await createPlace(supabase, tripId, {
+    name,
+    statusId,
+    visibility,
+    note,
+    googlePlaceId,
+    lat,
+    lng,
+    formattedAddress,
+    icon,
+    region,
+    locality,
   });
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -437,17 +373,13 @@ export async function updatePlaceAction(
     return { ok: false, error: "公開範囲が不正です" };
   }
 
-  const { error } = await supabase.rpc("update_place", {
-    p_place_id: placeId,
-    p_status_id: statusId,
-    p_visibility: visibility,
-    p_note: note, // 空文字は DB 側 nullif で NULL になる
-    p_icon: icon, // 空なら DB 側で 'pin'
+  const result = await updatePlace(supabase, placeId, {
+    statusId,
+    visibility,
+    note,
+    icon,
   });
-
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -465,10 +397,8 @@ export async function deletePlaceAction(
     return { error: "ログインしてください" };
   }
 
-  const { error } = await supabase.from("places").delete().eq("id", placeId);
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await deletePlace(supabase, placeId);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -491,24 +421,8 @@ export async function removeTripPinOptionAction(
     return { error: "ログインしてください" };
   }
 
-  // 削除対象が "pin" でないかを確認
-  const { data: target, error: lookupErr } = await supabase
-    .from("trip_pin_options")
-    .select("icon")
-    .eq("id", optionId)
-    .eq("trip_id", tripId)
-    .maybeSingle();
-  if (lookupErr) return { error: lookupErr.message };
-  if (target?.icon === "pin") {
-    return { error: "「その他」のピンは削除できません" };
-  }
-
-  const { error } = await supabase
-    .from("trip_pin_options")
-    .delete()
-    .eq("id", optionId)
-    .eq("trip_id", tripId);
-  if (error) return { error: error.message };
+  const result = await removeTripPinOption(supabase, tripId, optionId);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -529,38 +443,8 @@ export async function addTripPinOptionAction(
     return { error: "ログインしてください" };
   }
 
-  const entry = getIcon(iconKey);
-  if (!entry) {
-    return { error: "不明なアイコンです" };
-  }
-
-  // 末尾の sort_order を計算。並列追加時の衝突は unique(trip_id, icon) でリトライ
-  // 不要（同 icon は弾く前提）。sort_order の被りは検索性能にだけ影響して
-  // ロジックは壊れないので、ラフに max+1 で行く。
-  const { data: maxRow, error: maxErr } = await supabase
-    .from("trip_pin_options")
-    .select("sort_order")
-    .eq("trip_id", tripId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  if (maxErr) return { error: maxErr.message };
-  const nextSort = (maxRow?.sort_order ?? -1) + 1;
-
-  const { error } = await supabase.from("trip_pin_options").insert({
-    trip_id: tripId,
-    icon: entry.key,
-    label: entry.label,
-    sort_order: nextSort,
-  });
-  if (error) {
-    // unique 違反 = 既に追加済み。クライアント側が fade してれば来ない経路だが
-    // 念のためメッセージを和文で。
-    if (error.code === "23505") {
-      return { error: "そのアイコンは既に追加済みです" };
-    }
-    return { error: error.message };
-  }
+  const result = await addTripPinOption(supabase, tripId, iconKey);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -584,14 +468,8 @@ export async function setPlaceLocationAction(
     return { error: "座標が不正です" };
   }
 
-  const { error } = await supabase.rpc("set_place_location", {
-    p_place_id: placeId,
-    p_lat: lat,
-    p_lng: lng,
-  });
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await setPlaceLocation(supabase, placeId, lat, lng);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -608,25 +486,9 @@ export type EventMutationState = {
 
 type EventKind = "normal" | "transit";
 
-// 場所欄の3モード。saved=保存済み or 無し、free=フリーテキスト、
-// google=サジェスト確定（places に確定で作成して紐づける）。
-type ParsedPlace =
-  | { kind: "saved"; placeId: string | null }
-  | { kind: "free"; label: string | null }
-  | {
-      kind: "google";
-      placeId: string;
-      name: string;
-      address: string;
-      lat: number;
-      lng: number;
-      region: string | null;
-      locality: string | null;
-    };
-
-// 場所欄（PlacePicker の hidden input）を ParsedPlace に解す。
+// 場所欄（PlacePicker の hidden input）を PlaceInput（共有の場所解決契約）に解す。
 // 予定・費用で共有する（同じ PlacePicker・同じ wire 契約）。
-function parsePlace(formData: FormData): ParsedPlace | { error: string } {
+function parsePlace(formData: FormData): PlaceInput | { error: string } {
   const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
   const placeMode = get("place_mode") || "saved";
   if (placeMode === "google") {
@@ -673,7 +535,7 @@ type ParsedEvent =
       endAt: string | null;
       startTz: string;
       endTz: string | null;
-      place: ParsedPlace;
+      place: PlaceInput;
       visibility: Visibility;
       note: string;
       // shared 時のみ意味を持つ。空配列 = 全員参加（DB 側で行を作らない）。
@@ -818,96 +680,12 @@ export async function createEventAction(
     return { ok: false, error: parsed.error };
   }
 
-  const place = parsed.place;
   // 要予約は共有/private どちらでも可。予約TODOは予定の公開範囲を継承する
   // （private 予定の予約TODOは作成者だけに見える。set_event_reservation で同期）。
   const needsReservation = formData.get("needs_reservation") === "on";
-  // gen-types は DEFAULT 無し nullable 引数を string にする癖がある（CLAUDE.md）。
-  // 場所は kind で 3 分岐: google→確定 place、自由入力→未マップ place、
-  // 保存済み/無し→ place_id 直指定。いずれもサーバ側で place_id に解決する。
-  let eventId: string | null = null;
-  let error: { message: string } | null = null;
-  if (place.kind === "google") {
-    const { data, error: e } = await supabase.rpc("create_event_with_place", {
-      p_trip_id: tripId,
-      p_title: parsed.title,
-      p_kind: parsed.kind,
-      p_all_day: parsed.allDay,
-      p_start_at: parsed.startAt,
-      p_end_at: parsed.endAt as unknown as string,
-      p_start_tz: parsed.startTz,
-      p_end_tz: parsed.endTz as unknown as string,
-      p_visibility: parsed.visibility,
-      p_note: parsed.note,
-      p_google_place_id: place.placeId,
-      p_place_name: place.name,
-      p_lat: place.lat,
-      p_lng: place.lng,
-      p_formatted_address: place.address,
-      p_icon: "",
-      // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
-      p_region: place.region ?? "",
-      p_locality: place.locality ?? "",
-      p_participant_member_ids: parsed.participantMemberIds,
-    });
-    eventId = data as string | null;
-    error = e;
-  } else if (place.kind === "free" && place.label) {
-    const { data, error: e } = await supabase.rpc(
-      "create_event_with_freetext_place",
-      {
-        p_trip_id: tripId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-        p_place_name: place.label,
-        p_participant_member_ids: parsed.participantMemberIds,
-      },
-    );
-    eventId = data as string | null;
-    error = e;
-  } else {
-    // 保存済み、または場所なし（自由入力が空 / saved が null）
-    const { data, error: e } = await supabase.rpc("create_event", {
-      p_trip_id: tripId,
-      p_title: parsed.title,
-      p_kind: parsed.kind,
-      p_all_day: parsed.allDay,
-      p_start_at: parsed.startAt,
-      p_end_at: parsed.endAt as unknown as string,
-      p_start_tz: parsed.startTz,
-      p_end_tz: parsed.endTz as unknown as string,
-      p_place_id: (place.kind === "saved"
-        ? place.placeId
-        : null) as unknown as string,
-      p_visibility: parsed.visibility,
-      p_note: parsed.note,
-      p_participant_member_ids: parsed.participantMemberIds,
-    });
-    eventId = data as string | null;
-    error = e;
-  }
 
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  // 要予約なら予約TODOを紐づける（作成直後なので未存在→新規作成）。
-  if (needsReservation && eventId) {
-    const { error: rErr } = await supabase.rpc("set_event_reservation", {
-      p_event_id: eventId,
-      p_needs: true,
-    });
-    if (rErr) {
-      return { ok: false, error: rErr.message };
-    }
-  }
+  const result = await createEvent(supabase, tripId, parsed, needsReservation);
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -936,88 +714,12 @@ export async function updateEventAction(
     return { ok: false, error: parsed.error };
   }
 
-  const place = parsed.place;
   // 要予約は共有/private どちらでも可。予約TODOは予定の公開範囲を継承する
   // （private 予定の予約TODOは作成者だけに見える。set_event_reservation で同期）。
   const needsReservation = formData.get("needs_reservation") === "on";
-  // create と同じ 3 分岐（google / 自由入力 / 保存済み・無し）。
-  let error: { message: string } | null = null;
-  if (place.kind === "google") {
-    error = (
-      await supabase.rpc("update_event_with_place", {
-        p_event_id: eventId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-        p_google_place_id: place.placeId,
-        p_place_name: place.name,
-        p_lat: place.lat,
-        p_lng: place.lng,
-        p_formatted_address: place.address,
-        p_icon: "",
-        // gen-types は nullable 引数を string にする癖。空文字は DB 側 nullif で NULL。
-        p_region: place.region ?? "",
-        p_locality: place.locality ?? "",
-        p_participant_member_ids: parsed.participantMemberIds,
-      })
-    ).error;
-  } else if (place.kind === "free" && place.label) {
-    error = (
-      await supabase.rpc("update_event_with_freetext_place", {
-        p_event_id: eventId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-        p_place_name: place.label,
-        p_participant_member_ids: parsed.participantMemberIds,
-      })
-    ).error;
-  } else {
-    // 保存済み、または場所なし（自由入力が空 / saved が null）
-    error = (
-      await supabase.rpc("update_event", {
-        p_event_id: eventId,
-        p_title: parsed.title,
-        p_kind: parsed.kind,
-        p_all_day: parsed.allDay,
-        p_start_at: parsed.startAt,
-        p_end_at: parsed.endAt as unknown as string,
-        p_start_tz: parsed.startTz,
-        p_end_tz: parsed.endTz as unknown as string,
-        p_place_id: (place.kind === "saved"
-          ? place.placeId
-          : null) as unknown as string,
-        p_visibility: parsed.visibility,
-        p_note: parsed.note,
-        p_participant_member_ids: parsed.participantMemberIds,
-      })
-    ).error;
-  }
 
-  if (error) {
-    return { ok: false, error: error.message };
-  }
-
-  // 予約TODOの同期（ON→作成 / OFF→解除。編集のたびに反映）。
-  const { error: rErr } = await supabase.rpc("set_event_reservation", {
-    p_event_id: eventId,
-    p_needs: needsReservation,
-  });
-  if (rErr) {
-    return { ok: false, error: rErr.message };
-  }
+  const result = await updateEvent(supabase, eventId, parsed, needsReservation);
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -1035,10 +737,8 @@ export async function deleteEventAction(
     return { error: "ログインしてください" };
   }
 
-  const { error } = await supabase.from("events").delete().eq("id", eventId);
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await deleteEvent(supabase, eventId);
+  if (!result.ok) return { error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
