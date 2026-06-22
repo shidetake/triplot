@@ -65,7 +65,7 @@ Husky フック: `pre-commit` で lint + tsc、`pre-push` で lint + tsc + test 
 ## ドキュメント
 
 - [アーキテクチャ概要](./docs/architecture.md) — クライアント構成（web ＋ Expo ネイティブ）と外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway）の俯瞰
-- [費用インポート（メール転送）設計](./docs/import-flow.md) — シーケンス図・状態遷移図つきの機能設計
+- [費用インポート（メール転送）設計](./docs/design/import-flow.md) — シーケンス図・状態遷移図つきの機能設計
 - [UI ガイドライン](./docs/ui-guidelines.md) — UI / アイコン / 配色 / コピー / インタラクションの規約（単一の真実）
 - [CLAUDE.md](./CLAUDE.md) / [AGENTS.md](./AGENTS.md) — AI エージェント・開発者向けの作業ガイドとアーキテクチャの要点
 

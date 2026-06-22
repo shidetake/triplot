@@ -2,7 +2,7 @@
 
 ユーザが per-user の取り込み用アドレス（`receipts+<token>@triplot.app`）にレシート
 メールを転送すると、LLM で費用情報を抽出して下書きを作り、旅行に割り当て、最終的に
-費用として確定する。サービス俯瞰は [`architecture.md`](./architecture.md) を参照。
+費用として確定する。サービス俯瞰は [`architecture.md`](../architecture.md) を参照。
 
 ## 全体像
 
@@ -112,7 +112,7 @@ sequenceDiagram
 - **手動リトライボタンは置かない**: 失敗直後に押すと同じレート制限に当たるため。
 - **なぜ Cloudflare か**: Vercel Hobby の cron は日次。分単位の自走タイマーが要るのでメール受信と
   同じく Cloudflare に逃がす（毎分・無料）。状態は DB が持つので、心拍 Worker はメール Worker と
-  別の独立ユニット（[`architecture.md`](./architecture.md) の定期実行を参照）。
+  別の独立ユニット（[`architecture.md`](../architecture.md) の定期実行を参照）。
 
 ## 3. 確定（下書き → 費用）
 

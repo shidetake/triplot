@@ -18,7 +18,7 @@
 ### 7. 費用の自動取り込み（メール転送）— [x] 実装済み
 ユーザが `receipts+<token>@triplot.app` にレシートを転送 → LLM 抽出 → どの旅行か自動割り当て
 → 旅行画面で確定。後からマージ・自動リトライ（Cloudflare 毎分 reconcile＋Retry-After）・
-over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は `docs/import-flow.md` 参照。
+over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は `docs/design/import-flow.md` 参照。
 - [ ] 予定（events）の取り込みは未着手（今回は費用に絞った）
 - [ ] 候補ホスト昇格ビュー → 下の「Admin 管理ページ」
 - [ ] link enrichment の自動 fetch（未知ホストを人ゲート無しで取得・SSRF/サイズ制限で限定）

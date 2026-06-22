@@ -1,7 +1,7 @@
 # アーキテクチャ概要
 
 triplot のアーキテクチャ俯瞰（クライアント構成 ＋ 外部サービス）。詳細な機能設計は
-[`import-flow.md`](./import-flow.md) などの個別ドキュメントを参照。
+[`import-flow.md`](./design/import-flow.md) などの個別ドキュメントを参照。
 
 ## クライアント構成（web ＋ ネイティブ）
 
@@ -110,4 +110,4 @@ flowchart LR
 > **なぜ2系統か**: Vercel Hobby の Cron は各1日1回（プラン全体）なので、分単位が要る
 > リトライは Cloudflare の Cron Worker（毎分・無料・プラン非依存）に逃がす。心拍 Worker は
 > 状態を持たず `/api/cron/retry-extract` を叩くだけの独立ユニット（メール Worker とは別物）。
-> リトライの設計は [`import-flow.md`](./import-flow.md) のリトライ節を参照。
+> リトライの設計は [`import-flow.md`](./design/import-flow.md) のリトライ節を参照。
