@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { generateInviteToken } from "@triplot/shared/invite";
 import { getIcon } from "@triplot/shared/placeIcons";
+import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
@@ -41,20 +42,13 @@ export async function updateTripAction(
     return { ok: false, error: "精算通貨が不正です" };
   }
 
-  const { data, error } = await supabase
-    .from("trips")
-    .update({
-      title,
-      start_date: startDate,
-      end_date: endDate,
-      default_currency: currency,
-    })
-    .eq("id", tripId)
-    .select("id");
-  if (error) return { ok: false, error: error.message };
-  if (!data || data.length === 0) {
-    return { ok: false, error: "編集できる権限がありません（管理者のみ）" };
-  }
+  const result = await updateTrip(supabase, tripId, {
+    title,
+    startDate,
+    endDate,
+    currency,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -1101,26 +1095,8 @@ export async function deleteTripAction(
     return { error: "ログインしてください" };
   }
 
-  // 事前 admin チェック（明確なエラーメッセージのため）。RLS でも
-  // 二重防御（is_trip_admin 限定）してるので、ここを抜けても DB 側で
-  // silently 0 rows になる。
-  const { data: me } = await supabase
-    .from("trip_members")
-    .select("is_admin")
-    .eq("trip_id", tripId)
-    .eq("user_id", user.id)
-    .is("left_at", null)
-    .maybeSingle();
-  if (!me?.is_admin) {
-    return { error: "旅行を削除できるのは管理者のみです" };
-  }
-
-  // RLS（trips_member_delete）で is_admin = true のメンバーのみ削除可。
-  // 関連テーブルは on delete cascade。
-  const { error } = await supabase.from("trips").delete().eq("id", tripId);
-  if (error) {
-    return { error: error.message };
-  }
+  const result = await deleteTrip(supabase, tripId, user.id);
+  if (!result.ok) return { error: result.error };
 
   redirect("/trips");
 }
