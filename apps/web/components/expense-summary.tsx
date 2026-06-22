@@ -1,8 +1,8 @@
-import type { ExpenseSummary } from "@/lib/expenseSummary";
-import type { Settlement } from "@/lib/settlement";
-import type { Currency } from "@/lib/types/database";
-import { formatAmount } from "@/lib/formatAmount";
-import { formatRate } from "@/lib/formatRate";
+import type { ExpenseSummary } from "@triplot/shared/expenseSummary";
+import type { Settlement } from "@triplot/shared/settlement";
+import type { Currency } from "@triplot/shared/types/database";
+import { formatAmount } from "@triplot/shared/formatAmount";
+import { formatRate } from "@triplot/shared/formatRate";
 
 type Member = {
   id: string;

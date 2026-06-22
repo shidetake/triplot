@@ -1,4 +1,4 @@
-import { chipStyle } from "@/lib/memberColors";
+import { chipStyle } from "@triplot/shared/memberColors";
 
 // 旅行ヘッダーのメンバー一覧。表示専用（色付きチップで名前を出すだけ）。
 // 編集・削除・退出は /trips/[id]/members のメンバー管理画面側に集約した

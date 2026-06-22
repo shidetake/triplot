@@ -1,7 +1,7 @@
 "use client";
 
-import { getIconPath } from "@/lib/placeIcons";
-import type { Visibility } from "@/lib/types/database";
+import { getIconPath } from "@triplot/shared/placeIcons";
+import type { Visibility } from "@triplot/shared/types/database";
 
 import { ColorBadge } from "./color-badge";
 import { PrivateBadge } from "./private-badge";

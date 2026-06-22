@@ -20,13 +20,13 @@ import {
   deleteExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
-import { formatRate } from "@/lib/formatRate";
-import type { LatLng } from "@/lib/placeMap";
+import { formatRate } from "@triplot/shared/formatRate";
+import type { LatLng } from "@triplot/shared/placeMap";
 import {
   resolveExpenseTz,
   type TripTzTimeline,
-} from "@/lib/schedule";
-import type { Currency, Visibility } from "@/lib/types/database";
+} from "@triplot/shared/schedule";
+import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";

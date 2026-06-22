@@ -7,8 +7,8 @@ import {
   type CreateTripState,
 } from "@/app/trips/create-trip-action";
 
-import { buildCopySourceLabels } from "@/lib/copySourceLabel";
-import { tripDayCount } from "@/lib/tripCopy";
+import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
+import { tripDayCount } from "@triplot/shared/tripCopy";
 
 import { DateRangePopover } from "./date-range-popover";
 import { Button } from "@/components/ui/button";

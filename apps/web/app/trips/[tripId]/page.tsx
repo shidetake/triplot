@@ -20,15 +20,15 @@ import { TripActions } from "@/components/trip-actions";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
-} from "@/lib/expenseSummary";
-import { buildTripTzTimeline } from "@/lib/schedule";
+} from "@triplot/shared/expenseSummary";
+import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   calculateSettlements,
   type SettlementExpense,
-} from "@/lib/settlement";
+} from "@triplot/shared/settlement";
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
-import { centroid, TOKYO } from "@/lib/placeMap";
+import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { matchPlace, type TripPlace } from "@/lib/receipt/placeMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -37,7 +37,7 @@ import type {
   TodoKind,
   TodoPriority,
   Visibility,
-} from "@/lib/types/database";
+} from "@triplot/shared/types/database";
 
 export default async function TripDetailPage({
   params,

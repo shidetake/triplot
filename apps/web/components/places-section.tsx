@@ -4,7 +4,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
-import { centroid, type LatLng, TOKYO } from "@/lib/placeMap";
+import { centroid, type LatLng, TOKYO } from "@triplot/shared/placeMap";
 
 import { PlaceList, type PlaceRow, type PlaceStatus } from "./place-list";
 import { PlaceMap, type Selection } from "./place-map";

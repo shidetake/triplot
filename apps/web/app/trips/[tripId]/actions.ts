@@ -3,10 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { generateInviteToken } from "@/lib/invite";
-import { getIcon } from "@/lib/placeIcons";
+import { generateInviteToken } from "@triplot/shared/invite";
+import { getIcon } from "@triplot/shared/placeIcons";
 import { createClient } from "@/lib/supabase/server";
-import type { Currency, Visibility } from "@/lib/types/database";
+import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 export type CreateExpenseState = {
   error: string | null;

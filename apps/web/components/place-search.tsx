@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Combobox } from "@base-ui/react/combobox";
 
-import type { LatLng } from "@/lib/placeMap";
+import type { LatLng } from "@triplot/shared/placeMap";
 import { SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";

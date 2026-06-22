@@ -13,7 +13,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { formatYmd, parseYmd } from "@/lib/ymd";
+import { formatYmd, parseYmd } from "@triplot/shared/ymd";
 
 import { inputClass } from "./input-class";
 

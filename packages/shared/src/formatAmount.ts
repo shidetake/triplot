@@ -1,4 +1,4 @@
-import type { Currency } from "@/lib/types/database";
+import type { Currency } from "./types/database";
 
 // 金額の表示整形。`Intl.NumberFormat("ja-JP", { style: "currency" })` で
 // JPY は小数なし・USD は2桁（ui-guidelines「定型部品」）。手書き整形はしない。

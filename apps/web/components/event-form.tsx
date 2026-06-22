@@ -12,10 +12,10 @@ import {
   type EventMutationState,
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
-import type { LatLng } from "@/lib/placeMap";
-import { formatMinutes, type ScheduleEvent } from "@/lib/schedule";
-import type { Visibility } from "@/lib/types/database";
-import { parseYmd } from "@/lib/ymd";
+import type { LatLng } from "@triplot/shared/placeMap";
+import { formatMinutes, type ScheduleEvent } from "@triplot/shared/schedule";
+import type { Visibility } from "@triplot/shared/types/database";
+import { parseYmd } from "@triplot/shared/ymd";
 
 import { DatePopover } from "./date-popover";
 import { DateTimePopover } from "./date-time-popover";

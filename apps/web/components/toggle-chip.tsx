@@ -1,4 +1,4 @@
-import { chipStyle } from "@/lib/memberColors";
+import { chipStyle } from "@triplot/shared/memberColors";
 import { cn } from "@/lib/utils";
 
 // 複数選択のトグルチップ（ui-guidelines「定型部品」トグルチップ）。

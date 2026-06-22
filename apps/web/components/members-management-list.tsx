@@ -8,7 +8,7 @@ import {
   removeMemberAction,
   updateMyMemberAction,
 } from "@/app/trips/[tripId]/actions";
-import { chipStyle } from "@/lib/memberColors";
+import { chipStyle } from "@triplot/shared/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { MemberAvatar } from "./member-avatar";

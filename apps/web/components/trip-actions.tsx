@@ -11,8 +11,8 @@ import {
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
-import { hexToKmlColor } from "@/lib/placeColor";
-import { getIconPath } from "@/lib/placeIcons";
+import { hexToKmlColor } from "@triplot/shared/placeColor";
+import { getIconPath } from "@triplot/shared/placeIcons";
 import {
   buildPlacesKml,
   type KmlPlacemark,
@@ -31,7 +31,7 @@ import { type Anchor, FormPopover } from "./form-popover";
 import { ShareIcon, EllipsisIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
 import { EditTripForm } from "./edit-trip-form";
-import type { Currency } from "@/lib/types/database";
+import type { Currency } from "@triplot/shared/types/database";
 import { Button } from "@/components/ui/button";
 
 // ブラウザで生成したデータをファイルとしてダウンロードさせる。

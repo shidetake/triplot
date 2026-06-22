@@ -2,12 +2,12 @@
 
 import { useCallback, useMemo, useState } from "react";
 
-import type { LatLng } from "@/lib/placeMap";
+import type { LatLng } from "@triplot/shared/placeMap";
 import {
   buildSchedule,
   formatMinutes,
   type ScheduleEvent,
-} from "@/lib/schedule";
+} from "@triplot/shared/schedule";
 
 import { Button } from "@/components/ui/button";
 import { EventForm, type EventFormMode } from "./event-form";

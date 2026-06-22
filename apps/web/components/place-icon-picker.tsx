@@ -8,7 +8,7 @@ import {
   addTripPinOptionAction,
   removeTripPinOptionAction,
 } from "@/app/trips/[tripId]/actions";
-import { ICON_CATALOG, getIcon, type PinOption } from "@/lib/placeIcons";
+import { ICON_CATALOG, getIcon, type PinOption } from "@triplot/shared/placeIcons";
 import { Button } from "@/components/ui/button";
 
 import { confirmDialog } from "./confirm-dialog";

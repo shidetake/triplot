@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // ワークスペースの TS パッケージ（@triplot/shared）をそのままソースで取り込む。
+  transpilePackages: ["@triplot/shared"],
 };
 
 export default nextConfig;

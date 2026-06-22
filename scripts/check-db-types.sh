@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 
 # モノレポのパス（変わったらここだけ直す）
 ENV_FILE="apps/web/.env.local"
-OUT="apps/web/lib/types/database.generated.ts"
+OUT="packages/shared/src/types/database.generated.ts"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "check-db-types: $ENV_FILE 無し、スキップ" >&2

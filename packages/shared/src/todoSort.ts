@@ -5,7 +5,7 @@
 // → 未チェックの高/中/低 が並び、その下にチェック済みの高/中/低 が並ぶ。
 // DB の priority は text なので素直に order できない。並びはここで一元化し、
 // サーバ（page）とクライアント（楽観更新後の再ソート）の双方で同じ関数を使う。
-import type { TodoPriority } from "@/lib/types/database";
+import type { TodoPriority } from "./types/database";
 
 export type SortableTodo = {
   priority: TodoPriority;

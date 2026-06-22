@@ -8,7 +8,7 @@ import {
   mapTripDays,
   remapEventDate,
   tripDayCount,
-} from "@/lib/tripCopy";
+} from "@triplot/shared/tripCopy";
 
 type Currency = "JPY" | "USD";
 

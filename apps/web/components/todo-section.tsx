@@ -30,14 +30,14 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { MemberAvatar } from "@/components/member-avatar";
-import { chipStyle } from "@/lib/memberColors";
+import { chipStyle } from "@triplot/shared/memberColors";
 import { ReservationIcon } from "@/components/reservation-icon";
-import { sortTodos } from "@/lib/todoSort";
+import { sortTodos } from "@triplot/shared/todoSort";
 import type {
   TodoKind,
   TodoPriority,
   Visibility,
-} from "@/lib/types/database";
+} from "@triplot/shared/types/database";
 import { PrivateBadge } from "@/components/private-badge";
 
 export type TodoRow = {

@@ -2,12 +2,12 @@
 
 import { Fragment, useState } from "react";
 
-import { chipStyle } from "@/lib/memberColors";
-import type { LatLng } from "@/lib/placeMap";
-import type { TripTzTimeline } from "@/lib/schedule";
-import type { Currency, Visibility } from "@/lib/types/database";
-import { formatAmount } from "@/lib/formatAmount";
-import { formatRate } from "@/lib/formatRate";
+import { chipStyle } from "@triplot/shared/memberColors";
+import type { LatLng } from "@triplot/shared/placeMap";
+import type { TripTzTimeline } from "@triplot/shared/schedule";
+import type { Currency, Visibility } from "@triplot/shared/types/database";
+import { formatAmount } from "@triplot/shared/formatAmount";
+import { formatRate } from "@triplot/shared/formatRate";
 
 import { ColorBadge } from "./color-badge";
 import { type Category, ExpenseForm } from "./expense-form";

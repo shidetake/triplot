@@ -11,9 +11,9 @@ import {
   setPlaceLocationAction,
   updatePlaceAction,
 } from "@/app/trips/[tripId]/actions";
-import type { Visibility } from "@/lib/types/database";
+import type { Visibility } from "@triplot/shared/types/database";
 
-import { type PinOption } from "@/lib/placeIcons";
+import { type PinOption } from "@triplot/shared/placeIcons";
 
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { inputClass } from "./input-class";

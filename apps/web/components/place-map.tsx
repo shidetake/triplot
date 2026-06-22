@@ -26,9 +26,9 @@ import {
   dominantCluster,
   type LatLng,
   TOKYO,
-} from "@/lib/placeMap";
+} from "@triplot/shared/placeMap";
 
-import { vividColor } from "@/lib/memberColors";
+import { vividColor } from "@triplot/shared/memberColors";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";

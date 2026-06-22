@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-import type { Database } from "@/lib/types/database";
+import type { Database } from "@triplot/shared/types/database";
 
 // service_role クライアント（RLS バイパス）。ユーザセッションが無い
 // サーバ間処理（受信メール webhook など）からのみ使う。

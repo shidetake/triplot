@@ -12,14 +12,14 @@ import {
   GREEN_HUE,
   pickEventColor,
   type EventColor,
-} from "@/lib/eventColor";
+} from "@triplot/shared/eventColor";
 import {
   formatMinutes,
   MIN_EVENT_MIN,
   type Schedule,
   type ScheduleEvent,
-} from "@/lib/schedule";
-import { vividColor } from "@/lib/memberColors";
+} from "@triplot/shared/schedule";
+import { vividColor } from "@triplot/shared/memberColors";
 
 import { CheckIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";

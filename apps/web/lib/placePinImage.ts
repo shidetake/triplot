@@ -5,7 +5,7 @@
 // 純粋ロジックではない（DOM/canvas 依存）のでユニットテストは置かない。
 // 色は status.color（16進）をそのまま使い、UI のピン色と揃える。
 
-import { GRAY_HEX } from "./placeColor";
+import { GRAY_HEX } from "@triplot/shared/placeColor";
 
 const W = 64;
 const H = 80;
