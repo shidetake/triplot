@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
@@ -32,6 +33,8 @@ export default async function MembersPage({
   const me = members.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
+  const t = await getTranslations("members");
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <div className="mb-6">
@@ -45,9 +48,10 @@ export default async function MembersPage({
       </div>
 
       <header className="mb-4">
-        <h1 className="text-2xl font-semibold">メンバー</h1>
+        <h1 className="text-2xl font-semibold">{t("heading")}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
-          自分の表示名を編集できます。{me.is_admin ? "管理者として、他のメンバーの削除もできます。" : "他のメンバーを外せるのは管理者のみ。"}
+          {t("editOwnName")}
+          {me.is_admin ? t("adminCanRemove") : t("onlyAdminCanRemove")}
         </p>
       </header>
 

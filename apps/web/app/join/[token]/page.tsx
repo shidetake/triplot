@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { createClient } from "@/lib/supabase/server";
@@ -22,19 +23,18 @@ export default async function JoinPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const t = await getTranslations("join");
 
   if (!title) {
     return (
       <main className="mx-auto w-full max-w-md px-6 py-20">
-        <h1 className="text-2xl font-semibold">無効な招待リンクです</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          リンクが間違っているか、無効化された可能性があります。
-        </p>
+        <h1 className="text-2xl font-semibold">{t("invalidTitle")}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t("invalidBody")}</p>
         <Link
           href="/"
           className="mt-6 inline-block text-sm text-blue-600 hover:underline"
         >
-          トップへ
+          {t("toTop")}
         </Link>
       </main>
     );
@@ -47,11 +47,9 @@ export default async function JoinPage({
 
   return (
     <main className="mx-auto w-full max-w-md px-6 py-16">
-      <p className="text-sm text-muted-foreground">旅行に招待されています</p>
+      <p className="text-sm text-muted-foreground">{t("invitedTo")}</p>
       <h1 className="mt-1 text-2xl font-semibold">{title}</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        名前を入れて参加してください。ゲスト参加ならアカウント登録は不要です。
-      </p>
+      <p className="mt-2 text-sm text-muted-foreground">{t("enterName")}</p>
 
       <div className="mt-8">
         <JoinForm

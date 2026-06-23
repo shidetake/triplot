@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { FieldLabel } from "@/components/field-label";
@@ -23,6 +24,8 @@ export function JoinForm({
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState<string | null>(null);
   const [isPending, start] = useTransition();
+  const t = useTranslations("join");
+  const tc = useTranslations("common");
 
   const submitJoin = () => {
     start(async () => {
@@ -45,9 +48,7 @@ export function JoinForm({
       const supabase = createClient();
       const { error: signInError } = await supabase.auth.signInAnonymously();
       if (signInError) {
-        setError(
-          "ゲスト参加が無効になっています。Google で参加してください。",
-        );
+        setError(t("guestDisabled"));
         return;
       }
       const { error } = await joinAction(token, name);
@@ -58,28 +59,28 @@ export function JoinForm({
   return (
     <div className="space-y-4">
       <label className="block text-sm">
-        <FieldLabel>あなたの表示名（この旅行内）</FieldLabel>
+        <FieldLabel>{t("displayNameLabel")}</FieldLabel>
         <Input
           type="text"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="ゲスト"
+          placeholder={t("guestPlaceholder")}
           className="mt-1 block w-full min-w-0"
         />
       </label>
 
       {hasSession ? (
         <Button type="button" onClick={joinDirect} disabled={isPending} className="h-11 w-full">
-          {isPending ? "参加中..." : "この旅行に参加する"}
+          {isPending ? t("joining") : t("joinTrip")}
         </Button>
       ) : (
         <div className="space-y-3">
           <Button type="button" onClick={joinAsGuest} disabled={isPending} className="h-11 w-full">
-            {isPending ? "参加中..." : "ゲストとして参加（ログイン不要）"}
+            {isPending ? t("joining") : t("joinAsGuest")}
           </Button>
           <div className="flex items-center gap-3 text-xs text-subtle-foreground">
             <span className="h-px flex-1 bg-zinc-200" />
-            または
+            {tc("or")}
             <span className="h-px flex-1 bg-zinc-200" />
           </div>
           <GoogleSignInButton next={`/join/${token}`} />

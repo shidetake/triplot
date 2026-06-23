@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { updateDisplayNameAction } from "@/app/settings/actions";
@@ -16,6 +17,8 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
   const [value, setValue] = useState(defaultValue);
   const [saved, setSaved] = useState(defaultValue);
   const dirty = value.trim() !== saved.trim();
+  const t = useTranslations("settings");
+  const tc = useTranslations("common");
 
   return (
     <form
@@ -23,7 +26,7 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
         startTransition(async () => {
           await updateDisplayNameAction(formData);
           setSaved(value);
-          toast("保存しました");
+          toast(tc("saved"));
         })
       }
       className="flex flex-1 items-center gap-3"
@@ -33,19 +36,19 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
         name="display_name"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        placeholder="名前"
+        placeholder={t("namePlaceholder")}
         maxLength={50}
         className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none"
       />
-      <HelpTip label="デフォルト表示名について" align="right">
-        旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。
+      <HelpTip label={t("displayNameHelpLabel")} align="right">
+        {t("displayNameHelp")}
       </HelpTip>
       <Button
         type="submit"
         size="icon"
         disabled={pending || !dirty}
-        aria-label="保存"
-        title="保存"
+        aria-label={tc("save")}
+        title={tc("save")}
         className="shrink-0"
       >
         <SaveIcon size={18} />

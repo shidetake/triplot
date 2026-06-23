@@ -4,11 +4,49 @@
   },
   "common": {
     "create": "作成",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "edit": "編集",
+    "saved": "保存しました",
+    "or": "または",
     "loginRequired": "ログインが必要です"
   },
   "settings": {
     "heading": "設定",
-    "language": "言語"
+    "language": "言語",
+    "namePlaceholder": "名前",
+    "displayNameHelpLabel": "デフォルト表示名について",
+    "displayNameHelp": "旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。"
+  },
+  "join": {
+    "invalidTitle": "無効な招待リンクです",
+    "invalidBody": "リンクが間違っているか、無効化された可能性があります。",
+    "toTop": "トップへ",
+    "invitedTo": "旅行に招待されています",
+    "enterName": "名前を入れて参加してください。ゲスト参加ならアカウント登録は不要です。",
+    "displayNameLabel": "あなたの表示名（この旅行内）",
+    "guestPlaceholder": "ゲスト",
+    "joining": "参加中...",
+    "joinTrip": "この旅行に参加する",
+    "joinAsGuest": "ゲストとして参加（ログイン不要）",
+    "guestDisabled": "ゲスト参加が無効になっています。Google で参加してください。"
+  },
+  "members": {
+    "heading": "メンバー",
+    "editOwnName": "自分の表示名を編集できます。",
+    "adminCanRemove": "管理者として、他のメンバーの削除もできます。",
+    "onlyAdminCanRemove": "他のメンバーを外せるのは管理者のみ。",
+    "admin": "管理者",
+    "displayName": "表示名",
+    "leaveTitle": "この旅行から退出しますか？",
+    "leaveBody": "招待リンクから再参加できます。",
+    "leaveConfirm": "退出",
+    "leaveAction": "退出する",
+    "removeTitle": "{name} をこの旅行から外しますか？",
+    "remove": "外す",
+    "removeAria": "{name} を外す",
+    "changeFailed": "変更に失敗しました: {error}",
+    "removeFailed": "失敗しました: {error}"
   },
   "trips": {
     "heading": "旅行",

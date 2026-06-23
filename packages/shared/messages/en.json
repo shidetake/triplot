@@ -4,11 +4,49 @@
   },
   "common": {
     "create": "Create",
+    "save": "Save",
+    "cancel": "Cancel",
+    "edit": "Edit",
+    "saved": "Saved",
+    "or": "or",
     "loginRequired": "You need to be logged in."
   },
   "settings": {
     "heading": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "namePlaceholder": "Name",
+    "displayNameHelpLabel": "About your default display name",
+    "displayNameHelp": "Your default display name when joining a trip (existing trip names won't change)."
+  },
+  "join": {
+    "invalidTitle": "Invalid invite link",
+    "invalidBody": "The link may be wrong or has been deactivated.",
+    "toTop": "Back to home",
+    "invitedTo": "You've been invited to a trip",
+    "enterName": "Enter your name to join. No account is needed to join as a guest.",
+    "displayNameLabel": "Your display name (in this trip)",
+    "guestPlaceholder": "Guest",
+    "joining": "Joining...",
+    "joinTrip": "Join this trip",
+    "joinAsGuest": "Join as a guest (no sign-in)",
+    "guestDisabled": "Guest join is disabled. Please join with Google."
+  },
+  "members": {
+    "heading": "Members",
+    "editOwnName": "You can edit your own display name.",
+    "adminCanRemove": "As an admin, you can also remove other members.",
+    "onlyAdminCanRemove": "Only admins can remove other members.",
+    "admin": "Admin",
+    "displayName": "Display name",
+    "leaveTitle": "Leave this trip?",
+    "leaveBody": "You can rejoin via the invite link.",
+    "leaveConfirm": "Leave",
+    "leaveAction": "Leave",
+    "removeTitle": "Remove {name} from this trip?",
+    "remove": "Remove",
+    "removeAria": "Remove {name}",
+    "changeFailed": "Failed to update: {error}",
+    "removeFailed": "Failed: {error}"
   },
   "trips": {
     "heading": "Trips",

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
@@ -40,6 +41,8 @@ export function MembersManagementList({
   const [isPending, start] = useTransition();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
+  const t = useTranslations("members");
+  const tc = useTranslations("common");
 
   const me = members.find((m) => m.id === myMemberId);
 
@@ -62,7 +65,7 @@ export function MembersManagementList({
     start(async () => {
       const { error } = await updateMyMemberAction(tripId, name);
       if (error) {
-        toast(`変更に失敗しました: ${error}`);
+        toast(t("changeFailed", { error }));
         return;
       }
       setEditingId(null);
@@ -73,18 +76,18 @@ export function MembersManagementList({
     const isSelf = m.id === myMemberId;
     const ok = isSelf
       ? await confirmDialog({
-          title: "この旅行から退出しますか？",
-          body: "招待リンクから再参加できます。",
-          confirmLabel: "退出",
+          title: t("leaveTitle"),
+          body: t("leaveBody"),
+          confirmLabel: t("leaveConfirm"),
         })
       : await confirmDialog({
-          title: `${m.display_name} をこの旅行から外しますか？`,
-          confirmLabel: "外す",
+          title: t("removeTitle", { name: m.display_name }),
+          confirmLabel: t("remove"),
         });
     if (!ok) return;
     start(async () => {
       const { error } = await removeMemberAction(tripId, m.id, isSelf);
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("removeFailed", { error }));
     });
   };
 
@@ -117,7 +120,7 @@ export function MembersManagementList({
                 }}
                 maxLength={32}
                 disabled={isPending}
-                aria-label="表示名"
+                aria-label={t("displayName")}
                 className="flex-1 disabled:opacity-50"
               />
               <Button
@@ -126,8 +129,8 @@ export function MembersManagementList({
                 size="iconSm"
                 onClick={cancelEdit}
                 disabled={isPending}
-                aria-label="キャンセル"
-                title="キャンセル"
+                aria-label={tc("cancel")}
+                title={tc("cancel")}
               >
                 <CloseIcon size={16} />
               </Button>
@@ -136,8 +139,8 @@ export function MembersManagementList({
                 size="iconSm"
                 onClick={saveEdit}
                 disabled={isPending}
-                aria-label="保存"
-                title="保存"
+                aria-label={tc("save")}
+                title={tc("save")}
               >
                 <CheckIcon size={16} />
               </Button>
@@ -151,8 +154,8 @@ export function MembersManagementList({
               {m.is_admin && (
                 <span
                   role="img"
-                  aria-label="管理者"
-                  title="管理者"
+                  aria-label={t("admin")}
+                  title={t("admin")}
                   className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-amber-500 ring-1 ring-white"
                 >
                   <CrownIcon size={10} />
@@ -172,8 +175,8 @@ export function MembersManagementList({
                 size="iconSm"
                 onClick={startEdit}
                 disabled={isPending}
-                aria-label="編集"
-                title="編集"
+                aria-label={tc("edit")}
+                title={tc("edit")}
               >
                 <EditIcon size={16} />
               </Button>
@@ -185,8 +188,10 @@ export function MembersManagementList({
                 size="iconSm"
                 onClick={() => remove(m)}
                 disabled={isPending}
-                aria-label={isMe ? "退出する" : `${m.display_name} を外す`}
-                title={isMe ? "退出する" : "外す"}
+                aria-label={
+                  isMe ? t("leaveAction") : t("removeAria", { name: m.display_name })
+                }
+                title={isMe ? t("leaveAction") : t("remove")}
               >
                 <TrashIcon size={16} />
               </Button>
