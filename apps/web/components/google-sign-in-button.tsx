@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import { toast } from "@/components/toast";
 
@@ -8,6 +9,7 @@ import { Button } from "@/components/ui/button";
 
 export function GoogleSignInButton({ next }: { next?: string }) {
   const [isLoading, setIsLoading] = useState(false);
+  const t = useTranslations("auth");
 
   const handleSignIn = async () => {
     setIsLoading(true);
@@ -20,7 +22,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
     });
     if (error) {
       setIsLoading(false);
-      toast(`ログインに失敗しました: ${error.message}`);
+      toast(t("signInFailed", { message: error.message }));
     }
   };
 
@@ -31,7 +33,7 @@ export function GoogleSignInButton({ next }: { next?: string }) {
       disabled={isLoading}
       className="h-12 gap-2 px-6"
     >
-      {isLoading ? "ログイン中..." : "Google でログイン"}
+      {isLoading ? t("signingIn") : t("signInWithGoogle")}
     </Button>
   );
 }

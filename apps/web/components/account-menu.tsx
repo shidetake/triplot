@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -25,6 +26,7 @@ export function AccountMenu({
   avatarUrl: string | null;
 }) {
   const router = useRouter();
+  const t = useTranslations();
   const initial = (name ?? email ?? "?").trim().charAt(0).toUpperCase() || "?";
 
   const handleSignOut = async () => {
@@ -36,8 +38,8 @@ export function AccountMenu({
   return (
     <Menu.Root>
       <Menu.Trigger
-        aria-label="アカウント"
-        title={email ?? "アカウント"}
+        aria-label={t("account.account")}
+        title={email ?? t("account.account")}
         className={`${selfAvatarClass} h-8 w-8 text-sm transition hover:ring-foreground/40`}
       >
         {avatarUrl ? (
@@ -62,14 +64,14 @@ export function AccountMenu({
               className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
             >
               <SettingsIcon size={16} />
-              設定
+              {t("settings.heading")}
             </Menu.Item>
             <Menu.Item
               onClick={handleSignOut}
               className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
             >
               <LogOutIcon size={16} />
-              ログアウト
+              {t("account.signOut")}
             </Menu.Item>
           </Menu.Popup>
         </Menu.Positioner>

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { AccountMenu } from "@/components/account-menu";
@@ -41,6 +42,10 @@ export async function AppHeader() {
     .is("trip_id", null);
   const inboxCount = count ?? 0;
 
+  const t = await getTranslations("header");
+  const inboxLabel =
+    inboxCount > 0 ? t("inboxWithCount", { count: inboxCount }) : t("inbox");
+
   return (
     // z-30: ページ内容より上、ポップオーバー/モーダル（z-40/50）より下。
     <header className="sticky top-0 z-30 border-b border-foreground/10 bg-white">
@@ -51,12 +56,8 @@ export async function AppHeader() {
         <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/import"
-            aria-label={
-              inboxCount > 0 ? `取り込み（未割当 ${inboxCount} 件）` : "取り込み"
-            }
-            title={
-              inboxCount > 0 ? `取り込み（未割当 ${inboxCount} 件）` : "取り込み"
-            }
+            aria-label={inboxLabel}
+            title={inboxLabel}
             className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
           >
             <InboxIcon size={24} />

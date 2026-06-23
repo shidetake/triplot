@@ -35,5 +35,23 @@
   "currency": {
     "jpy": "JPY 日本円",
     "usd": "USD 米ドル"
+  },
+  "landing": {
+    "tagline": "友達と旅行プランを立てて、思い出として残すアプリ。",
+    "openApp": "アプリを開く →",
+    "joinHint": "ログイン不要で参加だけしたい場合は、共有リンクから直接アクセスしてください。"
+  },
+  "auth": {
+    "signInWithGoogle": "Google でログイン",
+    "signingIn": "ログイン中...",
+    "signInFailed": "ログインに失敗しました: {message}"
+  },
+  "header": {
+    "inbox": "取り込み",
+    "inboxWithCount": "取り込み（未割当 {count} 件）"
+  },
+  "account": {
+    "account": "アカウント",
+    "signOut": "ログアウト"
   }
 }

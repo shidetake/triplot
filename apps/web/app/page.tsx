@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
@@ -10,28 +11,25 @@ export default async function LandingPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+  const t = await getTranslations("landing");
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-24">
       <section className="space-y-6">
         <h1 className="text-4xl font-semibold tracking-tight">triplot</h1>
-        <p className="text-lg text-muted-foreground">
-          友達と旅行プランを立てて、思い出として残すアプリ。
-        </p>
+        <p className="text-lg text-muted-foreground">{t("tagline")}</p>
 
         {user ? (
           <Link
             href="/trips"
             className="inline-flex h-12 items-center justify-center rounded-md bg-primary px-6 font-medium text-primary-foreground transition hover:bg-primary/90"
           >
-            アプリを開く →
+            {t("openApp")}
           </Link>
         ) : (
           <div className="space-y-4">
             <GoogleSignInButton next="/trips" />
-            <p className="text-sm text-muted-foreground">
-              ログイン不要で参加だけしたい場合は、共有リンクから直接アクセスしてください。
-            </p>
+            <p className="text-sm text-muted-foreground">{t("joinHint")}</p>
           </div>
         )}
       </section>

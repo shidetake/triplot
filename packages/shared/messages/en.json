@@ -35,5 +35,23 @@
   "currency": {
     "jpy": "JPY (Japanese Yen)",
     "usd": "USD (US Dollar)"
+  },
+  "landing": {
+    "tagline": "Plan trips with friends and keep them as memories.",
+    "openApp": "Open the app →",
+    "joinHint": "If you just want to join without signing in, open the shared link directly."
+  },
+  "auth": {
+    "signInWithGoogle": "Sign in with Google",
+    "signingIn": "Signing in...",
+    "signInFailed": "Sign-in failed: {message}"
+  },
+  "header": {
+    "inbox": "Imports",
+    "inboxWithCount": "Imports ({count} unassigned)"
+  },
+  "account": {
+    "account": "Account",
+    "signOut": "Sign out"
   }
 }
