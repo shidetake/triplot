@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -16,6 +17,7 @@ export function CreateTripButton({
   trips: CopyableTrip[];
 }) {
   const [anchor, setAnchor] = useState<Anchor | null>(null);
+  const t = useTranslations("trips");
 
   return (
     <div>
@@ -23,8 +25,8 @@ export function CreateTripButton({
         type="button"
         size="icon"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
-        aria-label="旅行を作成"
-        title="旅行を作成"
+        aria-label={t("create")}
+        title={t("create")}
       >
         <PlusIcon size={18} />
       </Button>
@@ -33,7 +35,7 @@ export function CreateTripButton({
         <FormPopover
           anchor={anchor}
           onClose={() => setAnchor(null)}
-          label="旅行を作成"
+          label={t("create")}
           fullScreenOnNarrow
           draftKey="trip:new"
         >

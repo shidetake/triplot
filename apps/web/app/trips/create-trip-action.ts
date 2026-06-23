@@ -1,5 +1,6 @@
 "use server";
 
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -13,11 +14,12 @@ export async function createTripAction(
   formData: FormData,
 ): Promise<CreateTripState> {
   const supabase = await createClient();
+  const t = await getTranslations();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインが必要です" };
+    return { error: t("common.loginRequired") };
   }
 
   const title = String(formData.get("title") ?? "").trim();
@@ -30,7 +32,7 @@ export async function createTripAction(
   const sourceTripId = String(formData.get("source_trip_id") ?? "").trim();
 
   if (!title || !startDate || !endDate || !displayName) {
-    return { error: "全ての項目を入力してください" };
+    return { error: t("createTrip.fillAll") };
   }
 
   const result = await createTrip(supabase, {

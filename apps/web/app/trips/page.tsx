@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -36,30 +37,34 @@ async function TripsSection({ userId }: { userId: string }) {
     .map((m) => m.trips)
     .filter((t): t is NonNullable<typeof t> => t !== null);
 
+  const t = await getTranslations("trips");
+
   if (error) {
-    return <p className="text-sm text-red-600">旅行一覧の取得に失敗しました: {error.message}</p>;
+    return (
+      <p className="text-sm text-red-600">
+        {t("loadError", { message: error.message })}
+      </p>
+    );
   }
 
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">旅行</h2>
+        <h2 className="text-lg font-semibold">{t("heading")}</h2>
         <CreateTripButton
           defaultDisplayName={defaultDisplayName}
-          trips={trips.map((t) => ({
-            id: t.id,
-            title: t.title,
-            default_currency: t.default_currency,
-            start_date: t.start_date,
-            end_date: t.end_date,
+          trips={trips.map((trip) => ({
+            id: trip.id,
+            title: trip.title,
+            default_currency: trip.default_currency,
+            start_date: trip.start_date,
+            end_date: trip.end_date,
           }))}
         />
       </div>
 
       {trips.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          まだ参加している旅行はありません。
-        </p>
+        <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
         <ul className="space-y-2">
           {trips.map((trip) => (
@@ -70,7 +75,10 @@ async function TripsSection({ userId }: { userId: string }) {
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
+                  {t("dateRange", {
+                    start: trip.start_date ?? "?",
+                    end: trip.end_date ?? "?",
+                  })}
                 </div>
               </Link>
             </li>

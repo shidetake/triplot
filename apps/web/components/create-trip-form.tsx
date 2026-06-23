@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useActionState, useState } from "react";
 
 import {
@@ -23,9 +24,9 @@ import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 type Currency = "JPY" | "USD";
 
-const CURRENCIES: { value: Currency; label: string }[] = [
-  { value: "JPY", label: "JPY 日本円" },
-  { value: "USD", label: "USD 米ドル" },
+const CURRENCIES: { value: Currency; key: "jpy" | "usd" }[] = [
+  { value: "JPY", key: "jpy" },
+  { value: "USD", key: "usd" },
 ];
 
 // コピー元に選べる過去の旅行。
@@ -52,6 +53,9 @@ export function CreateTripForm({
     createTripAction,
     initialState,
   );
+  const t = useTranslations("createTrip");
+  const tCommon = useTranslations("common");
+  const tCurrency = useTranslations("currency");
 
   // ボトムシート時は入力途中で閉じても残るよう、データ系 state は useDraft で保持する。
   const inSheet = useInSheet();
@@ -148,7 +152,7 @@ export function CreateTripForm({
                 setSourceId("");
               }}
             />
-            新規
+            {t("modeNew")}
           </label>
           <label
             className={`${seg} ${
@@ -164,14 +168,14 @@ export function CreateTripForm({
               checked={mode === "copy"}
               onChange={() => setMode("copy")}
             />
-            過去の旅行をコピー
+            {t("modeCopy")}
           </label>
         </div>
       )}
 
       {mode === "copy" && (
         <label className="block text-sm">
-          <FieldLabel required>コピー元</FieldLabel>
+          <FieldLabel required>{t("copySource")}</FieldLabel>
           <select
             value={sourceId}
             onChange={(e) => pickSource(e.target.value)}
@@ -179,7 +183,7 @@ export function CreateTripForm({
             className={`mt-1 block w-full ${inputClass}`}
           >
             <option value="" disabled>
-              旅行を選択
+              {t("selectTrip")}
             </option>
             {trips.map((t) => (
               <option key={t.id} value={t.id}>
@@ -198,11 +202,11 @@ export function CreateTripForm({
       />
 
       <label className="block min-w-0 text-sm">
-        <FieldLabel required>タイトル</FieldLabel>
+        <FieldLabel required>{t("title")}</FieldLabel>
         <Input
           name="title"
           required
-          placeholder="ハワイ旅行"
+          placeholder={t("titlePlaceholder")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 block w-full min-w-0"
@@ -210,7 +214,7 @@ export function CreateTripForm({
       </label>
 
       <Field
-        label="あなたの表示名（旅行内）"
+        label={t("displayName")}
         name="display_name"
         required
         value={displayName}
@@ -218,7 +222,7 @@ export function CreateTripForm({
       />
 
       <div className="text-sm">
-        <FieldLabel required>日程</FieldLabel>
+        <FieldLabel required>{t("dates")}</FieldLabel>
         <div className="mt-1">
           <DateRangePopover
             startName="start_date"
@@ -232,10 +236,10 @@ export function CreateTripForm({
       <div className="text-sm">
         <div className="flex items-center gap-1">
           <label htmlFor="default_currency" className="font-medium">
-            精算通貨
+            {t("settlementCurrency")}
           </label>
-          <HelpTip label="精算通貨とは" widthClass="w-56">
-            合計や割り勘の精算に使う通貨です（旅行先の通貨ではありません）
+          <HelpTip label={t("settlementCurrencyHelpLabel")} widthClass="w-56">
+            {t("settlementCurrencyHelp")}
           </HelpTip>
         </div>
         <select
@@ -247,7 +251,7 @@ export function CreateTripForm({
         >
           {CURRENCIES.map((c) => (
             <option key={c.value} value={c.value}>
-              {c.label}
+              {tCurrency(c.key)}
             </option>
           ))}
         </select>
@@ -256,8 +260,8 @@ export function CreateTripForm({
       <Button
         type="submit"
         disabled={isPending}
-        aria-label="作成"
-        title="作成"
+        aria-label={tCommon("create")}
+        title={tCommon("create")}
         className="w-full"
       >
         <PlusIcon size={20} />
@@ -265,7 +269,7 @@ export function CreateTripForm({
 
       {showShorterWarning && (
         <MessageBox kind="warning" className="text-xs leading-snug">
-          ⚠ 日程がコピー元より短いため、一部の予定はコピーされません。
+          {t("shorterWarning")}
         </MessageBox>
       )}
 

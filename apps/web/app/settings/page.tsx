@@ -1,7 +1,9 @@
+import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation";
 
 import { AvatarUpload } from "@/components/avatar-upload";
 import { DisplayNameForm } from "@/components/display-name-form";
+import { LanguageForm } from "@/components/language-form";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function SettingsPage() {
@@ -25,9 +27,11 @@ export default async function SettingsPage() {
     (profile?.display_name ?? user.email ?? "?").trim().charAt(0).toUpperCase() ||
     "?";
 
+  const t = await getTranslations("settings");
+
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">設定</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t("heading")}</h1>
 
       <div className="mt-10 flex items-center gap-4">
         <AvatarUpload
@@ -37,6 +41,11 @@ export default async function SettingsPage() {
           initial={avatarInitial}
         />
         <DisplayNameForm defaultValue={profile?.display_name ?? ""} />
+      </div>
+
+      <div className="mt-10 space-y-1">
+        <label className="block text-sm font-medium">{t("language")}</label>
+        <LanguageForm />
       </div>
     </main>
   );

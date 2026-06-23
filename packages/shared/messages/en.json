@@ -1,0 +1,39 @@
+{
+  "app": {
+    "description": "Plan trips with friends and keep them as memories."
+  },
+  "common": {
+    "create": "Create",
+    "loginRequired": "You need to be logged in."
+  },
+  "settings": {
+    "heading": "Settings",
+    "language": "Language"
+  },
+  "trips": {
+    "heading": "Trips",
+    "empty": "You haven't joined any trips yet.",
+    "loadError": "Failed to load trips: {message}",
+    "create": "Create a trip",
+    "dateRange": "{start} – {end}"
+  },
+  "createTrip": {
+    "modeNew": "New",
+    "modeCopy": "Copy a past trip",
+    "copySource": "Source trip",
+    "selectTrip": "Select a trip",
+    "title": "Title",
+    "titlePlaceholder": "Hawaii trip",
+    "displayName": "Your display name (in this trip)",
+    "dates": "Dates",
+    "settlementCurrency": "Settlement currency",
+    "settlementCurrencyHelpLabel": "What is the settlement currency?",
+    "settlementCurrencyHelp": "The currency used for totals and splitting costs (not the currency of your destination).",
+    "shorterWarning": "⚠ Because the dates are shorter than the source trip, some events won't be copied.",
+    "fillAll": "Please fill in all fields."
+  },
+  "currency": {
+    "jpy": "JPY (Japanese Yen)",
+    "usd": "USD (US Dollar)"
+  }
+}

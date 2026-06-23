@@ -12,10 +12,10 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@triplot/shared": "*",
     "@base-ui/react": "^1.5.0",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.105.1",
+    "@triplot/shared": "*",
     "@vis.gl/react-google-maps": "^1.8.3",
     "ai": "^6.0.195",
     "class-variance-authority": "^0.7.1",
@@ -23,6 +23,7 @@
     "date-fns": "^4.3.0",
     "lucide-react": "^1.16.0",
     "next": "16.2.4",
+    "next-intl": "^4.13.0",
     "postal-mime": "^2.7.4",
     "react": "19.2.4",
     "react-day-picker": "^10.0.1",
