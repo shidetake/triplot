@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 
@@ -50,12 +51,6 @@ const fieldCls = "block min-w-0 text-sm";
 //  - transit : タイムゾーン跨ぎ（出発と到着で日付もTZも変わる＝フライト等）
 type Kind3 = "timed" | "allday" | "transit";
 
-const KIND3_LABEL: Record<Kind3, string> = {
-  timed: "通常",
-  allday: "終日",
-  transit: "時差移動",
-};
-
 // 壁時計の (date,time) ↔ 通算分。Date.UTC を計算専用に使い、ローカルTZは
 // 一切経由しない（floating time を保つ）。
 function dtToMin(date: string, time: string): number {
@@ -96,6 +91,7 @@ export type EventFormMode =
 function TzDisclosure({ value }: { value: string }) {
   const [tz, setTz] = useDraft("tz", value);
   const [open, setOpen] = useState(false);
+  const t = useTranslations("event");
 
   return (
     <div className="text-sm">
@@ -106,7 +102,7 @@ function TzDisclosure({ value }: { value: string }) {
         aria-expanded={open}
         className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
       >
-        <span>タイムゾーン: {tzDisplayLabel(tz)}</span>
+        <span>{t("timezone")}: {tzDisplayLabel(tz)}</span>
         <ChevronIcon
           size={16}
           className={`transition-transform ${open ? "-rotate-90" : "rotate-90"}`}
@@ -318,15 +314,23 @@ export function EventForm({
     if (v > alldayEnd) setAlldayEnd(v);
   };
 
+  const t = useTranslations("event");
+  const tCommon = useTranslations("common");
+  const KIND3_LABEL: Record<Kind3, string> = {
+    timed: t("kindTimed"),
+    allday: t("kindAllday"),
+    transit: t("kindTransit"),
+  };
+
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
   const onDelete = async () => {
     if (!ev) return;
-    if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) return;
+    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
     startDelete(async () => {
       const { error } = await deleteEventAction(tripId, ev.id);
       if (error) {
-        toast(`削除に失敗しました: ${error}`);
+        toast(t("deleteFailed", { error }));
         return;
       }
       clearDraft(); // 対象が消えたので下書きも破棄
@@ -383,12 +387,12 @@ export function EventForm({
       </div>
       {kind3 === "transit" && (
         <p className="-mt-1 text-xs text-muted-foreground">
-          フライトなど、出発と到着でタイムゾーンが変わる予定。
+          {t("transitHint")}
         </p>
       )}
 
       <label className="block text-sm">
-        <FieldLabel required>タイトル</FieldLabel>
+        <FieldLabel required>{t("title")}</FieldLabel>
         <Input
           type="text"
           name="title"
@@ -396,21 +400,21 @@ export function EventForm({
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={
-            kind3 === "transit" ? "NRT-HNL" : "ハイキング"
+            kind3 === "transit" ? t("placeholderTitleTransit") : t("placeholderTitle")
           }
           className={inputLayout}
         />
       </label>
 
       <div className="block text-sm">
-        <FieldLabel>場所</FieldLabel>
+        <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
               places={places}
               biasCenter={biasCenter}
               initial={placePickerInitial}
-              placeholder={kind3 === "transit" ? "成田国際空港" : "ダイヤモンドヘッド"}
+              placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
             />
           </APIProvider>
         ) : (
@@ -418,7 +422,7 @@ export function EventForm({
             places={places}
             biasCenter={biasCenter}
             initial={placePickerInitial}
-            placeholder={kind3 === "transit" ? "成田国際空港" : "ダイヤモンドヘッド"}
+            placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
           />
         )}
       </div>
@@ -429,19 +433,19 @@ export function EventForm({
       {kind3 === "transit" && (
         <div className="space-y-3">
           <div>
-            <span className="text-sm text-muted-foreground">日時</span>
+            <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
             <div className="mt-1 flex items-center gap-2">
               <DateTimePopover
                 variant="start"
                 date={departDate}
                 time={departTime}
-                onChange={(d, t) => {
+                onChange={(d, td) => {
                   setDepartDate(d);
-                  setDepartTime(t);
+                  setDepartTime(td);
                 }}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
-                label="出発日時"
+                label={t("departDateTime")}
               />
               <span className="shrink-0 text-muted-foreground">–</span>
               <DateTimePopover
@@ -449,13 +453,13 @@ export function EventForm({
                 date={arriveDate}
                 time={arriveTime}
                 baseDate={departDate}
-                onChange={(d, t) => {
+                onChange={(d, td) => {
                   setArriveDate(d);
-                  setArriveTime(t);
+                  setArriveTime(td);
                 }}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
-                label="到着日時"
+                label={t("arriveDateTime")}
               />
             </div>
           </div>
@@ -468,7 +472,7 @@ export function EventForm({
           {/* 出発地/到着地のタイムゾーンを1行2列に。検索式ピッカーで全ゾーンから選べる。 */}
           <div className="grid grid-cols-2 gap-2">
             <label className={`${fieldCls} mt-1 block`}>
-              <span className="text-muted-foreground">出発地タイムゾーン</span>
+              <span className="text-muted-foreground">{t("departTz")}</span>
               <div className="mt-1">
                 <TimezonePicker
                   name="depart_tz"
@@ -478,7 +482,7 @@ export function EventForm({
               </div>
             </label>
             <label className={`${fieldCls} mt-1 block`}>
-              <span className="text-muted-foreground">到着地タイムゾーン</span>
+              <span className="text-muted-foreground">{t("arriveTz")}</span>
               <div className="mt-1">
                 <TimezonePicker
                   name="arrive_tz"
@@ -495,7 +499,7 @@ export function EventForm({
         // 開始日–終了日を横並び（通常予定の日時と同じ並び・年なし M/d(曜)・時刻なし）。
         // 入力は従来どおりカレンダーのみ（DatePopover）。終日はTZ無関係（tz は送らない）。
         <div>
-          <span className="text-sm text-muted-foreground">日付</span>
+          <span className="text-sm text-muted-foreground">{t("date")}</span>
           <div className="mt-1 flex items-center gap-2">
             <DatePopover
               name="start_date"
@@ -533,7 +537,7 @@ export function EventForm({
               どちらをタップしても同じ結合エディタ（カレンダー＋時刻）が開く＝iOS カレンダー方式。
               送信値は hidden で流す（チップは UI 専用の controlled 部品）。 */}
           <div>
-            <span className="text-sm text-muted-foreground">日時</span>
+            <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
             <div className="mt-1 flex items-center gap-2">
               <DateTimePopover
                 variant="start"
@@ -542,7 +546,7 @@ export function EventForm({
                 onChange={moveStart}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
-                label="開始日時"
+                label={t("startDateTime")}
               />
               <span className="shrink-0 text-muted-foreground">–</span>
               <DateTimePopover
@@ -556,7 +560,7 @@ export function EventForm({
                 disabled={
                   parseYmd(sDate) ? { before: parseYmd(sDate)! } : undefined
                 }
-                label="終了日時"
+                label={t("endDateTime")}
               />
             </div>
           </div>
@@ -572,13 +576,13 @@ export function EventForm({
 
       {/* メモは公開範囲などの設定オプションより上に置く（費用フォームと並びを統一）。 */}
       <label className="block text-sm">
-        <FieldLabel>メモ</FieldLabel>
+        <FieldLabel>{t("memo")}</FieldLabel>
         <Input
           type="text"
           name="note"
           value={note}
           onChange={(e) => setNote(e.target.value)}
-          placeholder={kind3 === "transit" ? "ターミナル1" : "日焼け止め持参"}
+          placeholder={kind3 === "transit" ? t("placeholderNoteTransit") : t("placeholderNote")}
           className={inputLayout}
         />
       </label>
@@ -589,9 +593,9 @@ export function EventForm({
           予定の公開範囲を継承する（private→作成者だけに見える）。 */}
       <div className="flex items-center gap-3 text-sm">
         <div className="flex items-center gap-2">
-          <span className="font-medium">公開範囲</span>
+          <span className="font-medium">{t("visibility")}</span>
           {canChangeVis ? (
-            <div className="flex gap-3" role="radiogroup" aria-label="公開範囲">
+            <div className="flex gap-3" role="radiogroup" aria-label={t("visibility")}>
               <label className="inline-flex items-center gap-1">
                 <input
                   type="radio"
@@ -600,7 +604,7 @@ export function EventForm({
                   checked={visibility === "shared"}
                   onChange={() => setVisibility("shared")}
                 />
-                <span>共有</span>
+                <span>{t("visibilityShared")}</span>
               </label>
               <label className="inline-flex items-center gap-1">
                 <input
@@ -610,13 +614,13 @@ export function EventForm({
                   checked={visibility === "private"}
                   onChange={() => setVisibility("private")}
                 />
-                <span>自分のみ</span>
+                <span>{t("visibilitySelfOnly")}</span>
               </label>
             </div>
           ) : (
             <>
               <span className="text-muted-foreground">
-                {visibility === "shared" ? "共有" : "自分のみ"}
+                {visibility === "shared" ? t("visibilityShared") : t("visibilitySelfOnly")}
               </span>
               <input type="hidden" name="visibility" value={visibility} />
             </>
@@ -630,7 +634,7 @@ export function EventForm({
             checked={needsReservation}
             onChange={(e) => setNeedsReservation(e.target.checked)}
           />
-          <FieldLabel>要予約</FieldLabel>
+          <FieldLabel>{t("needsReservation")}</FieldLabel>
         </label>
       </div>
 
@@ -654,7 +658,7 @@ export function EventForm({
             aria-expanded={pMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
-            <span>参加者: {pMode === "all" ? "全員" : "一部"}</span>
+            <span>{t("participants")}: {pMode === "all" ? t("participantsAll") : t("participantsSome")}</span>
             <ChevronIcon
               size={16}
               className={`transition-transform ${pMode === "all" ? "rotate-90" : "-rotate-90"}`}
@@ -697,8 +701,8 @@ export function EventForm({
             size="icon"
             onClick={onDelete}
             disabled={isDeleting}
-            aria-label="削除"
-            title="削除"
+            aria-label={tCommon("delete")}
+            title={tCommon("delete")}
             className="shrink-0"
           >
             <TrashIcon size={18} />
@@ -707,8 +711,8 @@ export function EventForm({
         <Button
           type="submit"
           disabled={isPending}
-          aria-label={isEdit ? "保存" : "追加"}
-          title={isEdit ? "保存" : "追加"}
+          aria-label={isEdit ? tCommon("save") : tCommon("add")}
+          title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}

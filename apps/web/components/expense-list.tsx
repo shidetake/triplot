@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { chipStyle } from "@triplot/shared/memberColors";
 import type { LatLng } from "@triplot/shared/placeMap";
@@ -77,6 +78,7 @@ export function ExpenseList({
   tripEnd: string | null;
   myMemberId: string;
 }) {
+  const t = useTranslations("expense");
   const memberById = new Map(members.map((m) => [m.id, m]));
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
@@ -114,7 +116,7 @@ export function ExpenseList({
         <FormPopover
           anchor={editing.anchor}
           onClose={closeEdit}
-          label="費用を編集"
+          label={t("editFormLabel")}
           fullScreenOnNarrow
           draftKey={`expense:edit:${editing.expense.id}`}
         >
@@ -160,6 +162,7 @@ function ExpenseRowItem({
   defaultCurrency: Currency;
   onEdit: (anchor: Anchor) => void;
 }) {
+  const t = useTranslations("expense");
   const payer = memberById.get(expense.payer_member_id);
   const splitMembers = expense.splittable
     ? expense.split_member_ids
@@ -208,7 +211,7 @@ function ExpenseRowItem({
             <span>{formatDateTime(expense.paid_at)}</span>
             {/* 狭い画面は写真アバター、広い画面は色付きフルネームチップ（TODO 作成者と同じ）。 */}
             <span className="inline-flex items-center gap-1">
-              支払
+              {t("paidLabel")}
               <MemberAvatar
                 name={payer?.display_name}
                 color={payer?.color}
@@ -224,7 +227,7 @@ function ExpenseRowItem({
             </span>
             {splitMembers && splitMembers.length > 0 && (
               <span className="inline-flex items-center gap-1">
-                割勘
+                {t("splitLabel")}
                 <span className="inline-flex flex-wrap items-center gap-0.5 sm:gap-1">
                   {splitMembers.map((m) => (
                     <Fragment key={m.id}>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import {
   updateTripAction,
@@ -19,11 +20,6 @@ import { inputClass } from "./input-class";
 import { MessageBox } from "./message-box";
 
 type Currency = "JPY" | "USD";
-
-const CURRENCIES: { value: Currency; label: string }[] = [
-  { value: "JPY", label: "JPY 日本円" },
-  { value: "USD", label: "USD 米ドル" },
-];
 
 const initialState: UpdateTripState = { ok: false, error: null };
 
@@ -46,6 +42,11 @@ export function EditTripForm({
   onDone?: () => void;
 }) {
   const inSheet = useInSheet();
+  const t = useTranslations();
+  const CURRENCIES: { value: Currency; label: string }[] = [
+    { value: "JPY", label: t("currency.jpy") },
+    { value: "USD", label: t("currency.usd") },
+  ];
   const [state, formAction, isPending] = useActionState(
     updateTripAction.bind(null, tripId),
     initialState,
@@ -55,10 +56,10 @@ export function EditTripForm({
 
   useEffect(() => {
     if (state.ok) {
-      toast("保存しました");
+      toast(t("common.saved"));
       onDone?.();
     }
-  }, [state.ok, onDone]);
+  }, [state.ok, onDone, t]);
 
   return (
     <form
@@ -71,11 +72,11 @@ export function EditTripForm({
       )}
 
       <label className="block min-w-0 text-sm">
-        <FieldLabel required>タイトル</FieldLabel>
+        <FieldLabel required>{t("createTrip.title")}</FieldLabel>
         <Input
           name="title"
           required
-          placeholder="ハワイ旅行"
+          placeholder={t("createTrip.titlePlaceholder")}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="mt-1 block w-full min-w-0"
@@ -83,7 +84,7 @@ export function EditTripForm({
       </label>
 
       <div className="text-sm">
-        <FieldLabel required>日程</FieldLabel>
+        <FieldLabel required>{t("createTrip.dates")}</FieldLabel>
         <div className="mt-1">
           <DateRangePopover
             startName="start_date"
@@ -97,7 +98,7 @@ export function EditTripForm({
 
       <div className="text-sm">
         <label htmlFor="default_currency" className="font-medium">
-          精算通貨
+          {t("createTrip.settlementCurrency")}
         </label>
         <select
           id="default_currency"
@@ -116,7 +117,7 @@ export function EditTripForm({
             ずれる。費用がある旅行で通貨を変える時だけ注意を出す。 */}
         {hasExpenses && currency !== defaultCurrency && (
           <MessageBox kind="warning" className="mt-1 text-xs leading-snug">
-            ⚠ 既存の費用の換算レートは再計算されません。費用がある旅行で精算通貨を変えると金額の解釈がずれます。
+            {t("tripDetail.rateChangeWarning")}
           </MessageBox>
         )}
       </div>
@@ -124,8 +125,8 @@ export function EditTripForm({
       <Button
         type="submit"
         disabled={isPending}
-        aria-label="保存"
-        title="保存"
+        aria-label={t("common.save")}
+        title={t("common.save")}
         className="w-full"
       >
         <SaveIcon size={20} />

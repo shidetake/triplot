@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { type GcalEventInput, toGcalEvent } from "@/lib/gcalEvent";
 
@@ -49,7 +50,7 @@ function loadGis(): Promise<void> {
     if (existing) {
       existing.addEventListener("load", () => resolve());
       existing.addEventListener("error", () =>
-        reject(new Error("GIS スクリプトの読み込みに失敗しました")),
+        reject(new Error("gisLoadFailed")),
       );
       return;
     }
@@ -59,7 +60,7 @@ function loadGis(): Promise<void> {
     s.defer = true;
     s.onload = () => resolve();
     s.onerror = () =>
-      reject(new Error("GIS スクリプトの読み込みに失敗しました"));
+      reject(new Error("gisLoadFailed"));
     document.head.appendChild(s);
   });
 }
@@ -98,6 +99,7 @@ export function CalendarExportDialog({
   const [scope, setScope] = useState<"mine" | "all">("mine");
   const [progress, setProgress] = useState({ done: 0, total: 0, failed: 0 });
 
+  const t = useTranslations("calendarExport");
   const tokenRef = useRef<string | null>(null);
   const clientRef = useRef<TokenClient | null>(null);
 
@@ -112,7 +114,7 @@ export function CalendarExportDialog({
       "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&maxResults=250",
       { headers: { Authorization: `Bearer ${token}` } },
     );
-    if (!res.ok) throw new Error(`カレンダー一覧の取得に失敗 (${res.status})`);
+    if (!res.ok) throw new Error(t("calendarListFailed", { status: res.status }));
     const json = (await res.json()) as { items?: CalendarItem[] };
     const items = (json.items ?? []).filter(
       (c) => c.accessRole === "writer" || c.accessRole === "owner",
@@ -126,22 +128,25 @@ export function CalendarExportDialog({
   const connect = useCallback(() => {
     setError(null);
     if (!clientId) {
-      setError(
-        "Google OAuth クライアント ID が未設定です（NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID）。",
-      );
+      setError(t("missingClientId"));
       setPhase("error");
       return;
     }
+    // gisLoadFailed / gisInitFailed are thrown as key strings since loadGis() is module-level.
+    const GIS_KEYS: Record<string, string> = {
+      gisLoadFailed: t("gisLoadFailed"),
+      gisInitFailed: t("gisInitFailed"),
+    };
     loadGis()
       .then(() => {
         const oauth2 = window.google?.accounts?.oauth2;
-        if (!oauth2) throw new Error("GIS の初期化に失敗しました");
+        if (!oauth2) throw new Error("gisInitFailed");
         clientRef.current = oauth2.initTokenClient({
           client_id: clientId,
           scope: SCOPE,
           callback: (resp) => {
             if (resp.error || !resp.access_token) {
-              setError("Google の認可がキャンセルされました");
+              setError(t("authCancelled"));
               setPhase("error");
               return;
             }
@@ -156,7 +161,8 @@ export function CalendarExportDialog({
         clientRef.current.requestAccessToken();
       })
       .catch((e) => {
-        setError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(GIS_KEYS[msg] ?? msg);
         setPhase("error");
       });
   }, [clientId, fetchCalendars]);
@@ -183,7 +189,7 @@ export function CalendarExportDialog({
           },
         );
         if (!res.ok)
-          throw new Error(`カレンダーの作成に失敗 (${res.status})`);
+          throw new Error(t("calendarCreateFailed", { status: res.status }));
         const created = (await res.json()) as { id: string };
         calendarId = created.id;
       }
@@ -224,10 +230,10 @@ export function CalendarExportDialog({
     "h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10";
 
   return (
-    <FormPopover anchor={anchor} onClose={onClose} label="カレンダーに書き出す">
+    <FormPopover anchor={anchor} onClose={onClose} label={t("formLabel")}>
       <div className="space-y-3 p-4">
         <p className="text-sm font-medium text-foreground">
-          Google カレンダーへエクスポート
+          {t("heading")}
         </p>
 
         {(phase === "connect" || phase === "pick") && (
@@ -239,7 +245,7 @@ export function CalendarExportDialog({
                 checked={scope === "mine"}
                 onChange={() => setScope("mine")}
               />
-              <span>自分が参加する予定のみ（{mineEvents.length}件）</span>
+              <span>{t("scopeMine", { count: mineEvents.length })}</span>
             </label>
             <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
               <input
@@ -248,20 +254,20 @@ export function CalendarExportDialog({
                 checked={scope === "all"}
                 onChange={() => setScope("all")}
               />
-              <span>全ての予定（{events.length}件）</span>
+              <span>{t("scopeAll", { count: events.length })}</span>
             </label>
           </div>
         )}
 
         {phase === "connect" && (
           <button type="button" onClick={connect} className={btnBlack}>
-            Google に接続
+            {t("connectButton")}
           </button>
         )}
 
         {phase === "loading" && (
           <p className="py-2 text-center text-sm text-muted-foreground">
-            カレンダーを取得中...
+            {t("loading")}
           </p>
         )}
 
@@ -275,7 +281,7 @@ export function CalendarExportDialog({
                   checked={selected === NEW}
                   onChange={() => setSelected(NEW)}
                 />
-                <span>新規カレンダーを作成</span>
+                <span>{t("newCalendar")}</span>
               </label>
               {selected === NEW && (
                 <input
@@ -307,15 +313,15 @@ export function CalendarExportDialog({
               disabled={targetEvents.length === 0}
               className={btnBlack}
             >
-              {targetEvents.length} 件をエクスポート
+              {t("exportButton", { count: targetEvents.length })}
             </button>
           </div>
         )}
 
         {phase === "exporting" && (
           <p className="py-2 text-center text-sm text-muted-foreground">
-            書き込み中... {progress.done}/{progress.total}
-            {progress.failed > 0 && `（失敗 ${progress.failed}）`}
+            {t("exporting", { done: progress.done, total: progress.total })}
+            {progress.failed > 0 && t("failedCount", { count: progress.failed })}
           </p>
         )}
 
@@ -323,8 +329,8 @@ export function CalendarExportDialog({
           <div className="space-y-3">
             <p className="flex items-center justify-center gap-1.5 py-1 text-sm text-foreground">
               <CheckIcon size={16} />
-              {progress.done} 件をエクスポートしました
-              {progress.failed > 0 && `（失敗 ${progress.failed}）`}
+              {t("successMessage", { done: progress.done })}
+              {progress.failed > 0 && t("failedCount", { count: progress.failed })}
             </p>
             <a
               href="https://calendar.google.com/"
@@ -332,7 +338,7 @@ export function CalendarExportDialog({
               rel="noopener noreferrer"
               className={`${btnGhost} flex items-center justify-center`}
             >
-              Google カレンダーを開く
+              {t("openGcal")}
             </a>
           </div>
         )}
@@ -341,7 +347,7 @@ export function CalendarExportDialog({
           <div className="space-y-3">
             <p className="text-sm text-red-600">{error}</p>
             <button type="button" onClick={connect} className={btnGhost}>
-              やり直す
+              {t("retry")}
             </button>
           </div>
         )}

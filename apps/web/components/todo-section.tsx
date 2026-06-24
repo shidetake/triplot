@@ -6,6 +6,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useTranslations } from "next-intl";
 import { Select } from "@base-ui/react/select";
 
 import { toast } from "@/components/toast";
@@ -64,13 +65,6 @@ type MemberLite = {
   avatarUrl?: string | null;
 };
 
-// 優先度チップの配色（ライトモード固定）
-const PRIORITY_LABEL: Record<TodoPriority, string> = {
-  high: "高",
-  medium: "中",
-  low: "低",
-};
-
 // JIRA 風の優先度アイコン（高=上シェブロン / 中=イコール / 低=下シェブロン）。
 // 既存の Lucide Chevron を回転して再利用し、色＋形状で色覚にも配慮する。
 function PriorityIcon({ p, size = 16 }: { p: TodoPriority; size?: number }) {
@@ -99,6 +93,12 @@ function PrioritySelect({
 }) {
   // 開閉・外側クリック・Esc・キーボードは Base UI Select に委ねる
   // （ui-guidelines「部品の作り方」step2）。トリガは優先度アイコンだけ。
+  const t = useTranslations("todo");
+  const PRIORITY_LABEL: Record<TodoPriority, string> = {
+    high: t("priorityHigh"),
+    medium: t("priorityMedium"),
+    low: t("priorityLow"),
+  };
   return (
     <Select.Root
       value={value}
@@ -112,8 +112,8 @@ function PrioritySelect({
             variant="ghost"
             size="iconDense"
             disabled={disabled}
-            aria-label={`優先度: ${PRIORITY_LABEL[value]}`}
-            title={`優先度: ${PRIORITY_LABEL[value]}`}
+            aria-label={t("priorityAriaLabel", { label: PRIORITY_LABEL[value] })}
+            title={t("priorityAriaLabel", { label: PRIORITY_LABEL[value] })}
             className="shrink-0 rounded-full"
           >
             <PriorityIcon p={value} />
@@ -168,8 +168,9 @@ export function TodoSection({
   members: MemberLite[];
   myMemberId: string;
 }) {
+  const t = useTranslations("todo");
   const placeholder =
-    kind === "prep" ? "航空券の予約" : "両親にお土産買う";
+    kind === "prep" ? t("placeholderPrep") : t("placeholderOnsite");
 
   // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)。手動で開閉したら
   // localStorage に覚え、次回以降は既定より優先する。
@@ -278,7 +279,7 @@ export function TodoSection({
         kind,
         draftVisibility,
       );
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
@@ -286,7 +287,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "toggle", id: todo.id, done: !todo.done });
       const { error } = await toggleTodoAction(tripId, todo.id, !todo.done);
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
@@ -295,7 +296,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "update", id: todo.id, priority });
       const { error } = await updateTodoAction(tripId, todo.id, { priority });
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
@@ -309,22 +310,22 @@ export function TodoSection({
     const id = editingId;
     const text = editingText.trim();
     setEditingId(null);
-    const current = todos.find((t) => t.id === id);
+    const current = todos.find((td) => td.id === id);
     // 変更なし・空入力は保存しない（空は削除ではなく編集キャンセル扱い）
     if (!current || !text || text === current.title) return;
     startTransition(async () => {
       applyOptimistic({ type: "update", id, title: text });
       const { error } = await updateTodoAction(tripId, id, { title: text });
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
   const remove = async (todo: TodoRow) => {
-    if (!(await confirmDialog({ title: "このTODOを削除しますか？" }))) return;
+    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
     startTransition(async () => {
       applyOptimistic({ type: "delete", id: todo.id });
       const { error } = await deleteTodoAction(tripId, todo.id);
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
@@ -332,7 +333,7 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "like", id: todo.id, liked: !todo.iLiked });
       const { error } = await toggleTodoLikeAction(tripId, todo.id);
-      if (error) toast(`失敗しました: ${error}`);
+      if (error) toast(t("failed", { error }));
     });
   };
 
@@ -384,13 +385,13 @@ export function TodoSection({
           aria-pressed={draftVisibility === "private"}
           aria-label={
             draftVisibility === "private"
-              ? "プライベート（自分のみ）"
-              : "公開（共有）"
+              ? t("visibilityPrivate")
+              : t("visibilityShared")
           }
           title={
             draftVisibility === "private"
-              ? "プライベート（自分のみ）"
-              : "公開（共有）"
+              ? t("visibilityPrivate")
+              : t("visibilityShared")
           }
           className="shrink-0 rounded-full"
         >
@@ -409,7 +410,7 @@ export function TodoSection({
           size="iconSm"
           onClick={add}
           disabled={isPending || draft.trim() === ""}
-          aria-label="追加"
+          aria-label={t("addAria")}
           className="shrink-0"
         >
           <PlusIcon size={16} />
@@ -428,7 +429,7 @@ export function TodoSection({
                 type="checkbox"
                 checked={todo.done}
                 onChange={() => toggle(todo)}
-                aria-label={todo.done ? "未完了に戻す" : "完了にする"}
+                aria-label={todo.done ? t("checkUndone") : t("checkDone")}
                 className="size-[18px] shrink-0 cursor-pointer"
               />
 
@@ -482,9 +483,9 @@ export function TodoSection({
                 <button
                   type="button"
                   onClick={() => toggleLike(todo)}
-                  aria-label={todo.iLiked ? "いいねを取り消す" : "いいね"}
+                  aria-label={todo.iLiked ? t("likeRemove") : t("like")}
                   aria-pressed={todo.iLiked}
-                  title={todo.iLiked ? "いいねを取り消す" : "いいね"}
+                  title={todo.iLiked ? t("likeRemove") : t("like")}
                   className={`flex shrink-0 items-center gap-0.5 rounded p-1 text-xs transition ${
                     todo.iLiked
                       ? "text-rose-500 hover:bg-rose-500/10"
@@ -517,7 +518,7 @@ export function TodoSection({
               <button
                 type="button"
                 onClick={() => remove(todo)}
-                aria-label="削除"
+                aria-label={t("deleteAria")}
                 className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
               >
                 <TrashIcon size={16} />

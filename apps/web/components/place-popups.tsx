@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useId, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 
@@ -46,10 +47,11 @@ function StatusSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useTranslations("place");
   const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <label className="block text-sm">
-      <FieldLabel>ステータス</FieldLabel>
+      <FieldLabel>{t("status")}</FieldLabel>
       <select
         name="status_id"
         required
@@ -76,13 +78,14 @@ function VisibilityField({
   onChange: (v: Visibility) => void;
   editable: boolean;
 }) {
+  const t = useTranslations("place");
   if (!editable) {
     // 非作成者は shared 場所の公開範囲を変えられない（RPC と同条件）。
     return <input type="hidden" name="visibility" value={value} />;
   }
   return (
     <fieldset className="text-sm">
-      <legend className="font-medium">公開範囲</legend>
+      <legend className="font-medium">{t("visibility")}</legend>
       <div className="mt-1 flex gap-3">
         <label className="inline-flex items-center gap-1">
           <input
@@ -92,7 +95,7 @@ function VisibilityField({
             checked={value === "shared"}
             onChange={() => onChange("shared")}
           />
-          <span>共有</span>
+          <span>{t("visibilityShared")}</span>
         </label>
         <label className="inline-flex items-center gap-1">
           <input
@@ -102,7 +105,7 @@ function VisibilityField({
             checked={value === "private"}
             onChange={() => onChange("private")}
           />
-          <span>自分のみ</span>
+          <span>{t("visibilitySelfOnly")}</span>
         </label>
       </div>
     </fieldset>
@@ -120,11 +123,12 @@ function IconPicker({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const t = useTranslations("place");
   const [addOpen, setAddOpen] = useState(false);
   const sorted = [...options].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <fieldset className="text-sm">
-      <legend className="font-medium">ピンの形</legend>
+      <legend className="font-medium">{t("pinShape")}</legend>
       <div className="mt-1 flex flex-wrap gap-1">
         {sorted.map((o) => (
           <button
@@ -144,8 +148,8 @@ function IconPicker({
         <button
           type="button"
           onClick={() => setAddOpen(true)}
-          title="アイコンを追加"
-          aria-label="アイコンを追加"
+          title={t("addIconAria")}
+          aria-label={t("addIconAria")}
           className="flex h-8 w-8 items-center justify-center rounded-md border border-dashed border-foreground/20 text-blue-600 transition hover:bg-blue-600/10"
         >
           <PlusIcon size={16} />
@@ -179,6 +183,7 @@ export function CandidateInfo({
   pinOptions: PinOption[];
   onAdded: () => void;
 }) {
+  const t = useTranslations("place");
   const [state, formAction, isPending] = useActionState(
     createPlaceAction.bind(null, tripId),
     initialState,
@@ -270,12 +275,12 @@ export function CandidateInfo({
           editable
         />
         <label className="block text-sm" htmlFor={noteId}>
-          <FieldLabel>メモ</FieldLabel>
+          <FieldLabel>{t("memo")}</FieldLabel>
           <Input
             id={noteId}
             type="text"
             name="note"
-            placeholder="22時まで"
+            placeholder={t("placeholderMemo")}
             className="mt-1 block w-full"
           />
         </label>
@@ -283,8 +288,8 @@ export function CandidateInfo({
         <Button
           type="submit"
           disabled={isPending}
-          aria-label="この場所を追加"
-          title="この場所を追加"
+          aria-label={t("addPlaceAria")}
+          title={t("addPlaceAria")}
           className="w-full"
         >
           <PlusIcon size={20} />
@@ -326,6 +331,7 @@ export function DraftInfo({
     sorted.find((s) => !s.tentative)?.id ?? sorted[0]?.id ?? "";
   const [statusId, setStatusId] = useState(defaultStatusId);
   const [visibility, setVisibility] = useState<Visibility>("shared");
+  const t = useTranslations("place");
   const [icon, setIcon] = useState("pin");
   const nameId = useId();
   const noteId = useId();
@@ -337,9 +343,9 @@ export function DraftInfo({
   return (
     <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pb-2 pr-1">
       <div>
-        <p className="text-sm font-semibold">地図にピンを追加</p>
+        <p className="text-sm font-semibold">{t("addPin")}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}{t("dragHint")}
         </p>
       </div>
 
@@ -352,14 +358,14 @@ export function DraftInfo({
         <input type="hidden" name="icon" value={icon} />
 
         <label className="block text-sm" htmlFor={nameId}>
-          <FieldLabel>名前</FieldLabel>
+          <FieldLabel>{t("name")}</FieldLabel>
           <Input
             id={nameId}
             type="text"
             name="name"
             required
             autoFocus
-            placeholder="集合場所"
+            placeholder={t("placeholderName")}
             className="mt-1 block w-full"
           />
         </label>
@@ -380,12 +386,12 @@ export function DraftInfo({
           editable
         />
         <label className="block text-sm" htmlFor={noteId}>
-          <FieldLabel>メモ</FieldLabel>
+          <FieldLabel>{t("memo")}</FieldLabel>
           <Input
             id={noteId}
             type="text"
             name="note"
-            placeholder="22時まで"
+            placeholder={t("placeholderMemo")}
             className="mt-1 block w-full"
           />
         </label>
@@ -393,8 +399,8 @@ export function DraftInfo({
         <Button
           type="submit"
           disabled={isPending}
-          aria-label="この地点を追加"
-          title="この地点を追加"
+          aria-label={t("addPinAria")}
+          title={t("addPinAria")}
           className="w-full"
         >
           <PlusIcon size={20} />
@@ -427,6 +433,8 @@ export function LocateInfo({
   onDone: () => void;
   onCancel: () => void;
 }) {
+  const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -450,10 +458,10 @@ export function LocateInfo({
   return (
     <div className="flex w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 pr-1">
       <div>
-        <p className="text-sm font-semibold">位置を設定</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">「{placeName}」</p>
+        <p className="text-sm font-semibold">{t("setLocation")}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">{t("settingLocationFor", { name: placeName })}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}（ドラッグで微調整）
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}{t("dragHint")}
         </p>
       </div>
       <div className="flex gap-2 border-t border-foreground/10 pt-2">
@@ -463,7 +471,7 @@ export function LocateInfo({
           onClick={onCancel}
           className="flex-1"
         >
-          やめる
+          {t("cancelLocation")}
         </Button>
         <Button
           type="button"
@@ -471,7 +479,7 @@ export function LocateInfo({
           disabled={isPending}
           className="flex-1"
         >
-          {isPending ? "設定中..." : "ここに設定"}
+          {isPending ? t("settingLocation") : t("confirmLocation")}
         </Button>
       </div>
       {error && (
@@ -500,6 +508,8 @@ export function SavedInfo({
   canChangeVisibility: boolean;
   onDone: () => void;
 }) {
+  const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const [editing, setEditing] = useState(false);
 
   const [state, formAction, isPending] = useActionState(
@@ -518,11 +528,11 @@ export function SavedInfo({
   }, [state.ok, onDone]);
 
   const onDelete = async () => {
-    if (!(await confirmDialog({ title: "この場所を削除しますか？" }))) return;
+    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
     startDelete(async () => {
       const { error } = await deletePlaceAction(tripId, place.id);
       if (error) {
-        toast(`削除に失敗しました: ${error}`);
+        toast(t("deleteFailed", { error }));
         return;
       }
       onDone();
@@ -537,8 +547,8 @@ export function SavedInfo({
       size="icon"
       onClick={onDelete}
       disabled={isDeleting}
-      aria-label="削除"
-      title="削除"
+      aria-label={tCommon("delete")}
+      title={tCommon("delete")}
       className="shrink-0"
     >
       <TrashIcon size={18} />
@@ -564,7 +574,7 @@ export function SavedInfo({
         ) : (
           place.lat == null && (
             <p className="mt-0.5 text-xs text-amber-700">
-              地図未登録（座標なし）
+              {t("noLocation")}
             </p>
           )
         )}
@@ -577,7 +587,7 @@ export function SavedInfo({
           rel="noreferrer"
           className="mt-1 inline-block text-xs text-blue-600 hover:underline"
         >
-          Googleマップで開く
+          {t("openGoogleMaps")}
         </a>
       </div>
 
@@ -605,13 +615,13 @@ export function SavedInfo({
             editable={canChangeVisibility}
           />
           <label className="block text-sm" htmlFor={noteId}>
-            <FieldLabel>メモ</FieldLabel>
+            <FieldLabel>{t("memo")}</FieldLabel>
             <Input
               id={noteId}
               type="text"
               name="note"
               defaultValue={place.note ?? ""}
-              placeholder="22時まで"
+              placeholder={t("placeholderMemo")}
               className="mt-1 block w-full"
             />
           </label>
@@ -620,8 +630,8 @@ export function SavedInfo({
             <Button
               type="submit"
               disabled={isPending}
-              aria-label="保存"
-              title="保存"
+              aria-label={tCommon("save")}
+              title={tCommon("save")}
               className="flex-1"
             >
               <SaveIcon size={20} />
@@ -643,8 +653,8 @@ export function SavedInfo({
               <Button
                 type="button"
                 onClick={() => setEditing(true)}
-                aria-label="編集"
-                title="編集"
+                aria-label={tCommon("edit")}
+                title={tCommon("edit")}
                 className="flex-1"
               >
                 <EditIcon size={18} />

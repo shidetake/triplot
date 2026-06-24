@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import type { ExpenseSummary } from "@triplot/shared/expenseSummary";
 import type { Settlement } from "@triplot/shared/settlement";
 import type { Currency } from "@triplot/shared/types/database";
@@ -9,7 +11,7 @@ type Member = {
   display_name: string;
 };
 
-export function ExpenseSummaryView({
+export async function ExpenseSummaryView({
   summary,
   settlements,
   members,
@@ -22,6 +24,7 @@ export function ExpenseSummaryView({
   defaultCurrency: Currency;
   averageRates: Partial<Record<Currency, number>>;
 }) {
+  const t = await getTranslations("tripDetail");
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const rateHints = Object.entries(averageRates)
@@ -32,17 +35,17 @@ export function ExpenseSummaryView({
     <div className="space-y-4">
       <div className="grid grid-cols-3 gap-2 rounded-md border border-foreground/10 bg-white p-4 text-sm">
         <SummaryCell
-          label="共有での自己負担"
+          label={t("expenseSummarySharedSelf")}
           value={summary.sharedSelfShare}
           currency={defaultCurrency}
         />
         <SummaryCell
-          label="プライベート合計"
+          label={t("expenseSummaryPrivate")}
           value={summary.privateTotal}
           currency={defaultCurrency}
         />
         <SummaryCell
-          label="合計"
+          label={t("expenseSummaryTotal")}
           value={summary.total}
           currency={defaultCurrency}
           emphasized
@@ -50,7 +53,7 @@ export function ExpenseSummaryView({
       </div>
 
       <div className="rounded-md border border-foreground/10 bg-white p-4 text-sm">
-        <h3 className="font-medium">精算</h3>
+        <h3 className="font-medium">{t("expenseSummarySettlement")}</h3>
         {settlements.length === 0 ? (
           <p className="mt-2 text-muted-foreground">—</p>
         ) : (
@@ -73,7 +76,7 @@ export function ExpenseSummaryView({
         )}
         {rateHints.length > 0 && (
           <p className="mt-3 text-xs text-muted-foreground">
-            平均レート: {rateHints.join(", ")}
+            {t("expenseSummaryAverageRate", { rates: rateHints.join(", ") })}
           </p>
         )}
       </div>
@@ -105,4 +108,3 @@ function SummaryCell({
     </div>
   );
 }
-

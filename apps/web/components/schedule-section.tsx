@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
@@ -155,6 +156,7 @@ export function ScheduleSection({
     [events, myMemberId],
   );
 
+  const t = useTranslations("schedule");
   const selectedEventId =
     open?.form.mode === "edit" ? open.form.event.id : null;
 
@@ -164,17 +166,17 @@ export function ScheduleSection({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
-        <h2 className="text-lg font-semibold">スケジュール</h2>
+        <h2 className="text-lg font-semibold">{t("heading")}</h2>
         <div className="flex items-center gap-3">
-          <HelpTip label="予定の追加方法" align="right" widthClass="w-52">
-            空き時間をクリック / 長押しでも追加できます
+          <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
+            {t("addHelp")}
           </HelpTip>
           <Button
             type="button"
             size="icon"
             onClick={openCreate}
-            aria-label="予定を追加"
-            title="予定を追加"
+            aria-label={t("addAria")}
+            title={t("addAria")}
           >
             <PlusIcon size={18} />
           </Button>
@@ -199,11 +201,11 @@ export function ScheduleSection({
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <ReservationIcon size={12} />
-            要予約
+            {t("needsReservation")}
           </span>
           <span className="inline-flex items-center gap-1">
             <CheckIcon size={12} className="text-subtle-foreground" />
-            予約済
+            {t("reserved")}
           </span>
         </div>
       )}
@@ -212,7 +214,7 @@ export function ScheduleSection({
         <FormPopover
           anchor={open.anchor}
           onClose={closeForm}
-          label="予定"
+          label={t("eventFormLabel")}
           fullScreenOnNarrow
           // ボトムシート時の下書き保持キー。編集は予定ごと、新規はタップした
           // スロット（日付・時刻・種別）ごとに別の下書きにする（別スロットを開くと真っさら）。

@@ -2,6 +2,7 @@
 
 import { getIconPath } from "@triplot/shared/placeIcons";
 import type { Visibility } from "@triplot/shared/types/database";
+import { useTranslations } from "next-intl";
 
 import { ColorBadge } from "./color-badge";
 import { PrivateBadge } from "./private-badge";
@@ -93,6 +94,7 @@ export function PlaceList({
   onLocate: (id: string, name: string) => void;
   onCancelLocate: () => void;
 }) {
+  const t = useTranslations("place");
   const statusById = new Map(statuses.map((s) => [s.id, s]));
 
   if (places.length === 0) {
@@ -134,7 +136,7 @@ export function PlaceList({
                   {p.visibility === "private" && <PrivateBadge />}
                   {unmapped && (
                     <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700">
-                      地図未登録
+                      {t("unmapped")}
                     </span>
                   )}
                 </div>
@@ -143,7 +145,7 @@ export function PlaceList({
                 )}
                 {isLocating && (
                   <p className="mt-1 text-xs text-amber-800">
-                    地図でクリック / 長押しでピンを置いてください
+                    {t("locatingHint")}
                   </p>
                 )}
               </div>
@@ -153,7 +155,7 @@ export function PlaceList({
                     isLocating ? "text-amber-700" : "text-blue-600"
                   }`}
                 >
-                  {isLocating ? "やめる" : "ピンを設定"}
+                  {isLocating ? t("cancelLocate") : t("setPin")}
                 </span>
               )}
             </button>

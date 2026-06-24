@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import {
   deleteTripAction,
@@ -80,6 +81,7 @@ export function TripActions({
 }) {
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる
   // （ドリルイン式。Base UI Menu の closeOnClick=false で枠内ビューを切り替える）。
+  const t = useTranslations("tripActions");
   const [menuView, setMenuView] = useState<"main" | "export">("main");
   const [shareAnchor, setShareAnchor] = useState<Anchor | null>(null);
   const [editAnchor, setEditAnchor] = useState<Anchor | null>(null);
@@ -96,7 +98,7 @@ export function TripActions({
     start(async () => {
       const res = await ensureInviteAction(tripId);
       if (res.error || !res.token) {
-        toast(res.error ?? "リンクの取得に失敗しました");
+        toast(res.error ?? t("fetchFailed"));
         return;
       }
       setInviteToken(res.token);
@@ -113,9 +115,9 @@ export function TripActions({
     try {
       await navigator.clipboard.writeText(`${baseUrl}/join/${inviteToken}`);
       setShareAnchor(null);
-      toast("リンクをコピーしました");
+      toast(t("copySuccess"));
     } catch {
-      toast("コピーに失敗しました");
+      toast(t("copyFailed"));
     }
   };
 
@@ -124,19 +126,19 @@ export function TripActions({
   // ポップアップは開いたまま、ユーザーが続けて「リンクをコピー」を押す（同期コピー）。
   const onRegenerate = async () => {
     const ok = await confirmDialog({
-      title: "リンクを再生成しますか？",
-      body: "今までのリンクは使えなくなります。",
-      confirmLabel: "再生成",
+      title: t("regenerateTitle"),
+      body: t("regenerateBody"),
+      confirmLabel: t("regenerateConfirm"),
     });
     if (!ok) return;
     start(async () => {
       const res = await regenerateInviteAction(tripId);
       if (res.error || !res.token) {
-        toast(res.error ?? "再生成に失敗しました");
+        toast(res.error ?? t("regenerateFailed"));
         return;
       }
       setInviteToken(res.token);
-      toast("新しいリンクを発行しました。「リンクをコピー」を押してください");
+      toast(t("regenerateSuccess"));
     });
   };
 
@@ -151,7 +153,7 @@ export function TripActions({
   const onExportMap = async () => {
     closeMenu();
     if (kmlPlacemarks.length === 0) {
-      toast("地図に出せる場所がありません");
+      toast(t("noPlaces"));
       return;
     }
     try {
@@ -211,14 +213,14 @@ export function TripActions({
         "application/vnd.google-earth.kmz",
       );
     } catch {
-      toast("地図の書き出しに失敗しました");
+      toast(t("mapExportFailed"));
     }
   };
 
   const onExportExpenses = () => {
     closeMenu();
     if (expenseCsvRows.length === 0) {
-      toast("エクスポートする費用がありません");
+      toast(t("noExpenses"));
       return;
     }
     const csv = buildExpensesCsv(expenseCsvRows);
@@ -228,7 +230,7 @@ export function TripActions({
   const onExportCalendar = (anchor: Anchor) => {
     closeMenu();
     if (calendarEvents.length === 0) {
-      toast("エクスポートする予定がありません");
+      toast(t("noEvents"));
       return;
     }
     setCalendarAnchor(anchor);
@@ -237,13 +239,13 @@ export function TripActions({
   const onDelete = async () => {
     setMenuView("main");
     const ok = await confirmDialog({
-      title: "この旅行を削除しますか？",
-      body: "予定・場所・費用・メンバーもすべて消え、元に戻せません。",
+      title: t("deleteTripTitle"),
+      body: t("deleteTripBody"),
     });
     if (!ok) return;
     start(async () => {
       const { error } = await deleteTripAction(tripId);
-      if (error) toast(`削除に失敗しました: ${error}`);
+      if (error) toast(t("deleteTripFailed", { error }));
     });
   };
 
@@ -254,8 +256,8 @@ export function TripActions({
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="共有"
-          title="共有"
+          aria-label={t("shareAria")}
+          title={t("shareAria")}
           onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
         >
           <ShareIcon size={18} />
@@ -267,8 +269,8 @@ export function TripActions({
                 type="button"
                 variant="ghost"
                 size="icon"
-                aria-label="メニュー"
-                title="メニュー"
+                aria-label={t("menuAria")}
+                title={t("menuAria")}
               >
                 <EllipsisIcon size={18} />
               </Button>
@@ -288,27 +290,27 @@ export function TripActions({
                         }
                         className={`block ${menuItemClass}`}
                       >
-                        旅行を編集
+                        {t("editTrip")}
                       </Menu.Item>
                     )}
                     <Menu.Item
                       render={<Link href={`/trips/${tripId}/members`} />}
                       className={`block ${menuItemClass}`}
                     >
-                      メンバー管理
+                      {t("manageMembers")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
                       className={`block ${menuItemClass}`}
                     >
-                      共有
+                      {t("share")}
                     </Menu.Item>
                     <Menu.Item
                       closeOnClick={false}
                       onClick={() => setMenuView("export")}
                       className={`flex items-center justify-between ${menuItemClass}`}
                     >
-                      エクスポート
+                      {t("export")}
                       <span aria-hidden className="text-subtle-foreground">
                         ›
                       </span>
@@ -319,7 +321,7 @@ export function TripActions({
                         disabled={isPending}
                         className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
                       >
-                        旅行を削除
+                        {t("deleteTrip")}
                       </Menu.Item>
                     )}
                   </>
@@ -330,7 +332,7 @@ export function TripActions({
                       onClick={() => setMenuView("main")}
                       className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
                     >
-                      <span aria-hidden>‹</span> 戻る
+                      <span aria-hidden>‹</span> {t("back")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={(e) =>
@@ -338,19 +340,19 @@ export function TripActions({
                       }
                       className={`block ${menuItemClass}`}
                     >
-                      予定（Google カレンダー）
+                      {t("exportCalendar")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={onExportMap}
                       className={`block ${menuItemClass}`}
                     >
-                      地図（KMZ）
+                      {t("exportMap")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={onExportExpenses}
                       className={`block ${menuItemClass}`}
                     >
-                      費用（CSV）
+                      {t("exportExpenses")}
                     </Menu.Item>
                   </>
                 )}
@@ -365,7 +367,7 @@ export function TripActions({
         <FormPopover
           anchor={editAnchor}
           onClose={() => setEditAnchor(null)}
-          label="旅行を編集"
+          label={t("editTrip")}
           fullScreenOnNarrow
         >
           <EditTripForm
@@ -382,10 +384,10 @@ export function TripActions({
 
       {/* 共有ポップオーバー（アイコン・メニューどちらからも） */}
       {shareAnchor && (
-        <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)} label="共有">
+        <FormPopover anchor={shareAnchor} onClose={() => setShareAnchor(null)} label={t("sharePopoverLabel")}>
           <div className="space-y-3 p-4">
             <p className="text-xs text-muted-foreground">
-              リンクがあればログイン不要で参加できます。
+              {t("shareDesc")}
             </p>
             <Button
               type="button"
@@ -394,7 +396,7 @@ export function TripActions({
               disabled={isPending || !inviteToken}
               className="w-full"
             >
-              {isPending ? "処理中..." : "リンクをコピー"}
+              {isPending ? t("copyPending") : t("copyLink")}
             </Button>
             <button
               type="button"
@@ -402,7 +404,7 @@ export function TripActions({
               disabled={isPending}
               className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
             >
-              リンクを再生成（旧リンクを無効化）
+              {t("regenerateLink")}
             </button>
           </div>
         </FormPopover>

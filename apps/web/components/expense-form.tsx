@@ -9,6 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
+import { useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 
@@ -118,6 +119,8 @@ export function ExpenseForm({
   autoResolvePlace?: { name: string; location?: string | null } | null;
   initialTime?: string;
 }) {
+  const t = useTranslations("expense");
+  const tCommon = useTranslations("common");
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isEdit = !!editExpense;
 
@@ -168,11 +171,11 @@ export function ExpenseForm({
   const [isDeleting, startDelete] = useTransition();
   const onDelete = async () => {
     if (!editExpense) return;
-    if (!(await confirmDialog({ title: "この費用を削除しますか？" }))) return;
+    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
     startDelete(async () => {
       const { error } = await deleteExpenseAction(tripId, editExpense.id);
       if (error) {
-        toast(`削除に失敗しました: ${error}`);
+        toast(t("deleteFailed", { error }));
         return;
       }
       clearDraft(); // 対象が消えたので下書きも破棄
@@ -357,10 +360,10 @@ export function ExpenseForm({
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
   const splitLabel = onlySelf
-    ? "自分のみ"
+    ? t("splitSelfOnly")
     : allSelectedNow
-      ? "全員"
-      : "一部";
+      ? t("splitAll")
+      : t("splitSome");
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -392,7 +395,7 @@ export function ExpenseForm({
 
       <div className="grid grid-cols-[1fr_auto] gap-2">
         <label className="block text-sm">
-          <FieldLabel required>価格</FieldLabel>
+          <FieldLabel required>{t("price")}</FieldLabel>
           <Input
             type="number"
             name="local_price"
@@ -407,7 +410,7 @@ export function ExpenseForm({
           />
         </label>
         <label className="block text-sm">
-          <FieldLabel>通貨</FieldLabel>
+          <FieldLabel>{t("currency")}</FieldLabel>
           <select
             name="local_currency"
             value={localCurrency}
@@ -424,7 +427,7 @@ export function ExpenseForm({
         <label className="block text-sm">
           {/* ラベルは単位/方向を持たず「為替レート」だけ。方向は下のヒント行に実値付きで
               出す（平均があれば平均、無ければ ? のガイド）＝ `1 USD = 148 JPY` 形が一番明快。 */}
-          <FieldLabel required>為替レート</FieldLabel>
+          <FieldLabel required>{t("exchangeRate")}</FieldLabel>
           <Input
             type="number"
             name="rate_to_default"
@@ -443,12 +446,11 @@ export function ExpenseForm({
           />
           {averageRates[localCurrency] !== undefined ? (
             <span className="mt-1 block text-xs text-muted-foreground">
-              この旅行の平均レート: 1 {localCurrency} ={" "}
-              {formatRate(averageRates[localCurrency]!)} {defaultCurrency}
+              {t("averageRate", { from: localCurrency, rate: formatRate(averageRates[localCurrency]!), to: defaultCurrency })}
             </span>
           ) : (
             <span className="mt-1 block text-xs text-muted-foreground">
-              1 {localCurrency} = ? {defaultCurrency}
+              {t("unknownRate", { from: localCurrency, to: defaultCurrency })}
             </span>
           )}
         </label>
@@ -458,7 +460,7 @@ export function ExpenseForm({
       )}
 
       <div className="block text-sm">
-        <FieldLabel>カテゴリ</FieldLabel>
+        <FieldLabel>{t("category")}</FieldLabel>
         <CategorySelect
           name="category_id"
           categories={sortedCategories}
@@ -468,7 +470,7 @@ export function ExpenseForm({
       </div>
 
       <div className="block text-sm">
-        <FieldLabel>場所</FieldLabel>
+        <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey}>
             <PlacePicker
@@ -499,7 +501,7 @@ export function ExpenseForm({
       {/* 日付（必須）＋時刻（任意・展開すると入れられる） */}
       <div className="grid grid-cols-2 gap-2">
         <label className="block min-w-0 text-sm">
-          <FieldLabel required>日付</FieldLabel>
+          <FieldLabel required>{t("date")}</FieldLabel>
           <div className="mt-1">
             <DatePopover
               name="paid_at_date"
@@ -514,10 +516,10 @@ export function ExpenseForm({
         {showTime ? (
           <div className="block min-w-0 text-sm">
             <div className="flex items-center justify-between">
-              <FieldLabel>時刻</FieldLabel>
+              <FieldLabel>{t("time")}</FieldLabel>
               <CloseButton
                 onClick={collapseTime}
-                label="時刻をやめる"
+                label={t("removeTime")}
                 className="h-5 w-5"
                 iconSize={12}
               />
@@ -536,14 +538,14 @@ export function ExpenseForm({
           <div className="flex min-w-0 flex-col text-sm">
             {/* 日付ラベルと縦位置を揃えるためのダミー */}
             <span aria-hidden className="invisible font-medium">
-              時刻
+              {t("time")}
             </span>
             <button
               type="button"
               onClick={expandTime}
               className="mt-1 h-9 rounded-md border border-dashed border-foreground/20 px-3 text-xs text-muted-foreground transition hover:border-foreground/40 hover:bg-foreground/10 hover:text-foreground"
             >
-              ＋ 時刻を指定
+              {t("addTime")}
             </button>
             <input type="hidden" name="paid_at_time" value="00:00" />
           </div>
@@ -559,7 +561,7 @@ export function ExpenseForm({
         (tzRes.kind === "ambiguous" ? (
           <fieldset className="text-sm">
             <p className="text-xs text-muted-foreground">
-              移動日です。どちらのタイムゾーンで使ったか選んでください。
+              {t("transitDay")}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
               <label className="inline-flex items-center gap-2">
@@ -569,7 +571,7 @@ export function ExpenseForm({
                   checked={tz === tzRes.departTz}
                   onChange={() => setTz(tzRes.departTz)}
                 />
-                <span>出発側: {tzLabel(tzRes.departTz)}</span>
+                <span>{t("departSide", { tz: tzLabel(tzRes.departTz) })}</span>
               </label>
               <label className="inline-flex items-center gap-2">
                 <input
@@ -578,25 +580,25 @@ export function ExpenseForm({
                   checked={tz === tzRes.arriveTz}
                   onChange={() => setTz(tzRes.arriveTz)}
                 />
-                <span>到着側: {tzLabel(tzRes.arriveTz)}</span>
+                <span>{t("arriveSide", { tz: tzLabel(tzRes.arriveTz) })}</span>
               </label>
             </div>
           </fieldset>
         ) : (
           <p className="text-xs text-muted-foreground">
-            現地タイムゾーン: {tzLabel(tz)}
+            {t("localTz", { tz: tzLabel(tz) })}
           </p>
         ))}
 
       {/* メモは費用の説明を兼ねるので「細々したオプション（公開範囲・支払者・割り勘）」より
           上に置く（日付の下）。最下は設定系オプションに固める。 */}
       <label className="block text-sm" htmlFor={noteId}>
-        <FieldLabel>メモ</FieldLabel>
+        <FieldLabel>{t("memo")}</FieldLabel>
         <Input
           id={noteId}
           type="text"
           name="note"
-          placeholder="ランチ"
+          placeholder={t("placeholderMemo")}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           className="mt-1 block w-full"
@@ -606,9 +608,9 @@ export function ExpenseForm({
       {/* 公開範囲は予定フォームと同じくラベル＋選択肢を1行インラインに（ラベルは text-sm で
           他のフィールドラベルと揃える）。 */}
       <div className="flex items-center gap-2 text-sm">
-        <span className="font-medium">公開範囲</span>
+        <span className="font-medium">{t("visibility")}</span>
         {canChangeVisibility ? (
-          <div className="flex gap-3" role="radiogroup" aria-label="公開範囲">
+          <div className="flex gap-3" role="radiogroup" aria-label={t("visibility")}>
             <label className="inline-flex items-center gap-1">
               <input
                 type="radio"
@@ -617,7 +619,7 @@ export function ExpenseForm({
                 checked={visibility === "shared"}
                 onChange={() => setVisibility("shared")}
               />
-              <span>共有</span>
+              <span>{t("visibilityShared")}</span>
             </label>
             <label className="inline-flex items-center gap-1">
               <input
@@ -627,13 +629,13 @@ export function ExpenseForm({
                 checked={visibility === "private"}
                 onChange={() => setVisibility("private")}
               />
-              <span>自分のみ</span>
+              <span>{t("visibilitySelfOnly")}</span>
             </label>
           </div>
         ) : (
           <>
             <span className="text-muted-foreground">
-              {visibility === "shared" ? "共有" : "自分のみ"}
+              {visibility === "shared" ? t("visibilityShared") : t("visibilitySelfOnly")}
             </span>
             <input type="hidden" name="visibility" value={visibility} />
           </>
@@ -652,7 +654,7 @@ export function ExpenseForm({
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>
-              支払った人: {members.find((m) => m.id === payer)?.display_name ?? "?"}
+              {t("payer", { name: members.find((m) => m.id === payer)?.display_name ?? "?" })}
             </span>
             <ChevronIcon
               size={16}
@@ -697,7 +699,7 @@ export function ExpenseForm({
             aria-expanded={splitMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
-            <span>割り勘対象: {splitMode === "all" ? "全員" : splitLabel}</span>
+            <span>{t("splitTargets", { label: splitMode === "all" ? t("splitAll") : splitLabel })}</span>
             <ChevronIcon
               size={16}
               className={`transition-transform ${splitMode === "all" ? "rotate-90" : "-rotate-90"}`}
@@ -740,8 +742,8 @@ export function ExpenseForm({
             size="icon"
             onClick={onDelete}
             disabled={isDeleting}
-            aria-label="削除"
-            title="削除"
+            aria-label={tCommon("delete")}
+            title={tCommon("delete")}
             className="shrink-0"
           >
             <TrashIcon size={18} />
@@ -750,8 +752,8 @@ export function ExpenseForm({
         <Button
           type="submit"
           disabled={isPending}
-          aria-label={isEdit ? "保存" : "追加"}
-          title={isEdit ? "保存" : "追加"}
+          aria-label={isEdit ? tCommon("save") : tCommon("add")}
+          title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}

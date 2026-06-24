@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -34,6 +35,7 @@ export function PlacesSection({
   members: { id: string; color: number | null }[];
   myMemberId: string;
 }) {
+  const t = useTranslations("place");
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
     [members],
@@ -148,7 +150,7 @@ export function PlacesSection({
     return (
       <div className="space-y-4">
         <MessageBox kind="warning">
-          Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。
+          {t("noApiKey")}
         </MessageBox>
         <PlaceList
           places={places}

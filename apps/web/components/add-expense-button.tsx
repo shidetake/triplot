@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 
@@ -13,6 +14,7 @@ import { PlusIcon } from "./icons";
 type Props = Omit<React.ComponentProps<typeof ExpenseForm>, "onDone">;
 
 export function AddExpenseButton(props: Props) {
+  const t = useTranslations("expense");
   const [anchor, setAnchor] = useState<Anchor | null>(null);
 
   return (
@@ -21,8 +23,8 @@ export function AddExpenseButton(props: Props) {
         type="button"
         size="icon"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
-        aria-label="費用を追加"
-        title="費用を追加"
+        aria-label={t("addAria")}
+        title={t("addAria")}
       >
         <PlusIcon size={18} />
       </Button>
@@ -31,7 +33,7 @@ export function AddExpenseButton(props: Props) {
         <FormPopover
           anchor={anchor}
           onClose={() => setAnchor(null)}
-          label="費用を追加"
+          label={t("addAria")}
           fullScreenOnNarrow
           draftKey={`expense:new:${props.tripId}`}
         >
