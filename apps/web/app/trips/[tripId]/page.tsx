@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -417,6 +418,8 @@ export default async function TripDetailPage({
     formattedAddress: p.formatted_address,
   }));
 
+  const t = await getTranslations();
+
   const importDrafts = (tripDrafts ?? []).flatMap((d) => {
     // 合体済みなら合体後の値で確定フォームを事前入力する。
     const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
@@ -441,7 +444,7 @@ export default async function TripDetailPage({
         id: d.id,
         // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
         labelParts: [
-          r.merchant || "(店名不明)",
+          r.merchant || t("tripDetail.unknownMerchant"),
           `${r.total} ${r.currency}`,
           r.date,
         ],
@@ -466,7 +469,7 @@ export default async function TripDetailPage({
           className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
         >
           <ChevronIcon size={16} className="rotate-180" />
-          旅行一覧
+          {t("tripDetail.backToTrips")}
         </Link>
         <TripActions
           tripId={tripId}
@@ -489,12 +492,16 @@ export default async function TripDetailPage({
             {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
           </span>
           <InlineDivider />
-          <span>精算通貨: {trip.default_currency}</span>
+          <span>
+            {t("tripDetail.settlementCurrency")}: {trip.default_currency}
+          </span>
         </p>
       </header>
 
       <section className="mt-8">
-        <h2 className="text-sm font-medium text-muted-foreground">メンバー</h2>
+        <h2 className="text-sm font-medium text-muted-foreground">
+          {t("members.heading")}
+        </h2>
         <MembersSection
           members={activeMembers.map((m) => ({
             id: m.id,
@@ -523,7 +530,7 @@ export default async function TripDetailPage({
       </section>
 
       <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-semibold">場所</h2>
+        <h2 className="text-lg font-semibold">{t("tripDetail.places")}</h2>
 
         <PlacesSection
           tripId={tripId}
@@ -540,7 +547,7 @@ export default async function TripDetailPage({
 
       <section className="mt-10 space-y-6">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">費用</h2>
+          <h2 className="text-lg font-semibold">{t("tripDetail.expenses")}</h2>
           <AddExpenseButton
             tripId={tripId}
             members={activeMembers.map((m) => ({
@@ -566,9 +573,9 @@ export default async function TripDetailPage({
         {importDrafts.length > 0 && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
             <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
-              未確定の取り込み ({importDrafts.length})
-              <HelpTip label="取り込みとは" widthClass="w-52">
-                メールから抽出した下書きです。内容を確認・確定すると費用になります。
+              {t("tripDetail.pendingImports", { count: importDrafts.length })}
+              <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
+                {t("tripDetail.importHelp")}
               </HelpTip>
             </div>
             <div className="mt-3 space-y-2">
@@ -639,16 +646,16 @@ export default async function TripDetailPage({
 
       <section className="mt-10 space-y-6">
         <div className="flex items-center gap-1.5">
-          <h2 className="text-lg font-semibold">TODOリスト</h2>
-          <HelpTip label="プライベートTODOとは" widthClass="w-60">
-            鍵アイコンをオンすると自分だけが見えるTODOになります。
+          <h2 className="text-lg font-semibold">{t("tripDetail.todoList")}</h2>
+          <HelpTip label={t("tripDetail.privateTodoHelpLabel")} widthClass="w-60">
+            {t("tripDetail.privateTodoHelp")}
           </HelpTip>
         </div>
 
         <TodoSection
           tripId={tripId}
           kind="prep"
-          title="準備"
+          title={t("tripDetail.todoPrep")}
           defaultCollapsed={tripStarted}
           todos={prepTodos}
           members={todoMembers}
@@ -658,7 +665,7 @@ export default async function TripDetailPage({
         <TodoSection
           tripId={tripId}
           kind="onsite"
-          title="現地"
+          title={t("tripDetail.todoOnsite")}
           defaultCollapsed={false}
           todos={onsiteTodos}
           members={todoMembers}

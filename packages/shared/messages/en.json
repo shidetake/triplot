@@ -31,6 +31,21 @@
     "joinAsGuest": "Join as a guest (no sign-in)",
     "guestDisabled": "Guest join is disabled. Please join with Google."
   },
+  "tripDetail": {
+    "backToTrips": "Trips",
+    "settlementCurrency": "Settlement currency",
+    "places": "Places",
+    "expenses": "Expenses",
+    "pendingImports": "Pending imports ({count})",
+    "importHelpLabel": "What are imports?",
+    "importHelp": "Drafts extracted from email. Review and confirm them to turn them into expenses.",
+    "todoList": "To-dos",
+    "privateTodoHelpLabel": "What are private to-dos?",
+    "privateTodoHelp": "Turn on the lock icon to make a to-do visible only to you.",
+    "todoPrep": "Prep",
+    "todoOnsite": "On-site",
+    "unknownMerchant": "(unknown store)"
+  },
   "members": {
     "heading": "Members",
     "editOwnName": "You can edit your own display name.",

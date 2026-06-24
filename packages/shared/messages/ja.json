@@ -31,6 +31,21 @@
     "joinAsGuest": "ゲストとして参加（ログイン不要）",
     "guestDisabled": "ゲスト参加が無効になっています。Google で参加してください。"
   },
+  "tripDetail": {
+    "backToTrips": "旅行一覧",
+    "settlementCurrency": "精算通貨",
+    "places": "場所",
+    "expenses": "費用",
+    "pendingImports": "未確定の取り込み ({count})",
+    "importHelpLabel": "取り込みとは",
+    "importHelp": "メールから抽出した下書きです。内容を確認・確定すると費用になります。",
+    "todoList": "TODOリスト",
+    "privateTodoHelpLabel": "プライベートTODOとは",
+    "privateTodoHelp": "鍵アイコンをオンすると自分だけが見えるTODOになります。",
+    "todoPrep": "準備",
+    "todoOnsite": "現地",
+    "unknownMerchant": "(店名不明)"
+  },
   "members": {
     "heading": "メンバー",
     "editOwnName": "自分の表示名を編集できます。",
