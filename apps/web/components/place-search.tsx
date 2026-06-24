@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Combobox } from "@base-ui/react/combobox";
@@ -78,6 +79,7 @@ export function PlaceSearch({
     opts?: { selectFirst?: boolean },
   ) => void;
 }) {
+  const t = useTranslations("place");
   const placesLib = useMapsLibrary("places");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -156,7 +158,7 @@ export function PlaceSearch({
         await place.fetchFields({ fields: FIELDS });
         const loc = place.location;
         if (!place.id || !loc) {
-          setError("場所の詳細を取得できませんでした");
+          setError(t("detailFailed"));
           return;
         }
         const cp: CandidatePlace = {
@@ -173,7 +175,7 @@ export function PlaceSearch({
         onQueryChange(cp.name);
         onResults([cp], { selectFirst: true });
       } catch {
-        setError("場所の詳細取得に失敗しました");
+        setError(t("detailFailed"));
       } finally {
         tokenRef.current = null; // セッション終了 → 次回入力で新トークン
         setPending(false);
@@ -208,7 +210,7 @@ export function PlaceSearch({
           .filter((p) => p.id && p.location)
           .map((p) => ({
             placeId: p.id,
-            name: p.displayName ?? "(名称不明)",
+            name: p.displayName ?? t("unknownName"),
             address: p.formattedAddress ?? "",
             lat: p.location!.lat(),
             lng: p.location!.lng(),
@@ -220,10 +222,10 @@ export function PlaceSearch({
 
         onResults(results);
         if (results.length === 0) {
-          setError("該当する場所が見つかりませんでした");
+          setError(t("noResults"));
         }
       } catch {
-        setError("検索に失敗しました。時間をおいて再度お試しください。");
+        setError(t("searchFailed"));
       } finally {
         setPending(false);
       }
@@ -256,13 +258,13 @@ export function PlaceSearch({
           <div className="relative min-w-0 flex-1">
             <Combobox.Input
               ref={inputRef}
-              placeholder="パンケーキ"
+              placeholder={t("searchPlaceholder")}
               autoComplete="off"
               className={`block w-full min-w-0 pr-9 ${inputClass}`}
             />
             {query && (
               <CloseButton
-                label="検索をクリア"
+                label={t("searchClear")}
                 onClick={() => {
                   setSug([]);
                   onClear();
@@ -275,8 +277,8 @@ export function PlaceSearch({
             type="submit"
             size="icon"
             disabled={!ready || pending}
-            aria-label="検索"
-            title="検索"
+            aria-label={t("searchAria")}
+            title={t("searchAria")}
             className="shrink-0"
           >
             <SearchIcon size={18} />
@@ -310,7 +312,7 @@ export function PlaceSearch({
         </Combobox.Portal>
 
         {!ready && (
-          <p className="text-xs text-muted-foreground">地図を読み込み中...</p>
+          <p className="text-xs text-muted-foreground">{t("loadingMap")}</p>
         )}
         {error && <p className="text-xs text-red-600">{error}</p>}
       </form>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Dialog } from "@base-ui/react/dialog";
 
@@ -19,8 +20,8 @@ import { Button } from "@/components/ui/button";
 type ConfirmOptions = {
   title: string;
   body?: string; // 補足（影響範囲など）。改行は whitespace-pre-line で反映。
-  confirmLabel?: string; // 既定 "削除"
-  cancelLabel?: string; // 既定 "キャンセル"
+  confirmLabel?: string; // 既定 common.delete
+  cancelLabel?: string; // 既定 common.cancel
   // 破壊的（取り消せない）= 赤枠ボタン。非破壊な確認は false で primary。
   destructive?: boolean; // 既定 true
 };
@@ -41,6 +42,7 @@ export function confirmDialog(opts: ConfirmOptions): Promise<boolean> {
 }
 
 export function ConfirmDialogHost() {
+  const t = useTranslations("common");
   // opts は閉じアニメーション中も内容を保持するため open と分けて持つ。
   const [opts, setOpts] = useState<Pending | null>(null);
   const [open, setOpen] = useState(false);
@@ -65,10 +67,13 @@ export function ConfirmDialogHost() {
   const {
     title = "",
     body,
-    confirmLabel = "削除",
-    cancelLabel = "キャンセル",
+    confirmLabel,
+    cancelLabel,
     destructive = true,
   } = opts ?? {};
+
+  const resolvedConfirmLabel = confirmLabel ?? t("delete");
+  const resolvedCancelLabel = cancelLabel ?? t("cancel");
 
   return (
     <Dialog.Root
@@ -97,7 +102,7 @@ export function ConfirmDialogHost() {
           )}
           <div className="mt-5 flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => close(false)}>
-              {cancelLabel}
+              {resolvedCancelLabel}
             </Button>
             <Button
               ref={confirmRef}
@@ -105,7 +110,7 @@ export function ConfirmDialogHost() {
               variant={destructive ? "destructive" : "primary"}
               onClick={() => close(true)}
             >
-              {confirmLabel}
+              {resolvedConfirmLabel}
             </Button>
           </div>
         </Dialog.Popup>

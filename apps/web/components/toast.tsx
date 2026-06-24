@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Toast } from "@base-ui/react/toast";
 
 import { CloseIcon } from "@/components/icons";
@@ -21,11 +22,12 @@ export function toast(text: string): void {
 }
 
 function ToastList() {
+  const t = useTranslations("common");
   const { toasts } = Toast.useToastManager();
-  return toasts.map((t) => (
+  return toasts.map((toast) => (
     <Toast.Root
-      key={t.id}
-      toast={t}
+      key={toast.id}
+      toast={toast}
       // 下中央なので下／左右どちらにスワイプしても閉じられる。
       swipeDirection={["down", "left", "right"]}
       className="toast-root pointer-events-auto w-full select-none rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground shadow-lg"
@@ -33,8 +35,8 @@ function ToastList() {
       <div className="flex items-start gap-2">
         <Toast.Title className="min-w-0 flex-1" />
         <Toast.Close
-          aria-label="閉じる"
-          title="閉じる"
+          aria-label={t("close")}
+          title={t("close")}
           className="-mr-1 shrink-0 rounded text-primary-foreground/60 transition hover:text-primary-foreground"
         >
           <CloseIcon size={16} />

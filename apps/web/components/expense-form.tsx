@@ -31,7 +31,7 @@ import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";
-import { tzDisplayLabel } from "./timezone-picker";
+import { useTzLabel } from "./timezone-picker";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
 import { FieldLabel } from "./field-label";
@@ -43,8 +43,6 @@ import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
-
-const tzLabel = tzDisplayLabel;
 
 type Member = {
   id: string;
@@ -121,6 +119,7 @@ export function ExpenseForm({
 }) {
   const t = useTranslations("expense");
   const tCommon = useTranslations("common");
+  const tzLabel = useTzLabel();
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const isEdit = !!editExpense;
 
@@ -440,7 +439,7 @@ export function ExpenseForm({
             placeholder={
               averageRates[localCurrency] !== undefined
                 ? formatRate(averageRates[localCurrency]!)
-                : "例: 150"
+                : t("placeholderRate")
             }
             className="mt-1 block w-full"
           />

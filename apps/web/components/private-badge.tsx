@@ -1,3 +1,7 @@
+"use client";
+
+import { useTranslations } from "next-intl";
+
 import { cn } from "@/lib/utils";
 
 import { LockIcon } from "./icons";
@@ -7,11 +11,12 @@ import { LockIcon } from "./icons";
 // （ui-guidelines「文言は極力アイコンに寄せる」）。意味は title（ホバー）＋ aria-label（読み上げ）で担保。
 // レイアウト（位置取り等）は className で渡す。色は muted で控えめに（状態の添え物）。
 export function PrivateBadge({ className }: { className?: string }) {
+  const t = useTranslations("common");
   return (
     <span
       role="img"
-      aria-label="プライベート"
-      title="プライベート"
+      aria-label={t("private")}
+      title={t("private")}
       className={cn("inline-flex shrink-0 text-muted-foreground", className)}
     >
       <LockIcon size={16} />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import {
   eventBarHueBg,
@@ -103,6 +104,7 @@ export function WeekCalendar({
   onAllDaySlotClick: (date: string, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
 }) {
+  const tSched = useTranslations("schedule");
   // 自分が「明示参加者リスト」から外れている＝別行動の予定か。
   // 空配列 = 「全員」のシュガーなので、その場合は自分も含まれる扱い。
   const isMyEvent = (e: ScheduleEvent): boolean => {
@@ -599,7 +601,7 @@ export function WeekCalendar({
   if (columns.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">
-        この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。
+        {tSched("noDates")}
       </p>
     );
   }
@@ -674,7 +676,7 @@ export function WeekCalendar({
             className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-zinc-50 text-[10px] text-muted-foreground"
             style={{ width: GUTTER }}
           >
-            終日
+            {tSched("allDayLabel")}
           </div>
           <div
             className="relative"
@@ -1251,7 +1253,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} 発
+                        {hhmm(t.departMin)} {tSched("departs")}
                       </span>
                       {dots}
                     </span>
@@ -1280,7 +1282,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.arriveMin)} 着
+                        {hhmm(t.arriveMin)} {tSched("arrives")}
                       </span>
                       {dots}
                     </span>

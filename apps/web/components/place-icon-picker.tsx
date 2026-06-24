@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
+import { useTranslations } from "next-intl";
 
 import { Dialog } from "@base-ui/react/dialog";
 
@@ -33,6 +34,8 @@ export function PlaceIconPicker({
   onAdded: (iconKey: string) => void;
   onClose: () => void;
 }) {
+  const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const [selected, setSelected] = useState<string | null>(null);
   const [isPending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +55,9 @@ export function PlaceIconPicker({
     if (selectedOption) {
       // 削除
       const ok = await confirmDialog({
-        title: `「${selectedOption.label}」を外しますか？`,
-        body: "既にこのアイコンを使ってる場所はそのまま残ります。",
-        confirmLabel: "外す",
+        title: t("iconPickerRemoveTitle", { name: selectedOption.label }),
+        body: t("iconPickerRemoveBody"),
+        confirmLabel: t("iconPickerRemoveConfirm"),
       });
       if (!ok) return;
       const opt = selectedOption;
@@ -92,7 +95,7 @@ export function PlaceIconPicker({
         {/* タイトル / 閉じる × は省略（grid と footer に面積を回す）。
             閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路（Base UI が担保）。 */}
         <Dialog.Popup
-          aria-label="ピンのアイコンを選ぶ"
+          aria-label={t("iconPickerAria")}
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-white shadow-xl outline-none"
         >
         <div className="flex-1 overflow-y-auto p-2">
@@ -135,7 +138,7 @@ export function PlaceIconPicker({
 
         <footer className="border-t border-foreground/5">
           <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
-            選択中:
+            {t("iconPickerSelected")}
             {selectedEntry ? (
               <>
                 <span className="inline-flex items-center text-foreground">
@@ -146,7 +149,7 @@ export function PlaceIconPicker({
                 </span>
               </>
             ) : (
-              <span className="text-subtle-foreground">未選択</span>
+              <span className="text-subtle-foreground">{t("iconPickerNone")}</span>
             )}
           </div>
           {error && (
@@ -159,7 +162,7 @@ export function PlaceIconPicker({
               onClick={onClose}
               disabled={isPending}
             >
-              キャンセル
+              {tCommon("cancel")}
             </Button>
             <Button
               type="button"
@@ -169,11 +172,11 @@ export function PlaceIconPicker({
             >
               {isPending
                 ? mode === "remove"
-                  ? "削除中..."
-                  : "追加中..."
+                  ? tCommon("deleting")
+                  : tCommon("adding")
                 : mode === "remove"
-                  ? "削除"
-                  : "追加"}
+                  ? tCommon("delete")
+                  : tCommon("add")}
             </Button>
           </div>
         </footer>

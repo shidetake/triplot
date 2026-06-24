@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Select } from "@base-ui/react/select";
 
 import type { Category } from "./expense-form";
@@ -23,6 +24,8 @@ export function CategorySelect({
   value: string;
   onChange: (id: string) => void;
 }) {
+  const t = useTranslations("common");
+
   return (
     <Select.Root
       name={name}
@@ -39,7 +42,7 @@ export function CategorySelect({
               <span className="flex min-w-0 flex-1 items-center gap-2">
                 {c && <CategoryChip category={c} />}
                 <span className="min-w-0 flex-1 truncate">
-                  {c?.name ?? "選択してください"}
+                  {c?.name ?? t("pleaseSelect")}
                 </span>
               </span>
             );

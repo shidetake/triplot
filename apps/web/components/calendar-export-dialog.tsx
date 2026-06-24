@@ -123,7 +123,7 @@ export function CalendarExportDialog({
     // 既定は「新規カレンダー作成」。
     setSelected(NEW);
     setPhase("pick");
-  }, []);
+  }, [t]);
 
   const connect = useCallback(() => {
     setError(null);
@@ -165,7 +165,7 @@ export function CalendarExportDialog({
         setError(GIS_KEYS[msg] ?? msg);
         setPhase("error");
       });
-  }, [clientId, fetchCalendars]);
+  }, [clientId, fetchCalendars, t]);
 
   // 接続後、選んだ（or 新規作成した）カレンダーへ全予定を書き込む。
   const runExport = useCallback(async () => {
@@ -222,7 +222,7 @@ export function CalendarExportDialog({
       setError(e instanceof Error ? e.message : String(e));
       setPhase("error");
     }
-  }, [selected, newName, tripTitle, targetEvents]);
+  }, [selected, newName, tripTitle, targetEvents, t]);
 
   const btnBlack =
     "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";

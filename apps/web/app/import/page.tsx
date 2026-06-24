@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
 import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,8 @@ import {
 } from "./actions";
 
 export default async function ImportPage() {
+  const t = await getTranslations("import");
+  const tCommon = await getTranslations("common");
   const supabase = await createClient();
   const {
     data: { user },
@@ -37,8 +40,8 @@ export default async function ImportPage() {
     .is("left_at", null);
   const trips = (memberships ?? [])
     .map((m) => m.trips)
-    .filter((t): t is NonNullable<typeof t> => t !== null);
-  const tripTitle = new Map(trips.map((t) => [t.id, t.title]));
+    .filter((trip): trip is NonNullable<typeof trip> => trip !== null);
+  const tripTitle = new Map(trips.map((trip) => [trip.id, trip.title]));
 
   // 自分の抽出済み下書き（RLS で自分の行のみ）。割当済も未割当もここに出す。
   const { data: drafts } = await supabase
@@ -104,27 +107,26 @@ export default async function ImportPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
-      <h1 className="text-2xl font-semibold tracking-tight">取り込み</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">{t("heading")}</h1>
 
       <p className="mt-3 text-sm text-muted-foreground">
-        転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを変更できます。確定は各旅行の画面で行ってください。
+        {t("description")}
       </p>
 
       {importAddress && (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-xs text-muted-foreground">メールの転送先</span>
+          <span className="text-xs text-muted-foreground">{t("forwardLabel")}</span>
           <ImportAddress address={importAddress} />
         </div>
       )}
 
       <p className="mt-3 text-xs text-muted-foreground">
-        今月の取り込み: {usedThisMonth ?? 0} / {MONTHLY_EMAIL_CAP} 件
+        {t("usageCount", { used: usedThisMonth ?? 0, cap: MONTHLY_EMAIL_CAP })}
       </p>
 
       {(overQuota ?? 0) > 0 && (
         <MessageBox kind="warning" className="mt-3">
-          ⚠ 今月の上限（{MONTHLY_EMAIL_CAP}件）に達したため、{overQuota}件が未処理の
-          まま保留されています。翌月にリセットされます。
+          {t("overQuotaWarning", { cap: MONTHLY_EMAIL_CAP, over: overQuota ?? 0 })}
         </MessageBox>
       )}
 
@@ -137,17 +139,15 @@ export default async function ImportPage() {
             >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-foreground">
-                  {e.subject || e.sender || "(件名なし)"}
+                  {e.subject || e.sender || t("unknownMerchant")}
                 </div>
                 <div className="mt-0.5 text-xs text-red-700">
-                  {e.next_retry_at
-                    ? "取り込みに失敗しました。時間をおいて自動で再試行します。"
-                    : "取り込みに失敗しました（再試行できませんでした）。"}
+                  {e.next_retry_at ? t("errorWillRetry") : t("errorNoRetry")}
                 </div>
               </div>
               <form action={dismissDraftAction}>
                 <input type="hidden" name="id" value={e.id} />
-                <CloseButton type="submit" label="破棄" className="h-7 w-7" />
+                <CloseButton type="submit" label={t("dismiss")} className="h-7 w-7" />
               </form>
             </li>
           ))}
@@ -156,7 +156,7 @@ export default async function ImportPage() {
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">
-          まだ下書きはありません。上の転送先アドレスにレシートを転送してみてください。
+          {t("emptyState")}
         </p>
       ) : (
         <ul className="mt-8 space-y-3">
@@ -165,7 +165,7 @@ export default async function ImportPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
-                    {row.receipt?.merchant || "(店名不明)"}
+                    {row.receipt?.merchant || t("unknownMerchant")}
                   </div>
                   <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
                     {row.receipt ? (
@@ -185,7 +185,7 @@ export default async function ImportPage() {
                         ) : null}
                       </>
                     ) : (
-                      "(読み取り内容なし)"
+                      t("noContent")
                     )}
                   </div>
 
@@ -201,18 +201,18 @@ export default async function ImportPage() {
                         defaultValue={row.defaultTripId}
                         className="rounded-md border border-foreground/20 bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
-                        <option value="">（旅行を選択）</option>
-                        {trips.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.title}
+                        <option value="">{t("selectTrip")}</option>
+                        {trips.map((trip) => (
+                          <option key={trip.id} value={trip.id}>
+                            {trip.title}
                           </option>
                         ))}
                       </select>
                       <Button
                         type="submit"
                         size="iconSm"
-                        aria-label="保存"
-                        title="保存"
+                        aria-label={tCommon("save")}
+                        title={tCommon("save")}
                         className="shrink-0"
                       >
                         <SaveIcon size={16} />
@@ -224,11 +224,13 @@ export default async function ImportPage() {
                         href={`/trips/${row.assignedTripId}`}
                         className="text-sm font-medium text-foreground underline underline-offset-2"
                       >
-                        → {tripTitle.get(row.assignedTripId) ?? "旅行"}で確定
+                        {t("confirmAtTrip", {
+                          title: tripTitle.get(row.assignedTripId) ?? t("tripFallback"),
+                        })}
                       </Link>
                     ) : (
                       <span className="text-xs text-amber-700">
-                        要割当
+                        {t("needsAssignment")}
                       </span>
                     )}
                   </div>
@@ -236,12 +238,12 @@ export default async function ImportPage() {
                   {row.children.length > 0 && (
                     <details className="mt-2 text-sm">
                       <summary className="cursor-pointer text-muted-foreground">
-                        🔗 {row.children.length + 1}通を合体（明細）
+                        {t("mergedSummary", { count: row.children.length + 1 })}
                       </summary>
                       <div className="mt-2 space-y-1">
                         {/* この下書き自身の元メール（分けられない本体） */}
                         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-zinc-50 px-2 py-1 text-xs text-muted-foreground">
-                          <span>{row.own?.merchant || "(店名不明)"}</span>
+                          <span>{row.own?.merchant || t("unknownMerchant")}</span>
                           <InlineDivider />
                           <span>
                             {row.own?.total} {row.own?.currency}
@@ -249,7 +251,7 @@ export default async function ImportPage() {
                           <InlineDivider />
                           <span>
                             {row.own?.date}
-                            {row.own?.isUpdate ? "（調整）" : ""}
+                            {row.own?.isUpdate ? t("adjustment") : ""}
                           </span>
                         </div>
                         {/* 合体された子メール（分けられる） */}
@@ -259,7 +261,7 @@ export default async function ImportPage() {
                             className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
                           >
                             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                              <span>{ch.receipt?.merchant || "(店名不明)"}</span>
+                              <span>{ch.receipt?.merchant || t("unknownMerchant")}</span>
                               <InlineDivider />
                               <span>
                                 {ch.receipt?.total} {ch.receipt?.currency}
@@ -267,7 +269,7 @@ export default async function ImportPage() {
                               <InlineDivider />
                               <span>
                                 {ch.receipt?.date}
-                                {ch.receipt?.isUpdate ? "（調整）" : ""}
+                                {ch.receipt?.isUpdate ? t("adjustment") : ""}
                               </span>
                             </span>
                             <form action={unmergeAction}>
@@ -276,7 +278,7 @@ export default async function ImportPage() {
                                 type="submit"
                                 className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
                               >
-                                分割
+                                {t("split")}
                               </button>
                             </form>
                           </div>
@@ -288,7 +290,7 @@ export default async function ImportPage() {
 
                 <form action={dismissDraftAction}>
                   <input type="hidden" name="id" value={row.id} />
-                  <CloseButton type="submit" label="破棄" className="h-8 w-8" />
+                  <CloseButton type="submit" label={t("dismiss")} className="h-8 w-8" />
                 </form>
               </div>
             </li>

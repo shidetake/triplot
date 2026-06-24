@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { format } from "date-fns";
-import { ja } from "date-fns/locale";
+import { ja, enUS } from "date-fns/locale";
 import type { DateRange } from "react-day-picker";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -44,6 +45,10 @@ export function DateRangePopover({
   // 選択中の範囲（"YYYY-MM-DD" or null）を親に通知する。
   onChange?: (start: string | null, end: string | null) => void;
 }) {
+  const t = useTranslations("common");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "ja" ? ja : enUS;
+
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState<DateRange | undefined>(() => {
     const from = parseYmd(defaultStart);
@@ -52,18 +57,20 @@ export function DateRangePopover({
   });
 
   const f = range?.from;
-  const t = range?.to;
+  const to = range?.to;
 
   useEffect(() => {
-    onChange?.(formatYmd(f) || null, formatYmd(t) || null);
+    onChange?.(formatYmd(f) || null, formatYmd(to) || null);
     // onChange は呼び出し側の inline 関数想定なので依存に入れない。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [f, t]);
+  }, [f, to]);
+
+  const sep = t("dateRangeSeparator");
   const label =
-    f && t
-      ? `${format(f, "yyyy/M/d (EEE)", { locale: ja })} 〜 ${format(t, "M/d (EEE)", { locale: ja })}`
+    f && to
+      ? `${format(f, "yyyy/M/d (EEE)", { locale: dateFnsLocale })} ${sep} ${format(to, "M/d (EEE)", { locale: dateFnsLocale })}`
       : f
-        ? `${format(f, "yyyy/M/d (EEE)", { locale: ja })} 〜 ?`
+        ? `${format(f, "yyyy/M/d (EEE)", { locale: dateFnsLocale })} ${sep} ?`
         : "";
 
   return (
@@ -77,7 +84,7 @@ export function DateRangePopover({
       <input
         type="hidden"
         name={endName}
-        value={formatYmd(t)}
+        value={formatYmd(to)}
         required={required}
       />
       <Popover open={open} onOpenChange={setOpen}>
@@ -87,7 +94,7 @@ export function DateRangePopover({
           <span
             className={cn(
               "min-w-0 flex-1 truncate text-left",
-              f || t ? "text-foreground" : "text-subtle-foreground",
+              f || to ? "text-foreground" : "text-subtle-foreground",
             )}
           >
             {label}
@@ -109,7 +116,7 @@ export function DateRangePopover({
               }
             }}
             defaultMonth={range?.from ?? new Date()}
-            locale={ja}
+            locale={dateFnsLocale}
             // min=1 を渡すことで「初回クリックで from=to=d として確定扱い」になる
             // v10 既定の挙動を抑え、初回クリックは to=undefined にする。
             min={1}
@@ -124,10 +131,10 @@ export function DateRangePopover({
             <Button
               type="button"
               size="sm"
-              disabled={!f || !t}
+              disabled={!f || !to}
               onClick={() => setOpen(false)}
             >
-              確定
+              {t("confirm")}
             </Button>
           </div>
         </PopoverContent>

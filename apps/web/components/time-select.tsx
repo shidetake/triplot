@@ -1,6 +1,7 @@
 "use client";
 
 import { useLayoutEffect, useRef } from "react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -100,6 +101,7 @@ export function TimeSelect({
   onChange: (v: string) => void;
   className?: string;
 }) {
+  const t = useTranslations("common");
   const [hh, mm] = value.split(":").map(Number);
 
   const minutes: number[] = [];
@@ -115,14 +117,14 @@ export function TimeSelect({
         values={HOURS}
         selected={hh}
         onPick={(h) => onChange(`${pad(h)}:${pad(mm)}`)}
-        label="時"
+        label={t("hourLabel")}
       />
       <span className="self-center text-muted-foreground">:</span>
       <Wheel
         values={minutes}
         selected={mm}
         onPick={(m) => onChange(`${pad(hh)}:${pad(m)}`)}
-        label="分"
+        label={t("minuteLabel")}
       />
     </div>
   );

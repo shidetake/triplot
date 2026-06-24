@@ -29,6 +29,7 @@ import {
 } from "@triplot/shared/placeMap";
 
 import { vividColor } from "@triplot/shared/memberColors";
+import { useTranslations } from "next-intl";
 
 import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
@@ -252,6 +253,7 @@ export function PlaceMap({
   infoContent: ReactNode;
   draftContent: ReactNode;
 }) {
+  const t = useTranslations("place");
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const placesLib = useMapsLibrary("places");
@@ -394,7 +396,7 @@ export function PlaceMap({
                   if (!place.id || !loc) return;
                   onPoiSelect({
                     placeId: place.id,
-                    name: place.displayName ?? "(名称不明)",
+                    name: place.displayName ?? t("unknownName"),
                     address: place.formattedAddress ?? "",
                     lat: loc.lat(),
                     lng: loc.lng(),
@@ -551,7 +553,7 @@ export function PlaceMap({
                   : "border-foreground/20 bg-white text-muted-foreground"
               }`}
             >
-              {c.label ?? "その他"}
+              {c.label ?? t("other")}
             </button>
           ))}
           <button

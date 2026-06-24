@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
+import { translateSharedError } from "@/lib/translateSharedError";
 import { createTrip, type Currency } from "@triplot/shared/data/trips";
 
 export type CreateTripState = { error: string | null };
@@ -15,6 +16,7 @@ export async function createTripAction(
 ): Promise<CreateTripState> {
   const supabase = await createClient();
   const t = await getTranslations();
+  const tErr = await getTranslations("errors");
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -43,7 +45,7 @@ export async function createTripAction(
     currency,
     sourceTripId: sourceTripId || undefined,
   });
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: translateSharedError(result.error, tErr) };
 
   revalidatePath("/trips");
   redirect(`/trips/${result.data.tripId}`);

@@ -13,7 +13,7 @@ export async function joinTripViaInvite(
     p_token: token,
     p_display_name: displayName,
   });
-  if (error || !tripId) return err(error?.message ?? "参加に失敗しました");
+  if (error || !tripId) return err(error?.message ?? "errors.joinFailed");
   return ok({ tripId });
 }
 
@@ -26,7 +26,7 @@ export async function ensureTripInvite(
     p_trip_id: tripId,
     p_token: generateInviteToken(),
   });
-  if (error || !token) return err(error?.message ?? "発行に失敗しました");
+  if (error || !token) return err(error?.message ?? "errors.issueFailed");
   return ok({ token });
 }
 
@@ -39,6 +39,6 @@ export async function regenerateTripInvite(
     p_trip_id: tripId,
     p_token: generateInviteToken(),
   });
-  if (error || !token) return err(error?.message ?? "再生成に失敗しました");
+  if (error || !token) return err(error?.message ?? "errors.regenerateFailed");
   return ok({ token });
 }

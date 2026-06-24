@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ja } from "date-fns/locale";
+import { ja, enUS } from "date-fns/locale";
 import type { Matcher } from "react-day-picker";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -51,6 +52,10 @@ export function DatePopover({
   // カレンダー本体は従来どおり年を表示。
   compact?: boolean;
 }) {
+  const t = useTranslations("common");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "ja" ? ja : enUS;
+
   const [open, setOpen] = useState(false);
   const date = parseYmd(value);
   const tripFrom = parseYmd(tripStart);
@@ -74,9 +79,9 @@ export function DatePopover({
           >
             {date
               ? format(date, compact ? "M/d (EEE)" : "yyyy/M/d (EEE)", {
-                  locale: ja,
+                  locale: dateFnsLocale,
                 })
-              : "日付を選択"}
+              : t("selectDate")}
           </span>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -90,7 +95,7 @@ export function DatePopover({
               }
             }}
             defaultMonth={date ?? tripFrom ?? new Date()}
-            locale={ja}
+            locale={dateFnsLocale}
             captionLayout="dropdown-years"
             startMonth={RANGE_START}
             endMonth={RANGE_END}

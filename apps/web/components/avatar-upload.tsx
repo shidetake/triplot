@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Menu } from "@base-ui/react/menu";
 
@@ -21,6 +22,13 @@ import { selfAvatarClass } from "./self-avatar";
 const AVATAR_SIZE = 256;
 const MAX_INPUT_BYTES = 10 * 1024 * 1024; // 入力ファイルの上限（リサイズ前）
 
+// エラーコード → avatar namespace キーのマップ。
+const RESIZE_ERROR_KEYS: Record<string, "loadFailed" | "convertUnsupported" | "convertFailed"> = {
+  LOAD_FAILED: "loadFailed",
+  CONVERT_UNSUPPORTED: "convertUnsupported",
+  CONVERT_FAILED: "convertFailed",
+};
+
 function loadImage(file: File): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -31,7 +39,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new Error("画像を読み込めませんでした。"));
+      reject(new Error("LOAD_FAILED"));
     };
     img.src = url;
   });
@@ -50,7 +58,7 @@ async function resizeAvatar(
   canvas.width = AVATAR_SIZE;
   canvas.height = AVATAR_SIZE;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("この端末では画像変換ができません。");
+  if (!ctx) throw new Error("CONVERT_UNSUPPORTED");
   const scale = Math.max(AVATAR_SIZE / img.width, AVATAR_SIZE / img.height);
   const w = img.width * scale;
   const h = img.height * scale;
@@ -62,7 +70,7 @@ async function resizeAvatar(
     blob = await toBlob(canvas, "image/jpeg");
     contentType = "image/jpeg";
   }
-  if (!blob) throw new Error("画像の変換に失敗しました。");
+  if (!blob) throw new Error("CONVERT_FAILED");
   return { blob, contentType };
 }
 
@@ -77,6 +85,8 @@ export function AvatarUpload({
   hasAvatar: boolean; // users.avatar_url が設定済みか（登録時の OAuth 写真 or カスタム）
   initial: string; // 写真が無いときの頭文字
 }) {
+  const t = useTranslations("avatar");
+  const tCommon = useTranslations("common");
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
@@ -84,16 +94,21 @@ export function AvatarUpload({
   // 固定パス（拡張子なし）＝毎回ここに上書きするので孤児が出ない。
   const path = `${userId}/avatar`;
 
+  function resizeErrMsg(err: unknown): string {
+    const key = err instanceof Error ? RESIZE_ERROR_KEYS[err.message] : undefined;
+    return key ? t(key) : t("uploadFailed");
+  }
+
   async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     setError(null);
     if (!file.type.startsWith("image/")) {
-      setError("画像ファイルを選んでください。");
+      setError(t("notImage"));
       return;
     }
     if (file.size > MAX_INPUT_BYTES) {
-      setError("ファイルが大きすぎます（10MB まで）。");
+      setError(t("tooLarge"));
       return;
     }
     setBusy(true);
@@ -116,7 +131,7 @@ export function AvatarUpload({
       if (updErr) throw updErr;
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "アップロードに失敗しました。");
+      setError(resizeErrMsg(err));
     } finally {
       setBusy(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -135,8 +150,8 @@ export function AvatarUpload({
         .eq("id", userId);
       if (updErr) throw updErr;
       router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "削除に失敗しました。");
+    } catch {
+      setError(t("deleteFailed"));
     } finally {
       setBusy(false);
     }
@@ -154,8 +169,8 @@ export function AvatarUpload({
           <Menu.Root>
             <Menu.Trigger
               disabled={busy}
-              aria-label="アバターを変更"
-              title="アバターを変更"
+              aria-label={t("changeAria")}
+              title={t("changeAria")}
               className={`${selfAvatarClass} h-16 w-16 text-xl transition hover:opacity-90 disabled:opacity-50`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -168,13 +183,13 @@ export function AvatarUpload({
                     onClick={pickImage}
                     className={`block text-muted-foreground ${menuItemClass}`}
                   >
-                    画像を選ぶ
+                    {t("pickImage")}
                   </Menu.Item>
                   <Menu.Item
                     onClick={onRemove}
                     className={`block text-muted-foreground ${menuItemClass}`}
                   >
-                    削除
+                    {tCommon("delete")}
                   </Menu.Item>
                 </Menu.Popup>
               </Menu.Positioner>
@@ -185,8 +200,8 @@ export function AvatarUpload({
             type="button"
             onClick={() => fileRef.current?.click()}
             disabled={busy}
-            aria-label="アバターを変更"
-            title="アバターを変更"
+            aria-label={t("changeAria")}
+            title={t("changeAria")}
             className={`${selfAvatarClass} h-16 w-16 text-xl transition hover:opacity-90 disabled:opacity-50`}
           >
             {currentUrl ? (
@@ -215,7 +230,7 @@ export function AvatarUpload({
         {/* 状態表示は absolute にしてレイアウト高さを変えない（隣の入力/保存がカクつかない）。 */}
         {busy && (
           <p className="absolute left-0 top-full mt-1 whitespace-nowrap text-xs text-muted-foreground">
-            処理中...
+            {t("processing")}
           </p>
         )}
         {error && (

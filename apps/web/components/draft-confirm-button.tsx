@@ -1,6 +1,7 @@
 "use client";
 
 import { Fragment, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { useRouter } from "next/navigation";
 
@@ -27,6 +28,8 @@ export function DraftConfirmButton({
   labelParts,
   ...formProps
 }: Props) {
+  const t = useTranslations("import");
+  const tCommon = useTranslations("common");
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const router = useRouter();
 
@@ -58,7 +61,7 @@ export function DraftConfirmButton({
           ))}
         </span>
         <span className="shrink-0 rounded bg-primary px-2 py-0.5 text-xs font-medium text-primary-foreground">
-          確定
+          {tCommon("confirm")}
         </span>
       </button>
 
@@ -66,7 +69,7 @@ export function DraftConfirmButton({
         <FormPopover
           anchor={anchor}
           onClose={() => setAnchor(null)}
-          label="取り込みを確定"
+          label={t("confirmFormLabel")}
           fullScreenOnNarrow
           draftKey={`expense:import:${draftId}`}
         >

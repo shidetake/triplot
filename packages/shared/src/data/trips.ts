@@ -34,7 +34,7 @@ export async function createTrip(
       p_default_currency: currency,
       p_display_name: displayName,
     });
-    if (error || !tripId) return err(error?.message ?? "作成に失敗しました");
+    if (error || !tripId) return err(error?.message ?? "errors.createFailed");
     return ok({ tripId });
   }
 
@@ -46,7 +46,7 @@ export async function createTrip(
     .eq("id", sourceTripId)
     .single();
   if (srcErr || !src || !src.start_date || !src.end_date) {
-    return err("コピー元の旅行が見つかりません");
+    return err("errors.tripCopySourceNotFound");
   }
 
   // shared かつ「全員参加」（participants 無し）の予定だけを対象に。
@@ -109,7 +109,7 @@ export async function createTrip(
     p_display_name: displayName,
     p_events: events,
   });
-  if (error || !tripId) return err(error?.message ?? "コピーに失敗しました");
+  if (error || !tripId) return err(error?.message ?? "errors.copyFailed");
   return ok({ tripId });
 }
 
@@ -139,7 +139,7 @@ export async function updateTrip(
   if (error) return err(error.message);
   // 非 admin は RLS で 0 行になる → 権限エラーに変換。
   if (!data || data.length === 0) {
-    return err("編集できる権限がありません（管理者のみ）");
+    return err("errors.notAdmin");
   }
   return ok(undefined);
 }
@@ -158,7 +158,7 @@ export async function deleteTrip(
     .eq("user_id", userId)
     .is("left_at", null)
     .maybeSingle();
-  if (!me?.is_admin) return err("旅行を削除できるのは管理者のみです");
+  if (!me?.is_admin) return err("errors.notAdmin");
 
   const { error } = await sb.from("trips").delete().eq("id", tripId);
   if (error) return err(error.message);

@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { format } from "date-fns";
-import { ja } from "date-fns/locale";
+import { ja, enUS } from "date-fns/locale";
 import type { Matcher } from "react-day-picker";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -49,6 +50,10 @@ export function DateTimePopover({
   disabled?: Matcher | Matcher[];
   label?: string;
 }) {
+  const t = useTranslations("common");
+  const locale = useLocale();
+  const dateFnsLocale = locale === "ja" ? ja : enUS;
+
   const [open, setOpen] = useState(false);
   const d = parseYmd(date);
   const tripFrom = parseYmd(tripStart);
@@ -75,14 +80,14 @@ export function DateTimePopover({
       >
         {variant === "start" ? (
           <span className={d ? "text-foreground" : "text-subtle-foreground"}>
-            {d ? `${format(d, "M/d (EEE)", { locale: ja })} ${time}` : "日時を選択"}
+            {d ? `${format(d, "M/d (EEE)", { locale: dateFnsLocale })} ${time}` : t("selectDateTime")}
           </span>
         ) : (
           <span className="flex items-center gap-1">
             <span className="text-foreground">{time}</span>
             {dayDelta !== 0 && (
               <span className="rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600">
-                {dayDelta > 0 ? `+${dayDelta}` : dayDelta}日
+                {dayDelta > 0 ? `+${dayDelta}` : dayDelta}{t("dayLabel")}
               </span>
             )}
           </span>
@@ -97,7 +102,7 @@ export function DateTimePopover({
           // 閉じるのは外側クリック / Esc）。
           onSelect={(nd) => nd && onChange(formatYmd(nd), time)}
           defaultMonth={d ?? tripFrom ?? new Date()}
-          locale={ja}
+          locale={dateFnsLocale}
           captionLayout="dropdown-years"
           startMonth={RANGE_START}
           endMonth={RANGE_END}
@@ -110,8 +115,8 @@ export function DateTimePopover({
           modifiersClassNames={{ trip: "bg-blue-50" }}
         />
         <div className="flex items-center gap-2 border-t border-foreground/10 p-3">
-          <span className="text-sm text-muted-foreground">時刻</span>
-          <TimeSelect value={time} onChange={(t) => onChange(date, t)} />
+          <span className="text-sm text-muted-foreground">{t("timeLabel")}</span>
+          <TimeSelect value={time} onChange={(v) => onChange(date, v)} />
         </div>
       </PopoverContent>
     </Popover>

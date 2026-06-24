@@ -2,6 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
+
+import { translateSharedError } from "@/lib/translateSharedError";
 
 import {
   createEvent,
@@ -55,32 +58,34 @@ export async function updateTripAction(
   _prevState: UpdateTripState,
   formData: FormData,
 ): Promise<UpdateTripState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "ログインが必要です" };
+  if (!user) return { ok: false, error: t("loginRequired") };
 
   const title = String(formData.get("title") ?? "").trim();
   const startDate = String(formData.get("start_date") ?? "");
   const endDate = String(formData.get("end_date") ?? "");
   const currency = String(formData.get("default_currency") ?? "") as Currency;
 
-  if (!title) return { ok: false, error: "タイトルを入力してください" };
+  if (!title) return { ok: false, error: t("enterTitle") };
   if (!startDate || !endDate) {
-    return { ok: false, error: "日程を入力してください" };
+    return { ok: false, error: t("enterDates") };
   }
   if (!["JPY", "USD"].includes(currency)) {
-    return { ok: false, error: "精算通貨が不正です" };
+    return { ok: false, error: t("invalidCurrency") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await updateTrip(supabase, tripId, {
     title,
     startDate,
     endDate,
     currency,
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) return { ok: false, error: translateSharedError(result.error, tErr) };
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -91,12 +96,13 @@ export async function createExpenseAction(
   _prevState: CreateExpenseState,
   formData: FormData,
 ): Promise<CreateExpenseState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
   const localPriceRaw = (formData.get("local_price") as string | null) ?? "";
@@ -127,25 +133,25 @@ export async function createExpenseAction(
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
-    return { ok: false, error: "金額は正の数で入力してください" };
+    return { ok: false, error: t("pricePositive") };
   }
   if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
-    return { ok: false, error: "通貨を選んでください" };
+    return { ok: false, error: t("selectCurrency") };
   }
   if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {
-    return { ok: false, error: "為替レートは正の数で入力してください" };
+    return { ok: false, error: t("ratePositive") };
   }
   if (!categoryId) {
-    return { ok: false, error: "カテゴリを選んでください" };
+    return { ok: false, error: t("selectCategory") };
   }
   if (!payerMemberId) {
-    return { ok: false, error: "支払った人を選んでください" };
+    return { ok: false, error: t("selectPayer") };
   }
   if (splittable && splitMemberIds.length === 0) {
-    return { ok: false, error: "割り勘対象を1人以上選んでください" };
+    return { ok: false, error: t("selectSplitTargets") };
   }
 
-  const place = parsePlace(formData);
+  const place = parsePlace(formData, t);
   if ("error" in place) {
     return { ok: false, error: place.error };
   }
@@ -177,12 +183,13 @@ export async function updateExpenseAction(
   _prevState: CreateExpenseState,
   formData: FormData,
 ): Promise<CreateExpenseState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
   const localPriceRaw = (formData.get("local_price") as string | null) ?? "";
@@ -210,25 +217,25 @@ export async function updateExpenseAction(
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
-    return { ok: false, error: "金額は正の数で入力してください" };
+    return { ok: false, error: t("pricePositive") };
   }
   if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
-    return { ok: false, error: "通貨を選んでください" };
+    return { ok: false, error: t("selectCurrency") };
   }
   if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {
-    return { ok: false, error: "為替レートは正の数で入力してください" };
+    return { ok: false, error: t("ratePositive") };
   }
   if (!categoryId) {
-    return { ok: false, error: "カテゴリを選んでください" };
+    return { ok: false, error: t("selectCategory") };
   }
   if (!payerMemberId) {
-    return { ok: false, error: "支払った人を選んでください" };
+    return { ok: false, error: t("selectPayer") };
   }
   if (splittable && splitMemberIds.length === 0) {
-    return { ok: false, error: "割り勘対象を1人以上選んでください" };
+    return { ok: false, error: t("selectSplitTargets") };
   }
 
-  const place = parsePlace(formData);
+  const place = parsePlace(formData, t);
   if ("error" in place) {
     return { ok: false, error: place.error };
   }
@@ -257,12 +264,13 @@ export async function deleteExpenseAction(
   tripId: string,
   expenseId: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
   const result = await deleteExpense(supabase, expenseId);
@@ -282,12 +290,13 @@ export async function createPlaceAction(
   _prevState: PlaceMutationState,
   formData: FormData,
 ): Promise<PlaceMutationState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
   const name = ((formData.get("name") as string | null) ?? "").trim();
@@ -315,13 +324,13 @@ export async function createPlaceAction(
   // create_place 経由は地図上の点なので name と座標は必須。gpid/住所は
   // 任意（Google 候補なら揃う・地図タップの手動ピンは無し）。
   if (!name || lat == null || lng == null) {
-    return { ok: false, error: "場所名と地点を指定してください" };
+    return { ok: false, error: t("enterNameAndLocation") };
   }
   if (!statusId) {
-    return { ok: false, error: "ステータスを選んでください" };
+    return { ok: false, error: t("selectStatus") };
   }
   if (!["shared", "private"].includes(visibility)) {
-    return { ok: false, error: "公開範囲が不正です" };
+    return { ok: false, error: t("invalidVisibility") };
   }
 
   const result = await createPlace(supabase, tripId, {
@@ -348,12 +357,13 @@ export async function updatePlaceAction(
   _prevState: PlaceMutationState,
   formData: FormData,
 ): Promise<PlaceMutationState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
   const placeId = (formData.get("place_id") as string | null) ?? "";
@@ -364,13 +374,13 @@ export async function updatePlaceAction(
   const icon = ((formData.get("icon") as string | null) ?? "").trim();
 
   if (!placeId) {
-    return { ok: false, error: "対象の場所が不明です" };
+    return { ok: false, error: t("unknownPlace") };
   }
   if (!statusId) {
-    return { ok: false, error: "ステータスを選んでください" };
+    return { ok: false, error: t("selectStatus") };
   }
   if (!["shared", "private"].includes(visibility)) {
-    return { ok: false, error: "公開範囲が不正です" };
+    return { ok: false, error: t("invalidVisibility") };
   }
 
   const result = await updatePlace(supabase, placeId, {
@@ -389,12 +399,13 @@ export async function deletePlaceAction(
   tripId: string,
   placeId: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
   const result = await deletePlace(supabase, placeId);
@@ -413,16 +424,18 @@ export async function removeTripPinOptionAction(
   tripId: string,
   optionId: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await removeTripPinOption(supabase, tripId, optionId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: translateSharedError(result.error, tErr) };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -435,16 +448,18 @@ export async function addTripPinOptionAction(
   tripId: string,
   iconKey: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await addTripPinOption(supabase, tripId, iconKey);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: translateSharedError(result.error, tErr) };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -457,15 +472,16 @@ export async function setPlaceLocationAction(
   lat: number,
   lng: number,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return { error: "座標が不正です" };
+    return { error: t("invalidCoordinates") };
   }
 
   const result = await setPlaceLocation(supabase, placeId, lat, lng);
@@ -486,9 +502,11 @@ export type EventMutationState = {
 
 type EventKind = "normal" | "transit";
 
+type TFunc = Awaited<ReturnType<typeof getTranslations>>;
+
 // 場所欄（PlacePicker の hidden input）を PlaceInput（共有の場所解決契約）に解す。
 // 予定・費用で共有する（同じ PlacePicker・同じ wire 契約）。
-function parsePlace(formData: FormData): PlaceInput | { error: string } {
+function parsePlace(formData: FormData, t: TFunc): PlaceInput | { error: string } {
   const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
   const placeMode = get("place_mode") || "saved";
   if (placeMode === "google") {
@@ -504,7 +522,7 @@ function parsePlace(formData: FormData): PlaceInput | { error: string } {
       !Number.isFinite(gLat) ||
       !Number.isFinite(gLng)
     ) {
-      return { error: "場所を検索して候補から選んでください" };
+      return { error: t("selectFromSearch") };
     }
     return {
       kind: "google",
@@ -545,19 +563,19 @@ type ParsedEvent =
 
 // <input type="date"> / <input type="time"> は分離して送る。壁時計なので
 // ここで素朴に "YYYY-MM-DDTHH:MM:00" へ組むだけ（TZ変換は一切しない）。
-function parseEventForm(formData: FormData): ParsedEvent {
+function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
   const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
 
   const kind = (get("kind") || "normal") as EventKind;
   if (kind !== "normal" && kind !== "transit") {
-    return { error: "種別が不正です" };
+    return { error: t("invalidKind") };
   }
   const title = get("title");
-  if (!title) return { error: "タイトルを入力してください" };
+  if (!title) return { error: t("enterTitle") };
 
   const visibility = (get("visibility") || "shared") as Visibility;
   if (visibility !== "shared" && visibility !== "private") {
-    return { error: "公開範囲が不正です" };
+    return { error: t("invalidVisibility") };
   }
   const note = get("note");
 
@@ -571,7 +589,7 @@ function parseEventForm(formData: FormData): ParsedEvent {
           .filter((s) => s !== "")
       : [];
 
-  const place = parsePlace(formData);
+  const place = parsePlace(formData, t);
   if ("error" in place) return { error: place.error };
 
   if (kind === "transit") {
@@ -582,10 +600,10 @@ function parseEventForm(formData: FormData): ParsedEvent {
     const arriveTime = get("arrive_time");
     const arriveTz = get("arrive_tz");
     if (!departDate || !departTime || !departTz) {
-      return { error: "出発の日時・タイムゾーンを入力してください" };
+      return { error: t("enterDepartDateTime") };
     }
     if (!arriveDate || !arriveTime || !arriveTz) {
-      return { error: "到着の日時・タイムゾーンを入力してください" };
+      return { error: t("enterArriveDateTime") };
     }
     return {
       kind,
@@ -609,9 +627,9 @@ function parseEventForm(formData: FormData): ParsedEvent {
     // 終日イベントのTZは表示に無関係。旅行TZ概念は廃止したので UTC 固定。
     const startDate = get("start_date");
     const endDate = get("end_date") || startDate;
-    if (!startDate) return { error: "日付を入力してください" };
+    if (!startDate) return { error: t("enterDate") };
     if (endDate < startDate) {
-      return { error: "終了日は開始日以降にしてください" };
+      return { error: t("endDateAfterStart") };
     }
     return {
       kind,
@@ -629,23 +647,23 @@ function parseEventForm(formData: FormData): ParsedEvent {
   }
 
   const tz = get("tz");
-  if (!tz) return { error: "タイムゾーンを選んでください" };
+  if (!tz) return { error: t("selectTimezone") };
   const startDate = get("start_date");
   const startTime = get("start_time");
   const endDate = get("end_date") || startDate;
   const endTime = get("end_time");
   if (!startDate || !startTime) {
-    return { error: "開始の日付・時刻を入力してください" };
+    return { error: t("enterStartDateTime") };
   }
   if (!endTime) {
-    return { error: "終了時刻を入力してください" };
+    return { error: t("enterEndTime") };
   }
   // TZは跨がない（start_tz と同じ）が、日付は跨いでよい。
   // 同一フォーマットなので文字列比較で日時順を判定できる。
   const startAt = `${startDate}T${startTime}:00`;
   const endAt = `${endDate}T${endTime}:00`;
   if (endAt < startAt) {
-    return { error: "終了は開始以降にしてください" };
+    return { error: t("endAfterStart") };
   }
   return {
     kind,
@@ -667,15 +685,16 @@ export async function createEventAction(
   _prevState: EventMutationState,
   formData: FormData,
 ): Promise<EventMutationState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
-  const parsed = parseEventForm(formData);
+  const parsed = parseEventForm(formData, t);
   if ("error" in parsed) {
     return { ok: false, error: parsed.error };
   }
@@ -696,20 +715,21 @@ export async function updateEventAction(
   _prevState: EventMutationState,
   formData: FormData,
 ): Promise<EventMutationState> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { ok: false, error: "ログインしてください" };
+    return { ok: false, error: t("loginRequired") };
   }
 
   const eventId = ((formData.get("event_id") as string | null) ?? "").trim();
   if (!eventId) {
-    return { ok: false, error: "対象のイベントが不明です" };
+    return { ok: false, error: t("unknownEvent") };
   }
 
-  const parsed = parseEventForm(formData);
+  const parsed = parseEventForm(formData, t);
   if ("error" in parsed) {
     return { ok: false, error: parsed.error };
   }
@@ -729,12 +749,13 @@ export async function deleteEventAction(
   tripId: string,
   eventId: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
   const result = await deleteEvent(supabase, eventId);
@@ -752,16 +773,18 @@ export async function deleteEventAction(
 export async function ensureInviteAction(
   tripId: string,
 ): Promise<{ token: string | null; error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { token: null, error: "ログインしてください" };
+    return { token: null, error: t("loginRequired") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await ensureTripInvite(supabase, tripId);
-  if (!result.ok) return { token: null, error: result.error };
+  if (!result.ok) return { token: null, error: translateSharedError(result.error, tErr) };
   return { token: result.data.token, error: null };
 }
 
@@ -769,16 +792,18 @@ export async function ensureInviteAction(
 export async function regenerateInviteAction(
   tripId: string,
 ): Promise<{ token: string | null; error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { token: null, error: "ログインしてください" };
+    return { token: null, error: t("loginRequired") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await regenerateTripInvite(supabase, tripId);
-  if (!result.ok) return { token: null, error: result.error };
+  if (!result.ok) return { token: null, error: translateSharedError(result.error, tErr) };
   return { token: result.data.token, error: null };
 }
 
@@ -789,16 +814,18 @@ export async function regenerateInviteAction(
 export async function deleteTripAction(
   tripId: string,
 ): Promise<{ error: string }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
+  const tErr = await getTranslations("errors");
   const result = await deleteTrip(supabase, tripId, user.id);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) return { error: translateSharedError(result.error, tErr) };
 
   redirect("/trips");
 }
@@ -808,12 +835,13 @@ export async function removeMemberAction(
   memberId: string,
   isSelf: boolean,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
   const result = await removeTripMember(supabase, memberId);
@@ -835,20 +863,21 @@ export async function updateMyMemberAction(
   tripId: string,
   newName: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) {
-    return { error: "ログインしてください" };
+    return { error: t("loginRequired") };
   }
 
   const name = newName.trim();
   if (!name) {
-    return { error: "名前を入力してください" };
+    return { error: t("enterName") };
   }
   if (name.length > 32) {
-    return { error: "名前は32文字以内にしてください" };
+    return { error: t("nameTooLong") };
   }
 
   const result = await updateMyMemberName(supabase, tripId, user.id, name);
@@ -873,22 +902,23 @@ export async function createTodoAction(
   kind: string,
   visibility: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "ログインしてください" };
+  if (!user) return { error: t("loginRequired") };
 
   const trimmed = title.trim();
-  if (!trimmed) return { error: "内容を入力してください" };
+  if (!trimmed) return { error: t("enterContent") };
   if (!TODO_PRIORITIES.includes(priority)) {
-    return { error: "優先度が不正です" };
+    return { error: t("invalidPriority") };
   }
   if (!TODO_KINDS.includes(kind)) {
-    return { error: "区分が不正です" };
+    return { error: t("invalidTodoKind") };
   }
   if (!TODO_VISIBILITIES.includes(visibility)) {
-    return { error: "公開範囲が不正です" };
+    return { error: t("invalidVisibility") };
   }
 
   const result = await createTodo(supabase, {
@@ -909,11 +939,12 @@ export async function toggleTodoAction(
   todoId: string,
   done: boolean,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "ログインしてください" };
+  if (!user) return { error: t("loginRequired") };
 
   const result = await setTodoDone(supabase, todoId, done);
   if (!result.ok) return { error: result.error };
@@ -927,21 +958,22 @@ export async function updateTodoAction(
   todoId: string,
   fields: { title?: string; priority?: string },
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "ログインしてください" };
+  if (!user) return { error: t("loginRequired") };
 
   const patch: { title?: string; priority?: string } = {};
   if (fields.title !== undefined) {
     const trimmed = fields.title.trim();
-    if (!trimmed) return { error: "内容を入力してください" };
+    if (!trimmed) return { error: t("enterContent") };
     patch.title = trimmed;
   }
   if (fields.priority !== undefined) {
     if (!TODO_PRIORITIES.includes(fields.priority)) {
-      return { error: "優先度が不正です" };
+      return { error: t("invalidPriority") };
     }
     patch.priority = fields.priority;
   }
@@ -958,11 +990,12 @@ export async function deleteTodoAction(
   tripId: string,
   todoId: string,
 ): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "ログインしてください" };
+  if (!user) return { error: t("loginRequired") };
 
   const result = await deleteTodo(supabase, todoId);
   if (!result.ok) return { error: result.error };
@@ -978,14 +1011,16 @@ export async function toggleTodoLikeAction(
   tripId: string,
   todoId: string,
 ): Promise<{ error: string | null; liked: boolean }> {
+  const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { error: "ログインしてください", liked: false };
+  if (!user) return { error: t("loginRequired"), liked: false };
 
+  const tErr = await getTranslations("errors");
   const result = await toggleTodoLike(supabase, tripId, todoId, user.id);
-  if (!result.ok) return { error: result.error, liked: result.liked };
+  if (!result.ok) return { error: translateSharedError(result.error, tErr), liked: result.liked };
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null, liked: result.liked };

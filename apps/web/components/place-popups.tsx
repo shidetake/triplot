@@ -434,7 +434,6 @@ export function LocateInfo({
   onCancel: () => void;
 }) {
   const t = useTranslations("place");
-  const tCommon = useTranslations("common");
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 

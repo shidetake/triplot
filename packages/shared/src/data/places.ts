@@ -106,7 +106,7 @@ export async function addTripPinOption(
   iconKey: string,
 ): Promise<Result<void>> {
   const entry = getIcon(iconKey);
-  if (!entry) return err("不明なアイコンです");
+  if (!entry) return err("errors.unknownIcon");
 
   // 末尾の sort_order を計算（ラフに max+1。被りは検索性能にだけ影響）。
   const { data: maxRow, error: maxErr } = await sb
@@ -128,7 +128,7 @@ export async function addTripPinOption(
   if (error) {
     // unique 違反 = 既に追加済み。
     if (error.code === "23505") {
-      return err("そのアイコンは既に追加済みです");
+      return err("errors.iconAlreadyAdded");
     }
     return err(error.message);
   }

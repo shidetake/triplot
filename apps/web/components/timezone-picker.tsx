@@ -1,52 +1,70 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Combobox } from "@base-ui/react/combobox";
 
 import { inputClass } from "./input-class";
 import { menuItemClass } from "./menu-item";
 
-// 旅行でよく使うTZの短いリスト（検索が空のとき＝既定で出す候補）。label は日本語の
-// 通称のみ（IANA は値=value 側に持つ）。expense-form の tz 表示でも使う。
-export const COMMON_TIMEZONES: { value: string; label: string }[] = [
-  { value: "Asia/Tokyo", label: "日本" },
-  { value: "Pacific/Honolulu", label: "ハワイ" },
-  { value: "America/Los_Angeles", label: "米国西海岸" },
-  { value: "America/New_York", label: "米国東海岸" },
-  { value: "Europe/London", label: "イギリス" },
-  { value: "Europe/Paris", label: "中央欧州" },
-  { value: "Asia/Bangkok", label: "タイ" },
-  { value: "Asia/Seoul", label: "韓国" },
-  { value: "Asia/Singapore", label: "シンガポール" },
-  { value: "Asia/Taipei", label: "台湾" },
-  { value: "Asia/Shanghai", label: "中国" },
-  { value: "Asia/Hong_Kong", label: "香港" },
-  { value: "Australia/Sydney", label: "シドニー" },
-  { value: "Pacific/Guam", label: "グアム" },
+// 旅行でよく使うTZのIANA値リスト（ラベルはカタログから引く）。
+const COMMON_TZ_VALUES: string[] = [
+  "Asia/Tokyo",
+  "Pacific/Honolulu",
+  "America/Los_Angeles",
+  "America/New_York",
+  "Europe/London",
+  "Europe/Paris",
+  "Asia/Bangkok",
+  "Asia/Seoul",
+  "Asia/Singapore",
+  "Asia/Taipei",
+  "Asia/Shanghai",
+  "Asia/Hong_Kong",
+  "Australia/Sydney",
+  "Pacific/Guam",
 ];
 
-const FRIENDLY = new Map(COMMON_TIMEZONES.map((z) => [z.value, z.label]));
-
-// 全IANAタイムゾーン（モダンブラウザ/Node）。取れない環境は common にフォールバック。
-const ALL_ZONES: string[] = (() => {
-  const sof = (Intl as { supportedValuesOf?: (k: string) => string[] })
-    .supportedValuesOf;
-  try {
-    return sof ? sof("timeZone") : COMMON_TIMEZONES.map((z) => z.value);
-  } catch {
-    return COMMON_TIMEZONES.map((z) => z.value);
-  }
-})();
+// IANA → カタログキー変換（"Asia/Hong_Kong" → "asia_hong_kong"）。
+function ianaToKey(iana: string): string {
+  return iana.replace(/\//g, "_").replace(/-/g, "_").toLowerCase();
+}
 
 // IANA 末尾の都市名（"Asia/Ho_Chi_Minh" → "Ho Chi Minh"）。
 function cityOf(iana: string): string {
   return iana.split("/").pop()?.replace(/_/g, " ") ?? iana;
 }
 
-// 表示名: 主要TZは日本語通称、それ以外は IANA の都市名。
+// 全IANAタイムゾーン（モダンブラウザ/Node）。取れない環境は common にフォールバック。
+const ALL_ZONES: string[] = (() => {
+  const sof = (Intl as { supportedValuesOf?: (k: string) => string[] })
+    .supportedValuesOf;
+  try {
+    return sof ? sof("timeZone") : COMMON_TZ_VALUES;
+  } catch {
+    return COMMON_TZ_VALUES;
+  }
+})();
+
+// 表示ラベルを解決するフック。カタログにあれば翻訳名、なければ都市名。
+export function useTzLabel(): (iana: string) => string {
+  const t = useTranslations("timezone");
+  return (iana: string) => {
+    const key = ianaToKey(iana);
+    // useTranslations は未知キーで例外を投げるため、known keys だけ引く。
+    try {
+      return t(key as Parameters<typeof t>[0]);
+    } catch {
+      return cityOf(iana);
+    }
+  };
+}
+
+// 後方互換: フック不要の文脈（expense-form の既存パターン）向けに残す。
+// コンポーネント内では useTzLabel() を使うこと。
 export function tzDisplayLabel(iana: string): string {
-  return FRIENDLY.get(iana) ?? cityOf(iana);
+  return cityOf(iana);
 }
 
 type TzRow = { iana: string; label: string };
@@ -54,7 +72,7 @@ type TzRow = { iana: string; label: string };
 const MAX_RESULTS = 60;
 
 // 都市/地域名で検索して全IANAタイムゾーンから選ぶピッカー（iOS/Google カレンダー方式）。
-// 表示は日本語通称か都市名・値は IANA 文字列。候補リストには IANA も併記（選択の手がかり
+// 表示は翻訳通称か都市名・値は IANA 文字列。候補リストには IANA も併記（選択の手がかり
 // ＋技術識別子を見たい人向け）だが、選択後のトリガ表示は短い通称だけ。
 // 検索が空のときは主要TZ（COMMON）だけ出し、打ち始めると全ゾーンを検索する。
 // name を渡すと hidden input で IANA を送る（disclosure 等で外側が送る場合は省略）。
@@ -69,18 +87,19 @@ export function TimezonePicker({
   name?: string;
   placeholder?: string;
 }) {
-  const [query, setQuery] = useState(tzDisplayLabel(value));
+  const tzLabel = useTzLabel();
+  const [query, setQuery] = useState(tzLabel(value));
 
   const rows = useMemo<TzRow[]>(() => {
     const q = query.trim().toLowerCase();
-    const selectedLabel = tzDisplayLabel(value).toLowerCase();
+    const selectedLabel = tzLabel(value).toLowerCase();
     // 未入力 or 選択値そのまま＝検索していない → 主要TZを既定表示
     if (q === "" || q === selectedLabel) {
-      return COMMON_TIMEZONES.map((z) => ({ iana: z.value, label: z.label }));
+      return COMMON_TZ_VALUES.map((iana) => ({ iana, label: tzLabel(iana) }));
     }
     const out: TzRow[] = [];
     for (const iana of ALL_ZONES) {
-      const label = tzDisplayLabel(iana);
+      const label = tzLabel(iana);
       if (
         label.toLowerCase().includes(q) ||
         iana.toLowerCase().includes(q) ||
@@ -91,7 +110,7 @@ export function TimezonePicker({
       }
     }
     return out;
-  }, [query, value]);
+  }, [query, value, tzLabel]);
 
   return (
     <>

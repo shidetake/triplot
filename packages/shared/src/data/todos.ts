@@ -81,7 +81,7 @@ export async function toggleTodoLike(
   if (!meMember) {
     return {
       ok: false,
-      error: "このトリップのメンバーではありません",
+      error: "errors.notTripMember",
       liked: false,
     };
   }
