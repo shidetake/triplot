@@ -66,11 +66,12 @@ export function DateRangePopover({
   }, [f, to]);
 
   const sep = t("dateRangeSeparator");
+  const dateFormat = locale === "ja" ? "yyyy/M/d" : "MMM d, yyyy";
   const label =
     f && to
-      ? `${format(f, "yyyy/M/d (EEE)", { locale: dateFnsLocale })} ${sep} ${format(to, "M/d (EEE)", { locale: dateFnsLocale })}`
+      ? `${format(f, dateFormat, { locale: dateFnsLocale })} ${sep} ${format(to, dateFormat, { locale: dateFnsLocale })}`
       : f
-        ? `${format(f, "yyyy/M/d (EEE)", { locale: dateFnsLocale })} ${sep} ?`
+        ? `${format(f, dateFormat, { locale: dateFnsLocale })} ${sep} ?`
         : "";
 
   return (

@@ -1,9 +1,10 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateTripButton } from "@/components/create-trip-button";
 import { createClient } from "@/lib/supabase/server";
+import { formatTripDate } from "@triplot/shared/ymd";
 
 // アプリのホーム = 旅行一覧（要ログイン）。未ログインは LP（/）へ。
 export default async function TripsPage() {
@@ -37,7 +38,10 @@ async function TripsSection({ userId }: { userId: string }) {
     .map((m) => m.trips)
     .filter((t): t is NonNullable<typeof t> => t !== null);
 
-  const t = await getTranslations("trips");
+  const [t, locale] = await Promise.all([
+    getTranslations("trips"),
+    getLocale(),
+  ]);
 
   if (error) {
     return (
@@ -76,8 +80,8 @@ async function TripsSection({ userId }: { userId: string }) {
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
                   {t("dateRange", {
-                    start: trip.start_date ?? "?",
-                    end: trip.end_date ?? "?",
+                    start: formatTripDate(trip.start_date, locale),
+                    end: formatTripDate(trip.end_date, locale),
                   })}
                 </div>
               </Link>

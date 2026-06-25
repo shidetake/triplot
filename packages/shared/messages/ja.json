@@ -32,7 +32,7 @@
     "minuteLabel": "分",
     "pleaseSelect": "選択してください",
     "dayLabel": "日",
-    "dateRangeSeparator": "〜",
+    "dateRangeSeparator": "–",
     "deleting": "削除中...",
     "adding": "追加中...",
     "saving": "保存中...",
@@ -102,7 +102,7 @@
     "empty": "まだ参加している旅行はありません。",
     "loadError": "旅行一覧の取得に失敗しました: {message}",
     "create": "旅行を作成",
-    "dateRange": "{start} 〜 {end}"
+    "dateRange": "{start} – {end}"
   },
   "createTrip": {
     "modeNew": "新規",

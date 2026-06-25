@@ -1,4 +1,4 @@
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -30,6 +30,7 @@ import {
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
+import { formatTripDate } from "@triplot/shared/ymd";
 import { matchPlace, type TripPlace } from "@/lib/receipt/placeMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -40,12 +41,6 @@ import type {
   Visibility,
 } from "@triplot/shared/types/database";
 
-/** "2026-06-01" → "6/1" */
-function formatTripDate(ymd: string | null): string {
-  if (!ymd) return "?";
-  const [, mo, d] = ymd.split("-").map(Number);
-  return `${mo}/${d}`;
-}
 
 export default async function TripDetailPage({
   params,
@@ -414,7 +409,7 @@ export default async function TripDetailPage({
     formattedAddress: p.formatted_address,
   }));
 
-  const t = await getTranslations();
+  const [t, locale] = await Promise.all([getTranslations(), getLocale()]);
 
   const importDrafts = (tripDrafts ?? []).flatMap((d) => {
     // 合体済みなら合体後の値で確定フォームを事前入力する。
@@ -485,7 +480,7 @@ export default async function TripDetailPage({
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>
-            {formatTripDate(trip.start_date)} – {formatTripDate(trip.end_date)}
+            {formatTripDate(trip.start_date, locale)} – {formatTripDate(trip.end_date, locale)}
           </span>
           <InlineDivider />
           <span>
