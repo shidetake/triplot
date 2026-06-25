@@ -31,7 +31,7 @@ import {
 import { vividColor } from "@triplot/shared/memberColors";
 import { useTranslations } from "next-intl";
 
-import { PlaceIcon, type PlaceRow, type PlaceStatus } from "./place-list";
+import { PlaceIcon, type PlaceRow } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
 
 // タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
@@ -219,7 +219,6 @@ function MapController({
 
 export function PlaceMap({
   places,
-  statuses,
   memberHueById,
   candidates,
   selected,
@@ -236,8 +235,7 @@ export function PlaceMap({
   draftContent,
 }: {
   places: PlaceRow[];
-  statuses: PlaceStatus[];
-  // 候補ピン（status.tentative=true）の地色を作成者の hue で塗るのに使う。
+  // 候補ピン（tentative=true）の地色を作成者の hue で塗るのに使う。
   memberHueById: Map<string, number | null>;
   candidates: CandidatePlace[];
   selected: Selection | null;
@@ -266,10 +264,6 @@ export function PlaceMap({
   // 自由ピンの click ドロップ（＝マウス専用）を行わない。
   const recentTouchUntil = useRef(0);
 
-  const statusById: Record<string, PlaceStatus> = useMemo(
-    () => Object.fromEntries(statuses.map((s) => [s.id, s])),
-    [statuses],
-  );
 
   // 未マップ（自由入力）の場所は座標が無いので地図に出さない。
   const mappedPlaces = useMemo(
@@ -439,15 +433,12 @@ export function PlaceMap({
 
           {mapId &&
             mappedPlaces.map((p) => {
-              const st = statusById[p.status_id];
-              // 未確定（候補）ステータスは半透明 + 地色を「作った人のメンバー
-              // カラー」で塗る。確定（tentative=false）は status.color のまま。
-              // メンバー hue が無ければ status.color にフォールバック。
+              // 候補（tentative=true）は半透明 + 作成者のメンバー色で塗る。
+              // 確定（tentative=false）は固定のグリーンで塗る。
               const creatorHue = memberHueById.get(p.created_by_member_id);
-              const bg =
-                (st?.tentative ? vividColor(creatorHue) : null) ??
-                st?.color ??
-                "#6b7280";
+              const bg = p.tentative
+                ? (vividColor(creatorHue) ?? "#6b7280")
+                : "#10b981";
               return (
                 <AdvancedMarker
                   key={p.id}
@@ -457,7 +448,7 @@ export function PlaceMap({
                 >
                   <div
                     className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow ${
-                      st?.tentative ? "opacity-50" : ""
+                      p.tentative ? "opacity-50" : ""
                     }`}
                     style={{ backgroundColor: bg }}
                   >

@@ -13,7 +13,7 @@ import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
 import { InlineDivider } from "@/components/inline-divider";
 import { MembersSection } from "@/components/members-section";
-import type { PlaceRow, PlaceStatus } from "@/components/place-list";
+import type { PlaceRow } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
@@ -59,7 +59,6 @@ export default async function TripDetailPage({
     { data: members },
     { data: categoriesRaw },
     { data: expensesRaw },
-    { data: placeStatusesRaw },
     { data: placesRaw },
     { data: eventsRaw },
     { data: todosRaw },
@@ -80,7 +79,7 @@ export default async function TripDetailPage({
       .order("joined_at", { ascending: true }),
     supabase
       .from("expense_categories")
-      .select("id, name, color, icon, sort_order")
+      .select("id, name, color, icon, sort_order, key")
       .eq("trip_id", tripId)
       .order("sort_order", { ascending: true }),
     supabase
@@ -95,14 +94,9 @@ export default async function TripDetailPage({
       .order("occurred_at", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
-      .from("place_statuses")
-      .select("id, name, color, sort_order, tentative")
-      .eq("trip_id", tripId)
-      .order("sort_order", { ascending: true }),
-    supabase
       .from("places")
       .select(
-        "id, name, lat, lng, google_place_id, formatted_address, region, locality, status_id, visibility, note, icon, created_by_member_id, created_at",
+        "id, name, lat, lng, google_place_id, formatted_address, region, locality, tentative, visibility, note, icon, created_by_member_id, created_at",
       )
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false }),
@@ -134,7 +128,15 @@ export default async function TripDetailPage({
   const me = activeMembers.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
-  const categories: Category[] = categoriesRaw ?? [];
+  const categories: Category[] = (categoriesRaw ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    icon: c.icon,
+    color: c.color,
+    sort_order: c.sort_order,
+    // key は migration 20260625000002 で追加。生成型更新後は cast 不要になる。
+    key: (c as { key?: string | null }).key ?? null,
+  }));
 
   // gen-types は CHECK 制約を読めず string を返すので、DB 境界でドメイン型に絞る
   const defaultCurrency = trip.default_currency as Currency;
@@ -164,14 +166,6 @@ export default async function TripDetailPage({
     sort_order: p.sort_order,
   }));
 
-  const placeStatuses: PlaceStatus[] = (placeStatusesRaw ?? []).map((s) => ({
-    id: s.id,
-    name: s.name,
-    color: s.color,
-    sort_order: s.sort_order,
-    tentative: s.tentative,
-  }));
-
   const places: PlaceRow[] = (placesRaw ?? []).map((p) => ({
     id: p.id,
     name: p.name,
@@ -181,7 +175,7 @@ export default async function TripDetailPage({
     formatted_address: p.formatted_address,
     region: p.region,
     locality: p.locality,
-    status_id: p.status_id,
+    tentative: p.tentative,
     visibility: p.visibility as Visibility,
     note: p.note,
     icon: p.icon,
@@ -256,23 +250,18 @@ export default async function TripDetailPage({
 
   const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
   // KML/KMZ エクスポート用: 座標を持つ place のみ。説明は住所＋メモを改行で連結。
-  // 色（status の hue）・アイコン（icon）・カテゴリ（status 名）も載せる。
-  const statusById = new Map(placeStatuses.map((s) => [s.id, s]));
   const kmlPlacemarks: KmlPlacemark[] = places
     .filter((p) => p.lat != null && p.lng != null)
-    .map((p) => {
-      const status = p.status_id ? statusById.get(p.status_id) : undefined;
-      return {
-        name: p.name,
-        lat: p.lat as number,
-        lng: p.lng as number,
-        description:
-          [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
-        colorHex: status?.color ?? null,
-        category: status?.name ?? null,
-        iconKey: p.icon,
-      };
-    });
+    .map((p) => ({
+      name: p.name,
+      lat: p.lat as number,
+      lng: p.lng as number,
+      description:
+        [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
+      colorHex: p.tentative ? "#f59e0b" : "#10b981",
+      category: p.tentative ? "候補" : "確定",
+      iconKey: p.icon,
+    }));
   // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
   const tzTimeline = buildTripTzTimeline(scheduleEvents);
   // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
@@ -535,7 +524,6 @@ export default async function TripDetailPage({
         <PlacesSection
           tripId={tripId}
           places={places}
-          statuses={placeStatuses}
           pinOptions={pinOptions}
           members={activeMembers.map((m) => ({
             id: m.id,

@@ -7,14 +7,6 @@ import { useTranslations } from "next-intl";
 import { ColorBadge } from "./color-badge";
 import { PrivateBadge } from "./private-badge";
 
-export type PlaceStatus = {
-  id: string;
-  name: string;
-  color: string;
-  sort_order: number;
-  tentative: boolean;
-};
-
 export type PlaceRow = {
   id: string;
   name: string;
@@ -25,7 +17,7 @@ export type PlaceRow = {
   formatted_address: string | null;
   region: string | null;
   locality: string | null;
-  status_id: string;
+  tentative: boolean;
   visibility: Visibility;
   note: string | null;
   icon: string;
@@ -76,7 +68,6 @@ export function gmapsUrl(
 
 export function PlaceList({
   places,
-  statuses,
   selectedId,
   locatingId,
   onSelect,
@@ -84,7 +75,6 @@ export function PlaceList({
   onCancelLocate,
 }: {
   places: PlaceRow[];
-  statuses: PlaceStatus[];
   selectedId: string | null;
   // 現在「位置を指定」モード中の未マップ place の id（あれば）。
   // その行は active 表示にして、クリックで取り消しできるようにする。
@@ -95,7 +85,6 @@ export function PlaceList({
   onCancelLocate: () => void;
 }) {
   const t = useTranslations("place");
-  const statusById = new Map(statuses.map((s) => [s.id, s]));
 
   if (places.length === 0) {
     return null;
@@ -104,7 +93,8 @@ export function PlaceList({
   return (
     <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-white">
       {places.map((p) => {
-        const status = statusById.get(p.status_id);
+        const statusLabel = p.tentative ? t("statusCandidate") : t("statusConfirmed");
+        const statusColor = p.tentative ? "#f59e0b" : "#10b981";
         const isSelected = p.id === selectedId;
         const unmapped = p.lat == null;
         const isLocating = unmapped && p.id === locatingId;
@@ -129,9 +119,7 @@ export function PlaceList({
             >
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  {status && (
-                    <ColorBadge color={status.color}>{status.name}</ColorBadge>
-                  )}
+                  <ColorBadge color={statusColor}>{statusLabel}</ColorBadge>
                   <span className="font-medium">{p.name}</span>
                   {p.visibility === "private" && <PrivateBadge />}
                   {unmapped && (

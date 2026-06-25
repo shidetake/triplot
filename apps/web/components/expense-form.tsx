@@ -56,6 +56,7 @@ export type Category = {
   icon: string;
   color: string;
   sort_order: number;
+  key: string | null;
 };
 
 const initialState: CreateExpenseState = { ok: false, error: null };

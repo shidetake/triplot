@@ -300,7 +300,7 @@ export async function createPlaceAction(
   }
 
   const name = ((formData.get("name") as string | null) ?? "").trim();
-  const statusId = (formData.get("status_id") as string | null) ?? "";
+  const tentative = (formData.get("tentative") as string | null) !== "false";
   const visibility =
     (formData.get("visibility") as Visibility | null) ?? "shared";
   const note = ((formData.get("note") as string | null) ?? "").trim();
@@ -326,16 +326,13 @@ export async function createPlaceAction(
   if (!name || lat == null || lng == null) {
     return { ok: false, error: t("enterNameAndLocation") };
   }
-  if (!statusId) {
-    return { ok: false, error: t("selectStatus") };
-  }
   if (!["shared", "private"].includes(visibility)) {
     return { ok: false, error: t("invalidVisibility") };
   }
 
   const result = await createPlace(supabase, tripId, {
     name,
-    statusId,
+    tentative,
     visibility,
     note,
     googlePlaceId,
@@ -367,7 +364,7 @@ export async function updatePlaceAction(
   }
 
   const placeId = (formData.get("place_id") as string | null) ?? "";
-  const statusId = (formData.get("status_id") as string | null) ?? "";
+  const tentative = (formData.get("tentative") as string | null) !== "false";
   const visibility =
     (formData.get("visibility") as Visibility | null) ?? "shared";
   const note = ((formData.get("note") as string | null) ?? "").trim();
@@ -376,15 +373,12 @@ export async function updatePlaceAction(
   if (!placeId) {
     return { ok: false, error: t("unknownPlace") };
   }
-  if (!statusId) {
-    return { ok: false, error: t("selectStatus") };
-  }
   if (!["shared", "private"].includes(visibility)) {
     return { ok: false, error: t("invalidVisibility") };
   }
 
   const result = await updatePlace(supabase, placeId, {
-    statusId,
+    tentative,
     visibility,
     note,
     icon,

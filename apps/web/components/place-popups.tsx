@@ -14,10 +14,9 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { Visibility } from "@triplot/shared/types/database";
 
-import { type PinOption } from "@triplot/shared/placeIcons";
+import { getIcon, type PinOption } from "@triplot/shared/placeIcons";
 
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
-import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
 import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
@@ -25,12 +24,7 @@ import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
-import {
-  gmapsUrl,
-  PlaceIcon,
-  type PlaceRow,
-  type PlaceStatus,
-} from "./place-list";
+import { gmapsUrl, PlaceIcon, type PlaceRow } from "./place-list";
 import type { CandidatePlace } from "./place-search";
 
 // 再 export（既存の `import { type PinOption } from "./place-popups"` を壊さない）。
@@ -38,34 +32,40 @@ export type { PinOption };
 
 const initialState: PlaceMutationState = { ok: false, error: null };
 
-function StatusSelect({
-  statuses,
+function TentativeField({
   value,
   onChange,
 }: {
-  statuses: PlaceStatus[];
-  value: string;
-  onChange: (v: string) => void;
+  value: boolean;
+  onChange: (v: boolean) => void;
 }) {
   const t = useTranslations("place");
-  const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
   return (
-    <label className="block text-sm">
-      <FieldLabel>{t("status")}</FieldLabel>
-      <select
-        name="status_id"
-        required
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={`mt-1 block w-full ${inputClass}`}
-      >
-        {sorted.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <fieldset className="text-sm">
+      <legend className="font-medium">{t("status")}</legend>
+      <div className="mt-1 flex gap-3">
+        <label className="inline-flex items-center gap-1">
+          <input
+            type="radio"
+            name="tentative"
+            value="true"
+            checked={value}
+            onChange={() => onChange(true)}
+          />
+          <span>{t("statusCandidate")}</span>
+        </label>
+        <label className="inline-flex items-center gap-1">
+          <input
+            type="radio"
+            name="tentative"
+            value="false"
+            checked={!value}
+            onChange={() => onChange(false)}
+          />
+          <span>{t("statusConfirmed")}</span>
+        </label>
+      </div>
+    </fieldset>
   );
 }
 
@@ -130,21 +130,25 @@ function IconPicker({
     <fieldset className="text-sm">
       <legend className="font-medium">{t("pinShape")}</legend>
       <div className="mt-1 flex flex-wrap gap-1">
-        {sorted.map((o) => (
-          <button
-            key={o.id}
-            type="button"
-            onClick={() => onChange(o.icon)}
-            title={o.label}
-            className={`flex h-8 w-8 items-center justify-center rounded-md border ${
-              value === o.icon
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
-            }`}
-          >
-            <PlaceIcon icon={o.icon} size={20} />
-          </button>
-        ))}
+        {sorted.map((o) => {
+          const catalogEntry = getIcon(o.icon);
+          const label = catalogEntry ? t(`icon.${catalogEntry.key}`) : o.label;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => onChange(o.icon)}
+              title={label}
+              className={`flex h-8 w-8 items-center justify-center rounded-md border ${
+                value === o.icon
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : "border-foreground/20 text-muted-foreground hover:bg-foreground/10"
+              }`}
+            >
+              <PlaceIcon icon={o.icon} size={20} />
+            </button>
+          );
+        })}
         <button
           type="button"
           onClick={() => setAddOpen(true)}
@@ -173,13 +177,11 @@ function IconPicker({
 export function CandidateInfo({
   tripId,
   candidate,
-  statuses,
   pinOptions,
   onAdded,
 }: {
   tripId: string;
   candidate: CandidatePlace;
-  statuses: PlaceStatus[];
   pinOptions: PinOption[];
   onAdded: () => void;
 }) {
@@ -188,13 +190,8 @@ export function CandidateInfo({
     createPlaceAction.bind(null, tripId),
     initialState,
   );
-  const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
-  // 新規作成時のデフォルトは「確定」=tentative が false の最初のステータス。
-  // ユーザが追加した独自ステータス構成でも、確定相当（非 tentative）が
-  // 優先される。全部 tentative の場合だけ最初の行にフォールバック。
-  const defaultStatusId =
-    sorted.find((s) => !s.tentative)?.id ?? sorted[0]?.id ?? "";
-  const [statusId, setStatusId] = useState(defaultStatusId);
+  // Google 候補から追加するときは「確定」がデフォルト。
+  const [tentative, setTentative] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const [icon, setIcon] = useState("pin");
   const noteId = useId();
@@ -258,11 +255,7 @@ export function CandidateInfo({
         <input type="hidden" name="locality" value={candidate.locality ?? ""} />
 
         <input type="hidden" name="icon" value={icon} />
-        <StatusSelect
-          statuses={statuses}
-          value={statusId}
-          onChange={setStatusId}
-        />
+        <TentativeField value={tentative} onChange={setTentative} />
         <IconPicker
           tripId={tripId}
           options={pinOptions}
@@ -309,13 +302,11 @@ export function CandidateInfo({
 export function DraftInfo({
   tripId,
   draft,
-  statuses,
   pinOptions,
   onAdded,
 }: {
   tripId: string;
   draft: { lat: number; lng: number };
-  statuses: PlaceStatus[];
   pinOptions: PinOption[];
   onAdded: () => void;
 }) {
@@ -323,13 +314,8 @@ export function DraftInfo({
     createPlaceAction.bind(null, tripId),
     initialState,
   );
-  const sorted = [...statuses].sort((a, b) => a.sort_order - b.sort_order);
-  // 新規作成時のデフォルトは「確定」=tentative が false の最初のステータス。
-  // ユーザが追加した独自ステータス構成でも、確定相当（非 tentative）が
-  // 優先される。全部 tentative の場合だけ最初の行にフォールバック。
-  const defaultStatusId =
-    sorted.find((s) => !s.tentative)?.id ?? sorted[0]?.id ?? "";
-  const [statusId, setStatusId] = useState(defaultStatusId);
+  // 地図タップで置いた手動ピンはデフォルト「候補」。
+  const [tentative, setTentative] = useState(true);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const t = useTranslations("place");
   const [icon, setIcon] = useState("pin");
@@ -369,11 +355,7 @@ export function DraftInfo({
             className="mt-1 block w-full"
           />
         </label>
-        <StatusSelect
-          statuses={statuses}
-          value={statusId}
-          onChange={setStatusId}
-        />
+        <TentativeField value={tentative} onChange={setTentative} />
         <IconPicker
           tripId={tripId}
           options={pinOptions}
@@ -491,7 +473,6 @@ export function LocateInfo({
 export function SavedInfo({
   tripId,
   place,
-  statuses,
   pinOptions,
   canEdit,
   canDelete,
@@ -500,7 +481,6 @@ export function SavedInfo({
 }: {
   tripId: string;
   place: PlaceRow;
-  statuses: PlaceStatus[];
   pinOptions: PinOption[];
   canEdit: boolean;
   canDelete: boolean;
@@ -515,7 +495,7 @@ export function SavedInfo({
     updatePlaceAction.bind(null, tripId),
     initialState,
   );
-  const [statusId, setStatusId] = useState(place.status_id);
+  const [tentative, setTentative] = useState(place.tentative);
   const [visibility, setVisibility] = useState<Visibility>(place.visibility);
   const [icon, setIcon] = useState(place.icon);
   const noteId = useId();
@@ -597,11 +577,7 @@ export function SavedInfo({
         >
           <input type="hidden" name="place_id" value={place.id} />
           <input type="hidden" name="icon" value={icon} />
-          <StatusSelect
-            statuses={statuses}
-            value={statusId}
-            onChange={setStatusId}
-          />
+          <TentativeField value={tentative} onChange={setTentative} />
           <IconPicker
           tripId={tripId}
           options={pinOptions}

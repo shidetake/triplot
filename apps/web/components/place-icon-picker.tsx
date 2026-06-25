@@ -54,8 +54,9 @@ export function PlaceIconPicker({
     setError(null);
     if (selectedOption) {
       // 削除
+      const iconName = selectedEntry ? t(`icon.${selectedEntry.key}`) : selectedOption.label;
       const ok = await confirmDialog({
-        title: t("iconPickerRemoveTitle", { name: selectedOption.label }),
+        title: t("iconPickerRemoveTitle", { name: iconName }),
         body: t("iconPickerRemoveBody"),
         confirmLabel: t("iconPickerRemoveConfirm"),
       });
@@ -119,7 +120,7 @@ export function PlaceIconPicker({
                   type="button"
                   onClick={() => setSelected(it.key)}
                   disabled={isPending}
-                  title={it.label}
+                  title={t(`icon.${it.key}`)}
                   aria-pressed={sel}
                   className={`flex h-9 items-center justify-center rounded-md transition ${
                     sel ? selectedClass : idleClass
@@ -145,7 +146,7 @@ export function PlaceIconPicker({
                   <PlaceIcon icon={selectedEntry.key} size={20} />
                 </span>
                 <span className="font-medium text-foreground">
-                  {selectedEntry.label}
+                  {t(`icon.${selectedEntry.key}`)}
                 </span>
               </>
             ) : (

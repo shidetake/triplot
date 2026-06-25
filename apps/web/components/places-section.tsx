@@ -7,7 +7,8 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 
 import { centroid, type LatLng, TOKYO } from "@triplot/shared/placeMap";
 
-import { PlaceList, type PlaceRow, type PlaceStatus } from "./place-list";
+import { PlaceList, type PlaceRow } from "./place-list";
+// PlaceStatus は削除済み — place.tentative boolean に移行
 import { PlaceMap, type Selection } from "./place-map";
 import {
   CandidateInfo,
@@ -22,14 +23,12 @@ import { MessageBox } from "./message-box";
 export function PlacesSection({
   tripId,
   places,
-  statuses,
   pinOptions,
   members,
   myMemberId,
 }: {
   tripId: string;
   places: PlaceRow[];
-  statuses: PlaceStatus[];
   pinOptions: PinOption[];
   // 候補ピン（tentative）の色を作成者の hue で塗るのに使う。
   members: { id: string; color: number | null }[];
@@ -154,7 +153,6 @@ export function PlacesSection({
         </MessageBox>
         <PlaceList
           places={places}
-          statuses={statuses}
           selectedId={null}
           locatingId={null}
           onSelect={() => {}}
@@ -176,7 +174,6 @@ export function PlacesSection({
         <CandidateInfo
           tripId={tripId}
           candidate={c}
-          statuses={statuses}
           pinOptions={pinOptions}
           onAdded={clearSearch}
         />
@@ -191,7 +188,6 @@ export function PlacesSection({
         <SavedInfo
           tripId={tripId}
           place={p}
-          statuses={statuses}
           pinOptions={pinOptions}
           canEdit={canEdit}
           canDelete={canEdit}
@@ -216,7 +212,6 @@ export function PlacesSection({
     <DraftInfo
       tripId={tripId}
       draft={draft}
-      statuses={statuses}
       pinOptions={pinOptions}
       onAdded={clearSearch}
     />
@@ -234,7 +229,6 @@ export function PlacesSection({
         />
         <PlaceMap
           places={places}
-          statuses={statuses}
           memberHueById={memberHueById}
           candidates={candidates}
           selected={selected}
@@ -252,7 +246,6 @@ export function PlacesSection({
         />
         <PlaceList
           places={places}
-          statuses={statuses}
           selectedId={selected?.kind === "saved" ? selected.id : null}
           locatingId={pendingLocationFor?.id ?? null}
           onSelect={selectSaved}

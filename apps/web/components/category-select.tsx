@@ -25,6 +25,7 @@ export function CategorySelect({
   onChange: (id: string) => void;
 }) {
   const t = useTranslations("common");
+  const tExp = useTranslations("expense");
 
   return (
     <Select.Root
@@ -38,11 +39,12 @@ export function CategorySelect({
         <Select.Value>
           {(val) => {
             const c = categories.find((x) => x.id === val);
+            const catName = c ? (c.key ? tExp(`cat.${c.key}`) : c.name) : null;
             return (
               <span className="flex min-w-0 flex-1 items-center gap-2">
                 {c && <CategoryChip category={c} />}
                 <span className="min-w-0 flex-1 truncate">
-                  {c?.name ?? t("pleaseSelect")}
+                  {catName ?? t("pleaseSelect")}
                 </span>
               </span>
             );
@@ -68,7 +70,7 @@ export function CategorySelect({
               >
                 <CategoryChip category={c} />
                 <Select.ItemText className="min-w-0 flex-1 truncate">
-                  {c.name}
+                  {c.key ? tExp(`cat.${c.key}`) : c.name}
                 </Select.ItemText>
                 <Select.ItemIndicator className="shrink-0 text-muted-foreground">
                   <CheckIcon size={16} />

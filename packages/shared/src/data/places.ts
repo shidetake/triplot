@@ -6,7 +6,7 @@ import { err, ok, type Result } from "./result";
 // 地図上の点として場所を作る（create_place 経由。name と座標は必須＝呼び出し側で検証）。
 export type CreatePlaceInput = {
   name: string;
-  statusId: string;
+  tentative: boolean;
   visibility: Visibility;
   note: string;
   googlePlaceId: string;
@@ -26,7 +26,7 @@ export async function createPlace(
   const { error } = await sb.rpc("create_place", {
     p_trip_id: tripId,
     p_name: f.name,
-    p_status_id: f.statusId,
+    p_tentative: f.tentative,
     p_visibility: f.visibility,
     p_note: f.note, // 空文字は DB 側 nullif で NULL
     p_google_place_id: f.googlePlaceId,
@@ -42,7 +42,7 @@ export async function createPlace(
 }
 
 export type UpdatePlaceInput = {
-  statusId: string;
+  tentative: boolean;
   visibility: Visibility;
   note: string;
   icon: string;
@@ -55,7 +55,7 @@ export async function updatePlace(
 ): Promise<Result<void>> {
   const { error } = await sb.rpc("update_place", {
     p_place_id: placeId,
-    p_status_id: f.statusId,
+    p_tentative: f.tentative,
     p_visibility: f.visibility,
     p_note: f.note, // 空文字は DB 側 nullif で NULL
     p_icon: f.icon, // 空なら DB 側で 'pin'

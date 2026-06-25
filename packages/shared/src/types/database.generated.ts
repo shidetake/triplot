@@ -123,6 +123,7 @@ export type Database = {
           created_at: string
           icon: string
           id: string
+          key: string | null
           name: string
           sort_order: number
           trip_id: string
@@ -132,6 +133,7 @@ export type Database = {
           created_at?: string
           icon: string
           id?: string
+          key?: string | null
           name: string
           sort_order: number
           trip_id: string
@@ -141,6 +143,7 @@ export type Database = {
           created_at?: string
           icon?: string
           id?: string
+          key?: string | null
           name?: string
           sort_order?: number
           trip_id?: string
@@ -376,44 +379,6 @@ export type Database = {
           },
         ]
       }
-      place_statuses: {
-        Row: {
-          color: string
-          created_at: string
-          id: string
-          name: string
-          sort_order: number
-          tentative: boolean
-          trip_id: string
-        }
-        Insert: {
-          color: string
-          created_at?: string
-          id?: string
-          name: string
-          sort_order: number
-          tentative?: boolean
-          trip_id: string
-        }
-        Update: {
-          color?: string
-          created_at?: string
-          id?: string
-          name?: string
-          sort_order?: number
-          tentative?: boolean
-          trip_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "place_statuses_trip_id_fkey"
-            columns: ["trip_id"]
-            isOneToOne: false
-            referencedRelation: "trips"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       places: {
         Row: {
           created_at: string
@@ -428,7 +393,7 @@ export type Database = {
           name: string
           note: string | null
           region: string | null
-          status_id: string
+          tentative: boolean
           trip_id: string
           visibility: string
         }
@@ -445,7 +410,7 @@ export type Database = {
           name: string
           note?: string | null
           region?: string | null
-          status_id: string
+          tentative?: boolean
           trip_id: string
           visibility: string
         }
@@ -462,7 +427,7 @@ export type Database = {
           name?: string
           note?: string | null
           region?: string | null
-          status_id?: string
+          tentative?: boolean
           trip_id?: string
           visibility?: string
         }
@@ -472,13 +437,6 @@ export type Database = {
             columns: ["created_by_member_id"]
             isOneToOne: false
             referencedRelation: "trip_members"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "places_status_id_fkey"
-            columns: ["status_id"]
-            isOneToOne: false
-            referencedRelation: "place_statuses"
             referencedColumns: ["id"]
           },
           {
@@ -941,7 +899,7 @@ export type Database = {
           p_name: string
           p_note: string
           p_region: string
-          p_status_id: string
+          p_tentative: boolean
           p_trip_id: string
           p_visibility: string
         }
@@ -1015,10 +973,6 @@ export type Database = {
         Returns: undefined
       }
       seed_default_expense_categories: {
-        Args: { _trip_id: string }
-        Returns: undefined
-      }
-      seed_default_place_statuses: {
         Args: { _trip_id: string }
         Returns: undefined
       }
@@ -1159,7 +1113,7 @@ export type Database = {
           p_icon: string
           p_note: string
           p_place_id: string
-          p_status_id: string
+          p_tentative: boolean
           p_visibility: string
         }
         Returns: undefined
