@@ -78,9 +78,13 @@ export function DatePopover({
             )}
           >
             {date
-              ? format(date, compact ? "M/d (EEE)" : "yyyy/M/d (EEE)", {
-                  locale: dateFnsLocale,
-                })
+              ? format(
+                  date,
+                  compact
+                    ? locale === "ja" ? "M/d" : "MMM d"
+                    : locale === "ja" ? "yyyy/M/d" : "MMM d, yyyy",
+                  { locale: dateFnsLocale },
+                )
               : t("selectDate")}
           </span>
         </PopoverTrigger>
