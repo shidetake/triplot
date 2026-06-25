@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 
@@ -314,6 +314,7 @@ export function EventForm({
     if (v > alldayEnd) setAlldayEnd(v);
   };
 
+  const locale = useLocale();
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
   const KIND3_LABEL: Record<Kind3, string> = {
@@ -409,7 +410,7 @@ export function EventForm({
       <div className="block text-sm">
         <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
-          <APIProvider apiKey={mapsApiKey}>
+          <APIProvider apiKey={mapsApiKey} language={locale}>
             <PlacePicker
               places={places}
               biasCenter={biasCenter}

@@ -9,7 +9,7 @@ import {
   useState,
   useTransition,
 } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 
@@ -118,6 +118,7 @@ export function ExpenseForm({
   autoResolvePlace?: { name: string; location?: string | null } | null;
   initialTime?: string;
 }) {
+  const locale = useLocale();
   const t = useTranslations("expense");
   const tCommon = useTranslations("common");
   const tzLabel = useTzLabel();
@@ -472,7 +473,7 @@ export function ExpenseForm({
       <div className="block text-sm">
         <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
-          <APIProvider apiKey={mapsApiKey}>
+          <APIProvider apiKey={mapsApiKey} language={locale}>
             <PlacePicker
               places={places}
               biasCenter={biasCenter}

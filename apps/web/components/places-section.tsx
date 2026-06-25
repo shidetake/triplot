@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -35,6 +35,7 @@ export function PlacesSection({
   myMemberId: string;
 }) {
   const t = useTranslations("place");
+  const locale = useLocale();
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
     [members],
@@ -218,7 +219,7 @@ export function PlacesSection({
   );
 
   return (
-    <APIProvider apiKey={apiKey}>
+    <APIProvider apiKey={apiKey} language={locale}>
       <div className="space-y-4">
         <PlaceSearch
           query={query}

@@ -34,24 +34,27 @@ export function CategorySelect({
       onValueChange={(v) => onChange((v as string | null) ?? "")}
     >
       <Select.Trigger
-        className={`mt-1 flex w-full items-center gap-2 text-left ${inputClass}`}
+        className={`mt-1 flex w-full items-center gap-2 text-left ${inputClass} group`}
       >
-        <Select.Value>
-          {(val) => {
-            const c = categories.find((x) => x.id === val);
-            const catName = c ? (c.key ? tExp(`cat.${c.key}`) : c.name) : null;
-            return (
-              <span className="flex min-w-0 flex-1 items-center gap-2">
-                {c && <CategoryChip category={c} />}
-                <span className="min-w-0 flex-1 truncate">
-                  {catName ?? t("pleaseSelect")}
-                </span>
-              </span>
-            );
-          }}
-        </Select.Value>
+        {/* Select.Value は内部で <span> をラップするので、flex-1 は外側の span に付ける */}
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <Select.Value>
+            {(val) => {
+              const c = categories.find((x) => x.id === val);
+              const catName = c ? (c.key ? tExp(`cat.${c.key}`) : c.name) : null;
+              return (
+                <>
+                  {c && <CategoryChip category={c} />}
+                  <span className="min-w-0 flex-1 truncate">
+                    {catName ?? t("pleaseSelect")}
+                  </span>
+                </>
+              );
+            }}
+          </Select.Value>
+        </span>
         <Select.Icon className="shrink-0 text-subtle-foreground">
-          <ChevronIcon size={16} className="rotate-90" />
+          <ChevronIcon size={16} className="rotate-90 transition group-aria-expanded:rotate-[-90deg]" />
         </Select.Icon>
       </Select.Trigger>
 
