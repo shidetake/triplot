@@ -37,6 +37,7 @@ as $body$
 declare
   v_uid uuid := auth.uid();
   v_trip_id text;
+  v_color int;
   v_attempts int := 0;
 begin
   if v_uid is null then
@@ -68,8 +69,10 @@ begin
     end;
   end loop;
 
-  insert into trip_members (trip_id, user_id, display_name, kind)
-  values (v_trip_id, v_uid, p_display_name, 'member');
+  v_color := pick_member_color(v_trip_id);
+
+  insert into trip_members (trip_id, user_id, display_name, kind, color)
+  values (v_trip_id, v_uid, p_display_name, 'member', v_color);
 
   perform public.seed_default_expense_categories(v_trip_id);
 
