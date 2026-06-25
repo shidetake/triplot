@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
@@ -44,6 +44,7 @@ export function ScheduleSection({
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
 }) {
+  const locale = useLocale();
   // 予定の色判定で使う、参加者 id → hue の引き辞書。
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
@@ -66,8 +67,8 @@ export function ScheduleSection({
   }, [initialTz]);
 
   const schedule = useMemo(
-    () => buildSchedule(events, { tripStart, tripEnd }),
-    [events, tripStart, tripEnd],
+    () => buildSchedule(events, { tripStart, tripEnd, locale }),
+    [events, tripStart, tripEnd, locale],
   );
 
   const placeName = useCallback(

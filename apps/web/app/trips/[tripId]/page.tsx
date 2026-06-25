@@ -40,6 +40,13 @@ import type {
   Visibility,
 } from "@triplot/shared/types/database";
 
+/** "2026-06-01" → "6/1" */
+function formatTripDate(ymd: string | null): string {
+  if (!ymd) return "?";
+  const [, mo, d] = ymd.split("-").map(Number);
+  return `${mo}/${d}`;
+}
+
 export default async function TripDetailPage({
   params,
 }: {
@@ -478,7 +485,7 @@ export default async function TripDetailPage({
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>
-            {trip.start_date ?? "?"} 〜 {trip.end_date ?? "?"}
+            {formatTripDate(trip.start_date)} – {formatTripDate(trip.end_date)}
           </span>
           <InlineDivider />
           <span>

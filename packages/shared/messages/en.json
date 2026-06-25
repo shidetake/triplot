@@ -255,7 +255,7 @@
     "placeholderRate": "e.g. 150",
     "cat": {
       "flight": "Transport",
-      "local_transit": "Local Transportation",
+      "local_transit": "Local Transport",
       "dining": "Food",
       "clothing": "Clothing",
       "leisure": "Leisure",

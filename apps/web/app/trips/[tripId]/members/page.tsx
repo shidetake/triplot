@@ -50,7 +50,7 @@ export default async function MembersPage({
       <header className="mb-4">
         <h1 className="text-2xl font-semibold">{t("heading")}</h1>
         <p className="mt-2 text-xs text-muted-foreground">
-          {t("editOwnName")}
+          {t("editOwnName")}{" "}
           {me.is_admin ? t("adminCanRemove") : t("onlyAdminCanRemove")}
         </p>
       </header>

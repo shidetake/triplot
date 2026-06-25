@@ -48,21 +48,21 @@ function TentativeField({
           <input
             type="radio"
             name="tentative"
-            value="true"
-            checked={value}
-            onChange={() => onChange(true)}
-          />
-          <span>{t("statusCandidate")}</span>
-        </label>
-        <label className="inline-flex items-center gap-1">
-          <input
-            type="radio"
-            name="tentative"
             value="false"
             checked={!value}
             onChange={() => onChange(false)}
           />
           <span>{t("statusConfirmed")}</span>
+        </label>
+        <label className="inline-flex items-center gap-1">
+          <input
+            type="radio"
+            name="tentative"
+            value="true"
+            checked={value}
+            onChange={() => onChange(true)}
+          />
+          <span>{t("statusCandidate")}</span>
         </label>
       </div>
     </fieldset>
@@ -314,8 +314,7 @@ export function DraftInfo({
     createPlaceAction.bind(null, tripId),
     initialState,
   );
-  // 地図タップで置いた手動ピンはデフォルト「候補」。
-  const [tentative, setTentative] = useState(true);
+  const [tentative, setTentative] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const t = useTranslations("place");
   const [icon, setIcon] = useState("pin");

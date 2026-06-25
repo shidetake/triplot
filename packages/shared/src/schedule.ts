@@ -92,11 +92,14 @@ function maxDate(a: string, b: string): string {
   return cmpDate(a, b) >= 0 ? a : b;
 }
 
-/** "2026-04-27" → "4/27(月)" */
-export function formatDayLabel(date: string): string {
+const WEEKDAY_EN = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+/** "2026-04-27" → "4/27(月)"（ja）/ "4/27 Mon"（en） */
+export function formatDayLabel(date: string, locale = "ja"): string {
   const [, mo, d] = date.split("-").map(Number);
-  const wd = WEEKDAY_JA[new Date(dateToUtc(date)).getUTCDay()];
-  return `${mo}/${d}(${wd})`;
+  const idx = new Date(dateToUtc(date)).getUTCDay();
+  if (locale === "en") return `${mo}/${d} ${WEEKDAY_EN[idx]}`;
+  return `${mo}/${d}(${WEEKDAY_JA[idx]})`;
 }
 
 // ──────────────────────────────────────────────
@@ -178,8 +181,10 @@ export function buildSchedule(
   opts: {
     tripStart?: string | null; // YYYY-MM-DD
     tripEnd?: string | null;
+    locale?: string;
   },
 ): Schedule {
+  const locale = opts.locale ?? "ja";
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
   let rangeEnd: string | null = opts.tripEnd ?? null;
@@ -217,7 +222,7 @@ export function buildSchedule(
   ) => {
     groups.push({
       key: `d-${date}`,
-      label: formatDayLabel(date),
+      label: formatDayLabel(date, locale),
       tzNote,
       tzNoteSpan,
       columns: [{ key: `d-${date}`, date, tz, role: "day" }],
@@ -256,8 +261,8 @@ export function buildSchedule(
       // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
       const label =
         departDate === arriveDate
-          ? formatDayLabel(departDate)
-          : `${formatDayLabel(departDate)} → ${formatDayLabel(arriveDate)}`;
+          ? formatDayLabel(departDate, locale)
+          : `${formatDayLabel(departDate, locale)} → ${formatDayLabel(arriveDate, locale)}`;
       groups.push({
         key: `t-${t.id}`,
         label,
