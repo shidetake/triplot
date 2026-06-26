@@ -497,7 +497,7 @@ export function EventForm({
       )}
 
       {kind3 === "allday" && (
-        // 開始日–終了日を横並び（通常予定の日時と同じ並び・年なし M/d(曜)・時刻なし）。
+        // 開始日–終了日を横並び（通常予定の日時と同じ並び・時刻なし）。
         // 入力は従来どおりカレンダーのみ（DatePopover）。終日はTZ無関係（tz は送らない）。
         <div>
           <span className="text-sm text-muted-foreground">{t("date")}</span>
@@ -507,7 +507,6 @@ export function EventForm({
               value={alldayStart}
               onChange={setAlldayStartG}
               required
-              compact
               className="w-auto shrink-0"
               tripStart={tripStart}
               tripEnd={tripEnd}
@@ -518,7 +517,6 @@ export function EventForm({
               value={alldayEnd}
               onChange={setAlldayEnd}
               required
-              compact
               className="w-auto shrink-0"
               tripStart={tripStart}
               tripEnd={tripEnd}

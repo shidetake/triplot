@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { CreateTripButton } from "@/components/create-trip-button";
 import { createClient } from "@/lib/supabase/server";
-import { formatTripDate } from "@triplot/shared/ymd";
+import { formatTripDateRange } from "@triplot/shared/ymd";
 
 // アプリのホーム = 旅行一覧（要ログイン）。未ログインは LP（/）へ。
 export default async function TripsPage() {
@@ -79,10 +79,7 @@ async function TripsSection({ userId }: { userId: string }) {
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
-                  {t("dateRange", {
-                    start: formatTripDate(trip.start_date, locale),
-                    end: formatTripDate(trip.end_date, locale),
-                  })}
+                  {formatTripDateRange(trip.start_date, trip.end_date, locale)}
                 </div>
               </Link>
             </li>

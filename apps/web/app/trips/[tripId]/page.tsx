@@ -30,7 +30,7 @@ import {
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
-import { formatTripDate } from "@triplot/shared/ymd";
+import { formatTripDateRange } from "@triplot/shared/ymd";
 import { matchPlace, type TripPlace } from "@/lib/receipt/placeMatch";
 import type { Receipt } from "@/lib/receipt/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -480,7 +480,7 @@ export default async function TripDetailPage({
         <h1 className="text-2xl font-semibold">{trip.title}</h1>
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           <span>
-            {formatTripDate(trip.start_date, locale)} – {formatTripDate(trip.end_date, locale)}
+            {formatTripDateRange(trip.start_date, trip.end_date, locale)}
           </span>
           <InlineDivider />
           <span>

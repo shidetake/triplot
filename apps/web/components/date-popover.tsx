@@ -38,7 +38,6 @@ export function DatePopover({
   tripEnd,
   disabled,
   className,
-  compact,
 }: {
   name: string;
   value: string; // "YYYY-MM-DD" or ""
@@ -48,9 +47,6 @@ export function DatePopover({
   tripEnd?: string | null;
   disabled?: Matcher | Matcher[];
   className?: string;
-  // トリガを年なし `M/d (曜)` 表示にする（横並びの省スペース・チップ表示用）。
-  // カレンダー本体は従来どおり年を表示。
-  compact?: boolean;
 }) {
   const t = useTranslations("common");
   const locale = useLocale();
@@ -78,13 +74,9 @@ export function DatePopover({
             )}
           >
             {date
-              ? format(
-                  date,
-                  compact
-                    ? locale === "ja" ? "M/d" : "MMM d"
-                    : locale === "ja" ? "yyyy/M/d" : "MMM d, yyyy",
-                  { locale: dateFnsLocale },
-                )
+              ? format(date, locale === "ja" ? "yyyy/M/d" : "MMM d, yyyy", {
+                  locale: dateFnsLocale,
+                })
               : t("selectDate")}
           </span>
         </PopoverTrigger>
