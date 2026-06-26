@@ -80,7 +80,7 @@ export function DateTimePopover({
       >
         {variant === "start" ? (
           <span className={d ? "text-foreground" : "text-subtle-foreground"}>
-            {d ? `${format(d, locale === "ja" ? "M/d" : "MMM d", { locale: dateFnsLocale })} ${time}` : t("selectDateTime")}
+            {d ? `${format(d, locale === "ja" ? "yyyy/M/d" : "MMM d, yyyy", { locale: dateFnsLocale })} ${time}` : t("selectDateTime")}
           </span>
         ) : (
           <span className="flex items-center gap-1">
