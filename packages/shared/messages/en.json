@@ -474,7 +474,8 @@
     "notTripMember": "You are not a member of this trip.",
     "joinFailed": "Failed to join.",
     "issueFailed": "Failed to issue invite link.",
-    "regenerateFailed": "Failed to regenerate."
+    "regenerateFailed": "Failed to regenerate.",
+    "cannotDeleteOtherPin": "The \"Other\" pin cannot be deleted."
   },
   "import": {
     "heading": "Imports",

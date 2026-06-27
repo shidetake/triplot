@@ -87,7 +87,7 @@ export async function removeTripPinOption(
     .maybeSingle();
   if (lookupErr) return err(lookupErr.message);
   if (target?.icon === "pin") {
-    return err("「その他」のピンは削除できません");
+    return err("errors.cannotDeleteOtherPin");
   }
 
   const { error } = await sb

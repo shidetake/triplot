@@ -474,7 +474,8 @@
     "notTripMember": "このトリップのメンバーではありません",
     "joinFailed": "参加に失敗しました",
     "issueFailed": "招待リンクの発行に失敗しました",
-    "regenerateFailed": "再生成に失敗しました"
+    "regenerateFailed": "再生成に失敗しました",
+    "cannotDeleteOtherPin": "「その他」のピンは削除できません"
   },
   "import": {
     "heading": "取り込み",
