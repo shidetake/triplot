@@ -4,7 +4,9 @@ import { redirect } from "next/navigation";
 import { AvatarUpload } from "@/components/avatar-upload";
 import { DisplayNameForm } from "@/components/display-name-form";
 import { LanguageForm } from "@/components/language-form";
+import { ThemeForm } from "@/components/theme-form";
 import { createClient } from "@/lib/supabase/server";
+import { resolveTheme } from "@/i18n/theme";
 
 export default async function SettingsPage() {
   const supabase = await createClient();
@@ -27,7 +29,10 @@ export default async function SettingsPage() {
     (profile?.display_name ?? user.email ?? "?").trim().charAt(0).toUpperCase() ||
     "?";
 
-  const t = await getTranslations("settings");
+  const [t, currentTheme] = await Promise.all([
+    getTranslations("settings"),
+    resolveTheme(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
@@ -46,6 +51,11 @@ export default async function SettingsPage() {
       <div className="mt-10 space-y-1">
         <label className="block text-sm font-medium">{t("language")}</label>
         <LanguageForm />
+      </div>
+
+      <div className="mt-6 space-y-1">
+        <label className="block text-sm font-medium">{t("theme")}</label>
+        <ThemeForm currentTheme={currentTheme} />
       </div>
     </main>
   );

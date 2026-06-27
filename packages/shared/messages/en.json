@@ -41,6 +41,10 @@
   "settings": {
     "heading": "Settings",
     "language": "Language",
+    "theme": "Theme",
+    "themeLight": "Light",
+    "themeDark": "Dark",
+    "themeSystem": "System",
     "namePlaceholder": "Name",
     "displayNameHelpLabel": "About your default display name",
     "displayNameHelp": "Your default display name when joining a trip (existing trip names won't change)."

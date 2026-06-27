@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { updateDisplayName } from "@triplot/shared/data/account";
 import { isLocale, LOCALE_COOKIE } from "@/i18n/locale";
+import { isTheme, THEME_COOKIE } from "@/i18n/theme";
 import { createClient } from "@/lib/supabase/server";
 
 // 既定の表示名（users.display_name）を更新する。旅行作成/参加時のデフォルトに使われる。
@@ -26,6 +27,16 @@ export async function updateDisplayNameAction(formData: FormData): Promise<void>
 export async function setLocaleAction(locale: string): Promise<void> {
   if (!isLocale(locale)) return;
   (await cookies()).set(LOCALE_COOKIE, locale, {
+    path: "/",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+  revalidatePath("/", "layout");
+}
+
+// テーマを切り替える。NEXT_THEME Cookie に保存。
+export async function setThemeAction(theme: string): Promise<void> {
+  if (!isTheme(theme)) return;
+  (await cookies()).set(THEME_COOKIE, theme, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });

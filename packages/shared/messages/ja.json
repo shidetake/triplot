@@ -41,6 +41,10 @@
   "settings": {
     "heading": "設定",
     "language": "言語",
+    "theme": "テーマ",
+    "themeLight": "ライト",
+    "themeDark": "ダーク",
+    "themeSystem": "システム",
     "namePlaceholder": "名前",
     "displayNameHelpLabel": "デフォルト表示名について",
     "displayNameHelp": "旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。"
