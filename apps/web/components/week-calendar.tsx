@@ -159,9 +159,9 @@ export function WeekCalendar({
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {
-      // 自分不参加 or 色未割当の mixed は中立 slate。
+      // 自分不参加: private と同系の neutral を opacity-50 で dim（ガイドライン「不参加=opacity-50」）。
       return {
-        className: `${sel ? "z-10 border-slate-500 ring-1 ring-slate-500" : "border-slate-300"} text-slate-800 ${hov ? "bg-slate-200" : "bg-slate-100"}`,
+        className: `opacity-50 ${sel ? "z-10 border-foreground/40 ring-1 ring-foreground/40" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-foreground/15" : "bg-foreground/8"}`,
       };
     }
     // mixed（自分参加）は自分の hue を地色に（各自の画面で違って見える）。
@@ -198,7 +198,7 @@ export function WeekCalendar({
     }
     if (color.kind === "mixed" && color.selfHue == null) {
       return {
-        className: `${hov ? "bg-slate-300" : "bg-slate-200"} text-slate-800${sel ? " z-10 ring-2 ring-inset ring-slate-500" : ""}`,
+        className: `opacity-50 ${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
       };
     }
     const hue =
