@@ -29,7 +29,7 @@ import {
 } from "@triplot/shared/schedule";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
-import { COMMON_CURRENCIES, ALL_CURRENCIES } from "@triplot/shared/currencies";
+import { COMMON_CURRENCIES, ALL_CURRENCIES, currencyLabel } from "@triplot/shared/currencies";
 import { DatePopover } from "./date-popover";
 import { inputClass } from "./input-class";
 import { useTzLabel } from "./timezone-picker";
@@ -421,12 +421,12 @@ export function ExpenseForm({
           >
             <optgroup label="主要通貨">
               {COMMON_CURRENCIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{currencyLabel(c)}</option>
               ))}
             </optgroup>
             <optgroup label="その他">
               {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
-                <option key={c} value={c}>{c}</option>
+                <option key={c} value={c}>{currencyLabel(c)}</option>
               ))}
             </optgroup>
           </select>

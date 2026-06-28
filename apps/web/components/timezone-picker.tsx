@@ -1,30 +1,10 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-
 import { inputClass } from "./input-class";
-
-// IANA → カタログキー変換（"Asia/Hong_Kong" → "asia_hong_kong"）。
-function ianaToKey(iana: string): string {
-  return iana.replace(/\//g, "_").replace(/-/g, "_").toLowerCase();
-}
 
 // IANA 末尾の都市名（"Asia/Ho_Chi_Minh" → "Ho Chi Minh"）。
 function cityOf(iana: string): string {
   return iana.split("/").pop()?.replace(/_/g, " ") ?? iana;
-}
-
-// 表示ラベルを解決するフック。カタログにあれば翻訳名、なければ都市名。
-export function useTzLabel(): (iana: string) => string {
-  const t = useTranslations("timezone");
-  return (iana: string) => {
-    const key = ianaToKey(iana);
-    try {
-      return t(key as Parameters<typeof t>[0]);
-    } catch {
-      return cityOf(iana);
-    }
-  };
 }
 
 // フック不要の文脈向け（event-form の既存パターン等）。
@@ -32,115 +12,126 @@ export function tzDisplayLabel(iana: string): string {
   return cityOf(iana);
 }
 
+// フック形式の別名（後方互換）。ピッカー以外からの呼び出しはこちら。
+export function useTzLabel(): (iana: string) => string {
+  return (iana: string) => {
+    const zone = ALL_TZ_MAP.get(iana);
+    return zone?.name ?? cityOf(iana);
+  };
+}
+
 // 旅行でよく使う TZ を大陸別にグループ化したキュレーション済みリスト。
-// 検索なし・native select でスクロールして選ぶ（iOS 標準と同じ操作）。
-const TZ_GROUPS: Array<{ label: string; zones: string[] }> = [
+// native select でスクロールして選ぶ（iOS 標準と同じ操作）。
+const TZ_GROUPS: Array<{ label: string; zones: Array<{ iana: string; name: string }> }> = [
   {
     label: "アジア",
     zones: [
-      "Asia/Tokyo",
-      "Asia/Seoul",
-      "Asia/Shanghai",
-      "Asia/Hong_Kong",
-      "Asia/Taipei",
-      "Asia/Singapore",
-      "Asia/Kuala_Lumpur",
-      "Asia/Bangkok",
-      "Asia/Jakarta",
-      "Asia/Manila",
-      "Asia/Ho_Chi_Minh",
-      "Asia/Phnom_Penh",
-      "Asia/Yangon",
-      "Asia/Kolkata",
-      "Asia/Kathmandu",
-      "Asia/Dhaka",
-      "Asia/Colombo",
-      "Asia/Karachi",
-      "Asia/Dubai",
-      "Asia/Riyadh",
-      "Asia/Jerusalem",
-      "Asia/Istanbul",
-      "Asia/Tehran",
+      { iana: "Asia/Tokyo",       name: "日本" },
+      { iana: "Asia/Seoul",       name: "韓国" },
+      { iana: "Asia/Shanghai",    name: "中国（上海）" },
+      { iana: "Asia/Hong_Kong",   name: "香港" },
+      { iana: "Asia/Taipei",      name: "台北" },
+      { iana: "Asia/Singapore",   name: "シンガポール" },
+      { iana: "Asia/Kuala_Lumpur",name: "クアラルンプール" },
+      { iana: "Asia/Bangkok",     name: "バンコク" },
+      { iana: "Asia/Jakarta",     name: "ジャカルタ" },
+      { iana: "Asia/Manila",      name: "マニラ" },
+      { iana: "Asia/Ho_Chi_Minh", name: "ホーチミン" },
+      { iana: "Asia/Phnom_Penh",  name: "プノンペン" },
+      { iana: "Asia/Yangon",      name: "ヤンゴン" },
+      { iana: "Asia/Kolkata",     name: "コルカタ（インド）" },
+      { iana: "Asia/Kathmandu",   name: "カトマンズ" },
+      { iana: "Asia/Dhaka",       name: "ダッカ" },
+      { iana: "Asia/Colombo",     name: "コロンボ" },
+      { iana: "Asia/Karachi",     name: "カラチ" },
+      { iana: "Asia/Dubai",       name: "ドバイ" },
+      { iana: "Asia/Riyadh",      name: "リヤド" },
+      { iana: "Asia/Jerusalem",   name: "エルサレム" },
+      { iana: "Asia/Istanbul",    name: "イスタンブール" },
+      { iana: "Asia/Tehran",      name: "テヘラン" },
     ],
   },
   {
     label: "太平洋・オセアニア",
     zones: [
-      "Pacific/Honolulu",
-      "Pacific/Guam",
-      "Pacific/Tahiti",
-      "Pacific/Fiji",
-      "Pacific/Auckland",
-      "Australia/Sydney",
-      "Australia/Melbourne",
-      "Australia/Brisbane",
-      "Australia/Adelaide",
-      "Australia/Perth",
+      { iana: "Pacific/Honolulu",    name: "ホノルル" },
+      { iana: "Pacific/Guam",        name: "グアム" },
+      { iana: "Pacific/Tahiti",      name: "タヒチ" },
+      { iana: "Pacific/Fiji",        name: "フィジー" },
+      { iana: "Pacific/Auckland",    name: "オークランド" },
+      { iana: "Australia/Sydney",    name: "シドニー" },
+      { iana: "Australia/Melbourne", name: "メルボルン" },
+      { iana: "Australia/Brisbane",  name: "ブリスベン" },
+      { iana: "Australia/Adelaide",  name: "アデレード" },
+      { iana: "Australia/Perth",     name: "パース" },
     ],
   },
   {
     label: "ヨーロッパ",
     zones: [
-      "Europe/London",
-      "Europe/Dublin",
-      "Europe/Lisbon",
-      "Europe/Paris",
-      "Europe/Amsterdam",
-      "Europe/Brussels",
-      "Europe/Madrid",
-      "Europe/Rome",
-      "Europe/Berlin",
-      "Europe/Zurich",
-      "Europe/Vienna",
-      "Europe/Stockholm",
-      "Europe/Oslo",
-      "Europe/Copenhagen",
-      "Europe/Helsinki",
-      "Europe/Warsaw",
-      "Europe/Prague",
-      "Europe/Budapest",
-      "Europe/Bucharest",
-      "Europe/Athens",
-      "Europe/Moscow",
+      { iana: "Europe/London",     name: "ロンドン" },
+      { iana: "Europe/Dublin",     name: "ダブリン" },
+      { iana: "Europe/Lisbon",     name: "リスボン" },
+      { iana: "Europe/Paris",      name: "パリ" },
+      { iana: "Europe/Amsterdam",  name: "アムステルダム" },
+      { iana: "Europe/Brussels",   name: "ブリュッセル" },
+      { iana: "Europe/Madrid",     name: "マドリード" },
+      { iana: "Europe/Rome",       name: "ローマ" },
+      { iana: "Europe/Berlin",     name: "ベルリン" },
+      { iana: "Europe/Zurich",     name: "チューリッヒ" },
+      { iana: "Europe/Vienna",     name: "ウィーン" },
+      { iana: "Europe/Stockholm",  name: "ストックホルム" },
+      { iana: "Europe/Oslo",       name: "オスロ" },
+      { iana: "Europe/Copenhagen", name: "コペンハーゲン" },
+      { iana: "Europe/Helsinki",   name: "ヘルシンキ" },
+      { iana: "Europe/Warsaw",     name: "ワルシャワ" },
+      { iana: "Europe/Prague",     name: "プラハ" },
+      { iana: "Europe/Budapest",   name: "ブダペスト" },
+      { iana: "Europe/Bucharest",  name: "ブカレスト" },
+      { iana: "Europe/Athens",     name: "アテネ" },
+      { iana: "Europe/Moscow",     name: "モスクワ" },
     ],
   },
   {
     label: "アメリカ",
     zones: [
-      "America/New_York",
-      "America/Chicago",
-      "America/Denver",
-      "America/Phoenix",
-      "America/Los_Angeles",
-      "America/Anchorage",
-      "America/Toronto",
-      "America/Vancouver",
-      "America/Mexico_City",
-      "America/Cancun",
-      "America/Bogota",
-      "America/Lima",
-      "America/Santiago",
-      "America/Sao_Paulo",
-      "America/Buenos_Aires",
-      "Atlantic/Reykjavik",
+      { iana: "America/New_York",    name: "ニューヨーク" },
+      { iana: "America/Chicago",     name: "シカゴ" },
+      { iana: "America/Denver",      name: "デンバー" },
+      { iana: "America/Phoenix",     name: "フェニックス" },
+      { iana: "America/Los_Angeles", name: "ロサンゼルス" },
+      { iana: "America/Anchorage",   name: "アンカレッジ" },
+      { iana: "America/Toronto",     name: "トロント" },
+      { iana: "America/Vancouver",   name: "バンクーバー" },
+      { iana: "America/Mexico_City", name: "メキシコシティ" },
+      { iana: "America/Cancun",      name: "カンクン" },
+      { iana: "America/Bogota",      name: "ボゴタ" },
+      { iana: "America/Lima",        name: "リマ" },
+      { iana: "America/Santiago",    name: "サンティアゴ" },
+      { iana: "America/Sao_Paulo",   name: "サンパウロ" },
+      { iana: "America/Buenos_Aires",name: "ブエノスアイレス" },
+      { iana: "Atlantic/Reykjavik",  name: "レイキャビク" },
     ],
   },
   {
     label: "アフリカ・中東",
     zones: [
-      "Africa/Cairo",
-      "Africa/Nairobi",
-      "Africa/Lagos",
-      "Africa/Johannesburg",
-      "Africa/Casablanca",
-      "Africa/Addis_Ababa",
+      { iana: "Africa/Cairo",         name: "カイロ" },
+      { iana: "Africa/Nairobi",       name: "ナイロビ" },
+      { iana: "Africa/Lagos",         name: "ラゴス" },
+      { iana: "Africa/Johannesburg",  name: "ヨハネスブルク" },
+      { iana: "Africa/Casablanca",    name: "カサブランカ" },
+      { iana: "Africa/Addis_Ababa",   name: "アジスアベバ" },
     ],
   },
 ];
 
+// iana → name の逆引きマップ（useTzLabel 用）。
+const ALL_TZ_MAP = new Map(
+  TZ_GROUPS.flatMap((g) => g.zones.map((z) => [z.iana, z]))
+);
+
 // タイムゾーンを大陸別グループの native select で選ぶ。
-// フォームの hidden input で name を渡す場合は name を指定。
-// disclosure 等、外側が送る場合は name を省略して onChange だけ使う。
 export function TimezonePicker({
   value,
   onChange,
@@ -150,10 +141,7 @@ export function TimezonePicker({
   onChange: (iana: string) => void;
   name?: string;
 }) {
-  const tzLabel = useTzLabel();
-
-  // 選択中の値がリストにない場合でも表示できるよう、現在値を先頭に追加する。
-  const allIanas = TZ_GROUPS.flatMap((g) => g.zones);
+  const allIanas = TZ_GROUPS.flatMap((g) => g.zones.map((z) => z.iana));
   const needsFallback = value && !allIanas.includes(value);
 
   return (
@@ -165,13 +153,13 @@ export function TimezonePicker({
     >
       {/* リストにない値（旧データ等）をフォールバック表示 */}
       {needsFallback && (
-        <option value={value}>{tzDisplayLabel(value)}</option>
+        <option value={value}>{cityOf(value)}</option>
       )}
       {TZ_GROUPS.map((group) => (
         <optgroup key={group.label} label={group.label}>
-          {group.zones.map((iana) => (
-            <option key={iana} value={iana}>
-              {tzLabel(iana)}
+          {group.zones.map((zone) => (
+            <option key={zone.iana} value={zone.iana}>
+              {zone.name}
             </option>
           ))}
         </optgroup>

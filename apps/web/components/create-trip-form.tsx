@@ -10,7 +10,7 @@ import {
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { tripDayCount } from "@triplot/shared/tripCopy";
-import { COMMON_CURRENCIES, ALL_CURRENCIES } from "@triplot/shared/currencies";
+import { COMMON_CURRENCIES, ALL_CURRENCIES, currencyLabel } from "@triplot/shared/currencies";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { DateRangePopover } from "./date-range-popover";
@@ -247,12 +247,12 @@ export function CreateTripForm({
         >
           <optgroup label="主要通貨">
             {COMMON_CURRENCIES.map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{currencyLabel(c)}</option>
             ))}
           </optgroup>
           <optgroup label="その他">
             {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c} value={c}>{currencyLabel(c)}</option>
             ))}
           </optgroup>
         </select>
