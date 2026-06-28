@@ -49,13 +49,13 @@ export default async function SettingsPage() {
       </div>
 
       <div className="mt-10 space-y-1">
-        <label className="block text-sm font-medium">{t("language")}</label>
-        <LanguageForm />
+        <label className="block text-sm font-medium">{t("theme")}</label>
+        <ThemeForm currentTheme={currentTheme} />
       </div>
 
       <div className="mt-6 space-y-1">
-        <label className="block text-sm font-medium">{t("theme")}</label>
-        <ThemeForm currentTheme={currentTheme} />
+        <label className="block text-sm font-medium">{t("language")}</label>
+        <LanguageForm />
       </div>
     </main>
   );

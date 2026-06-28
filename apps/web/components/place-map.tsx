@@ -18,6 +18,22 @@ import {
   useMapsLibrary,
 } from "@vis.gl/react-google-maps";
 
+/** <html class> の "dark" を MutationObserver で監視し、colorScheme 文字列を返す。 */
+function useMapColorScheme(): "DARK" | "LIGHT" {
+  const [isDark, setIsDark] = useState(
+    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+  );
+  useEffect(() => {
+    const el = document.documentElement;
+    const obs = new MutationObserver(() => {
+      setIsDark(el.classList.contains("dark"));
+    });
+    obs.observe(el, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return isDark ? "DARK" : "LIGHT";
+}
+
 import {
   boundsOf,
   centerOf,
@@ -254,6 +270,7 @@ export function PlaceMap({
   const t = useTranslations("place");
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
+  const colorScheme = useMapColorScheme();
   const placesLib = useMapsLibrary("places");
   const map = useMap();
   // 長押しで仮ピンを置いた直後に来る合成 click を 1 回だけ食う（タイミング
@@ -354,6 +371,7 @@ export function PlaceMap({
       <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-foreground/10">
         <Map
           mapId={mapId}
+          colorScheme={colorScheme}
           defaultCenter={initialCenter}
           defaultZoom={places.length > 1 ? 11 : 13}
           gestureHandling="greedy"
