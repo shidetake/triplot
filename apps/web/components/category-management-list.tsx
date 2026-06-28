@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -14,8 +14,9 @@ import { CloseIcon, PlusIcon, TrashIcon } from "./icons";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { inputClass } from "./input-class";
 
+// アイコンはその他と同じ「category」。色は青（その他の灰と区別）
 const CUSTOM_ICON = "category";
-const CUSTOM_COLOR = "#71717a";
+const CUSTOM_COLOR = "#3b82f6";
 
 export type CategoryItem = {
   id: string;
@@ -43,22 +44,11 @@ export function CategoryManagementList({
 
   const [editState, setEditState] = useState<EditState>({ kind: "idle" });
   const [isPending, startTransition] = useTransition();
-  // blur で保存するとき、ゴミ箱クリックによる blur は無視する。
-  // ゴミ箱は1つしか出ないので単一 ref で足りる。
-  const trashRef = useRef<HTMLButtonElement>(null);
 
   const catName = (c: CategoryItem) =>
     c.key ? tExp(`cat.${c.key}`) : c.name;
 
   const cancel = () => setEditState({ kind: "idle" });
-
-  const handleBlur = (
-    e: React.FocusEvent<HTMLInputElement>,
-    onSave: (value: string) => void,
-  ) => {
-    if (e.relatedTarget === trashRef.current) return;
-    onSave(e.currentTarget.value);
-  };
 
   const handleKeyDown = (
     e: React.KeyboardEvent<HTMLInputElement>,
@@ -80,7 +70,6 @@ export function CategoryManagementList({
 
   const saveEdit = (id: string, value: string, originalName: string) => {
     const name = value.trim();
-    // 空 or 変更なし → キャンセル扱い（削除しない）
     if (!name || name === originalName) { cancel(); return; }
     startTransition(async () => {
       const res = await updateCategoryAction(id, tripId, name);
@@ -126,10 +115,9 @@ export function CategoryManagementList({
                   defaultValue={editState.originalName}
                   disabled={isPending}
                   className={`flex-1 ${inputClass}`}
+                  // blur = 保存（編集モードのみ）。ゴミ箱は onPointerDown で blur を防いでから onClick で動く
                   onBlur={(e) =>
-                    handleBlur(e, (v) =>
-                      saveEdit(c.id, v, editState.originalName),
-                    )
+                    saveEdit(c.id, e.currentTarget.value, editState.originalName)
                   }
                   onKeyDown={(e) =>
                     handleKeyDown(e, (v) =>
@@ -138,8 +126,9 @@ export function CategoryManagementList({
                   }
                 />
                 <button
-                  ref={trashRef}
                   type="button"
+                  // onPointerDown で preventDefault: input の blur を発生させずに click を通す
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={() => handleDelete(c.id)}
                   disabled={isPending}
                   aria-label={tc("delete")}
@@ -189,11 +178,13 @@ export function CategoryManagementList({
             disabled={isPending}
             placeholder={t("namePlaceholder")}
             className={`flex-1 ${inputClass}`}
-            onBlur={(e) => handleBlur(e, saveNew)}
+            // 追加モードは blur では保存しない（iOS の autoFocus 誤発火 blur を防ぐため）
+            // Enter で保存、Escape または × で中断
             onKeyDown={(e) => handleKeyDown(e, saveNew)}
           />
           <button
             type="button"
+            onPointerDown={(e) => e.preventDefault()}
             onClick={cancel}
             disabled={isPending}
             aria-label={tc("cancel")}
