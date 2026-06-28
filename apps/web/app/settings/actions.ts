@@ -34,11 +34,13 @@ export async function setLocaleAction(locale: string): Promise<void> {
 }
 
 // テーマを切り替える。NEXT_THEME Cookie に保存。
+// テーマは純粋 CSS なので revalidatePath 不要。revalidate すると React が
+// layout を再レンダリングして darkClass="" で <html> を上書きしてしまい、
+// クライアントで applyThemeClient が付けたクラスが消えるバグになる。
 export async function setThemeAction(theme: string): Promise<void> {
   if (!isTheme(theme)) return;
   (await cookies()).set(THEME_COOKIE, theme, {
     path: "/",
     maxAge: 60 * 60 * 24 * 365,
   });
-  revalidatePath("/", "layout");
 }
