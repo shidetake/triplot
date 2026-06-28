@@ -6,7 +6,7 @@ import { DisplayNameForm } from "@/components/display-name-form";
 import { LanguageForm } from "@/components/language-form";
 import { ThemeForm } from "@/components/theme-form";
 import { createClient } from "@/lib/supabase/server";
-import { resolveTheme } from "@/i18n/theme";
+import { resolveTheme } from "@/i18n/theme.server";
 
 export default async function SettingsPage() {
   const supabase = await createClient();

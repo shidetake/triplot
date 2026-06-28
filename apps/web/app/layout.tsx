@@ -6,7 +6,7 @@ import "./globals.css";
 import { Toaster } from "@/components/toast";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
 import { getDeployEnv, getVersion } from "@/lib/version";
-import { resolveTheme } from "@/i18n/theme";
+import { resolveTheme } from "@/i18n/theme.server";
 
 // チラつきなしでダークモードを適用するインラインスクリプト。
 // Cookie を読み、system の場合は prefers-color-scheme に従う。
