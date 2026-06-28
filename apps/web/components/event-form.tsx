@@ -345,7 +345,7 @@ export function EventForm({
   return (
     <form
       action={formAction}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
     >
       {/* × は専用行を作らず右上角に重ねる（縦を 1 行ぶん詰める）。先頭の種別トラックが
           下に潜らないよう、トラック側に右クリアランス（mr）を入れる。

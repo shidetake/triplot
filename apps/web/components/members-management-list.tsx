@@ -92,7 +92,7 @@ export function MembersManagementList({
   };
 
   return (
-    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-white">
+    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
       {members.map((m) => {
         const isMe = m.id === myMemberId;
         const showDelete = isMe || iAmAdmin;
@@ -156,7 +156,7 @@ export function MembersManagementList({
                   role="img"
                   aria-label={t("admin")}
                   title={t("admin")}
-                  className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white text-amber-500 ring-1 ring-white"
+                  className="absolute -right-1 -top-1 inline-flex h-3.5 w-3.5 items-center justify-center rounded-full bg-background text-amber-500 ring-1 ring-background"
                 >
                   <CrownIcon size={10} />
                 </span>

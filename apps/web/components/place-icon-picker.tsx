@@ -97,7 +97,7 @@ export function PlaceIconPicker({
             閉じる手段は Esc / 背景クリック / キャンセルボタンの 3 経路（Base UI が担保）。 */}
         <Dialog.Popup
           aria-label={t("iconPickerAria")}
-          className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-white shadow-xl outline-none"
+          className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-background shadow-xl outline-none"
         >
         <div className="flex-1 overflow-y-auto p-2">
           <div className="grid grid-cols-8 gap-px">

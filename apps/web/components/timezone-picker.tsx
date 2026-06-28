@@ -142,7 +142,7 @@ export function TimezonePicker({
           <Combobox.Positioner sideOffset={4} className="z-[60]">
             {/* 2列の狭い入力にアンカーしても候補が読めるよう、アンカー幅を下限に内容で広げる
                 （都市名＋IANA が折り返さない程度に。器の外には出ない上限を付ける）。 */}
-            <Combobox.Popup className="max-h-64 w-max min-w-[var(--anchor-width)] max-w-[16rem] overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+            <Combobox.Popup className="max-h-64 w-max min-w-[var(--anchor-width)] max-w-[16rem] overflow-y-auto rounded-md border border-foreground/10 bg-background shadow-lg">
               <Combobox.List>
                 {(row: TzRow) => (
                   <Combobox.Item

@@ -541,7 +541,7 @@ export function PlaceMap({
               className={`rounded-full border px-2 py-0.5 text-xs ${
                 activeIdx === i
                   ? "border-primary bg-primary text-primary-foreground"
-                  : "border-foreground/20 bg-white text-muted-foreground"
+                  : "border-foreground/20 bg-background text-muted-foreground"
               }`}
             >
               {c.label ?? t("other")}
@@ -553,7 +553,7 @@ export function PlaceMap({
             className={`rounded-full border px-2 py-0.5 text-xs ${
               activeIdx === -1
                 ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/20 bg-white text-muted-foreground"
+                : "border-foreground/20 bg-background text-muted-foreground"
             }`}
           >
             すべて

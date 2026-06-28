@@ -178,7 +178,7 @@ export function AvatarUpload({
             </Menu.Trigger>
             <Menu.Portal>
               <Menu.Positioner align="start" sideOffset={8} className="z-20">
-                <Menu.Popup className="w-40 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg">
+                <Menu.Popup className="w-40 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 shadow-lg">
                   <Menu.Item
                     onClick={pickImage}
                     className={`block text-muted-foreground ${menuItemClass}`}

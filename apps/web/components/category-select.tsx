@@ -61,7 +61,7 @@ export function CategorySelect({
           sideOffset={4}
           alignItemWithTrigger={false}
         >
-          <Select.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/20 bg-white py-1 shadow-lg">
+          <Select.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/20 bg-background py-1 shadow-lg">
             {categories.map((c) => (
               <Select.Item
                 key={c.id}

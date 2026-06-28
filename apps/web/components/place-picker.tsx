@@ -388,7 +388,7 @@ export function PlacePicker({
               その器より上に出さないと裏に隠れる（place-search は地図上で単独なので
               z-20 で足りるが、こちらは重なりの上に出す必要がある）。 */}
           <Combobox.Positioner sideOffset={4} className="z-[60]">
-            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-background shadow-lg">
               <Combobox.List>
                 {(row: Row) => (
                   <Combobox.Item

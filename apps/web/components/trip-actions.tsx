@@ -280,7 +280,7 @@ export function TripActions({
               エクスポートはドリルインで2段目（出力先）を出す。 */}
           <Menu.Portal>
             <Menu.Positioner align="end" sideOffset={8} className="z-50">
-              <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 text-sm shadow-lg">
+              <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
                 {menuView === "main" ? (
                   <>
                     {iAmAdmin && (

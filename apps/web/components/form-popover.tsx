@@ -167,7 +167,7 @@ function NarrowSheet({
             // になり、そこでだけ中身がネイティブスクロールする。dvh＝実表示ビューポート基準
             // （vh だと iOS でツールバーの裏に下端が潜る）。
             style={{ height: `${SHEET_MAX_DVH}dvh` }}
-            className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-lg bg-white outline-none"
+            className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-lg bg-background outline-none"
           >
             {/* 掴みやすいよう上下に余白を取った厚めのグリップ帯（タップミス防止）。 */}
             <div className="flex shrink-0 cursor-grab justify-center pt-4 pb-3 active:cursor-grabbing">
@@ -249,7 +249,7 @@ export function FormPopover({
         >
           <Popover.Popup
             aria-label={label}
-            className="max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-white shadow-xl outline-none"
+            className="max-h-[80vh] w-[22rem] overflow-y-auto rounded-lg border border-foreground/20 bg-background shadow-xl outline-none"
           >
             {/* ポップオーバーでも下書きを保持する（draftKey 経由）。inSheet=false なので × は出す
                 ＝シートと違い保持＋×の両方。外側クリックの誤爆で入力が消えなくなる。 */}

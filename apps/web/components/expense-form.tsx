@@ -386,7 +386,7 @@ export function ExpenseForm({
     <form
       ref={formRef}
       action={formAction}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
     >
       {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
           ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}

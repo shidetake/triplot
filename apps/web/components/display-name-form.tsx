@@ -38,7 +38,7 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("namePlaceholder")}
         maxLength={50}
-        className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-foreground/20 bg-white px-3 text-sm focus:border-primary focus:outline-none"
+        className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-foreground/20 bg-background px-3 text-sm focus:border-primary focus:outline-none"
       />
       <HelpTip label={t("displayNameHelpLabel")} align="right">
         {t("displayNameHelp")}

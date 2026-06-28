@@ -199,7 +199,7 @@ export default async function ImportPage() {
                       <select
                         name="trip_id"
                         defaultValue={row.defaultTripId}
-                        className="rounded-md border border-foreground/20 bg-white px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                        className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
                         <option value="">{t("selectTrip")}</option>
                         {trips.map((trip) => (

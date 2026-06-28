@@ -53,7 +53,7 @@ export function AccountMenu({
 
       <Menu.Portal>
         <Menu.Positioner align="end" sideOffset={8} className="z-50">
-          <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-white py-1 shadow-lg">
+          <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 shadow-lg">
             {email && (
               <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
                 {email}

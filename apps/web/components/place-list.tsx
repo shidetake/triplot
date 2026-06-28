@@ -91,7 +91,7 @@ export function PlaceList({
   }
 
   return (
-    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-white">
+    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
       {places.map((p) => {
         const statusLabel = p.tentative ? t("statusCandidate") : t("statusConfirmed");
         const statusColor = p.tentative ? "#f59e0b" : "#10b981";

@@ -633,15 +633,15 @@ export function WeekCalendar({
       // 自前の長押し→ゴースト追加と被って使いにくい。カレンダー内は
       // 選択不要なので user-select:none / touch-callout:none で抑止する。
       style={{ WebkitTouchCallout: "none" }}
-      className="max-h-[70vh] select-none overflow-auto rounded-md border border-foreground/10 bg-white"
+      className="max-h-[70vh] select-none overflow-auto rounded-md border border-foreground/10 bg-background"
     >
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}
         <div className="sticky top-0 z-30">
         {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
-        <div className="flex border-b border-foreground/10 bg-white">
+        <div className="flex border-b border-foreground/10 bg-background">
           <div
-            className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-white"
+            className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-background"
             style={{ width: GUTTER }}
           />
           {groups.map((g) => (
@@ -827,7 +827,7 @@ export function WeekCalendar({
         <div className="flex">
           {/* 時刻ガター */}
           <div
-            className="sticky left-0 z-[25] shrink-0 border-r border-foreground/10 bg-white"
+            className="sticky left-0 z-[25] shrink-0 border-r border-foreground/10 bg-background"
             style={{ width: GUTTER, height: bodyH }}
           >
             <div className="relative h-full">

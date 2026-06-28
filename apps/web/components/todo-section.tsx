@@ -127,7 +127,7 @@ function PrioritySelect({
           alignItemWithTrigger={false}
           className="z-50"
         >
-          <Select.Popup className="w-24 overflow-hidden rounded-md border border-foreground/20 bg-white py-1 shadow-lg">
+          <Select.Popup className="w-24 overflow-hidden rounded-md border border-foreground/20 bg-background py-1 shadow-lg">
             {(["high", "medium", "low"] as const).map((p) => (
               <Select.Item
                 key={p}

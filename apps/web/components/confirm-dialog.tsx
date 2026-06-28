@@ -90,7 +90,7 @@ export function ConfirmDialogHost() {
         <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/40" />
         <Dialog.Popup
           initialFocus={confirmRef}
-          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg bg-white p-5 shadow-xl outline-none"
+          className="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background p-5 shadow-xl outline-none"
         >
           <Dialog.Title className="text-sm font-semibold text-foreground">
             {title}

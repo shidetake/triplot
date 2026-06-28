@@ -287,7 +287,7 @@ export function PlaceSearch({
 
         <Combobox.Portal>
           <Combobox.Positioner sideOffset={4} className="z-20">
-            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-white shadow-lg">
+            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-background shadow-lg">
               <Combobox.List>
                 {(s: google.maps.places.AutocompleteSuggestion) => (
                   <Combobox.Item

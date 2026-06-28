@@ -64,7 +64,7 @@ export function EditTripForm({
   return (
     <form
       action={formAction}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-white p-4"
+      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
     >
       {/* ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
       {!inSheet && (
