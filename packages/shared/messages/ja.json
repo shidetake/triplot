@@ -189,7 +189,8 @@
     "noEvents": "エクスポートする予定がありません",
     "deleteTripFailed": "削除に失敗しました: {error}",
     "regenerateFailed": "再生成に失敗しました",
-    "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください"
+    "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください",
+    "manageCategories": "カテゴリ"
   },
   "event": {
     "kindTimed": "通常",
@@ -517,5 +518,23 @@
     "tooLarge": "ファイルが大きすぎます（10MB まで）。",
     "uploadFailed": "アップロードに失敗しました。",
     "deleteFailed": "削除に失敗しました。"
+  },
+  "categories": {
+    "heading": "費用カテゴリ",
+    "addHeading": "カテゴリを追加",
+    "editHeading": "カテゴリを編集",
+    "nameLabel": "カテゴリ名",
+    "namePlaceholder": "買い物",
+    "colorLabel": "色",
+    "iconLabel": "アイコン",
+    "add": "カテゴリを追加",
+    "nameRequired": "カテゴリ名を入力してください",
+    "deleteConfirmTitle": "このカテゴリを削除しますか？",
+    "deleteInUse": "費用が登録されているため削除できません",
+    "saveOk": "保存しました",
+    "deleteOk": "削除しました",
+    "delete": "削除",
+    "save": "保存",
+    "edit": "編集"
   }
 }

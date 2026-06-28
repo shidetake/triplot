@@ -300,6 +300,12 @@ export function TripActions({
                       {t("manageMembers")}
                     </Menu.Item>
                     <Menu.Item
+                      render={<Link href={`/trips/${tripId}/categories`} />}
+                      className={`block ${menuItemClass}`}
+                    >
+                      {t("manageCategories")}
+                    </Menu.Item>
+                    <Menu.Item
                       onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
                       className={`block ${menuItemClass}`}
                     >

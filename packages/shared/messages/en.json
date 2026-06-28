@@ -189,7 +189,8 @@
     "noEvents": "No events to export",
     "deleteTripFailed": "Delete failed: {error}",
     "regenerateFailed": "Failed to regenerate",
-    "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it."
+    "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it.",
+    "manageCategories": "Categories"
   },
   "event": {
     "kindTimed": "Regular",
@@ -517,5 +518,23 @@
     "tooLarge": "File is too large (max 10 MB).",
     "uploadFailed": "Upload failed.",
     "deleteFailed": "Delete failed."
+  },
+  "categories": {
+    "heading": "Expense Categories",
+    "addHeading": "Add Category",
+    "editHeading": "Edit Category",
+    "nameLabel": "Name",
+    "namePlaceholder": "Shopping",
+    "colorLabel": "Color",
+    "iconLabel": "Icon",
+    "add": "Add category",
+    "nameRequired": "Please enter a category name",
+    "deleteConfirmTitle": "Delete this category?",
+    "deleteInUse": "Cannot delete — expenses are using this category",
+    "saveOk": "Saved",
+    "deleteOk": "Deleted",
+    "delete": "Delete",
+    "save": "Save",
+    "edit": "Edit"
   }
 }
