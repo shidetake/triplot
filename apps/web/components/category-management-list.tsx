@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { flushSync } from "react-dom";
 import { useTranslations } from "next-intl";
 
 import {
@@ -43,16 +44,9 @@ export function CategoryManagementList({
   const [isAdding, setIsAdding] = useState(false);
   const [addValue, setAddValue] = useState("");
 
-  // 追加行の input にスクロール → フォーカス（iOS autoFocus の誤スクロール回避）
+  // flushSync で DOM を即時コミット → クリックハンドラ内で focus() してキーボードを出す
+  // （setTimeout 内の focus() は iOS がユーザージェスチャーと認識せずキーボードを出さない）
   const addInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (!isAdding) return;
-    const timer = setTimeout(() => {
-      addInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-      addInputRef.current?.focus({ preventScroll: true });
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [isAdding]);
 
   // 保存と削除は互いに影響しないよう separate transition
   const [isSavePending, startSaveTransition] = useTransition();
@@ -171,8 +165,7 @@ export function CategoryManagementList({
         );
       })}
 
-      {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる）
-          autoFocus は使わず ref+useEffect でスクロール→フォーカスの順に制御（iOS scroll バグ回避） */}
+      {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる） */}
       {isAdding ? (
         <div className="flex items-center gap-2">
           <span
@@ -208,7 +201,14 @@ export function CategoryManagementList({
       ) : (
         <button
           type="button"
-          onClick={() => setIsAdding(true)}
+          onClick={() => {
+            // flushSync で isAdding=true の DOM 更新を同期的にコミット。
+            // その直後（まだクリックハンドラ内）に focus() → iOS がユーザージェスチャーと
+            // みなしてキーボードを開く。scrollIntoView でスクロール位置も正確に制御。
+            flushSync(() => setIsAdding(true));
+            addInputRef.current?.focus();
+            addInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          }}
           className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-foreground/20 px-3 py-2 text-sm text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
         >
           <PlusIcon size={16} />
