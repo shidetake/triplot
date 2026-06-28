@@ -465,9 +465,9 @@ export function PlaceMap({
                   onClick={() => onSelectSaved(p.id)}
                 >
                   <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 border-white text-white shadow ${
-                      p.tentative ? "opacity-50" : ""
-                    }`}
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-white shadow ${
+                      colorScheme === "DARK" ? "border-gray-500" : "border-white"
+                    } ${p.tentative ? "opacity-50" : ""}`}
                     style={{ backgroundColor: bg }}
                   >
                     <PlaceIcon icon={p.icon} size={16} />
