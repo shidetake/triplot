@@ -190,7 +190,7 @@
     "deleteTripFailed": "削除に失敗しました: {error}",
     "regenerateFailed": "再生成に失敗しました",
     "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください",
-    "manageCategories": "カテゴリ"
+    "manageCategories": "費用カテゴリ管理"
   },
   "event": {
     "kindTimed": "通常",
@@ -520,7 +520,7 @@
     "deleteFailed": "削除に失敗しました。"
   },
   "categories": {
-    "heading": "費用カテゴリ",
+    "heading": "費用カテゴリ管理",
     "addHeading": "カテゴリを追加",
     "editHeading": "カテゴリを編集",
     "nameLabel": "カテゴリ名",

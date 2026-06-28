@@ -190,7 +190,7 @@
     "deleteTripFailed": "Delete failed: {error}",
     "regenerateFailed": "Failed to regenerate",
     "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it.",
-    "manageCategories": "Categories"
+    "manageCategories": "Manage Expense Categories"
   },
   "event": {
     "kindTimed": "Regular",
@@ -520,7 +520,7 @@
     "deleteFailed": "Delete failed."
   },
   "categories": {
-    "heading": "Expense Categories",
+    "heading": "Manage Expense Categories",
     "addHeading": "Add Category",
     "editHeading": "Edit Category",
     "nameLabel": "Name",

@@ -10,6 +10,10 @@ export type CategoryMutationState = {
   ok: boolean;
 };
 
+// カスタムカテゴリのアイコン・色は固定（汎用「category」アイコン＋「その他」と同色）
+const CUSTOM_ICON = "category";
+const CUSTOM_COLOR = "#71717a";
+
 export async function createCategoryAction(
   tripId: string,
   _prevState: CategoryMutationState,
@@ -17,8 +21,6 @@ export async function createCategoryAction(
 ): Promise<CategoryMutationState> {
   const t = await getTranslations("categories");
   const name = (formData.get("name") as string | null)?.trim() ?? "";
-  const color = (formData.get("color") as string | null) ?? "#71717a";
-  const icon = (formData.get("icon") as string | null) ?? "category";
 
   if (!name) return { error: t("nameRequired"), ok: false };
 
@@ -35,8 +37,8 @@ export async function createCategoryAction(
   const { error } = await supabase.from("expense_categories").insert({
     trip_id: tripId,
     name,
-    color,
-    icon,
+    color: CUSTOM_COLOR,
+    icon: CUSTOM_ICON,
     sort_order: (maxRow?.sort_order ?? 0) + 1,
     // カスタムカテゴリは key = NULL（name をそのまま表示）
     key: null,
@@ -56,16 +58,13 @@ export async function updateCategoryAction(
 ): Promise<CategoryMutationState> {
   const t = await getTranslations("categories");
   const name = (formData.get("name") as string | null)?.trim() ?? "";
-  const color = (formData.get("color") as string | null) ?? "#71717a";
-  const icon = (formData.get("icon") as string | null) ?? "category";
 
   if (!name) return { error: t("nameRequired"), ok: false };
 
   const supabase = await createClient();
-  // 編集すると key を NULL にする（ユーザーが明示的に変えた＝i18n 参照を外す）。
   const { error } = await supabase
     .from("expense_categories")
-    .update({ name, color, icon, key: null })
+    .update({ name, color: CUSTOM_COLOR, icon: CUSTOM_ICON, key: null })
     .eq("id", categoryId);
 
   if (error) return { error: error.message, ok: false };

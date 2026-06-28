@@ -50,16 +50,19 @@ export function CategoryManagementList({
               <span className="min-w-0 flex-1 truncate text-sm">
                 {catName(c)}
               </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="iconSm"
-                onClick={(e) => openEdit(e, c)}
-                aria-label={t("edit")}
-                title={t("edit")}
-              >
-                <EditIcon size={16} />
-              </Button>
+              {/* デフォルトカテゴリ(key != null)は編集不可 */}
+              {c.key == null && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="iconSm"
+                  onClick={(e) => openEdit(e, c)}
+                  aria-label={t("edit")}
+                  title={t("edit")}
+                >
+                  <EditIcon size={16} />
+                </Button>
+              )}
             </div>
           ))}
         </div>

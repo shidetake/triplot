@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -20,27 +20,15 @@ import { SaveIcon, TrashIcon } from "./icons";
 import { MessageBox } from "./message-box";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 
-const COLORS = [
-  "#ef4444", "#f97316", "#f59e0b", "#eab308",
-  "#84cc16", "#10b981", "#06b6d4", "#3b82f6",
-  "#6366f1", "#a855f7", "#ec4899", "#f43f5e",
-  "#71717a", "#6b7280", "#0ea5e9", "#14b8a6",
-];
-
-// expense-category-icon.tsx の EXPENSE_ICON_PATHS と同期。celebration は
-// 旧「エンタメ」の fallback だが、ピッカーには出す（有効なアイコン）。
-const ICONS = [
-  "flight", "tram", "restaurant", "checkroom",
-  "local_activity", "redeem", "hotel", "wifi",
-  "local_hospital", "casino", "category", "celebration",
-];
+// カスタムカテゴリのアイコン・色は固定（「その他」と同じ汎用スタイル）
+const CUSTOM_ICON = "category";
+const CUSTOM_COLOR = "#71717a";
 
 export type CategoryFormValue = {
   id: string;
   name: string;
   color: string;
   icon: string;
-  // null = カスタム（name をそのまま表示）、string = デフォルト（i18n キー）
   key: string | null;
 };
 
@@ -57,18 +45,9 @@ export function CategoryForm({
 }) {
   const inSheet = useInSheet();
   const t = useTranslations("categories");
-  const tExp = useTranslations("expense");
 
   const isEdit = !!category;
-  const initColor = category?.color ?? COLORS[7];
-  const initIcon = category?.icon ?? "category";
-  // key があれば i18n カタログから表示名を引く（編集前の表示と一致させる）
-  const initName = category
-    ? (category.key ? tExp(`cat.${category.key}`) : category.name)
-    : "";
-
-  const [color, setColor] = useState(initColor);
-  const [icon, setIcon] = useState(initIcon);
+  const initName = category?.name ?? "";
 
   const action = isEdit
     ? updateCategoryAction.bind(null, category.id, tripId)
@@ -108,13 +87,12 @@ export function CategoryForm({
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
-      {/* プレビュー + 名前入力 */}
       <div className="flex items-center gap-3">
         <span
           className="block h-8 w-8 shrink-0 rounded-full text-white"
-          style={{ backgroundColor: color }}
+          style={{ backgroundColor: CUSTOM_COLOR }}
         >
-          <ExpenseCategoryIcon icon={icon} size={32} inset={0.18} />
+          <ExpenseCategoryIcon icon={CUSTOM_ICON} size={32} inset={0.18} />
         </span>
         <label className="block min-w-0 flex-1 text-sm">
           <FieldLabel required>{t("nameLabel")}</FieldLabel>
@@ -128,57 +106,6 @@ export function CategoryForm({
         </label>
       </div>
 
-      {/* 色ピッカー */}
-      <div className="text-sm">
-        <FieldLabel>{t("colorLabel")}</FieldLabel>
-        <input type="hidden" name="color" value={color} />
-        <div className="mt-1.5 grid grid-cols-8 gap-1.5">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setColor(c)}
-              className="relative flex h-7 w-7 items-center justify-center rounded-full transition"
-              style={{ backgroundColor: c }}
-              aria-label={c}
-              aria-pressed={color === c}
-              title={c}
-            >
-              {color === c && (
-                <span className="text-xs font-bold text-white">✓</span>
-              )}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* アイコンピッカー */}
-      <div className="text-sm">
-        <FieldLabel>{t("iconLabel")}</FieldLabel>
-        <input type="hidden" name="icon" value={icon} />
-        <div className="mt-1.5 grid grid-cols-6 gap-1.5">
-          {ICONS.map((ic) => (
-            <button
-              key={ic}
-              type="button"
-              onClick={() => setIcon(ic)}
-              aria-label={ic}
-              aria-pressed={icon === ic}
-              title={ic}
-              className="flex h-9 w-9 items-center justify-center rounded-md border transition"
-              style={
-                icon === ic
-                  ? { backgroundColor: color, color: "white", borderColor: color }
-                  : { borderColor: "color-mix(in srgb, currentColor 20%, transparent)" }
-              }
-            >
-              <ExpenseCategoryIcon icon={ic} size={20} />
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* フッター: 削除（編集時のみ）+ 保存 */}
       <div className="flex gap-2">
         {isEdit && (
           <Button
