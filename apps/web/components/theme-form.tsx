@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
 
 import { setThemeAction } from "@/app/settings/actions";
 import type { Theme } from "@/i18n/theme";
@@ -45,15 +45,6 @@ export function ThemeForm({ currentTheme }: { currentTheme: Theme }) {
 
   const mqRef = useRef<MediaQueryList | null>(null);
   const listenerRef = useRef<((e: MediaQueryListEvent) => void) | null>(null);
-
-  // コンポーネント破棄時にリスナーをクリーンアップ
-  useEffect(() => {
-    return () => {
-      if (listenerRef.current && mqRef.current) {
-        mqRef.current.removeEventListener("change", listenerRef.current);
-      }
-    };
-  }, []);
 
   const pick = (value: Theme) => {
     if (value === current || pending) return;
