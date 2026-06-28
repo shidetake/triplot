@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -43,6 +43,17 @@ export function CategoryManagementList({
   const [isAdding, setIsAdding] = useState(false);
   const [addValue, setAddValue] = useState("");
 
+  // 追加行の input にスクロール → フォーカス（iOS autoFocus の誤スクロール回避）
+  const addInputRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!isAdding) return;
+    const timer = setTimeout(() => {
+      addInputRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      addInputRef.current?.focus({ preventScroll: true });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [isAdding]);
+
   // 保存と削除は互いに影響しないよう separate transition
   const [isSavePending, startSaveTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
@@ -81,12 +92,13 @@ export function CategoryManagementList({
     });
   };
 
-  const handleDelete = (id: string) => {
-    // 編集中なら先にキャンセル（sync）
+  // confirmDialog は transition 外で呼ぶ（transition 内だと React がダイアログの
+  // レンダリングを low-priority として遅延し、ダイアログが表示されない）
+  const handleDelete = async (id: string) => {
     if (editId === id) { setEditId(null); setEditValue(""); }
+    const ok = await confirmDialog({ title: t("deleteConfirmTitle") });
+    if (!ok) return;
     startDeleteTransition(async () => {
-      const ok = await confirmDialog({ title: t("deleteConfirmTitle") });
-      if (!ok) return;
       const res = await deleteCategoryAction(id, tripId);
       if (res.error) toast(res.error);
       else toast(t("deleteOk"));
@@ -159,7 +171,8 @@ export function CategoryManagementList({
         );
       })}
 
-      {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる） */}
+      {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる）
+          autoFocus は使わず ref+useEffect でスクロール→フォーカスの順に制御（iOS scroll バグ回避） */}
       {isAdding ? (
         <div className="flex items-center gap-2">
           <span
@@ -169,7 +182,7 @@ export function CategoryManagementList({
             <ExpenseCategoryIcon icon={CUSTOM_ICON} size={24} inset={0.18} />
           </span>
           <input
-            autoFocus
+            ref={addInputRef}
             value={addValue}
             onChange={(e) => setAddValue(e.target.value)}
             disabled={isSavePending}
