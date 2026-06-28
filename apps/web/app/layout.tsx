@@ -7,6 +7,7 @@ import { Toaster } from "@/components/toast";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
 import { getDeployEnv, getVersion } from "@/lib/version";
 import { resolveTheme } from "@/i18n/theme.server";
+import { ThemeSync } from "@/components/theme-sync";
 
 // チラつきなしでダークモードを適用するインラインスクリプト。
 // Cookie を読み、system の場合は prefers-color-scheme に従う。
@@ -59,6 +60,7 @@ export default async function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
       <body className="min-h-full flex flex-col">
+        <ThemeSync />
         <NextIntlClientProvider messages={messages}>
           <div className="flex-1">{children}</div>
           <footer className="px-6 py-3 text-center text-xs text-subtle-foreground">
