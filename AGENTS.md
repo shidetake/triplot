@@ -4,18 +4,27 @@
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-## `revalidatePath` はサーバー側 HTML を上書きする
+## Server Action は完了後に自動でページを再レンダリングする
 
-Server Action 内で `revalidatePath` を呼ぶと React が layout を再レンダリングし、
-`<html>` 等のサーバー側属性を DOM に書き戻す。
+Next.js App Router は Server Action 完了後、`revalidatePath` の有無に関わらず
+React が自動的にページを再レンダリングする。その際 `<html>` 等のサーバー側属性が
+DOM に書き戻される。
 
-**やってはいけないパターン**: クライアント JS で `<html>` に class を付けた後、
-同じ action で `revalidatePath("/", "layout")` を呼ぶと、その class が消える。
+**やってはいけないパターン**: クライアント JS で `<html class>` を変更した後に
+Server Action を呼ぶと、その変更が再レンダリングで消える。
 
+```tsx
+// NG: テーマ切替を Server Action 経由にすると React が dark クラスを上書きして消す
+await setThemeAction(value);  // → 再レンダリング → <html class=""> で dark 消える
 ```
-// NG: テーマ切替 action で revalidatePath → React が dark クラスを上書きして消す
-revalidatePath("/", "layout");  // <-- これを消す（5193311 で修正）
+
+**正しいパターン**: サーバー描画コンテンツが変わらない変更（CSS クラス・
+ユーザー設定 Cookie 等）は Server Action を使わず `document.cookie` で直書きする。
+
+```tsx
+// OK: クライアントから直接 Cookie に書く → 再レンダリングなし → クラスが消えない
+document.cookie = `NEXT_THEME=${value}; path=/; max-age=...`;
 ```
 
-**判断基準**: `revalidatePath` はサーバー描画コンテンツ（翻訳テキスト等）が
-変わるときだけ使う。CSS のみの変化（テーマ等）には不要。
+Server Action が必要なのは、サーバー描画コンテンツ（翻訳テキスト等）が
+変わる場合だけ（例: `setLocaleAction` は `revalidatePath` が必要）。
