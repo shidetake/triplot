@@ -155,7 +155,7 @@ export function WeekCalendar({
     // 選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
     if (color.kind === "private") {
       return {
-        className: `${sel ? "z-10 border-zinc-500 ring-1 ring-zinc-500" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-zinc-200" : "bg-zinc-100"}`,
+        className: `${sel ? "z-10 border-foreground/40 ring-1 ring-foreground/40" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-foreground/15" : "bg-foreground/8"}`,
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {
@@ -193,7 +193,7 @@ export function WeekCalendar({
     // 薄く隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
     if (color.kind === "private") {
       return {
-        className: `${hov ? "bg-zinc-300" : "bg-zinc-200"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-zinc-500" : ""}`,
+        className: `${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {

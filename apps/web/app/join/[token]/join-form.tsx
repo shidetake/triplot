@@ -79,9 +79,9 @@ export function JoinForm({
             {isPending ? t("joining") : t("joinAsGuest")}
           </Button>
           <div className="flex items-center gap-3 text-xs text-subtle-foreground">
-            <span className="h-px flex-1 bg-zinc-200" />
+            <span className="h-px flex-1 bg-foreground/10" />
             {tc("or")}
-            <span className="h-px flex-1 bg-zinc-200" />
+            <span className="h-px flex-1 bg-foreground/10" />
           </div>
           <GoogleSignInButton next={`/join/${token}`} />
         </div>

@@ -30,7 +30,7 @@ export function HelpTip({
         // フォーム内にも置かれるので type=button 必須（既定 submit を避ける）。
         type="button"
         aria-label={label}
-        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-zinc-200 text-[10px] font-bold text-muted-foreground"
+        className="flex h-4 w-4 cursor-help items-center justify-center rounded-full bg-foreground/10 text-[10px] font-bold text-muted-foreground"
       >
         ?
       </Popover.Trigger>

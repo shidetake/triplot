@@ -242,7 +242,7 @@ export default async function ImportPage() {
                       </summary>
                       <div className="mt-2 space-y-1">
                         {/* この下書き自身の元メール（分けられない本体） */}
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-zinc-50 px-2 py-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
                           <span>{row.own?.merchant || t("unknownMerchant")}</span>
                           <InlineDivider />
                           <span>
@@ -258,7 +258,7 @@ export default async function ImportPage() {
                         {row.children.map((ch) => (
                           <div
                             key={ch.id}
-                            className="flex items-center justify-between gap-2 rounded bg-zinc-50 px-2 py-1"
+                            className="flex items-center justify-between gap-2 rounded bg-muted px-2 py-1"
                           >
                             <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
                               <span>{ch.receipt?.merchant || t("unknownMerchant")}</span>

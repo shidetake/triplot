@@ -33,7 +33,7 @@ export function ToggleChip({
           ? colored
             ? "" // 色は chipStyle の inline style で当てる
             : "bg-primary text-primary-foreground"
-          : "bg-zinc-100 text-subtle-foreground ring-1 ring-foreground/10",
+          : "bg-muted text-subtle-foreground ring-1 ring-foreground/10",
         className,
       )}
     />
