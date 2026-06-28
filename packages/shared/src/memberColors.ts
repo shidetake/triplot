@@ -54,6 +54,15 @@ export function vividColor(hue: number | null | undefined): string | null {
   return h == null ? null : `hsl(${h}, 70%, 50%)`;
 }
 
+// 地図ピンのダークモード用パステル背景色。同じ hue から彩度・明度を変えるだけ。
+// 黒アイコンが読めるよう明度を高く（80%）、彩度を抑えて（50%）柔らかくする。
+// null 時は確定色(140°)のパステルを返す（vividColor と異なり地図ピン専用なので
+// フォールバックを内包する）。
+export function pastelBgColor(hue: number | null | undefined): string {
+  const h = normalizeHue(hue) ?? 140;
+  return `hsl(${h}, 50%, 80%)`;
+}
+
 // 表示名から「省略形」を1文字取り出す。Spread でコードポイント単位に分割するので、
 // 絵文字 / サロゲートペアでも 1文字として正しく扱える（日本語は元から1コードポイント）。
 export function firstChar(name: string | null | undefined): string {

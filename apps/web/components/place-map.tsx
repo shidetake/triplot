@@ -44,7 +44,7 @@ import {
   TOKYO,
 } from "@triplot/shared/placeMap";
 
-import { vividColor } from "@triplot/shared/memberColors";
+import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
 import { useTranslations } from "next-intl";
 
 import { PlaceIcon, type PlaceRow } from "./place-list";
@@ -454,9 +454,12 @@ export function PlaceMap({
               // 候補（tentative=true）は半透明 + 作成者のメンバー色で塗る。
               // 確定（tentative=false）は固定のグリーンで塗る。
               const creatorHue = memberHueById.get(p.created_by_member_id);
-              const bg = p.tentative
-                ? (vividColor(creatorHue) ?? "#6b7280")
-                : "#10b981";
+              const isDarkMap = colorScheme === "DARK";
+              const bg = isDarkMap
+                ? pastelBgColor(p.tentative ? creatorHue : 140)
+                : p.tentative
+                  ? (vividColor(creatorHue) ?? "#6b7280")
+                  : "#10b981";
               return (
                 <AdvancedMarker
                   key={p.id}
@@ -465,10 +468,10 @@ export function PlaceMap({
                   onClick={() => onSelectSaved(p.id)}
                 >
                   <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 text-white shadow ${
-                      colorScheme === "DARK" ? "border-gray-500" : "border-white"
+                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 shadow ${
+                      isDarkMap ? "border-gray-500" : "border-white"
                     } ${p.tentative ? "opacity-50" : ""}`}
-                    style={{ backgroundColor: bg }}
+                    style={{ backgroundColor: bg, color: isDarkMap ? "#202124" : "white" }}
                   >
                     <PlaceIcon icon={p.icon} size={16} />
                   </div>
