@@ -395,7 +395,10 @@
       "nature": "自然",
       "culture": "文化・宗教",
       "other": "その他"
-    }
+    },
+    "savedBadge": "保存済み",
+    "filterAll": "すべて",
+    "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。"
   },
   "validation": {
     "loginRequired": "ログインが必要です",

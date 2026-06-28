@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
+import { useTranslations } from "next-intl";
 import { Combobox } from "@base-ui/react/combobox";
 
 import type { LatLng } from "@triplot/shared/placeMap";
@@ -68,6 +69,7 @@ export function PlacePicker({
   // （低確信なら店名のままテキスト場所）。initial（保存済みマッチ）が有る時は無視。
   autoResolve?: { name: string; location?: string | null } | null;
 }) {
+  const t = useTranslations("place");
   const placesLib = useMapsLibrary("places");
 
   const [query, setQuery] = useState(
@@ -404,7 +406,7 @@ export function PlacePicker({
                       <>
                         <span className="font-medium">{row.name}</span>
                         <span className="ml-2 text-xs text-subtle-foreground">
-                          保存済み
+                          {t("savedBadge")}
                         </span>
                       </>
                     ) : (

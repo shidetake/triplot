@@ -261,7 +261,7 @@ export default async function TripDetailPage({
       description:
         [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
       colorHex: p.tentative ? "#f59e0b" : "#10b981",
-      category: p.tentative ? "候補" : "確定",
+      category: p.tentative ? t("place.statusCandidate") : t("place.statusConfirmed"),
       iconKey: p.icon,
     }));
   // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。

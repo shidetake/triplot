@@ -395,7 +395,10 @@
       "nature": "Nature",
       "culture": "Culture / Religion",
       "other": "Other"
-    }
+    },
+    "savedBadge": "Saved",
+    "filterAll": "All",
+    "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead)."
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

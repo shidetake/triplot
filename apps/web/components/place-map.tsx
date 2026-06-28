@@ -577,13 +577,13 @@ export function PlaceMap({
                 : "border-foreground/20 bg-background text-muted-foreground"
             }`}
           >
-            すべて
+            {t("filterAll")}
           </button>
         </div>
       )}
       {!mapId && (
         <p className="text-xs text-amber-700">
-          Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。
+          {t("noMapId")}
         </p>
       )}
     </div>
