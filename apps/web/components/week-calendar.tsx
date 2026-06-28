@@ -671,9 +671,9 @@ export function WeekCalendar({
         </div>
 
         {/* ── 終日帯 ── */}
-        <div className="flex border-b border-foreground/10 bg-zinc-50">
+        <div className="flex border-b border-foreground/10 bg-muted">
           <div
-            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-zinc-50 text-[10px] text-muted-foreground"
+            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-muted text-[10px] text-muted-foreground"
             style={{ width: GUTTER }}
           >
             {tSched("allDayLabel")}

@@ -188,6 +188,24 @@ input[type="time"]::-webkit-calendar-picker-indicator {
   overflow-x: hidden !important;
 }
 
+/* ダークモード: Google Maps InfoWindow の背景を上書き。
+   Google は .gm-style-iw-c に白背景をインラインで付けるため !important が必要。
+   .gm-style-iw-t::after は吹き出しの三角形（矢印）の地色。 */
+.dark .gm-style-iw-c {
+  background-color: var(--background) !important;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.6) !important;
+}
+.dark .gm-style-iw-d {
+  background-color: var(--background) !important;
+}
+.dark .gm-style-iw-t::after {
+  background: var(--background) !important;
+}
+/* InfoWindow のデフォルト閉じる × ボタン（Google 製）も暗い面に合わせる */
+.dark .gm-ui-hover-effect > span {
+  background-color: var(--foreground) !important;
+}
+
 /* iOS Safari がドラッグ可能/タップ可能なマップピン（特にドラッグ可能な
    仮ピン）に出す青い四角＝タップハイライト/フォーカス枠を消す。
    -webkit-tap-highlight-color はデスクトップでは無効、outline も PC では
