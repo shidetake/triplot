@@ -416,7 +416,7 @@ export default async function TripDetailPage({
     const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
     if (!r) return [];
     const currency: Currency =
-      r.currency === "JPY" || r.currency === "USD" ? r.currency : defaultCurrency;
+      /^[A-Z]{3}$/.test(r.currency ?? "") ? r.currency : defaultCurrency;
     const categoryId =
       categories.find((c) => c.name === r.category)?.id ?? initialCategoryId;
     const matched = matchPlace(

@@ -63,7 +63,7 @@ begin
   if p_local_price is null or p_local_price <= 0 then
     raise exception 'local_price must be positive';
   end if;
-  if p_local_currency not in ('JPY', 'USD') then
+  if p_local_currency !~ '^[A-Z]{3}$' then
     raise exception 'invalid local_currency';
   end if;
   if p_rate_to_default is null or p_rate_to_default <= 0 then

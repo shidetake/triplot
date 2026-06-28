@@ -46,7 +46,7 @@ create table trips (
   start_date        date,
   end_date          date,
   default_currency  text not null
-                      check (default_currency in ('JPY','USD'))
+                      check (default_currency ~ '^[A-Z]{3}$')
                       default 'JPY',
   last_activity_at  timestamptz not null default now(),
   created_at        timestamptz not null default now()

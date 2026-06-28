@@ -84,7 +84,7 @@ alter table expenses drop column currency;
 
 alter table expenses
   add column local_price     numeric not null check (local_price > 0),
-  add column local_currency  text    not null check (local_currency in ('JPY','USD')),
+  add column local_currency  text    not null check (local_currency ~ '^[A-Z]{3}$'),
   add column rate_to_default numeric not null check (rate_to_default > 0),
   add column category_id     uuid    not null
     references expense_categories(id) on delete restrict;
@@ -129,7 +129,7 @@ begin
   if coalesce(trim(p_display_name), '') = '' then
     raise exception 'display_name required';
   end if;
-  if p_default_currency not in ('JPY', 'USD') then
+  if p_default_currency !~ '^[A-Z]{3}$' then
     raise exception 'invalid default_currency';
   end if;
 
@@ -199,7 +199,7 @@ begin
   if p_local_price is null or p_local_price <= 0 then
     raise exception 'local_price must be positive';
   end if;
-  if p_local_currency not in ('JPY', 'USD') then
+  if p_local_currency !~ '^[A-Z]{3}$' then
     raise exception 'invalid local_currency';
   end if;
   if p_rate_to_default is null or p_rate_to_default <= 0 then

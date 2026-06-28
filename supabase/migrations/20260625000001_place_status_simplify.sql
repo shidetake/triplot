@@ -51,7 +51,7 @@ begin
   if coalesce(trim(p_display_name), '') = '' then
     raise exception 'display_name required';
   end if;
-  if p_default_currency not in ('JPY', 'USD') then
+  if p_default_currency !~ '^[A-Z]{3}$' then
     raise exception 'invalid default_currency';
   end if;
 
@@ -384,7 +384,7 @@ begin
   if coalesce(trim(p_display_name), '') = '' then
     raise exception 'display_name required';
   end if;
-  if p_default_currency not in ('JPY', 'USD') then
+  if p_default_currency !~ '^[A-Z]{3}$' then
     raise exception 'invalid default_currency';
   end if;
 

@@ -74,7 +74,7 @@ export async function updateTripAction(
   if (!startDate || !endDate) {
     return { ok: false, error: t("enterDates") };
   }
-  if (!["JPY", "USD"].includes(currency)) {
+  if (!/^[A-Z]{3}$/.test(currency)) {
     return { ok: false, error: t("invalidCurrency") };
   }
 
@@ -135,7 +135,7 @@ export async function createExpenseAction(
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
     return { ok: false, error: t("pricePositive") };
   }
-  if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
+  if (!localCurrency || !/^[A-Z]{3}$/.test(localCurrency)) {
     return { ok: false, error: t("selectCurrency") };
   }
   if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {
@@ -219,7 +219,7 @@ export async function updateExpenseAction(
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
     return { ok: false, error: t("pricePositive") };
   }
-  if (!localCurrency || !["JPY", "USD"].includes(localCurrency)) {
+  if (!localCurrency || !/^[A-Z]{3}$/.test(localCurrency)) {
     return { ok: false, error: t("selectCurrency") };
   }
   if (!Number.isFinite(rateToDefault) || rateToDefault <= 0) {

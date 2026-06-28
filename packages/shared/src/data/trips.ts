@@ -6,7 +6,7 @@ import {
 import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
-export type Currency = "JPY" | "USD";
+export type Currency = string;
 
 // ── 作成（ゼロから or 過去の旅行をコピー） ───────────────────────────────
 export type CreateTripInput = {

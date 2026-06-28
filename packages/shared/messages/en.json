@@ -123,10 +123,6 @@
     "shorterWarning": "⚠ Because the dates are shorter than the source trip, some events won't be copied.",
     "fillAll": "Please fill in all fields."
   },
-  "currency": {
-    "jpy": "JPY (Japanese Yen)",
-    "usd": "USD (US Dollar)"
-  },
   "landing": {
     "tagline": "Plan trips with friends and keep them as memories.",
     "openApp": "Open the app →",

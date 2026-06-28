@@ -10,6 +10,8 @@ import {
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { tripDayCount } from "@triplot/shared/tripCopy";
+import { COMMON_CURRENCIES, ALL_CURRENCIES } from "@triplot/shared/currencies";
+import type { Currency } from "@triplot/shared/types/database";
 
 import { DateRangePopover } from "./date-range-popover";
 import { Button } from "@/components/ui/button";
@@ -21,13 +23,6 @@ import { MessageBox } from "./message-box";
 import { PlusIcon } from "./icons";
 import { CloseButton } from "./close-button";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
-
-type Currency = "JPY" | "USD";
-
-const CURRENCIES: { value: Currency; key: "jpy" | "usd" }[] = [
-  { value: "JPY", key: "jpy" },
-  { value: "USD", key: "usd" },
-];
 
 // コピー元に選べる過去の旅行。
 export type CopyableTrip = {
@@ -55,7 +50,6 @@ export function CreateTripForm({
   );
   const t = useTranslations("createTrip");
   const tCommon = useTranslations("common");
-  const tCurrency = useTranslations("currency");
 
   // ボトムシート時は入力途中で閉じても残るよう、データ系 state は useDraft で保持する。
   const inSheet = useInSheet();
@@ -70,7 +64,9 @@ export function CreateTripForm({
     "displayName",
     defaultDisplayName ?? "",
   );
-  const [currency, setCurrency] = useDraft<Currency>("currency", "JPY");
+  // デフォルトは前回旅行の精算通貨。過去の旅行がなければ JPY。
+  const lastCurrency = (trips[0]?.default_currency ?? "JPY") as Currency;
+  const [currency, setCurrency] = useDraft<Currency>("currency", lastCurrency);
   // 選択中の日程（コピー元より短いかの判定に使う）。日程の真の値は DateRangePopover が
   // 内部に持ち（remount でリセットされる）、これはその警告判定用ミラーなので保持しない
   // （保持すると picker 表示が空なのに警告だけ出る不整合になる）。
@@ -102,7 +98,7 @@ export function CreateTripForm({
     const t = trips.find((x) => x.id === id);
     if (t) {
       setTitle(t.title);
-      if (t.default_currency === "JPY" || t.default_currency === "USD") {
+      if (/^[A-Z]{3}$/.test(t.default_currency)) {
         setCurrency(t.default_currency);
       }
     }
@@ -249,11 +245,16 @@ export function CreateTripForm({
           onChange={(e) => setCurrency(e.target.value as Currency)}
           className={`mt-1 block w-full ${inputClass}`}
         >
-          {CURRENCIES.map((c) => (
-            <option key={c.value} value={c.value}>
-              {tCurrency(c.key)}
-            </option>
-          ))}
+          <optgroup label="主要通貨">
+            {COMMON_CURRENCIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </optgroup>
+          <optgroup label="その他">
+            {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </optgroup>
         </select>
       </div>
 
