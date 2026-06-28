@@ -14,7 +14,6 @@ import { CloseIcon, PlusIcon, TrashIcon } from "./icons";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { inputClass } from "./input-class";
 
-// アイコンはその他と同じ「category」。色は青（その他の灰と区別）
 const CUSTOM_ICON = "category";
 const CUSTOM_COLOR = "#3b82f6";
 
@@ -25,11 +24,6 @@ export type CategoryItem = {
   icon: string;
   key: string | null;
 };
-
-type EditState =
-  | { kind: "idle" }
-  | { kind: "editing"; id: string; originalName: string }
-  | { kind: "adding" };
 
 export function CategoryManagementList({
   tripId,
@@ -42,57 +36,67 @@ export function CategoryManagementList({
   const tc = useTranslations("common");
   const tExp = useTranslations("expense");
 
-  const [editState, setEditState] = useState<EditState>({ kind: "idle" });
-  const [isPending, startTransition] = useTransition();
+  // 編集中: controlled input（TODO の edit input と同じパターン）
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState("");
+  // 追加中: controlled input
+  const [isAdding, setIsAdding] = useState(false);
+  const [addValue, setAddValue] = useState("");
+
+  // 保存と削除は互いに影響しないよう separate transition
+  const [isSavePending, startSaveTransition] = useTransition();
+  const [isDeletePending, startDeleteTransition] = useTransition();
 
   const catName = (c: CategoryItem) =>
     c.key ? tExp(`cat.${c.key}`) : c.name;
 
-  const cancel = () => setEditState({ kind: "idle" });
-
-  const handleKeyDown = (
-    e: React.KeyboardEvent<HTMLInputElement>,
-    onSave: (value: string) => void,
-  ) => {
-    if (e.key === "Enter") { e.preventDefault(); onSave(e.currentTarget.value); }
-    if (e.key === "Escape") { e.preventDefault(); cancel(); }
+  const startEdit = (c: CategoryItem) => {
+    setEditId(c.id);
+    setEditValue(c.name);
   };
 
-  const saveNew = (value: string) => {
-    const name = value.trim();
-    if (!name) { cancel(); return; }
-    startTransition(async () => {
-      const res = await createCategoryAction(tripId, name);
+  // TODO の commitEdit と同じ構造: state から値を読む → setEditId(null) 先に → 非同期保存
+  const commitEdit = (c: CategoryItem) => {
+    if (editId !== c.id) return;
+    const id = editId;
+    const name = editValue.trim();
+    setEditId(null);
+    setEditValue("");
+    if (!name || name === c.name) return;
+    startSaveTransition(async () => {
+      const res = await updateCategoryAction(id, tripId, name);
       if (res.error) toast(res.error);
-      else cancel();
+      else toast(tc("saved"));
     });
   };
 
-  const saveEdit = (id: string, value: string, originalName: string) => {
-    const name = value.trim();
-    if (!name || name === originalName) { cancel(); return; }
-    startTransition(async () => {
-      const res = await updateCategoryAction(id, tripId, name);
+  const saveNew = () => {
+    const name = addValue.trim();
+    setIsAdding(false);
+    setAddValue("");
+    if (!name) return;
+    startSaveTransition(async () => {
+      const res = await createCategoryAction(tripId, name);
       if (res.error) toast(res.error);
-      else { toast(tc("saved")); cancel(); }
     });
   };
 
   const handleDelete = (id: string) => {
-    startTransition(async () => {
+    // 編集中なら先にキャンセル（sync）
+    if (editId === id) { setEditId(null); setEditValue(""); }
+    startDeleteTransition(async () => {
       const ok = await confirmDialog({ title: t("deleteConfirmTitle") });
       if (!ok) return;
       const res = await deleteCategoryAction(id, tripId);
       if (res.error) toast(res.error);
-      else { toast(t("deleteOk")); cancel(); }
+      else toast(t("deleteOk"));
     });
   };
 
   return (
     <div className="space-y-1">
       {categories.map((c) => {
-        const isEditing =
-          editState.kind === "editing" && editState.id === c.id;
+        const isEditing = editId === c.id;
         const isCustom = c.key == null;
 
         return (
@@ -109,47 +113,24 @@ export function CategoryManagementList({
             </span>
 
             {isEditing ? (
-              <>
-                <input
-                  autoFocus
-                  defaultValue={editState.originalName}
-                  disabled={isPending}
-                  className={`flex-1 ${inputClass}`}
-                  // blur = 保存（編集モードのみ）。ゴミ箱は onPointerDown で blur を防いでから onClick で動く
-                  onBlur={(e) =>
-                    saveEdit(c.id, e.currentTarget.value, editState.originalName)
-                  }
-                  onKeyDown={(e) =>
-                    handleKeyDown(e, (v) =>
-                      saveEdit(c.id, v, editState.originalName),
-                    )
-                  }
-                />
-                <button
-                  type="button"
-                  // onPointerDown で preventDefault: input の blur を発生させずに click を通す
-                  onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => handleDelete(c.id)}
-                  disabled={isPending}
-                  aria-label={tc("delete")}
-                  title={tc("delete")}
-                  className="shrink-0 rounded-md p-1.5 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
-                >
-                  <TrashIcon size={16} />
-                </button>
-              </>
+              <input
+                autoFocus
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                disabled={isSavePending}
+                className={`flex-1 ${inputClass}`}
+                onBlur={() => commitEdit(c)}
+                onKeyDown={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  if (e.key === "Enter") { e.preventDefault(); commitEdit(c); }
+                  if (e.key === "Escape") { e.preventDefault(); setEditId(null); setEditValue(""); }
+                }}
+              />
             ) : (
               <button
                 type="button"
-                disabled={!isCustom || isPending}
-                onClick={() =>
-                  isCustom &&
-                  setEditState({
-                    kind: "editing",
-                    id: c.id,
-                    originalName: c.name,
-                  })
-                }
+                disabled={!isCustom}
+                onClick={() => isCustom && startEdit(c)}
                 className={`flex-1 truncate rounded px-1 py-1.5 text-left text-sm transition ${
                   isCustom
                     ? "hover:bg-foreground/10"
@@ -159,12 +140,27 @@ export function CategoryManagementList({
                 {catName(c)}
               </button>
             )}
+
+            {/* ゴミ箱はカスタムカテゴリで常時表示（編集モード依存なし）
+                → blur と click の競合・DOM 消滅レースがない */}
+            {isCustom && (
+              <button
+                type="button"
+                onClick={() => handleDelete(c.id)}
+                disabled={isDeletePending}
+                aria-label={tc("delete")}
+                title={tc("delete")}
+                className="shrink-0 rounded-md p-1.5 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+              >
+                <TrashIcon size={16} />
+              </button>
+            )}
           </div>
         );
       })}
 
-      {/* 追加行 */}
-      {editState.kind === "adding" ? (
+      {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる） */}
+      {isAdding ? (
         <div className="flex items-center gap-2">
           <span
             className="block h-6 w-6 shrink-0 rounded-full text-white"
@@ -174,22 +170,24 @@ export function CategoryManagementList({
           </span>
           <input
             autoFocus
-            defaultValue=""
-            disabled={isPending}
+            value={addValue}
+            onChange={(e) => setAddValue(e.target.value)}
+            disabled={isSavePending}
             placeholder={t("namePlaceholder")}
             className={`flex-1 ${inputClass}`}
-            // 追加モードは blur では保存しない（iOS の autoFocus 誤発火 blur を防ぐため）
-            // Enter で保存、Escape または × で中断
-            onKeyDown={(e) => handleKeyDown(e, saveNew)}
+            onBlur={saveNew}
+            onKeyDown={(e) => {
+              if (e.nativeEvent.isComposing) return;
+              if (e.key === "Enter") { e.preventDefault(); saveNew(); }
+              if (e.key === "Escape") { e.preventDefault(); setIsAdding(false); setAddValue(""); }
+            }}
           />
           <button
             type="button"
-            onPointerDown={(e) => e.preventDefault()}
-            onClick={cancel}
-            disabled={isPending}
+            onClick={() => { setIsAdding(false); setAddValue(""); }}
             aria-label={tc("cancel")}
             title={tc("cancel")}
-            className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+            className="shrink-0 rounded-md p-1.5 text-muted-foreground transition hover:bg-foreground/10"
           >
             <CloseIcon size={16} />
           </button>
@@ -197,7 +195,7 @@ export function CategoryManagementList({
       ) : (
         <button
           type="button"
-          onClick={() => setEditState({ kind: "adding" })}
+          onClick={() => setIsAdding(true)}
           className="mt-1 flex w-full items-center gap-2 rounded-md border border-dashed border-foreground/20 px-3 py-2 text-sm text-muted-foreground transition hover:border-foreground/40 hover:text-foreground"
         >
           <PlusIcon size={16} />

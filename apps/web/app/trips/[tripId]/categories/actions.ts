@@ -5,9 +5,9 @@ import { getTranslations } from "next-intl/server";
 
 import { createClient } from "@/lib/supabase/server";
 
-// カスタムカテゴリのアイコン・色は固定（汎用「category」アイコン＋「その他」と同色）
+// カスタムカテゴリのアイコン・色は固定（汎用「category」アイコン＋青でその他と区別）
 const CUSTOM_ICON = "category";
-const CUSTOM_COLOR = "#71717a";
+const CUSTOM_COLOR = "#3b82f6";
 
 export async function createCategoryAction(
   tripId: string,
