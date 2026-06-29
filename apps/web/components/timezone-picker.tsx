@@ -63,12 +63,14 @@ const TZ_GROUPS: Array<{
       { iana: "Pacific/Guam",        name: "グアム" },
       { iana: "Pacific/Tahiti",      name: "タヒチ" },
       { iana: "Pacific/Fiji",        name: "フィジー" },
-      { iana: "Pacific/Auckland",    name: "オークランド",          sub: "ウェリントン・クライストチャーチ（NZ全土）" },
-      { iana: "Australia/Sydney",    name: "シドニー",              sub: "キャンベラ（ACT）" },
-      { iana: "Australia/Melbourne", name: "メルボルン" },
-      { iana: "Australia/Brisbane",  name: "ブリスベン",            sub: "クイーンズランド州（サマータイムなし）" },
-      { iana: "Australia/Adelaide",  name: "アデレード" },
-      { iana: "Australia/Perth",     name: "パース" },
+      // NZ は1か国1ゾーン → 国名
+      { iana: "Pacific/Auckland",    name: "ニュージーランド",      sub: "オークランド・ウェリントン・クライストチャーチ" },
+      // AU 東部: Sydney と Melbourne はDSTルールが同一 → 1エントリに統合
+      { iana: "Australia/Sydney",    name: "オーストラリア東部時間", sub: "シドニー・メルボルン・キャンベラ（夏時間あり）" },
+      // Brisbane = 東部と同オフセットだが夏時間なし → 別ゾーン
+      { iana: "Australia/Brisbane",  name: "クイーンズランド",      sub: "ブリスベン（夏時間なし）" },
+      { iana: "Australia/Adelaide",  name: "アデレード",            sub: "南オーストラリア州（UTC+9:30）" },
+      { iana: "Australia/Perth",     name: "パース",                sub: "西オーストラリア州（UTC+8）" },
       { iana: "Indian/Maldives",     name: "モルディブ" },
     ],
   },
@@ -125,15 +127,18 @@ const TZ_GROUPS: Array<{
   {
     label: "アフリカ・中東",
     zones: [
-      { iana: "Africa/Cairo",         name: "カイロ" },
-      { iana: "Africa/Nairobi",       name: "ナイロビ",              sub: "タンザニア・ウガンダ・エチオピア" },
-      { iana: "Africa/Lagos",         name: "ラゴス",                sub: "西アフリカ（ガーナ・セネガル等）" },
-      { iana: "Africa/Johannesburg",  name: "ヨハネスブルク",        sub: "南アフリカ共和国全土" },
-      { iana: "Africa/Casablanca",    name: "カサブランカ" },
-      { iana: "Africa/Addis_Ababa",   name: "アジスアベバ" },
-      { iana: "Africa/Khartoum",      name: "ハルツーム" },
-      { iana: "Africa/Tunis",         name: "チュニス" },
-      { iana: "Africa/Algiers",       name: "アルジェ" },
+      { iana: "Africa/Cairo",        name: "カイロ" },
+      // 東アフリカ時間 (EAT, UTC+3): ケニア・タンザニア・エチオピア等多国 → ゾーン名
+      // Africa/Addis_Ababa は Africa/Nairobi の別名なので統合
+      { iana: "Africa/Nairobi",      name: "東アフリカ時間",        sub: "ナイロビ・ダルエスサラーム・アジスアベバ・カンパラ" },
+      // 西中央アフリカ時間 (WAT, UTC+1): ナイジェリア・カメルーン等多国 → ゾーン名
+      { iana: "Africa/Lagos",        name: "西アフリカ時間",        sub: "ラゴス・ドゥアラ・ルアンダ" },
+      // 南アフリカ: 1か国1ゾーン → 国名
+      { iana: "Africa/Johannesburg", name: "南アフリカ",            sub: "ヨハネスブルク・ケープタウン" },
+      { iana: "Africa/Casablanca",   name: "カサブランカ" },
+      { iana: "Africa/Khartoum",     name: "ハルツーム" },
+      { iana: "Africa/Tunis",        name: "チュニス" },
+      { iana: "Africa/Algiers",      name: "アルジェ" },
     ],
   },
 ];
