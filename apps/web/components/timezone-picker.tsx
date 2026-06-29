@@ -179,7 +179,7 @@ export function TimezonePicker({
 
         <Popover.Portal>
           <Popover.Positioner sideOffset={4} className="z-50">
-            <Popover.Popup className="max-h-64 w-[var(--anchor-width)] min-w-[12rem] overflow-y-auto rounded-md border border-foreground/20 bg-background py-1 shadow-lg outline-none">
+            <Popover.Popup className="max-h-64 w-[var(--anchor-width)] min-w-[22rem] overflow-y-auto rounded-md border border-foreground/20 bg-background py-1 shadow-lg outline-none">
               {!group ? (
                 // Step 1: 大陸グループ一覧
                 TZ_GROUPS.map((g) => (
