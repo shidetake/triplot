@@ -20,8 +20,11 @@ export function useTzLabel(): (iana: string) => string {
   return (iana: string) => ALL_TZ_MAP.get(iana)?.name ?? cityOf(iana);
 }
 
-// name: trigger に出すラベル（都市名・国名）
-// sub:  ドロップダウンに出す補足（同じ TZ の別都市。広範囲をカバーするゾーンだけ付ける）
+// name ルール:
+//   1か国1ゾーン  → 国名（日本・フランス・インド）。subなし（「全土」なのに都市を並べると他の都市は？になる）
+//   複数国1ゾーン → ゾーン/地域名（東アフリカ・西アフリカ）。subに主要都市
+//   国内複数ゾーン → 地域/ゾーン名（東部時間・オーストラリア東部）。subに各都市
+// 「時間」は省略可能な場合は省く。「東部時間」等は「東部」だけだと日本の地域と紛れるため残す。
 const TZ_GROUPS: Array<{
   label: string;
   zones: Array<{ iana: string; name: string; sub?: string }>;
@@ -31,7 +34,7 @@ const TZ_GROUPS: Array<{
     zones: [
       { iana: "Asia/Tokyo",        name: "日本" },
       { iana: "Asia/Seoul",        name: "韓国" },
-      { iana: "Asia/Shanghai",     name: "中国（上海）",          sub: "北京・広州・成都（中国全土）" },
+      { iana: "Asia/Shanghai",     name: "中国" },
       { iana: "Asia/Hong_Kong",    name: "香港" },
       { iana: "Asia/Taipei",       name: "台北" },
       { iana: "Asia/Singapore",    name: "シンガポール" },
@@ -42,51 +45,50 @@ const TZ_GROUPS: Array<{
       { iana: "Asia/Ho_Chi_Minh",  name: "ホーチミン" },
       { iana: "Asia/Phnom_Penh",   name: "プノンペン" },
       { iana: "Asia/Yangon",       name: "ヤンゴン" },
-      { iana: "Asia/Kolkata",      name: "インド",                sub: "ムンバイ・デリー・コルカタ・チェンナイ・バンガロール（全土）" },
+      { iana: "Asia/Kolkata",      name: "インド" },
       { iana: "Asia/Kathmandu",    name: "カトマンズ" },
       { iana: "Asia/Dhaka",        name: "ダッカ" },
       { iana: "Asia/Colombo",      name: "コロンボ" },
       { iana: "Asia/Karachi",      name: "カラチ" },
-      { iana: "Asia/Dubai",        name: "ドバイ",                sub: "アブダビ・オマーン" },
-      { iana: "Asia/Riyadh",       name: "リヤド",                sub: "クウェート" },
+      { iana: "Asia/Dubai",        name: "ドバイ",     sub: "アブダビ・オマーン" },
+      { iana: "Asia/Riyadh",       name: "リヤド",     sub: "クウェート" },
       { iana: "Asia/Jerusalem",    name: "エルサレム" },
       { iana: "Asia/Istanbul",     name: "イスタンブール" },
       { iana: "Asia/Tehran",       name: "テヘラン" },
       { iana: "Asia/Baghdad",      name: "バグダッド" },
-      { iana: "Asia/Tashkent",      name: "タシュケント" },
-      { iana: "Asia/Almaty",        name: "アルマティ" },
-      { iana: "Asia/Vladivostok",   name: "ロシア極東",            sub: "ウラジオストク・ハバロフスク" },
+      { iana: "Asia/Tashkent",     name: "タシュケント" },
+      { iana: "Asia/Almaty",       name: "アルマティ" },
+      { iana: "Asia/Vladivostok",  name: "ロシア極東",  sub: "ウラジオストク・ハバロフスク" },
     ],
   },
   {
     label: "太平洋・オセアニア",
     zones: [
-      { iana: "Pacific/Guam",        name: "グアム" },
-      { iana: "Pacific/Tahiti",      name: "タヒチ" },
-      { iana: "Pacific/Fiji",        name: "フィジー" },
-      // NZ は1か国1ゾーン → 国名
-      { iana: "Pacific/Auckland",    name: "ニュージーランド",      sub: "オークランド・ウェリントン・クライストチャーチ" },
-      // AU 東部: Sydney と Melbourne はDSTルールが同一 → 1エントリに統合
-      { iana: "Australia/Sydney",    name: "オーストラリア東部時間", sub: "シドニー・メルボルン・キャンベラ（夏時間あり）" },
-      // Brisbane = 東部と同オフセットだが夏時間なし → 別ゾーン
-      { iana: "Australia/Brisbane",  name: "クイーンズランド",      sub: "ブリスベン（夏時間なし）" },
-      { iana: "Australia/Adelaide",  name: "アデレード",            sub: "南オーストラリア州（UTC+9:30）" },
-      { iana: "Australia/Perth",     name: "パース",                sub: "西オーストラリア州（UTC+8）" },
-      { iana: "Indian/Maldives",     name: "モルディブ" },
+      { iana: "Pacific/Guam",       name: "グアム" },
+      { iana: "Pacific/Tahiti",     name: "タヒチ" },
+      { iana: "Pacific/Fiji",       name: "フィジー" },
+      { iana: "Pacific/Auckland",   name: "ニュージーランド" },
+      // Sydney と Melbourne はDSTルールが同一 → 1エントリに統合
+      { iana: "Australia/Sydney",   name: "オーストラリア東部", sub: "シドニー・メルボルン・キャンベラ（夏時間あり）" },
+      // Brisbane は東部と同オフセットだが夏時間なし → 別ゾーン
+      { iana: "Australia/Brisbane", name: "クイーンズランド",   sub: "ブリスベン（夏時間なし）" },
+      { iana: "Australia/Adelaide", name: "アデレード",         sub: "南オーストラリア州（UTC+9:30）" },
+      { iana: "Australia/Perth",    name: "パース",             sub: "西オーストラリア州（UTC+8）" },
+      { iana: "Indian/Maldives",    name: "モルディブ" },
     ],
   },
   {
     label: "ヨーロッパ",
     zones: [
-      { iana: "Europe/London",     name: "イギリス",              sub: "ロンドン・エジンバラ・マンチェスター" },
+      { iana: "Europe/London",     name: "イギリス" },
       { iana: "Europe/Dublin",     name: "ダブリン" },
       { iana: "Europe/Lisbon",     name: "リスボン" },
-      { iana: "Europe/Paris",      name: "フランス",              sub: "パリ・リヨン・マルセイユ" },
+      { iana: "Europe/Paris",      name: "フランス" },
       { iana: "Europe/Amsterdam",  name: "アムステルダム" },
       { iana: "Europe/Brussels",   name: "ブリュッセル" },
-      { iana: "Europe/Madrid",     name: "スペイン",              sub: "マドリード・バルセロナ" },
-      { iana: "Europe/Rome",       name: "イタリア",              sub: "ローマ・ミラノ・ナポリ" },
-      { iana: "Europe/Berlin",     name: "ドイツ",                sub: "ベルリン・ハンブルク・ミュンヘン" },
+      { iana: "Europe/Madrid",     name: "スペイン" },
+      { iana: "Europe/Rome",       name: "イタリア" },
+      { iana: "Europe/Berlin",     name: "ドイツ" },
       { iana: "Europe/Zurich",     name: "チューリッヒ" },
       { iana: "Europe/Vienna",     name: "ウィーン" },
       { iana: "Europe/Stockholm",  name: "ストックホルム" },
@@ -100,28 +102,28 @@ const TZ_GROUPS: Array<{
       { iana: "Europe/Athens",     name: "アテネ" },
       { iana: "Europe/Kyiv",       name: "キーウ" },
       { iana: "Europe/Belgrade",   name: "ベオグラード" },
-      { iana: "Europe/Moscow",     name: "ロシア西部",            sub: "モスクワ・サンクトペテルブルク" },
+      { iana: "Europe/Moscow",     name: "ロシア西部",  sub: "モスクワ・サンクトペテルブルク" },
     ],
   },
   {
     label: "アメリカ",
     zones: [
-      // 米国本土は4ゾーン＋アラスカ＋ハワイ。ゾーン名を主ラベルにして代表都市をサブに列挙
-      // （カナダ東部・太平洋岸は米国と同じゾーンなのでサブに含める）。
-      { iana: "America/New_York",               name: "東部時間",       sub: "ニューヨーク・ボストン・マイアミ・アトランタ・トロント" },
-      { iana: "America/Chicago",                name: "中部時間",       sub: "シカゴ・ダラス・ヒューストン・ニューオーリンズ" },
-      { iana: "America/Denver",                 name: "山岳部時間",     sub: "デンバー・ソルトレイクシティ・カルガリー" },
-      { iana: "America/Phoenix",                name: "アリゾナ",       sub: "フェニックス（サマータイムなし）" },
-      { iana: "America/Los_Angeles",            name: "太平洋時間",     sub: "ロサンゼルス・サンフランシスコ・シアトル・バンクーバー" },
-      { iana: "America/Anchorage",              name: "アラスカ時間",   sub: "アンカレッジ" },
-      { iana: "Pacific/Honolulu",               name: "ハワイ時間",     sub: "ホノルル" },
+      // 米国本土は4ゾーン。「東部」だと日本の地域と紛れるため「東部時間」のまま。
+      // カナダ東部・太平洋岸は米国と同じゾーンなのでサブに含める。
+      { iana: "America/New_York",               name: "東部時間",   sub: "ニューヨーク・ボストン・マイアミ・アトランタ・トロント" },
+      { iana: "America/Chicago",                name: "中部時間",   sub: "シカゴ・ダラス・ヒューストン・ニューオーリンズ" },
+      { iana: "America/Denver",                 name: "山岳部時間", sub: "デンバー・ソルトレイクシティ・カルガリー" },
+      { iana: "America/Phoenix",                name: "アリゾナ",   sub: "フェニックス（サマータイムなし）" },
+      { iana: "America/Los_Angeles",            name: "太平洋時間", sub: "ロサンゼルス・サンフランシスコ・シアトル・バンクーバー" },
+      { iana: "America/Anchorage",              name: "アラスカ" },
+      { iana: "Pacific/Honolulu",               name: "ハワイ" },
       { iana: "America/Mexico_City",            name: "メキシコシティ", sub: "グアダラハラ・モンテレイ（メキシコ大部分）" },
-      { iana: "America/Cancun",                 name: "カンクン",       sub: "カリブ側（サマータイムなし）" },
+      { iana: "America/Cancun",                 name: "カンクン",   sub: "カリブ側（サマータイムなし）" },
       { iana: "America/Bogota",                 name: "ボゴタ" },
       { iana: "America/Lima",                   name: "リマ" },
       { iana: "America/Santiago",               name: "サンティアゴ" },
-      { iana: "America/Sao_Paulo",              name: "サンパウロ",     sub: "リオデジャネイロ（南東ブラジル）" },
-      { iana: "America/Argentina/Buenos_Aires", name: "ブエノスアイレス", sub: "アルゼンチン全土" },
+      { iana: "America/Sao_Paulo",              name: "サンパウロ", sub: "リオデジャネイロ（南東ブラジル）" },
+      { iana: "America/Argentina/Buenos_Aires", name: "ブエノスアイレス" },
       { iana: "Atlantic/Reykjavik",             name: "レイキャビク" },
     ],
   },
@@ -129,13 +131,10 @@ const TZ_GROUPS: Array<{
     label: "アフリカ・中東",
     zones: [
       { iana: "Africa/Cairo",        name: "カイロ" },
-      // 東アフリカ時間 (EAT, UTC+3): ケニア・タンザニア・エチオピア等多国 → ゾーン名
-      // Africa/Addis_Ababa は Africa/Nairobi の別名なので統合
-      { iana: "Africa/Nairobi",      name: "東アフリカ時間",        sub: "ナイロビ・ダルエスサラーム・アジスアベバ・カンパラ" },
-      // 西中央アフリカ時間 (WAT, UTC+1): ナイジェリア・カメルーン等多国 → ゾーン名
-      { iana: "Africa/Lagos",        name: "西アフリカ時間",        sub: "ラゴス・ドゥアラ・ルアンダ" },
-      // 南アフリカ: 1か国1ゾーン → 国名
-      { iana: "Africa/Johannesburg", name: "南アフリカ",            sub: "ヨハネスブルク・ケープタウン" },
+      // 複数国ゾーン → ゾーン名。Africa/Addis_Ababa は Nairobi の別名なので統合。
+      { iana: "Africa/Nairobi",      name: "東アフリカ", sub: "ナイロビ・ダルエスサラーム・アジスアベバ・カンパラ" },
+      { iana: "Africa/Lagos",        name: "西アフリカ", sub: "ラゴス・ドゥアラ・ルアンダ" },
+      { iana: "Africa/Johannesburg", name: "南アフリカ" },
       { iana: "Africa/Casablanca",   name: "カサブランカ" },
       { iana: "Africa/Khartoum",     name: "ハルツーム" },
       { iana: "Africa/Tunis",        name: "チュニス" },
