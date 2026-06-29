@@ -60,7 +60,6 @@ const TZ_GROUPS: Array<{
   {
     label: "太平洋・オセアニア",
     zones: [
-      { iana: "Pacific/Honolulu",    name: "ホノルル" },
       { iana: "Pacific/Guam",        name: "グアム" },
       { iana: "Pacific/Tahiti",      name: "タヒチ" },
       { iana: "Pacific/Fiji",        name: "フィジー" },
@@ -104,22 +103,23 @@ const TZ_GROUPS: Array<{
   {
     label: "アメリカ",
     zones: [
-      { iana: "America/New_York",                name: "ニューヨーク",        sub: "ボストン・ワシントンDC・マイアミ・アトランタ" },
-      { iana: "America/Chicago",                 name: "シカゴ",              sub: "ダラス・ヒューストン・ニューオーリンズ" },
-      { iana: "America/Denver",                  name: "デンバー",            sub: "ソルトレイクシティ" },
-      { iana: "America/Phoenix",                 name: "フェニックス",        sub: "アリゾナ州（サマータイムなし）" },
-      { iana: "America/Los_Angeles",             name: "ロサンゼルス",        sub: "サンフランシスコ・シアトル・ラスベガス・サンディエゴ" },
-      { iana: "America/Anchorage",               name: "アンカレッジ" },
-      { iana: "America/Toronto",                 name: "トロント",            sub: "モントリオール・オタワ" },
-      { iana: "America/Vancouver",               name: "バンクーバー",        sub: "ブリティッシュコロンビア州" },
-      { iana: "America/Mexico_City",             name: "メキシコシティ",      sub: "グアダラハラ・モンテレイ（メキシコ大部分）" },
-      { iana: "America/Cancun",                  name: "カンクン",            sub: "カリブ側（サマータイムなし）" },
-      { iana: "America/Bogota",                  name: "ボゴタ" },
-      { iana: "America/Lima",                    name: "リマ" },
-      { iana: "America/Santiago",                name: "サンティアゴ" },
-      { iana: "America/Sao_Paulo",               name: "サンパウロ",          sub: "リオデジャネイロ（南東ブラジル）" },
-      { iana: "America/Argentina/Buenos_Aires",  name: "ブエノスアイレス",    sub: "アルゼンチン全土" },
-      { iana: "Atlantic/Reykjavik",              name: "レイキャビク" },
+      // 米国本土は4ゾーン＋アラスカ＋ハワイ。ゾーン名を主ラベルにして代表都市をサブに列挙
+      // （カナダ東部・太平洋岸は米国と同じゾーンなのでサブに含める）。
+      { iana: "America/New_York",               name: "東部時間",       sub: "ニューヨーク・ボストン・マイアミ・アトランタ・トロント" },
+      { iana: "America/Chicago",                name: "中部時間",       sub: "シカゴ・ダラス・ヒューストン・ニューオーリンズ" },
+      { iana: "America/Denver",                 name: "山岳部時間",     sub: "デンバー・ソルトレイクシティ・カルガリー" },
+      { iana: "America/Phoenix",                name: "アリゾナ",       sub: "フェニックス（サマータイムなし）" },
+      { iana: "America/Los_Angeles",            name: "太平洋時間",     sub: "ロサンゼルス・サンフランシスコ・シアトル・バンクーバー" },
+      { iana: "America/Anchorage",              name: "アラスカ時間",   sub: "アンカレッジ" },
+      { iana: "Pacific/Honolulu",               name: "ハワイ時間",     sub: "ホノルル" },
+      { iana: "America/Mexico_City",            name: "メキシコシティ", sub: "グアダラハラ・モンテレイ（メキシコ大部分）" },
+      { iana: "America/Cancun",                 name: "カンクン",       sub: "カリブ側（サマータイムなし）" },
+      { iana: "America/Bogota",                 name: "ボゴタ" },
+      { iana: "America/Lima",                   name: "リマ" },
+      { iana: "America/Santiago",               name: "サンティアゴ" },
+      { iana: "America/Sao_Paulo",              name: "サンパウロ",     sub: "リオデジャネイロ（南東ブラジル）" },
+      { iana: "America/Argentina/Buenos_Aires", name: "ブエノスアイレス", sub: "アルゼンチン全土" },
+      { iana: "Atlantic/Reykjavik",             name: "レイキャビク" },
     ],
   },
   {
