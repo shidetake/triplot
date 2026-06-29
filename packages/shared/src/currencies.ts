@@ -2,10 +2,11 @@
 // COMMON_CURRENCIES: 旅行でよく使う主要通貨（select の先頭に表示）。
 // ALL_CURRENCIES: 全通貨（alphabetical）。select では COMMON の後に出す。
 
+// BIS 国際決済銀行 外国為替市場調査 2025 上位 15 通貨（取引高順）
 export const COMMON_CURRENCIES: string[] = [
-  "JPY", "USD", "EUR", "GBP", "AUD",
-  "CAD", "CHF", "CNY", "HKD", "SGD",
-  "KRW", "THB", "TWD", "INR", "MXN",
+  "USD", "EUR", "JPY", "GBP", "CNY",
+  "AUD", "CAD", "CHF", "HKD", "SGD",
+  "SEK", "MXN", "KRW", "NOK", "NZD",
 ];
 
 export const ALL_CURRENCIES: string[] = [
@@ -43,22 +44,26 @@ export const ALL_CURRENCIES: string[] = [
 // select のオプション表示用。主要通貨は日本語名、その他は英語名。
 // "JPY – 日本円" / "AED – UAE Dirham" の形で表示する。
 export const CURRENCY_NAMES: Record<string, string> = {
-  // 主要（日本語）
-  JPY: "日本円",
+  // BIS 上位 15（日本語）
   USD: "米ドル",
   EUR: "ユーロ",
+  JPY: "日本円",
   GBP: "英ポンド",
+  CNY: "人民元",
   AUD: "豪ドル",
   CAD: "カナダドル",
   CHF: "スイスフラン",
-  CNY: "人民元",
   HKD: "香港ドル",
   SGD: "シンガポールドル",
+  SEK: "スウェーデンクローナ",
+  MXN: "メキシコペソ",
   KRW: "韓国ウォン",
+  NOK: "ノルウェークローネ",
+  NZD: "ニュージーランドドル",
+  // 旅行でよく使う（日本語補足）
   THB: "タイバーツ",
   TWD: "台湾ドル",
   INR: "インドルピー",
-  MXN: "メキシコペソ",
   // その他（英語）
   AED: "UAE Dirham",
   AFN: "Afghan Afghani",
@@ -145,9 +150,7 @@ export const CURRENCY_NAMES: Record<string, string> = {
   NAD: "Namibian Dollar",
   NGN: "Nigerian Naira",
   NIO: "Nicaraguan Córdoba",
-  NOK: "Norwegian Krone",
   NPR: "Nepalese Rupee",
-  NZD: "New Zealand Dollar",
   OMR: "Omani Rial",
   PAB: "Panamanian Balboa",
   PEN: "Peruvian Sol",
@@ -165,7 +168,6 @@ export const CURRENCY_NAMES: Record<string, string> = {
   SBD: "Solomon Islands Dollar",
   SCR: "Seychellois Rupee",
   SDG: "Sudanese Pound",
-  SEK: "Swedish Krona",
   SHP: "St. Helena Pound",
   SOS: "Somali Shilling",
   SRD: "Surinamese Dollar",
