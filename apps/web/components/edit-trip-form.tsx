@@ -11,14 +11,13 @@ import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { COMMON_CURRENCIES, ALL_CURRENCIES, currencyLabel } from "@triplot/shared/currencies";
 import type { Currency } from "@triplot/shared/types/database";
 import { CloseButton } from "./close-button";
+import { CurrencySelect } from "./currency-select";
 import { DateRangePopover } from "./date-range-popover";
 import { FieldLabel } from "./field-label";
 import { useInSheet } from "./form-host";
 import { SaveIcon } from "./icons";
-import { inputClass } from "./input-class";
 import { MessageBox } from "./message-box";
 
 const initialState: UpdateTripState = { ok: false, error: null };
@@ -96,24 +95,13 @@ export function EditTripForm({
         <label htmlFor="default_currency" className="font-medium">
           {t("createTrip.settlementCurrency")}
         </label>
-        <select
+        <CurrencySelect
           id="default_currency"
           name="default_currency"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-          className={`mt-1 block w-full ${inputClass}`}
-        >
-          <optgroup label="主要通貨">
-            {COMMON_CURRENCIES.map((c) => (
-              <option key={c} value={c}>{currencyLabel(c)}</option>
-            ))}
-          </optgroup>
-          <optgroup label="その他">
-            {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
-              <option key={c} value={c}>{currencyLabel(c)}</option>
-            ))}
-          </optgroup>
-        </select>
+          onChange={(v) => setCurrency(v as Currency)}
+          className="mt-1 w-full"
+        />
         {/* 精算通貨を変えても既存費用の換算レート(rate_to_default)は再計算されない＝金額の解釈が
             ずれる。費用がある旅行で通貨を変える時だけ注意を出す。 */}
         {hasExpenses && currency !== defaultCurrency && (

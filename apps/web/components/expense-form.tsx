@@ -29,12 +29,11 @@ import {
 } from "@triplot/shared/schedule";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
-import { COMMON_CURRENCIES, ALL_CURRENCIES, currencyLabel } from "@triplot/shared/currencies";
 import { DatePopover } from "./date-popover";
-import { inputClass } from "./input-class";
 import { useTzLabel } from "./timezone-picker";
 import type { ExpenseRow } from "./expense-list";
 import { CategorySelect } from "./category-select";
+import { CurrencySelect } from "./currency-select";
 import { FieldLabel } from "./field-label";
 import { MessageBox } from "./message-box";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
@@ -413,23 +412,12 @@ export function ExpenseForm({
         </label>
         <label className="block text-sm">
           <FieldLabel>{t("currency")}</FieldLabel>
-          <select
+          <CurrencySelect
             name="local_currency"
             value={localCurrency}
-            onChange={(e) => onCurrencyChange(e.target.value as Currency)}
-            className={`mt-1 block ${inputClass}`}
-          >
-            <optgroup label="主要通貨">
-              {COMMON_CURRENCIES.map((c) => (
-                <option key={c} value={c}>{currencyLabel(c)}</option>
-              ))}
-            </optgroup>
-            <optgroup label="その他">
-              {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
-                <option key={c} value={c}>{currencyLabel(c)}</option>
-              ))}
-            </optgroup>
-          </select>
+            onChange={(v) => onCurrencyChange(v as Currency)}
+            className="mt-1"
+          />
         </label>
       </div>
 

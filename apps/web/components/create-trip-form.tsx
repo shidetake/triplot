@@ -10,7 +10,6 @@ import {
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { tripDayCount } from "@triplot/shared/tripCopy";
-import { COMMON_CURRENCIES, ALL_CURRENCIES, currencyLabel } from "@triplot/shared/currencies";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { DateRangePopover } from "./date-range-popover";
@@ -18,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
+import { CurrencySelect } from "./currency-select";
 import { HelpTip } from "./help-tip";
 import { MessageBox } from "./message-box";
 import { PlusIcon } from "./icons";
@@ -238,24 +238,13 @@ export function CreateTripForm({
             {t("settlementCurrencyHelp")}
           </HelpTip>
         </div>
-        <select
+        <CurrencySelect
           id="default_currency"
           name="default_currency"
           value={currency}
-          onChange={(e) => setCurrency(e.target.value as Currency)}
-          className={`mt-1 block w-full ${inputClass}`}
-        >
-          <optgroup label="主要通貨">
-            {COMMON_CURRENCIES.map((c) => (
-              <option key={c} value={c}>{currencyLabel(c)}</option>
-            ))}
-          </optgroup>
-          <optgroup label="その他">
-            {ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c)).map((c) => (
-              <option key={c} value={c}>{currencyLabel(c)}</option>
-            ))}
-          </optgroup>
-        </select>
+          onChange={(v) => setCurrency(v as Currency)}
+          className="mt-1 w-full"
+        />
       </div>
 
       <Button
