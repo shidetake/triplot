@@ -50,6 +50,17 @@ Apple ログイン（#9）が前提になる。デザインルールやコピー
 - [ ] Google OAuth Client Secret rotate
 - [ ] Maps API キーの HTTP referrer 制限確認
 
+## 設計メモ（低優先・思い出した時にやる）
+
+- [ ] タイムゾーン: 通常予定/費用の実IANA文字列カラムは冗長。`events.start_tz`/`end_tz`、`expenses.tz` は
+      通常予定・費用では「旅程上どの区間にいるか」のラベルとしてしか使われておらず
+      （`resolveExpenseTz`、`packages/shared/src/schedule.ts`）、理論上は区間番号で足りる。実IANA文字列が
+      本質的に要るのは **transit イベントの出発/到着 TZ のみ**（旅程全体の offset 計算の唯一の真実源。
+      `buildTripTzTimeline` がここを起点にチェーンする）。複数都市またぎの費用ソート（`occurred_at`）も
+      Google カレンダーエクスポート（`gcalEvent.ts`）も、transit 側の実 TZ から都度導出すれば通常予定/費用に
+      実IANA文字列を冗長保存しなくて済む。ただし `events.start_tz` を区間番号化する migration コストに対し、
+      現状UX（フルピッカーを transit 日だけに絞った）で実用上の問題は解消済みなので、今すぐ着手する価値はない。
+
 ## 現在着手中
 
 直近: 通貨拡張（JPY/USD 固定を撤廃、全 ISO 4217 対応）＋タイムゾーンピッカーを native select に変更、完了。
