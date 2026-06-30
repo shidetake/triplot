@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useState, useTransition } from "react";
+import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
@@ -14,7 +14,12 @@ import {
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
-import { formatMinutes, type ScheduleEvent } from "@triplot/shared/schedule";
+import {
+  formatMinutes,
+  resolveExpenseTz,
+  type ScheduleEvent,
+  type TripTzTimeline,
+} from "@triplot/shared/schedule";
 import type { Visibility } from "@triplot/shared/types/database";
 import { parseYmd } from "@triplot/shared/ymd";
 
@@ -84,39 +89,6 @@ export type EventFormMode =
     }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
-// 通常予定のタイムゾーンは disclosure（「参加者: 全員 ▾」と同じパターン）。国内旅行では
-// まず触らないのでフル行を畳み、`タイムゾーン: ハワイ ▾` だけ出す。変える時だけ展開して
-// 検索式の TimezonePicker を出す。tz は常に hidden で送る（畳んでも値が落ちないよう
-// disclosure 側で hidden を出し、TimezonePicker には name を渡さない）。
-function TzDisclosure({ value }: { value: string }) {
-  const [tz, setTz] = useDraft("tz", value);
-  const [open, setOpen] = useState(false);
-  const t = useTranslations("event");
-
-  return (
-    <div className="text-sm">
-      <input type="hidden" name="tz" value={tz} />
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
-      >
-        <span>{t("timezone")}: {tzDisplayLabel(tz)}</span>
-        <ChevronIcon
-          size={16}
-          className={`transition-transform ${open ? "-rotate-90" : "rotate-90"}`}
-        />
-      </button>
-      {open && (
-        <div className="mt-1.5">
-          <TimezonePicker value={tz} onChange={setTz} />
-        </div>
-      )}
-    </div>
-  );
-}
-
 function initialKind3(ev: ScheduleEvent | null, allDayHint: boolean): Kind3 {
   if (!ev) return allDayHint ? "allday" : "timed";
   if (ev.kind === "transit") return "transit";
@@ -133,6 +105,7 @@ export function EventForm({
   places,
   members,
   biasCenter,
+  tzTimeline,
   onDone,
 }: {
   tripId: string;
@@ -143,6 +116,7 @@ export function EventForm({
   places: { id: string; name: string }[];
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
+  tzTimeline: TripTzTimeline;
   onDone: () => void;
 }) {
   const isEdit = formMode.mode === "edit";
@@ -253,6 +227,15 @@ export function EventForm({
   const [eDate, setEDate] = useDraft("eDate", minToDt(initEMin).date);
   const [eTime, setETime] = useDraft("eTime", minToDt(initEMin).time);
 
+  // 通常予定のTZ。transit 日（出発と到着が同日）のみユーザが選択する。
+  // それ以外は旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
+  const [tz, setTz] = useDraft("tz", tzInit);
+  const tzRes = useMemo(
+    () => resolveExpenseTz(sDate, tzTimeline),
+    [sDate, tzTimeline],
+  );
+  const multiTz = tzTimeline.transits.length > 0;
+
   // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
   const transitArriveInit = minToDt(initSMin + 60);
@@ -282,6 +265,7 @@ export function EventForm({
   );
 
   // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
+  // 日付が変わったら TZ も旅程タイムラインから解決し直す（transit 日は出発側を既定）。
   const moveStart = (nd: string, nt: string) => {
     const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
     setSDate(nd);
@@ -289,6 +273,8 @@ export function EventForm({
     const ne = minToDt(dtToMin(nd, nt) + dur);
     setEDate(ne.date);
     setETime(ne.time);
+    const r = resolveExpenseTz(nd, tzTimeline);
+    setTz(r.kind === "single" ? r.tz : r.departTz);
   };
 
   // 終了ガード。終了 ≤ 開始になったら開始+1時間に snap する（同日に終了時刻だけ
@@ -569,7 +555,34 @@ export function EventForm({
           <input type="hidden" name="end_date" value={eDate} />
           <input type="hidden" name="end_time" value={eTime} />
 
-          <TzDisclosure value={tzInit} />
+          {/* TZ は常に hidden で送る。transit 日（同日に出発/到着が両方ある）のみ
+              ラジオで出発側/到着側を選ばせる。それ以外はタイムラインから一意に解決。 */}
+          <input type="hidden" name="tz" value={tz} />
+          {multiTz && tzRes.kind === "ambiguous" && (
+            <fieldset className="text-sm">
+              <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="tz_choice"
+                    checked={tz === tzRes.departTz}
+                    onChange={() => setTz(tzRes.departTz)}
+                  />
+                  <span>{t("departSide", { tz: tzDisplayLabel(tzRes.departTz) })}</span>
+                </label>
+                <label className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="tz_choice"
+                    checked={tz === tzRes.arriveTz}
+                    onChange={() => setTz(tzRes.arriveTz)}
+                  />
+                  <span>{t("arriveSide", { tz: tzDisplayLabel(tzRes.arriveTz) })}</span>
+                </label>
+              </div>
+            </fieldset>
+          )}
         </div>
       )}
 

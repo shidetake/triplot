@@ -6,6 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
   buildSchedule,
+  buildTripTzTimeline,
   formatMinutes,
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
@@ -70,6 +71,8 @@ export function ScheduleSection({
     () => buildSchedule(events, { tripStart, tripEnd, locale }),
     [events, tripStart, tripEnd, locale],
   );
+
+  const tzTimeline = useMemo(() => buildTripTzTimeline(events), [events]);
 
   const placeName = useCallback(
     (id: string | null) =>
@@ -236,6 +239,7 @@ export function ScheduleSection({
             places={places}
             members={members}
             biasCenter={biasCenter}
+            tzTimeline={tzTimeline}
             onDone={closeForm}
           />
         </FormPopover>

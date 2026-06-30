@@ -219,7 +219,10 @@
     "placeholderNote": "日焼け止め持参",
     "placeholderNoteTransit": "ターミナル1",
     "deleteTitle": "この予定を削除しますか？",
-    "deleteFailed": "削除に失敗しました: {error}"
+    "deleteFailed": "削除に失敗しました: {error}",
+    "transitDay": "移動日のため、どちら側の予定か選んでください。",
+    "departSide": "出発側: {tz}",
+    "arriveSide": "到着側: {tz}"
   },
   "expense": {
     "price": "価格",

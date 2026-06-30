@@ -219,7 +219,10 @@
     "placeholderNote": "Bring sunscreen",
     "placeholderNoteTransit": "Terminal 1",
     "deleteTitle": "Delete this event?",
-    "deleteFailed": "Delete failed: {error}"
+    "deleteFailed": "Delete failed: {error}",
+    "transitDay": "This is a transit day. Which side is this event on?",
+    "departSide": "Departure: {tz}",
+    "arriveSide": "Arrival: {tz}"
   },
   "expense": {
     "price": "Amount",
