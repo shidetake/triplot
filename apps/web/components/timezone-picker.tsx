@@ -44,6 +44,7 @@ const TZ_GROUPS: Array<{
       { iana: "Asia/Tashkent",     name: "ウズベキスタン" },                                      // UTC+5
       { iana: "Asia/Almaty",       name: "カザフスタン" },                                        // UTC+5
       { iana: "Asia/Karachi",      name: "パキスタン" },                                          // UTC+5
+      { iana: "Indian/Maldives",   name: "モルディブ" },                                          // UTC+5
       { iana: "Asia/Kolkata",      name: "インド" },                                              // UTC+5:30
       { iana: "Asia/Colombo",      name: "スリランカ" },                                          // UTC+5:30
       { iana: "Asia/Kathmandu",    name: "ネパール" },                                            // UTC+5:45
@@ -69,7 +70,6 @@ const TZ_GROUPS: Array<{
     label: "太平洋・オセアニア",
     zones: [
       { iana: "Pacific/Tahiti",     name: "タヒチ" },                                             // UTC-10
-      { iana: "Indian/Maldives",    name: "モルディブ" },                                         // UTC+5
       { iana: "Australia/Perth",    name: "西オーストラリア", sub: "パース（UTC+8）" },            // UTC+8
       { iana: "Australia/Adelaide", name: "南オーストラリア", sub: "アデレード（UTC+9:30）" },     // UTC+9:30
       // Sydney と Melbourne はDSTルールが同一 → 1エントリに統合
@@ -84,6 +84,7 @@ const TZ_GROUPS: Array<{
   {
     label: "ヨーロッパ",
     zones: [
+      { iana: "Atlantic/Reykjavik", name: "アイスランド" },                                        // UTC+0
       { iana: "Europe/Dublin",     name: "アイルランド" },                                        // UTC+0
       { iana: "Europe/London",     name: "イギリス" },                                            // UTC+0
       { iana: "Europe/Lisbon",     name: "ポルトガル" },                                          // UTC+0
@@ -132,7 +133,6 @@ const TZ_GROUPS: Array<{
       { iana: "America/Argentina/Buenos_Aires", name: "アルゼンチン" },                           // UTC-3
       // ブラジルは複数ゾーン → ゾーン名
       { iana: "America/Sao_Paulo",              name: "ブラジル東部", sub: "サンパウロ・リオデジャネイロ" }, // UTC-3
-      { iana: "Atlantic/Reykjavik",             name: "アイスランド" },                           // UTC+0
     ],
   },
   {
