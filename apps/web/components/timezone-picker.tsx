@@ -63,7 +63,6 @@ const TZ_GROUPS: Array<{
       { iana: "Asia/Kuala_Lumpur", name: "マレーシア" },                                          // UTC+8
       { iana: "Asia/Seoul",        name: "韓国" },                                                // UTC+9
       { iana: "Asia/Tokyo",        name: "日本" },                                                // UTC+9
-      { iana: "Asia/Vladivostok",  name: "ロシア極東", sub: "ウラジオストク・ハバロフスク" },      // UTC+10
     ],
   },
   {
@@ -111,6 +110,7 @@ const TZ_GROUPS: Array<{
       { iana: "Europe/Helsinki",   name: "フィンランド" },                                        // UTC+2
       { iana: "Europe/Bucharest",  name: "ルーマニア" },                                          // UTC+2
       { iana: "Europe/Moscow",     name: "ロシア西部", sub: "モスクワ・サンクトペテルブルク" },    // UTC+3
+      { iana: "Asia/Vladivostok",  name: "ロシア極東", sub: "ウラジオストク・ハバロフスク" },      // UTC+10
     ],
   },
   {
