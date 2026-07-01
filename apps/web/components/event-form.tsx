@@ -16,9 +16,11 @@ import {
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
   formatMinutes,
+  resolveEventTz,
   resolveExpenseTz,
   type ScheduleEvent,
   type TripTzTimeline,
+  type TzCandidate,
 } from "@triplot/shared/schedule";
 import type { Visibility } from "@triplot/shared/types/database";
 import { parseYmd } from "@triplot/shared/ymd";
@@ -207,7 +209,16 @@ export function EventForm({
     ? splitWall(ev!.startAt)
     : { date: formMode.date, time: formMode.time };
   const endInit = isEdit ? splitWall(ev!.endAt) : { date: "", time: "" };
-  const tzInit = isEdit ? ev!.startTz : formMode.tz;
+  // 通常予定用の実効TZ初期値。乗継日以外は旅程から自動導出、乗継日は保存済み
+  // の選択（tzDisambig*）で候補から引く。時差移動の出発/到着TZ（下）とは別。
+  const tzInit = isEdit
+    ? resolveEventTz(
+        splitWall(ev!.startAt).date,
+        ev!.tzDisambigTransitId,
+        ev!.tzDisambigSide,
+        tzTimeline,
+      )
+    : formMode.tz;
   const endTzInit = isEdit ? (ev!.endTz ?? defaultTz) : defaultTz;
 
   // 通常イベントの開始/終了は controlled。開始を動かすと長さを保って
@@ -227,9 +238,43 @@ export function EventForm({
   const [eDate, setEDate] = useDraft("eDate", minToDt(initEMin).date);
   const [eTime, setETime] = useDraft("eTime", minToDt(initEMin).time);
 
-  // 通常予定のTZ。transit 日（出発と到着が同日）のみユーザが選択する。
-  // それ以外は旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
-  const [tz, setTz] = useDraft("tz", tzInit);
+  // 通常予定のTZ。乗継日（複数候補あり）のみユーザが選択する。それ以外は
+  // 旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
+  // tz = 表示・occurred_at 相当の実効値、tzDisambig* = 保存する選択（乗継日
+  // 以外は両方 null のまま＝毎回自動導出）。
+  const startResolution = resolveExpenseTz(startInit.date, tzTimeline);
+  // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
+  // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補をラジオにも
+  // 反映する（「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
+  const editDisambig =
+    isEdit && startResolution.kind === "ambiguous"
+      ? ev!.tzDisambigTransitId && ev!.tzDisambigSide
+        ? { transitId: ev!.tzDisambigTransitId, side: ev!.tzDisambigSide }
+        : startResolution.options[0]
+      : null;
+  // 新規作成時、長押しした列が乗継日の候補のどれかに一致するならその候補を
+  // 既定選択にする（week-calendar 側で列ごとに解決済みの formMode.tz と
+  // 揃える。一致しなければ先頭候補＝出発側）。
+  const createDisambig =
+    !isEdit && startResolution.kind === "ambiguous" && formMode.mode === "create"
+      ? (startResolution.options.find((o) => o.tz === formMode.tz) ??
+        startResolution.options[0])
+      : null;
+  const [tz, setTzRaw] = useDraft("tz", tzInit);
+  const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<
+    string | null
+  >(
+    "tzDisambigTransitId",
+    editDisambig?.transitId ?? createDisambig?.transitId ?? null,
+  );
+  const [tzDisambigSide, setTzDisambigSide] = useDraft<
+    "depart" | "arrive" | null
+  >("tzDisambigSide", editDisambig?.side ?? createDisambig?.side ?? null);
+  const selectTz = (c: TzCandidate) => {
+    setTzRaw(c.tz);
+    setTzDisambigTransitId(c.transitId);
+    setTzDisambigSide(c.side);
+  };
   const tzRes = useMemo(
     () => resolveExpenseTz(sDate, tzTimeline),
     [sDate, tzTimeline],
@@ -256,7 +301,9 @@ export function EventForm({
     "arriveTime",
     endInit.time || transitArriveInit.time,
   );
-  const [departTz, setDepartTz] = useDraft("departTz", tzInit);
+  // 時差移動は常に実IANA文字列（transitイベントのstart_tz/end_tzは必ず非null）。
+  const departTzInit = isEdit ? (ev!.startTz ?? defaultTz) : formMode.tz;
+  const [departTz, setDepartTz] = useDraft("departTz", departTzInit);
   const [arriveTz, setArriveTz] = useDraft("arriveTz", endTzInit);
   const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
   const [alldayEnd, setAlldayEnd] = useDraft(
@@ -279,7 +326,13 @@ export function EventForm({
     setETime(ne.time);
     if (dateChanged) {
       const r = resolveExpenseTz(nd, tzTimeline);
-      setTz(r.kind === "single" ? r.tz : r.options[0]);
+      if (r.kind === "single") {
+        setTzRaw(r.tz);
+        setTzDisambigTransitId(null);
+        setTzDisambigSide(null);
+      } else {
+        selectTz(r.options[0]);
+      }
     }
   };
 
@@ -561,22 +614,39 @@ export function EventForm({
           <input type="hidden" name="end_date" value={eDate} />
           <input type="hidden" name="end_time" value={eTime} />
 
-          {/* TZ は常に hidden で送る。transit 日（同日に出発/到着が両方ある）のみ
-              ラジオで出発側/到着側を選ばせる。それ以外はタイムラインから一意に解決。 */}
+          {/* TZ は常に hidden で送る。乗継日（複数候補）のみラジオで選ばせる。
+              それ以外はタイムラインから一意に解決。選択は tz_disambig_* で保存
+              し、実際のTZ文字列(tz)は表示・occurred_at 相当の参考値。 */}
           <input type="hidden" name="tz" value={tz} />
+          <input
+            type="hidden"
+            name="tz_disambig_transit_id"
+            value={tzDisambigTransitId ?? ""}
+          />
+          <input
+            type="hidden"
+            name="tz_disambig_side"
+            value={tzDisambigSide ?? ""}
+          />
           {multiTz && tzRes.kind === "ambiguous" && (
             <fieldset className="text-sm">
               <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                {tzRes.options.map((opt, i) => (
-                  <label key={`${opt}-${i}`} className="inline-flex items-center gap-2">
+                {tzRes.options.map((opt) => (
+                  <label
+                    key={`${opt.transitId}-${opt.side}`}
+                    className="inline-flex items-center gap-2"
+                  >
                     <input
                       type="radio"
                       name="tz_choice"
-                      checked={tz === opt}
-                      onChange={() => setTz(opt)}
+                      checked={
+                        tzDisambigTransitId === opt.transitId &&
+                        tzDisambigSide === opt.side
+                      }
+                      onChange={() => selectTz(opt)}
                     />
-                    <span>{tzDisplayLabel(opt)}</span>
+                    <span>{tzDisplayLabel(opt.tz)}</span>
                   </label>
                 ))}
               </div>

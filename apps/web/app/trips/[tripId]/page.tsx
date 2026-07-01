@@ -22,7 +22,7 @@ import {
   calculateExpenseSummary,
   type SummaryExpense,
 } from "@triplot/shared/expenseSummary";
-import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import { buildTripTzTimeline, resolveEventTz } from "@triplot/shared/schedule";
 import {
   calculateSettlements,
   type SettlementExpense,
@@ -53,6 +53,9 @@ export default async function TripDetailPage({
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
+
+  // 本文の随所（kmlPlacemarks 等）で早い段階から使うので先に解決しておく。
+  const [t, locale] = await Promise.all([getTranslations(), getLocale()]);
 
   // 4 本とも tripId キーで互いに独立。RLS で保護されているので並列で叩く
   // （直列だと Vercel→Supabase の RTT が 4 回積み上がる）。
@@ -87,7 +90,7 @@ export default async function TripDetailPage({
     supabase
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
       // 発生順（古い→新しい、新しいものが下）。occurred_at は壁時計をその
@@ -105,7 +108,7 @@ export default async function TripDetailPage({
     supabase
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, tz_disambig_transit_id, tz_disambig_side, place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),
@@ -142,24 +145,6 @@ export default async function TripDetailPage({
 
   // gen-types は CHECK 制約を読めず string を返すので、DB 境界でドメイン型に絞る
   const defaultCurrency = trip.default_currency as Currency;
-
-  const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
-    id: e.id,
-    local_price: Number(e.local_price),
-    local_currency: e.local_currency as Currency,
-    rate_to_default: Number(e.rate_to_default),
-    category_id: e.category_id,
-    visibility: e.visibility as Visibility,
-    splittable: e.splittable,
-    note: e.note,
-    paid_at: e.paid_at,
-    created_at: e.created_at,
-    payer_member_id: e.payer_member_id,
-    created_by_member_id: e.created_by_member_id,
-    split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
-    place_id: e.place_id,
-    tz: e.tz,
-  }));
 
   const pinOptions = (pinOptionsRaw ?? []).map((p) => ({
     id: p.id,
@@ -203,6 +188,8 @@ export default async function TripDetailPage({
     endAt: e.end_at,
     startTz: e.start_tz,
     endTz: e.end_tz,
+    tzDisambigTransitId: e.tz_disambig_transit_id,
+    tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
     placeId: e.place_id,
     visibility: e.visibility as Visibility,
     note: e.note,
@@ -212,18 +199,63 @@ export default async function TripDetailPage({
     participantMemberIds: (e.event_participants ?? []).map((p) => p.member_id),
   }));
 
-  // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントのTZ。
+  // 費用/予定の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
+  const tzTimeline = buildTripTzTimeline(scheduleEvents);
+
+  const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
+    id: e.id,
+    local_price: Number(e.local_price),
+    local_currency: e.local_currency as Currency,
+    rate_to_default: Number(e.rate_to_default),
+    category_id: e.category_id,
+    visibility: e.visibility as Visibility,
+    splittable: e.splittable,
+    note: e.note,
+    paid_at: e.paid_at,
+    created_at: e.created_at,
+    payer_member_id: e.payer_member_id,
+    created_by_member_id: e.created_by_member_id,
+    split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
+    place_id: e.place_id,
+    tz: resolveEventTz(
+      e.paid_at.slice(0, 10),
+      e.tz_disambig_transit_id,
+      e.tz_disambig_side as "depart" | "arrive" | null,
+      tzTimeline,
+    ),
+    tzDisambigTransitId: e.tz_disambig_transit_id,
+    tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
+  }));
+
+  // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントの実効TZ。
   // 費用フォームの「最後に入力した値を初期値に」と同方針。無ければ null。
   const lastEnteredEvent = (eventsRaw ?? [])
     .filter((e) => !e.all_day)
-    .reduce<{ created_at: string; start_tz: string } | null>(
+    .reduce<{
+      created_at: string;
+      start_at: string;
+      tz_disambig_transit_id: string | null;
+      tz_disambig_side: string | null;
+    } | null>(
       (acc, e) =>
         acc && acc.created_at >= e.created_at
           ? acc
-          : { created_at: e.created_at, start_tz: e.start_tz },
+          : {
+              created_at: e.created_at,
+              start_at: e.start_at,
+              tz_disambig_transit_id: e.tz_disambig_transit_id,
+              tz_disambig_side: e.tz_disambig_side,
+            },
       null,
     );
-  const initialEventTz = lastEnteredEvent?.start_tz ?? null;
+  const initialEventTz = lastEnteredEvent
+    ? resolveEventTz(
+        lastEnteredEvent.start_at.slice(0, 10),
+        lastEnteredEvent.tz_disambig_transit_id,
+        lastEnteredEvent.tz_disambig_side as "depart" | "arrive" | null,
+        tzTimeline,
+      )
+    : null;
 
   const todos: TodoRow[] = (todosRaw ?? []).map((t) => {
     const likes = t.todo_likes ?? [];
@@ -264,8 +296,6 @@ export default async function TripDetailPage({
       category: p.tentative ? t("place.statusCandidate") : t("place.statusConfirmed"),
       iconKey: p.icon,
     }));
-  // 費用の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
-  const tzTimeline = buildTripTzTimeline(scheduleEvents);
   // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
   const placesBiasCenter =
     centroid(
@@ -345,13 +375,25 @@ export default async function TripDetailPage({
     const mine =
       e.participantMemberIds.length === 0 ||
       e.participantMemberIds.includes(me.id);
+    // transit は実TZを直接使う。normal/allday は startTz を持たないことが
+    // あるので旅程から都度解決する（乗継編集にも自動追従する）。
+    const startTz =
+      e.kind === "transit"
+        ? (e.startTz as string)
+        : resolveEventTz(
+            e.startAt.slice(0, 10),
+            e.tzDisambigTransitId,
+            e.tzDisambigSide,
+            tzTimeline,
+          );
+    const endTz = e.kind === "transit" ? (e.endTz as string) : startTz;
     return {
       title: e.title,
       allDay: e.allDay,
       startAt: e.startAt,
       endAt: e.endAt,
-      startTz: e.startTz,
-      endTz: e.endTz ?? e.startTz,
+      startTz,
+      endTz,
       location,
       description: e.note,
       mine,
@@ -408,8 +450,6 @@ export default async function TripDetailPage({
     name: p.name,
     formattedAddress: p.formatted_address,
   }));
-
-  const [t, locale] = await Promise.all([getTranslations(), getLocale()]);
 
   const importDrafts = (tripDrafts ?? []).flatMap((d) => {
     // 合体済みなら合体後の値で確定フォームを事前入力する。

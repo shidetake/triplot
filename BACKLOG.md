@@ -52,14 +52,14 @@ Apple ログイン（#9）が前提になる。デザインルールやコピー
 
 ## 設計メモ（低優先・思い出した時にやる）
 
-- [ ] タイムゾーン: 通常予定/費用の実IANA文字列カラムは冗長。`events.start_tz`/`end_tz`、`expenses.tz` は
-      通常予定・費用では「旅程上どの区間にいるか」のラベルとしてしか使われておらず
-      （`resolveExpenseTz`、`packages/shared/src/schedule.ts`）、理論上は区間番号で足りる。実IANA文字列が
-      本質的に要るのは **transit イベントの出発/到着 TZ のみ**（旅程全体の offset 計算の唯一の真実源。
-      `buildTripTzTimeline` がここを起点にチェーンする）。複数都市またぎの費用ソート（`occurred_at`）も
-      Google カレンダーエクスポート（`gcalEvent.ts`）も、transit 側の実 TZ から都度導出すれば通常予定/費用に
-      実IANA文字列を冗長保存しなくて済む。ただし `events.start_tz` を区間番号化する migration コストに対し、
-      現状UX（フルピッカーを transit 日だけに絞った）で実用上の問題は解消済みなので、今すぐ着手する価値はない。
+- [x] タイムゾーン: 通常予定/費用の実IANA文字列カラムの冗長性を解消 — 実装済み（migration
+      `20260702000001_event_expense_tz_normalize.sql`）。`events`/`expenses` に
+      `tz_disambig_transit_id`/`tz_disambig_side`（乗継当日の選択、単純な区間番号ではなく
+      「どの乗継の出発/到着側か」への参照）を追加し、非曖昧な日は保存無しで毎回旅程から自動導出
+      （`resolveEventTz`、`packages/shared/src/schedule.ts`）。乗継を編集すると紐づく予定/費用の表示TZが
+      自動追従する。旅程に transit が1つも無い旅行だけ従来どおり literal な `start_tz`/`tz` を保存
+      （導出元が無いため）。`occurred_at`（費用のソートキャッシュ）は書き込み時に解決済みTZで計算する
+      現状維持— 乗継編集時のカスケード再計算はスコープ外（次にその費用を保存し直すまで古い可能性あり）。
 
 ## 現在着手中
 

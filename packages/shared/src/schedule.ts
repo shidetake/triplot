@@ -18,8 +18,15 @@ export type ScheduleEvent = {
   allDay: boolean;
   startAt: string; // "YYYY-MM-DDTHH:MM[:SS]" 壁時計（TZ無し）
   endAt: string | null; // 壁時計（TZ無し）
-  startTz: string; // IANA。start_at がどのTZの壁時計か
-  endTz: string | null; // transit の到着TZ。normal は null（= startTz）
+  // IANA。transit は常に非null（唯一の真実源）。normal/allday は旅程に
+  // transit が1つも無い旅行だけ非null（導出元が無いので literal 保存）。
+  // transit がある旅行の normal は null＝毎回 tzDisambig* と旅程から導出。
+  startTz: string | null;
+  endTz: string | null; // transit の到着TZ。normal は null
+  // normal/allday のみ意味を持つ。乗継当日で候補が複数あるときの選択（どの
+  // 乗継の出発側/到着側か）。非曖昧な日は null のまま（旅程から自動導出）。
+  tzDisambigTransitId: string | null;
+  tzDisambigSide: "depart" | "arrive" | null;
   placeId: string | null;
   visibility: "shared" | "private";
   note: string | null;
@@ -109,11 +116,16 @@ function wallClockToUtcMs(wall: string, tz: string): number {
   return asUtc - (readBackAsUtc - asUtc);
 }
 
-/** 移動イベントを実際の出発順（TZを跨いだ絶対時刻順）に並べる */
+/**
+ * 移動イベントを実際の出発順（TZを跨いだ絶対時刻順）に並べる。
+ * kind='transit' の startTz は DB 制約で必ず非null（呼び出し側は transit で
+ * フィルタ済みの配列を渡す前提）。
+ */
 function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[] {
   return [...events].sort(
     (a, b) =>
-      wallClockToUtcMs(a.startAt, a.startTz) - wallClockToUtcMs(b.startAt, b.startTz),
+      wallClockToUtcMs(a.startAt, a.startTz as string) -
+      wallClockToUtcMs(b.startAt, b.startTz as string),
   );
 }
 
@@ -122,9 +134,15 @@ function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[
  * （絶対時刻順で先頭の）非終日イベントのTZ。events は DB取得順（壁時計の
  * start_at で ORDER BY）のままなので、配列の先頭を単純に使うとTZを跨いだ
  * 場合に真の時系列と一致しないことがある（transit のソートと同じ理由）。
+ * startTz が null（旅程に transit がある旅行の normal 予定）は候補から除外
+ * ——この関数の戻り値は transits.length===0 の旅行でしか使われず、その場合
+ * 全ての normal 予定は literal な startTz を持つ（RPC 側の不変条件）。
  */
 function earliestNonAllDayTz(events: ScheduleEvent[]): string {
-  const candidates = events.filter((e) => !e.allDay);
+  const candidates = events.filter(
+    (e): e is ScheduleEvent & { startTz: string } =>
+      !e.allDay && e.startTz != null,
+  );
   if (candidates.length === 0) return "UTC";
   return candidates.reduce((earliest, e) =>
     wallClockToUtcMs(e.startAt, e.startTz) <
@@ -245,6 +263,9 @@ export function buildSchedule(
   },
 ): Schedule {
   const locale = opts.locale ?? "ja";
+  // normal/allday 予定は startTz を持たないことがある（旅程に transit がある
+  // 旅行）ので、列配置のたびにこれで実際のTZを解決する。
+  const tzTimeline = buildTripTzTimeline(events);
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
   let rangeEnd: string | null = opts.tripEnd ?? null;
@@ -302,7 +323,9 @@ export function buildSchedule(
   const firstTz = earliestNonAllDayTz(events);
 
   let cursor = rangeStart;
-  let currentTz = transits.length > 0 ? transits[0].startTz : firstTz;
+  // transit の startTz は DB 制約で必ず非null。
+  let currentTz =
+    transits.length > 0 ? (transits[0].startTz as string) : firstTz;
 
   // transit ごとに確定した乗降列key。後段のリボン配置はこれをそのまま使い、
   // (date,tz) だけのあいまいな再検索（同日に複数列あると誤爆する）に頼らない。
@@ -313,6 +336,7 @@ export function buildSchedule(
     const arr = parseWall(t.endAt as string);
     const departDate = dep.date;
     const arriveDate = arr.date;
+    const startTz = t.startTz as string; // DB 制約で必ず非null
     const arriveTz = t.endTz as string;
 
     // transit までの普通の日
@@ -324,7 +348,7 @@ export function buildSchedule(
     // 直前に作った列が今回の出発(日付・TZ)とちょうど一致するなら、同日に
     // 連続で乗り継ぐ便として既存列を使い回す（新規列を作らずレーンを増やさない）。
     const depReused =
-      lastCol !== null && lastCol.date === departDate && lastCol.tz === t.startTz;
+      lastCol !== null && lastCol.date === departDate && lastCol.tz === startTz;
 
     // 壁時計を1本の線形軸に並べたとき、到着が出発と同時かそれ以前に来るか。
     // ＝時差が戻って時刻が巻き戻り、出発と到着の時間帯が重なるケース。
@@ -339,7 +363,7 @@ export function buildSchedule(
       // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
       depCol = depReused
         ? lastCol!
-        : { key: `t-${t.id}-dep`, date: departDate, tz: t.startTz, role: "transit-depart" };
+        : { key: `t-${t.id}-dep`, date: departDate, tz: startTz, role: "transit-depart" };
       arrCol = { key: `t-${t.id}-arr`, date: arriveDate, tz: arriveTz, role: "transit-arrive" };
       const label =
         departDate === arriveDate
@@ -349,7 +373,7 @@ export function buildSchedule(
         key: `t-${t.id}`,
         label,
         // 出発列を使い回すときは前の便の注記が既に出ているので重ねて出さない。
-        tzNote: depReused ? null : `${t.startTz} → ${arriveTz}`,
+        tzNote: depReused ? null : `${startTz} → ${arriveTz}`,
         columns: depReused ? [arrCol] : [depCol, arrCol],
       });
       lastCol = arrCol;
@@ -363,7 +387,7 @@ export function buildSchedule(
       const sameDay = arriveDate === departDate;
       depCol = depReused
         ? lastCol!
-        : pushDay(departDate, t.startTz, `${t.startTz} → ${arriveTz}`, sameDay ? 1 : 2);
+        : pushDay(departDate, startTz, `${startTz} → ${arriveTz}`, sameDay ? 1 : 2);
       arrCol = sameDay ? depCol : pushDay(arriveDate, arriveTz);
     }
 
@@ -484,10 +508,16 @@ export function buildSchedule(
 
     const s = parseWall(ev.startAt);
     const e = ev.endAt ? parseWall(ev.endAt) : null;
+    const evTz = resolveEventTz(
+      s.date,
+      ev.tzDisambigTransitId,
+      ev.tzDisambigSide,
+      tzTimeline,
+    );
 
     if (!e || e.date === s.date) {
       // 同日内
-      const col = colFor(s.date, ev.startTz);
+      const col = colFor(s.date, evTz);
       if (!col) continue;
       const endMin =
         e && e.minutes > s.minutes
@@ -510,7 +540,7 @@ export function buildSchedule(
       const isLast = d === e.date;
       // 最終日 0:00 ちょうど終了は前日 24:00 までで終わり。空セグメントは出さない
       if (isLast && e.minutes === 0) break;
-      const col = colFor(d, ev.startTz);
+      const col = colFor(d, evTz);
       if (!col) continue;
       timedRaw.push({
         kind: "event",
@@ -682,6 +712,7 @@ export type TripTzTimeline = {
   fallbackTz: string;
   /** 出発時刻順に並んだ移動。各区間の境界になる */
   transits: {
+    transitId: string;
     departDate: string;
     arriveDate: string;
     departTz: string;
@@ -694,19 +725,27 @@ export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
     events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
   )
     .map((t) => ({
+      transitId: t.id,
       departDate: parseWall(t.startAt).date,
       arriveDate: parseWall(t.endAt as string).date,
-      departTz: t.startTz,
+      departTz: t.startTz as string,
       arriveTz: t.endTz as string,
     }));
   const fallbackTz = earliestNonAllDayTz(events);
   return { fallbackTz, transits };
 }
 
+/** 乗継日の候補1件。どの乗継の出発側/到着側かという出自を保つ（DB保存用の参照に使う）。 */
+export type TzCandidate = {
+  tz: string;
+  transitId: string;
+  side: "depart" | "arrive";
+};
+
 export type TzResolution =
   | { kind: "single"; tz: string }
   // 同一暦日に複数のTZを跨ぐ乗継日。時系列順の候補（2件以上）から選ばせる。
-  | { kind: "ambiguous"; options: string[] };
+  | { kind: "ambiguous"; options: TzCandidate[] };
 
 /**
  * その日付に費用が発生したと仮定したときの現地TZを旅程から引く。
@@ -722,10 +761,12 @@ export function resolveExpenseTz(
 
   // 最初の移動より前は、その移動の出発TZにいる。
   let currentTz = transits[0].departTz;
-  // その日に触れた全TZを時系列順に集める（隣接重複は除く）。
-  const touched: string[] = [];
-  const push = (tz: string) => {
-    if (touched[touched.length - 1] !== tz) touched.push(tz);
+  // その日に触れた全候補を時系列順に集める（隣接重複=同じtzが続く場合は除く）。
+  const touched: TzCandidate[] = [];
+  const push = (tz: string, transitId: string, side: "depart" | "arrive") => {
+    if (touched[touched.length - 1]?.tz !== tz) {
+      touched.push({ tz, transitId, side });
+    }
   };
 
   for (const t of transits) {
@@ -735,25 +776,25 @@ export function resolveExpenseTz(
     }
     if (date === t.departDate && date === t.arriveDate) {
       // 出発・到着とも同一暦日の乗継。同日に続く別の乗継があるかもしれないので走査を続ける。
-      push(t.departTz);
-      push(t.arriveTz);
+      push(t.departTz, t.transitId, "depart");
+      push(t.arriveTz, t.transitId, "arrive");
       currentTz = t.arriveTz;
       continue;
     }
     if (date === t.departDate) {
       // 日をまたぐ移動の出発日。以降は機中でこの日のTZは確定しない
       // → 出発側のみ確定し、この日の走査を打ち切る（次の乗継は翌日以降にしかあり得ない）。
-      push(t.departTz);
+      push(t.departTz, t.transitId, "depart");
       break;
     }
     if (cmpDate(date, t.departDate) > 0 && cmpDate(date, t.arriveDate) < 0) {
       // 暦日まるごと空の上 → 到着側に寄せて確定
-      push(t.arriveTz);
+      push(t.arriveTz, t.transitId, "arrive");
       break;
     }
     if (date === t.arriveDate) {
       // 日をまたぐ移動の到着日。同日に続けて乗り継ぐかもしれないので走査を続ける。
-      push(t.arriveTz);
+      push(t.arriveTz, t.transitId, "arrive");
       currentTz = t.arriveTz;
       continue;
     }
@@ -762,6 +803,29 @@ export function resolveExpenseTz(
   }
 
   if (touched.length === 0) return { kind: "single", tz: currentTz };
-  if (touched.length === 1) return { kind: "single", tz: touched[0] };
+  if (touched.length === 1) return { kind: "single", tz: touched[0].tz };
   return { kind: "ambiguous", options: touched };
+}
+
+/**
+ * 通常予定/費用の実際のTZを解決する。非曖昧な日は tzDisambig* を無視して
+ * 自動導出、乗継当日は保存済みの選択（tzDisambigTransitId/side）で候補から
+ * 引く。該当する乗継が旅程から消えている等で見つからなければ先頭候補
+ * （出発側基準）にフォールバックする。
+ */
+export function resolveEventTz(
+  date: string,
+  tzDisambigTransitId: string | null,
+  tzDisambigSide: "depart" | "arrive" | null,
+  tl: TripTzTimeline,
+): string {
+  const r = resolveExpenseTz(date, tl);
+  if (r.kind === "single") return r.tz;
+  if (tzDisambigTransitId && tzDisambigSide) {
+    const match = r.options.find(
+      (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+    );
+    if (match) return match.tz;
+  }
+  return r.options[0].tz;
 }

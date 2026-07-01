@@ -129,6 +129,16 @@ export async function createExpenseAction(
       : new Date().toISOString();
   // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
   const tz = ((formData.get("tz") as string | null) ?? "").trim();
+  const tzDisambigTransitId =
+    ((formData.get("tz_disambig_transit_id") as string | null) ?? "").trim() ||
+    null;
+  const tzDisambigSideRaw = (
+    (formData.get("tz_disambig_side") as string | null) ?? ""
+  ).trim();
+  const tzDisambigSide =
+    tzDisambigSideRaw === "depart" || tzDisambigSideRaw === "arrive"
+      ? tzDisambigSideRaw
+      : null;
 
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
@@ -167,6 +177,8 @@ export async function createExpenseAction(
     note,
     paidAt,
     tz,
+    tzDisambigTransitId,
+    tzDisambigSide,
     splitMemberIds,
     place,
   });
@@ -214,6 +226,16 @@ export async function updateExpenseAction(
       : new Date().toISOString();
   // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
   const tz = ((formData.get("tz") as string | null) ?? "").trim();
+  const tzDisambigTransitId =
+    ((formData.get("tz_disambig_transit_id") as string | null) ?? "").trim() ||
+    null;
+  const tzDisambigSideRaw = (
+    (formData.get("tz_disambig_side") as string | null) ?? ""
+  ).trim();
+  const tzDisambigSide =
+    tzDisambigSideRaw === "depart" || tzDisambigSideRaw === "arrive"
+      ? tzDisambigSideRaw
+      : null;
   const splitMemberIds = formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
@@ -251,6 +273,8 @@ export async function updateExpenseAction(
     note,
     paidAt,
     tz,
+    tzDisambigTransitId,
+    tzDisambigSide,
     splitMemberIds,
     place,
   });
@@ -547,6 +571,9 @@ type ParsedEvent =
       endAt: string | null;
       startTz: string;
       endTz: string | null;
+      // 乗継当日の選択。非曖昧な日・旅程にtransitが無い・kind='transit'では null。
+      tzDisambigTransitId: string | null;
+      tzDisambigSide: "depart" | "arrive" | null;
       place: PlaceInput;
       visibility: Visibility;
       note: string;
@@ -607,6 +634,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endAt: `${arriveDate}T${arriveTime}:00`,
       startTz: departTz,
       endTz: arriveTz,
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
       place,
       visibility,
       note,
@@ -633,6 +662,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endAt: `${endDate}T00:00:00`,
       startTz: "UTC",
       endTz: null,
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
       place,
       visibility,
       note,
@@ -642,6 +673,12 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
 
   const tz = get("tz");
   if (!tz) return { error: t("selectTimezone") };
+  const tzDisambigTransitId = get("tz_disambig_transit_id") || null;
+  const tzDisambigSideRaw = get("tz_disambig_side");
+  const tzDisambigSide =
+    tzDisambigSideRaw === "depart" || tzDisambigSideRaw === "arrive"
+      ? tzDisambigSideRaw
+      : null;
   const startDate = get("start_date");
   const startTime = get("start_time");
   const endDate = get("end_date") || startDate;
@@ -667,6 +704,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     endAt,
     startTz: tz,
     endTz: null,
+    tzDisambigTransitId,
+    tzDisambigSide,
     place,
     visibility,
     note,

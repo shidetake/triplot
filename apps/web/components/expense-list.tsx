@@ -33,7 +33,11 @@ export type ExpenseRow = {
   created_by_member_id: string;
   split_member_ids: string[];
   place_id: string | null;
+  // 実効TZ（旅程から解決済み。表示・編集フォームの初期値に使う）。
   tz: string;
+  // 乗継当日の選択（保存値そのまま）。編集フォームのラジオ初期選択に使う。
+  tzDisambigTransitId: string | null;
+  tzDisambigSide: "depart" | "arrive" | null;
 };
 
 type Member = {

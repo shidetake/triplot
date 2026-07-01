@@ -73,7 +73,7 @@ export async function createTrip(
     all_day: boolean;
     start_at: string;
     end_at: string | null;
-    start_tz: string;
+    start_tz: string | null;
     end_tz: string | null;
     place_id: string | null;
     note: string | null;

@@ -11,8 +11,14 @@ export type EventFields = {
   title: string;
   startAt: string;
   endAt: string | null;
-  startTz: string;
+  // 旅程に transit が無い旅行だけ使う literal な既定値（TS側で解決済みの実TZ）。
+  // transit がある旅行では null（tzDisambig* を使う）。
+  startTz: string | null;
   endTz: string | null;
+  // 乗継当日の選択（どの乗継の出発側/到着側か）。非曖昧な日・normal 予定
+  // 以外・旅程に transit が無いときは null。
+  tzDisambigTransitId: string | null;
+  tzDisambigSide: "depart" | "arrive" | null;
   visibility: Visibility;
   note: string;
   participantMemberIds: string[];
@@ -27,8 +33,10 @@ function eventBase(f: EventFields) {
     p_start_at: f.startAt,
     // gen-types は nullable 引数を string にする癖。
     p_end_at: f.endAt as unknown as string,
-    p_start_tz: f.startTz,
+    p_start_tz: f.startTz as unknown as string,
     p_end_tz: f.endTz as unknown as string,
+    p_tz_disambig_transit_id: f.tzDisambigTransitId as unknown as string,
+    p_tz_disambig_side: f.tzDisambigSide as unknown as string,
     p_visibility: f.visibility,
     p_note: f.note,
     p_participant_member_ids: f.participantMemberIds,

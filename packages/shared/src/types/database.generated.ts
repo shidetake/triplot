@@ -56,9 +56,11 @@ export type Database = {
           note: string | null
           place_id: string | null
           start_at: string
-          start_tz: string
+          start_tz: string | null
           title: string
           trip_id: string
+          tz_disambig_side: string | null
+          tz_disambig_transit_id: string | null
           visibility: string
         }
         Insert: {
@@ -72,9 +74,11 @@ export type Database = {
           note?: string | null
           place_id?: string | null
           start_at: string
-          start_tz: string
+          start_tz?: string | null
           title: string
           trip_id: string
+          tz_disambig_side?: string | null
+          tz_disambig_transit_id?: string | null
           visibility: string
         }
         Update: {
@@ -88,9 +92,11 @@ export type Database = {
           note?: string | null
           place_id?: string | null
           start_at?: string
-          start_tz?: string
+          start_tz?: string | null
           title?: string
           trip_id?: string
+          tz_disambig_side?: string | null
+          tz_disambig_transit_id?: string | null
           visibility?: string
         }
         Relationships: [
@@ -113,6 +119,13 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "events_tz_disambig_transit_id_fkey"
+            columns: ["tz_disambig_transit_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -204,7 +217,9 @@ export type Database = {
           rate_to_default: number
           splittable: boolean
           trip_id: string
-          tz: string
+          tz: string | null
+          tz_disambig_side: string | null
+          tz_disambig_transit_id: string | null
           visibility: string
         }
         Insert: {
@@ -222,7 +237,9 @@ export type Database = {
           rate_to_default: number
           splittable?: boolean
           trip_id: string
-          tz: string
+          tz?: string | null
+          tz_disambig_side?: string | null
+          tz_disambig_transit_id?: string | null
           visibility: string
         }
         Update: {
@@ -240,7 +257,9 @@ export type Database = {
           rate_to_default?: number
           splittable?: boolean
           trip_id?: string
-          tz?: string
+          tz?: string | null
+          tz_disambig_side?: string | null
+          tz_disambig_transit_id?: string | null
           visibility?: string
         }
         Relationships: [
@@ -277,6 +296,13 @@ export type Database = {
             columns: ["trip_id"]
             isOneToOne: false
             referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_tz_disambig_transit_id_fkey"
+            columns: ["tz_disambig_transit_id"]
+            isOneToOne: false
+            referencedRelation: "events"
             referencedColumns: ["id"]
           },
         ]
@@ -782,6 +808,8 @@ export type Database = {
           p_start_tz: string
           p_title: string
           p_trip_id: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -799,6 +827,8 @@ export type Database = {
           p_start_tz: string
           p_title: string
           p_trip_id: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -823,6 +853,8 @@ export type Database = {
           p_start_tz: string
           p_title: string
           p_trip_id: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -841,6 +873,8 @@ export type Database = {
           p_splittable: boolean
           p_trip_id: string
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -859,6 +893,8 @@ export type Database = {
           p_splittable: boolean
           p_trip_id: string
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -884,6 +920,8 @@ export type Database = {
           p_splittable: boolean
           p_trip_id: string
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: string
@@ -972,6 +1010,15 @@ export type Database = {
         Args: { p_expense_id?: string; p_id: string; p_status: string }
         Returns: undefined
       }
+      resolve_normal_event_tz: {
+        Args: {
+          p_literal_tz: string
+          p_trip_id: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
+        }
+        Returns: Record<string, unknown>
+      }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
@@ -1002,6 +1049,8 @@ export type Database = {
           p_start_at: string
           p_start_tz: string
           p_title: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined
@@ -1019,6 +1068,8 @@ export type Database = {
           p_start_at: string
           p_start_tz: string
           p_title: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined
@@ -1043,6 +1094,8 @@ export type Database = {
           p_start_at: string
           p_start_tz: string
           p_title: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined
@@ -1061,6 +1114,8 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined
@@ -1079,6 +1134,8 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined
@@ -1104,6 +1161,8 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
           p_visibility: string
         }
         Returns: undefined

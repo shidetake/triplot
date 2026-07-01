@@ -7,6 +7,7 @@ import {
   formatDayLabel,
   formatMinutes,
   parseWall,
+  resolveEventTz,
   resolveExpenseTz,
   type ScheduleEvent,
 } from "./schedule";
@@ -37,6 +38,8 @@ function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEven
     endAt: null,
     startTz: "Asia/Tokyo",
     endTz: null,
+    tzDisambigTransitId: null,
+    tzDisambigSide: null,
     placeId: null,
     visibility: "shared",
     note: null,
@@ -79,7 +82,10 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
   it("往路の乗継日(出発日==到着日)は ambiguous", () => {
     expect(resolveExpenseTz("2026-05-22", tl)).toEqual({
       kind: "ambiguous",
-      options: ["Asia/Tokyo", "Pacific/Honolulu"],
+      options: [
+        { tz: "Asia/Tokyo", transitId: "out", side: "depart" },
+        { tz: "Pacific/Honolulu", transitId: "out", side: "arrive" },
+      ],
     });
   });
   it("滞在中は到着TZ(HST)", () => {
@@ -167,7 +173,11 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
     ]);
     expect(resolveExpenseTz("2026-06-19", tl5)).toEqual({
       kind: "ambiguous",
-      options: ["Asia/Tokyo", "Pacific/Honolulu", "America/Los_Angeles"],
+      options: [
+        { tz: "Asia/Tokyo", transitId: "leg-nrt-hnl", side: "depart" },
+        { tz: "Pacific/Honolulu", transitId: "leg-nrt-hnl", side: "arrive" },
+        { tz: "America/Los_Angeles", transitId: "leg-hnl-lax", side: "arrive" },
+      ],
     });
   });
 
@@ -193,7 +203,11 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
     ]);
     expect(resolveExpenseTz("2026-05-22", tl3)).toEqual({
       kind: "ambiguous",
-      options: ["Asia/Tokyo", "Asia/Seoul", "Asia/Singapore"],
+      options: [
+        { tz: "Asia/Tokyo", transitId: "leg1", side: "depart" },
+        { tz: "Asia/Seoul", transitId: "leg1", side: "arrive" },
+        { tz: "Asia/Singapore", transitId: "leg2", side: "arrive" },
+      ],
     });
   });
 
@@ -219,8 +233,49 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
     ]);
     expect(resolveExpenseTz("2026-05-22", tl4)).toEqual({
       kind: "ambiguous",
-      options: ["Asia/Seoul", "Asia/Singapore"],
+      options: [
+        { tz: "Asia/Seoul", transitId: "leg1", side: "arrive" },
+        { tz: "Asia/Singapore", transitId: "leg2", side: "arrive" },
+      ],
     });
+  });
+});
+
+describe("resolveEventTz: 通常予定/費用の実際のTZ解決", () => {
+  const tl = buildTripTzTimeline([
+    ev({
+      id: "out",
+      kind: "transit",
+      startAt: "2026-05-22T20:00:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-05-22T09:00:00",
+      endTz: "Pacific/Honolulu",
+    }),
+  ]);
+
+  it("非曖昧な日は disambig を無視して自動導出", () => {
+    expect(resolveEventTz("2026-05-25", null, null, tl)).toBe(
+      "Pacific/Honolulu",
+    );
+  });
+
+  it("乗継日は保存済みの選択(transitId+side)を使う", () => {
+    expect(resolveEventTz("2026-05-22", "out", "arrive", tl)).toBe(
+      "Pacific/Honolulu",
+    );
+    expect(resolveEventTz("2026-05-22", "out", "depart", tl)).toBe(
+      "Asia/Tokyo",
+    );
+  });
+
+  it("選択が未保存(null)なら先頭候補(出発側)にフォールバック", () => {
+    expect(resolveEventTz("2026-05-22", null, null, tl)).toBe("Asia/Tokyo");
+  });
+
+  it("選択先の乗継が旅程から消えていても先頭候補にフォールバック", () => {
+    expect(resolveEventTz("2026-05-22", "deleted-transit", "arrive", tl)).toBe(
+      "Asia/Tokyo",
+    );
   });
 });
 
@@ -464,6 +519,61 @@ describe("buildSchedule: 同日に連続で乗り継ぐ場合", () => {
       departMin: 15 * 60 + 30,
       arriveMin: 21 * 60 + 30,
     });
+  });
+});
+
+describe("buildSchedule: 通常予定は startTz が無くても旅程+disambig から列配置される", () => {
+  const flight = ev({
+    id: "f1",
+    kind: "transit",
+    startAt: "2026-04-27T19:10:00",
+    startTz: "Asia/Tokyo",
+    endAt: "2026-04-27T08:30:00",
+    endTz: "Pacific/Honolulu",
+  });
+
+  it("非曖昧な日は startTz=null でも旅程から自動導出した列に置かれる", () => {
+    const normal = ev({
+      id: "n1",
+      startAt: "2026-04-29T09:00:00",
+      startTz: null,
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
+    });
+    const s = buildSchedule([flight, normal], {
+      tripStart: "2026-04-27",
+      tripEnd: "2026-04-29",
+    });
+    const placed = s.timed.find((t) => t.event.id === "n1")!;
+    const col = s.columns.find((c) => c.key === placed.columnKey)!;
+    expect(col.tz).toBe("Pacific/Honolulu");
+  });
+
+  it("乗継日は保存済みの tzDisambig* に従って出発側/到着側の列に置かれる", () => {
+    const departSide = ev({
+      id: "n-dep",
+      startAt: "2026-04-27T10:00:00",
+      startTz: null,
+      tzDisambigTransitId: "f1",
+      tzDisambigSide: "depart",
+    });
+    const arriveSide = ev({
+      id: "n-arr",
+      startAt: "2026-04-27T10:00:00",
+      startTz: null,
+      tzDisambigTransitId: "f1",
+      tzDisambigSide: "arrive",
+    });
+    const s = buildSchedule([flight, departSide, arriveSide], {
+      tripStart: "2026-04-27",
+      tripEnd: "2026-04-27",
+    });
+    const depPlaced = s.timed.find((t) => t.event.id === "n-dep")!;
+    const arrPlaced = s.timed.find((t) => t.event.id === "n-arr")!;
+    const depCol = s.columns.find((c) => c.key === depPlaced.columnKey)!;
+    const arrCol = s.columns.find((c) => c.key === arrPlaced.columnKey)!;
+    expect(depCol.tz).toBe("Asia/Tokyo");
+    expect(arrCol.tz).toBe("Pacific/Honolulu");
   });
 });
 
