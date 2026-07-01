@@ -265,16 +265,22 @@ export function EventForm({
   );
 
   // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
-  // 日付が変わったら TZ も旅程タイムラインから解決し直す（transit 日は出発側を既定）。
+  // DateTimePopover は日付だけの変更も時刻だけの変更も同じ onChange(date,time) で
+  // 通知してくる。TZ の再解決は日付が実際に変わったときだけ行う — 時刻だけの調整で
+  // 毎回呼び直すと、乗継日でユーザーがラジオボタンで手動選んだ側が黙って
+  // 既定（出発側）に巻き戻ってしまう。
   const moveStart = (nd: string, nt: string) => {
     const dur = Math.max(dtToMin(eDate, eTime) - dtToMin(sDate, sTime), 60);
+    const dateChanged = nd !== sDate;
     setSDate(nd);
     setSTime(nt);
     const ne = minToDt(dtToMin(nd, nt) + dur);
     setEDate(ne.date);
     setETime(ne.time);
-    const r = resolveExpenseTz(nd, tzTimeline);
-    setTz(r.kind === "single" ? r.tz : r.options[0]);
+    if (dateChanged) {
+      const r = resolveExpenseTz(nd, tzTimeline);
+      setTz(r.kind === "single" ? r.tz : r.options[0]);
+    }
   };
 
   // 終了ガード。終了 ≤ 開始になったら開始+1時間に snap する（同日に終了時刻だけ
