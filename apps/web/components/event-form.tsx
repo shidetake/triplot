@@ -274,7 +274,7 @@ export function EventForm({
     setEDate(ne.date);
     setETime(ne.time);
     const r = resolveExpenseTz(nd, tzTimeline);
-    setTz(r.kind === "single" ? r.tz : r.departTz);
+    setTz(r.kind === "single" ? r.tz : r.options[0]);
   };
 
   // 終了ガード。終了 ≤ 開始になったら開始+1時間に snap する（同日に終了時刻だけ
@@ -562,24 +562,17 @@ export function EventForm({
             <fieldset className="text-sm">
               <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="tz_choice"
-                    checked={tz === tzRes.departTz}
-                    onChange={() => setTz(tzRes.departTz)}
-                  />
-                  <span>{t("departSide", { tz: tzDisplayLabel(tzRes.departTz) })}</span>
-                </label>
-                <label className="inline-flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="tz_choice"
-                    checked={tz === tzRes.arriveTz}
-                    onChange={() => setTz(tzRes.arriveTz)}
-                  />
-                  <span>{t("arriveSide", { tz: tzDisplayLabel(tzRes.arriveTz) })}</span>
-                </label>
+                {tzRes.options.map((opt, i) => (
+                  <label key={`${opt}-${i}`} className="inline-flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tz_choice"
+                      checked={tz === opt}
+                      onChange={() => setTz(opt)}
+                    />
+                    <span>{tzDisplayLabel(opt)}</span>
+                  </label>
+                ))}
               </div>
             </fieldset>
           )}

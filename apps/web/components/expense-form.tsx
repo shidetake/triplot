@@ -232,7 +232,7 @@ export function ExpenseForm({
     ? editExpense.tz
     : (() => {
         const r = resolveExpenseTz(initPaidAtDate, tzTimeline);
-        return r.kind === "single" ? r.tz : r.departTz;
+        return r.kind === "single" ? r.tz : r.options[0];
       })();
   const [tz, setTz] = useDraft<string>("tz", initTz);
   // 今選ばれている日付に対する解決結果（single か 乗継日 ambiguous か）。
@@ -246,7 +246,7 @@ export function ExpenseForm({
     setPaidAtDate(newDate);
     // 日付が変わったら TZ も推測し直す（乗継日は出発側を既定）。
     const r = resolveExpenseTz(newDate, tzTimeline);
-    setTz(r.kind === "single" ? r.tz : r.departTz);
+    setTz(r.kind === "single" ? r.tz : r.options[0]);
   };
 
   // 「＋ 時刻を指定」を押した直後に時刻 input にフォーカス＆ピッカーを開く
@@ -562,24 +562,17 @@ export function ExpenseForm({
               {t("transitDay")}
             </p>
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="tz_choice"
-                  checked={tz === tzRes.departTz}
-                  onChange={() => setTz(tzRes.departTz)}
-                />
-                <span>{t("departSide", { tz: tzLabel(tzRes.departTz) })}</span>
-              </label>
-              <label className="inline-flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="tz_choice"
-                  checked={tz === tzRes.arriveTz}
-                  onChange={() => setTz(tzRes.arriveTz)}
-                />
-                <span>{t("arriveSide", { tz: tzLabel(tzRes.arriveTz) })}</span>
-              </label>
+              {tzRes.options.map((opt, i) => (
+                <label key={`${opt}-${i}`} className="inline-flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="tz_choice"
+                    checked={tz === opt}
+                    onChange={() => setTz(opt)}
+                  />
+                  <span>{tzLabel(opt)}</span>
+                </label>
+              ))}
             </div>
           </fieldset>
         ) : (

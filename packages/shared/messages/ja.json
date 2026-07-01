@@ -220,9 +220,7 @@
     "placeholderNoteTransit": "ターミナル1",
     "deleteTitle": "この予定を削除しますか？",
     "deleteFailed": "削除に失敗しました: {error}",
-    "transitDay": "移動日のため、どちら側の予定か選んでください。",
-    "departSide": "出発側: {tz}",
-    "arriveSide": "到着側: {tz}"
+    "transitDay": "移動日のため、どのタイムゾーンの予定か選んでください。"
   },
   "expense": {
     "price": "価格",
@@ -245,9 +243,7 @@
     "splitSome": "一部",
     "paidLabel": "支払",
     "splitLabel": "割勘",
-    "transitDay": "移動日です。どちらのタイムゾーンで使ったか選んでください。",
-    "departSide": "出発側: {tz}",
-    "arriveSide": "到着側: {tz}",
+    "transitDay": "移動日です。どのタイムゾーンで使ったか選んでください。",
     "localTz": "現地タイムゾーン: {tz}",
     "averageRate": "この旅行の平均レート: 1 {from} = {rate} {to}",
     "unknownRate": "1 {from} = ? {to}",

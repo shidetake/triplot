@@ -512,12 +512,13 @@ export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
 
 export type TzResolution =
   | { kind: "single"; tz: string }
-  // 同一暦日に出発側/到着側の両TZがある乗継日。どちらか選ばせる。
-  | { kind: "ambiguous"; departTz: string; arriveTz: string };
+  // 同一暦日に複数のTZを跨ぐ乗継日。時系列順の候補（2件以上）から選ばせる。
+  | { kind: "ambiguous"; options: string[] };
 
 /**
  * その日付に費用が発生したと仮定したときの現地TZを旅程から引く。
- * 乗継日（出発日==到着日）だけは一意に決まらないので ambiguous を返す。
+ * 乗継日（出発日==到着日の移動を含む日）だけは一意に決まらないので ambiguous を返す。
+ * 同日に複数回乗り継ぐ（3つ以上のTZを跨ぐ）場合も、その日に触れる全TZを時系列順に集める。
  */
 export function resolveExpenseTz(
   date: string,
@@ -528,25 +529,46 @@ export function resolveExpenseTz(
 
   // 最初の移動より前は、その移動の出発TZにいる。
   let currentTz = transits[0].departTz;
+  // その日に触れた全TZを時系列順に集める（隣接重複は除く）。
+  const touched: string[] = [];
+  const push = (tz: string) => {
+    if (touched[touched.length - 1] !== tz) touched.push(tz);
+  };
+
   for (const t of transits) {
     if (cmpDate(date, t.departDate) < 0) {
-      return { kind: "single", tz: currentTz };
+      // これ以降の移動は date に関係ない
+      break;
     }
     if (date === t.departDate && date === t.arriveDate) {
-      return { kind: "ambiguous", departTz: t.departTz, arriveTz: t.arriveTz };
+      // 出発・到着とも同一暦日の乗継。同日に続く別の乗継があるかもしれないので走査を続ける。
+      push(t.departTz);
+      push(t.arriveTz);
+      currentTz = t.arriveTz;
+      continue;
     }
     if (date === t.departDate) {
-      return { kind: "single", tz: t.departTz };
+      // 日をまたぐ移動の出発日。以降は機中でこの日のTZは確定しない
+      // → 出発側のみ確定し、この日の走査を打ち切る（次の乗継は翌日以降にしかあり得ない）。
+      push(t.departTz);
+      break;
     }
     if (cmpDate(date, t.departDate) > 0 && cmpDate(date, t.arriveDate) < 0) {
-      // 暦日まるごと空の上 → 到着側に寄せる
-      return { kind: "single", tz: t.arriveTz };
+      // 暦日まるごと空の上 → 到着側に寄せて確定
+      push(t.arriveTz);
+      break;
     }
     if (date === t.arriveDate) {
-      return { kind: "single", tz: t.arriveTz };
+      // 日をまたぐ移動の到着日。同日に続けて乗り継ぐかもしれないので走査を続ける。
+      push(t.arriveTz);
+      currentTz = t.arriveTz;
+      continue;
     }
-    // この移動より後ろ → 到着TZへ進んで次の移動を見る
+    // この移動は date より前に完結している → 到着TZへ進んで次の移動を見る
     currentTz = t.arriveTz;
   }
-  return { kind: "single", tz: currentTz };
+
+  if (touched.length === 0) return { kind: "single", tz: currentTz };
+  if (touched.length === 1) return { kind: "single", tz: touched[0] };
+  return { kind: "ambiguous", options: touched };
 }

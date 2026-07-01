@@ -79,8 +79,7 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
   it("往路の乗継日(出発日==到着日)は ambiguous", () => {
     expect(resolveExpenseTz("2026-05-22", tl)).toEqual({
       kind: "ambiguous",
-      departTz: "Asia/Tokyo",
-      arriveTz: "Pacific/Honolulu",
+      options: ["Asia/Tokyo", "Pacific/Honolulu"],
     });
   });
   it("滞在中は到着TZ(HST)", () => {
@@ -118,6 +117,58 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
     expect(resolveExpenseTz("2026-05-22", tl2)).toEqual({
       kind: "single",
       tz: "Europe/Paris",
+    });
+  });
+
+  it("同日に2回乗り継ぐ(3TZ跨ぎ)は3件とも ambiguous の候補に出る", () => {
+    // 成田(JST)→ソウル(KST)→シンガポール(SGT)、いずれも同一暦日に完結する乗継。
+    const tl3 = buildTripTzTimeline([
+      ev({
+        id: "leg1",
+        kind: "transit",
+        startAt: "2026-05-22T07:00:00",
+        startTz: "Asia/Tokyo",
+        endAt: "2026-05-22T09:30:00",
+        endTz: "Asia/Seoul",
+      }),
+      ev({
+        id: "leg2",
+        kind: "transit",
+        startAt: "2026-05-22T11:00:00",
+        startTz: "Asia/Seoul",
+        endAt: "2026-05-22T16:00:00",
+        endTz: "Asia/Singapore",
+      }),
+    ]);
+    expect(resolveExpenseTz("2026-05-22", tl3)).toEqual({
+      kind: "ambiguous",
+      options: ["Asia/Tokyo", "Asia/Seoul", "Asia/Singapore"],
+    });
+  });
+
+  it("日をまたぐ移動の到着日にさらに同日で乗り継ぐ場合も候補に出る", () => {
+    // 前日発・当日着(ソウル)の後、同日中にシンガポール行きに乗り継ぐ。
+    const tl4 = buildTripTzTimeline([
+      ev({
+        id: "leg1",
+        kind: "transit",
+        startAt: "2026-05-21T23:00:00",
+        startTz: "Asia/Tokyo",
+        endAt: "2026-05-22T02:00:00",
+        endTz: "Asia/Seoul",
+      }),
+      ev({
+        id: "leg2",
+        kind: "transit",
+        startAt: "2026-05-22T11:00:00",
+        startTz: "Asia/Seoul",
+        endAt: "2026-05-22T16:00:00",
+        endTz: "Asia/Singapore",
+      }),
+    ]);
+    expect(resolveExpenseTz("2026-05-22", tl4)).toEqual({
+      kind: "ambiguous",
+      options: ["Asia/Seoul", "Asia/Singapore"],
     });
   });
 });
