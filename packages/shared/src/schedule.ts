@@ -80,6 +80,43 @@ export function addDays(date: string, n: number): string {
   return utcToDate(dateToUtc(date) + n * 86400000);
 }
 
+/**
+ * 壁時計文字列(TZ非依存)+IANA tz から真の絶対時刻(UTC ms)を求める。
+ * 異なるTZの壁時計同士を正しい時系列で比較する（乗継の前後関係のソート）専用。
+ * 壁時計の描画には使わない（ファイル冒頭の方針どおり Date は TZ変換の入口にしない）。
+ */
+function wallClockToUtcMs(wall: string, tz: string): number {
+  const asUtc = new Date(`${wall}Z`).getTime();
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+  const p = Object.fromEntries(fmt.formatToParts(asUtc).map((x) => [x.type, x.value]));
+  const readBackAsUtc = Date.UTC(
+    Number(p.year),
+    Number(p.month) - 1,
+    Number(p.day),
+    Number(p.hour),
+    Number(p.minute),
+    Number(p.second),
+  );
+  return asUtc - (readBackAsUtc - asUtc);
+}
+
+/** 移動イベントを実際の出発順（TZを跨いだ絶対時刻順）に並べる */
+function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[] {
+  return [...events].sort(
+    (a, b) =>
+      wallClockToUtcMs(a.startAt, a.startTz) - wallClockToUtcMs(b.startAt, b.startTz),
+  );
+}
+
 /** YYYY-MM-DD は辞書順 = 日付順なので文字列比較で足りる */
 function cmpDate(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -208,9 +245,10 @@ export function buildSchedule(
   }
 
   // 2) transit を時系列に。出発日でTZが切り替わる
-  const transits = events
-    .filter((e) => e.kind === "transit" && e.endAt && e.endTz)
-    .sort((a, b) => (a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0));
+  // 壁時計の文字列比較ではなく実際の絶対時刻順（TZを跨いだ真の出発順）で並べる。
+  const transits = sortTransitsByDepartureInstant(
+    events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
+  );
 
   const groups: ColumnGroup[] = [];
 
@@ -495,11 +533,9 @@ export type TripTzTimeline = {
 };
 
 export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
-  const transits = events
-    .filter((e) => e.kind === "transit" && e.endAt && e.endTz)
-    .sort((a, b) =>
-      a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0,
-    )
+  const transits = sortTransitsByDepartureInstant(
+    events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
+  )
     .map((t) => ({
       departDate: parseWall(t.startAt).date,
       arriveDate: parseWall(t.endAt as string).date,

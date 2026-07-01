@@ -120,6 +120,36 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
     });
   });
 
+  it("壁時計の文字列としては後ろの便が実際には先発でも、絶対時刻順に並ぶ", () => {
+    // 実データで見つかった例: 日本(JST)発 20:00 → ハワイ(HST)着（同日）、
+    // ハワイ(HST)発 15:30 → 太平洋時間(PST)着（同日）。壁時計の文字列だけ見ると
+    // 15:30 < 20:00 でハワイ発が先に見えるが、TZが違うので実際は JST 20:00 の方が
+    // 絶対時刻では先（JST 20:00 = UTC 11:00、HST 15:30 = 翌UTC 01:30）。
+    // 登録順に関わらず、実際の訪問順(日本→ハワイ→太平洋時間)で候補が並ぶこと。
+    const tl5 = buildTripTzTimeline([
+      ev({
+        id: "leg-hnl-lax",
+        kind: "transit",
+        startAt: "2026-06-19T15:30:00",
+        startTz: "Pacific/Honolulu",
+        endAt: "2026-06-19T21:30:00",
+        endTz: "America/Los_Angeles",
+      }),
+      ev({
+        id: "leg-nrt-hnl",
+        kind: "transit",
+        startAt: "2026-06-19T20:00:00",
+        startTz: "Asia/Tokyo",
+        endAt: "2026-06-19T10:00:00",
+        endTz: "Pacific/Honolulu",
+      }),
+    ]);
+    expect(resolveExpenseTz("2026-06-19", tl5)).toEqual({
+      kind: "ambiguous",
+      options: ["Asia/Tokyo", "Pacific/Honolulu", "America/Los_Angeles"],
+    });
+  });
+
   it("同日に2回乗り継ぐ(3TZ跨ぎ)は3件とも ambiguous の候補に出る", () => {
     // 成田(JST)→ソウル(KST)→シンガポール(SGT)、いずれも同一暦日に完結する乗継。
     const tl3 = buildTripTzTimeline([
