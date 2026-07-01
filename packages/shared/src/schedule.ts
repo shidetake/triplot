@@ -117,6 +117,23 @@ function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[
   );
 }
 
+/**
+ * 最初の時差移動より前・時差移動が無い旅程の既定TZに使う、実際に一番早い
+ * （絶対時刻順で先頭の）非終日イベントのTZ。events は DB取得順（壁時計の
+ * start_at で ORDER BY）のままなので、配列の先頭を単純に使うとTZを跨いだ
+ * 場合に真の時系列と一致しないことがある（transit のソートと同じ理由）。
+ */
+function earliestNonAllDayTz(events: ScheduleEvent[]): string {
+  const candidates = events.filter((e) => !e.allDay);
+  if (candidates.length === 0) return "UTC";
+  return candidates.reduce((earliest, e) =>
+    wallClockToUtcMs(e.startAt, e.startTz) <
+    wallClockToUtcMs(earliest.startAt, earliest.startTz)
+      ? e
+      : earliest,
+  ).startTz;
+}
+
 /** YYYY-MM-DD は辞書順 = 日付順なので文字列比較で足りる */
 function cmpDate(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -282,7 +299,7 @@ export function buildSchedule(
   //  - 最初の時差移動より前 → その移動の出発TZ
   //  - 時差移動が無ければ → 最初の非終日イベントのTZ（無ければ UTC。
   //    単一列の日は列が1つなので、この値は配置に影響しない）
-  const firstTz = events.find((e) => !e.allDay)?.startTz ?? "UTC";
+  const firstTz = earliestNonAllDayTz(events);
 
   let cursor = rangeStart;
   let currentTz = transits.length > 0 ? transits[0].startTz : firstTz;
@@ -682,7 +699,7 @@ export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
       departTz: t.startTz,
       arriveTz: t.endTz as string,
     }));
-  const fallbackTz = events.find((e) => !e.allDay)?.startTz ?? "UTC";
+  const fallbackTz = earliestNonAllDayTz(events);
   return { fallbackTz, transits };
 }
 
