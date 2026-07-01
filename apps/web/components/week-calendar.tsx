@@ -221,6 +221,28 @@ export function WeekCalendar({
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
 
+  // 列の起点TZ（column.tz）はその列の間ずっと一定値だが、同日内で前進する
+  // 乗継（buildSchedule が新しい列を作らず同じ列を再利用するケース）が
+  // 列の途中にあると、到着時刻より後は本当は到着側のTZになっている。
+  // 長押しで新規予定を作るときはその境界を跨いで押されうるので、押した
+  // 時刻込みで解決し直す（表示上の列そのものは分けない設計を維持したまま）。
+  const tzAtMinute = (column: (typeof columns)[number], minutes: number): string => {
+    let tz = column.tz;
+    let bestArriveMin = -1;
+    for (const t of transits) {
+      if (
+        t.departColumnKey === column.key &&
+        t.arriveColumnKey === column.key &&
+        t.arriveMin <= minutes &&
+        t.arriveMin > bestArriveMin
+      ) {
+        tz = t.event.endTz ?? tz;
+        bestArriveMin = t.arriveMin;
+      }
+    }
+    return tz;
+  };
+
   const COL = colWidth(columns.length);
   // 縦軸は常に 0:00〜24:00 固定（添付図と同じ）
   const winStart = 0;
@@ -922,6 +944,9 @@ export function WeekCalendar({
                   if (info.columnEl.hasPointerCapture(e.pointerId)) {
                     info.columnEl.releasePointerCapture(e.pointerId);
                   }
+                  // info.tz は押した瞬間の列TZ（静的）。同日forward便の到着後を
+                  // 押した場合はズレるので、確定した時刻で解決し直す。
+                  const tz = tzAtMinute(columns[info.columnIndex], info.startMin);
                   if (info.dragging) {
                     // ドラッグ確定 → 開始/終了を form に渡す。
                     // ゴースト(pcDrag)は親が form 閉じ時にクリアするので、
@@ -929,7 +954,7 @@ export function WeekCalendar({
                     const end = pcDrag?.endMin ?? info.startMin + 60;
                     onSlotClick(
                       info.date,
-                      info.tz,
+                      tz,
                       info.startMin,
                       { x: e.clientX, y: e.clientY },
                       end,
@@ -937,7 +962,7 @@ export function WeekCalendar({
                   } else {
                     // ドラッグ無し＝ただのクリック → 既存挙動（1時間枠）
                     onPcDragChange(null);
-                    onSlotClick(info.date, info.tz, info.startMin, {
+                    onSlotClick(info.date, tz, info.startMin, {
                       x: e.clientX,
                       y: e.clientY,
                     });
@@ -1067,10 +1092,13 @@ export function WeekCalendar({
                         ((g.startMin - winStart) / 60) * HOUR_PX +
                         HOUR_PX / 2;
                       setGhost(null);
-                      onSlotClick(g.date, g.tz, g.startMin, {
-                        x: anchorX,
-                        y: anchorY,
-                      });
+                      // g.tz は途中経過の列TZ（静的）。確定した列・時刻で解決し直す。
+                      onSlotClick(
+                        g.date,
+                        tzAtMinute(columns[g.columnIndex], g.startMin),
+                        g.startMin,
+                        { x: anchorX, y: anchorY },
+                      );
                       return;
                     }
                   }
