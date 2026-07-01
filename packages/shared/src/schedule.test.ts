@@ -459,6 +459,66 @@ describe("buildSchedule: 時刻イベントの重なりレーン", () => {
     );
     expect(s.timed[0].endMin).toBe(10 * 60);
   });
+
+  it("時差移動(同一列で完結)と通常予定が重なると両方レーンを分け合う", () => {
+    // ホノルル15:30発→太平洋時間21:30着（同日forward、1列で完結）に、
+    // 通常予定(16:00-17:00)を重ねる。全幅で隠れず両方2レーンになる。
+    const s = buildSchedule(
+      [
+        ev({
+          id: "flight",
+          kind: "transit",
+          startAt: "2026-06-19T15:30:00",
+          startTz: "Pacific/Honolulu",
+          endAt: "2026-06-19T21:30:00",
+          endTz: "America/Los_Angeles",
+        }),
+        ev({
+          id: "normal",
+          startAt: "2026-06-19T16:00:00",
+          startTz: "Pacific/Honolulu",
+          endAt: "2026-06-19T17:00:00",
+        }),
+      ],
+      { tripStart: "2026-06-19", tripEnd: "2026-06-19" },
+    );
+    const t = s.transits.find((x) => x.event.id === "flight")!;
+    const n = s.timed.find((x) => x.event.id === "normal")!;
+    expect(t.departLaneCount).toBe(2);
+    expect(n.laneCount).toBe(2);
+    expect(new Set([t.departLane, n.lane])).toEqual(new Set([0, 1]));
+  });
+
+  it("時差移動(出発/到着別列)の出発側ブロックと通常予定が重なるとレーンを分け合う", () => {
+    // 東京20:00発→ホノルル10:00着（wraps、2列）。出発側ブロックは
+    // 20:00〜24:00 に描かれるので、同じ列の21:00の通常予定と重なる。
+    const s = buildSchedule(
+      [
+        ev({
+          id: "flight",
+          kind: "transit",
+          startAt: "2026-06-19T20:00:00",
+          startTz: "Asia/Tokyo",
+          endAt: "2026-06-19T10:00:00",
+          endTz: "Pacific/Honolulu",
+        }),
+        ev({
+          id: "normal",
+          startAt: "2026-06-19T21:00:00",
+          startTz: "Asia/Tokyo",
+          endAt: "2026-06-19T22:00:00",
+        }),
+      ],
+      { tripStart: "2026-06-19", tripEnd: "2026-06-19" },
+    );
+    const t = s.transits.find((x) => x.event.id === "flight")!;
+    const n = s.timed.find((x) => x.event.id === "normal")!;
+    expect(t.departLaneCount).toBe(2);
+    expect(n.laneCount).toBe(2);
+    expect(new Set([t.departLane, n.lane])).toEqual(new Set([0, 1]));
+    // 到着側ブロック(0:00-10:00)は別列で誰とも重ならないので1レーンのまま
+    expect(t.arriveLaneCount).toBe(1);
+  });
 });
 
 describe("buildSchedule: 日跨ぎ通常イベント（TZは跨がない）", () => {

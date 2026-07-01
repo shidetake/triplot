@@ -179,8 +179,14 @@ export type PlacedTransit = {
   event: ScheduleEvent;
   departColumnKey: string;
   departMin: number;
+  // 出発側ブロックが同じ列内で通常予定と重なるときのレーン（重なりが無ければ 0/1）。
+  departLane: number;
+  departLaneCount: number;
   arriveColumnKey: string;
   arriveMin: number;
+  // 到着側ブロック（出発列と同一列のときは出発側と同じ値）のレーン。
+  arriveLane: number;
+  arriveLaneCount: number;
 };
 
 export type AllDayBar = {
@@ -363,9 +369,54 @@ export function buildSchedule(
     columns.find((c) => c.date === date && c.tz === tz) ??
     columns.find((c) => c.date === date); // TZ未一致でも日付一致なら拾う保険
 
-  // 3) 時刻イベントの配置（重なりはレーン分割）
-  const timedRaw: Omit<PlacedEvent, "lane" | "laneCount">[] = [];
-  const placedTransits: PlacedTransit[] = [];
+  // 3) 時刻イベント・時差移動の配置（重なりはレーン分割）。
+  // 通常予定と時差移動は別々の見た目だが、同じ列・同じ時間帯を取り合う点は
+  // 同じなので、両方を同じセグメント列に載せて1つのレーン割当アルゴリズムに
+  // 通す（時差移動だけ全幅で描いて通常予定を覆い隠す、を避けるため）。
+  type Segment =
+    | {
+        kind: "event";
+        event: ScheduleEvent;
+        columnKey: string;
+        topMin: number;
+        endMin: number;
+      }
+    | {
+        // 出発列と到着列が同じ（同日内で完結する）便。1区間だけ。
+        kind: "transit-single";
+        transitId: string;
+        columnKey: string;
+        topMin: number;
+        endMin: number;
+      }
+    | {
+        // 出発列と到着列が別（wraps／日をまたぐ）便の出発側区間。
+        kind: "transit-dep";
+        transitId: string;
+        columnKey: string;
+        topMin: number;
+        endMin: number;
+      }
+    | {
+        // 同上の到着側区間。
+        kind: "transit-arr";
+        transitId: string;
+        columnKey: string;
+        topMin: number;
+        endMin: number;
+      };
+
+  const timedRaw: Segment[] = [];
+  const transitMeta = new Map<
+    string,
+    {
+      event: ScheduleEvent;
+      departColumnKey: string;
+      departMin: number;
+      arriveColumnKey: string;
+      arriveMin: number;
+    }
+  >();
 
   for (const ev of events) {
     if (ev.allDay) continue;
@@ -377,13 +428,39 @@ export function buildSchedule(
       // 同日に複数列あると最初に見つかった列を誤って拾うことがあるため使わない。
       const keys = transitColumnKeys.get(ev.id);
       if (keys) {
-        placedTransits.push({
+        transitMeta.set(ev.id, {
           event: ev,
           departColumnKey: keys.dep,
           departMin: dep.minutes,
           arriveColumnKey: keys.arr,
           arriveMin: arr.minutes,
         });
+        if (keys.dep === keys.arr) {
+          timedRaw.push({
+            kind: "transit-single",
+            transitId: ev.id,
+            columnKey: keys.dep,
+            topMin: dep.minutes,
+            endMin: arr.minutes,
+          });
+        } else {
+          // 出発側ブロックは出発時刻〜その日の終わりまで、到着側ブロックは
+          // 0:00〜到着時刻まで描画される（week-calendar.tsx の描画と対応）。
+          timedRaw.push({
+            kind: "transit-dep",
+            transitId: ev.id,
+            columnKey: keys.dep,
+            topMin: dep.minutes,
+            endMin: 24 * 60,
+          });
+          timedRaw.push({
+            kind: "transit-arr",
+            transitId: ev.id,
+            columnKey: keys.arr,
+            topMin: 0,
+            endMin: arr.minutes,
+          });
+        }
       }
       continue;
     }
@@ -400,6 +477,7 @@ export function buildSchedule(
           ? e.minutes
           : s.minutes + DEFAULT_DURATION_MIN;
       timedRaw.push({
+        kind: "event",
         event: ev,
         columnKey: col.key,
         topMin: s.minutes,
@@ -418,6 +496,7 @@ export function buildSchedule(
       const col = colFor(d, ev.startTz);
       if (!col) continue;
       timedRaw.push({
+        kind: "event",
         event: ev,
         columnKey: col.key,
         topMin: isFirst ? s.minutes : 0,
@@ -426,9 +505,18 @@ export function buildSchedule(
     }
   }
 
-  // 列ごとに重なりクラスタを作ってレーン割当
+  // 列ごとに重なりクラスタを作ってレーン割当（通常予定・時差移動を区別しない）
   const timed: PlacedEvent[] = [];
-  const byColumn = new Map<string, typeof timedRaw>();
+  const transitLanes = new Map<
+    string,
+    {
+      departLane: number;
+      departLaneCount: number;
+      arriveLane: number;
+      arriveLaneCount: number;
+    }
+  >();
+  const byColumn = new Map<string, Segment[]>();
   for (const p of timedRaw) {
     const arr = byColumn.get(p.columnKey) ?? [];
     arr.push(p);
@@ -436,12 +524,12 @@ export function buildSchedule(
   }
   for (const arr of byColumn.values()) {
     arr.sort((a, b) => a.topMin - b.topMin || a.endMin - b.endMin);
-    let cluster: typeof timedRaw = [];
+    let cluster: Segment[] = [];
     let clusterEnd = -1;
     const flush = () => {
       // greedy にレーンへ詰める
       const laneEnds: number[] = [];
-      const assigned: { p: (typeof timedRaw)[number]; lane: number }[] = [];
+      const assigned: { p: Segment; lane: number }[] = [];
       for (const p of cluster) {
         const dispEnd = Math.max(p.endMin, p.topMin + MIN_EVENT_MIN);
         let lane = laneEnds.findIndex((e) => e <= p.topMin);
@@ -455,7 +543,36 @@ export function buildSchedule(
       }
       const laneCount = laneEnds.length;
       for (const { p, lane } of assigned) {
-        timed.push({ ...p, lane, laneCount });
+        if (p.kind === "event") {
+          timed.push({
+            event: p.event,
+            columnKey: p.columnKey,
+            topMin: p.topMin,
+            endMin: p.endMin,
+            lane,
+            laneCount,
+          });
+          continue;
+        }
+        const cur = transitLanes.get(p.transitId) ?? {
+          departLane: 0,
+          departLaneCount: 1,
+          arriveLane: 0,
+          arriveLaneCount: 1,
+        };
+        if (p.kind === "transit-single") {
+          cur.departLane = lane;
+          cur.departLaneCount = laneCount;
+          cur.arriveLane = lane;
+          cur.arriveLaneCount = laneCount;
+        } else if (p.kind === "transit-dep") {
+          cur.departLane = lane;
+          cur.departLaneCount = laneCount;
+        } else {
+          cur.arriveLane = lane;
+          cur.arriveLaneCount = laneCount;
+        }
+        transitLanes.set(p.transitId, cur);
       }
       cluster = [];
       clusterEnd = -1;
@@ -473,6 +590,18 @@ export function buildSchedule(
     }
     if (cluster.length) flush();
   }
+
+  const placedTransits: PlacedTransit[] = [...transitMeta.values()].map(
+    (m) => {
+      const lanes = transitLanes.get(m.event.id) ?? {
+        departLane: 0,
+        departLaneCount: 1,
+        arriveLane: 0,
+        arriveLaneCount: 1,
+      };
+      return { ...m, ...lanes };
+    },
+  );
 
   // 4) 終日／連日バー（上部帯）。列index範囲＋行スタック
   // 期間が長いほど上の段に来るよう「長さ DESC → 開始日 ASC」でソート。

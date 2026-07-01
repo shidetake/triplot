@@ -1227,6 +1227,8 @@ export function WeekCalendar({
                 color.kind === "mixed" ? participantDots(t.event) : null;
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
+                // 同じ列・同じ時間帯に通常予定があればレーンを分け合う。
+                const w = COL / t.departLaneCount;
                 return (
                   <button
                     key={t.event.id}
@@ -1239,8 +1241,8 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: di * COL + 1,
-                      width: COL - 2,
+                      left: di * COL + t.departLane * w + 1,
+                      width: w - 2,
                       top: yd,
                       height: Math.max(ya - yd, MIN_BLOCK),
                       ...baseStyle,
@@ -1259,6 +1261,9 @@ export function WeekCalendar({
                   </button>
                 );
               }
+              // 出発側・到着側は別列なので、それぞれ独立に重なりレーンを分け合う。
+              const wd = COL / t.departLaneCount;
+              const wa = COL / t.arriveLaneCount;
               return (
                 <div key={t.event.id}>
                   {/* 出発側 */}
@@ -1272,8 +1277,8 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: di * COL + 1,
-                      width: COL - 2,
+                      left: di * COL + t.departLane * wd + 1,
+                      width: wd - 2,
                       top: yd,
                       height: Math.max(bodyH - yd, MIN_BLOCK),
                       ...baseStyle,
@@ -1301,8 +1306,8 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: ai * COL + 1,
-                      width: COL - 2,
+                      left: ai * COL + t.arriveLane * wa + 1,
+                      width: wa - 2,
                       top: 0,
                       height: Math.max(ya, MIN_BLOCK),
                       ...baseStyle,
