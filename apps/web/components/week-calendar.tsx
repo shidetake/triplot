@@ -551,6 +551,22 @@ export function WeekCalendar({
           endMin: p.endMin,
           id: p.event.id,
         })),
+      // 時差移動もゴーストと同じ土俵で重なりを取り合う（通常予定と同様）。
+      // 出発側・到着側は別列のことがあるので、ゴーストの列に居る側だけ拾う。
+      ...transits.flatMap((t) => {
+        if (t.departColumnKey === t.arriveColumnKey) {
+          return t.departColumnKey === ghostColKey
+            ? [{ topMin: t.departMin, endMin: t.arriveMin, id: t.event.id }]
+            : [];
+        }
+        if (t.departColumnKey === ghostColKey) {
+          return [{ topMin: t.departMin, endMin: 24 * 60, id: t.event.id }];
+        }
+        if (t.arriveColumnKey === ghostColKey) {
+          return [{ topMin: 0, endMin: t.arriveMin, id: t.event.id }];
+        }
+        return [];
+      }),
       {
         topMin: target.topMin,
         endMin: target.endMin,
@@ -601,7 +617,7 @@ export function WeekCalendar({
     }
     if (cluster.length) flush();
     return result;
-  }, [ghost, pcDrag, timed, columns]);
+  }, [ghost, pcDrag, timed, transits, columns]);
 
   // 終日ゴーストの行（rowStack）。ゴーストの列を覆う既存バーの行を避けて
   // 空いている最小 row を割り当てる。同列に既存バーが居なければ row=0、
@@ -1210,7 +1226,15 @@ export function WeekCalendar({
             })}
 
             {/* 時差移動：出発列ブロック＋到着列ブロック＋リボン */}
-            {transits.map((t) => {
+            {(() => {
+              // ゴースト（作成中の通常予定）が今どの列に居るか。時差移動の
+              // 該当側だけレーンを override する判定に使う（下の di/ai 比較）。
+              const ghostColKey = ghost
+                ? columns[ghost.columnIndex]?.key
+                : pcDrag
+                  ? columns[pcDrag.columnIndex]?.key
+                  : undefined;
+              return transits.map((t) => {
               const di = colIndexByKey.get(t.departColumnKey);
               const ai = colIndexByKey.get(t.arriveColumnKey);
               if (di == null || ai == null) return null;
@@ -1225,10 +1249,14 @@ export function WeekCalendar({
               const baseStyle = app.style;
               const dots =
                 color.kind === "mixed" ? participantDots(t.event) : null;
+              const ov = laneOverrides?.get(t.event.id);
               if (di === ai) {
                 // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
-                // 同じ列・同じ時間帯に通常予定があればレーンを分け合う。
-                const w = COL / t.departLaneCount;
+                // 同じ列・同じ時間帯に通常予定やゴーストがあればレーンを分け合う。
+                const useOv = ov && ghostColKey === t.departColumnKey;
+                const laneCount = useOv ? ov.laneCount : t.departLaneCount;
+                const lane = useOv ? ov.lane : t.departLane;
+                const w = COL / laneCount;
                 return (
                   <button
                     key={t.event.id}
@@ -1241,7 +1269,7 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: di * COL + t.departLane * w + 1,
+                      left: di * COL + lane * w + 1,
                       width: w - 2,
                       top: yd,
                       height: Math.max(ya - yd, MIN_BLOCK),
@@ -1261,9 +1289,15 @@ export function WeekCalendar({
                   </button>
                 );
               }
-              // 出発側・到着側は別列なので、それぞれ独立に重なりレーンを分け合う。
-              const wd = COL / t.departLaneCount;
-              const wa = COL / t.arriveLaneCount;
+              // 出発側・到着側は別列なので、それぞれ独立に重なり（＋ゴースト）を分け合う。
+              const depUseOv = ov && ghostColKey === t.departColumnKey;
+              const departLaneCount = depUseOv ? ov.laneCount : t.departLaneCount;
+              const departLane = depUseOv ? ov.lane : t.departLane;
+              const wd = COL / departLaneCount;
+              const arrUseOv = ov && ghostColKey === t.arriveColumnKey;
+              const arriveLaneCount = arrUseOv ? ov.laneCount : t.arriveLaneCount;
+              const arriveLane = arrUseOv ? ov.lane : t.arriveLane;
+              const wa = COL / arriveLaneCount;
               return (
                 <div key={t.event.id}>
                   {/* 出発側 */}
@@ -1277,7 +1311,7 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: di * COL + t.departLane * wd + 1,
+                      left: di * COL + departLane * wd + 1,
                       width: wd - 2,
                       top: yd,
                       height: Math.max(bodyH - yd, MIN_BLOCK),
@@ -1306,7 +1340,7 @@ export function WeekCalendar({
                     onMouseLeave={() => setHoveredEventId(null)}
                     className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
-                      left: ai * COL + t.arriveLane * wa + 1,
+                      left: ai * COL + arriveLane * wa + 1,
                       width: wa - 2,
                       top: 0,
                       height: Math.max(ya, MIN_BLOCK),
@@ -1326,7 +1360,8 @@ export function WeekCalendar({
                   </button>
                 </div>
               );
-            })}
+              });
+            })()}
           </div>
         </div>
       </div>
