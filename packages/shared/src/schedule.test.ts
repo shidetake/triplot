@@ -379,6 +379,52 @@ describe("buildSchedule: 時差移動の日は等幅2列", () => {
   });
 });
 
+describe("buildSchedule: 同日に連続で乗り継ぐ場合", () => {
+  it("wraps便の到着列を、直後にforward便が出発するときは新規列にせず使い回す", () => {
+    // 実データで見つかった例: 東京(JST)20:00発→ホノルル(HST)10:00着（同日・巻き戻り）、
+    // 続けてホノルル(HST)15:30発→太平洋時間(LA)21:30着（同日・前進）。
+    // 2便目の出発は1便目の到着列(ホノルル)とちょうど同じ(日付,TZ)なので、
+    // 新しい列を作らず使い回い、その日は2列のまま(3列に増えない)。
+    const nrt = ev({
+      id: "nrt",
+      title: "NRT",
+      kind: "transit",
+      startAt: "2026-06-19T20:00:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-06-19T10:00:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const kakaka = ev({
+      id: "kakaka",
+      title: "かかか",
+      kind: "transit",
+      startAt: "2026-06-19T15:30:00",
+      startTz: "Pacific/Honolulu",
+      endAt: "2026-06-19T21:30:00",
+      endTz: "America/Los_Angeles",
+    });
+    const s = buildSchedule([kakaka, nrt], {
+      tripStart: "2026-06-19",
+      tripEnd: "2026-06-20",
+    });
+
+    // 6/19 は東京・ホノルルの2列のみ（かかか便による重複3列目が出ない）
+    const day619 = s.columns.filter((c) => c.date === "2026-06-19");
+    expect(day619).toHaveLength(2);
+    expect(day619.map((c) => c.tz)).toEqual(["Asia/Tokyo", "Pacific/Honolulu"]);
+
+    const honoluluCol = day619.find((c) => c.tz === "Pacific/Honolulu")!;
+    const kakakaPlaced = s.transits.find((t) => t.event.id === "kakaka");
+    // かかか便は出発・到着とも既存のホノルル列を使い回す（新規のLA列は作らない）
+    expect(kakakaPlaced).toMatchObject({
+      departColumnKey: honoluluCol.key,
+      arriveColumnKey: honoluluCol.key,
+      departMin: 15 * 60 + 30,
+      arriveMin: 21 * 60 + 30,
+    });
+  });
+});
+
 describe("buildSchedule: 時刻イベントの重なりレーン", () => {
   it("重ならなければ1レーン", () => {
     const s = buildSchedule(

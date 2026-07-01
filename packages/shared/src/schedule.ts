@@ -251,20 +251,25 @@ export function buildSchedule(
   );
 
   const groups: ColumnGroup[] = [];
+  // 直近に作った列。同日に連続で乗り継ぐ transit が到着列を再利用できるか判定するため追跡する。
+  let lastCol: Column | null = null;
 
   const pushDay = (
     date: string,
     tz: string,
     tzNote: string | null = null,
     tzNoteSpan?: number,
-  ) => {
+  ): Column => {
+    const col: Column = { key: `d-${date}`, date, tz, role: "day" };
     groups.push({
       key: `d-${date}`,
       label: formatDayLabel(date, locale),
       tzNote,
       tzNoteSpan,
-      columns: [{ key: `d-${date}`, date, tz, role: "day" }],
+      columns: [col],
     });
+    lastCol = col;
+    return col;
   };
 
   // 旅行TZ概念は持たない。普通の日の「現在TZ」は旅程から導出する:
@@ -275,6 +280,10 @@ export function buildSchedule(
 
   let cursor = rangeStart;
   let currentTz = transits.length > 0 ? transits[0].startTz : firstTz;
+
+  // transit ごとに確定した乗降列key。後段のリボン配置はこれをそのまま使い、
+  // (date,tz) だけのあいまいな再検索（同日に複数列あると誤爆する）に頼らない。
+  const transitColumnKeys = new Map<string, { dep: string; arr: string }>();
 
   for (const t of transits) {
     const dep = parseWall(t.startAt);
@@ -289,14 +298,26 @@ export function buildSchedule(
       cursor = addDays(cursor, 1);
     }
 
+    // 直前に作った列が今回の出発(日付・TZ)とちょうど一致するなら、同日に
+    // 連続で乗り継ぐ便として既存列を使い回す（新規列を作らずレーンを増やさない）。
+    const depReused =
+      lastCol !== null && lastCol.date === departDate && lastCol.tz === t.startTz;
+
     // 壁時計を1本の線形軸に並べたとき、到着が出発と同時かそれ以前に来るか。
     // ＝時差が戻って時刻が巻き戻り、出発と到着の時間帯が重なるケース。
     const dayDiff = (dateToUtc(arriveDate) - dateToUtc(departDate)) / 86400000;
     const wraps = dayDiff * 1440 + (arr.minutes - dep.minutes) <= 0;
 
+    let depCol: Column;
+    let arrCol: Column;
+
     if (wraps) {
       // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため
       // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
+      depCol = depReused
+        ? lastCol!
+        : { key: `t-${t.id}-dep`, date: departDate, tz: t.startTz, role: "transit-depart" };
+      arrCol = { key: `t-${t.id}-arr`, date: arriveDate, tz: arriveTz, role: "transit-arrive" };
       const label =
         departDate === arriveDate
           ? formatDayLabel(departDate, locale)
@@ -304,37 +325,26 @@ export function buildSchedule(
       groups.push({
         key: `t-${t.id}`,
         label,
-        tzNote: `${t.startTz} → ${arriveTz}`,
-        columns: [
-          {
-            key: `t-${t.id}-dep`,
-            date: departDate,
-            tz: t.startTz,
-            role: "transit-depart",
-          },
-          {
-            key: `t-${t.id}-arr`,
-            date: arriveDate,
-            tz: arriveTz,
-            role: "transit-arrive",
-          },
-        ],
+        // 出発列を使い回すときは前の便の注記が既に出ているので重ねて出さない。
+        tzNote: depReused ? null : `${t.startTz} → ${arriveTz}`,
+        columns: depReused ? [arrCol] : [depCol, arrCol],
       });
+      lastCol = arrCol;
     } else {
       // 時刻が前進する便は日付を結合しない。出発日（出発TZ）と到着日
       // （到着TZ）を普通の日付列として並べ、便は列を跨ぐ通常リボンで描く。
       // ただし「ここでTZが切り替わる」注記は wraps 便と対称に出す（出発日に）。
       // 注記は出発日＋到着日の2列ぶんの幅で見せる（列自体は結合しない）。
       // 空中で飛んだ暦日は列を作らない（消えた日を正直に表現）。
+      // 同日内で時刻が進む便は1列のみ（到着TZは別列を持たず、同じ列内で描く）。
       const sameDay = arriveDate === departDate;
-      pushDay(
-        departDate,
-        t.startTz,
-        `${t.startTz} → ${arriveTz}`,
-        sameDay ? 1 : 2,
-      );
-      if (!sameDay) pushDay(arriveDate, arriveTz);
+      depCol = depReused
+        ? lastCol!
+        : pushDay(departDate, t.startTz, `${t.startTz} → ${arriveTz}`, sameDay ? 1 : 2);
+      arrCol = sameDay ? depCol : pushDay(arriveDate, arriveTz);
     }
+
+    transitColumnKeys.set(t.id, { dep: depCol.key, arr: arrCol.key });
 
     // 到着日の翌日から、到着TZの普通の日へ。空中で飛んだ暦日は列を作らない
     currentTz = arriveTz;
@@ -363,14 +373,15 @@ export function buildSchedule(
     if (ev.kind === "transit" && ev.endAt && ev.endTz) {
       const dep = parseWall(ev.startAt);
       const arr = parseWall(ev.endAt);
-      const depCol = colFor(dep.date, ev.startTz);
-      const arrCol = colFor(arr.date, ev.endTz);
-      if (depCol && arrCol) {
+      // 列生成時に確定した乗降列をそのまま使う。colFor の (date,tz) 検索は
+      // 同日に複数列あると最初に見つかった列を誤って拾うことがあるため使わない。
+      const keys = transitColumnKeys.get(ev.id);
+      if (keys) {
         placedTransits.push({
           event: ev,
-          departColumnKey: depCol.key,
+          departColumnKey: keys.dep,
           departMin: dep.minutes,
-          arriveColumnKey: arrCol.key,
+          arriveColumnKey: keys.arr,
           arriveMin: arr.minutes,
         });
       }
