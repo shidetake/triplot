@@ -478,7 +478,8 @@
     "joinFailed": "Failed to join.",
     "issueFailed": "Failed to issue invite link.",
     "regenerateFailed": "Failed to regenerate.",
-    "cannotDeleteOtherPin": "The \"Other\" pin cannot be deleted."
+    "cannotDeleteOtherPin": "The \"Other\" pin cannot be deleted.",
+    "arrivalBeforeDeparture": "Arrival is before departure (checked using actual time across time zones)."
   },
   "import": {
     "heading": "Imports",

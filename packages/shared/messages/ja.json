@@ -478,7 +478,8 @@
     "joinFailed": "参加に失敗しました",
     "issueFailed": "招待リンクの発行に失敗しました",
     "regenerateFailed": "再生成に失敗しました",
-    "cannotDeleteOtherPin": "「その他」のピンは削除できません"
+    "cannotDeleteOtherPin": "「その他」のピンは削除できません",
+    "arrivalBeforeDeparture": "到着が出発より前になっています（タイムゾーンを考慮した実際の時刻で判定しています）"
   },
   "import": {
     "heading": "取り込み",

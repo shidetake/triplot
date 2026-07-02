@@ -350,7 +350,7 @@ begin
     if p_kind = 'transit' then
       if (v_end_at at time zone trim(p_end_tz))
            < (p_start_at at time zone trim(p_start_tz)) then
-        raise exception 'arrival must be at or after departure';
+        raise exception 'errors.arrivalBeforeDeparture';
       end if;
     elsif v_end_at < p_start_at then
       raise exception 'end must be at or after start';

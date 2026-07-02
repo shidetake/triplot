@@ -13,6 +13,7 @@ const ERROR_KEYS = new Set([
   "joinFailed",
   "issueFailed",
   "regenerateFailed",
+  "arrivalBeforeDeparture",
 ]);
 
 // Translates a shared-data error code (e.g. "errors.notAdmin") to the current locale.

@@ -179,7 +179,10 @@ export async function createExpenseAction(
     splitMemberIds,
     place,
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -272,7 +275,10 @@ export async function updateExpenseAction(
     splitMemberIds,
     place,
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -292,7 +298,10 @@ export async function deleteExpenseAction(
   }
 
   const result = await deleteExpense(supabase, expenseId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -361,7 +370,10 @@ export async function createPlaceAction(
     region,
     locality,
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -401,7 +413,10 @@ export async function updatePlaceAction(
     note,
     icon,
   });
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -421,7 +436,10 @@ export async function deletePlaceAction(
   }
 
   const result = await deletePlace(supabase, placeId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -497,7 +515,10 @@ export async function setPlaceLocationAction(
   }
 
   const result = await setPlaceLocation(supabase, placeId, lat, lng);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -732,7 +753,10 @@ export async function createEventAction(
   const needsReservation = formData.get("needs_reservation") === "on";
 
   const result = await createEvent(supabase, tripId, parsed, needsReservation);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -767,7 +791,10 @@ export async function updateEventAction(
   const needsReservation = formData.get("needs_reservation") === "on";
 
   const result = await updateEvent(supabase, eventId, parsed, needsReservation);
-  if (!result.ok) return { ok: false, error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { ok: false, error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { ok: true, error: null };
@@ -787,7 +814,10 @@ export async function deleteEventAction(
   }
 
   const result = await deleteEvent(supabase, eventId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -873,7 +903,10 @@ export async function removeMemberAction(
   }
 
   const result = await removeTripMember(supabase, memberId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   // 自分を外したらこの旅行はもう見えない → 一覧へ
   if (isSelf) {
@@ -909,7 +942,10 @@ export async function updateMyMemberAction(
   }
 
   const result = await updateMyMemberName(supabase, tripId, user.id, name);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -956,7 +992,10 @@ export async function createTodoAction(
     kind,
     visibility,
   });
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -975,7 +1014,10 @@ export async function toggleTodoAction(
   if (!user) return { error: t("loginRequired") };
 
   const result = await setTodoDone(supabase, todoId, done);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1008,7 +1050,10 @@ export async function updateTodoAction(
   if (Object.keys(patch).length === 0) return { error: null };
 
   const result = await updateTodo(supabase, todoId, patch);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
@@ -1026,7 +1071,10 @@ export async function deleteTodoAction(
   if (!user) return { error: t("loginRequired") };
 
   const result = await deleteTodo(supabase, todoId);
-  if (!result.ok) return { error: result.error };
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
 
   revalidatePath(`/trips/${tripId}`);
   return { error: null };
