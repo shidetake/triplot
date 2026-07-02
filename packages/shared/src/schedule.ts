@@ -129,29 +129,6 @@ function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[
   );
 }
 
-/**
- * 最初の時差移動より前・時差移動が無い旅程の既定TZに使う、実際に一番早い
- * （絶対時刻順で先頭の）非終日イベントのTZ。events は DB取得順（壁時計の
- * start_at で ORDER BY）のままなので、配列の先頭を単純に使うとTZを跨いだ
- * 場合に真の時系列と一致しないことがある（transit のソートと同じ理由）。
- * startTz が null（旅程に transit がある旅行の normal 予定）は候補から除外
- * ——この関数の戻り値は transits.length===0 の旅行でしか使われず、その場合
- * 全ての normal 予定は literal な startTz を持つ（RPC 側の不変条件）。
- */
-function earliestNonAllDayTz(events: ScheduleEvent[]): string {
-  const candidates = events.filter(
-    (e): e is ScheduleEvent & { startTz: string } =>
-      !e.allDay && e.startTz != null,
-  );
-  if (candidates.length === 0) return "UTC";
-  return candidates.reduce((earliest, e) =>
-    wallClockToUtcMs(e.startAt, e.startTz) <
-    wallClockToUtcMs(earliest.startAt, earliest.startTz)
-      ? e
-      : earliest,
-  ).startTz;
-}
-
 /** YYYY-MM-DD は辞書順 = 日付順なので文字列比較で足りる */
 function cmpDate(a: string, b: string): number {
   return a < b ? -1 : a > b ? 1 : 0;
@@ -260,12 +237,14 @@ export function buildSchedule(
     tripStart?: string | null; // YYYY-MM-DD
     tripEnd?: string | null;
     locale?: string;
+    /** 旅程に transit が1つも無い旅行の唯一の拠り所（trips.default_timezone） */
+    defaultTimezone?: string | null;
   },
 ): Schedule {
   const locale = opts.locale ?? "ja";
-  // normal/allday 予定は startTz を持たないことがある（旅程に transit がある
-  // 旅行）ので、列配置のたびにこれで実際のTZを解決する。
-  const tzTimeline = buildTripTzTimeline(events);
+  // normal/allday 予定は startTz を持たない（旅程から自動導出する）ので、
+  // 列配置のたびにこれで実際のTZを解決する。
+  const tzTimeline = buildTripTzTimeline(events, opts.defaultTimezone);
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
   let rangeEnd: string | null = opts.tripEnd ?? null;
@@ -316,11 +295,10 @@ export function buildSchedule(
     return col;
   };
 
-  // 旅行TZ概念は持たない。普通の日の「現在TZ」は旅程から導出する:
+  // 普通の日の「現在TZ」は旅程から導出する:
   //  - 最初の時差移動より前 → その移動の出発TZ
-  //  - 時差移動が無ければ → 最初の非終日イベントのTZ（無ければ UTC。
-  //    単一列の日は列が1つなので、この値は配置に影響しない）
-  const firstTz = earliestNonAllDayTz(events);
+  //  - 時差移動が無ければ → trips.default_timezone（tzTimeline.fallbackTz）
+  const firstTz = tzTimeline.fallbackTz;
 
   let cursor = rangeStart;
   // transit の startTz は DB 制約で必ず非null。
@@ -708,7 +686,7 @@ export function buildSchedule(
 
 /** 旅程から導いた、日付→TZ を引くための最小情報（serializable）。 */
 export type TripTzTimeline = {
-  /** transit が無い時の既定TZ（最初の非終日イベント由来、無ければ UTC） */
+  /** transit が無い時の唯一の拠り所（trips.default_timezone、無ければ UTC） */
   fallbackTz: string;
   /** 出発時刻順に並んだ移動。各区間の境界になる */
   transits: {
@@ -720,7 +698,10 @@ export type TripTzTimeline = {
   }[];
 };
 
-export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
+export function buildTripTzTimeline(
+  events: ScheduleEvent[],
+  defaultTimezone?: string | null,
+): TripTzTimeline {
   const transits = sortTransitsByDepartureInstant(
     events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
   )
@@ -731,8 +712,7 @@ export function buildTripTzTimeline(events: ScheduleEvent[]): TripTzTimeline {
       departTz: t.startTz as string,
       arriveTz: t.endTz as string,
     }));
-  const fallbackTz = earliestNonAllDayTz(events);
-  return { fallbackTz, transits };
+  return { fallbackTz: defaultTimezone ?? "UTC", transits };
 }
 
 /** 乗継日の候補1件。どの乗継の出発側/到着側かという出自を保つ（DB保存用の参照に使う）。 */

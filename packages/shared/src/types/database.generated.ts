@@ -217,7 +217,6 @@ export type Database = {
           rate_to_default: number
           splittable: boolean
           trip_id: string
-          tz: string | null
           tz_disambig_side: string | null
           tz_disambig_transit_id: string | null
           visibility: string
@@ -237,7 +236,6 @@ export type Database = {
           rate_to_default: number
           splittable?: boolean
           trip_id: string
-          tz?: string | null
           tz_disambig_side?: string | null
           tz_disambig_transit_id?: string | null
           visibility: string
@@ -257,7 +255,6 @@ export type Database = {
           rate_to_default?: number
           splittable?: boolean
           trip_id?: string
-          tz?: string | null
           tz_disambig_side?: string | null
           tz_disambig_transit_id?: string | null
           visibility?: string
@@ -718,6 +715,7 @@ export type Database = {
         Row: {
           created_at: string
           default_currency: string
+          default_timezone: string | null
           end_date: string | null
           id: string
           last_activity_at: string
@@ -727,6 +725,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_currency?: string
+          default_timezone?: string | null
           end_date?: string | null
           id?: string
           last_activity_at?: string
@@ -736,6 +735,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_currency?: string
+          default_timezone?: string | null
           end_date?: string | null
           id?: string
           last_activity_at?: string
@@ -798,6 +798,7 @@ export type Database = {
       create_event: {
         Args: {
           p_all_day: boolean
+          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_kind: string
@@ -817,6 +818,7 @@ export type Database = {
       create_event_with_freetext_place: {
         Args: {
           p_all_day: boolean
+          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_kind: string
@@ -836,6 +838,7 @@ export type Database = {
       create_event_with_place: {
         Args: {
           p_all_day: boolean
+          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_formatted_address: string
@@ -862,6 +865,7 @@ export type Database = {
       create_expense: {
         Args: {
           p_category_id: string
+          p_client_tz: string
           p_local_currency: string
           p_local_price: number
           p_note: string
@@ -882,6 +886,7 @@ export type Database = {
       create_expense_with_freetext_place: {
         Args: {
           p_category_id: string
+          p_client_tz: string
           p_local_currency: string
           p_local_price: number
           p_note: string
@@ -902,6 +907,7 @@ export type Database = {
       create_expense_with_place: {
         Args: {
           p_category_id: string
+          p_client_tz: string
           p_formatted_address: string
           p_google_place_id: string
           p_icon: string
@@ -1010,21 +1016,16 @@ export type Database = {
         Args: { p_expense_id?: string; p_id: string; p_status: string }
         Returns: undefined
       }
-      resolve_normal_event_tz: {
-        Args: {
-          p_literal_tz: string
-          p_trip_id: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-        }
-        Returns: Record<string, unknown>
-      }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
       }
       seed_default_trip_pin_options: {
         Args: { _trip_id: string }
+        Returns: undefined
+      }
+      seed_trip_default_timezone: {
+        Args: { p_client_tz: string; p_trip_id: string }
         Returns: undefined
       }
       set_event_reservation: {
@@ -1174,6 +1175,14 @@ export type Database = {
           p_place_id: string
           p_tentative: boolean
           p_visibility: string
+        }
+        Returns: undefined
+      }
+      validate_tz_disambig: {
+        Args: {
+          p_trip_id: string
+          p_tz_disambig_side: string
+          p_tz_disambig_transit_id: string
         }
         Returns: undefined
       }

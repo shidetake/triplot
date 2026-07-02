@@ -72,7 +72,7 @@ export default async function TripDetailPage({
     supabase
       .from("trips")
       .select(
-        "id, title, start_date, end_date, default_currency",
+        "id, title, start_date, end_date, default_currency, default_timezone",
       )
       .eq("id", tripId)
       .single(),
@@ -90,7 +90,7 @@ export default async function TripDetailPage({
     supabase
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
       // 発生順（古い→新しい、新しいものが下）。occurred_at は壁時計をその
@@ -199,8 +199,9 @@ export default async function TripDetailPage({
     participantMemberIds: (e.event_participants ?? []).map((p) => p.member_id),
   }));
 
-  // 費用/予定の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く）。
-  const tzTimeline = buildTripTzTimeline(scheduleEvents);
+  // 費用/予定の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く。
+  // transit が無い旅行の唯一の拠り所は trips.default_timezone）。
+  const tzTimeline = buildTripTzTimeline(scheduleEvents, trip.default_timezone);
 
   const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
     id: e.id,
@@ -226,36 +227,6 @@ export default async function TripDetailPage({
     tzDisambigTransitId: e.tz_disambig_transit_id,
     tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
   }));
-
-  // 個別TZの初期値 = 最後に入力した（created_at 最大の）非終日イベントの実効TZ。
-  // 費用フォームの「最後に入力した値を初期値に」と同方針。無ければ null。
-  const lastEnteredEvent = (eventsRaw ?? [])
-    .filter((e) => !e.all_day)
-    .reduce<{
-      created_at: string;
-      start_at: string;
-      tz_disambig_transit_id: string | null;
-      tz_disambig_side: string | null;
-    } | null>(
-      (acc, e) =>
-        acc && acc.created_at >= e.created_at
-          ? acc
-          : {
-              created_at: e.created_at,
-              start_at: e.start_at,
-              tz_disambig_transit_id: e.tz_disambig_transit_id,
-              tz_disambig_side: e.tz_disambig_side,
-            },
-      null,
-    );
-  const initialEventTz = lastEnteredEvent
-    ? resolveEventTz(
-        lastEnteredEvent.start_at.slice(0, 10),
-        lastEnteredEvent.tz_disambig_transit_id,
-        lastEnteredEvent.tz_disambig_side as "depart" | "arrive" | null,
-        tzTimeline,
-      )
-    : null;
 
   const todos: TodoRow[] = (todosRaw ?? []).map((t) => {
     const likes = t.todo_likes ?? [];
@@ -359,8 +330,9 @@ export default async function TripDetailPage({
   );
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
   // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ。
-  // 場所は名前＋住所を location に、メモを description に。end_tz が無い予定
-  // （normal）は start_tz を流用。RLS で既に shared+private(自分) に絞られている。
+  // 場所は名前＋住所を location に、メモを description に。normal/allday は
+  // start_tz を持たないので旅程から解決した値を流用。RLS で既に
+  // shared+private(自分) に絞られている。
   const placeAddressById = new Map(
     places.map((p) => [p.id, p.formatted_address]),
   );
@@ -545,7 +517,7 @@ export default async function TripDetailPage({
       <section className="mt-10 space-y-6">
         <ScheduleSection
           tripId={tripId}
-          initialTz={initialEventTz}
+          initialTz={trip.default_timezone}
           tripStart={trip.start_date}
           tripEnd={trip.end_date}
           events={scheduleEvents}

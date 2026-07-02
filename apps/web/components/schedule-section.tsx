@@ -35,7 +35,7 @@ export function ScheduleSection({
   myMemberId,
 }: {
   tripId: string;
-  initialTz: string | null; // 前回入力イベントのTZ（無ければ null）
+  initialTz: string | null; // trip.default_timezone（旅程にtransitが無い時の唯一の拠り所）
   tripStart: string | null;
   tripEnd: string | null;
   events: EventRow[];
@@ -56,7 +56,9 @@ export function ScheduleSection({
   // ScheduleSection で保持し、closeForm で同期的に消す。
   const [pcDrag, setPcDrag] = useState<PcDragRender | null>(null);
 
-  // 個別TZの初期値: 前回入力 → 無ければブラウザのTZ（自宅で計画する想定）。
+  // 個別TZの初期値: trip.default_timezone → 無ければブラウザのTZ（自宅で
+  // 計画する想定。default_timezone はこの旅行で最初の予定/費用を作る瞬間に
+  // 一度だけ自動セットされるので、無いのは「まだ何も作っていない」時だけ）。
   // 表示計算には使わない（あくまでフォームの初期選択）。
   const defaultTz = useMemo(() => {
     if (initialTz) return initialTz;
@@ -68,11 +70,20 @@ export function ScheduleSection({
   }, [initialTz]);
 
   const schedule = useMemo(
-    () => buildSchedule(events, { tripStart, tripEnd, locale }),
-    [events, tripStart, tripEnd, locale],
+    () =>
+      buildSchedule(events, {
+        tripStart,
+        tripEnd,
+        locale,
+        defaultTimezone: initialTz,
+      }),
+    [events, tripStart, tripEnd, locale, initialTz],
   );
 
-  const tzTimeline = useMemo(() => buildTripTzTimeline(events), [events]);
+  const tzTimeline = useMemo(
+    () => buildTripTzTimeline(events, initialTz),
+    [events, initialTz],
+  );
 
   const placeName = useCallback(
     (id: string | null) =>

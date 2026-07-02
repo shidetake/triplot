@@ -179,6 +179,8 @@ export async function createExpenseAction(
     tz,
     tzDisambigTransitId,
     tzDisambigSide,
+    // trip.default_timezone が未設定ならこの値で一度だけ埋める。
+    clientTz: tz,
     splitMemberIds,
     place,
   });
@@ -569,11 +571,14 @@ type ParsedEvent =
       title: string;
       startAt: string;
       endAt: string | null;
-      startTz: string;
+      // transit のみ非null（唯一の実TZ）。normal/allday は常に null。
+      startTz: string | null;
       endTz: string | null;
-      // 乗継当日の選択。非曖昧な日・旅程にtransitが無い・kind='transit'では null。
+      // 乗継当日の選択。非曖昧な日・kind='transit'では null。
       tzDisambigTransitId: string | null;
       tzDisambigSide: "depart" | "arrive" | null;
+      // trip.default_timezone が未設定の時だけ使われる種（無ければ空文字）。
+      clientTz: string;
       place: PlaceInput;
       visibility: Visibility;
       note: string;
@@ -636,6 +641,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endTz: arriveTz,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
+      clientTz: departTz,
       place,
       visibility,
       note,
@@ -647,7 +653,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
   const allDay = formData.get("all_day") === "on";
 
   if (allDay) {
-    // 終日イベントのTZは表示に無関係。旅行TZ概念は廃止したので UTC 固定。
+    // 終日イベントのTZは表示に無関係なので保存しない。default_timezone の
+    // 種にするような手がかりも無いので空文字（未設定ならそのまま据え置き）。
     const startDate = get("start_date");
     const endDate = get("end_date") || startDate;
     if (!startDate) return { error: t("enterDate") };
@@ -660,10 +667,11 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       title,
       startAt: `${startDate}T00:00:00`,
       endAt: `${endDate}T00:00:00`,
-      startTz: "UTC",
+      startTz: null,
       endTz: null,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
+      clientTz: "",
       place,
       visibility,
       note,
@@ -689,7 +697,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
   if (!endTime) {
     return { error: t("enterEndTime") };
   }
-  // TZは跨がない（start_tz と同じ）が、日付は跨いでよい。
+  // TZは跨がない（実効TZは旅程から解決）が、日付は跨いでよい。
   // 同一フォーマットなので文字列比較で日時順を判定できる。
   const startAt = `${startDate}T${startTime}:00`;
   const endAt = `${endDate}T${endTime}:00`;
@@ -702,10 +710,11 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     title,
     startAt,
     endAt,
-    startTz: tz,
+    startTz: null,
     endTz: null,
     tzDisambigTransitId,
     tzDisambigSide,
+    clientTz: tz,
     place,
     visibility,
     note,

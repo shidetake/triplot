@@ -53,13 +53,16 @@ Apple ログイン（#9）が前提になる。デザインルールやコピー
 ## 設計メモ（低優先・思い出した時にやる）
 
 - [x] タイムゾーン: 通常予定/費用の実IANA文字列カラムの冗長性を解消 — 実装済み（migration
-      `20260702000001_event_expense_tz_normalize.sql`）。`events`/`expenses` に
-      `tz_disambig_transit_id`/`tz_disambig_side`（乗継当日の選択、単純な区間番号ではなく
-      「どの乗継の出発/到着側か」への参照）を追加し、非曖昧な日は保存無しで毎回旅程から自動導出
-      （`resolveEventTz`、`packages/shared/src/schedule.ts`）。乗継を編集すると紐づく予定/費用の表示TZが
-      自動追従する。旅程に transit が1つも無い旅行だけ従来どおり literal な `start_tz`/`tz` を保存
-      （導出元が無いため）。`occurred_at`（費用のソートキャッシュ）は書き込み時に解決済みTZで計算する
-      現状維持— 乗継編集時のカスケード再計算はスコープ外（次にその費用を保存し直すまで古い可能性あり）。
+      `20260702000001_event_expense_tz_normalize.sql` → `20260702000002_trip_default_timezone.sql`
+      で完全な参照化に発展）。`events`/`expenses` に `tz_disambig_transit_id`/`tz_disambig_side`
+      （乗継当日の選択、単純な区間番号ではなく「どの乗継の出発/到着側か」への参照）を追加し、
+      非曖昧な日は保存無しで毎回旅程から自動導出（`resolveEventTz`、`packages/shared/src/schedule.ts`）。
+      乗継を編集すると紐づく予定/費用の表示TZが自動追従する。通常予定・費用は**常に**「参照 or
+      自動導出」のみで実TZ文字列を持つことは無い（`trips.default_timezone` を追加し、旅程に transit
+      が1つも無い旅行の唯一の拠り所とした。ユーザーには不可視・変更UI無し、最初の予定/費用作成時に
+      ブラウザのTZで一度だけ自動セット）。設計と経緯は `docs/design/timezone.md` 参照。
+      `occurred_at`（費用のソートキャッシュ）は書き込み時に解決済みTZで計算する現状維持—
+      乗継編集時のカスケード再計算はスコープ外（次にその費用を保存し直すまで古い可能性あり）。
 
 ## 現在着手中
 

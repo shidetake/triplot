@@ -116,34 +116,19 @@ describe("resolveExpenseTz: 旅程からTZを引く", () => {
       tz: "Asia/Tokyo",
     });
   });
-  it("transit が無ければ常に fallback（最初の非終日イベントのTZ）", () => {
-    const tl2 = buildTripTzTimeline([
-      ev({ id: "a", startTz: "Europe/Paris" }),
-    ]);
+  it("transit が無ければ常に fallback（trip.default_timezone）", () => {
+    const tl2 = buildTripTzTimeline([ev({ id: "a" })], "Europe/Paris");
     expect(resolveExpenseTz("2026-05-22", tl2)).toEqual({
       kind: "single",
       tz: "Europe/Paris",
     });
   });
 
-  it("fallback は配列の並び順ではなく実際に一番早いイベントのTZ", () => {
-    // ホノルル08:00(HST)=UTC 18:00 5/1、東京08:00(JST)=UTC 23:00 4/30。
-    // 配列ではホノルルが先だが、絶対時刻では東京の方が早い。
-    const tl3 = buildTripTzTimeline([
-      ev({
-        id: "honolulu",
-        startAt: "2026-05-01T08:00:00",
-        startTz: "Pacific/Honolulu",
-      }),
-      ev({
-        id: "tokyo",
-        startAt: "2026-05-01T08:00:00",
-        startTz: "Asia/Tokyo",
-      }),
-    ]);
+  it("default_timezone が無ければ UTC", () => {
+    const tl3 = buildTripTzTimeline([ev({ id: "a" })]);
     expect(resolveExpenseTz("2026-05-22", tl3)).toEqual({
       kind: "single",
-      tz: "Asia/Tokyo",
+      tz: "UTC",
     });
   });
 
@@ -332,33 +317,21 @@ describe("buildSchedule: 列の構築", () => {
     expect(s.columns.map((c) => c.date)).toContain("2026-05-10");
   });
 
-  it("時差移動が無い普通の日のTZは最初の非終日イベント由来", () => {
-    const s = buildSchedule(
-      [ev({ id: "e1", startTz: "Pacific/Honolulu" })],
-      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
-    );
+  it("時差移動が無い普通の日のTZは trip.default_timezone 由来", () => {
+    const s = buildSchedule([ev({ id: "e1" })], {
+      tripStart: "2026-05-01",
+      tripEnd: "2026-05-01",
+      defaultTimezone: "Pacific/Honolulu",
+    });
     expect(s.columns[0].tz).toBe("Pacific/Honolulu");
   });
 
-  it("「最初の非終日イベント」は配列の並び順ではなく実際に一番早いイベント", () => {
-    // ホノルル08:00(HST)=UTC 18:00 5/1、東京08:00(JST)=UTC 23:00 4/30。
-    // 配列ではホノルルが先だが、絶対時刻では東京の方が早い。
-    const s = buildSchedule(
-      [
-        ev({
-          id: "honolulu",
-          startAt: "2026-05-01T08:00:00",
-          startTz: "Pacific/Honolulu",
-        }),
-        ev({
-          id: "tokyo",
-          startAt: "2026-05-01T08:00:00",
-          startTz: "Asia/Tokyo",
-        }),
-      ],
-      { tripStart: "2026-05-01", tripEnd: "2026-05-01" },
-    );
-    expect(s.columns[0].tz).toBe("Asia/Tokyo");
+  it("default_timezone が無ければ UTC", () => {
+    const s = buildSchedule([ev({ id: "e1" })], {
+      tripStart: "2026-05-01",
+      tripEnd: "2026-05-01",
+    });
+    expect(s.columns[0].tz).toBe("UTC");
   });
 });
 
