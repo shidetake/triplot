@@ -14,7 +14,7 @@
 flowchart TB
     subgraph G1["実際の時間帯を持つ（唯一の真実源）"]
         T["時差移動（乗継）<br/>出発地・到着地それぞれの<br/>現地時間帯を持つ"]
-        D["旅行の既定時間帯<br/>(trips.default_timezone)<br/>その旅行で最初の予定/費用を<br/>作った瞬間に一度だけ自動セット"]
+        D["旅行の既定時間帯<br/>旅行を作った瞬間に<br/>一度だけ自動セット"]
     end
 
     subgraph G2["参照だけ持つ（表示のたびに毎回計算）"]
@@ -45,10 +45,10 @@ flowchart TB
 flowchart TD
     A["日付 + 保存済みの選択"] --> B{"その日に候補はいくつある？"}
     B -->|"旅程からズバリ1つに決まる<br/>大多数の日はここ"| C["そのTZを返す<br/>選択は無視してよい"]
-    B -->|"乗継当日で複数候補ある"| D{"保存済みの tz_disambig_* と<br/>一致する候補は？"}
+    B -->|"乗継当日で複数候補ある"| D{"保存済みの選択と<br/>一致する候補は？"}
     D -->|"ある"| E["その候補のTZを返す"]
     D -->|"無い（未選択 or 参照先が消えた）"| F["候補の先頭＝出発側にフォールバック"]
-    B -->|"旅程に乗継が1つも無い"| G["trips.default_timezone を使う<br/>(無ければ UTC)"]
+    B -->|"旅程に乗継が1つも無い"| G["旅行の既定時間帯を使う<br/>(無ければ UTC)"]
 ```
 
 ## 3. 乗継当日の「候補」はどう作られるか
@@ -89,12 +89,12 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     actor U as ユーザー(ブラウザ)
-    participant RPC as create_trip
-    participant DB as trips.default_timezone
+    participant C as 旅行の作成処理
+    participant D as 旅行の既定時間帯
 
-    U->>RPC: 旅行を作成(p_client_tz=ブラウザのTZ)
-    RPC->>DB: 作成と同時に確定(以後は不変)
-    Note over DB: 以後、乗継が無い日は<br/>ずっとこの値を使う
+    U->>C: 旅行を作成（ブラウザの現在TZを添えて）
+    C->>D: 作成と同時に確定（以後は不変）
+    Note over D: 以後、乗継が無い日は<br/>ずっとこの値を使う
 ```
 
 **共有ライブラリ（`schedule.ts`）はブラウザTZを一切知らない。** サーバーで実行されると
@@ -103,13 +103,13 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    subgraph G3["クライアントのみ（use client）"]
-        DTZ["trip.default_timezone"]
-        BR["Intl.DateTimeFormat()<br/>= ブラウザのTZ"]
-        SS["schedule-section.tsx<br/>defaultTz<br/>（新規作成フォームの初期値だけに使う）"]
+    subgraph G3["クライアントのみ（ブラウザ実行）"]
+        DTZ["旅行の既定時間帯"]
+        BR["ブラウザの現在TZ"]
+        SS["予定・費用の新規作成フォーム<br/>（初期値のサジェストだけに使う）"]
     end
     subgraph G4["共有ライブラリ（サーバーでも動く）"]
-        RE["resolveEventTz()<br/>保存・表示・エクスポート全て<br/>ブラウザTZは一切見ない"]
+        RE["TZ解決ロジック<br/>保存・表示・エクスポート全てで共通<br/>ブラウザTZは一切見ない"]
     end
 
     DTZ -->|"1. あれば優先"| SS
