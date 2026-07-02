@@ -1,7 +1,8 @@
 # アーキテクチャ概要
 
 triplot のアーキテクチャ俯瞰（クライアント構成 ＋ 外部サービス）。詳細な機能設計は
-[`import-flow.md`](./design/import-flow.md) などの個別ドキュメントを参照。
+[`import-flow.md`](./design/import-flow.md)・[`timezone.md`](./design/timezone.md) などの
+個別ドキュメントを参照。
 
 ## クライアント構成（web ＋ ネイティブ）
 
