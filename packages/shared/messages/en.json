@@ -527,6 +527,8 @@
     "nameRequired": "Please enter a category name",
     "deleteConfirmTitle": "Delete this category?",
     "deleteInUse": "Cannot delete — expenses are using this category",
+    "saveFailed": "Failed to save.",
+    "deleteFailed": "Failed to delete.",
     "saveOk": "Saved",
     "deleteOk": "Deleted",
     "delete": "Delete",

@@ -527,6 +527,8 @@
     "nameRequired": "カテゴリ名を入力してください",
     "deleteConfirmTitle": "このカテゴリを削除しますか？",
     "deleteInUse": "費用が登録されているため削除できません",
+    "saveFailed": "保存に失敗しました",
+    "deleteFailed": "削除に失敗しました",
     "saveOk": "保存しました",
     "deleteOk": "削除しました",
     "delete": "削除",

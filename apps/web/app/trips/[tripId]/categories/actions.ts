@@ -34,7 +34,7 @@ export async function createCategoryAction(
     key: null,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("saveFailed") };
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/categories`);
   return { error: null };
@@ -54,7 +54,7 @@ export async function updateCategoryAction(
     .update({ name: name.trim(), color: CUSTOM_COLOR, icon: CUSTOM_ICON, key: null })
     .eq("id", id);
 
-  if (error) return { error: error.message };
+  if (error) return { error: t("saveFailed") };
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/categories`);
   return { error: null };
@@ -73,7 +73,7 @@ export async function deleteCategoryAction(
 
   if (error) {
     if (error.code === "23503") return { error: t("deleteInUse") };
-    return { error: error.message };
+    return { error: t("deleteFailed") };
   }
   revalidatePath(`/trips/${tripId}`);
   revalidatePath(`/trips/${tripId}/categories`);
