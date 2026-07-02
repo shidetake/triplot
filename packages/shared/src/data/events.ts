@@ -19,9 +19,6 @@ export type EventFields = {
   // 以外は null。
   tzDisambigTransitId: string | null;
   tzDisambigSide: "depart" | "arrive" | null;
-  // 新規作成時のみ使用。trip.default_timezone が未設定なら一度だけこれで
-  // 埋める（ブラウザの現在TZ）。更新時は無視される。
-  clientTz?: string;
   visibility: Visibility;
   note: string;
   participantMemberIds: string[];
@@ -52,12 +49,7 @@ export async function createEvent(
   f: EventFields,
   needsReservation: boolean,
 ): Promise<Result<void>> {
-  const base = {
-    p_trip_id: tripId,
-    ...eventBase(f),
-    // gen-types は nullable 引数を string にする癖。
-    p_client_tz: f.clientTz as unknown as string,
-  };
+  const base = { p_trip_id: tripId, ...eventBase(f) };
   const pr = placeRpcArgs(f.place);
   let eventId: string | null = null;
   let error: { message: string } | null = null;

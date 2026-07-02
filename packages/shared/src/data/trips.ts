@@ -16,14 +16,24 @@ export type CreateTripInput = {
   displayName: string;
   currency: Currency;
   sourceTripId?: string; // 指定があればコピー
+  // ゼロから新規作成時のみ使用。trips.default_timezone の初期値
+  // （ブラウザの現在TZ）。コピー時はコピー元から引き継ぐので使わない。
+  clientTz?: string;
 };
 
 export async function createTrip(
   sb: DB,
   input: CreateTripInput,
 ): Promise<Result<{ tripId: string }>> {
-  const { title, startDate, endDate, displayName, currency, sourceTripId } =
-    input;
+  const {
+    title,
+    startDate,
+    endDate,
+    displayName,
+    currency,
+    sourceTripId,
+    clientTz,
+  } = input;
 
   // ── ゼロから新規 ──
   if (!sourceTripId) {
@@ -33,6 +43,8 @@ export async function createTrip(
       p_end_date: endDate,
       p_default_currency: currency,
       p_display_name: displayName,
+      // gen-types は nullable 引数を string にする癖。
+      p_client_tz: clientTz as unknown as string,
     });
     if (error || !tripId) return err(error?.message ?? "errors.createFailed");
     return ok({ tripId });

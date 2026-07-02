@@ -32,6 +32,7 @@ export async function createTripAction(
     formData.get("default_currency") ?? "JPY",
   ) as Currency;
   const sourceTripId = String(formData.get("source_trip_id") ?? "").trim();
+  const clientTz = String(formData.get("client_tz") ?? "").trim();
 
   if (!title || !startDate || !endDate || !displayName) {
     return { error: t("createTrip.fillAll") };
@@ -44,6 +45,7 @@ export async function createTripAction(
     displayName,
     currency,
     sourceTripId: sourceTripId || undefined,
+    clientTz,
   });
   if (!result.ok) return { error: translateSharedError(result.error, tErr) };
 

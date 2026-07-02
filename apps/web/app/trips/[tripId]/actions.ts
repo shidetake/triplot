@@ -179,8 +179,6 @@ export async function createExpenseAction(
     tz,
     tzDisambigTransitId,
     tzDisambigSide,
-    // trip.default_timezone が未設定ならこの値で一度だけ埋める。
-    clientTz: tz,
     splitMemberIds,
     place,
   });
@@ -577,8 +575,6 @@ type ParsedEvent =
       // 乗継当日の選択。非曖昧な日・kind='transit'では null。
       tzDisambigTransitId: string | null;
       tzDisambigSide: "depart" | "arrive" | null;
-      // trip.default_timezone が未設定の時だけ使われる種（無ければ空文字）。
-      clientTz: string;
       place: PlaceInput;
       visibility: Visibility;
       note: string;
@@ -641,7 +637,6 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endTz: arriveTz,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
-      clientTz: departTz,
       place,
       visibility,
       note,
@@ -653,8 +648,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
   const allDay = formData.get("all_day") === "on";
 
   if (allDay) {
-    // 終日イベントのTZは表示に無関係なので保存しない。default_timezone の
-    // 種にするような手がかりも無いので空文字（未設定ならそのまま据え置き）。
+    // 終日イベントのTZは表示に無関係なので保存しない。
     const startDate = get("start_date");
     const endDate = get("end_date") || startDate;
     if (!startDate) return { error: t("enterDate") };
@@ -671,7 +665,6 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endTz: null,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
-      clientTz: "",
       place,
       visibility,
       note,
@@ -714,7 +707,6 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     endTz: null,
     tzDisambigTransitId,
     tzDisambigSide,
-    clientTz: tz,
     place,
     visibility,
     note,

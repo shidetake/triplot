@@ -35,6 +35,14 @@ export type CopyableTrip = {
 
 const initialState: CreateTripState = { error: null };
 
+function browserTz(): string {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 export function CreateTripForm({
   defaultDisplayName,
   trips,
@@ -196,6 +204,10 @@ export function CreateTripForm({
         name="source_trip_id"
         value={mode === "copy" ? sourceId : ""}
       />
+
+      {/* trips.default_timezone の初期値（ゼロから新規作成時のみ使われる）。
+          ユーザーには見せない・選ばせない。 */}
+      <input type="hidden" name="client_tz" value={browserTz()} />
 
       <label className="block min-w-0 text-sm">
         <FieldLabel required>{t("title")}</FieldLabel>

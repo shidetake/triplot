@@ -798,7 +798,6 @@ export type Database = {
       create_event: {
         Args: {
           p_all_day: boolean
-          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_kind: string
@@ -818,7 +817,6 @@ export type Database = {
       create_event_with_freetext_place: {
         Args: {
           p_all_day: boolean
-          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_kind: string
@@ -838,7 +836,6 @@ export type Database = {
       create_event_with_place: {
         Args: {
           p_all_day: boolean
-          p_client_tz: string
           p_end_at: string
           p_end_tz: string
           p_formatted_address: string
@@ -865,7 +862,6 @@ export type Database = {
       create_expense: {
         Args: {
           p_category_id: string
-          p_client_tz: string
           p_local_currency: string
           p_local_price: number
           p_note: string
@@ -886,7 +882,6 @@ export type Database = {
       create_expense_with_freetext_place: {
         Args: {
           p_category_id: string
-          p_client_tz: string
           p_local_currency: string
           p_local_price: number
           p_note: string
@@ -907,7 +902,6 @@ export type Database = {
       create_expense_with_place: {
         Args: {
           p_category_id: string
-          p_client_tz: string
           p_formatted_address: string
           p_google_place_id: string
           p_icon: string
@@ -961,6 +955,7 @@ export type Database = {
       }
       create_trip: {
         Args: {
+          p_client_tz: string
           p_default_currency: string
           p_display_name: string
           p_end_date: string
@@ -1022,10 +1017,6 @@ export type Database = {
       }
       seed_default_trip_pin_options: {
         Args: { _trip_id: string }
-        Returns: undefined
-      }
-      seed_trip_default_timezone: {
-        Args: { p_client_tz: string; p_trip_id: string }
         Returns: undefined
       }
       set_event_reservation: {

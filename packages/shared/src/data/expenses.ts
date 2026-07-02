@@ -20,9 +20,6 @@ export type ExpenseFields = {
   // 乗継当日の選択。非曖昧な日は null。
   tzDisambigTransitId: string | null;
   tzDisambigSide: "depart" | "arrive" | null;
-  // 新規作成時のみ使用。trip.default_timezone が未設定なら一度だけこれで
-  // 埋める（ブラウザの現在TZ）。更新時は無視される。
-  clientTz?: string;
   splitMemberIds: string[];
   place: PlaceInput;
 };
@@ -51,12 +48,7 @@ export async function createExpense(
   tripId: string,
   f: ExpenseFields,
 ): Promise<Result<void>> {
-  const base = {
-    p_trip_id: tripId,
-    ...expenseBase(f),
-    // gen-types は nullable 引数を string にする癖。
-    p_client_tz: f.clientTz as unknown as string,
-  };
+  const base = { p_trip_id: tripId, ...expenseBase(f) };
   const pr = placeRpcArgs(f.place);
   let error: { message: string } | null = null;
   if (pr.variant === "google") {
