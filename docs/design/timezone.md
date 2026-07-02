@@ -11,23 +11,20 @@
 
 ```mermaid
 flowchart TB
-    subgraph G1["実TZを持つ（唯一の真実源）"]
-        T["events (kind='transit')<br/>start_tz / end_tz<br/>常に非null"]
-        NT["events (kind='normal') /<br/>expenses<br/>旅程に transit が<br/>1つも無い旅行だけ<br/>start_tz / tz に literal 保存"]
+    subgraph G1["実際の時間帯を持つ（唯一の真実源）"]
+        T["時差移動（乗継）<br/>出発地・到着地それぞれの<br/>現地時間帯を持つ"]
+        NT["通常予定・費用<br/>（その旅行に乗継が<br/>1つも無い場合）<br/>作成時に選んだ現地時間帯を<br/>そのまま持つ"]
     end
 
-    subgraph G2["参照だけ持つ（毎回自動計算）"]
-        N["events (kind='normal') /<br/>expenses<br/>旅程に transit がある旅行<br/>start_tz / tz = NULL"]
-        REF["tz_disambig_transit_id（乗継のid）<br/>tz_disambig_side（depart / arrive）<br/>※ 乗継日だけ非null。それ以外は両方null"]
+    subgraph G2["参照だけ持つ（表示のたびに毎回計算）"]
+        N["通常予定・費用<br/>（その旅行に乗継がある場合）<br/>自分では時間帯を持たない"]
     end
 
-    N -.参照.-> REF
-    REF -.->|"どの乗継の出発側/到着側か"| T
+    T -.->|"乗継当日だけ、この出発側/到着側の<br/>どちらかが下から参照される<br/>（それ以外の日は何も参照されない）"| N
 
     style T fill:#1f6f3f,color:#fff
     style NT fill:#1f6f3f,color:#fff
     style N fill:#444,color:#fff
-    style REF fill:#444,color:#fff
 ```
 
 **判定基準は「その旅行に乗継が1つでもあるか」の1点だけ**。RPC内のヘルパー
