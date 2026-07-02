@@ -127,8 +127,6 @@ export async function createExpenseAction(
     dateRaw && timeRaw
       ? `${dateRaw}T${timeRaw}:00`
       : new Date().toISOString();
-  // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
-  const tz = ((formData.get("tz") as string | null) ?? "").trim();
   const tzDisambigTransitId =
     ((formData.get("tz_disambig_transit_id") as string | null) ?? "").trim() ||
     null;
@@ -176,7 +174,6 @@ export async function createExpenseAction(
     splittable,
     note,
     paidAt,
-    tz,
     tzDisambigTransitId,
     tzDisambigSide,
     splitMemberIds,
@@ -224,8 +221,6 @@ export async function updateExpenseAction(
     dateRaw && timeRaw
       ? `${dateRaw}T${timeRaw}:00`
       : new Date().toISOString();
-  // 費用の現地TZ（フォームが旅程推測 / 乗継日選択で決めた IANA）。
-  const tz = ((formData.get("tz") as string | null) ?? "").trim();
   const tzDisambigTransitId =
     ((formData.get("tz_disambig_transit_id") as string | null) ?? "").trim() ||
     null;
@@ -272,7 +267,6 @@ export async function updateExpenseAction(
     splittable,
     note,
     paidAt,
-    tz,
     tzDisambigTransitId,
     tzDisambigSide,
     splitMemberIds,

@@ -581,10 +581,10 @@ export function ExpenseForm({
         )}
       </div>
 
-      {/* タイムゾーン。サーバへは常に hidden で送る（内部は保持）。
-          時刻を指定したときだけ意味を持つので、表示も showTime のときだけ。
-          複数TZ旅程の通常日は控えめ表示、乗継日は出発/到着の2択。 */}
-      <input type="hidden" name="tz" value={tz} />
+      {/* tz_disambig_* だけがサーバへ送る値（実TZ文字列は保存しないので tz
+          自体は送らない、下の localTz 表示にだけ使う）。時刻を指定したときだけ
+          意味を持つので、表示も showTime のときだけ。複数TZ旅程の通常日は
+          控えめ表示、乗継日は出発/到着の2択。 */}
       <input
         type="hidden"
         name="tz_disambig_transit_id"

@@ -240,7 +240,7 @@ export function EventForm({
 
   // 通常予定のTZ。乗継日（複数候補あり）のみユーザが選択する。それ以外は
   // 旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
-  // tz = 表示・occurred_at 相当の実効値、tzDisambig* = 保存する選択（乗継日
+  // tz = 表示用の実効値、tzDisambig* = 保存する選択（乗継日
   // 以外は両方 null のまま＝毎回自動導出）。
   const startResolution = resolveExpenseTz(startInit.date, tzTimeline);
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
@@ -614,9 +614,10 @@ export function EventForm({
           <input type="hidden" name="end_date" value={eDate} />
           <input type="hidden" name="end_time" value={eTime} />
 
-          {/* TZ は常に hidden で送る。乗継日（複数候補）のみラジオで選ばせる。
-              それ以外はタイムラインから一意に解決。選択は tz_disambig_* で保存
-              し、実際のTZ文字列(tz)は表示・occurred_at 相当の参考値。 */}
+          {/* TZ は常に hidden で送る（フォームが解決に成功したかのガード）。
+              乗継日（複数候補）のみラジオで選ばせる。それ以外はタイムラインから
+              一意に解決。保存されるのは tz_disambig_* だけで、実際のTZ文字列
+              (tz) 自体は保存されない。 */}
           <input type="hidden" name="tz" value={tz} />
           <input
             type="hidden"

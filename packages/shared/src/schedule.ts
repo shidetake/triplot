@@ -89,10 +89,11 @@ export function addDays(date: string, n: number): string {
 
 /**
  * 壁時計文字列(TZ非依存)+IANA tz から真の絶対時刻(UTC ms)を求める。
- * 異なるTZの壁時計同士を正しい時系列で比較する（乗継の前後関係のソート）専用。
- * 壁時計の描画には使わない（ファイル冒頭の方針どおり Date は TZ変換の入口にしない）。
+ * 異なるTZの壁時計同士を正しい時系列で比較する（乗継の前後関係のソート、
+ * 費用の発生順ソート）専用。壁時計の描画には使わない（ファイル冒頭の方針
+ * どおり Date は TZ変換の入口にしない）。
  */
-function wallClockToUtcMs(wall: string, tz: string): number {
+export function wallClockToUtcMs(wall: string, tz: string): number {
   const asUtc = new Date(`${wall}Z`).getTime();
   const fmt = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,

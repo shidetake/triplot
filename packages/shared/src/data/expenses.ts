@@ -15,8 +15,6 @@ export type ExpenseFields = {
   splittable: boolean;
   note: string;
   paidAt: string;
-  // 現在の実効TZ（occurred_at の計算にのみ使う、保存はされない）。常に必須。
-  tz: string;
   // 乗継当日の選択。非曖昧な日は null。
   tzDisambigTransitId: string | null;
   tzDisambigSide: "depart" | "arrive" | null;
@@ -36,7 +34,6 @@ function expenseBase(f: ExpenseFields) {
     p_note: f.note, // 空文字は DB 側 nullif で NULL
     p_paid_at: f.paidAt,
     p_split_member_ids: f.splittable ? f.splitMemberIds : [],
-    p_tz: f.tz,
     // gen-types は nullable 引数を string にする癖。
     p_tz_disambig_transit_id: f.tzDisambigTransitId as unknown as string,
     p_tz_disambig_side: f.tzDisambigSide as unknown as string,

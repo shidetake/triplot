@@ -22,7 +22,11 @@ import {
   calculateExpenseSummary,
   type SummaryExpense,
 } from "@triplot/shared/expenseSummary";
-import { buildTripTzTimeline, resolveEventTz } from "@triplot/shared/schedule";
+import {
+  buildTripTzTimeline,
+  resolveEventTz,
+  wallClockToUtcMs,
+} from "@triplot/shared/schedule";
 import {
   calculateSettlements,
   type SettlementExpense,
@@ -90,13 +94,11 @@ export default async function TripDetailPage({
     supabase
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, occurred_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
-      // 発生順（古い→新しい、新しいものが下）。occurred_at は壁時計をその
-      // 費用の TZ で解釈した絶対時刻なので、跨TZでも正しく時系列に並ぶ。
-      // 同 occurred_at は作成順で安定させる。
-      .order("occurred_at", { ascending: true })
+      // 発生順の確定はアプリ側（resolveEventTz で解決したTZ + paid_at から
+      // 都度算出、下記 expenses 参照）。ここでは安定した基準順だけ与える。
       .order("created_at", { ascending: true }),
     supabase
       .from("places")
@@ -203,30 +205,44 @@ export default async function TripDetailPage({
   // transit が無い旅行の唯一の拠り所は trips.default_timezone）。
   const tzTimeline = buildTripTzTimeline(scheduleEvents, trip.default_timezone);
 
-  const expenses: ExpenseRow[] = (expensesRaw ?? []).map((e) => ({
-    id: e.id,
-    local_price: Number(e.local_price),
-    local_currency: e.local_currency as Currency,
-    rate_to_default: Number(e.rate_to_default),
-    category_id: e.category_id,
-    visibility: e.visibility as Visibility,
-    splittable: e.splittable,
-    note: e.note,
-    paid_at: e.paid_at,
-    created_at: e.created_at,
-    payer_member_id: e.payer_member_id,
-    created_by_member_id: e.created_by_member_id,
-    split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
-    place_id: e.place_id,
-    tz: resolveEventTz(
-      e.paid_at.slice(0, 10),
-      e.tz_disambig_transit_id,
-      e.tz_disambig_side as "depart" | "arrive" | null,
-      tzTimeline,
-    ),
-    tzDisambigTransitId: e.tz_disambig_transit_id,
-    tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
-  }));
+  // 発生順（古い→新しい、新しいものが下）は保存済みキャッシュを持たず、都度
+  // resolveEventTz で解決したTZ + paid_at（壁時計）から絶対時刻を算出して
+  // 決める（乗継の追加・編集に自動追従する）。同時刻は作成順で安定させる。
+  const expenses: ExpenseRow[] = (expensesRaw ?? [])
+    .map((e) => {
+      const tz = resolveEventTz(
+        e.paid_at.slice(0, 10),
+        e.tz_disambig_transit_id,
+        e.tz_disambig_side as "depart" | "arrive" | null,
+        tzTimeline,
+      );
+      const row: ExpenseRow = {
+        id: e.id,
+        local_price: Number(e.local_price),
+        local_currency: e.local_currency as Currency,
+        rate_to_default: Number(e.rate_to_default),
+        category_id: e.category_id,
+        visibility: e.visibility as Visibility,
+        splittable: e.splittable,
+        note: e.note,
+        paid_at: e.paid_at,
+        created_at: e.created_at,
+        payer_member_id: e.payer_member_id,
+        created_by_member_id: e.created_by_member_id,
+        split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
+        place_id: e.place_id,
+        tz,
+        tzDisambigTransitId: e.tz_disambig_transit_id,
+        tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
+      };
+      return { row, occurredAtMs: wallClockToUtcMs(e.paid_at, tz) };
+    })
+    .sort(
+      (a, b) =>
+        a.occurredAtMs - b.occurredAtMs ||
+        (a.row.created_at < b.row.created_at ? -1 : 1),
+    )
+    .map((x) => x.row);
 
   const todos: TodoRow[] = (todosRaw ?? []).map((t) => {
     const likes = t.todo_likes ?? [];
@@ -323,7 +339,7 @@ export default async function TripDetailPage({
   const summary = calculateExpenseSummary(summaryExpenses, me.id);
 
   // CSV エクスポート用: ID を名前に解決した行。発生順（expenses は既に
-  // occurred_at 昇順）。
+  // 発生順に並んでいる）。
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const memberNameById = new Map(
     activeMembers.map((m) => [m.id, m.display_name]),

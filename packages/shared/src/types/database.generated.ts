@@ -210,7 +210,6 @@ export type Database = {
           local_currency: string
           local_price: number
           note: string | null
-          occurred_at: string
           paid_at: string
           payer_member_id: string
           place_id: string | null
@@ -229,7 +228,6 @@ export type Database = {
           local_currency: string
           local_price: number
           note?: string | null
-          occurred_at: string
           paid_at?: string
           payer_member_id: string
           place_id?: string | null
@@ -248,7 +246,6 @@ export type Database = {
           local_currency?: string
           local_price?: number
           note?: string | null
-          occurred_at?: string
           paid_at?: string
           payer_member_id?: string
           place_id?: string | null
@@ -872,7 +869,6 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
@@ -892,7 +888,6 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
@@ -919,7 +914,6 @@ export type Database = {
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
@@ -1105,7 +1099,6 @@ export type Database = {
           p_rate_to_default: number
           p_split_member_ids: string[]
           p_splittable: boolean
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
@@ -1125,7 +1118,6 @@ export type Database = {
           p_rate_to_default: number
           p_split_member_ids: string[]
           p_splittable: boolean
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
@@ -1152,7 +1144,6 @@ export type Database = {
           p_region: string
           p_split_member_ids: string[]
           p_splittable: boolean
-          p_tz: string
           p_tz_disambig_side: string
           p_tz_disambig_transit_id: string
           p_visibility: string
