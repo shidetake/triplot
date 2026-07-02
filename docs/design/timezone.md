@@ -11,18 +11,18 @@
 
 ```mermaid
 flowchart TB
-    subgraph 実TZを持つ（唯一の真実源）
+    subgraph G1["実TZを持つ（唯一の真実源）"]
         T["events (kind='transit')<br/>start_tz / end_tz<br/>常に非null"]
         NT["events (kind='normal') /<br/>expenses<br/>旅程に transit が<br/>1つも無い旅行だけ<br/>start_tz / tz に literal 保存"]
     end
 
-    subgraph 参照だけ持つ（毎回自動計算）
+    subgraph G2["参照だけ持つ（毎回自動計算）"]
         N["events (kind='normal') /<br/>expenses<br/>旅程に transit がある旅行<br/>start_tz / tz = NULL"]
         REF["tz_disambig_transit_id（乗継のid）<br/>tz_disambig_side（depart / arrive）<br/>※ 乗継日だけ非null。それ以外は両方null"]
     end
 
     N -.参照.-> REF
-    REF -."どの乗継の<br/>出発側/到着側か".-> T
+    REF -.->|"どの乗継の出発側/到着側か"| T
 
     style T fill:#1f6f3f,color:#fff
     style NT fill:#1f6f3f,color:#fff
@@ -47,12 +47,12 @@ flowchart TB
 
 ```mermaid
 flowchart TD
-    A[日付 + 保存済みの選択] --> B{その日に候補は<br/>いくつある?}
-    B -->|旅程からズバリ1つに決まる<br/>大多数の日はここ| C[そのTZを返す<br/>選択は無視してよい]
-    B -->|乗継"当日"で<br/>複数候補ある| D{保存済みの<br/>tz_disambig_*<br/>と一致する候補は?}
-    D -->|ある| E[その候補のTZを返す]
-    D -->|無い<br/>（未選択 or 参照先が消えた）| F[候補の先頭<br/>＝出発側にフォールバック]
-    B -->|旅程に乗継が<br/>1つも無い| G[保存されている<br/>literal な値をそのまま使う]
+    A["日付 + 保存済みの選択"] --> B{"その日に候補はいくつある？"}
+    B -->|"旅程からズバリ1つに決まる<br/>大多数の日はここ"| C["そのTZを返す<br/>選択は無視してよい"]
+    B -->|"乗継当日で複数候補ある"| D{"保存済みの tz_disambig_* と<br/>一致する候補は？"}
+    D -->|"ある"| E["その候補のTZを返す"]
+    D -->|"無い（未選択 or 参照先が消えた）"| F["候補の先頭＝出発側にフォールバック"]
+    B -->|"旅程に乗継が1つも無い"| G["保存されている<br/>literal な値をそのまま使う"]
 ```
 
 ## 3. 乗継当日の「候補」はどう作られるか
@@ -62,9 +62,9 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant 予定 as 通常予定(6/19)
-    participant 乗継1 as 乗継1: 東京→ソウル
-    participant 乗継2 as 乗継2: ソウル→シンガポール
+    participant 予定 as "通常予定(6/19)"
+    participant 乗継1 as "乗継1: 東京→ソウル"
+    participant 乗継2 as "乗継2: ソウル→シンガポール"
 
     Note over 乗継1,乗継2: 同じ6/19に2回乗り継ぐ
 
@@ -83,17 +83,17 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    subgraph クライアントのみ["クライアントのみ（\"use client\"）"]
-        SS["schedule-section.tsx<br/>defaultTz"]
+    subgraph G3["クライアントのみ（use client）"]
+        PREV["この旅行で前回<br/>入力した値"]
         BR["Intl.DateTimeFormat()<br/>= ブラウザのTZ"]
+        SS["schedule-section.tsx<br/>defaultTz<br/>（新規作成フォームの初期値だけに使う）"]
     end
-    subgraph 共有ライブラリ["共有ライブラリ（サーバーでも動く）"]
-        RE["resolveEventTz()<br/>ブラウザTZの概念を持たない"]
+    subgraph G4["共有ライブラリ（サーバーでも動く）"]
+        RE["resolveEventTz()<br/>保存・表示・エクスポート全て<br/>ブラウザTZは一切見ない"]
     end
 
-    SS -->|"1. この旅行で前回<br/>入力した値があれば優先"| SS
-    SS -->|"2. 無ければ"| BR
-    RE -.->|新規作成フォームの<br/>初期表示だけに使う<br/>保存・エクスポートには不使用| SS
+    PREV -->|"1. あれば優先"| SS
+    BR -->|"2. 無ければこちら"| SS
 ```
 
 ## 5. 既知の穴: 乗継を消すと手がかりが無くなる日がある
