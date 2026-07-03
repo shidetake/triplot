@@ -11,7 +11,7 @@ import type { LatLng } from "@triplot/shared/placeMap";
 import { inputClass } from "./input-class";
 import { extractRegion } from "./place-search";
 import { menuItemClass } from "./menu-item";
-import { matchPlace } from "@/lib/receipt/placeMatch";
+import { matchPlace } from "@/lib/import/placeMatch";
 
 // 取り込みの自動解決で「Google の場所に丸める」最低スコア。高すぎると近い候補も丸まらないので
 // 0.6（候補は上位複数をスコアして最良を採るので、ほどほどで誤丸めしにくい）。実データで調整可。

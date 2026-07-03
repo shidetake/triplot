@@ -1,4 +1,4 @@
-import type { Receipt } from "./schema";
+import type { EventDraft, Receipt } from "./schema";
 
 // 全角 ASCII（Ａ-Ｚ ０-９ ＊ 等 = U+FF01〜U+FF5E）を半角へ、全角スペース(U+3000)を
 // 半角スペースへ。連続スペースは1つに詰める。日本語・カタカナ(U+30xx)は触らない
@@ -23,5 +23,17 @@ export function normalizeReceipt(r: Receipt): Receipt {
     location: r.location != null ? toHalfWidth(r.location) : r.location,
     referenceId:
       r.referenceId != null ? toHalfWidth(r.referenceId) : r.referenceId,
+  };
+}
+
+// EventDraft の自由テキスト欄（見出し・場所・予約番号）を半角正規化する。
+// 日付/時刻/TZ は ISO・IANA 名なので触らない。
+export function normalizeEventDraft(d: EventDraft): EventDraft {
+  return {
+    ...d,
+    title: toHalfWidth(d.title),
+    location: d.location != null ? toHalfWidth(d.location) : d.location,
+    referenceId:
+      d.referenceId != null ? toHalfWidth(d.referenceId) : d.referenceId,
   };
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { reprocessOverQuota, retryDueErrors } from "@/lib/receipt/process";
+import { reprocessOverQuota, retryDueErrors } from "@/lib/import/process";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // 保留中の抽出を reconcile するエンドポイント。Cloudflare の毎分 cron（心拍 Worker）が

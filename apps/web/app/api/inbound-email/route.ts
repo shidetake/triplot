@@ -2,8 +2,8 @@ import { timingSafeEqual } from "node:crypto";
 
 import { after, NextResponse } from "next/server";
 
-import { parseImportToken } from "@/lib/receipt/inboundAddress";
-import { extractInBackground } from "@/lib/receipt/process";
+import { parseImportToken } from "@/lib/import/inboundAddress";
+import { extractInBackground } from "@/lib/import/process";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // Cloudflare Email Worker からの受信メール通知を受ける webhook。生メール(MIME)を

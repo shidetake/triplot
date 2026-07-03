@@ -1,6 +1,6 @@
 import { APICallError } from "ai";
 
-import { extractReceipt, type TripHint } from "./extract";
+import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
 import { isAllowedReceiptHost } from "./links";
@@ -10,7 +10,7 @@ import {
   selectMergeCandidates,
 } from "./merge";
 import { gatherReceiptText } from "./pipeline";
-import type { Receipt } from "./schema";
+import type { EventDraft, Extraction, Receipt } from "./schema";
 import type { createServiceClient } from "@/lib/supabase/service";
 
 // 受信メールの抽出・マージ・自動リトライ（バックグラウンド処理）。route handler から
@@ -18,6 +18,9 @@ import type { createServiceClient } from "@/lib/supabase/service";
 
 // 後からマージで遡る未確定下書きの範囲（受信日）。
 const MERGE_LOOKBACK_DAYS = 30;
+
+// 抽出は成功したが費用も予定も見つからなかったメールの恒久エラー（UI が翻訳して表示）。
+export const EXTRACT_ERROR_NO_CONTENT = "no_content";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 
@@ -48,56 +51,142 @@ async function fetchTripHints(
     }));
 }
 
-// 同じ取引の未確定下書きを探して合体結果を返す（無ければ null）。
+// jsonb は DB 側でキー順を正規化するので、payload の同値比較はキーをソートした
+// JSON 文字列で行う（JS オブジェクトのキー順に依存しない）。
+function stableStringify(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(stableStringify).join(",")}]`;
+  if (v !== null && typeof v === "object") {
+    const entries = Object.entries(v as Record<string, unknown>)
+      .filter(([, val]) => val !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([k, val]) => `${JSON.stringify(k)}:${stableStringify(val)}`);
+    return `{${entries.join(",")}}`;
+  }
+  return JSON.stringify(v);
+}
+
+// 未確定 draft 行（作業状態）から実効値を組み立てる。
+function extractionFromDrafts(
+  rows: { kind: string; payload: unknown }[],
+): Extraction {
+  const receipt = rows.find((r) => r.kind === "expense")?.payload as
+    | Receipt
+    | undefined;
+  return {
+    receipt: receipt ?? null,
+    events: rows
+      .filter((r) => r.kind === "event")
+      .map((r) => r.payload as EventDraft),
+  };
+}
+
+// メールの pending draft 行を extraction の内容で置き換える（confirmed/dismissed は
+// 触らない）。再抽出・マージで確定済みの項目を重複させないよう、確定済みの費用が
+// あれば費用 draft は作らず、確定済みと同内容の予定はスキップする。
+async function replacePendingDrafts(
+  supabase: ServiceClient,
+  emailId: string,
+  x: Extraction,
+): Promise<void> {
+  const { data: confirmed } = await supabase
+    .from("inbound_drafts")
+    .select("kind, payload")
+    .eq("email_id", emailId)
+    .eq("status", "confirmed");
+  await supabase
+    .from("inbound_drafts")
+    .delete()
+    .eq("email_id", emailId)
+    .eq("status", "pending");
+  const hasConfirmedExpense = (confirmed ?? []).some(
+    (d) => d.kind === "expense",
+  );
+  const confirmedEventJson = new Set(
+    (confirmed ?? [])
+      .filter((d) => d.kind === "event")
+      .map((d) => stableStringify(d.payload)),
+  );
+  const rows: { email_id: string; kind: string; payload: Receipt | EventDraft }[] =
+    [];
+  if (x.receipt && !hasConfirmedExpense) {
+    rows.push({ email_id: emailId, kind: "expense", payload: x.receipt });
+  }
+  for (const ev of x.events) {
+    if (confirmedEventJson.has(stableStringify(ev))) continue;
+    rows.push({ email_id: emailId, kind: "event", payload: ev });
+  }
+  if (rows.length > 0) await supabase.from("inbound_drafts").insert(rows);
+}
+
+// 同じ取引・予約の未確定下書きを探して合体結果を返す（無ければ null）。
 async function tryMerge(
   supabase: ServiceClient,
   userId: string,
   emailId: string,
-  receipt: Receipt,
+  extraction: Extraction,
   text: string,
-): Promise<{ targetId: string; merged: Receipt } | null> {
+): Promise<{ targetId: string; merged: Extraction } | null> {
   const since = new Date(
     Date.now() - MERGE_LOOKBACK_DAYS * 86_400_000,
   ).toISOString();
   const { data: others } = await supabase
     .from("inbound_emails")
-    .select("id, extracted, merged_extracted, body_text")
+    .select("id, body_text")
     .eq("user_id", userId)
     .eq("status", "extracted")
     .neq("id", emailId)
     .gte("received_at", since);
 
   const candidateIds = (others ?? []).map((o) => o.id);
+  if (candidateIds.length === 0) return null;
+
+  // 突き合わせは実効値＝未確定 draft 行（作業状態）で行う。未確定が無いメールは
+  // 合体先にならない（確定済みには触らないため）。
+  const { data: draftRows } = await supabase
+    .from("inbound_drafts")
+    .select("email_id, kind, payload")
+    .eq("status", "pending")
+    .in("email_id", candidateIds);
+  const draftsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
+  for (const d of draftRows ?? []) {
+    const arr = draftsByEmail.get(d.email_id) ?? [];
+    arr.push(d);
+    draftsByEmail.set(d.email_id, arr);
+  }
+
   // 各候補に合体済みの子メールがあれば、その本文もマージ文脈に含める
   // （merged_into で辿る。referenceId では辿らない）。
   const childTextByParent = new Map<string, string[]>();
-  if (candidateIds.length > 0) {
-    const { data: children } = await supabase
-      .from("inbound_emails")
-      .select("merged_into, body_text")
-      .eq("user_id", userId)
-      .eq("status", "merged")
-      .in("merged_into", candidateIds);
-    for (const c of children ?? []) {
-      if (!c.merged_into || !c.body_text) continue;
-      const arr = childTextByParent.get(c.merged_into) ?? [];
-      arr.push(c.body_text);
-      childTextByParent.set(c.merged_into, arr);
-    }
+  const { data: children } = await supabase
+    .from("inbound_emails")
+    .select("merged_into, body_text")
+    .eq("user_id", userId)
+    .eq("status", "merged")
+    .in("merged_into", candidateIds);
+  for (const c of children ?? []) {
+    if (!c.merged_into || !c.body_text) continue;
+    const arr = childTextByParent.get(c.merged_into) ?? [];
+    arr.push(c.body_text);
+    childTextByParent.set(c.merged_into, arr);
   }
 
   const drafts: DraftCandidate[] = (others ?? []).flatMap((o) => {
-    // 突き合わせは実効値（合体済みなら合体後）で行う。
-    const r = (o.merged_extracted ?? o.extracted) as unknown as Receipt | null;
-    if (!r) return [];
+    const rows = draftsByEmail.get(o.id) ?? [];
+    if (rows.length === 0) return [];
     const texts = [o.body_text, ...(childTextByParent.get(o.id) ?? [])].filter(
       Boolean,
     );
-    return [{ id: o.id, receipt: r, text: texts.join("\n\n---\n") }];
+    return [
+      {
+        id: o.id,
+        extraction: extractionFromDrafts(rows),
+        text: texts.join("\n\n---\n"),
+      },
+    ];
   });
-  const candidates = selectMergeCandidates(receipt, drafts);
+  const candidates = selectMergeCandidates(extraction, drafts);
   if (candidates.length === 0) return null;
-  return findMerge(EXTRACT_MODEL, { receipt, text }, candidates);
+  return findMerge(EXTRACT_MODEL, { extraction, text }, candidates);
 }
 
 // 自動リトライ: レート制限など一時的な失敗のみ対象（パース不能等は恒久失敗で再試行
@@ -168,31 +257,46 @@ async function runExtraction(
     fetchLink: fetchReceiptLink,
   });
   const trips = await fetchTripHints(supabase, userId);
-  const { receipt, tripId, detailUrl } = await extractReceipt(EXTRACT_MODEL, {
-    subject,
-    text,
-    trips,
-  });
+  const { receipt, events, tripId, detailUrl } = await extractEmail(
+    EXTRACT_MODEL,
+    { subject, text, trips },
+  );
   // LLM が見つけた明細リンクのうち、未許可ホストを学習用に記録（ホスト名のみ）。
   await recordCandidateLink(supabase, detailUrl);
   const now = new Date().toISOString();
+  const extraction: Extraction = { receipt, events };
 
-  // 後からマージ: 同じ取引の未確定下書きがあれば合体する。
-  const merge = await tryMerge(supabase, userId, emailId, receipt, text);
-
-  if (merge) {
-    // ターゲットの「自分の」extracted は残し、合体結果は merged_extracted に。
+  // 費用も予定も見つからなかったメールは恒久エラー（リトライ対象外、受信箱に表示）。
+  // LLM は呼んだので extracted_at を立ててコストに数える。本文は用済みなので消す。
+  if (!receipt && events.length === 0) {
     await supabase
       .from("inbound_emails")
-      .update({ merged_extracted: merge.merged })
-      .eq("id", merge.targetId);
-    // 来たメールは merged として畳む。本文(body_text)は自分の行に残す。
+      .update({
+        status: "error",
+        extract_error: EXTRACT_ERROR_NO_CONTENT,
+        extracted_at: now,
+        body_text: null,
+        raw: null,
+        next_retry_at: null,
+      })
+      .eq("id", emailId);
+    return;
+  }
+
+  // 後からマージ: 同じ取引・予約の未確定下書きがあれば合体する。
+  const merge = await tryMerge(supabase, userId, emailId, extraction, text);
+
+  if (merge) {
+    // ターゲットの「自分の」extracted は残し、作業状態（pending draft 行）を合体結果で
+    // 置き換える（確定済みは触らない）。
+    await replacePendingDrafts(supabase, merge.targetId, merge.merged);
+    // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
     await supabase
       .from("inbound_emails")
       .update({
         status: "merged",
         merged_into: merge.targetId,
-        extracted: receipt,
+        extracted: extraction,
         extracted_at: now,
         body_text: text,
         raw: null,
@@ -205,7 +309,7 @@ async function runExtraction(
       .from("inbound_emails")
       .update({
         status: "extracted",
-        extracted: receipt,
+        extracted: extraction,
         extracted_at: now,
         // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
         body_text: text,
@@ -214,6 +318,8 @@ async function runExtraction(
         next_retry_at: null,
       })
       .eq("id", emailId);
+    // 作業状態（draft 行）を抽出結果で作る（エラーからの再抽出では作り直し）。
+    await replacePendingDrafts(supabase, emailId, extraction);
   }
 }
 
