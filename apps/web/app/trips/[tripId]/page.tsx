@@ -7,6 +7,8 @@ import { AddExpenseButton } from "@/components/add-expense-button";
 import { ChevronIcon } from "@/components/icons";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
+import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
+import { type EventFormMode } from "@/components/event-form";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
@@ -25,6 +27,7 @@ import {
 import {
   buildTripTzTimeline,
   resolveEventTz,
+  resolveExpenseTz,
   wallClockToUtcMs,
 } from "@triplot/shared/schedule";
 import {
@@ -35,8 +38,9 @@ import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
-import { matchPlace, type TripPlace } from "@/lib/receipt/placeMatch";
-import type { Receipt } from "@/lib/receipt/schema";
+import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
+import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
+import type { EventDraft, Receipt } from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Currency,
@@ -425,13 +429,15 @@ export default async function TripDetailPage({
     : (trip.start_date ?? today);
 
   // この旅行に割り当て済み・未確定の取り込み下書き（自分の分。RLS で own のみ）。
-  // 確定（費用化）はここの事前入力フォームで行う。
+  // 費用/予定の1項目 = inbound_drafts の1行。確定は費用/予定それぞれのセクションの
+  // 事前入力フォームで行う。
   const { data: tripDrafts } = await supabase
-    .from("inbound_emails")
-    .select("id, extracted, merged_extracted")
-    .eq("trip_id", tripId)
-    .eq("status", "extracted")
-    .order("received_at", { ascending: false });
+    .from("inbound_drafts")
+    .select("id, kind, payload, inbound_emails!inner(trip_id, status)")
+    .eq("inbound_emails.trip_id", tripId)
+    .eq("inbound_emails.status", "extracted")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
 
   const placesForMatch: TripPlace[] = places.map((p) => ({
     id: p.id,
@@ -439,46 +445,88 @@ export default async function TripDetailPage({
     formattedAddress: p.formatted_address,
   }));
 
-  const importDrafts = (tripDrafts ?? []).flatMap((d) => {
-    // 合体済みなら合体後の値で確定フォームを事前入力する。
-    const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
-    if (!r) return [];
-    const currency: Currency =
-      /^[A-Z]{3}$/.test(r.currency ?? "") ? r.currency : defaultCurrency;
-    const categoryId =
-      categories.find((c) => c.name === r.category)?.id ?? initialCategoryId;
-    const matched = matchPlace(
-      { merchant: r.merchant, location: r.location },
-      placesForMatch,
-    );
-    const place = matched
+  // 名前・場所ヒントを保存済みの場所に照合。マッチすればそれを事前入力し、無ければ
+  // 確定フォームで Google に自動解決して（高確信なら）丸める。
+  const matchSavedPlace = (name: string, location: string | null) => {
+    const matched = matchPlace({ merchant: name, location }, placesForMatch);
+    return matched
       ? {
           kind: "saved" as const,
           id: matched.placeId,
           name: places.find((p) => p.id === matched.placeId)?.name ?? "",
         }
       : null;
-    return [
-      {
-        id: d.id,
-        // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
-        labelParts: [
-          r.merchant || t("tripDetail.unknownMerchant"),
-          `${r.total} ${r.currency}`,
-          r.date,
-        ],
-        initialPrice: r.total,
-        initialCurrency: currency,
-        initialCategoryId: categoryId,
-        initialPaidAt: r.date,
-        // 店名はメモではなく場所へ。保存済みにマッチすればそれを使い、無ければ確定フォームで
-        // Google に自動解決して（高確信なら）丸める。低確信は店名のままテキスト場所になる。
-        initialPlace: place,
-        autoResolvePlace: place ? null : { name: r.merchant, location: r.location },
-        initialTime: r.time ?? undefined,
-      },
-    ];
-  });
+  };
+
+  const importDrafts = (tripDrafts ?? [])
+    .filter((d) => d.kind === "expense")
+    .flatMap((d) => {
+      const r = d.payload as unknown as Receipt | null;
+      if (!r) return [];
+      const currency: Currency =
+        /^[A-Z]{3}$/.test(r.currency ?? "") ? r.currency : defaultCurrency;
+      const categoryId =
+        categories.find((c) => c.name === r.category)?.id ?? initialCategoryId;
+      const place = matchSavedPlace(r.merchant, r.location);
+      return [
+        {
+          id: d.id,
+          // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
+          labelParts: [
+            r.merchant || t("tripDetail.unknownMerchant"),
+            `${r.total} ${r.currency}`,
+            r.date,
+          ],
+          initialPrice: r.total,
+          initialCurrency: currency,
+          initialCategoryId: categoryId,
+          initialPaidAt: r.date,
+          // 店名はメモではなく場所へ（低確信は店名のままテキスト場所になる）。
+          initialPlace: place,
+          autoResolvePlace: place ? null : { name: r.merchant, location: r.location },
+          initialTime: r.time ?? undefined,
+        },
+      ];
+    });
+
+  // 予定の下書き → EventForm の create モード＋事前入力へ。
+  const eventDrafts = (tripDrafts ?? [])
+    .filter((d) => d.kind === "event")
+    .flatMap((d) => {
+      const ev = d.payload as unknown as EventDraft | null;
+      if (!ev) return [];
+      // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
+      const res = resolveExpenseTz(ev.startDate, tzTimeline);
+      const tz = res.kind === "single" ? res.tz : res.options[0].tz;
+      // 場所ヒント: transit のタイトルは区間表記（NRT-HNL）で場所ではないので location のみ。
+      const placeName = ev.kind === "transit" ? ev.location : ev.title;
+      const place = placeName ? matchSavedPlace(placeName, ev.location) : null;
+      const title = ev.title || t("common.untitledEvent");
+      const whenLabel = eventDraftWhenLabel(ev, locale);
+      const formState: EventFormMode = {
+        mode: "create",
+        date: ev.startDate,
+        time: ev.startTime ?? "09:00",
+        tz,
+        prefill: {
+          kind3: ev.kind,
+          title: ev.title,
+          note: ev.referenceId
+            ? t("tripDetail.reservationRefNote", { ref: ev.referenceId })
+            : null,
+          endDate: ev.endDate,
+          endTime: ev.endTime,
+          departTz: ev.departTz,
+          arriveTz: ev.arriveTz,
+          place,
+          autoResolvePlace:
+            place || !placeName
+              ? null
+              : { name: placeName, location: ev.location },
+        },
+      };
+      return [{ id: d.id, labelParts: [title, whenLabel], tz, formState }];
+    });
 
   return (
     <main className="mx-auto w-full max-w-3xl px-6 py-10">
@@ -546,6 +594,39 @@ export default async function TripDetailPage({
           biasCenter={placesBiasCenter}
           myMemberId={me.id}
         />
+
+        {eventDrafts.length > 0 && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+              {t("tripDetail.pendingImports", { count: eventDrafts.length })}
+              <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
+                {t("tripDetail.importEventHelp")}
+              </HelpTip>
+            </div>
+            <div className="mt-3 space-y-2">
+              {eventDrafts.map((d) => (
+                <EventDraftConfirmButton
+                  key={d.id}
+                  draftId={d.id}
+                  labelParts={d.labelParts}
+                  tripId={tripId}
+                  defaultTz={d.tz}
+                  tripStart={trip.start_date}
+                  tripEnd={trip.end_date}
+                  state={d.formState}
+                  places={placesForPicker}
+                  members={activeMembers.map((m) => ({
+                    id: m.id,
+                    display_name: m.display_name,
+                    color: m.color,
+                  }))}
+                  biasCenter={placesBiasCenter}
+                  tzTimeline={tzTimeline}
+                />
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       <section className="mt-10 space-y-6">

@@ -36,7 +36,8 @@
     "deleting": "削除中...",
     "adding": "追加中...",
     "saving": "保存中...",
-    "copied": "コピーしました"
+    "copied": "コピーしました",
+    "untitledEvent": "(タイトル不明)"
   },
   "settings": {
     "heading": "設定",
@@ -82,7 +83,9 @@
     "expenseSummaryPrivate": "プライベート合計",
     "expenseSummaryTotal": "合計",
     "expenseSummarySettlement": "精算",
-    "expenseSummaryAverageRate": "平均レート: {rates}"
+    "expenseSummaryAverageRate": "平均レート: {rates}",
+    "importEventHelp": "メールから抽出した下書きです。内容を確認・確定すると予定になります。",
+    "reservationRefNote": "予約番号 {ref}"
   },
   "members": {
     "heading": "メンバー",
@@ -483,14 +486,14 @@
   },
   "import": {
     "heading": "取り込み",
-    "description": "転送したメールから抽出した費用の下書きです。この画面では旅行の割り当てを変更できます。確定は各旅行の画面で行ってください。",
+    "description": "転送したメールから抽出した費用・予定の下書きです。この画面では旅行の割り当てを変更できます。確定は各旅行の画面で行ってください。",
     "forwardLabel": "メールの転送先",
     "usageCount": "今月の取り込み: {used} / {cap} 件",
     "overQuotaWarning": "⚠ 今月の上限（{cap}件）に達したため、{over}件が未処理のまま保留されています。翌月にリセットされます。",
     "errorWillRetry": "取り込みに失敗しました。時間をおいて自動で再試行します。",
     "errorNoRetry": "取り込みに失敗しました（再試行できませんでした）。",
     "dismiss": "破棄",
-    "emptyState": "まだ下書きはありません。上の転送先アドレスにレシートを転送してみてください。",
+    "emptyState": "まだ下書きはありません。上の転送先アドレスにレシートや予約確認メールを転送してみてください。",
     "unknownMerchant": "(店名不明)",
     "noContent": "(読み取り内容なし)",
     "selectTrip": "（旅行を選択）",
@@ -501,7 +504,9 @@
     "adjustment": "（調整）",
     "split": "分割",
     "copyAddress": "アドレスをコピー",
-    "confirmFormLabel": "取り込みを確定"
+    "confirmFormLabel": "取り込みを確定",
+    "errorNoContent": "取り込める費用・予定が見つかりませんでした。",
+    "dismissDraftTitle": "この下書きを破棄しますか？"
   },
   "avatar": {
     "changeAria": "アバターを変更",

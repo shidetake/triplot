@@ -56,7 +56,7 @@ const fieldCls = "block min-w-0 text-sm";
 //  - timed   : 通常（日付＋時刻。単一TZ）
 //  - allday  : 終日（開始日〜終了日。複数日もこれ。TZ無関係）
 //  - transit : タイムゾーン跨ぎ（出発と到着で日付もTZも変わる＝フライト等）
-type Kind3 = "timed" | "allday" | "transit";
+export type Kind3 = "timed" | "allday" | "transit";
 
 // 壁時計の (date,time) ↔ 通算分。Date.UTC を計算専用に使い、ローカルTZは
 // 一切経由しない（floating time を保つ）。
@@ -77,6 +77,20 @@ function minToDt(min: number): { date: string; time: string } {
 }
 
 
+// 取り込み下書きの事前入力（メール取り込みの確定で使う）。開始日時・通常予定のTZは
+// create モードの date/time/tz で渡すので、ここはそれ以外の初期値だけ。
+export type EventFormPrefill = {
+  kind3: Kind3;
+  title: string;
+  note: string | null;
+  endDate: string | null; // timed の終了日 / allday のチェックアウト日 / transit の到着日
+  endTime: string | null; // timed の終了時刻 / transit の到着時刻
+  departTz: string | null; // transit のみ（null ならフォーム既定にフォールバック）
+  arriveTz: string | null;
+  place: PlacePickerInitial;
+  autoResolvePlace: { name: string; location?: string | null } | null;
+};
+
 export type EventFormMode =
   | {
       mode: "create";
@@ -88,6 +102,8 @@ export type EventFormMode =
       // PC ドラッグで作成した時の終了時刻("HH:MM")。同日扱い。未指定なら
       // 既存の "開始+1時間" がデフォルト。
       endTime?: string;
+      // 取り込み下書きの事前入力。
+      prefill?: EventFormPrefill;
     }
   | { mode: "edit"; event: ScheduleEvent; canChangeVisibility: boolean };
 
@@ -109,6 +125,7 @@ export function EventForm({
   biasCenter,
   tzTimeline,
   onDone,
+  onSuccess,
 }: {
   tripId: string;
   defaultTz: string; // 個別TZの初期値（= 前回入力 or ブラウザTZ）
@@ -120,20 +137,24 @@ export function EventForm({
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   tzTimeline: TripTzTimeline;
   onDone: () => void;
+  // 追加/更新が成功したときだけ呼ぶ（× 閉じでは呼ばれない）。追加成功時は
+  // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
+  onSuccess?: (eventId?: string) => void;
 }) {
   const isEdit = formMode.mode === "edit";
   const ev = isEdit ? formMode.event : null;
+  const prefill = formMode.mode === "create" ? (formMode.prefill ?? null) : null;
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   // 場所欄の初期値。編集時は既存の place_id から復元する（自由入力も
-  // place_id に解決済みなので saved として戻る）。
+  // place_id に解決済みなので saved として戻る）。新規は取り込みの事前入力。
   const placePickerInitial: PlacePickerInitial = ev?.placeId
     ? {
         kind: "saved",
         id: ev.placeId,
         name: places.find((p) => p.id === ev.placeId)?.name ?? "",
       }
-    : null;
+    : (prefill?.place ?? null);
 
   const action = isEdit
     ? updateEventAction.bind(null, tripId)
@@ -147,7 +168,8 @@ export function EventForm({
 
   const [kind3, setKind3] = useDraft<Kind3>(
     "kind3",
-    initialKind3(ev, formMode.mode === "create" && formMode.allDay === true),
+    prefill?.kind3 ??
+      initialKind3(ev, formMode.mode === "create" && formMode.allDay === true),
   );
   const [visibility, setVisibility] = useDraft<Visibility>(
     "visibility",
@@ -162,8 +184,14 @@ export function EventForm({
 
   // タイトル・メモは元々 uncontrolled（defaultValue）だが、シートのアンマウントを跨いで
   // 残すため controlled にする。
-  const [title, setTitle] = useDraft<string>("title", ev?.title ?? "");
-  const [note, setNote] = useDraft<string>("note", ev?.note ?? "");
+  const [title, setTitle] = useDraft<string>(
+    "title",
+    ev?.title ?? prefill?.title ?? "",
+  );
+  const [note, setNote] = useDraft<string>(
+    "note",
+    ev?.note ?? prefill?.note ?? "",
+  );
 
   // 参加者。「全員」モードと「個別」モードの2状態。
   //  - "all"    = 全員参加（送信時は participant_member_ids を一切送らない）
@@ -196,9 +224,10 @@ export function EventForm({
   useEffect(() => {
     if (state.ok) {
       clearDraft(); // 成功＝この下書きは用済み（シート時のみ実体あり）
+      onSuccess?.(state.eventId); // 成功時のみ（取り込み下書きを確定済みにする等）
       onDone();
     }
-  }, [state.ok, onDone, clearDraft]);
+  }, [state.ok, state.eventId, onSuccess, onDone, clearDraft]);
 
   // 壁時計文字列を date / time に割る
   const splitWall = (s: string | null) => {
@@ -232,9 +261,14 @@ export function EventForm({
   const initEMin =
     isEdit && endInit.date
       ? dtToMin(endInit.date, endInit.time || "00:00")
-      : formMode.mode === "create" && formMode.endTime
-        ? dtToMin(formMode.date, formMode.endTime)
-        : initSMin + 60;
+      : prefill && (prefill.endDate || prefill.endTime)
+        ? dtToMin(
+            prefill.endDate || startInit.date,
+            prefill.endTime || startInit.time || "09:00",
+          )
+        : formMode.mode === "create" && formMode.endTime
+          ? dtToMin(formMode.date, formMode.endTime)
+          : initSMin + 60;
   const [eDate, setEDate] = useDraft("eDate", minToDt(initEMin).date);
   const [eTime, setETime] = useDraft("eTime", minToDt(initEMin).time);
 
@@ -295,20 +329,25 @@ export function EventForm({
   );
   const [arriveDate, setArriveDate] = useDraft(
     "arriveDate",
-    endInit.date || transitArriveInit.date,
+    endInit.date || prefill?.endDate || transitArriveInit.date,
   );
   const [arriveTime, setArriveTime] = useDraft(
     "arriveTime",
-    endInit.time || transitArriveInit.time,
+    endInit.time || prefill?.endTime || transitArriveInit.time,
   );
   // 時差移動は常に実IANA文字列（transitイベントのstart_tz/end_tzは必ず非null）。
-  const departTzInit = isEdit ? (ev!.startTz ?? defaultTz) : formMode.tz;
+  const departTzInit = isEdit
+    ? (ev!.startTz ?? defaultTz)
+    : (prefill?.departTz ?? formMode.tz);
   const [departTz, setDepartTz] = useDraft("departTz", departTzInit);
-  const [arriveTz, setArriveTz] = useDraft("arriveTz", endTzInit);
+  const [arriveTz, setArriveTz] = useDraft(
+    "arriveTz",
+    prefill?.arriveTz ?? endTzInit,
+  );
   const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
   const [alldayEnd, setAlldayEnd] = useDraft(
     "alldayEnd",
-    endInit.date || startInit.date,
+    endInit.date || prefill?.endDate || startInit.date,
   );
 
   // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
@@ -460,6 +499,7 @@ export function EventForm({
               places={places}
               biasCenter={biasCenter}
               initial={placePickerInitial}
+              autoResolve={prefill?.autoResolvePlace}
               placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
             />
           </APIProvider>
@@ -468,6 +508,7 @@ export function EventForm({
             places={places}
             biasCenter={biasCenter}
             initial={placePickerInitial}
+            autoResolve={prefill?.autoResolvePlace}
             placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
           />
         )}

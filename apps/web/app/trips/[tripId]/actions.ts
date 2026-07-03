@@ -47,6 +47,8 @@ import type { Currency, Visibility } from "@triplot/shared/types/database";
 export type CreateExpenseState = {
   error: string | null;
   ok: boolean;
+  // 作成成功時の費用 id（取り込み下書きの確定リンクに使う。更新では undefined）。
+  expenseId?: string;
 };
 
 export type UpdateTripState = { ok: boolean; error: string | null };
@@ -185,7 +187,7 @@ export async function createExpenseAction(
   }
 
   revalidatePath(`/trips/${tripId}`);
-  return { ok: true, error: null };
+  return { ok: true, error: null, expenseId: result.data };
 }
 
 // 既存費用の編集。createExpenseAction とほぼ同じ場所解決の 3 分岐を辿る。
@@ -531,6 +533,8 @@ export async function setPlaceLocationAction(
 export type EventMutationState = {
   error: string | null;
   ok: boolean;
+  // 作成成功時の予定 id（取り込み下書きの確定リンクに使う。更新では undefined）。
+  eventId?: string;
 };
 
 type EventKind = "normal" | "transit";
@@ -759,7 +763,7 @@ export async function createEventAction(
   }
 
   revalidatePath(`/trips/${tripId}`);
-  return { ok: true, error: null };
+  return { ok: true, error: null, eventId: result.data };
 }
 
 export async function updateEventAction(

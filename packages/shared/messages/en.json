@@ -36,7 +36,8 @@
     "deleting": "Deleting...",
     "adding": "Adding...",
     "saving": "Saving...",
-    "copied": "Copied"
+    "copied": "Copied",
+    "untitledEvent": "(untitled)"
   },
   "settings": {
     "heading": "Settings",
@@ -82,7 +83,9 @@
     "expenseSummaryPrivate": "Private total",
     "expenseSummaryTotal": "Total",
     "expenseSummarySettlement": "Settlement",
-    "expenseSummaryAverageRate": "Average rate: {rates}"
+    "expenseSummaryAverageRate": "Average rate: {rates}",
+    "importEventHelp": "Drafts extracted from emails. Review and confirm to add them as events.",
+    "reservationRefNote": "Confirmation # {ref}"
   },
   "members": {
     "heading": "Members",
@@ -483,14 +486,14 @@
   },
   "import": {
     "heading": "Imports",
-    "description": "These are expense drafts extracted from forwarded emails. You can change the trip assignment here. Confirm them from within each trip.",
+    "description": "These are expense and event drafts extracted from forwarded emails. You can change the trip assignment here. Confirm them from within each trip.",
     "forwardLabel": "Forward emails to",
     "usageCount": "This month: {used} / {cap}",
     "overQuotaWarning": "⚠ You've reached this month's limit ({cap}). {over} email(s) are on hold and will be processed next month.",
     "errorWillRetry": "Import failed. Will retry automatically later.",
     "errorNoRetry": "Import failed (could not retry).",
     "dismiss": "Dismiss",
-    "emptyState": "No drafts yet. Try forwarding a receipt to the address above.",
+    "emptyState": "No drafts yet. Try forwarding a receipt or booking confirmation to the address above.",
     "unknownMerchant": "(unknown store)",
     "noContent": "(no content extracted)",
     "selectTrip": "(select a trip)",
@@ -501,7 +504,9 @@
     "adjustment": "(adjustment)",
     "split": "Split",
     "copyAddress": "Copy address",
-    "confirmFormLabel": "Confirm import"
+    "confirmFormLabel": "Confirm import",
+    "errorNoContent": "No expenses or events could be extracted.",
+    "dismissDraftTitle": "Dismiss this draft?"
   },
   "avatar": {
     "changeAria": "Change avatar",

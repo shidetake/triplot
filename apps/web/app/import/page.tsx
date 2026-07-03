@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { getTranslations } from "next-intl/server";
+import { getLocale, getTranslations } from "next-intl/server";
 
 import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -8,20 +8,36 @@ import { CloseButton } from "@/components/close-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
-import { buildImportAddress } from "@/lib/receipt/inboundAddress";
-import { MONTHLY_EMAIL_CAP } from "@/lib/receipt/importConfig";
-import type { Receipt } from "@/lib/receipt/schema";
+import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
+import { buildImportAddress } from "@/lib/import/inboundAddress";
+import { MONTHLY_EMAIL_CAP } from "@/lib/import/importConfig";
+import { EXTRACT_ERROR_NO_CONTENT } from "@/lib/import/process";
+import type { EventDraft, Extraction, Receipt } from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
 
 import {
   assignTripAction,
-  dismissDraftAction,
+  dismissEmailAction,
   unmergeAction,
 } from "./actions";
+
+// 抽出結果の要約部品（店名 or 予定タイトル / 金額 / 日付）。合体明細の行に出す。
+function extractionSummary(
+  x: Extraction | null,
+  fallback: string,
+): { title: string; amount: string | null; date: string | null } {
+  const first = x?.events[0] ?? null;
+  return {
+    title: x?.receipt?.merchant || first?.title || fallback,
+    amount: x?.receipt ? `${x.receipt.total} ${x.receipt.currency}` : null,
+    date: x?.receipt?.date ?? first?.startDate ?? null,
+  };
+}
 
 export default async function ImportPage() {
   const t = await getTranslations("import");
   const tCommon = await getTranslations("common");
+  const locale = await getLocale();
   const supabase = await createClient();
   const {
     data: { user },
@@ -43,12 +59,29 @@ export default async function ImportPage() {
     .filter((trip): trip is NonNullable<typeof trip> => trip !== null);
   const tripTitle = new Map(trips.map((trip) => [trip.id, trip.title]));
 
-  // 自分の抽出済み下書き（RLS で自分の行のみ）。割当済も未割当もここに出す。
-  const { data: drafts } = await supabase
+  // 自分の抽出済みメール（RLS で自分の行のみ）。割当済も未割当もここに出す。
+  const { data: emails } = await supabase
     .from("inbound_emails")
-    .select("id, received_at, subject, extracted, merged_extracted, trip_id")
+    .select("id, received_at, subject, extracted, trip_id")
     .eq("status", "extracted")
     .order("received_at", { ascending: false });
+
+  // 各メールの未確定の下書き（作業状態）。確定済みは各旅行に反映済みなので出さない。
+  const emailIds = (emails ?? []).map((e) => e.id);
+  const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
+  if (emailIds.length > 0) {
+    const { data: draftRows } = await supabase
+      .from("inbound_drafts")
+      .select("email_id, kind, payload")
+      .eq("status", "pending")
+      .in("email_id", emailIds)
+      .order("created_at", { ascending: true });
+    for (const d of draftRows ?? []) {
+      const arr = itemsByEmail.get(d.email_id) ?? [];
+      arr.push(d);
+      itemsByEmail.set(d.email_id, arr);
+    }
+  }
 
   // 取り込みに失敗した行（RLS で自分の行のみ）。next_retry_at があれば自動リトライ待ち。
   const { data: errorRows } = await supabase
@@ -70,38 +103,44 @@ export default async function ImportPage() {
     .select("id", { count: "exact", head: true })
     .eq("status", "over_quota");
 
-  // 各下書きに合体された子メール（誤マージ確認・split 用）。
-  const draftIds = (drafts ?? []).map((d) => d.id);
+  // 各メールに合体された子メール（誤マージ確認・split 用）。
   const childrenByParent = new Map<
     string,
-    { id: string; receipt: Receipt | null }[]
+    { id: string; own: Extraction | null }[]
   >();
-  if (draftIds.length > 0) {
+  if (emailIds.length > 0) {
     const { data: children } = await supabase
       .from("inbound_emails")
       .select("id, extracted, merged_into")
       .eq("status", "merged")
-      .in("merged_into", draftIds);
+      .in("merged_into", emailIds);
     for (const c of children ?? []) {
       if (!c.merged_into) continue;
       const arr = childrenByParent.get(c.merged_into) ?? [];
-      arr.push({ id: c.id, receipt: c.extracted as unknown as Receipt | null });
+      arr.push({ id: c.id, own: c.extracted as unknown as Extraction | null });
       childrenByParent.set(c.merged_into, arr);
     }
   }
 
-  const rows = (drafts ?? []).map((d) => {
-    // 実効値（合体済みなら合体後）を表示・推測に使う。own は各メール「自分の」値。
+  const rows = (emails ?? []).map((e) => {
+    // 表示・推測は作業状態＝未確定の下書き行で行う。own は各メール「自分の」抽出値。
     // 単一推測は抽出時に自動割り当て済み。ここに残る未割当は人が選ぶだけ。
-    const r = (d.merged_extracted ?? d.extracted) as unknown as Receipt | null;
-    const own = d.extracted as unknown as Receipt | null;
+    const items = itemsByEmail.get(e.id) ?? [];
+    const receipt =
+      (items.find((i) => i.kind === "expense")?.payload as
+        | Receipt
+        | undefined) ?? null;
+    const events = items
+      .filter((i) => i.kind === "event")
+      .map((i) => i.payload as EventDraft);
     return {
-      id: d.id,
-      receipt: r,
-      own,
-      assignedTripId: d.trip_id,
-      defaultTripId: d.trip_id ?? "",
-      children: childrenByParent.get(d.id) ?? [],
+      id: e.id,
+      receipt,
+      events,
+      own: e.extracted as unknown as Extraction | null,
+      assignedTripId: e.trip_id,
+      defaultTripId: e.trip_id ?? "",
+      children: childrenByParent.get(e.id) ?? [],
     };
   });
 
@@ -142,10 +181,14 @@ export default async function ImportPage() {
                   {e.subject || e.sender || t("unknownMerchant")}
                 </div>
                 <div className="mt-0.5 text-xs text-red-700">
-                  {e.next_retry_at ? t("errorWillRetry") : t("errorNoRetry")}
+                  {e.extract_error === EXTRACT_ERROR_NO_CONTENT
+                    ? t("errorNoContent")
+                    : e.next_retry_at
+                      ? t("errorWillRetry")
+                      : t("errorNoRetry")}
                 </div>
               </div>
-              <form action={dismissDraftAction}>
+              <form action={dismissEmailAction}>
                 <input type="hidden" name="id" value={e.id} />
                 <CloseButton type="submit" label={t("dismiss")} className="h-7 w-7" />
               </form>
@@ -165,29 +208,42 @@ export default async function ImportPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
-                    {row.receipt?.merchant || t("unknownMerchant")}
+                    {row.receipt?.merchant ||
+                      row.events[0]?.title ||
+                      t("unknownMerchant")}
                   </div>
-                  <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                    {row.receipt ? (
-                      <>
-                        <span>
-                          {row.receipt.total} {row.receipt.currency}
-                        </span>
-                        <InlineDivider />
-                        <span>{row.receipt.date}</span>
-                        <InlineDivider />
-                        <span>{row.receipt.category}</span>
-                        {row.receipt.location ? (
-                          <>
-                            <InlineDivider />
-                            <span>{row.receipt.location}</span>
-                          </>
-                        ) : null}
-                      </>
-                    ) : (
-                      t("noContent")
-                    )}
-                  </div>
+                  {row.receipt && (
+                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                      <span>
+                        {row.receipt.total} {row.receipt.currency}
+                      </span>
+                      <InlineDivider />
+                      <span>{row.receipt.date}</span>
+                      <InlineDivider />
+                      <span>{row.receipt.category}</span>
+                      {row.receipt.location ? (
+                        <>
+                          <InlineDivider />
+                          <span>{row.receipt.location}</span>
+                        </>
+                      ) : null}
+                    </div>
+                  )}
+                  {row.events.map((ev, i) => (
+                    <div
+                      key={i}
+                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
+                    >
+                      <span>{ev.title || tCommon("untitledEvent")}</span>
+                      <InlineDivider />
+                      <span>{eventDraftWhenLabel(ev, locale)}</span>
+                    </div>
+                  ))}
+                  {!row.receipt && row.events.length === 0 && (
+                    <div className="mt-1 text-sm text-muted-foreground">
+                      {t("noContent")}
+                    </div>
+                  )}
 
                   {/* 旅行の割り当て */}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -241,54 +297,66 @@ export default async function ImportPage() {
                         {t("mergedSummary", { count: row.children.length + 1 })}
                       </summary>
                       <div className="mt-2 space-y-1">
-                        {/* この下書き自身の元メール（分けられない本体） */}
-                        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
-                          <span>{row.own?.merchant || t("unknownMerchant")}</span>
-                          <InlineDivider />
-                          <span>
-                            {row.own?.total} {row.own?.currency}
-                          </span>
-                          <InlineDivider />
-                          <span>
-                            {row.own?.date}
-                            {row.own?.isUpdate ? t("adjustment") : ""}
-                          </span>
-                        </div>
+                        {/* このメール自身の元の抽出値（分けられない本体） */}
+                        {(() => {
+                          const s = extractionSummary(row.own, t("unknownMerchant"));
+                          return (
+                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                              <span>{s.title}</span>
+                              {s.amount && (
+                                <>
+                                  <InlineDivider />
+                                  <span>{s.amount}</span>
+                                </>
+                              )}
+                              <InlineDivider />
+                              <span>
+                                {s.date}
+                                {row.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                              </span>
+                            </div>
+                          );
+                        })()}
                         {/* 合体された子メール（分けられる） */}
-                        {row.children.map((ch) => (
-                          <div
-                            key={ch.id}
-                            className="flex items-center justify-between gap-2 rounded bg-muted px-2 py-1"
-                          >
-                            <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                              <span>{ch.receipt?.merchant || t("unknownMerchant")}</span>
-                              <InlineDivider />
-                              <span>
-                                {ch.receipt?.total} {ch.receipt?.currency}
+                        {row.children.map((ch) => {
+                          const s = extractionSummary(ch.own, t("unknownMerchant"));
+                          return (
+                            <div
+                              key={ch.id}
+                              className="flex items-center justify-between gap-2 rounded bg-muted px-2 py-1"
+                            >
+                              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                <span>{s.title}</span>
+                                {s.amount && (
+                                  <>
+                                    <InlineDivider />
+                                    <span>{s.amount}</span>
+                                  </>
+                                )}
+                                <InlineDivider />
+                                <span>
+                                  {s.date}
+                                  {ch.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                                </span>
                               </span>
-                              <InlineDivider />
-                              <span>
-                                {ch.receipt?.date}
-                                {ch.receipt?.isUpdate ? t("adjustment") : ""}
-                              </span>
-                            </span>
-                            <form action={unmergeAction}>
-                              <input type="hidden" name="id" value={ch.id} />
-                              <button
-                                type="submit"
-                                className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
-                              >
-                                {t("split")}
-                              </button>
-                            </form>
-                          </div>
-                        ))}
+                              <form action={unmergeAction}>
+                                <input type="hidden" name="id" value={ch.id} />
+                                <button
+                                  type="submit"
+                                  className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
+                                >
+                                  {t("split")}
+                                </button>
+                              </form>
+                            </div>
+                          );
+                        })}
                       </div>
                     </details>
                   )}
                 </div>
 
-                <form action={dismissDraftAction}>
+                <form action={dismissEmailAction}>
                   <input type="hidden" name="id" value={row.id} />
                   <CloseButton type="submit" label={t("dismiss")} className="h-8 w-8" />
                 </form>

@@ -111,7 +111,8 @@ export function ExpenseForm({
   editExpense?: ExpenseRow;
   canChangeVisibility?: boolean;
   onDone?: () => void;
-  onSuccess?: () => void;
+  // 追加成功時は作成した費用の id が渡る（更新成功時は undefined）。
+  onSuccess?: (expenseId?: string) => void;
   initialPrice?: number;
   initialNote?: string;
   initialPlace?: PlacePickerInitial;
@@ -348,10 +349,10 @@ export function ExpenseForm({
     if (state.ok) {
       formRef.current?.reset();
       clearDraft(); // 成功＝この下書きは用済み。次に開いたら真っさら（シート時のみ実体あり）。
-      onSuccess?.(); // 成功時のみ（取り込み下書きを確定済みにする等）
+      onSuccess?.(state.expenseId); // 成功時のみ（取り込み下書きを確定済みにする等）
       onDone?.(); // 成功で閉じる
     }
-  }, [state.ok, onSuccess, onDone, clearDraft]);
+  }, [state.ok, state.expenseId, onSuccess, onDone, clearDraft]);
 
   const onCurrencyChange = (c: Currency) => {
     setLocalCurrency(c);

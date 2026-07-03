@@ -43,12 +43,13 @@ function eventBase(f: EventFields) {
   };
 }
 
+// 成功時は作成した予定の id を返す（取り込み下書きの確定リンクに使う）。
 export async function createEvent(
   sb: DB,
   tripId: string,
   f: EventFields,
   needsReservation: boolean,
-): Promise<Result<void>> {
+): Promise<Result<string>> {
   const base = { p_trip_id: tripId, ...eventBase(f) };
   const pr = placeRpcArgs(f.place);
   let eventId: string | null = null;
@@ -76,16 +77,17 @@ export async function createEvent(
     error = e;
   }
   if (error) return err(error.message);
+  if (!eventId) return err("create_event returned no id");
 
   // 要予約なら予約TODOを紐づける（作成直後なので未存在→新規作成）。
-  if (needsReservation && eventId) {
+  if (needsReservation) {
     const { error: rErr } = await sb.rpc("set_event_reservation", {
       p_event_id: eventId,
       p_needs: true,
     });
     if (rErr) return err(rErr.message);
   }
-  return ok(undefined);
+  return ok(eventId);
 }
 
 export async function updateEvent(

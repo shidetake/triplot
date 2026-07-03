@@ -40,30 +40,41 @@ function expenseBase(f: ExpenseFields) {
   };
 }
 
+// 成功時は作成した費用の id を返す（取り込み下書きの確定リンクに使う）。
 export async function createExpense(
   sb: DB,
   tripId: string,
   f: ExpenseFields,
-): Promise<Result<void>> {
+): Promise<Result<string>> {
   const base = { p_trip_id: tripId, ...expenseBase(f) };
   const pr = placeRpcArgs(f.place);
+  let expenseId: string | null = null;
   let error: { message: string } | null = null;
   if (pr.variant === "google") {
-    error = (
-      await sb.rpc("create_expense_with_place", { ...base, ...pr.args })
-    ).error;
+    const { data, error: e } = await sb.rpc("create_expense_with_place", {
+      ...base,
+      ...pr.args,
+    });
+    expenseId = data as string | null;
+    error = e;
   } else if (pr.variant === "free") {
-    error = (
-      await sb.rpc("create_expense_with_freetext_place", {
-        ...base,
-        ...pr.args,
-      })
-    ).error;
+    const { data, error: e } = await sb.rpc(
+      "create_expense_with_freetext_place",
+      { ...base, ...pr.args },
+    );
+    expenseId = data as string | null;
+    error = e;
   } else {
-    error = (await sb.rpc("create_expense", { ...base, ...pr.args })).error;
+    const { data, error: e } = await sb.rpc("create_expense", {
+      ...base,
+      ...pr.args,
+    });
+    expenseId = data as string | null;
+    error = e;
   }
   if (error) return err(error.message);
-  return ok(undefined);
+  if (!expenseId) return err("create_expense returned no id");
+  return ok(expenseId);
 }
 
 export async function updateExpense(
