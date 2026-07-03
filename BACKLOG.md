@@ -14,11 +14,14 @@
 ### 5. trip の磨き込み（小）— [x] 実装済み
 - [x] 費用カテゴリのカスタマイズ UI（デフォルト 11 カテゴリは読み取り専用、カスタムは追加・編集・削除可。`key = NULL` で `name` 直表示）
 
-### 7. 費用の自動取り込み（メール転送）— [x] 実装済み
-ユーザが `receipts+<token>@triplot.app` にレシートを転送 → LLM 抽出 → どの旅行か自動割り当て
-→ 旅行画面で確定。後からマージ・自動リトライ（Cloudflare 毎分 reconcile＋Retry-After）・
-over_quota 翌月再抽出・明細リンク enrichment まで実装。設計は `docs/design/import-flow.md` 参照。
-- [ ] 予定（events）の取り込みは未着手（今回は費用に絞った）
+### 7. 費用・予定の自動取り込み（メール転送）— [x] 実装済み
+ユーザが `receipts+<token>@triplot.app` にレシート/予約確認メールを転送 → LLM 抽出 →
+どの旅行か自動割り当て → 旅行画面で確定。後からマージ・自動リトライ（Cloudflare 毎分
+reconcile＋Retry-After）・over_quota 翌月再抽出・明細リンク enrichment まで実装。
+設計は `docs/design/import-flow.md` 参照。
+- [x] 予定（events）の取り込み — 実装済み（統一 `inbound_drafts` テーブルで 1メール =
+      費用 0..1 + 予定 0..N。フライト=transit・宿泊=終日・予約=timed、スケジュール変更
+      メールのマージ対応、旅行画面の予定セクションに事前入力フォーム）
 - [ ] 候補ホスト昇格ビュー → 下の「Admin 管理ページ」
 - [ ] link enrichment の自動 fetch（未知ホストを人ゲート無しで取得・SSRF/サイズ制限で限定）
 

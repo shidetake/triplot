@@ -1,17 +1,20 @@
-# 費用インポート（メール転送）設計
+# メール取り込み（費用・予定）設計
 
-ユーザが per-user の取り込み用アドレス（`receipts+<token>@triplot.app`）にレシート
-メールを転送すると、LLM で費用情報を抽出して下書きを作り、旅行に割り当て、最終的に
-費用として確定する。サービス俯瞰は [`architecture.md`](../architecture.md) を参照。
+ユーザが per-user の取り込み用アドレス（`receipts+<token>@triplot.app`）にレシートや
+予約確認メールを転送すると、LLM で**費用と予定**を抽出して下書きを作り、旅行に割り当て、
+最終的に費用・予定として確定する。サービス俯瞰は [`architecture.md`](../architecture.md) を参照。
 
 ## 全体像
 
-- **1メール = `inbound_emails` の1行**。複数メールが同一取引なら id リンク（`merged_into`）で
-  グループ化する。
+- **1メール = `inbound_emails` の1行**。複数メールが同一取引・同一予約なら id リンク
+  （`merged_into`）でグループ化する。
+- **1メールから費用 0..1 件 + 予定 0..N 件**が取れる（例: 往復航空券メール = 費用1 +
+  フライト2）。**下書きの1項目 = `inbound_drafts` の1行**（`kind` で費用/予定を区別）で、
+  項目ごとに個別に確定/破棄する。
 - **抽出と「どの旅行か」の割り当ては LLM の1回の呼び出しで同時に**行う。
-- **確定（費用化）の最終判断は人**。下書き＋レビュー方式。
-- **保持最小化**: 抽出後は丸ごと MIME（`raw`）を捨てて痩せ版（`body_text`）だけ残す。確定/破棄で
-  さらに消し、90日で cron が削除。
+- **確定（費用化・予定化）の最終判断は人**。下書き＋レビュー方式。
+- **保持最小化**: 抽出後は丸ごと MIME（`raw`）を捨てて痩せ版（`body_text`）だけ残す。
+  全項目の解決（メールの最終化）でさらに消し、90日で cron が削除。
 
 ## 1. 受信 → 抽出（push ＋ `after()`）
 
@@ -20,13 +23,13 @@
 
 ```mermaid
 sequenceDiagram
-  participant S as レシート送信元
+  participant S as メール送信元
   participant CF as Cloudflare<br/>Email Worker
   participant API as /api/inbound-email
   participant DB as Supabase
   participant LLM as AI Gateway
 
-  S->>CF: レシートメールを転送
+  S->>CF: レシート/予約確認メールを転送
   CF->>API: POST raw MIME（X-Inbound-Secret 認証）
   API->>DB: inbound_emails に保存（status=pending, user_id=宛先トークンから特定）
   API-->>CF: 200 OK（即時）
@@ -35,15 +38,29 @@ sequenceDiagram
     API->>DB: status=over_quota（抽出せず保留）
   else 範囲内
     API->>LLM: 抽出（件名＋本文＋PDF ＋ 候補旅行）
-    LLM-->>API: { receipt, tripId }
-    API->>DB: 直近の未確定下書きとマージ判定（referenceId / 店名・金額・日付）
-    alt 同一取引あり
-      API->>DB: 合体（target.merged_extracted ＝合体後 / 来たメール status=merged, merged_into=target）
+    LLM-->>API: { receipt?, events[], tripId }
+    alt 費用も予定も無い
+      API->>DB: status=error（恒久・リトライなし。受信箱に表示）
+    else 直近の未確定下書きと同一取引/予約（マージ判定）
+      API->>DB: ターゲットの未確定 draft 行を合体結果で置き換え / 来たメール status=merged
     else 新規
-      API->>DB: status=extracted, extracted=receipt, trip_id=推論結果, body_text=痩せ版, raw=null
+      API->>DB: status=extracted, extracted={receipt,events}, trip_id=推論結果
+      API->>DB: inbound_drafts に下書き行を作成（費用0..1 + 予定0..N）
     end
   end
 ```
+
+### 何を予定として抽出するか
+
+- 購入済み航空券などタイムゾーンを跨ぐ移動 = **transit**（往復は往路・復路で別の予定。
+  出発/到着の現地壁時計 + IANA タイムゾーン。TZ は空港・都市名から LLM が推論し、
+  実在検証（`Intl` の canonical 化）を通す。幻覚は null に落としフォームで人が選ぶ）
+- 宿泊予約 = **終日**（チェックイン日〜チェックアウト日）
+- レストラン・アクティビティ等の時刻のある予約 = **timed**
+- **済んだ消費（店頭レシート・利用明細）は予定にしない**。逆に金額の無いメール
+  （旅程のみ・リマインダー）は費用を作らない（`receipt = null`）
+- 時刻はすべて現地の壁時計のまま（events の floating time モデルと一致）。timed/終日の
+  TZ は保存せず旅程から導出する（[`timezone.md`](./timezone.md) の参照化モデル）
 
 ### LLM による旅行割り当て
 
@@ -94,7 +111,7 @@ sequenceDiagram
     alt 解禁済みの行がある
       Cron->>API: 再抽出（retryDueErrors）
       alt 成功
-        API->>DB: status=extracted（next_retry_at クリア）
+        API->>DB: status=extracted（next_retry_at クリア、未確定 draft 行を作り直し）
       else 再失敗
         API->>DB: retry_count++ / next_retry_at 延長（上限・恒久失敗で打ち切り）
       end
@@ -106,7 +123,7 @@ sequenceDiagram
   （こちらが制限値を知らなくてもサーバが解禁時刻を教えてくれる）。ヘッダが無ければ exp backoff
   （1分から倍々、6時間上限）。`MAX_RETRIES` 回で打ち切り。
 - **リトライ対象は一時的失敗のみ**。レート制限/タイムアウト等は `next_retry_at` をセット、パース不能
-  などの恒久失敗は `next_retry_at = null` で対象外（受信箱に「再試行できませんでした」と表示）。
+  や「費用も予定も見つからない」などの恒久失敗は `next_retry_at = null` で対象外（受信箱に表示）。
 - **トリガは Cloudflare の毎分 cron だけ**（受信箱を開いた時に動かす案は廃止：`after()` は応答後に
   走るので、確認しに来たユーザに失敗状態をそのまま見せてしまうため筋が悪い）。
 - **手動リトライボタンは置かない**: 失敗直後に押すと同じレート制限に当たるため。
@@ -114,11 +131,15 @@ sequenceDiagram
   同じく Cloudflare に逃がす（毎分・無料）。状態は DB が持つので、心拍 Worker はメール Worker と
   別の独立ユニット（[`architecture.md`](../architecture.md) の定期実行を参照）。
 
-## 3. 確定（下書き → 費用）
+## 3. 確定（下書き → 費用・予定）
 
-旅行に割り当てられた下書きは、旅行画面の「未確定の取り込み」に並ぶ。ここで人が支払者・割り勘・
-為替レートを確認して費用化する（`create_expense` RPC）。確定すると `resolve_inbound_email` が
-`status=confirmed` にし、`raw`・`body_text` と合体された子メールの痩せ版も消す。
+旅行に割り当てられた下書きは、旅行画面の「未確定の取り込み」に**費用は費用セクション、
+予定は予定セクション**に分かれて並ぶ。ここで人が内容を確認して1項目ずつ確定する
+（費用は支払者・割り勘・為替レートを確認して `create_expense`、予定は日時・場所・TZ を
+確認して `create_event`）。確定/破棄は `resolve_inbound_draft` が draft 行に記録し
+（作成した費用/予定の id も紐づく）、**メールの全項目が解決された時点でメールを自動で
+最終化**（1件でも確定があれば `confirmed`、全部破棄なら `dismissed`）して `raw`・
+`body_text`・合体された子メールの痩せ版を消す。
 
 ```mermaid
 sequenceDiagram
@@ -127,31 +148,37 @@ sequenceDiagram
   participant DB as Supabase
 
   U->>Trip: 旅行画面を開く
-  Trip->>DB: 割り当て済みの未確定下書きを取得（effective = merged_extracted ?? extracted）
-  Trip-->>U: 下書きをプリフィルした費用フォーム
-  U->>Trip: 支払者・割り勘・レートを確認して確定
-  Trip->>DB: create_expense（費用 + 割り勘を atomic に）
-  Trip->>DB: resolve_inbound_email(confirmed, expense_id) — raw/body_text/子を消去
+  Trip->>DB: 割り当て済み・未確定の下書き行を取得（費用/予定）
+  Trip-->>U: 下書きをプリフィルした費用/予定フォーム
+  U->>Trip: 内容を確認して1項目ずつ確定
+  Trip->>DB: create_expense / create_event（atomic）
+  Trip->>DB: resolve_inbound_draft(confirmed, 作成id)
+  Note over DB: 全項目解決 → メールを最終化（raw/body_text/子を消去）
 ```
 
-## 状態遷移（`inbound_emails.status`）
+- 受信箱の「破棄」（`dismiss_inbound_email`）は残っている未確定の下書きをまとめて破棄する
+  （確定済みはそのまま）。旅行画面の各下書き行の × は1項目だけ破棄する。
+
+## 状態遷移
+
+メール（`inbound_emails.status`）:
 
 ```mermaid
 stateDiagram-v2
   [*] --> pending: 受信・保存
-  pending --> extracted: 抽出成功
+  pending --> extracted: 抽出成功（下書き行を作成）
   pending --> merged: 既存下書きに合体
   pending --> over_quota: 月間上限超過
-  pending --> error: 抽出失敗
+  pending --> error: 抽出失敗 / 費用も予定も無い
 
   error --> extracted: リトライ成功
   error --> error: 再失敗（backoff 延長）
   over_quota --> extracted: 翌月に枠が空いて再抽出
   over_quota --> error: 再抽出が失敗
 
-  extracted --> confirmed: 費用化（旅行画面）
-  extracted --> dismissed: 破棄
-  merged --> dismissed: 親の確定/破棄で巻き込み解決
+  extracted --> confirmed: 全項目解決（1件でも確定）
+  extracted --> dismissed: 全項目破棄
+  merged --> dismissed: 親の最終化で巻き込み解決
 
   confirmed --> [*]
   dismissed --> [*]
@@ -162,27 +189,59 @@ stateDiagram-v2
   end note
 ```
 
+下書き（`inbound_drafts.status`）: `pending` →（旅行画面で確定）→ `confirmed`、または
+（× / 受信箱の破棄）→ `dismissed`。マージ・再抽出は **pending の行だけ**を置き換える
+（confirmed/dismissed は不変）。
+
 > `over_quota` は月間上限超過で保留された行。毎分の reconcile（retry-extract）が、ユーザの
 > 枠（`CAP − 当月抽出数`）が空いた分だけ少量ずつ再抽出する。月替わりでカウントが 0 に戻ると
 > 自動で drain される（ユーザの再転送は不要）。
 
+## マージ（同一取引・同一予約の複数メール）
+
+pending→確定・差額調整の決済メールや、**スケジュール変更・リマインダー**の予約メールは、
+既存の未確定下書きに合体させる。判定は LLM（referenceId 一致・店名/金額/日付の近さ・
+変更通知の関係）で、候補の事前絞り込み（referenceId 一致 or 日付が近い）だけ決定的に行う。
+
+- 合体結果は**ターゲットの未確定 draft 行を直接置き換える**（費用は差額調整を加算した最終
+  総額に、予定はスケジュール変更後の最新の旅程に。確定済みの行は触らない）。
+- 来たメールは `status=merged` + `merged_into` で畳む（draft 行は作らない）。
+- 各メールの `extracted` は「自分の」抽出結果のまま不変に保つ＝誤マージの取り消し（split）は
+  子を独立下書きに戻し、親子とも自分の `extracted` から未確定 draft 行を再生成する。
+  多重マージの合体が split で失われるのは許容（稀）。
+
 ## データモデルの要点
+
+`inbound_emails`（1メール = 1行。パイプライン状態と原本を持つ）:
 
 | 列 | 意味 |
 |---|---|
 | `status` | ライフサイクル（上の状態遷移図） |
 | `user_id` | 宛先トークン（`receipts+<token>@`）から特定。From には依存しない |
 | `raw` | 丸ごと MIME。抽出後 null（痩せ版に置換） |
-| `body_text` | 痩せ版本文（マージ判定の文脈に使う）。確定/破棄で null |
-| `extracted` | そのメール「自分の」抽出結果（Receipt） |
-| `merged_extracted` | 合体後の実効値（ターゲット行のみ）。表示・確定は `merged_extracted ?? extracted` |
+| `body_text` | 痩せ版本文（マージ判定の文脈に使う）。最終化で null |
+| `extracted` | そのメール「自分の」抽出結果 `{ receipt, events }`（不変。split の復元元） |
 | `merged_into` | 合体先（ターゲット）の id。グループはこれで辿る |
 | `trip_id` | LLM が割り当てた旅行（確信が無ければ null＝受信箱で人が選ぶ） |
 | `retry_count` / `next_retry_at` | 自動リトライの回数と次回期限 |
+
+`inbound_drafts`（下書きの1項目 = 1行。作業状態を持つ）:
+
+| 列 | 意味 |
+|---|---|
+| `email_id` | 親メール（on delete cascade） |
+| `kind` | `expense` / `event` |
+| `payload` | Receipt / EventDraft（`apps/web/lib/import/schema.ts` が契約） |
+| `status` | `pending` / `confirmed` / `dismissed` |
+| `expense_id` / `event_id` | 確定時に作成した費用/予定へのリンク（kind と整合を CHECK） |
 
 ## 設計判断メモ
 
 - **BYOK（ユーザ課金）が長期の既定**。早期は運用者課金の AI Gateway を意図的に loss-leader として使う
   （月間取り込み上限でコスト保護）。
-- **`expenses` テーブルは綺麗に保つ**。取り込みの不完全さ・provenance は `inbound_emails` 側に閉じ込める。
-- **全角→半角の正規化**を抽出結果の店名・場所・referenceId に適用（日本語・カタカナは保持）。
+- **`expenses` / `events` テーブルは綺麗に保つ**。取り込みの不完全さ・provenance は
+  `inbound_emails` / `inbound_drafts` 側に閉じ込める。
+- **全角→半角の正規化**を抽出結果の店名・場所・タイトル・referenceId に適用（日本語・カタカナは保持）。
+- **予定の検証は取り込み側で吸収**: LLM 出力の日付/時刻形式・TZ 実在・種別の整合は
+  `sanitizeEventDraft`（純関数）で補正し、使えない下書きは捨てる。確定フォームは通常の
+  予定フォームと同一（人の最終確認がゲート）。
