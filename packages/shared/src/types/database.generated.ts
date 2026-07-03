@@ -301,15 +301,68 @@ export type Database = {
           },
         ]
       }
+      inbound_drafts: {
+        Row: {
+          created_at: string
+          email_id: string
+          event_id: string | null
+          expense_id: string | null
+          id: string
+          kind: string
+          payload: Json
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          email_id: string
+          event_id?: string | null
+          expense_id?: string | null
+          id?: string
+          kind: string
+          payload: Json
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          email_id?: string
+          event_id?: string | null
+          expense_id?: string | null
+          id?: string
+          kind?: string
+          payload?: Json
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_drafts_email_id_fkey"
+            columns: ["email_id"]
+            isOneToOne: false
+            referencedRelation: "inbound_emails"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_drafts_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "inbound_drafts_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_emails: {
         Row: {
           body_text: string | null
-          expense_id: string | null
           extract_error: string | null
           extracted: Json | null
           extracted_at: string | null
           id: string
-          merged_extracted: Json | null
           merged_into: string | null
           message_id: string | null
           next_retry_at: string | null
@@ -326,12 +379,10 @@ export type Database = {
         }
         Insert: {
           body_text?: string | null
-          expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
-          merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
           next_retry_at?: string | null
@@ -348,12 +399,10 @@ export type Database = {
         }
         Update: {
           body_text?: string | null
-          expense_id?: string | null
           extract_error?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
-          merged_extracted?: Json | null
           merged_into?: string | null
           message_id?: string | null
           next_retry_at?: string | null
@@ -369,13 +418,6 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "inbound_emails_expense_id_fkey"
-            columns: ["expense_id"]
-            isOneToOne: false
-            referencedRelation: "expenses"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "inbound_emails_merged_into_fkey"
             columns: ["merged_into"]
@@ -958,10 +1000,15 @@ export type Database = {
         }
         Returns: string
       }
+      dismiss_inbound_email: { Args: { p_id: string }; Returns: undefined }
       ensure_import_token: { Args: never; Returns: string }
       ensure_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string
+      }
+      finalize_inbound_email_if_resolved: {
+        Args: { p_email_id: string; p_uid: string }
+        Returns: undefined
       }
       find_or_create_trip_freetext_place: {
         Args: { p_member_id: string; p_name: string; p_trip_id: string }
@@ -992,6 +1039,10 @@ export type Database = {
       nanoid: { Args: { size?: number }; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
       pick_member_color: { Args: { p_trip_id: string }; Returns: number }
+      rebuild_inbound_drafts: {
+        Args: { p_email_id: string }
+        Returns: undefined
+      }
       record_receipt_link_candidate: {
         Args: { p_host: string; p_sample_url?: string }
         Returns: undefined
@@ -1001,8 +1052,13 @@ export type Database = {
         Returns: string
       }
       remove_trip_member: { Args: { p_member_id: string }; Returns: undefined }
-      resolve_inbound_email: {
-        Args: { p_expense_id?: string; p_id: string; p_status: string }
+      resolve_inbound_draft: {
+        Args: {
+          p_event_id?: string
+          p_expense_id?: string
+          p_id: string
+          p_status: string
+        }
         Returns: undefined
       }
       seed_default_expense_categories: {
