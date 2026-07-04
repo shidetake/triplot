@@ -29,7 +29,7 @@ export default async function AdminPage() {
   // RLS の receipt_link_candidates_admin_select（is_app_admin()）で admin だけ読める。
   const { data: candidates } = await supabase
     .from("receipt_link_candidates")
-    .select("host, seen_count, sample_url, last_seen")
+    .select("host, seen_count, sample_url, last_seen, skipped_unsubscribe")
     .order("seen_count", { ascending: false })
     .order("last_seen", { ascending: false });
 
@@ -58,6 +58,11 @@ export default async function AdminPage() {
                   {isAllowedReceiptHost(c.host) && (
                     <span className="shrink-0 rounded bg-muted px-1.5 text-xs text-muted-foreground">
                       {t("promoted")}
+                    </span>
+                  )}
+                  {c.skipped_unsubscribe && (
+                    <span className="shrink-0 rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                      {t("unsubscribeWarning")}
                     </span>
                   )}
                 </div>

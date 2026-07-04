@@ -4,6 +4,7 @@ import { isBlockedIp } from "./ssrf";
 import {
   extractUrls,
   isAllowedReceiptHost,
+  isLikelyUnsubscribeUrl,
   isUnknownReceiptHostUrl,
   selectReceiptLinks,
 } from "./links";
@@ -54,6 +55,36 @@ describe("isUnknownReceiptHostUrl", () => {
   it("https 以外・不正 URL は対象外", () => {
     expect(isUnknownReceiptHostUrl("http://toasttab.com/r/ABC")).toBe(false);
     expect(isUnknownReceiptHostUrl("not a url")).toBe(false);
+  });
+});
+
+describe("isLikelyUnsubscribeUrl", () => {
+  it("代表的な配信解除キーワードを path/query どちらでも検知する", () => {
+    expect(
+      isLikelyUnsubscribeUrl("https://esp.example.com/unsubscribe/abc123"),
+    ).toBe(true);
+    expect(
+      isLikelyUnsubscribeUrl("https://esp.example.com/e/click?u=1&unsub=1"),
+    ).toBe(true);
+    expect(
+      isLikelyUnsubscribeUrl("https://esp.example.com/opt-out?id=1"),
+    ).toBe(true);
+    expect(
+      isLikelyUnsubscribeUrl(
+        "https://esp.example.com/email-preferences/manage",
+      ),
+    ).toBe(true);
+    expect(
+      isLikelyUnsubscribeUrl("https://esp.example.com/DoNotEmail?id=1"),
+    ).toBe(true); // 大小文字を無視
+  });
+  it("無関係な明細リンクは検知しない", () => {
+    expect(isLikelyUnsubscribeUrl("https://toasttab.com/r/ABC123")).toBe(
+      false,
+    );
+  });
+  it("不正 URL は false", () => {
+    expect(isLikelyUnsubscribeUrl("not a url")).toBe(false);
   });
 });
 

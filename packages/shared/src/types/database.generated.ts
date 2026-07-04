@@ -517,6 +517,7 @@ export type Database = {
           last_seen: string
           sample_url: string | null
           seen_count: number
+          skipped_unsubscribe: boolean
         }
         Insert: {
           first_seen?: string
@@ -524,6 +525,7 @@ export type Database = {
           last_seen?: string
           sample_url?: string | null
           seen_count?: number
+          skipped_unsubscribe?: boolean
         }
         Update: {
           first_seen?: string
@@ -531,6 +533,7 @@ export type Database = {
           last_seen?: string
           sample_url?: string | null
           seen_count?: number
+          skipped_unsubscribe?: boolean
         }
         Relationships: []
       }
@@ -1047,10 +1050,19 @@ export type Database = {
         Args: { p_email_id: string }
         Returns: undefined
       }
-      record_receipt_link_candidate: {
-        Args: { p_host: string; p_sample_url?: string }
-        Returns: undefined
-      }
+      record_receipt_link_candidate:
+        | {
+            Args: { p_host: string; p_sample_url?: string }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_host: string
+              p_sample_url?: string
+              p_skipped_unsubscribe?: boolean
+            }
+            Returns: undefined
+          }
       regenerate_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string

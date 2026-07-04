@@ -38,6 +38,39 @@ export function isUnknownReceiptHostUrl(url: string): boolean {
   return !isAllowedReceiptHost(u.hostname);
 }
 
+// 配信解除・購読設定リンクによく使われる語（path/query の部分一致・大小無視）。
+// URL パス側の正式な標準は無い（RFC 8058 の List-Unsubscribe はメールヘッダの話で
+// URL の綴りは規定しない）が、CAN-SPAM法・特定電子メール法等が「明確な配信停止手段」を
+// 義務付けるため、主要 ESP（Mailchimp/SendGrid/Klaviyo/HubSpot 等）はほぼ例外なく
+// unsubscribe 等をリンクに直接使う＝事実上のデファクト。迷ったら fetch しない
+// （false negative より false positive の方が安全）ので広めに取る。
+const UNSUBSCRIBE_URL_KEYWORDS = [
+  "unsubscribe",
+  "unsub",
+  "opt-out",
+  "optout",
+  "opt_out",
+  "email-preferences",
+  "manage-preferences",
+  "notification-preferences",
+  "do-not-email",
+  "donotemail",
+] as const;
+
+// LLM が報告した detailUrl が配信解除/購読設定リンクらしいか（第2パスで fetch する
+// 前の予防チェック。true ならそもそも fetch しない＝ユーザのメール購読設定への
+// 誤操作を未然に防ぐ）。
+export function isLikelyUnsubscribeUrl(url: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  const target = `${u.pathname}${u.search}`.toLowerCase();
+  return UNSUBSCRIBE_URL_KEYWORDS.some((kw) => target.includes(kw));
+}
+
 // 許可ドメインに該当する候補リンクだけ返す。
 export function selectReceiptLinks(text: string): string[] {
   const out: string[] = [];

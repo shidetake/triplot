@@ -3,7 +3,11 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
-import { isAllowedReceiptHost, isUnknownReceiptHostUrl } from "./links";
+import {
+  isAllowedReceiptHost,
+  isLikelyUnsubscribeUrl,
+  isUnknownReceiptHostUrl,
+} from "./links";
 import {
   type DraftCandidate,
   findMerge,
@@ -232,6 +236,7 @@ function nextRetryMs(err: unknown, attempt: number): number {
 async function recordCandidateLink(
   supabase: ServiceClient,
   detailUrl: string | null,
+  opts: { skippedUnsubscribe?: boolean } = {},
 ): Promise<void> {
   if (!detailUrl) return;
   let u: URL;
@@ -245,6 +250,7 @@ async function recordCandidateLink(
   await supabase.rpc("record_receipt_link_candidate", {
     p_host: u.hostname,
     p_sample_url: `${u.protocol}//${u.host}${u.pathname}`,
+    p_skipped_unsubscribe: opts.skippedUnsubscribe ?? false,
   });
 }
 
@@ -274,31 +280,37 @@ async function runExtraction(
   // 1本だけを SSRF ガード付きで取得して本文に足し、もう1回だけ抽出し直す（第2パスの
   // detailUrl はさらに fetch しない＝ループ禁止）。取得失敗・LLM 失敗はどちらも
   // 第1パス結果で続行する（enrichment は best-effort）。
-  if (
-    firstPass.detailUrl &&
-    isUnknownReceiptHostUrl(firstPass.detailUrl)
-  ) {
-    const linkText = await fetchReceiptLink(firstPass.detailUrl, {
-      requireAllowedHost: false,
-    });
-    if (linkText && linkText.trim()) {
-      const enriched = appendLinkText(text, firstPass.detailUrl, linkText);
-      try {
-        const secondPass = await extractEmail(EXTRACT_MODEL, {
-          subject,
-          text: enriched,
-          trips,
-        });
-        // 未許可ホストを学習用に記録するのは、実際に下書きの内容を補えた時だけ
-        // （LLM の detailUrl 誤報告・配信解除リンク等のノイズを候補表から除く。
-        // admin 管理ページに出るホストはドメイン名を見るだけで昇格判断できる）。
-        if (extractionGainedDetail(firstPass, secondPass)) {
-          await recordCandidateLink(supabase, firstPass.detailUrl);
+  if (firstPass.detailUrl && isUnknownReceiptHostUrl(firstPass.detailUrl)) {
+    if (isLikelyUnsubscribeUrl(firstPass.detailUrl)) {
+      // 予防: 配信解除/購読設定リンクらしき URL は fetch 自体をしない（ユーザの
+      // メール購読を誤って操作するリスクを避ける）。admin には「疑い」として
+      // 記録だけしておき、ドメインの扱いを判断する材料にする。
+      await recordCandidateLink(supabase, firstPass.detailUrl, {
+        skippedUnsubscribe: true,
+      });
+    } else {
+      const linkText = await fetchReceiptLink(firstPass.detailUrl, {
+        requireAllowedHost: false,
+      });
+      if (linkText && linkText.trim()) {
+        const enriched = appendLinkText(text, firstPass.detailUrl, linkText);
+        try {
+          const secondPass = await extractEmail(EXTRACT_MODEL, {
+            subject,
+            text: enriched,
+            trips,
+          });
+          // 未許可ホストを学習用に記録するのは、実際に下書きの内容を補えた時だけ
+          // （LLM の detailUrl 誤報告等のノイズを候補表から除く。admin 管理ページに
+          // 出るホストはドメイン名を見るだけで昇格判断できる）。
+          if (extractionGainedDetail(firstPass, secondPass)) {
+            await recordCandidateLink(supabase, firstPass.detailUrl);
+          }
+          extractResult = secondPass;
+          text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
+        } catch {
+          // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
         }
-        extractResult = secondPass;
-        text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
-      } catch {
-        // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
       }
     }
   }

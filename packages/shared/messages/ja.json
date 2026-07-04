@@ -519,6 +519,7 @@
     "seenCount": "出現 {count} 回",
     "lastSeen": "最終 {date}",
     "promoted": "昇格済み",
+    "unsubscribeWarning": "配信解除リンクの疑い（未取得）",
     "emptyState": "候補ホストはまだありません。未許可ホストの明細リンクが取り込みで見つかるとここに溜まります。"
   },
   "avatar": {

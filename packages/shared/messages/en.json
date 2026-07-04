@@ -519,6 +519,7 @@
     "seenCount": "{count, plural, one {seen # time} other {seen # times}}",
     "lastSeen": "last {date}",
     "promoted": "Promoted",
+    "unsubscribeWarning": "Looks like an unsubscribe link (not fetched)",
     "emptyState": "No candidate hosts yet. They will show up here when imports find receipt detail links on hosts outside the allowlist."
   },
   "avatar": {
