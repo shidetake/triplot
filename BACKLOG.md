@@ -21,9 +21,11 @@ Retry-After）・over_quota 翌月再抽出まで実装。設計は `docs/design
 
 ### 9. Apple ログイン追加
 コード側・Apple Developer 側の設定（App ID `app.triplot`・Services ID `app.triplot.web`・
-Sign in with Apple 用 Key）は完了。Supabase Dashboard の Auth → Providers → Apple に
-Client IDs（`app.triplot.web`）・Secret Key（JWT）を設定済み。残りは:
-- [ ] 実 Apple ID でログイン確認（表示名・頭文字アバター・private relay メール）
+Sign in with Apple 用 Key）・Supabase Dashboard（Client IDs/Secret Key）まで完了。実 Apple ID
+でのログインも確認済み（同一メールの既存 Google アカウントに自動で identity が統合される
+＝Supabase Auth の標準挙動。表示名・頭文字アバターは既存アカウントの値がそのまま出る）。
+- [ ] private relay（メール非公開）での新規アカウント作成パスは未検証（実メールでログイン
+      済みのため別 Apple ID が無いと再現できない。急ぎではない）
 
 ### 10. Admin 管理ページ
 最初の用途 = link enrichment の**候補ホスト昇格ビュー**（`receipt_link_candidates` を出現回数順で

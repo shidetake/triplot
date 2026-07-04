@@ -28,8 +28,9 @@ export default async function LandingPage() {
           </Link>
         ) : (
           <div className="space-y-4">
-            {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。 */}
-            <div className="flex w-fit flex-col gap-3">
+            {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。w-72固定でブランド
+                ボタン2つの横幅を揃える。 */}
+            <div className="flex w-72 flex-col gap-3">
               <OAuthSignInButton provider="google" next="/trips" />
               <OAuthSignInButton provider="apple" next="/trips" />
             </div>

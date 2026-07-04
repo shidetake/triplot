@@ -83,7 +83,9 @@ export function JoinForm({
             {tc("or")}
             <span className="h-px flex-1 bg-foreground/10" />
           </div>
-          <div className="flex w-fit flex-col gap-3">
+          {/* フォーム内の他要素（Input・上のボタン）と同じ w-full に揃える
+              （LPのw-72固定はヒーロー内で単独表示する時のみの調整）。 */}
+          <div className="flex w-full flex-col gap-3">
             <OAuthSignInButton provider="google" next={`/join/${token}`} />
             <OAuthSignInButton provider="apple" next={`/join/${token}`} />
           </div>
