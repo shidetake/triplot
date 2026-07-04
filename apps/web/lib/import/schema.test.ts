@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  canonicalTimeZone,
-  type EventDraft,
-  sanitizeEventDraft,
-  transitVehicleLabel,
-} from "./schema";
+import { canonicalTimeZone, type EventDraft, sanitizeEventDraft } from "./schema";
 
 function draft(p: Partial<EventDraft>): EventDraft {
   return {
@@ -167,56 +162,5 @@ describe("sanitizeEventDraft", () => {
       departTerminal: null,
       arriveTerminal: null,
     });
-  });
-});
-
-describe("transitVehicleLabel", () => {
-  function transit(p: Partial<EventDraft>): EventDraft {
-    return draft({
-      kind: "transit",
-      endDate: "2026-08-01",
-      endTime: "09:55",
-      departTz: "Asia/Tokyo",
-      arriveTz: "Pacific/Honolulu",
-      ...p,
-    });
-  }
-
-  it("便名のみ", () => {
-    expect(transitVehicleLabel(transit({ vehicleNumber: "NH184" }))).toBe(
-      "NH184",
-    );
-  });
-
-  it("便名＋出発/到着ターミナル", () => {
-    expect(
-      transitVehicleLabel(
-        transit({
-          vehicleNumber: "NH184",
-          departTerminal: "Terminal 1",
-          arriveTerminal: "Terminal B",
-        }),
-      ),
-    ).toBe("NH184（Terminal 1 → Terminal B）");
-  });
-
-  it("片側のターミナルだけでも組み込む", () => {
-    expect(
-      transitVehicleLabel(
-        transit({ vehicleNumber: "NH184", departTerminal: "Terminal 1" }),
-      ),
-    ).toBe("NH184（Terminal 1）");
-  });
-
-  it("便名が無ければ null（ターミナルだけでは組み立てない）", () => {
-    expect(
-      transitVehicleLabel(transit({ departTerminal: "Terminal 1" })),
-    ).toBeNull();
-  });
-
-  it("transit 以外は null", () => {
-    expect(
-      transitVehicleLabel(draft({ vehicleNumber: "NH184" })),
-    ).toBeNull();
   });
 });

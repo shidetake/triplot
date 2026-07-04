@@ -52,24 +52,50 @@ function makeOnOpenChange(onClose: () => void) {
   };
 }
 
-// 拡大の上限（dvh）。Content の高さで頭打ちにする＝全画面まで行かず上に (100-この値)dvh ほど
+// 拡大の上限（%）。Content の高さで頭打ちにする＝全画面まで行かず上に (100-この値)% ほど
 // 元画面が dim で残る。snapPoints の上点を 1.0 未満にする手もあるが、それだとシートが常時 translate
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
-const SHEET_MAX_DVH = 93;
+// 93→90 に下げて上の隙間（dim の見える幅）を少し広げた——iOS の URL バー自動収納で
+// ドラッグ中に実ビューポートが変わる際の余裕を持たせるため（下の useViewportHeight 参照）。
+const SHEET_MAX_PERCENT = 90;
 // 開いたときの可視高（viewport 比）。
 const SHEET_OPEN_VISIBLE = 0.72;
 // snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
 // 逆算する（上点は 1.0 固定＝そこでだけボディがスクロールする）。
 const SHEET_SNAP_POINTS: number[] = [
-  SHEET_OPEN_VISIBLE - SHEET_MAX_DVH / 100 + 1,
+  SHEET_OPEN_VISIBLE - SHEET_MAX_PERCENT / 100 + 1,
   1,
 ];
 
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約93%)まで拡大」。
+// Content の実高さ(px)。CSS の dvh 単位ではなく window.visualViewport.height を直接測って
+// 使う。理由: iOS Safari はドラッグ中に URL バーが自動収納/復帰してビジュアルビューポートが
+// 変わることがあり、dvh の再計算タイミングと vaul 内部のドラッグ計算（マウント時に測った
+// Content の高さを使う）がズレると、上端の隙間（本来 dim で覆われる）に実寸が食い違って
+// 元画面が透けて見える不具合になる。dim（fixed inset-0）と Content の高さを同じ
+// visualViewport 実測値から算出することで、両者が常に同じ数値を参照するようにする
+// （place-picker.tsx のキーボード検知と同じ visualViewport 監視パターン）。
+function useViewportHeight(): number {
+  const [vh, setVh] = useState(() =>
+    typeof window === "undefined"
+      ? 800
+      : (window.visualViewport?.height ?? window.innerHeight),
+  );
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const onResize = () => setVh(vv.height);
+    onResize();
+    vv.addEventListener("resize", onResize);
+    return () => vv.removeEventListener("resize", onResize);
+  }, []);
+  return vh;
+}
+
+// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約90%)まで拡大」。
 // 拡大/縮小/閉じの挙動は vaul のデフォルトに任せる（自前の閉じ override は安定優先で持たない）:
 //  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
-//  - 上スナップ(Content が全部見える＝約93%)では、ボディは中身をスクロールし、スクロール上端で下に引くと縮小→閉じる。
+//  - 上スナップ(Content が全部見える＝約90%)では、ボディは中身をスクロールし、スクロール上端で下に引くと縮小→閉じる。
 //  - 「閉じる/縮小する」は vaul が下スワイプの平均速度で決める: 速いフリック→閉じる／中速→1段下げる
 //    （最下段からは閉じる）／遅い→近い段にスナップ（＝ゆっくり止めて離しても閉じない）。位置では閉じない。
 //  - ※「拡大はハンドルだけ／ボディでは拡大しない」は vaul 単体では作れない（下スナップのボディ
@@ -95,6 +121,8 @@ function NarrowSheet({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+  const vh = useViewportHeight();
+  const contentHeight = Math.round((vh * SHEET_MAX_PERCENT) / 100);
 
   const requestClose = useCallback(() => setOpen(false), []);
 
@@ -131,7 +159,8 @@ function NarrowSheet({
       {typeof document !== "undefined" &&
         createPortal(
           <div
-            className={`fixed inset-0 z-40 touch-none bg-black/40 duration-500 ${
+            style={{ height: `${vh}px` }}
+            className={`fixed inset-x-0 top-0 z-40 touch-none bg-black/40 duration-500 ${
               open
                 ? "animate-in fade-in-0"
                 : "animate-out fade-out-0 [animation-fill-mode:forwards]"
@@ -162,11 +191,11 @@ function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
-            // 高さ = 拡大上限（SHEET_MAX_DVH）。これがそのまま「最上スナップ時の可視高」＝拡大の上限に
-            // なり、上に (100-値)dvh の隙間が残って元画面が dim で覗く。最上スナップ(1.0)では translate0
-            // になり、そこでだけ中身がネイティブスクロールする。dvh＝実表示ビューポート基準
-            // （vh だと iOS でツールバーの裏に下端が潜る）。
-            style={{ height: `${SHEET_MAX_DVH}dvh` }}
+            // 高さ = 拡大上限（SHEET_MAX_PERCENT）。これがそのまま「最上スナップ時の可視高」＝拡大の
+            // 上限になり、上に (100-値)% の隙間が残って元画面が dim で覗く。最上スナップ(1.0)では
+            // translate0 になり、そこでだけ中身がネイティブスクロールする。dim と同じ useViewportHeight
+            // 実測値から算出した px（dvh 単位は使わない。理由は上のコメント参照）。
+            style={{ height: `${contentHeight}px` }}
             className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-lg bg-background outline-none"
           >
             {/* 掴みやすいよう上下に余白を取った厚めのグリップ帯（タップミス防止）。 */}

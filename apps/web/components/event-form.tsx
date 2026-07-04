@@ -88,7 +88,11 @@ export type EventFormPrefill = {
   departTz: string | null; // transit のみ（null ならフォーム既定にフォールバック）
   arriveTz: string | null;
   place: PlacePickerInitial;
-  autoResolvePlace: { name: string; location?: string | null } | null;
+  autoResolvePlace: {
+    name: string;
+    location?: string | null;
+    searchQuery?: string;
+  } | null;
 };
 
 export type EventFormMode =

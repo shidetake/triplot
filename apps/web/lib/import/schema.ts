@@ -264,17 +264,3 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     arriveTerminal: null,
   };
 }
-
-// transit の便名＋ターミナルを「場所」欄向けの1行ラベルにする（例:
-// "NH184（Terminal 1 → Terminal B）"）。空港名は route（title）と重複する上、
-// 航空会社の窓口ではなく実際に降りる空港でもないので場所として検索しない —
-// 便名を自由入力の場所ラベルとして使う。vehicleNumber が無ければ null
-// （呼び出し側は location による空港名フォールバックに切り替える）。
-export function transitVehicleLabel(ev: EventDraft): string | null {
-  if (ev.kind !== "transit" || !ev.vehicleNumber) return null;
-  const terminals =
-    ev.departTerminal && ev.arriveTerminal
-      ? `${ev.departTerminal} → ${ev.arriveTerminal}`
-      : (ev.departTerminal ?? ev.arriveTerminal);
-  return terminals ? `${ev.vehicleNumber}（${terminals}）` : ev.vehicleNumber;
-}

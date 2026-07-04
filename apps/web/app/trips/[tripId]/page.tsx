@@ -9,7 +9,6 @@ import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
 import { type EventFormMode } from "@/components/event-form";
-import type { PlacePickerInitial } from "@/components/place-picker";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
@@ -41,11 +40,7 @@ import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
 import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
-import {
-  type EventDraft,
-  type Receipt,
-  transitVehicleLabel,
-} from "@/lib/import/schema";
+import type { EventDraft, Receipt } from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Currency,
@@ -503,18 +498,21 @@ export default async function TripDetailPage({
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       const res = resolveExpenseTz(ev.startDate, tzTimeline);
       const tz = res.kind === "single" ? res.tz : res.options[0].tz;
-      // 場所欄: transit は便名（+ターミナル）があればそれを自由入力で優先する
-      // （空港名は title の区間表記と重複する上、実在の検索対象でもないため）。
-      // 便名が無い transit は空港名にフォールバックし、timed/allday はタイトルを手がかりにする。
-      const vehicleLabel = transitVehicleLabel(ev);
+      // 場所欄: 出発地（transit は空港名、それ以外はタイトル）を手がかりにする。
+      // transit で到着地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
+      // 試し、高確信ならターミナル単位の場所に丸まる。低確信/不明なら素の空港名のまま
+      // （PlacePicker の autoResolve.searchQuery は表示・フォールバックには影響しない）。
       const placeName = ev.kind === "transit" ? ev.location : ev.title;
-      const place: PlacePickerInitial = vehicleLabel
-        ? { kind: "free", label: vehicleLabel }
-        : placeName
-          ? matchSavedPlace(placeName, ev.location)
-          : null;
+      const place = placeName ? matchSavedPlace(placeName, ev.location) : null;
       const title = ev.title || t("common.untitledEvent");
       const whenLabel = eventDraftWhenLabel(ev, locale);
+      // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。
+      const noteParts = [
+        ev.vehicleNumber,
+        ev.referenceId
+          ? t("tripDetail.reservationRefNote", { ref: ev.referenceId })
+          : null,
+      ].filter((p): p is string => !!p);
       const formState: EventFormMode = {
         mode: "create",
         date: ev.startDate,
@@ -523,18 +521,22 @@ export default async function TripDetailPage({
         prefill: {
           kind3: ev.kind,
           title: ev.title,
-          note: ev.referenceId
-            ? t("tripDetail.reservationRefNote", { ref: ev.referenceId })
-            : null,
+          note: noteParts.length > 0 ? noteParts.join(" ・ ") : null,
           endDate: ev.endDate,
           endTime: ev.endTime,
           departTz: ev.departTz,
           arriveTz: ev.arriveTz,
           place,
           autoResolvePlace:
-            vehicleLabel || place || !placeName
+            place || !placeName
               ? null
-              : { name: placeName, location: ev.location },
+              : {
+                  name: placeName,
+                  location: ev.location,
+                  searchQuery: ev.departTerminal
+                    ? `${placeName} ${ev.departTerminal}`
+                    : undefined,
+                },
         },
       };
       return [{ id: d.id, labelParts: [title, whenLabel], tz, formState }];

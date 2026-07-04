@@ -70,8 +70,16 @@ export function PlacePicker({
   initial: PlacePickerInitial;
   placeholder?: string;
   // 取り込み用: 開いた時にこの店名を Google で自動解決し、高確信なら Google の場所に丸める
-  // （低確信なら店名のままテキスト場所）。initial（保存済みマッチ）が有る時は無視。
-  autoResolve?: { name: string; location?: string | null } | null;
+  // （低確信なら name のままテキスト場所）。initial（保存済みマッチ）が有る時は無視。
+  // searchQuery を渡すと Google への検索語だけを差し替えられる（表示・低確信時の
+  // フォールバックは常に name）。例: 空港名はそのまま表示・フォールバックにしつつ、
+  // 検索だけ「空港名 ターミナル」を試して高確信ならターミナル単位の場所に丸め、
+  // 低確信なら素の空港名に留める。
+  autoResolve?: {
+    name: string;
+    location?: string | null;
+    searchQuery?: string;
+  } | null;
 }) {
   const t = useTranslations("place");
   const placesLib = useMapsLibrary("places");
@@ -146,6 +154,7 @@ export function PlacePicker({
     if (!placesLib) return; // placesLib が来るまで待つ（来たら再実行）
     autoResolveTried.current = true;
     const location = autoResolve?.location ?? null;
+    const searchInput = autoResolve?.searchQuery?.trim() || merchant;
     void (async () => {
       // セッショントークンはここで直接用意（ensureToken を deps に乗せないため）。
       if (!tokenRef.current) {
@@ -155,7 +164,7 @@ export function PlacePicker({
       try {
         const { suggestions } =
           await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-            input: merchant,
+            input: searchInput,
             language: "ja",
             region: "jp",
             sessionToken,
