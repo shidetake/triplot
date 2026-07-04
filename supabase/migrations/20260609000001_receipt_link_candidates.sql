@@ -4,7 +4,7 @@
 -- メールは処理後に消すので「保存メールを後で解析」はできない。代わりに抽出の瞬間に
 -- LLM が見つけた明細リンク(detailUrl)のうち、まだ許可リスト(RECEIPT_LINK_HOSTS)に
 -- 無いホストだけを、ホスト名レベルでここに蓄積する（メール本体・トークン付きURLは残さない）。
--- 人が出現回数を見て本物のレシート基盤をコード定数に昇格させる（昇格 UI は将来の admin）。
+-- 人が admin 管理ページ（/admin）で出現回数を見て本物のレシート基盤をコード定数に昇格させる。
 
 create table receipt_link_candidates (
   host       text primary key,

@@ -4,6 +4,7 @@ import { isBlockedIp } from "./ssrf";
 import {
   extractUrls,
   isAllowedReceiptHost,
+  isUnknownReceiptHostUrl,
   selectReceiptLinks,
 } from "./links";
 
@@ -37,6 +38,22 @@ describe("selectReceiptLinks", () => {
     const t =
       "receipt https://squareup.com/r/ABC tracking https://ct.sendgrid.net/x";
     expect(selectReceiptLinks(t)).toEqual(["https://squareup.com/r/ABC"]);
+  });
+});
+
+describe("isUnknownReceiptHostUrl", () => {
+  it("未許可ホストの https URL だけ第2パス対象", () => {
+    expect(isUnknownReceiptHostUrl("https://toasttab.com/r/ABC")).toBe(true);
+  });
+  it("許可ホスト（サブドメイン含む）は第1パスで取得済みなので対象外", () => {
+    expect(isUnknownReceiptHostUrl("https://squareup.com/r/ABC")).toBe(false);
+    expect(isUnknownReceiptHostUrl("https://checkout.squareup.com/r/A")).toBe(
+      false,
+    );
+  });
+  it("https 以外・不正 URL は対象外", () => {
+    expect(isUnknownReceiptHostUrl("http://toasttab.com/r/ABC")).toBe(false);
+    expect(isUnknownReceiptHostUrl("not a url")).toBe(false);
   });
 });
 

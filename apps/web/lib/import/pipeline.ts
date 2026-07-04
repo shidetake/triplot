@@ -14,6 +14,16 @@ export type GatherOptions = {
   maxLinks?: number; // 取得するリンク数の上限（コスト/レイテンシ制限）
 };
 
+// リンク先テキストを本文に付加する（第1パスの許可ホスト enrichment と、第2パスの
+// 未許可ホスト enrichment〔process.ts〕で同じ区切り形式を使う＝単一の真実）。
+export function appendLinkText(
+  text: string,
+  url: string,
+  linkText: string,
+): string {
+  return `${text}\n\n--- リンク先(${url}) ---\n${linkText.trim()}`;
+}
+
 // 抽出に渡す { subject, text } を組み立てる（リンク enrichment 込み）。
 // LLM を呼ばないのでテスト可能（fetchLink はモックできる）。
 export async function gatherReceiptText(
@@ -29,7 +39,7 @@ export async function gatherReceiptText(
     try {
       const linkText = await opts.fetchLink(url);
       if (linkText && linkText.trim()) {
-        enriched += `\n\n--- リンク先(${url}) ---\n${linkText.trim()}`;
+        enriched = appendLinkText(enriched, url, linkText);
       }
     } catch {
       // 取得失敗は無視して本文だけで続行

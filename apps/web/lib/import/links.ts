@@ -24,6 +24,20 @@ export function extractUrls(text: string): string[] {
   return [...new Set(cleaned)];
 }
 
+// LLM が報告した明細リンク(detailUrl)が「未許可ホストの自動 enrichment（第2パス）」の
+// 対象か。許可ホストは第1パス（selectReceiptLinks）で取得済みなので対象外。
+// fetch 側の要件に合わせ https のみ（SSRF ガードの詳細は fetchLink.ts が持つ）。
+export function isUnknownReceiptHostUrl(url: string): boolean {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return false;
+  }
+  if (u.protocol !== "https:") return false;
+  return !isAllowedReceiptHost(u.hostname);
+}
+
 // 許可ドメインに該当する候補リンクだけ返す。
 export function selectReceiptLinks(text: string): string[] {
   const out: string[] = [];

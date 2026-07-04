@@ -1,11 +1,19 @@
 import { describe, expect, it, vi } from "vitest";
 
-import { gatherReceiptText } from "./pipeline";
+import { appendLinkText, gatherReceiptText } from "./pipeline";
 
 // 最小の生 MIME（text/plain）。
 function rawEmail(body: string): string {
   return ["From: a@b.com", "Subject: receipt", "", body].join("\r\n");
 }
+
+describe("appendLinkText", () => {
+  it("本文の後ろに区切り付きでリンク先テキストを足す（前後の空白は落とす）", () => {
+    expect(appendLinkText("本文", "https://a.com/r", "  明細 $5  ")).toBe(
+      "本文\n\n--- リンク先(https://a.com/r) ---\n明細 $5",
+    );
+  });
+});
 
 describe("gatherReceiptText", () => {
   it("fetchLink 未指定なら本文だけ返す", async () => {

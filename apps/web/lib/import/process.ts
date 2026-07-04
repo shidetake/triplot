@@ -3,13 +3,13 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
-import { isAllowedReceiptHost } from "./links";
+import { isAllowedReceiptHost, isUnknownReceiptHostUrl } from "./links";
 import {
   type DraftCandidate,
   findMerge,
   selectMergeCandidates,
 } from "./merge";
-import { gatherReceiptText } from "./pipeline";
+import { appendLinkText, gatherReceiptText } from "./pipeline";
 import type { EventDraft, Extraction, Receipt } from "./schema";
 import type { createServiceClient } from "@/lib/supabase/service";
 
@@ -222,8 +222,8 @@ function nextRetryMs(err: unknown, attempt: number): number {
 }
 
 // LLM が見つけた明細リンク(detailUrl)のうち、まだ許可リストに無いホストを学習用に
-// 記録する。残すのはホスト名と path だけ（クエリ/トークンは捨てる）。人が出現回数を見て
-// 本物のレシート基盤を RECEIPT_LINK_HOSTS に昇格させる（昇格 UI は将来の admin）。
+// 記録する。残すのはホスト名と path だけ（クエリ/トークンは捨てる）。人が admin 管理
+// ページ（/admin）で出現回数を見て本物のレシート基盤を RECEIPT_LINK_HOSTS に昇格させる。
 async function recordCandidateLink(
   supabase: ServiceClient,
   detailUrl: string | null,
@@ -253,16 +253,46 @@ async function runExtraction(
 ): Promise<void> {
   // 本文＋PDFテキストを作り（これが痩せ版）、許可ホストの明細リンクは fetch して本文に
   // 付加（enrichment）。候補旅行も渡して、抽出と同時にどの旅行か＋明細リンクを推論させる。
-  const { subject, text } = await gatherReceiptText(raw, {
+  const { subject, text: gatheredText } = await gatherReceiptText(raw, {
     fetchLink: fetchReceiptLink,
   });
   const trips = await fetchTripHints(supabase, userId);
-  const { receipt, events, tripId, detailUrl } = await extractEmail(
-    EXTRACT_MODEL,
-    { subject, text, trips },
-  );
+  let text = gatheredText;
+  let extractResult = await extractEmail(EXTRACT_MODEL, {
+    subject,
+    text,
+    trips,
+  });
   // LLM が見つけた明細リンクのうち、未許可ホストを学習用に記録（ホスト名のみ）。
-  await recordCandidateLink(supabase, detailUrl);
+  // 昇格されれば第1パスで取得でき、下の第2パス（追加 LLM 呼び出し）が不要になる。
+  await recordCandidateLink(supabase, extractResult.detailUrl);
+
+  // 第2パス: 明細が未許可ホストのリンク先にしか無いメール。LLM が特定したその URL
+  // 1本だけを SSRF ガード付きで取得して本文に足し、もう1回だけ抽出し直す（第2パスの
+  // detailUrl はさらに fetch しない＝ループ禁止）。取得失敗・LLM 失敗はどちらも
+  // 第1パス結果で続行する（enrichment は best-effort）。
+  if (
+    extractResult.detailUrl &&
+    isUnknownReceiptHostUrl(extractResult.detailUrl)
+  ) {
+    const linkText = await fetchReceiptLink(extractResult.detailUrl, {
+      requireAllowedHost: false,
+    });
+    if (linkText && linkText.trim()) {
+      const enriched = appendLinkText(text, extractResult.detailUrl, linkText);
+      try {
+        extractResult = await extractEmail(EXTRACT_MODEL, {
+          subject,
+          text: enriched,
+          trips,
+        });
+        text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
+      } catch {
+        // 第1パス結果にフォールバック
+      }
+    }
+  }
+  const { receipt, events, tripId } = extractResult;
   const now = new Date().toISOString();
   const extraction: Extraction = { receipt, events };
 
