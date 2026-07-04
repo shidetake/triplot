@@ -596,8 +596,8 @@ export default async function TripDetailPage({
         />
 
         {eventDrafts.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
               {t("tripDetail.pendingImports", { count: eventDrafts.length })}
               <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
                 {t("tripDetail.importEventHelp")}
@@ -670,8 +670,8 @@ export default async function TripDetailPage({
         </div>
 
         {importDrafts.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900">
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
               {t("tripDetail.pendingImports", { count: importDrafts.length })}
               <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
                 {t("tripDetail.importHelp")}

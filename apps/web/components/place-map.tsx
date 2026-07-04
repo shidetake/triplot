@@ -582,7 +582,7 @@ export function PlaceMap({
         </div>
       )}
       {!mapId && (
-        <p className="text-xs text-amber-700">
+        <p className="text-xs text-amber-700 dark:text-amber-400">
           {t("noMapId")}
         </p>
       )}

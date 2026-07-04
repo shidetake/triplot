@@ -86,7 +86,7 @@ export function DateTimePopover({
           <span className="flex items-center gap-1">
             <span className="text-foreground">{time}</span>
             {dayDelta !== 0 && (
-              <span className="rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600">
+              <span className="rounded bg-blue-50 px-1 text-[10px] font-medium text-blue-600 dark:bg-blue-400/10 dark:text-blue-400">
                 {dayDelta > 0 ? `+${dayDelta}` : dayDelta}{t("dayLabel")}
               </span>
             )}
@@ -112,7 +112,7 @@ export function DateTimePopover({
               ? { trip: { from: tripFrom, to: tripTo } }
               : undefined
           }
-          modifiersClassNames={{ trip: "bg-blue-50" }}
+          modifiersClassNames={{ trip: "bg-blue-50 dark:bg-blue-400/10" }}
         />
         <div className="flex items-center gap-2 border-t border-foreground/10 p-3">
           <span className="text-sm text-muted-foreground">{t("timeLabel")}</span>

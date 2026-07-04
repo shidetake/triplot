@@ -174,13 +174,13 @@ export default async function ImportPage() {
           {(errorRows ?? []).map((e) => (
             <li
               key={e.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3"
+              className="flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3 dark:border-red-400/20 dark:bg-red-400/10"
             >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-foreground">
                   {e.subject || e.sender || t("unknownMerchant")}
                 </div>
-                <div className="mt-0.5 text-xs text-red-700">
+                <div className="mt-0.5 text-xs text-red-700 dark:text-red-300">
                   {e.extract_error === EXTRACT_ERROR_NO_CONTENT
                     ? t("errorNoContent")
                     : e.next_retry_at
@@ -285,7 +285,7 @@ export default async function ImportPage() {
                         })}
                       </Link>
                     ) : (
-                      <span className="text-xs text-amber-700">
+                      <span className="text-xs text-amber-700 dark:text-amber-400">
                         {t("needsAssignment")}
                       </span>
                     )}

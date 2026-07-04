@@ -107,8 +107,8 @@ export function PlaceIconPicker({
               // 選択ハイライトは状態で色を変える: 未追加=青(追加候補)、
               // 追加済=赤(削除候補)。下のボタン色とも揃う。
               const selectedClass = used
-                ? "bg-red-100 text-red-900"
-                : "bg-blue-100 text-blue-900";
+                ? "bg-red-100 text-red-900 dark:bg-red-400/20 dark:text-red-200"
+                : "bg-blue-100 text-blue-900 dark:bg-blue-400/20 dark:text-blue-200";
               // 追加済みは「状態 dim」= アイコンを opacity-50（ui-guidelines
               // 「薄くする手段」）。ホバーは未追加と同じ標準の bg-foreground/10。
               const idleClass = used

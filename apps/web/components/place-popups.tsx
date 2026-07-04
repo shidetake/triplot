@@ -551,7 +551,7 @@ export function SavedInfo({
           </p>
         ) : (
           place.lat == null && (
-            <p className="mt-0.5 text-xs text-amber-700">
+            <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
               {t("noLocation")}
             </p>
           )

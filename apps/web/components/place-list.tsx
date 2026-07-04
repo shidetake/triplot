@@ -111,7 +111,7 @@ export function PlaceList({
               }
               className={`flex w-full items-start gap-2 p-3 text-left text-sm transition ${
                 isLocating
-                  ? "border-l-4 border-amber-400 bg-amber-50"
+                  ? "border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-400/10"
                   : isSelected
                     ? "bg-accent"
                     : "hover:bg-foreground/10"
@@ -123,7 +123,7 @@ export function PlaceList({
                   <span className="font-medium">{p.name}</span>
                   {p.visibility === "private" && <PrivateBadge />}
                   {unmapped && (
-                    <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700">
+                    <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
                       {t("unmapped")}
                     </span>
                   )}
@@ -132,7 +132,7 @@ export function PlaceList({
                   <p className="mt-1 text-xs text-muted-foreground">{p.note}</p>
                 )}
                 {isLocating && (
-                  <p className="mt-1 text-xs text-amber-800">
+                  <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
                     {t("locatingHint")}
                   </p>
                 )}
@@ -140,7 +140,7 @@ export function PlaceList({
               {unmapped && (
                 <span
                   className={`shrink-0 text-xs ${
-                    isLocating ? "text-amber-700" : "text-blue-600"
+                    isLocating ? "text-amber-700 dark:text-amber-400" : "text-blue-600"
                   }`}
                 >
                   {isLocating ? t("cancelLocate") : t("setPin")}

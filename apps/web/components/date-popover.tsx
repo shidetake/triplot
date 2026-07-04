@@ -99,7 +99,7 @@ export function DatePopover({
             modifiers={
               tripFrom && tripTo ? { trip: { from: tripFrom, to: tripTo } } : undefined
             }
-            modifiersClassNames={{ trip: "bg-blue-50" }}
+            modifiersClassNames={{ trip: "bg-blue-50 dark:bg-blue-400/10" }}
           />
         </PopoverContent>
       </Popover>
