@@ -1,7 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
-import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { createClient } from "@/lib/supabase/server";
 
 // ランディングページ（公開）。骨組みのみ — コピー/スクショ等の本体は別タスクで後追い。
@@ -28,7 +28,11 @@ export default async function LandingPage() {
           </Link>
         ) : (
           <div className="space-y-4">
-            <GoogleSignInButton next="/trips" />
+            {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。 */}
+            <div className="flex w-fit flex-col gap-3">
+              <OAuthSignInButton provider="google" next="/trips" />
+              <OAuthSignInButton provider="apple" next="/trips" />
+            </div>
             <p className="text-sm text-muted-foreground">{t("joinHint")}</p>
           </div>
         )}

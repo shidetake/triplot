@@ -61,7 +61,7 @@
     "joining": "Joining...",
     "joinTrip": "Join this trip",
     "joinAsGuest": "Join as a guest (no sign-in)",
-    "guestDisabled": "Guest join is disabled. Please join with Google."
+    "guestDisabled": "Guest join is disabled. Please sign in to join."
   },
   "tripDetail": {
     "backToTrips": "Trips",
@@ -134,7 +134,8 @@
   "auth": {
     "signInWithGoogle": "Sign in with Google",
     "signingIn": "Signing in...",
-    "signInFailed": "Sign-in failed: {message}"
+    "signInFailed": "Sign-in failed: {message}",
+    "signInWithApple": "Sign in with Apple"
   },
   "header": {
     "inbox": "Imports",

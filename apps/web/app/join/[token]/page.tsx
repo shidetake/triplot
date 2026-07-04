@@ -40,9 +40,13 @@ export default async function JoinPage({
     );
   }
 
+  // 表示名の初期値。app-header と同じく full_name → name の順で拾う
+  // （Google は両方入るが Apple は full_name のみ）。
   const defaultName =
     (!user?.is_anonymous &&
-      ((user?.user_metadata?.name as string | undefined) ?? "")) ||
+      ((user?.user_metadata?.full_name as string | undefined) ??
+        (user?.user_metadata?.name as string | undefined) ??
+        "")) ||
     "";
 
   return (

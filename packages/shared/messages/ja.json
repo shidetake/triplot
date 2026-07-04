@@ -61,7 +61,7 @@
     "joining": "参加中...",
     "joinTrip": "この旅行に参加する",
     "joinAsGuest": "ゲストとして参加（ログイン不要）",
-    "guestDisabled": "ゲスト参加が無効になっています。Google で参加してください。"
+    "guestDisabled": "ゲスト参加が無効になっています。ログインして参加してください。"
   },
   "tripDetail": {
     "backToTrips": "旅行一覧",
@@ -134,7 +134,8 @@
   "auth": {
     "signInWithGoogle": "Google でログイン",
     "signingIn": "ログイン中...",
-    "signInFailed": "ログインに失敗しました: {message}"
+    "signInFailed": "ログインに失敗しました: {message}",
+    "signInWithApple": "Apple でログイン"
   },
   "header": {
     "inbox": "取り込み",

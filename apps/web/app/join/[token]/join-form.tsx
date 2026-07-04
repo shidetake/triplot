@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { FieldLabel } from "@/components/field-label";
-import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { MessageBox } from "@/components/message-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -83,7 +83,10 @@ export function JoinForm({
             {tc("or")}
             <span className="h-px flex-1 bg-foreground/10" />
           </div>
-          <GoogleSignInButton next={`/join/${token}`} />
+          <div className="flex w-fit flex-col gap-3">
+            <OAuthSignInButton provider="google" next={`/join/${token}`} />
+            <OAuthSignInButton provider="apple" next={`/join/${token}`} />
+          </div>
         </div>
       )}
 
