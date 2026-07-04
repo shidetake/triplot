@@ -8,7 +8,7 @@
 
 - Next.js **16**（App Router）+ React 19 + TypeScript + Tailwind v4
 - Supabase（Auth + Postgres + RLS）— `@supabase/ssr` で cookie ベースのセッション管理
-- Vitest（node 環境）— `lib/**/*.test.ts` のみ拾う設定
+- Vitest（node 環境）— `lib/**/*.test.ts` と `components/**/*.test.ts` を拾う設定（後者は DOM 描画を伴わない静的チェック用。実ブラウザ挙動の検証は対象外）
 - パスエイリアス: `@/*` → リポジトリルート（`tsconfig.json` と `vitest.config.ts` の両方で設定）
 
 ## コマンド
