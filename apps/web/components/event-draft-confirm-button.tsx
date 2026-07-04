@@ -29,6 +29,7 @@ export function EventDraftConfirmButton({
       labelParts={labelParts}
       formLabel={t("confirmFormLabel")}
       draftKey={`event:import:${draftId}`}
+      truncateTail
     >
       {({ confirmDraft, close }) => (
         <EventForm

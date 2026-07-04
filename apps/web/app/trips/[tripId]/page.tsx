@@ -38,7 +38,7 @@ import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
-import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
+import { eventDraftWhenLabel, monthDayLabel } from "@/lib/import/draftLabel";
 import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
 import type { EventDraft, Receipt } from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -472,10 +472,11 @@ export default async function TripDetailPage({
         {
           id: d.id,
           // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
+          // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
           labelParts: [
             r.merchant || t("tripDetail.unknownMerchant"),
             `${r.total} ${r.currency}`,
-            r.date,
+            monthDayLabel(r.date),
           ],
           initialPrice: r.total,
           initialCurrency: currency,
