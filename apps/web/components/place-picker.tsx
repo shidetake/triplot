@@ -17,19 +17,7 @@ import { matchPlace } from "@/lib/import/placeMatch";
 // 0.6（候補は上位複数をスコアして最良を採るので、ほどほどで誤丸めしにくい）。実データで調整可。
 const AUTO_ROUND_THRESHOLD = 0.6;
 
-// 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
-// 混ぜて出すコンボボックス（Google カレンダーの場所欄や Notion/Linear の作成サジェスト同系）。
-// 殻（入力欄＋候補リスト＋キーボード操作＋開閉＋外側クリック＋a11y）は Base UI Combobox に委ね、
-// 「保存済み/Google/自由入力」の解決・Google 非同期取得・hidden input 導出は従来どおり自前。
-//
-// 区別の付け方:
-//  - ドロップダウンから保存済み行を選ぶ      → place_id 連携
-//  - ドロップダウンから Google 行を選ぶ      → 確定で places 作成＋連携
-//  - 何も選ばず入力テキストのまま確定        → 自由入力（place_label）
-//  - 入力が保存済みの名前と完全一致           → その保存済みへ自動解決
-//
-// サーバ契約（place_mode / place_id / place_label / g_*）は据え置きで、
-// hidden input をこのコンポーネントが状態から組み立てる。
+type PlacesLib = google.maps.PlacesLibrary;
 
 type Resolved =
   | { kind: "saved"; id: string; name: string }
@@ -43,6 +31,81 @@ type Resolved =
       region: string | null;
       locality: string | null;
     };
+
+// Google Autocomplete で 1 回だけ検索→スコアリング→高確信なら Place Details まで取得する。
+// 閾値未満/候補無しは null（呼び出し側が別の検索語でリトライするかテキストのまま留める）。
+async function tryResolvePlace(
+  placesLib: PlacesLib,
+  sessionToken: google.maps.places.AutocompleteSessionToken,
+  input: string,
+  location: string | null,
+  biasCenter: LatLng,
+): Promise<{ resolved: Resolved; name: string } | null> {
+  const { suggestions } =
+    await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
+      input,
+      language: "ja",
+      region: "jp",
+      sessionToken,
+      locationBias: { center: biasCenter, radius: 30000 },
+    });
+  // 先頭だけでなく上位候補をスコアして最良を採る（正しい場所が #1 とは限らないため）。
+  // スコアは prediction の表示名(mainText)＋住所(secondaryText)で計算（詳細取得は勝者だけ）。
+  const preds = suggestions
+    .map((s) => s.placePrediction)
+    .filter((p): p is NonNullable<typeof p> => !!p)
+    .slice(0, 5);
+  let bestPred: (typeof preds)[number] | null = null;
+  let bestScore = -1;
+  for (const p of preds) {
+    const name = p.mainText?.text ?? p.text.text;
+    const addr = p.secondaryText?.text ?? "";
+    const r = matchPlace(
+      { merchant: input, location },
+      [{ id: "g", name, formattedAddress: addr }],
+      0,
+    );
+    const score = r?.score ?? 0;
+    if (score > bestScore) {
+      bestScore = score;
+      bestPred = p;
+    }
+  }
+  if (!bestPred || bestScore < AUTO_ROUND_THRESHOLD) return null;
+  const place = bestPred.toPlace();
+  await place.fetchFields({
+    fields: ["id", "displayName", "formattedAddress", "addressComponents", "location"],
+  });
+  const loc = place.location;
+  if (!place.id || !loc) return null;
+  const candName = place.displayName ?? bestPred.text.text;
+  return {
+    resolved: {
+      kind: "google",
+      placeId: place.id,
+      name: candName,
+      address: place.formattedAddress ?? "",
+      lat: loc.lat(),
+      lng: loc.lng(),
+      ...extractRegion(place.addressComponents),
+    },
+    name: candName,
+  };
+}
+
+// 1 つの入力欄に「保存済みの場所」「Google サジェスト」「自由入力」を
+// 混ぜて出すコンボボックス（Google カレンダーの場所欄や Notion/Linear の作成サジェスト同系）。
+// 殻（入力欄＋候補リスト＋キーボード操作＋開閉＋外側クリック＋a11y）は Base UI Combobox に委ね、
+// 「保存済み/Google/自由入力」の解決・Google 非同期取得・hidden input 導出は従来どおり自前。
+//
+// 区別の付け方:
+//  - ドロップダウンから保存済み行を選ぶ      → place_id 連携
+//  - ドロップダウンから Google 行を選ぶ      → 確定で places 作成＋連携
+//  - 何も選ばず入力テキストのまま確定        → 自由入力（place_label）
+//  - 入力が保存済みの名前と完全一致           → その保存済みへ自動解決
+//
+// サーバ契約（place_mode / place_id / place_label / g_*）は据え置きで、
+// hidden input をこのコンポーネントが状態から組み立てる。
 
 // 自由入力も Model B で place_id に解決済みなので、編集時の初期値は
 // 常に保存済み（saved）か無し。"free" は取り込み確定など、確定前から
@@ -143,9 +206,12 @@ export function PlacePicker({
     return tokenRef.current;
   };
 
-  // 取り込みの自動解決：開いた時に店名を Google 補完→先頭候補を取得→自前スコアで判定し、
-  // 高確信なら Google の場所に丸める（座標付き＝ピン）。低確信/候補無しはレシート店名のまま
-  // （query は初期値で店名が入っているのでテキスト場所になる）。initial（保存済み）が有る時は何もしない。
+  // 取り込みの自動解決：開いた時に店名/場所名を Google 補完→自前スコアで判定し、高確信なら
+  // Google の場所に丸める（座標付き＝ピン）。低確信/候補無しはテキストのまま（query は初期値の
+  // name が入っているのでテキスト場所になる）。initial（保存済み）が有る時は何もしない。
+  // searchQuery があれば先にそれで試し（例: 空港名+ターミナル）、閾値未満なら素の name に
+  // フォールバックする＝「ターミナル単位に丸まらないなら空港には丸める」の2段階（ターミナルに
+  // 固執して丸め自体を諦めない）。同一セッショントークンで両方試すので課金は1セッション分のまま。
   useEffect(() => {
     if (autoResolveTried.current) return;
     if (initial) return;
@@ -154,73 +220,34 @@ export function PlacePicker({
     if (!placesLib) return; // placesLib が来るまで待つ（来たら再実行）
     autoResolveTried.current = true;
     const location = autoResolve?.location ?? null;
-    const searchInput = autoResolve?.searchQuery?.trim() || merchant;
+    const searchQuery = autoResolve?.searchQuery?.trim() || null;
+    const attempts =
+      searchQuery && searchQuery !== merchant
+        ? [searchQuery, merchant]
+        : [merchant];
     void (async () => {
-      // セッショントークンはここで直接用意（ensureToken を deps に乗せないため）。
       if (!tokenRef.current) {
         tokenRef.current = new placesLib.AutocompleteSessionToken();
       }
       const sessionToken = tokenRef.current;
       try {
-        const { suggestions } =
-          await placesLib.AutocompleteSuggestion.fetchAutocompleteSuggestions({
-            input: searchInput,
-            language: "ja",
-            region: "jp",
+        for (const input of attempts) {
+          const found = await tryResolvePlace(
+            placesLib,
             sessionToken,
-            locationBias: { center: biasCenter, radius: 30000 },
-          });
-        // 先頭だけでなく上位候補をスコアして最良を採る（正しい店が #1 とは限らないため）。
-        // スコアは prediction の表示名(mainText)＋住所(secondaryText)で計算（詳細取得は勝者だけ）。
-        const preds = suggestions
-          .map((s) => s.placePrediction)
-          .filter((p): p is NonNullable<typeof p> => !!p)
-          .slice(0, 5);
-        let bestPred: (typeof preds)[number] | null = null;
-        let bestScore = -1;
-        for (const p of preds) {
-          const name = p.mainText?.text ?? p.text.text;
-          const addr = p.secondaryText?.text ?? "";
-          const r = matchPlace(
-            { merchant, location },
-            [{ id: "g", name, formattedAddress: addr }],
-            0,
+            input,
+            location,
+            biasCenter,
           );
-          const score = r?.score ?? 0;
-          if (score > bestScore) {
-            bestScore = score;
-            bestPred = p;
+          if (found) {
+            setResolved(found.resolved);
+            setQuery(found.name);
+            return;
           }
         }
-        // 最良が閾値未満なら丸めない（レシート店名のテキストのまま）。
-        if (!bestPred || bestScore < AUTO_ROUND_THRESHOLD) return;
-        const place = bestPred.toPlace();
-        await place.fetchFields({
-          fields: [
-            "id",
-            "displayName",
-            "formattedAddress",
-            "addressComponents",
-            "location",
-          ],
-        });
-        const loc = place.location;
-        const candName = place.displayName ?? bestPred.text.text;
-        const candAddr = place.formattedAddress ?? "";
-        if (place.id && loc) {
-          setResolved({
-            kind: "google",
-            placeId: place.id,
-            name: candName,
-            address: candAddr,
-            lat: loc.lat(),
-            lng: loc.lng(),
-            ...extractRegion(place.addressComponents),
-          });
-          setQuery(candName);
-        }
+        // どちらも閾値未満 → テキスト場所のまま（query は初期値の name のまま）。
       } catch {
-        // 取得失敗 → レシート店名のまま。
+        // 取得失敗 → テキストのまま。
       } finally {
         tokenRef.current = null; // セッション終了
       }

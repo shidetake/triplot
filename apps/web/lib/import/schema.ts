@@ -137,13 +137,16 @@ export const eventDraftSchema = z.object({
     .string()
     .nullable()
     .describe(
-      "transit のみ: 出発地のターミナル表記（例: Terminal 1、T2）。判明すれば入れる。transit 以外・不明は null",
+      "transit のみ: 出発地のターミナル表記（例: Terminal 1、T2）。メールに明記が無くても、" +
+        "航空会社と空港の一般的な組み合わせ（どの航空会社がどのターミナルを使うか）から確信を" +
+        "持って推定できるなら入れてよい。根拠が薄い/不明なら null。transit 以外は null",
     ),
   arriveTerminal: z
     .string()
     .nullable()
     .describe(
-      "transit のみ: 到着地のターミナル表記（例: Terminal B）。判明すれば入れる。transit 以外・不明は null",
+      "transit のみ: 到着地のターミナル表記（例: Terminal B）。departTerminal と同じ基準で、" +
+        "航空会社・空港からの推定可。根拠が薄い/不明なら null。transit 以外は null",
     ),
   departLocation: z
     .string()
