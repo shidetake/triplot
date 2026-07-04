@@ -8,26 +8,20 @@ import { createClient } from "@/lib/supabase/client";
 import { AppleGlyph, GoogleGlyph } from "@/components/oauth-brand-icons";
 
 // OAuth サインインボタン（Google / Apple 共通）。redirectTo・next の配線は
-// プロバイダ非依存なので1コンポーネントに統一し、provider ごとに見た目だけ差し替える。
-// 見た目は各社の公式ブランドガイドライン（配色・ロゴ）に合わせる。Apple の Usage
-// Guidelines は web にも「公式ボタンのデザインガイドラインに従うこと」を明記しているため、
-// triplot の <Button> ではなく native <button> にブランド色を直書きする（triplot の
-// セマンティック色トークン運用の例外＝ui-guidelines「地図・Google連携」節と同じ考え方）。
-// 角丸は Apple のガイドラインが「自分のUIの他のボタンに合わせてよい」としているため
-// components/ui/button.tsx と同じ rounded-md を使う。フォントは Google 指定の
-// Google Sans を新規導入せず、triplot 標準フォント + font-medium で近似する。
+// プロバイダ非依存なので1コンポーネントに統一し、provider ごとにロゴだけ差し替える。
+// 配色は各社ブランド別（黒/白の反転）にせず、Strava/AllTrails 等と同じく**全プロバイダ共通の
+// ニュートラルな枠線ボタン**に統一する（triplot 自身のトーンを優先。ロゴだけがブランドを示す）。
+// このニュートラル配色（白地+`#747775`枠 / ダーク`#131314`地+`#8E918F`枠）は元は Google の
+// ブランドガイドライン値だが、Apple 側にも流用してよい中立トーンとして採用（Apple のガイドラインは
+// 自社ボタンの角丸を自分のUIに合わせることを許容しており、配色の統一も同じ考え方の延長）。
 const LABEL_KEY = {
   google: "signInWithGoogle",
   apple: "signInWithApple",
 } as const;
 
-const PROVIDER_STYLE = {
-  google:
-    "bg-white text-[#1F1F1F] border border-[#747775] hover:bg-[#F7F8F8] " +
-    "dark:bg-[#131314] dark:text-[#E3E3E3] dark:border-[#8E918F] dark:hover:bg-[#1E1F20]",
-  // eslint-disable-next-line no-restricted-syntax -- Apple公式ブランドの黒/白ボタン（ui-guidelines「OAuthログインボタン」節）
-  apple: "bg-black text-white hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90",
-} as const;
+const NEUTRAL_STYLE =
+  "bg-white text-[#1F1F1F] border border-[#747775] hover:bg-[#F7F8F8] " +
+  "dark:bg-[#131314] dark:text-[#E3E3E3] dark:border-[#8E918F] dark:hover:bg-[#1E1F20]";
 
 const PROVIDER_ICON = {
   google: GoogleGlyph,
@@ -69,7 +63,7 @@ export function OAuthSignInButton({
         "inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-md " +
         "px-4 font-medium transition focus-visible:outline-none focus-visible:ring-2 " +
         "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 " +
-        PROVIDER_STYLE[provider]
+        NEUTRAL_STYLE
       }
     >
       <Icon className="h-5 w-5 shrink-0" />
