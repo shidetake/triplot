@@ -19,7 +19,7 @@ export async function AppHeader() {
 
   const { data: profile } = await supabase
     .from("users")
-    .select("display_name, avatar_url")
+    .select("display_name, avatar_url, is_admin")
     .eq("id", user.id)
     .single();
 
@@ -71,6 +71,7 @@ export async function AppHeader() {
             email={user.email ?? null}
             name={accountName}
             avatarUrl={avatarUrl}
+            isAdmin={profile?.is_admin ?? false}
           />
         </div>
       </div>

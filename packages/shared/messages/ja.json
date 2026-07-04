@@ -511,6 +511,16 @@
     "dismissEmailTitle": "このメールを破棄しますか？",
     "dismissFailed": "破棄に失敗しました: {error}"
   },
+  "admin": {
+    "heading": "管理",
+    "menuLink": "管理",
+    "candidatesHeading": "明細リンクの候補ホスト",
+    "candidatesDescription": "取り込みメールで見つかった、まだ許可リストに無い明細リンクのホストです。本物のレシート基盤は許可リスト（コード定数）への追加で昇格します。",
+    "seenCount": "出現 {count} 回",
+    "lastSeen": "最終 {date}",
+    "promoted": "昇格済み",
+    "emptyState": "候補ホストはまだありません。未許可ホストの明細リンクが取り込みで見つかるとここに溜まります。"
+  },
   "avatar": {
     "changeAria": "アバターを変更",
     "pickImage": "画像を選ぶ",

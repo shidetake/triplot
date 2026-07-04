@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 
 import { Menu } from "@base-ui/react/menu";
 
-import { LogOutIcon, SettingsIcon } from "@/components/icons";
+import { LogOutIcon, SettingsIcon, ShieldIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { menuItemClass } from "./menu-item";
 import { selfAvatarClass } from "./self-avatar";
@@ -20,10 +20,12 @@ export function AccountMenu({
   email,
   name,
   avatarUrl,
+  isAdmin,
 }: {
   email: string | null;
   name: string | null;
   avatarUrl: string | null;
+  isAdmin: boolean;
 }) {
   const router = useRouter();
   const t = useTranslations();
@@ -66,6 +68,15 @@ export function AccountMenu({
               <SettingsIcon size={16} />
               {t("settings.heading")}
             </Menu.Item>
+            {isAdmin && (
+              <Menu.Item
+                render={<Link href="/admin" />}
+                className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+              >
+                <ShieldIcon size={16} />
+                {t("admin.menuLink")}
+              </Menu.Item>
+            )}
             <Menu.Item
               onClick={handleSignOut}
               className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}

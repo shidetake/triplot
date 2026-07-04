@@ -791,6 +791,7 @@ export type Database = {
           google_uid: string | null
           id: string
           import_token: string | null
+          is_admin: boolean
           is_anonymous: boolean
         }
         Insert: {
@@ -800,6 +801,7 @@ export type Database = {
           google_uid?: string | null
           id: string
           import_token?: string | null
+          is_admin?: boolean
           is_anonymous?: boolean
         }
         Update: {
@@ -809,6 +811,7 @@ export type Database = {
           google_uid?: string | null
           id?: string
           import_token?: string | null
+          is_admin?: boolean
           is_anonymous?: boolean
         }
         Relationships: []
@@ -1030,6 +1033,7 @@ export type Database = {
         Returns: string
       }
       is_active_trip_member: { Args: { _trip_id: string }; Returns: boolean }
+      is_app_admin: { Args: never; Returns: boolean }
       is_own_member: { Args: { _member_id: string }; Returns: boolean }
       is_trip_admin: { Args: { _trip_id: string }; Returns: boolean }
       join_trip_via_invite: {

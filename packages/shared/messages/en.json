@@ -511,6 +511,16 @@
     "dismissEmailTitle": "Dismiss this email?",
     "dismissFailed": "Failed to dismiss: {error}"
   },
+  "admin": {
+    "heading": "Admin",
+    "menuLink": "Admin",
+    "candidatesHeading": "Receipt link host candidates",
+    "candidatesDescription": "Hosts of receipt detail links found in imported emails that are not on the allowlist yet. Promote genuine receipt platforms by adding them to the allowlist (a code constant).",
+    "seenCount": "{count, plural, one {seen # time} other {seen # times}}",
+    "lastSeen": "last {date}",
+    "promoted": "Promoted",
+    "emptyState": "No candidate hosts yet. They will show up here when imports find receipt detail links on hosts outside the allowlist."
+  },
   "avatar": {
     "changeAria": "Change avatar",
     "pickImage": "Choose image",
