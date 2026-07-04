@@ -15,6 +15,8 @@ function draft(p: Partial<EventDraft>): EventDraft {
     vehicleNumber: null,
     departTerminal: null,
     arriveTerminal: null,
+    departLocation: null,
+    arriveLocation: null,
     location: null,
     referenceId: null,
     isUpdate: false,
@@ -161,6 +163,41 @@ describe("sanitizeEventDraft", () => {
       vehicleNumber: null,
       departTerminal: null,
       arriveTerminal: null,
+    });
+  });
+
+  it("transit は出発地・到着地を別フィールドで保持し、汎用 location は持たない", () => {
+    const d = sanitizeEventDraft(
+      draft({
+        kind: "transit",
+        endDate: "2026-08-01",
+        endTime: "09:55",
+        departTz: "Asia/Tokyo",
+        arriveTz: "Pacific/Honolulu",
+        departLocation: "成田国際空港",
+        arriveLocation: "ダニエル・K・イノウエ国際空港",
+        location: "羽田", // LLM が誤って汎用フィールドに詰めても捨てる
+      }),
+    );
+    expect(d).toMatchObject({
+      departLocation: "成田国際空港",
+      arriveLocation: "ダニエル・K・イノウエ国際空港",
+      location: null,
+    });
+  });
+
+  it("timed/allday は出発地・到着地を持たない（transit 降格時も含め、location は残す）", () => {
+    const d = sanitizeEventDraft(
+      draft({
+        departLocation: "成田国際空港",
+        arriveLocation: "ダニエル・K・イノウエ国際空港",
+        location: "ダイヤモンドヘッド",
+      }),
+    );
+    expect(d).toMatchObject({
+      departLocation: null,
+      arriveLocation: null,
+      location: "ダイヤモンドヘッド",
     });
   });
 });

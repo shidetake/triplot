@@ -45,5 +45,13 @@ export function normalizeEventDraft(d: EventDraft): EventDraft {
       d.arriveTerminal != null
         ? toHalfWidth(d.arriveTerminal)
         : d.arriveTerminal,
+    departLocation:
+      d.departLocation != null
+        ? toHalfWidth(d.departLocation)
+        : d.departLocation,
+    arriveLocation:
+      d.arriveLocation != null
+        ? toHalfWidth(d.arriveLocation)
+        : d.arriveLocation,
   };
 }

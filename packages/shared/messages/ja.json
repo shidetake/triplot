@@ -506,7 +506,9 @@
     "copyAddress": "アドレスをコピー",
     "confirmFormLabel": "取り込みを確定",
     "errorNoContent": "取り込める費用・予定が見つかりませんでした。",
-    "dismissDraftTitle": "この下書きを破棄しますか？"
+    "dismissDraftTitle": "この下書きを破棄しますか？",
+    "dismissEmailTitle": "このメールを破棄しますか？",
+    "dismissFailed": "破棄に失敗しました: {error}"
   },
   "avatar": {
     "changeAria": "アバターを変更",

@@ -145,10 +145,28 @@ export const eventDraftSchema = z.object({
     .describe(
       "transit のみ: 到着地のターミナル表記（例: Terminal B）。判明すれば入れる。transit 以外・不明は null",
     ),
+  departLocation: z
+    .string()
+    .nullable()
+    .describe(
+      "transit のみ: 出発地の空港・駅名（地図で一意に検索できる正式名称。例: 成田国際空港、" +
+        "ダニエル・K・イノウエ国際空港。空港コードや都市名だけにしない）。到着地ではない。" +
+        "transit 以外・不明は null",
+    ),
+  arriveLocation: z
+    .string()
+    .nullable()
+    .describe(
+      "transit のみ: 到着地の空港・駅名（departLocation と同じ形式）。出発地ではない。" +
+        "transit 以外・不明は null",
+    ),
   location: z
     .string()
     .nullable()
-    .describe("場所の手がかり（施設名・店名・住所・空港名など）。無ければ null"),
+    .describe(
+      "timed/allday のみ: 施設・店の場所の手がかり（住所・地名。地図で検索できる形が望ましい）。" +
+        "transit は departLocation/arriveLocation を使うのでここは null。無ければ null",
+    ),
   referenceId: z
     .string()
     .nullable()
@@ -204,7 +222,8 @@ export function canonicalTimeZone(tz: string): string | null {
 //  - 時刻/TZ は形式・実在を検証し、不正は null に落とす（フォームで人が直す）
 //  - kind の整合を補正: transit は到着（日時）が揃わなければ timed/allday に降格、
 //    timed は開始時刻が無ければ allday に降格。allday は時刻を持たない
-//  - transit 以外は TZ・便名・ターミナルを持たない（events の参照化モデルと一致）
+//  - transit 以外は TZ・便名・ターミナル・出発/到着地を持たない（events の参照化モデルと一致）
+//    ／ transit は逆に汎用 location を持たない（departLocation/arriveLocation を使う）
 //  - transit の到着は出発より現地日付が前になり得る（日付変更線）ので順序は縛らない。
 //    timed/allday は終了 >= 開始 を要求し、破れば終了を落とす
 export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
@@ -224,7 +243,6 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
 
   const base = {
     title,
-    location: d.location,
     referenceId: d.referenceId,
     isUpdate: d.isUpdate,
   };
@@ -241,6 +259,9 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       vehicleNumber: d.vehicleNumber,
       departTerminal: d.departTerminal,
       arriveTerminal: d.arriveTerminal,
+      departLocation: d.departLocation,
+      arriveLocation: d.arriveLocation,
+      location: null,
     };
   }
   // timed/allday: 終了 >= 開始（壁時計）を要求。破れば終了を落とす。
@@ -262,5 +283,8 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     vehicleNumber: null,
     departTerminal: null,
     arriveTerminal: null,
+    departLocation: null,
+    arriveLocation: null,
+    location: d.location,
   };
 }

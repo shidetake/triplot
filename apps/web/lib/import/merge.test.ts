@@ -32,6 +32,8 @@ function event(p: Partial<EventDraft>): EventDraft {
     vehicleNumber: null,
     departTerminal: null,
     arriveTerminal: null,
+    departLocation: null,
+    arriveLocation: null,
     location: null,
     referenceId: null,
     isUpdate: false,

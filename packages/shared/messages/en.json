@@ -506,7 +506,9 @@
     "copyAddress": "Copy address",
     "confirmFormLabel": "Confirm import",
     "errorNoContent": "No expenses or events could be extracted.",
-    "dismissDraftTitle": "Dismiss this draft?"
+    "dismissDraftTitle": "Dismiss this draft?",
+    "dismissEmailTitle": "Dismiss this email?",
+    "dismissFailed": "Failed to dismiss: {error}"
   },
   "avatar": {
     "changeAria": "Change avatar",

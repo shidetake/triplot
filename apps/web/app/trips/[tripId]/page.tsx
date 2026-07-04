@@ -498,12 +498,13 @@ export default async function TripDetailPage({
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       const res = resolveExpenseTz(ev.startDate, tzTimeline);
       const tz = res.kind === "single" ? res.tz : res.options[0].tz;
-      // 場所欄: 出発地（transit は空港名、それ以外はタイトル）を手がかりにする。
-      // transit で到着地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
+      // 場所欄: 出発地（transit は departLocation、それ以外はタイトル）を手がかりにする。
+      // transit で出発地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
       // 試し、高確信ならターミナル単位の場所に丸まる。低確信/不明なら素の空港名のまま
       // （PlacePicker の autoResolve.searchQuery は表示・フォールバックには影響しない）。
-      const placeName = ev.kind === "transit" ? ev.location : ev.title;
-      const place = placeName ? matchSavedPlace(placeName, ev.location) : null;
+      const placeName = ev.kind === "transit" ? ev.departLocation : ev.title;
+      const placeHint = ev.kind === "transit" ? null : ev.location;
+      const place = placeName ? matchSavedPlace(placeName, placeHint) : null;
       const title = ev.title || t("common.untitledEvent");
       const whenLabel = eventDraftWhenLabel(ev, locale);
       // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。
@@ -532,7 +533,7 @@ export default async function TripDetailPage({
               ? null
               : {
                   name: placeName,
-                  location: ev.location,
+                  location: placeHint,
                   searchQuery: ev.departTerminal
                     ? `${placeName} ${ev.departTerminal}`
                     : undefined,

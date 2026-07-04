@@ -4,7 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
-import { CloseButton } from "@/components/close-button";
+import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
@@ -188,10 +188,11 @@ export default async function ImportPage() {
                       : t("errorNoRetry")}
                 </div>
               </div>
-              <form action={dismissEmailAction}>
-                <input type="hidden" name="id" value={e.id} />
-                <CloseButton type="submit" label={t("dismiss")} className="h-7 w-7" />
-              </form>
+              <DismissEmailButton
+                id={e.id}
+                action={dismissEmailAction}
+                className="h-7 w-7"
+              />
             </li>
           ))}
         </ul>
@@ -356,10 +357,11 @@ export default async function ImportPage() {
                   )}
                 </div>
 
-                <form action={dismissEmailAction}>
-                  <input type="hidden" name="id" value={row.id} />
-                  <CloseButton type="submit" label={t("dismiss")} className="h-8 w-8" />
-                </form>
+                <DismissEmailButton
+                  id={row.id}
+                  action={dismissEmailAction}
+                  className="h-8 w-8"
+                />
               </div>
             </li>
           ))}

@@ -10,12 +10,15 @@ import {
 import { createClient } from "@/lib/supabase/server";
 
 // メールを破棄する（残っている未確定の下書きごと。本人の行のみ。RPC 側で auth.uid() を確認）。
-export async function dismissEmailAction(formData: FormData): Promise<void> {
-  const id = formData.get("id");
-  if (typeof id !== "string" || !id) return;
+// 破壊的操作のため、呼び出し側で confirmDialog を挟んでから直接呼ぶ（<form action> は使わない）。
+export async function dismissEmailAction(
+  id: string,
+): Promise<{ error: string | null }> {
   const supabase = await createClient();
-  await dismissInboundEmail(supabase, id);
+  const result = await dismissInboundEmail(supabase, id);
+  if (!result.ok) return { error: result.error };
   revalidatePath("/import");
+  return { error: null };
 }
 
 // 誤マージを取り消す（合体された子を独立下書きに戻す）。
