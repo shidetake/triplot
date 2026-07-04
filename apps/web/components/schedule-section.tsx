@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import type { LatLng } from "@triplot/shared/placeMap";
@@ -33,6 +33,7 @@ export function ScheduleSection({
   members,
   biasCenter,
   myMemberId,
+  afterHeading,
 }: {
   tripId: string;
   initialTz: string | null; // trip.default_timezone（旅程にtransitが無い時の唯一の拠り所）
@@ -44,6 +45,9 @@ export function ScheduleSection({
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
+  // 見出し直後・カレンダーの上に差し込む内容（未確定の取り込み等）。費用セクションと
+  // 表示位置を揃えるため、呼び出し側のコンテンツをここに挟む。
+  afterHeading?: ReactNode;
 }) {
   const locale = useLocale();
   // 予定の色判定で使う、参加者 id → hue の引き辞書。
@@ -197,6 +201,8 @@ export function ScheduleSection({
           </Button>
         </div>
       </div>
+
+      {afterHeading}
 
       <WeekCalendar
         schedule={schedule}

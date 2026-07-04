@@ -9,6 +9,7 @@ import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
 import { type EventFormMode } from "@/components/event-form";
+import type { PlacePickerInitial } from "@/components/place-picker";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
@@ -40,7 +41,11 @@ import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
 import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
-import type { EventDraft, Receipt } from "@/lib/import/schema";
+import {
+  type EventDraft,
+  type Receipt,
+  transitVehicleLabel,
+} from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
 import type {
   Currency,
@@ -498,9 +503,16 @@ export default async function TripDetailPage({
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       const res = resolveExpenseTz(ev.startDate, tzTimeline);
       const tz = res.kind === "single" ? res.tz : res.options[0].tz;
-      // 場所ヒント: transit のタイトルは区間表記（NRT-HNL）で場所ではないので location のみ。
+      // 場所欄: transit は便名（+ターミナル）があればそれを自由入力で優先する
+      // （空港名は title の区間表記と重複する上、実在の検索対象でもないため）。
+      // 便名が無い transit は空港名にフォールバックし、timed/allday はタイトルを手がかりにする。
+      const vehicleLabel = transitVehicleLabel(ev);
       const placeName = ev.kind === "transit" ? ev.location : ev.title;
-      const place = placeName ? matchSavedPlace(placeName, ev.location) : null;
+      const place: PlacePickerInitial = vehicleLabel
+        ? { kind: "free", label: vehicleLabel }
+        : placeName
+          ? matchSavedPlace(placeName, ev.location)
+          : null;
       const title = ev.title || t("common.untitledEvent");
       const whenLabel = eventDraftWhenLabel(ev, locale);
       const formState: EventFormMode = {
@@ -520,7 +532,7 @@ export default async function TripDetailPage({
           arriveTz: ev.arriveTz,
           place,
           autoResolvePlace:
-            place || !placeName
+            vehicleLabel || place || !placeName
               ? null
               : { name: placeName, location: ev.location },
         },
@@ -593,40 +605,41 @@ export default async function TripDetailPage({
           }))}
           biasCenter={placesBiasCenter}
           myMemberId={me.id}
+          afterHeading={
+            eventDrafts.length > 0 && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
+                  {t("tripDetail.pendingImports", { count: eventDrafts.length })}
+                  <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
+                    {t("tripDetail.importEventHelp")}
+                  </HelpTip>
+                </div>
+                <div className="mt-3 space-y-2">
+                  {eventDrafts.map((d) => (
+                    <EventDraftConfirmButton
+                      key={d.id}
+                      draftId={d.id}
+                      labelParts={d.labelParts}
+                      tripId={tripId}
+                      defaultTz={d.tz}
+                      tripStart={trip.start_date}
+                      tripEnd={trip.end_date}
+                      state={d.formState}
+                      places={placesForPicker}
+                      members={activeMembers.map((m) => ({
+                        id: m.id,
+                        display_name: m.display_name,
+                        color: m.color,
+                      }))}
+                      biasCenter={placesBiasCenter}
+                      tzTimeline={tzTimeline}
+                    />
+                  ))}
+                </div>
+              </div>
+            )
+          }
         />
-
-        {eventDrafts.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
-              {t("tripDetail.pendingImports", { count: eventDrafts.length })}
-              <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
-                {t("tripDetail.importEventHelp")}
-              </HelpTip>
-            </div>
-            <div className="mt-3 space-y-2">
-              {eventDrafts.map((d) => (
-                <EventDraftConfirmButton
-                  key={d.id}
-                  draftId={d.id}
-                  labelParts={d.labelParts}
-                  tripId={tripId}
-                  defaultTz={d.tz}
-                  tripStart={trip.start_date}
-                  tripEnd={trip.end_date}
-                  state={d.formState}
-                  places={placesForPicker}
-                  members={activeMembers.map((m) => ({
-                    id: m.id,
-                    display_name: m.display_name,
-                    color: m.color,
-                  }))}
-                  biasCenter={placesBiasCenter}
-                  tzTimeline={tzTimeline}
-                />
-              ))}
-            </div>
-          </div>
-        )}
       </section>
 
       <section className="mt-10 space-y-6">

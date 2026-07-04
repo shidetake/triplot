@@ -45,9 +45,13 @@ type Resolved =
     };
 
 // 自由入力も Model B で place_id に解決済みなので、編集時の初期値は
-// 常に保存済み（saved）か無し。自由入力の「初期値」は存在しない。
+// 常に保存済み（saved）か無し。"free" は取り込み確定など、確定前から
+// 自由入力テキストを事前入力したい（かつ Google 自動解決はしたくない）
+// 場合だけに使う特殊な初期値（例: transit の便名は実在の場所ではないので
+// Google 検索の対象にしない）。
 export type PlacePickerInitial =
   | { kind: "saved"; id: string; name: string }
+  | { kind: "free"; label: string }
   | null;
 
 type Row =
@@ -73,10 +77,16 @@ export function PlacePicker({
   const placesLib = useMapsLibrary("places");
 
   const [query, setQuery] = useState(
-    initial ? initial.name : (autoResolve?.name ?? ""),
+    initial?.kind === "saved"
+      ? initial.name
+      : initial?.kind === "free"
+        ? initial.label
+        : (autoResolve?.name ?? ""),
   );
   const [resolved, setResolved] = useState<Resolved | null>(
-    initial ? { kind: "saved", id: initial.id, name: initial.name } : null,
+    initial?.kind === "saved"
+      ? { kind: "saved", id: initial.id, name: initial.name }
+      : null,
   );
   const [gSug, setGSug] = useState<
     google.maps.places.AutocompleteSuggestion[]

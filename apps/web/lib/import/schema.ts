@@ -56,7 +56,11 @@ export const receiptSchema = z.object({
   location: z
     .string()
     .nullable()
-    .describe("店舗の住所・地名（場所の手がかり）。無ければ null"),
+    .describe(
+      "実際に利用した店舗・施設の住所や地名（場所の手がかり）。無ければ null。運送会社" +
+        "（航空会社・鉄道会社等）のチケット購入では、その会社の支社・本社住所を入れない" +
+        "（利用者が実際に訪れる場所ではないため）",
+    ),
   // マージ用（決済元を問わない汎用フィールド）。
   referenceId: z
     .string()
@@ -123,6 +127,24 @@ export const eventDraftSchema = z.object({
     .describe(
       "transit のみ: 到着地の IANA タイムゾーン名（例: Pacific/Honolulu）。transit 以外は null",
     ),
+  vehicleNumber: z
+    .string()
+    .nullable()
+    .describe(
+      "transit のみ: 便名・列車番号など交通機関の識別番号（例: NH184、のぞみ23号）。判明すれば入れる。transit 以外・不明は null",
+    ),
+  departTerminal: z
+    .string()
+    .nullable()
+    .describe(
+      "transit のみ: 出発地のターミナル表記（例: Terminal 1、T2）。判明すれば入れる。transit 以外・不明は null",
+    ),
+  arriveTerminal: z
+    .string()
+    .nullable()
+    .describe(
+      "transit のみ: 到着地のターミナル表記（例: Terminal B）。判明すれば入れる。transit 以外・不明は null",
+    ),
   location: z
     .string()
     .nullable()
@@ -182,7 +204,7 @@ export function canonicalTimeZone(tz: string): string | null {
 //  - 時刻/TZ は形式・実在を検証し、不正は null に落とす（フォームで人が直す）
 //  - kind の整合を補正: transit は到着（日時）が揃わなければ timed/allday に降格、
 //    timed は開始時刻が無ければ allday に降格。allday は時刻を持たない
-//  - transit 以外は TZ を持たない（events の参照化モデルと一致）
+//  - transit 以外は TZ・便名・ターミナルを持たない（events の参照化モデルと一致）
 //  - transit の到着は出発より現地日付が前になり得る（日付変更線）ので順序は縛らない。
 //    timed/allday は終了 >= 開始 を要求し、破れば終了を落とす
 export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
@@ -216,6 +238,9 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       endTime,
       departTz,
       arriveTz,
+      vehicleNumber: d.vehicleNumber,
+      departTerminal: d.departTerminal,
+      arriveTerminal: d.arriveTerminal,
     };
   }
   // timed/allday: 終了 >= 開始（壁時計）を要求。破れば終了を落とす。
@@ -234,5 +259,22 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     endTime: endT,
     departTz: null,
     arriveTz: null,
+    vehicleNumber: null,
+    departTerminal: null,
+    arriveTerminal: null,
   };
+}
+
+// transit の便名＋ターミナルを「場所」欄向けの1行ラベルにする（例:
+// "NH184（Terminal 1 → Terminal B）"）。空港名は route（title）と重複する上、
+// 航空会社の窓口ではなく実際に降りる空港でもないので場所として検索しない —
+// 便名を自由入力の場所ラベルとして使う。vehicleNumber が無ければ null
+// （呼び出し側は location による空港名フォールバックに切り替える）。
+export function transitVehicleLabel(ev: EventDraft): string | null {
+  if (ev.kind !== "transit" || !ev.vehicleNumber) return null;
+  const terminals =
+    ev.departTerminal && ev.arriveTerminal
+      ? `${ev.departTerminal} → ${ev.arriveTerminal}`
+      : (ev.departTerminal ?? ev.arriveTerminal);
+  return terminals ? `${ev.vehicleNumber}（${terminals}）` : ev.vehicleNumber;
 }
