@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { canonicalTimeZone, type EventDraft, sanitizeEventDraft } from "./schema";
+import {
+  canonicalTimeZone,
+  type EventDraft,
+  type Extraction,
+  extractionGainedDetail,
+  type Receipt,
+  sanitizeEventDraft,
+} from "./schema";
 
 function draft(p: Partial<EventDraft>): EventDraft {
   return {
@@ -23,6 +30,78 @@ function draft(p: Partial<EventDraft>): EventDraft {
     ...p,
   };
 }
+
+function receipt(p: Partial<Receipt> = {}): Receipt {
+  return {
+    merchant: "Toast Cafe",
+    total: 12.5,
+    currency: "USD",
+    date: "2026-08-01",
+    serviceDate: null,
+    time: null,
+    category: "飲食",
+    location: null,
+    referenceId: null,
+    isUpdate: false,
+    ...p,
+  };
+}
+
+describe("extractionGainedDetail", () => {
+  it("第1パスで receipt が無く、第2パスで見つかったら true", () => {
+    const before: Extraction = { receipt: null, events: [] };
+    const after: Extraction = { receipt: receipt(), events: [] };
+    expect(extractionGainedDetail(before, after)).toBe(true);
+  });
+
+  it("receipt の主要項目が空→埋まったら true（merchant/total/location/referenceId/serviceDate/time）", () => {
+    const before: Extraction = {
+      receipt: receipt({ merchant: "", total: 0 }),
+      events: [],
+    };
+    expect(
+      extractionGainedDetail(before, {
+        receipt: receipt({ merchant: "Toast Cafe", total: 0 }),
+        events: [],
+      }),
+    ).toBe(true);
+    expect(
+      extractionGainedDetail(before, {
+        receipt: receipt({ merchant: "", total: 12.5 }),
+        events: [],
+      }),
+    ).toBe(true);
+    expect(
+      extractionGainedDetail(
+        { receipt: receipt({ location: null }), events: [] },
+        { receipt: receipt({ location: "Waikiki" }), events: [] },
+      ),
+    ).toBe(true);
+  });
+
+  it("予定が第2パスで増えたら true", () => {
+    const ev = draft({});
+    expect(
+      extractionGainedDetail(
+        { receipt: null, events: [] },
+        { receipt: null, events: [ev] },
+      ),
+    ).toBe(true);
+  });
+
+  it("何も増えなければ false（配信解除リンク等のノイズを候補にしない）", () => {
+    const same = receipt();
+    expect(
+      extractionGainedDetail(
+        { receipt: same, events: [] },
+        { receipt: same, events: [] },
+      ),
+    ).toBe(false);
+    expect(
+      extractionGainedDetail({ receipt: null, events: [] }, { receipt: null, events: [] }),
+    ).toBe(false);
+  });
+});
 
 describe("canonicalTimeZone", () => {
   it("実在する名前は canonical IANA 名に正規化し、幻覚は null", () => {

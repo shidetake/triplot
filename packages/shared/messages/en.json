@@ -515,7 +515,7 @@
     "heading": "Admin",
     "menuLink": "Admin",
     "candidatesHeading": "Receipt link host candidates",
-    "candidatesDescription": "Hosts of receipt detail links found in imported emails that are not on the allowlist yet. Promote genuine receipt platforms by adding them to the allowlist (a code constant).",
+    "candidatesDescription": "Hosts not on the allowlist yet where the automatic fetch (second pass) actually filled in draft details. Check the domain, and promote genuine receipt platforms by adding them to the allowlist (a code constant) — that cuts the LLM call back down to one.",
     "seenCount": "{count, plural, one {seen # time} other {seen # times}}",
     "lastSeen": "last {date}",
     "promoted": "Promoted",

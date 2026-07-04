@@ -10,7 +10,12 @@ import {
   selectMergeCandidates,
 } from "./merge";
 import { appendLinkText, gatherReceiptText } from "./pipeline";
-import type { EventDraft, Extraction, Receipt } from "./schema";
+import {
+  extractionGainedDetail,
+  type EventDraft,
+  type Extraction,
+  type Receipt,
+} from "./schema";
 import type { createServiceClient } from "@/lib/supabase/service";
 
 // 受信メールの抽出・マージ・自動リトライ（バックグラウンド処理）。route handler から
@@ -258,37 +263,42 @@ async function runExtraction(
   });
   const trips = await fetchTripHints(supabase, userId);
   let text = gatheredText;
-  let extractResult = await extractEmail(EXTRACT_MODEL, {
+  const firstPass = await extractEmail(EXTRACT_MODEL, {
     subject,
     text,
     trips,
   });
-  // LLM が見つけた明細リンクのうち、未許可ホストを学習用に記録（ホスト名のみ）。
-  // 昇格されれば第1パスで取得でき、下の第2パス（追加 LLM 呼び出し）が不要になる。
-  await recordCandidateLink(supabase, extractResult.detailUrl);
+  let extractResult = firstPass;
 
   // 第2パス: 明細が未許可ホストのリンク先にしか無いメール。LLM が特定したその URL
   // 1本だけを SSRF ガード付きで取得して本文に足し、もう1回だけ抽出し直す（第2パスの
   // detailUrl はさらに fetch しない＝ループ禁止）。取得失敗・LLM 失敗はどちらも
   // 第1パス結果で続行する（enrichment は best-effort）。
   if (
-    extractResult.detailUrl &&
-    isUnknownReceiptHostUrl(extractResult.detailUrl)
+    firstPass.detailUrl &&
+    isUnknownReceiptHostUrl(firstPass.detailUrl)
   ) {
-    const linkText = await fetchReceiptLink(extractResult.detailUrl, {
+    const linkText = await fetchReceiptLink(firstPass.detailUrl, {
       requireAllowedHost: false,
     });
     if (linkText && linkText.trim()) {
-      const enriched = appendLinkText(text, extractResult.detailUrl, linkText);
+      const enriched = appendLinkText(text, firstPass.detailUrl, linkText);
       try {
-        extractResult = await extractEmail(EXTRACT_MODEL, {
+        const secondPass = await extractEmail(EXTRACT_MODEL, {
           subject,
           text: enriched,
           trips,
         });
+        // 未許可ホストを学習用に記録するのは、実際に下書きの内容を補えた時だけ
+        // （LLM の detailUrl 誤報告・配信解除リンク等のノイズを候補表から除く。
+        // admin 管理ページに出るホストはドメイン名を見るだけで昇格判断できる）。
+        if (extractionGainedDetail(firstPass, secondPass)) {
+          await recordCandidateLink(supabase, firstPass.detailUrl);
+        }
+        extractResult = secondPass;
         text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
       } catch {
-        // 第1パス結果にフォールバック
+        // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
       }
     }
   }

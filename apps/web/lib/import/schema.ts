@@ -190,6 +190,30 @@ export type Extraction = {
   events: EventDraft[];
 };
 
+// 第2パス enrichment（未許可ホストのリンク先を fetch して再抽出）が実際に下書きの
+// 内容を補えたか。false なら「LLM が detailUrl を報告したが実質的な収穫は無かった」
+// ＝配信解除リンクの誤報告・fetch できただけで空のページ等のノイズなので、候補ホストの
+// 学習（receipt_link_candidates）には記録しない（admin 管理ページに出るのは実際に
+// 役立ったホストだけにする）。
+export function extractionGainedDetail(
+  before: Extraction,
+  after: Extraction,
+): boolean {
+  if (!before.receipt && after.receipt) return true;
+  if (before.receipt && after.receipt) {
+    const b = before.receipt;
+    const a = after.receipt;
+    if (!b.merchant && a.merchant) return true;
+    if (b.total === 0 && a.total !== 0) return true;
+    if (!b.location && a.location) return true;
+    if (!b.referenceId && a.referenceId) return true;
+    if (!b.serviceDate && a.serviceDate) return true;
+    if (!b.time && a.time) return true;
+  }
+  if (after.events.length > before.events.length) return true;
+  return false;
+}
+
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HM_RE = /^(\d{1,2}):(\d{2})$/;
 
