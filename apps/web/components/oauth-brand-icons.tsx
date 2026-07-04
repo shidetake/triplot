@@ -15,13 +15,12 @@ export function AppleGlyph({ className }: { className?: string }) {
   );
 }
 
-// Google "G" ロゴ（4色、Google 公式ボタンビルダー出力そのまま）。ガイドライン上
-// 常に白背景の上に置く必要があるため、丸い白背景を自前で敷く（ダークモードのボタン地でも
-// ロゴ部分だけ白いまま＝チップとして浮かせる）。
+// Google "G" ロゴ（4色、Google 公式ボタンビルダー出力そのまま）。ダークテーマのボタン地
+// （#131314）にもそのまま直接置く（白いチップ等では囲まない）。Google 公式のダークテーマ
+// ボタン例示画像・実際の主要アプリ（Strava・AllTrails 等）双方とも背景に直置きしているため。
 export function GoogleGlyph({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden>
-      <circle cx="24" cy="24" r="24" fill="#fff" />
       <path
         fill="#EA4335"
         d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
