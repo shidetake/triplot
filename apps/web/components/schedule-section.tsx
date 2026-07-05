@@ -364,14 +364,13 @@ export function ScheduleSection({
         />
       </div>
 
-      {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。 */}
+      {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。
+          広い画面の見出し行にある「?」ヒントはここでは出さない＝カレンダーが
+          画面いっぱいになるこの表示なら + の意味は説明無しでも伝わるため。 */}
       <div
         className="fixed right-4 z-20 flex flex-col items-end gap-2 md:hidden"
         style={{ bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)` }}
       >
-        <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
-          {t("addHelp")}
-        </HelpTip>
         <Button
           type="button"
           size="icon"
