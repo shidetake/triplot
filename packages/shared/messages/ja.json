@@ -87,6 +87,13 @@
     "importEventHelp": "メールから抽出した下書きです。内容を確認・確定すると予定になります。",
     "reservationRefNote": "予約番号 {ref}"
   },
+  "tripTabs": {
+    "navLabel": "旅行セクション",
+    "schedule": "予定",
+    "places": "場所",
+    "expenses": "費用",
+    "todos": "TODO"
+  },
   "members": {
     "heading": "メンバー",
     "editOwnName": "自分の表示名を編集できます。",

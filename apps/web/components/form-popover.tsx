@@ -13,6 +13,7 @@ import { Popover } from "@base-ui/react/popover";
 import { Drawer } from "vaul";
 
 import { FormHostProvider } from "./form-host";
+import { useMediaQuery } from "./use-media-query";
 
 export type Anchor = { x: number; y: number };
 
@@ -21,22 +22,6 @@ export type Anchor = { x: number; y: number };
 // カード”として読める下限が ~640px（352px が画面幅の ~55%）。これ未満は窮屈なので全画面。
 // ＝下の Popup の w-[22rem] を変えるならこの閾値も見直す。
 const FULLSCREEN_BELOW = "(max-width: 639px)";
-
-// メディアクエリの一致を購読する小フック（クライアント専用。FormPopover は
-// 開いた時だけ client でマウントされるので SSR フォールバックは不要だが一応ガード）。
-function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia(query).matches : false,
-  );
-  useEffect(() => {
-    const mql = window.matchMedia(query);
-    const onChange = () => setMatches(mql.matches);
-    onChange();
-    mql.addEventListener("change", onChange);
-    return () => mql.removeEventListener("change", onChange);
-  }, [query]);
-  return matches;
-}
 
 // 閉じる経路は ui-guidelines の3つ＝Esc・背景クリック（outside-press）・フォーム内の
 // ×/キャンセル/送信（onClose を直接呼ぶ）。それ以外の focus-out（タブ移動などフォーカスが

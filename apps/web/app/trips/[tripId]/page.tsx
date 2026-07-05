@@ -20,6 +20,7 @@ import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
 import { TripActions } from "@/components/trip-actions";
+import { TripDetailTabs } from "@/components/trip-detail-tabs";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -594,201 +595,207 @@ export default async function TripDetailPage({
         />
       </section>
 
-      <section className="mt-10 space-y-6">
-        <ScheduleSection
-          tripId={tripId}
-          initialTz={trip.default_timezone}
-          tripStart={trip.start_date}
-          tripEnd={trip.end_date}
-          events={scheduleEvents}
-          places={placesForPicker}
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-            color: m.color,
-          }))}
-          biasCenter={placesBiasCenter}
-          myMemberId={me.id}
-          afterHeading={
-            eventDrafts.length > 0 && (
+      <TripDetailTabs
+        schedule={
+          <section className="mt-10 space-y-6">
+            <ScheduleSection
+              tripId={tripId}
+              initialTz={trip.default_timezone}
+              tripStart={trip.start_date}
+              tripEnd={trip.end_date}
+              events={scheduleEvents}
+              places={placesForPicker}
+              members={activeMembers.map((m) => ({
+                id: m.id,
+                display_name: m.display_name,
+                color: m.color,
+              }))}
+              biasCenter={placesBiasCenter}
+              myMemberId={me.id}
+              afterHeading={
+                eventDrafts.length > 0 && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                    <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
+                      {t("tripDetail.pendingImports", { count: eventDrafts.length })}
+                      <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
+                        {t("tripDetail.importEventHelp")}
+                      </HelpTip>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {eventDrafts.map((d) => (
+                        <EventDraftConfirmButton
+                          key={d.id}
+                          draftId={d.id}
+                          labelParts={d.labelParts}
+                          tripId={tripId}
+                          defaultTz={d.tz}
+                          tripStart={trip.start_date}
+                          tripEnd={trip.end_date}
+                          state={d.formState}
+                          places={placesForPicker}
+                          members={activeMembers.map((m) => ({
+                            id: m.id,
+                            display_name: m.display_name,
+                            color: m.color,
+                          }))}
+                          biasCenter={placesBiasCenter}
+                          tzTimeline={tzTimeline}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )
+              }
+            />
+          </section>
+        }
+        places={
+          <section className="mt-10 space-y-6">
+            <h2 className="text-lg font-semibold">{t("tripDetail.places")}</h2>
+
+            <PlacesSection
+              tripId={tripId}
+              places={places}
+              pinOptions={pinOptions}
+              members={activeMembers.map((m) => ({
+                id: m.id,
+                color: m.color,
+              }))}
+              myMemberId={me.id}
+            />
+          </section>
+        }
+        expenses={
+          <section className="mt-10 space-y-6">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-lg font-semibold">{t("tripDetail.expenses")}</h2>
+              <AddExpenseButton
+                tripId={tripId}
+                members={activeMembers.map((m) => ({
+                  id: m.id,
+                  display_name: m.display_name,
+                  color: m.color,
+                }))}
+                myMemberId={me.id}
+                defaultCurrency={defaultCurrency}
+                initialCurrency={initialCurrency}
+                categories={categories}
+                initialCategoryId={initialCategoryId}
+                averageRates={averageRates}
+                initialPaidAt={initialPaidAt}
+                places={placesForPicker}
+                biasCenter={placesBiasCenter}
+                tzTimeline={tzTimeline}
+                tripStart={trip.start_date}
+                tripEnd={trip.end_date}
+              />
+            </div>
+
+            {importDrafts.length > 0 && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
                 <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
-                  {t("tripDetail.pendingImports", { count: eventDrafts.length })}
+                  {t("tripDetail.pendingImports", { count: importDrafts.length })}
                   <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
-                    {t("tripDetail.importEventHelp")}
+                    {t("tripDetail.importHelp")}
                   </HelpTip>
                 </div>
                 <div className="mt-3 space-y-2">
-                  {eventDrafts.map((d) => (
-                    <EventDraftConfirmButton
+                  {importDrafts.map((d) => (
+                    <DraftConfirmButton
                       key={d.id}
                       draftId={d.id}
                       labelParts={d.labelParts}
                       tripId={tripId}
-                      defaultTz={d.tz}
-                      tripStart={trip.start_date}
-                      tripEnd={trip.end_date}
-                      state={d.formState}
-                      places={placesForPicker}
                       members={activeMembers.map((m) => ({
                         id: m.id,
                         display_name: m.display_name,
                         color: m.color,
                       }))}
+                      myMemberId={me.id}
+                      defaultCurrency={defaultCurrency}
+                      initialCurrency={d.initialCurrency}
+                      categories={categories}
+                      initialCategoryId={d.initialCategoryId}
+                      averageRates={averageRates}
+                      initialPaidAt={d.initialPaidAt}
+                      places={placesForPicker}
                       biasCenter={placesBiasCenter}
                       tzTimeline={tzTimeline}
+                      tripStart={trip.start_date}
+                      tripEnd={trip.end_date}
+                      initialPrice={d.initialPrice}
+                      initialPlace={d.initialPlace}
+                      autoResolvePlace={d.autoResolvePlace}
+                      initialTime={d.initialTime}
                     />
                   ))}
                 </div>
               </div>
-            )
-          }
-        />
-      </section>
+            )}
 
-      <section className="mt-10 space-y-6">
-        <h2 className="text-lg font-semibold">{t("tripDetail.places")}</h2>
+            <ExpenseSummaryView
+              summary={summary}
+              settlements={settlements}
+              members={activeMembers}
+              defaultCurrency={defaultCurrency}
+              averageRates={averageRates}
+            />
 
-        <PlacesSection
-          tripId={tripId}
-          places={places}
-          pinOptions={pinOptions}
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            color: m.color,
-          }))}
-          myMemberId={me.id}
-        />
-      </section>
-
-      <section className="mt-10 space-y-6">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">{t("tripDetail.expenses")}</h2>
-          <AddExpenseButton
-            tripId={tripId}
-            members={activeMembers.map((m) => ({
-              id: m.id,
-              display_name: m.display_name,
-              color: m.color,
-            }))}
-            myMemberId={me.id}
-            defaultCurrency={defaultCurrency}
-            initialCurrency={initialCurrency}
-            categories={categories}
-            initialCategoryId={initialCategoryId}
-            averageRates={averageRates}
-            initialPaidAt={initialPaidAt}
-            places={placesForPicker}
-            biasCenter={placesBiasCenter}
-            tzTimeline={tzTimeline}
-            tripStart={trip.start_date}
-            tripEnd={trip.end_date}
-          />
-        </div>
-
-        {importDrafts.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-            <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
-              {t("tripDetail.pendingImports", { count: importDrafts.length })}
-              <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
-                {t("tripDetail.importHelp")}
+            <ExpenseList
+              tripId={tripId}
+              expenses={expenses}
+              members={activeMembers.map((m) => ({
+                id: m.id,
+                display_name: m.display_name,
+                color: m.color,
+                avatarUrl: m.users?.avatar_url ?? null,
+              }))}
+              categories={categories}
+              places={placesForPicker}
+              defaultCurrency={defaultCurrency}
+              initialCurrency={initialCurrency}
+              initialCategoryId={initialCategoryId}
+              averageRates={averageRates}
+              initialPaidAt={initialPaidAt}
+              biasCenter={placesBiasCenter}
+              tzTimeline={tzTimeline}
+              tripStart={trip.start_date}
+              tripEnd={trip.end_date}
+              myMemberId={me.id}
+            />
+          </section>
+        }
+        todos={
+          <section className="mt-10 space-y-6">
+            <div className="flex items-center gap-1.5">
+              <h2 className="text-lg font-semibold">{t("tripDetail.todoList")}</h2>
+              <HelpTip label={t("tripDetail.privateTodoHelpLabel")} widthClass="w-60">
+                {t("tripDetail.privateTodoHelp")}
               </HelpTip>
             </div>
-            <div className="mt-3 space-y-2">
-              {importDrafts.map((d) => (
-                <DraftConfirmButton
-                  key={d.id}
-                  draftId={d.id}
-                  labelParts={d.labelParts}
-                  tripId={tripId}
-                  members={activeMembers.map((m) => ({
-                    id: m.id,
-                    display_name: m.display_name,
-                    color: m.color,
-                  }))}
-                  myMemberId={me.id}
-                  defaultCurrency={defaultCurrency}
-                  initialCurrency={d.initialCurrency}
-                  categories={categories}
-                  initialCategoryId={d.initialCategoryId}
-                  averageRates={averageRates}
-                  initialPaidAt={d.initialPaidAt}
-                  places={placesForPicker}
-                  biasCenter={placesBiasCenter}
-                  tzTimeline={tzTimeline}
-                  tripStart={trip.start_date}
-                  tripEnd={trip.end_date}
-                  initialPrice={d.initialPrice}
-                  initialPlace={d.initialPlace}
-                  autoResolvePlace={d.autoResolvePlace}
-                  initialTime={d.initialTime}
-                />
-              ))}
-            </div>
-          </div>
-        )}
 
-        <ExpenseSummaryView
-          summary={summary}
-          settlements={settlements}
-          members={activeMembers}
-          defaultCurrency={defaultCurrency}
-          averageRates={averageRates}
-        />
+            <TodoSection
+              tripId={tripId}
+              kind="prep"
+              title={t("tripDetail.todoPrep")}
+              defaultCollapsed={tripStarted}
+              todos={prepTodos}
+              members={todoMembers}
+              myMemberId={me.id}
+            />
 
-        <ExpenseList
-          tripId={tripId}
-          expenses={expenses}
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-            color: m.color,
-            avatarUrl: m.users?.avatar_url ?? null,
-          }))}
-          categories={categories}
-          places={placesForPicker}
-          defaultCurrency={defaultCurrency}
-          initialCurrency={initialCurrency}
-          initialCategoryId={initialCategoryId}
-          averageRates={averageRates}
-          initialPaidAt={initialPaidAt}
-          biasCenter={placesBiasCenter}
-          tzTimeline={tzTimeline}
-          tripStart={trip.start_date}
-          tripEnd={trip.end_date}
-          myMemberId={me.id}
-        />
-      </section>
-
-      <section className="mt-10 space-y-6">
-        <div className="flex items-center gap-1.5">
-          <h2 className="text-lg font-semibold">{t("tripDetail.todoList")}</h2>
-          <HelpTip label={t("tripDetail.privateTodoHelpLabel")} widthClass="w-60">
-            {t("tripDetail.privateTodoHelp")}
-          </HelpTip>
-        </div>
-
-        <TodoSection
-          tripId={tripId}
-          kind="prep"
-          title={t("tripDetail.todoPrep")}
-          defaultCollapsed={tripStarted}
-          todos={prepTodos}
-          members={todoMembers}
-          myMemberId={me.id}
-        />
-
-        <TodoSection
-          tripId={tripId}
-          kind="onsite"
-          title={t("tripDetail.todoOnsite")}
-          defaultCollapsed={false}
-          todos={onsiteTodos}
-          members={todoMembers}
-          myMemberId={me.id}
-        />
-      </section>
-
+            <TodoSection
+              tripId={tripId}
+              kind="onsite"
+              title={t("tripDetail.todoOnsite")}
+              defaultCollapsed={false}
+              todos={onsiteTodos}
+              members={todoMembers}
+              myMemberId={me.id}
+            />
+          </section>
+        }
+      />
     </main>
   );
 }

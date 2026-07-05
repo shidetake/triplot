@@ -87,6 +87,13 @@
     "importEventHelp": "Drafts extracted from emails. Review and confirm to add them as events.",
     "reservationRefNote": "Confirmation # {ref}"
   },
+  "tripTabs": {
+    "navLabel": "Trip sections",
+    "schedule": "Schedule",
+    "places": "Places",
+    "expenses": "Expenses",
+    "todos": "To-dos"
+  },
   "members": {
     "heading": "Members",
     "editOwnName": "You can edit your own display name.",
