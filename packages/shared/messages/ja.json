@@ -520,7 +520,28 @@
     "lastSeen": "最終 {date}",
     "promoted": "昇格済み",
     "unsubscribeWarning": "配信解除リンクの疑い（未取得）",
-    "emptyState": "候補ホストはまだありません。未許可ホストの明細リンクが取り込みで見つかるとここに溜まります。"
+    "emptyState": "候補ホストはまだありません。未許可ホストの明細リンクが取り込みで見つかるとここに溜まります。",
+    "feedbackHeading": "フィードバック",
+    "feedbackEmpty": "フィードバックはまだありません。",
+    "markDone": "対応済みにする",
+    "markOpen": "未対応に戻す",
+    "updateFailed": "更新に失敗しました: {error}"
+  },
+  "feedback": {
+    "menuLink": "フィードバック",
+    "heading": "フィードバックを送る",
+    "kindLabel": "種別",
+    "kindBug": "不具合",
+    "kindFeature": "要望",
+    "bodyLabel": "内容",
+    "placeholderBug": "地図でピンが動かせない",
+    "placeholderFeature": "費用をCSVでエクスポートしたい",
+    "submit": "送信",
+    "sent": "フィードバックを送信しました",
+    "sendFailed": "送信に失敗しました。",
+    "emailSubject": "【triplot】フィードバックを受け付けました",
+    "emailIntro": "フィードバックありがとうございます。以下の内容で受け付けました。",
+    "emailOutro": "内容を確認のうえ、必要に応じて対応します。"
   },
   "avatar": {
     "changeAria": "アバターを変更",

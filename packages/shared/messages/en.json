@@ -520,7 +520,28 @@
     "lastSeen": "last {date}",
     "promoted": "Promoted",
     "unsubscribeWarning": "Looks like an unsubscribe link (not fetched)",
-    "emptyState": "No candidate hosts yet. They will show up here when imports find receipt detail links on hosts outside the allowlist."
+    "emptyState": "No candidate hosts yet. They will show up here when imports find receipt detail links on hosts outside the allowlist.",
+    "feedbackHeading": "Feedback",
+    "feedbackEmpty": "No feedback yet.",
+    "markDone": "Mark as done",
+    "markOpen": "Reopen",
+    "updateFailed": "Failed to update: {error}"
+  },
+  "feedback": {
+    "menuLink": "Feedback",
+    "heading": "Send feedback",
+    "kindLabel": "Type",
+    "kindBug": "Bug",
+    "kindFeature": "Feature request",
+    "bodyLabel": "Details",
+    "placeholderBug": "Can't move the pin on the map",
+    "placeholderFeature": "Export expenses as CSV",
+    "submit": "Send",
+    "sent": "Feedback sent",
+    "sendFailed": "Failed to send.",
+    "emailSubject": "[triplot] We received your feedback",
+    "emailIntro": "Thank you for your feedback. We received the following.",
+    "emailOutro": "We'll review it and act on it as needed."
   },
   "avatar": {
     "changeAria": "Change avatar",

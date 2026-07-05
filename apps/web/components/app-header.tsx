@@ -42,6 +42,17 @@ export async function AppHeader() {
     .is("trip_id", null);
   const inboxCount = count ?? 0;
 
+  // admin だけ: 未対応フィードバックの件数（アカウントメニューの「管理」行バッジ）。
+  // RLS の feedback_admin_select で admin 以外は読めない（クエリ自体もしない）。
+  let openFeedbackCount = 0;
+  if (profile?.is_admin) {
+    const { count: feedbackCount } = await supabase
+      .from("feedback")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "open");
+    openFeedbackCount = feedbackCount ?? 0;
+  }
+
   const t = await getTranslations("header");
   const inboxLabel =
     inboxCount > 0 ? t("inboxWithCount", { count: inboxCount }) : t("inbox");
@@ -72,6 +83,7 @@ export async function AppHeader() {
             name={accountName}
             avatarUrl={avatarUrl}
             isAdmin={profile?.is_admin ?? false}
+            openFeedbackCount={openFeedbackCount}
           />
         </div>
       </div>
