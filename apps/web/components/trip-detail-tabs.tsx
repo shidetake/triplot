@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
+import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -22,6 +22,16 @@ type TabKey = (typeof TABS)[number]["key"];
 
 function isTabKey(value: string | null): value is TabKey {
   return TABS.some((tab) => tab.key === value);
+}
+
+// 各タブの中身（PlacesSection 等）が「自分は今表示中のタブか」を知るための Context。
+// タブ切替は CSS の hidden/block だけで行うが、vaul の Drawer.Portal のように
+// document.body に直接ポータルする要素は親の hidden では隠れない。そういう要素は
+// この Context の isActive で自分自身の表示/非表示を制御する。
+const ActiveTabContext = createContext<TabKey>("schedule");
+
+export function useIsActiveTripTab(key: TabKey): boolean {
+  return useContext(ActiveTabContext) === key;
 }
 
 // 初期タブを ?tab= から読む。useSyncExternalStore で SSR/初期クライアント描画は
@@ -77,7 +87,7 @@ export function TripDetailTabs({
   };
 
   return (
-    <>
+    <ActiveTabContext.Provider value={activeTab}>
       {/* 狭い画面でだけ下の固定タブバー分の余白を確保。広い画面は不要（タブバー非表示）。
           全画面ブリードするタブ（予定のカレンダー・場所の地図）は各セクション内部で
           自身を position:fixed にして画面いっぱいに描く（lib/mobileTabChrome.ts）。
@@ -116,6 +126,6 @@ export function TripDetailTabs({
           );
         })}
       </nav>
-    </>
+    </ActiveTabContext.Provider>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
@@ -20,10 +20,19 @@ import {
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
+import { useIsActiveTripTab } from "./trip-detail-tabs";
+import { useMediaQuery } from "./use-media-query";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
 } from "@/lib/mobileTabChrome";
+
+// タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
+const NARROW_SCREEN_QUERY = "(max-width: 767px)";
+
+// 場所一覧ボトムシートの snapPoints。peek=ハンドル+件数だけの帯(96px)、
+// expanded=viewport の 75%。
+const PLACES_SHEET_SNAP_POINTS: (number | string)[] = ["96px", 0.75];
 
 export function PlacesSection({
   tripId,
@@ -47,17 +56,41 @@ export function PlacesSection({
   );
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
+  // 場所タブが今表示中か。4タブとも常時マウントされたまま CSS の hidden/block で
+  // 出し分けているが、下のボトムシート(Drawer)は document.body に直接ポータルする
+  // ため親の hidden では隠れない。他タブ表示中はこの isActive で明示的に畳む/外す。
+  const isActive = useIsActiveTripTab("places");
+  const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
+  const showPlacesSheet = isActive && isNarrow;
+
   const [query, setQuery] = useState("");
   // 狭い画面のみ: 場所リストを Vaul のドラッグ可能なボトムシートにする
   // （Google マップ風）。form-popover.tsx の NarrowSheet と同じ「viewport 基準
   // の fixed + 明示的 height」パターンに合わせる（container prop で地図パネルに
   // 閉じ込める案は snapPoints の内部計算と噛み合わず実機以前にレイアウトが
   // 壊れたため不採用。bottom オフセットでタブバーの上に固定する側で対応）。
-  // peek=ハンドル+件数だけの帯(96px)、expanded=viewport の 75%。
-  const PLACES_SHEET_SNAP_POINTS: (number | string)[] = ["96px", 0.75];
   const [placesSheetSnap, setPlacesSheetSnap] = useState<
     number | string | null
   >(PLACES_SHEET_SNAP_POINTS[0]);
+  // 一覧で場所をタップしたら地図を見たいはず＝シートを畳んで地図を見せる。
+  const collapsePlacesSheet = useCallback(() => {
+    setPlacesSheetSnap(PLACES_SHEET_SNAP_POINTS[0]);
+  }, []);
+
+  // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
+  // 生かす他の用途と合わせた設計）なので vaul 自身の scroll-lock には乗れない
+  // （form-popover.tsx の NarrowSheet と同じ理由・同じ対処）。シート表示中だけ
+  // ドキュメントの overflow を自前で固定し、ボディのドラッグが背景ページを
+  // スクロールしてしまうのを防ぐ。
+  useEffect(() => {
+    if (!showPlacesSheet) return;
+    const el = document.documentElement;
+    const prev = el.style.overflow;
+    el.style.overflow = "hidden";
+    return () => {
+      el.style.overflow = prev;
+    };
+  }, [showPlacesSheet]);
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
@@ -102,11 +135,16 @@ export function PlacesSection({
   }, []);
 
   // 保存済み/候補を選んだら仮ピン・POI は引っ込める（同時に2つ開かない）。
-  const selectSaved = useCallback((id: string) => {
-    setDraft(null);
-    setPoi(null);
-    setSelected({ kind: "saved", id });
-  }, []);
+  // 一覧（ボトムシート）からのタップは地図を見る操作なので、シートも畳む。
+  const selectSaved = useCallback(
+    (id: string) => {
+      setDraft(null);
+      setPoi(null);
+      setSelected({ kind: "saved", id });
+      collapsePlacesSheet();
+    },
+    [collapsePlacesSheet],
+  );
   const selectCandidate = useCallback((placeId: string) => {
     setDraft(null);
     setPoi(null);
@@ -143,15 +181,19 @@ export function PlacesSection({
   }, []);
 
   // 未マップ place を一覧でクリック: 「位置を指定」スコープを開始する。
-  // 他の選択状態は一旦クリアして、地図に集中させる。
-  const startLocate = useCallback((id: string, name: string) => {
-    setQuery("");
-    setCandidates([]);
-    setSelected(null);
-    setDraft(null);
-    setPoi(null);
-    setPendingLocationFor({ id, name });
-  }, []);
+  // 他の選択状態は一旦クリアして、地図に集中させる（シートも畳む＝地図をタップする必要があるため）。
+  const startLocate = useCallback(
+    (id: string, name: string) => {
+      setQuery("");
+      setCandidates([]);
+      setSelected(null);
+      setDraft(null);
+      setPoi(null);
+      setPendingLocationFor({ id, name });
+      collapsePlacesSheet();
+    },
+    [collapsePlacesSheet],
+  );
   const cancelLocate = useCallback(() => {
     setPendingLocationFor(null);
     setDraft(null);
@@ -284,59 +326,65 @@ export function PlacesSection({
           />
         </div>
 
-        {/* 場所一覧のボトムシート（狭い画面のみ）。form-popover.tsx の
-            NarrowSheet と同じ viewport 基準の fixed+明示的height パターン。
-            bottom を MOBILE_TAB_BOTTOM_OFFSET にしてタブバーの上に固定する
+        {/* 場所一覧のボトムシート。狭い画面かつ場所タブが表示中の時だけ描画する
+            （Drawer.Portal は document.body に直接ポータルするため、他タブ表示中に
+            親の hidden/block だけでは隠せない。isActive で明示的に出し分ける）。
+            form-popover.tsx の NarrowSheet と同じ viewport 基準の fixed+明示的height
+            パターン。bottom を MOBILE_TAB_BOTTOM_OFFSET にしてタブバーの上に固定する
             （container prop で地図パネルに閉じ込める案は snapPoints の内部
             計算と噛み合わずレイアウトが壊れたため不採用）。 */}
-        <Drawer.Root
-          open
-          modal={false}
-          dismissible={false}
-          snapPoints={PLACES_SHEET_SNAP_POINTS}
-          activeSnapPoint={placesSheetSnap}
-          setActiveSnapPoint={setPlacesSheetSnap}
-          scrollLockTimeout={0}
-          repositionInputs={false}
-        >
-          <Drawer.Portal>
-            <Drawer.Content
-              aria-label={t("placesListLabel")}
-              style={{ height: "100dvh", bottom: MOBILE_TAB_BOTTOM_OFFSET }}
-              className="fixed inset-x-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
-            >
-              <Drawer.Title className="sr-only">
-                {t("placesListLabel")}
-              </Drawer.Title>
-              <button
-                type="button"
-                onClick={() =>
-                  setPlacesSheetSnap(
-                    placesSheetSnap === PLACES_SHEET_SNAP_POINTS[0]
-                      ? PLACES_SHEET_SNAP_POINTS[1]
-                      : PLACES_SHEET_SNAP_POINTS[0],
-                  )
-                }
-                className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
+        {showPlacesSheet && (
+          <Drawer.Root
+            open
+            modal={false}
+            dismissible={false}
+            snapPoints={PLACES_SHEET_SNAP_POINTS}
+            activeSnapPoint={placesSheetSnap}
+            setActiveSnapPoint={setPlacesSheetSnap}
+            scrollLockTimeout={0}
+            repositionInputs={false}
+          >
+            <Drawer.Portal>
+              <Drawer.Content
+                aria-label={t("placesListLabel")}
+                style={{ height: "100dvh", bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+                className="fixed inset-x-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
               >
-                <Drawer.Handle className="!h-1.5 !w-9" />
-                <span className="text-xs font-medium text-muted-foreground">
-                  {t("placeCountLabel", { count: places.length })}
-                </span>
-              </button>
-              <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
-                <PlaceList
-                  places={places}
-                  selectedId={selected?.kind === "saved" ? selected.id : null}
-                  locatingId={pendingLocationFor?.id ?? null}
-                  onSelect={selectSaved}
-                  onLocate={startLocate}
-                  onCancelLocate={cancelLocate}
-                />
-              </div>
-            </Drawer.Content>
-          </Drawer.Portal>
-        </Drawer.Root>
+                <Drawer.Title className="sr-only">
+                  {t("placesListLabel")}
+                </Drawer.Title>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setPlacesSheetSnap(
+                      placesSheetSnap === PLACES_SHEET_SNAP_POINTS[0]
+                        ? PLACES_SHEET_SNAP_POINTS[1]
+                        : PLACES_SHEET_SNAP_POINTS[0],
+                    )
+                  }
+                  className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
+                >
+                  <Drawer.Handle className="!h-1.5 !w-9" />
+                  <span className="text-xs font-medium text-muted-foreground">
+                    {t("placeCountLabel", { count: places.length })}
+                  </span>
+                </button>
+                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+                  <PlaceList
+                    places={places}
+                    selectedId={
+                      selected?.kind === "saved" ? selected.id : null
+                    }
+                    locatingId={pendingLocationFor?.id ?? null}
+                    onSelect={selectSaved}
+                    onLocate={startLocate}
+                    onCancelLocate={cancelLocate}
+                  />
+                </div>
+              </Drawer.Content>
+            </Drawer.Portal>
+          </Drawer.Root>
+        )}
 
         <div className="hidden md:block">
           <PlaceList
