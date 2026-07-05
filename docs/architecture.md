@@ -67,6 +67,7 @@ flowchart LR
   end
 
   gw[Vercel AI Gateway<br/>gemini-2.5-flash]
+  resend[Resend<br/>トランザクションメール]
 
   dynadot -. ネームサーバ委任 .-> dns
   user -->|HTTPS triplot.app| app
@@ -76,6 +77,7 @@ flowchart LR
   email --> worker
   worker -->|POST /api/inbound-email| app
   app -->|抽出 / マージ| gw
+  app -->|フィードバック受付確認 / 管理者通知| resend
   cron -->|GET /api/cron/expire-inbound| app
   heartbeat -->|GET /api/cron/retry-extract| app
 ```
@@ -89,6 +91,7 @@ flowchart LR
 | **Vercel** | Next.js 16 アプリのホスティング＋ Cron | リージョン `hnd1`（東京）に固定。`main` への push で自動デプロイ |
 | **Supabase** | Postgres（+ RLS）＋ Auth | 東京 `ap-northeast-1`。Vercel と同一都市圏に co-locate（RTT 削減） |
 | **Vercel AI Gateway** | LLM アクセス（レシート抽出・マージ判定） | 既定モデル `google/gemini-2.5-flash`。将来は BYOK（ユーザのキー）も |
+| **Resend** | トランザクションメール送信（フィードバック受付確認・管理者への新着通知） | `RESEND_API_KEY` 未設定なら送信をスキップ（ローカル/プレビューで機能自体は動く）。詳細は [`feedback.md`](./design/feedback.md) |
 
 ## ドメインとルーティング
 

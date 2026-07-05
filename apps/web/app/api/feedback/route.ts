@@ -1,10 +1,11 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import { createClient as createBearerClient } from "@supabase/supabase-js";
 
 import { feedbackInputSchema } from "@triplot/shared/feedback";
 import type { Database } from "@triplot/shared/types/database";
 
+import { notifyFeedback } from "@/lib/feedback/notify";
 import { createClient } from "@/lib/supabase/server";
 
 // ユーザーフィードバック（不具合報告・要望）の書き込み経路。web も将来の RN も
@@ -68,6 +69,9 @@ export async function POST(request: Request) {
     console.error("[feedback] insert failed", error.message);
     return NextResponse.json({ error: "store failed" }, { status: 500 });
   }
+
+  // 応答後にメール通知（投稿者へ受付確認・管理者へ新着通知）。best-effort。
+  after(() => notifyFeedback({ input, userEmail: user.email ?? null }));
 
   return NextResponse.json({ ok: true });
 }
