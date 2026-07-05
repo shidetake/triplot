@@ -673,6 +673,15 @@ export function WeekCalendar({
   );
   const allDayBandH = Math.max(effectiveAllDayRows, 1) * ALLDAY_ROW + 4;
 
+  // 取り込み下書き（未確定）の疑似ブロックだけに付ける小バッジ。timed の
+  // blockLabel と transit の3箇所（同一列・出発側・到着側）で共通して使う。
+  const draftBadge = (ev: ScheduleEvent) =>
+    ev.isDraft && (
+      <span className="ml-1 rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
+        {tSched("draftBadge")}
+      </span>
+    );
+
   const blockLabel = (ev: ScheduleEvent) => {
     const pn = placeName(ev.placeId);
     return (
@@ -681,11 +690,7 @@ export function WeekCalendar({
           <ReservationMark ev={ev} />
           {ev.title}
         </span>
-        {ev.isDraft && (
-          <span className="ml-1 rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
-            {tSched("draftBadge")}
-          </span>
-        )}
+        {draftBadge(ev)}
         {pn && <span className="block truncate opacity-70">{pn}</span>}
       </>
     );
@@ -1316,6 +1321,7 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
+                    {draftBadge(t.event)}
                   </button>
                 );
               }
@@ -1358,6 +1364,7 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
+                    {draftBadge(t.event)}
                   </button>
                   {/* 到着側 */}
                   <button
@@ -1387,6 +1394,7 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
+                    {draftBadge(t.event)}
                   </button>
                 </div>
               );
