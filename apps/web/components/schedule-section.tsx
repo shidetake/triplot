@@ -1,6 +1,12 @@
 "use client";
 
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -20,11 +26,16 @@ import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
+import { useIsActiveTripTab } from "./trip-detail-tabs";
+import { useMediaQuery } from "./use-media-query";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
 } from "@/lib/mobileTabChrome";
+
+// タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
+const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
 export type EventRow = ScheduleEvent & { createdByMemberId: string };
 
@@ -118,6 +129,23 @@ export function ScheduleSection({
 }) {
   const locale = useLocale();
   const router = useRouter();
+
+  // 予定タブが今表示中か。カレンダー本体は狭い画面で position:fixed の
+  // 全画面ブリードにしているが、他タブ表示中（display:none）は document 側の
+  // スクロールをロックする理由が無い（費用/TODOタブは通常の縦積みスクロール
+  // に依存するため、常時ロックはできない）。予定タブ表示中だけロックする。
+  const isActive = useIsActiveTripTab("schedule");
+  const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
+  useEffect(() => {
+    if (!isActive || !isNarrow) return;
+    const el = document.documentElement;
+    const prev = el.style.overflow;
+    el.style.overflow = "hidden";
+    return () => {
+      el.style.overflow = prev;
+    };
+  }, [isActive, isNarrow]);
+
   const draftScheduleEvents = useMemo(
     () => eventDrafts.map((d) => draftToScheduleEvent(d, myMemberId)),
     [eventDrafts, myMemberId],

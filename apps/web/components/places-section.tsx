@@ -77,6 +77,17 @@ export function PlacesSection({
     setPlacesSheetSnap(PLACES_SHEET_SNAP_POINTS[0]);
   }, []);
 
+  // 他タブに移ったら畳んでおく（React 公式の「props の変化に応じて state を
+  // 調整する」パターン＝render中の直接setState。useEffectでのcascading更新を
+  // 避けるため、isActive の変化を ref 相当の前回値比較で検知する）。展開した
+  // まま他タブへ行ってまた場所タブに戻ると、いきなり展開済みで出てきて驚く
+  // ため、非表示になった瞬間に畳んでおく。
+  const [prevIsActive, setPrevIsActive] = useState(isActive);
+  if (isActive !== prevIsActive) {
+    setPrevIsActive(isActive);
+    if (!isActive) setPlacesSheetSnap(PLACES_SHEET_SNAP_POINTS[0]);
+  }
+
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
   // 生かす他の用途と合わせた設計）なので vaul 自身の scroll-lock には乗れない
   // （form-popover.tsx の NarrowSheet と同じ理由・同じ対処）。シート表示中だけ
@@ -291,7 +302,7 @@ export function PlacesSection({
           className="fixed inset-x-3 z-10 md:static md:inset-auto md:z-auto"
           style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 12px)` }}
         >
-          <div className="rounded-md bg-background shadow-lg md:rounded-none md:bg-transparent md:shadow-none">
+          <div className="rounded-md bg-background p-1 shadow-lg md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
             <PlaceSearch
               query={query}
               onQueryChange={setQuery}
