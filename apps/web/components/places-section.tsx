@@ -302,15 +302,17 @@ export function PlacesSection({
           className="fixed inset-x-3 z-10 md:static md:inset-auto md:z-auto"
           style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 12px)` }}
         >
-          <div className="rounded-md bg-background p-1 shadow-lg md:rounded-none md:bg-transparent md:p-0 md:shadow-none">
-            <PlaceSearch
-              query={query}
-              onQueryChange={setQuery}
-              onClear={clearSearch}
-              biasCenter={biasCenter}
-              onResults={onResults}
-            />
-          </div>
+          {/* 入力欄・ボタンをそれぞれ自前の bg/border で浮かせる（Google マップ風）。
+              周りを覆う不透明な枠は敷かない＝入力とボタンの間からも地図が見える
+              ようにし、地図の表示領域を最大化する（前回 p-1 の枠を足す方向で
+              直したが、逆に地図を隠す面積が増えるとフィードバックがあり撤回）。 */}
+          <PlaceSearch
+            query={query}
+            onQueryChange={setQuery}
+            onClear={clearSearch}
+            biasCenter={biasCenter}
+            onResults={onResults}
+          />
         </div>
 
         <div
