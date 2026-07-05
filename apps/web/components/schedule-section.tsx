@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
@@ -10,8 +11,10 @@ import {
   formatMinutes,
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
+import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/lib/supabase/client";
 import { EventForm, type EventFormMode } from "./event-form";
 import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
@@ -25,7 +28,63 @@ import {
 
 export type EventRow = ScheduleEvent & { createdByMemberId: string };
 
-type OpenForm = { form: EventFormMode; anchor: Anchor };
+// メール取り込みの未確定予定1件。page.tsx が資料（tzTimeline 等）から事前に
+// 組み立てた create モードの EventFormMode をそのまま持つ（確定フォームは
+// これをそのまま prefill として使う）。
+export type EventDraftItem = {
+  id: string;
+  labelParts: string[];
+  tz: string;
+  formState: EventFormMode;
+};
+
+type OpenForm = {
+  form: EventFormMode;
+  anchor: Anchor;
+  // 取り込み下書きの確定フローで開いた時だけ持つ。EventForm 成功時にこの
+  // 下書きを confirmed にする（resolveInboundDraft）。
+  draftId?: string;
+};
+
+const DRAFT_ID_PREFIX = "draft:";
+
+// EventDraftItem（メール取り込みの未確定予定）をカレンダー描画用の疑似
+// ScheduleEvent に変換する。DB には存在しない表示専用イベント（isDraft）。
+function draftToScheduleEvent(
+  d: EventDraftItem,
+  myMemberId: string,
+): EventRow {
+  const form = d.formState;
+  // eventDrafts は必ず mode:"create" + prefill 付きで組み立てられる（page.tsx）。
+  if (form.mode !== "create" || !form.prefill) {
+    throw new Error("event draft formState must be create mode with prefill");
+  }
+  const prefill = form.prefill;
+  const kind3 = prefill.kind3;
+  const startAt = `${form.date}T${form.time}`;
+  const endDate = prefill.endDate ?? form.date;
+  const endAt = prefill.endTime ? `${endDate}T${prefill.endTime}` : null;
+  return {
+    id: `${DRAFT_ID_PREFIX}${d.id}`,
+    title: d.labelParts[0],
+    kind: kind3 === "transit" ? "transit" : "normal",
+    allDay: kind3 === "allday",
+    startAt,
+    endAt,
+    startTz: kind3 === "transit" ? (prefill.departTz ?? form.tz) : null,
+    endTz: kind3 === "transit" ? (prefill.arriveTz ?? form.tz) : null,
+    tzDisambigTransitId: null,
+    tzDisambigSide: null,
+    placeId: null,
+    visibility: "shared",
+    note: null,
+    needsReservation: false,
+    reservationDone: false,
+    participantMemberIds: [], // 空 = 全員のシュガー（不参加によるdimを避ける）
+    createdByMemberId: myMemberId,
+    isDraft: true,
+  };
+}
 
 export function ScheduleSection({
   tripId,
@@ -33,6 +92,7 @@ export function ScheduleSection({
   tripStart,
   tripEnd,
   events,
+  eventDrafts,
   places,
   members,
   biasCenter,
@@ -44,16 +104,28 @@ export function ScheduleSection({
   tripStart: string | null;
   tripEnd: string | null;
   events: EventRow[];
+  // メール取り込みの未確定予定。カレンダー上に amber+破線の疑似ブロックとして
+  // 描画し、タップで確定フォームを開く（フローティングバナーは廃止）。
+  eventDrafts: EventDraftItem[];
   places: { id: string; name: string }[];
   // color は予定ブロック色の決定（1人だけ参加 → その人の hue）に必要。
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
-  // 見出し直後・カレンダーの上に差し込む内容（未確定の取り込み等）。費用セクションと
-  // 表示位置を揃えるため、呼び出し側のコンテンツをここに挟む。
+  // 広い画面だけに出す取り込みバナー（確認ボタン付き一覧）。狭い画面は
+  // カレンダー上の疑似ブロックに一本化する（下記 hidden md:block）。
   afterHeading?: ReactNode;
 }) {
   const locale = useLocale();
+  const router = useRouter();
+  const draftScheduleEvents = useMemo(
+    () => eventDrafts.map((d) => draftToScheduleEvent(d, myMemberId)),
+    [eventDrafts, myMemberId],
+  );
+  const eventsWithDrafts = useMemo(
+    () => [...events, ...draftScheduleEvents],
+    [events, draftScheduleEvents],
+  );
   // 予定の色判定で使う、参加者 id → hue の引き辞書。
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
@@ -79,13 +151,13 @@ export function ScheduleSection({
 
   const schedule = useMemo(
     () =>
-      buildSchedule(events, {
+      buildSchedule(eventsWithDrafts, {
         tripStart,
         tripEnd,
         locale,
         defaultTimezone: initialTz,
       }),
-    [events, tripStart, tripEnd, locale, initialTz],
+    [eventsWithDrafts, tripStart, tripEnd, locale, initialTz],
   );
 
   const tzTimeline = useMemo(
@@ -165,6 +237,13 @@ export function ScheduleSection({
 
   const onEventClick = useCallback(
     (eventId: string, anchor: Anchor) => {
+      if (eventId.startsWith(DRAFT_ID_PREFIX)) {
+        const draftId = eventId.slice(DRAFT_ID_PREFIX.length);
+        const d = eventDrafts.find((x) => x.id === draftId);
+        if (!d) return;
+        setOpen({ form: d.formState, anchor, draftId: d.id });
+        return;
+      }
       const ev = events.find((e) => e.id === eventId);
       if (!ev) return;
       setOpen({
@@ -176,12 +255,28 @@ export function ScheduleSection({
         anchor,
       });
     },
-    [events, myMemberId],
+    [events, eventDrafts, myMemberId],
+  );
+
+  // 取り込み下書きの確定。EventForm 成功時に呼ばれ、下書きを confirmed に
+  // する（ImportDraftRow と同じ resolveInboundDraft）。
+  const confirmDraft = useCallback(
+    async (draftId: string, eventId?: string) => {
+      const supabase = createClient();
+      await resolveInboundDraft(supabase, draftId, "confirmed", { eventId });
+      router.refresh();
+    },
+    [router],
   );
 
   const t = useTranslations("schedule");
+  const tImport = useTranslations("import");
   const selectedEventId =
-    open?.form.mode === "edit" ? open.form.event.id : null;
+    open?.form.mode === "edit"
+      ? open.form.event.id
+      : open?.draftId
+        ? `${DRAFT_ID_PREFIX}${open.draftId}`
+        : null;
 
   // 予約マーカーの凡例。予約のある予定が1件でもある時だけ出す。
   const hasReservation = events.some((e) => e.needsReservation);
@@ -212,16 +307,10 @@ export function ScheduleSection({
         </div>
       </div>
 
-      {/* 狭い画面: 取り込みバナーはカレンダーを押し下げず、上部に浮かせる
-          （中身が多い時のために自身でスクロール）。広い画面は元通り通常フロー。 */}
-      {afterHeading && (
-        <div
-          className="fixed inset-x-3 z-20 max-h-[35vh] overflow-y-auto rounded-lg shadow-lg md:static md:inset-auto md:z-auto md:max-h-none md:overflow-visible md:rounded-none md:shadow-none"
-          style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 8px)` }}
-        >
-          {afterHeading}
-        </div>
-      )}
+      {/* 取り込みバナー（確認ボタン付き一覧）は広い画面だけ。狭い画面は
+          未確定の予定をカレンダー上に amber+破線の疑似ブロックで直接表示する
+          方式に一本化した（フローティングカードは邪魔が大きすぎたため廃止）。 */}
+      {afterHeading && <div className="hidden md:block">{afterHeading}</div>}
 
       {/* カレンダー本体を直接 position:fixed で画面いっぱいに描く（狭い画面）。
           h-full の多段継承は地図で実機不具合を起こしたため使わず、この1階層の
@@ -286,16 +375,19 @@ export function ScheduleSection({
         <FormPopover
           anchor={open.anchor}
           onClose={closeForm}
-          label={t("eventFormLabel")}
+          label={open.draftId ? tImport("confirmFormLabel") : t("eventFormLabel")}
           fullScreenOnNarrow
-          // ボトムシート時の下書き保持キー。編集は予定ごと、新規はタップした
-          // スロット（日付・時刻・種別）ごとに別の下書きにする（別スロットを開くと真っさら）。
+          // ボトムシート時の下書き保持キー。取り込み下書きの確定は
+          // ImportDraftRow と同じ形式（draftId ごと）、編集は予定ごと、新規は
+          // タップしたスロット（日付・時刻・種別）ごとに別の下書きにする。
           draftKey={
-            open.form.mode === "edit"
-              ? `event:edit:${open.form.event.id}`
-              : `event:new:${tripId}:${open.form.date}:${open.form.time}:${
-                  open.form.allDay ? "allday" : "timed"
-                }:${open.form.endTime ?? ""}`
+            open.draftId
+              ? `event:import:${open.draftId}`
+              : open.form.mode === "edit"
+                ? `event:edit:${open.form.event.id}`
+                : `event:new:${tripId}:${open.form.date}:${open.form.time}:${
+                    open.form.allDay ? "allday" : "timed"
+                  }:${open.form.endTime ?? ""}`
           }
         >
           <EventForm
@@ -309,6 +401,11 @@ export function ScheduleSection({
             biasCenter={biasCenter}
             tzTimeline={tzTimeline}
             onDone={closeForm}
+            onSuccess={
+              open.draftId
+                ? (eventId) => void confirmDraft(open.draftId!, eventId)
+                : undefined
+            }
           />
         </FormPopover>
       )}

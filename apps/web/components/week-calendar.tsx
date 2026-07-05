@@ -147,13 +147,25 @@ export function WeekCalendar({
     </span>
   );
 
+  // 取り込み下書き（未確定）の見た目。メール取り込みの draft はまだ実データが
+  // 無く参加者/公開範囲が未定なので、参加者構成に基づく色分けより優先して
+  // warning(amber)＋破線で「未確定」を示す（ui-guidelines のセマンティック色）。
+  const draftAppearance = (
+    sel: boolean,
+    hov: boolean,
+  ): { className: string; style?: React.CSSProperties } => ({
+    className: `border-dashed border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 ${sel ? "z-10 ring-1 ring-amber-500" : ""} ${hov ? "bg-amber-100 dark:bg-amber-400/20" : ""}`,
+  });
+
   // timed / transit ブロック（枠線あり）のクラス + style を返す。
   // selected / private / mixed は従来の Tailwind class、green と hue は inline style。
   const blockAppearance = (
     color: EventColor,
     sel: boolean,
     hov: boolean,
+    isDraft: boolean,
   ): { className: string; style?: React.CSSProperties } => {
+    if (isDraft) return draftAppearance(sel, hov);
     // 選択中は地色（メンバー色）を保ったまま、同系色の濃い枠を太く
     // （border 1px + ring 1px = 実質 2px。layout shift なし）。塗り替えると
     // 選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
@@ -192,7 +204,13 @@ export function WeekCalendar({
     color: EventColor,
     sel: boolean,
     hov: boolean,
+    isDraft: boolean,
   ): { className: string; style?: React.CSSProperties } => {
+    if (isDraft) {
+      return {
+        className: `border border-dashed border-amber-400 text-amber-900 dark:border-amber-400/50 dark:text-amber-300 ${hov ? "bg-amber-100 dark:bg-amber-400/20" : "bg-amber-50 dark:bg-amber-400/10"}${sel ? " z-10 ring-1 ring-amber-500" : ""}`,
+      };
+    }
     // blockAppearance と同じく、選択は地色を保ったまま同系色の濃い枠。帯は
     // 薄く隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
     if (color.kind === "private") {
@@ -663,6 +681,11 @@ export function WeekCalendar({
           <ReservationMark ev={ev} />
           {ev.title}
         </span>
+        {ev.isDraft && (
+          <span className="ml-1 rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
+            {tSched("draftBadge")}
+          </span>
+        )}
         {pn && <span className="block truncate opacity-70">{pn}</span>}
       </>
     );
@@ -819,7 +842,7 @@ export function WeekCalendar({
               const sel = selectedEventId === b.event.id;
               const hov = hoveredEventId === b.event.id;
               const color = colorOf(b.event);
-              const app = barAppearance(color, sel, hov);
+              const app = barAppearance(color, sel, hov, !!b.event.isDraft);
               return (
                 <button
                   key={b.event.id}
@@ -1201,7 +1224,7 @@ export function WeekCalendar({
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
               const color = colorOf(p.event);
-              const app = blockAppearance(color, sel, hov);
+              const app = blockAppearance(color, sel, hov, !!p.event.isDraft);
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -1251,7 +1274,7 @@ export function WeekCalendar({
               const hov = hoveredEventId === t.event.id;
               const fade = isMyEvent(t.event) ? "" : " opacity-50";
               const color = colorOf(t.event);
-              const app = blockAppearance(color, sel, hov);
+              const app = blockAppearance(color, sel, hov, !!t.event.isDraft);
               const baseClass = `${app.className}${fade}`;
               const baseStyle = app.style;
               const dots =

@@ -37,6 +37,10 @@ export type ScheduleEvent = {
   // 参加者（部分集合）。空配列 = 「全員」のシュガー（明示メンバー無し）。
   // 1 件以上 = 明示的にその trip_members.id だけが当事者。
   participantMemberIds: string[];
+  // メール取り込みの未確定下書き（inbound_drafts）から作った表示専用の疑似イベント。
+  // DB には存在しない。カレンダー上は warning(amber)+破線で表示し、タップで
+  // 確定フォームを開く（週カレンダー描画側の関心事なので判定はそちら）。
+  isDraft?: boolean;
 };
 
 const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;
@@ -277,6 +281,10 @@ export function buildSchedule(
   const groups: ColumnGroup[] = [];
   // 直近に作った列。同日に連続で乗り継ぐ transit が到着列を再利用できるか判定するため追跡する。
   let lastCol: Column | null = null;
+  // 同じ暦日を指す普通の日列は1つに重複排除する（例: 同じ日に発着する2便が
+  // 別々に確定済み/未確定下書きとして存在すると、素朴には同じ date で pushDay
+  // が2回呼ばれ得る。React の key 重複を防ぐため、date 単位で列を使い回す）。
+  const dayColumnsByDate = new Map<string, Column>();
 
   const pushDay = (
     date: string,
@@ -284,7 +292,13 @@ export function buildSchedule(
     tzNote: string | null = null,
     tzNoteSpan?: number,
   ): Column => {
+    const existing = dayColumnsByDate.get(date);
+    if (existing) {
+      lastCol = existing;
+      return existing;
+    }
     const col: Column = { key: `d-${date}`, date, tz, role: "day" };
+    dayColumnsByDate.set(date, col);
     groups.push({
       key: `d-${date}`,
       label: formatDayLabel(date, locale),

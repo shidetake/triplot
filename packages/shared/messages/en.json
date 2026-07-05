@@ -163,7 +163,8 @@
     "noDates": "No dates set for this trip. Add an event and the calendar will appear from that day.",
     "allDayLabel": "All day",
     "departs": "departs",
-    "arrives": "arrives"
+    "arrives": "arrives",
+    "draftBadge": "Draft"
   },
   "tripActions": {
     "shareAria": "Share",
@@ -406,7 +407,8 @@
     "savedBadge": "Saved",
     "filterAll": "All",
     "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead).",
-    "placeCountLabel": "{count} places"
+    "placeCountLabel": "{count} places",
+    "placesListLabel": "Places list"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

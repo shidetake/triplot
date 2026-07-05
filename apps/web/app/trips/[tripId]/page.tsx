@@ -641,6 +641,7 @@ export default async function TripDetailPage({
               }))}
               biasCenter={placesBiasCenter}
               myMemberId={me.id}
+              eventDrafts={eventDrafts}
               afterHeading={
                 eventDrafts.length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">

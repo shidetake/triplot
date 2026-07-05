@@ -163,7 +163,8 @@
     "noDates": "この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。",
     "allDayLabel": "終日",
     "departs": "発",
-    "arrives": "着"
+    "arrives": "着",
+    "draftBadge": "未確定"
   },
   "tripActions": {
     "shareAria": "共有",
@@ -406,7 +407,8 @@
     "savedBadge": "保存済み",
     "filterAll": "すべて",
     "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。",
-    "placeCountLabel": "{count}件の場所"
+    "placeCountLabel": "{count}件の場所",
+    "placesListLabel": "場所一覧"
   },
   "validation": {
     "loginRequired": "ログインが必要です",
