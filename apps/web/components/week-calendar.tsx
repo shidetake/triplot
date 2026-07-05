@@ -24,6 +24,7 @@ import { vividColor } from "@triplot/shared/memberColors";
 
 import { CheckIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
+import { cn } from "@/lib/utils";
 
 // 予約マーカー（タイトル先頭）。意味は凡例（schedule-section）で補足する:
 //  - 要予約（未）= チケットアイコン（黄色で視認しやすい）
@@ -79,6 +80,7 @@ export function WeekCalendar({
   onSlotClick,
   onAllDaySlotClick,
   onEventClick,
+  className,
 }: {
   schedule: Schedule;
   placeName: (placeId: string | null) => string | null;
@@ -103,6 +105,8 @@ export function WeekCalendar({
   // 終日帯の空きを長押し→離して終日予定追加。横ドラッグで日付変更。
   onAllDaySlotClick: (date: string, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
+  // 呼び出し側で外枠（余白・角丸・高さ）を上書きしたい時に渡す（モバイルタブの全画面化等）。
+  className?: string;
 }) {
   const tSched = useTranslations("schedule");
   // 自分が「明示参加者リスト」から外れている＝別行動の予定か。
@@ -671,7 +675,10 @@ export function WeekCalendar({
       // 自前の長押し→ゴースト追加と被って使いにくい。カレンダー内は
       // 選択不要なので user-select:none / touch-callout:none で抑止する。
       style={{ WebkitTouchCallout: "none" }}
-      className="max-h-[70vh] select-none overflow-auto rounded-md border border-foreground/10 bg-background"
+      className={cn(
+        "max-h-[70vh] select-none overflow-auto rounded-md border border-foreground/10 bg-background",
+        className,
+      )}
     >
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}

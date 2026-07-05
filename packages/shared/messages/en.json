@@ -405,7 +405,8 @@
     },
     "savedBadge": "Saved",
     "filterAll": "All",
-    "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead)."
+    "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead).",
+    "placeCountLabel": "{count} places"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

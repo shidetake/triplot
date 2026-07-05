@@ -405,7 +405,8 @@
     },
     "savedBadge": "保存済み",
     "filterAll": "すべて",
-    "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。"
+    "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。",
+    "placeCountLabel": "{count}件の場所"
   },
   "validation": {
     "loginRequired": "ログインが必要です",

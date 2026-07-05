@@ -184,7 +184,10 @@ export function ScheduleSection({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      {/* 広い画面のみの見出し行。狭い画面（タブ化）はカレンダーを画面端まで
+          広げるためこの行自体を無くし、+ はフローティングボタンに逃がす
+          （下の fixed ボタン群）。*/}
+      <div className="hidden items-center justify-between gap-2 md:flex">
         <h2 className="text-lg font-semibold">{t("heading")}</h2>
         <div className="flex items-center gap-3">
           <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
@@ -204,19 +207,46 @@ export function ScheduleSection({
 
       {afterHeading}
 
-      <WeekCalendar
-        schedule={schedule}
-        placeName={placeName}
-        selectedEventId={selectedEventId}
-        myMemberId={myMemberId}
-        activeMemberCount={members.length}
-        memberHueById={memberHueById}
-        pcDrag={pcDrag}
-        onPcDragChange={setPcDrag}
-        onSlotClick={onSlotClick}
-        onAllDaySlotClick={onAllDaySlotClick}
-        onEventClick={onEventClick}
-      />
+      {/* -mx-6: 旅行詳細ページの共通コンテナ(max-w-3xl px-6)の左右余白を狭い画面
+          だけ打ち消し、カレンダーを画面端まで広げる（ui-guidelines「薄くする手段」の
+          コンテナ相殺と同じ考え方）。広い画面は元通り px-6 の中に収まる。 */}
+      <div className="-mx-6 md:mx-0">
+        <WeekCalendar
+          schedule={schedule}
+          placeName={placeName}
+          selectedEventId={selectedEventId}
+          myMemberId={myMemberId}
+          activeMemberCount={members.length}
+          memberHueById={memberHueById}
+          pcDrag={pcDrag}
+          onPcDragChange={setPcDrag}
+          onSlotClick={onSlotClick}
+          onAllDaySlotClick={onAllDaySlotClick}
+          onEventClick={onEventClick}
+          className="max-h-none h-[calc(100dvh-93px-58px-env(safe-area-inset-bottom))] rounded-none border-x-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border-x"
+        />
+      </div>
+
+      {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。
+          93px = AppHeader(49px) + 圧縮ヘッダー(44px)、58px = 下部タブバーの実測高。 */}
+      <div
+        className="fixed right-4 z-20 flex flex-col items-end gap-2 md:hidden"
+        style={{ bottom: "calc(58px + env(safe-area-inset-bottom) + 16px)" }}
+      >
+        <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
+          {t("addHelp")}
+        </HelpTip>
+        <Button
+          type="button"
+          size="icon"
+          onClick={openCreate}
+          aria-label={t("addAria")}
+          title={t("addAria")}
+          className="h-12 w-12 rounded-full shadow-lg"
+        >
+          <PlusIcon size={20} />
+        </Button>
+      </div>
 
       {hasReservation && (
         <div className="flex items-center gap-4 text-xs text-muted-foreground">

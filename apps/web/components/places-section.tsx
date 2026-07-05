@@ -19,6 +19,8 @@ import {
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
+import { ChevronIcon } from "./icons";
+import { cn } from "@/lib/utils";
 
 export function PlacesSection({
   tripId,
@@ -43,6 +45,10 @@ export function PlacesSection({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   const [query, setQuery] = useState("");
+  // 狭い画面のみ: 場所リストをボトムシート風パネルとしてタップで展開/折りたたむ
+  // （ドラッグではなくタップ。Vaul の drag 物理演算は実機検証できないため今回は
+  // 見送り、確実に動くタップ式にした）。
+  const [listExpanded, setListExpanded] = useState(false);
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
   const [selected, setSelected] = useState<Selection | null>(null);
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
@@ -220,39 +226,93 @@ export function PlacesSection({
 
   return (
     <APIProvider apiKey={apiKey} language={locale}>
-      <div className="space-y-4">
-        <PlaceSearch
-          query={query}
-          onQueryChange={setQuery}
-          onClear={clearSearch}
-          biasCenter={biasCenter}
-          onResults={onResults}
-        />
-        <PlaceMap
-          places={places}
-          memberHueById={memberHueById}
-          candidates={candidates}
-          selected={selected}
-          draft={draft}
-          poi={poi}
-          onSelectSaved={selectSaved}
-          onSelectCandidate={selectCandidate}
-          onCloseInfo={closeInfo}
-          onMapTap={onMapTap}
-          onDraftMove={onDraftMove}
-          onCloseDraft={closeDraft}
-          onPoiSelect={showPoi}
-          infoContent={infoContent}
-          draftContent={draftContent}
-        />
-        <PlaceList
-          places={places}
-          selectedId={selected?.kind === "saved" ? selected.id : null}
-          locatingId={pendingLocationFor?.id ?? null}
-          onSelect={selectSaved}
-          onLocate={startLocate}
-          onCancelLocate={cancelLocate}
-        />
+      {/* 狭い画面: 地図が親パネル(h-full)を埋める Google マップ風レイアウト。
+          検索は地図に重ねて浮かせ、一覧はタップで開閉するボトムパネルにする。
+          広い画面(md:)は元通り「検索→地図→一覧」の縦積み。 */}
+      <div className="relative h-full w-full md:static md:h-auto md:space-y-4">
+        {/* DOM順は広い画面の見た目順（検索→地図）に合わせる。狭い画面は
+            absolute+z-10 で検索を地図の上に重ねるので順序に影響されない。 */}
+        <div className="absolute inset-x-3 top-3 z-10 md:static md:inset-auto md:z-auto">
+          <div className="rounded-md bg-background shadow-lg md:rounded-none md:bg-transparent md:shadow-none">
+            <PlaceSearch
+              query={query}
+              onQueryChange={setQuery}
+              onClear={clearSearch}
+              biasCenter={biasCenter}
+              onResults={onResults}
+            />
+          </div>
+        </div>
+
+        <div className="absolute inset-0 md:static md:inset-auto">
+          <PlaceMap
+            places={places}
+            memberHueById={memberHueById}
+            candidates={candidates}
+            selected={selected}
+            draft={draft}
+            poi={poi}
+            onSelectSaved={selectSaved}
+            onSelectCandidate={selectCandidate}
+            onCloseInfo={closeInfo}
+            onMapTap={onMapTap}
+            onDraftMove={onDraftMove}
+            onCloseDraft={closeDraft}
+            onPoiSelect={showPoi}
+            infoContent={infoContent}
+            draftContent={draftContent}
+            className="h-full w-full rounded-none border-0 md:h-[32rem] md:rounded-md md:border md:border-foreground/10"
+          />
+        </div>
+
+        <div className="absolute inset-x-0 bottom-0 z-10 md:hidden">
+          <button
+            type="button"
+            onClick={() => setListExpanded((v) => !v)}
+            aria-expanded={listExpanded}
+            className="flex w-full flex-col items-center gap-1.5 rounded-t-2xl border-t border-foreground/10 bg-background/95 pb-2 pt-2.5 shadow-[0_-4px_16px_rgba(0,0,0,0.12)] backdrop-blur"
+          >
+            <span className="h-1 w-9 rounded-full bg-foreground/20" aria-hidden />
+            <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+              {t("placeCountLabel", { count: places.length })}
+              <ChevronIcon
+                size={12}
+                className={cn(
+                  "transition-transform",
+                  listExpanded ? "rotate-90" : "-rotate-90",
+                )}
+              />
+            </span>
+          </button>
+          <div
+            className={cn(
+              "overflow-y-auto bg-background transition-[max-height] duration-300 ease-out",
+              listExpanded ? "max-h-[50vh]" : "max-h-0",
+            )}
+          >
+            <div className="px-4 pb-4 pt-1">
+              <PlaceList
+                places={places}
+                selectedId={selected?.kind === "saved" ? selected.id : null}
+                locatingId={pendingLocationFor?.id ?? null}
+                onSelect={selectSaved}
+                onLocate={startLocate}
+                onCancelLocate={cancelLocate}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="hidden md:block">
+          <PlaceList
+            places={places}
+            selectedId={selected?.kind === "saved" ? selected.id : null}
+            locatingId={pendingLocationFor?.id ?? null}
+            onSelect={selectSaved}
+            onLocate={startLocate}
+            onCancelLocate={cancelLocate}
+          />
+        </div>
       </div>
     </APIProvider>
   );

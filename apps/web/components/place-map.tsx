@@ -49,6 +49,7 @@ import { useTranslations } from "next-intl";
 
 import { PlaceIcon, type PlaceRow } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
+import { cn } from "@/lib/utils";
 
 // タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
 // contextmenu が安定しないため自前実装）。<Map> の子として描画し、
@@ -249,6 +250,7 @@ export function PlaceMap({
   poi,
   infoContent,
   draftContent,
+  className,
 }: {
   places: PlaceRow[];
   // 候補ピン（tentative=true）の地色を作成者の hue で塗るのに使う。
@@ -266,6 +268,8 @@ export function PlaceMap({
   onPoiSelect: (c: CandidatePlace) => void;
   infoContent: ReactNode;
   draftContent: ReactNode;
+  // 呼び出し側で外枠（高さ・角丸・枠線）を上書きしたい時に渡す（モバイルタブの全画面化等）。
+  className?: string;
 }) {
   const t = useTranslations("place");
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
@@ -368,7 +372,12 @@ export function PlaceMap({
 
   return (
     <div className="space-y-1">
-      <div className="relative h-[32rem] w-full overflow-hidden rounded-md border border-foreground/10">
+      <div
+        className={cn(
+          "relative h-[32rem] w-full overflow-hidden rounded-md border border-foreground/10",
+          className,
+        )}
+      >
         <Map
           mapId={mapId}
           colorScheme={colorScheme}

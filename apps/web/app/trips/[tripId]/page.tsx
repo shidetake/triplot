@@ -21,6 +21,7 @@ import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
 import { TripActions } from "@/components/trip-actions";
 import { TripDetailTabs } from "@/components/trip-detail-tabs";
+import { TripHeaderCompact } from "@/components/trip-header-compact";
 import {
   calculateExpenseSummary,
   type SummaryExpense,
@@ -545,56 +546,84 @@ export default async function TripDetailPage({
       return [{ id: d.id, labelParts: [title, whenLabel], tz, formState }];
     });
 
+  // ⋯メニュー等（TripActions）は広い画面のヘッダーと狭い画面の圧縮ヘッダーの
+  // 両方に置く。同じ要素オブジェクトを2箇所で使うと React はそれぞれ独立に
+  // マウントする（開くまでネットワークアクセスしないコンポーネントなので無害）。
+  const tripActionsEl = (
+    <TripActions
+      tripId={tripId}
+      baseUrl={inviteBaseUrl}
+      iAmAdmin={me.is_admin}
+      tripTitle={trip.title}
+      tripStartDate={trip.start_date}
+      tripEndDate={trip.end_date}
+      tripDefaultCurrency={defaultCurrency}
+      kmlPlacemarks={kmlPlacemarks}
+      expenseCsvRows={expenseCsvRows}
+      calendarEvents={calendarEvents}
+    />
+  );
+  // 狭い画面の圧縮ヘッダー用（年なし M/D、両方揃っている時だけ）。
+  const compactDateRange =
+    trip.start_date && trip.end_date
+      ? `${monthDayLabel(trip.start_date)}–${monthDayLabel(trip.end_date)}`
+      : "";
+
   return (
-    <main className="mx-auto w-full max-w-3xl px-6 py-10">
-      <div className="flex items-start justify-between gap-3">
-        <Link
-          href="/trips"
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
-        >
-          <ChevronIcon size={16} className="rotate-180" />
-          {t("tripDetail.backToTrips")}
-        </Link>
-        <TripActions
-          tripId={tripId}
-          baseUrl={inviteBaseUrl}
-          iAmAdmin={me.is_admin}
-          tripTitle={trip.title}
-          tripStartDate={trip.start_date}
-          tripEndDate={trip.end_date}
-          tripDefaultCurrency={defaultCurrency}
-          kmlPlacemarks={kmlPlacemarks}
-          expenseCsvRows={expenseCsvRows}
-          calendarEvents={calendarEvents}
-        />
+    <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
+      <TripHeaderCompact
+        backLabel={t("tripDetail.backToTrips")}
+        tripTitle={trip.title}
+        dateRangeShort={compactDateRange}
+        members={activeMembers.map((m) => ({
+          id: m.id,
+          display_name: m.display_name,
+          color: m.color,
+          avatarUrl: m.users?.avatar_url ?? null,
+        }))}
+        actions={tripActionsEl}
+      />
+
+      <div className="hidden px-6 pt-10 md:block">
+        <div className="flex items-start justify-between gap-3">
+          <Link
+            href="/trips"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
+          >
+            <ChevronIcon size={16} className="rotate-180" />
+            {t("tripDetail.backToTrips")}
+          </Link>
+          {tripActionsEl}
+        </div>
+
+        <header className="mt-4">
+          <h1 className="text-2xl font-semibold">{trip.title}</h1>
+          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <span>
+              {formatTripDateRange(trip.start_date, trip.end_date, locale)}
+            </span>
+            <InlineDivider />
+            <span>
+              {t("tripDetail.settlementCurrency")}: {trip.default_currency}
+            </span>
+          </p>
+        </header>
+
+        <section className="mt-8">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            {t("members.heading")}
+          </h2>
+          <MembersSection
+            members={activeMembers.map((m) => ({
+              id: m.id,
+              display_name: m.display_name,
+              color: m.color,
+            }))}
+          />
+        </section>
       </div>
 
-      <header className="mt-4">
-        <h1 className="text-2xl font-semibold">{trip.title}</h1>
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-          <span>
-            {formatTripDateRange(trip.start_date, trip.end_date, locale)}
-          </span>
-          <InlineDivider />
-          <span>
-            {t("tripDetail.settlementCurrency")}: {trip.default_currency}
-          </span>
-        </p>
-      </header>
-
-      <section className="mt-8">
-        <h2 className="text-sm font-medium text-muted-foreground">
-          {t("members.heading")}
-        </h2>
-        <MembersSection
-          members={activeMembers.map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-            color: m.color,
-          }))}
-        />
-      </section>
-
+      <div className="px-6 md:px-0">
       <TripDetailTabs
         schedule={
           <section className="mt-10 space-y-6">
@@ -650,8 +679,13 @@ export default async function TripDetailPage({
           </section>
         }
         places={
-          <section className="mt-10 space-y-6">
-            <h2 className="text-lg font-semibold">{t("tripDetail.places")}</h2>
+          // 狭い画面はタブラッパー(trip-detail-tabs.tsx)がこのタブだけ画面いっぱいの
+          // 固定パネルにする（Google マップ風）ので、ここは h-full で満たすだけにし
+          // 見出し・上マージンは広い画面だけに戻す。
+          <section className="h-full md:mt-10 md:h-auto md:space-y-6">
+            <h2 className="hidden text-lg font-semibold md:block">
+              {t("tripDetail.places")}
+            </h2>
 
             <PlacesSection
               tripId={tripId}
@@ -796,6 +830,7 @@ export default async function TripDetailPage({
           </section>
         }
       />
+      </div>
     </main>
   );
 }
