@@ -7,6 +7,7 @@ import type { Database } from "@triplot/shared/types/database";
 
 import { notifyFeedback } from "@/lib/feedback/notify";
 import { createClient } from "@/lib/supabase/server";
+import { getVersion } from "@/lib/version";
 
 // ユーザーフィードバック（不具合報告・要望）の書き込み経路。web も将来の RN も
 // この route を叩く（architecture.md「変更系は RN からも使えるよう API エンドポイントに
@@ -58,12 +59,22 @@ export async function POST(request: Request) {
   }
   const input = parsed.data;
 
+  const userAgent = request.headers.get("user-agent");
+  // デプロイ時点のバージョン（今は commit SHA。将来 tag ベースに切り替えても
+  // getVersion() の中身だけ変えればここは無変更で追従する）。
+  const appVersion = getVersion();
+
   const { error } = await supabase.from("feedback").insert({
     user_id: user.id,
     kind: input.kind,
     body: input.body,
     path: input.path ?? null,
-    user_agent: request.headers.get("user-agent"),
+    user_agent: userAgent,
+    platform: input.platform,
+    viewport: input.viewport ?? null,
+    timezone: input.timezone ?? null,
+    theme: input.theme ?? null,
+    app_version: appVersion,
   });
   if (error) {
     console.error("[feedback] insert failed", error.message);
@@ -71,7 +82,14 @@ export async function POST(request: Request) {
   }
 
   // 応答後にメール通知（投稿者へ受付確認・管理者へ新着通知）。best-effort。
-  after(() => notifyFeedback({ input, userEmail: user.email ?? null }));
+  after(() =>
+    notifyFeedback({
+      input,
+      userEmail: user.email ?? null,
+      userAgent,
+      appVersion,
+    }),
+  );
 
   return NextResponse.json({ ok: true });
 }

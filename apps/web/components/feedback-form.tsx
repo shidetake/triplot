@@ -34,10 +34,26 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
     setIsPending(true);
     setError(null);
     try {
+      // バグ再現用の診断情報。フォームには出さず自動収集する（注記1文のみで告知）。
+      // テーマは system 設定の解決後の見た目（<html class="dark"> の有無）を送る。
+      const diagnostics = {
+        viewport: `${window.innerWidth}x${window.innerHeight}`,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        theme: document.documentElement.classList.contains("dark")
+          ? "dark"
+          : "light",
+      };
       const res = await fetch("/api/feedback", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ kind, body, path: pathname, locale }),
+        body: JSON.stringify({
+          kind,
+          body,
+          path: pathname,
+          locale,
+          platform: "web",
+          ...diagnostics,
+        }),
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
       clearDraft();
@@ -110,6 +126,8 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
       >
         <SendIcon size={20} />
       </Button>
+
+      <p className="text-xs text-muted-foreground">{t("diagnosticsNote")}</p>
 
       {error && <MessageBox kind="error">{error}</MessageBox>}
     </form>

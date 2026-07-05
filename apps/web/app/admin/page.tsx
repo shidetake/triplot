@@ -40,7 +40,9 @@ export default async function AdminPage() {
   // フィードバック（RLS feedback_admin_select）。投稿者は users_admin_select で embed。
   const { data: feedbackRows } = await supabase
     .from("feedback")
-    .select("id, kind, body, path, status, created_at, users(display_name)")
+    .select(
+      "id, kind, body, path, status, created_at, platform, viewport, timezone, theme, app_version, user_agent, users(display_name)",
+    )
     .order("created_at", { ascending: false });
 
   const [t, tFeedback, locale] = await Promise.all([
@@ -153,6 +155,40 @@ export default async function AdminPage() {
                   <p className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
                     {f.body}
                   </p>
+                  {/* バグ再現用の診断情報（ユーザーには見せていない）。 */}
+                  <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-subtle-foreground">
+                    <span className="shrink-0">{f.platform}</span>
+                    {f.viewport && (
+                      <>
+                        <InlineDivider />
+                        <span className="shrink-0">{f.viewport}</span>
+                      </>
+                    )}
+                    {f.timezone && (
+                      <>
+                        <InlineDivider />
+                        <span className="shrink-0">{f.timezone}</span>
+                      </>
+                    )}
+                    {f.theme && (
+                      <>
+                        <InlineDivider />
+                        <span className="shrink-0">{f.theme}</span>
+                      </>
+                    )}
+                    {f.app_version && (
+                      <>
+                        <InlineDivider />
+                        <span className="shrink-0">{f.app_version}</span>
+                      </>
+                    )}
+                    {f.user_agent && (
+                      <>
+                        <InlineDivider />
+                        <span className="min-w-0 truncate">{f.user_agent}</span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <FeedbackStatusButton
                   id={f.id}

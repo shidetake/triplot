@@ -28,11 +28,14 @@ export async function notifyFeedback(params: {
   input: FeedbackInput;
   // 投稿者の auth email（受付確認の宛先）。無ければ確認メールは送らない。
   userEmail: string | null;
+  // バグ再現用の診断情報。管理者向け通知にのみ含める（投稿者向けには不要）。
+  userAgent: string | null;
+  appVersion: string;
 }): Promise<void> {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return;
   const resend = new Resend(apiKey);
-  const { input, userEmail } = params;
+  const { input, userEmail, userAgent, appVersion } = params;
 
   const sends: Promise<void>[] = [];
 
@@ -62,10 +65,21 @@ export async function notifyFeedback(params: {
   const adminTo = process.env.FEEDBACK_NOTIFY_EMAIL;
   if (adminTo) {
     const kindLabel = input.kind === "bug" ? "不具合" : "要望";
+    const diagnostics = [
+      input.platform,
+      input.viewport,
+      input.timezone,
+      input.theme,
+      appVersion,
+    ]
+      .filter(Boolean)
+      .join(" / ");
     const lines = [
       `種別: ${kindLabel}`,
       `投稿者: ${userEmail ?? "(email 不明)"}`,
       ...(input.path ? [`画面: ${input.path}`] : []),
+      `環境: ${diagnostics}`,
+      ...(userAgent ? [`UA: ${userAgent}`] : []),
       "",
       input.body,
     ];

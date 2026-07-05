@@ -303,34 +303,49 @@ export type Database = {
       }
       feedback: {
         Row: {
+          app_version: string | null
           body: string
           created_at: string
           id: string
           kind: string
           path: string | null
+          platform: string | null
           status: string
+          theme: string | null
+          timezone: string | null
           user_agent: string | null
           user_id: string
+          viewport: string | null
         }
         Insert: {
+          app_version?: string | null
           body: string
           created_at?: string
           id?: string
           kind: string
           path?: string | null
+          platform?: string | null
           status?: string
+          theme?: string | null
+          timezone?: string | null
           user_agent?: string | null
           user_id: string
+          viewport?: string | null
         }
         Update: {
+          app_version?: string | null
           body?: string
           created_at?: string
           id?: string
           kind?: string
           path?: string | null
+          platform?: string | null
           status?: string
+          theme?: string | null
+          timezone?: string | null
           user_agent?: string | null
           user_id?: string
+          viewport?: string | null
         }
         Relationships: [
           {

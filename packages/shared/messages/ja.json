@@ -537,6 +537,7 @@
     "placeholderBug": "地図でピンが動かせない",
     "placeholderFeature": "費用をCSVでエクスポートしたい",
     "submit": "送信",
+    "diagnosticsNote": "動作環境（ブラウザ・OS等）も参考情報として送信されます。",
     "sent": "フィードバックを送信しました",
     "sendFailed": "送信に失敗しました。",
     "emailSubject": "【triplot】フィードバックを受け付けました",

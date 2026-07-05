@@ -537,6 +537,7 @@
     "placeholderBug": "Can't move the pin on the map",
     "placeholderFeature": "Export expenses as CSV",
     "submit": "Send",
+    "diagnosticsNote": "Your device/browser environment is also sent as reference info.",
     "sent": "Feedback sent",
     "sendFailed": "Failed to send.",
     "emailSubject": "[triplot] We received your feedback",

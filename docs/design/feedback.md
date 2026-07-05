@@ -13,12 +13,32 @@
 | `kind` | `bug`（不具合）/ `feature`（要望） |
 | `body` | 本文（1〜2000字） |
 | `path` | どの画面から送ったか（web = pathname / ネイティブ = 画面名。取れなければ null） |
-| `user_agent` | 送信時の User-Agent（不具合の再現環境の手がかり） |
 | `status` | `open`（未対応）/ `done`（対応済み）。管理者が切り替える |
+
+バグ再現用の診断情報（下記「診断情報」参照）: `user_agent` / `platform` / `viewport` /
+`timezone` / `theme` / `app_version`。
 
 - RLS: 本人は自分の行の insert / select のみ。admin（`is_app_admin()`）は全行 select ＋ update。
 - 列レベル権限で insert はユーザー入力列のみ・update は `status` のみに制限
   （管理者でも本文・投稿者を改変できない。delete は誰にも許可しない）。
+
+## 診断情報（バグ再現用）
+
+フォームには表示せず（注記1文のみ）、送信時に自動収集して本文に添える。個人情報ではなく
+通常のアクセスログ相当の技術情報のため、同意 UI は設けない:
+
+| 列 | 取得元 | 収集元 |
+|---|---|---|
+| `user_agent` | `User-Agent` ヘッダ | サーバ（route） |
+| `platform` | クライアント種別（`web` / 将来 `ios` / `android`） | クライアント |
+| `viewport` | 表示領域 `幅x高さ`（`window.innerWidth/innerHeight`） | クライアント |
+| `timezone` | ブラウザの実 IANA タイムゾーン（`Intl.DateTimeFormat().resolvedOptions().timeZone`） | クライアント |
+| `theme` | 実際に表示されていた解決後テーマ（`light`/`dark`。`<html class="dark">` の有無） | クライアント |
+| `app_version` | 送信時にデプロイされていたバージョン（`lib/version.ts` の `getVersion()`。今は commit SHA） | サーバ（route） |
+
+`app_version` は列名を実装非依存にしてある。今は commit SHA を返すが、将来 tag ベースの
+バージョニングに切り替えても `getVersion()` の中身を差し替えるだけでよく、feedback 側の
+スキーマ・コードは無変更で追従する。
 
 ## 書き込み経路（web / ネイティブ共通）
 
