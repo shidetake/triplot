@@ -26,9 +26,9 @@ import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
-import { useIsActiveTripTab } from "./trip-detail-tabs";
 import { useMediaQuery } from "./use-media-query";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
+import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
@@ -134,7 +134,7 @@ export function ScheduleSection({
   // 全画面ブリードにしているが、他タブ表示中（display:none）は document 側の
   // スクロールをロックする理由が無い（費用/TODOタブは通常の縦積みスクロール
   // に依存するため、常時ロックはできない）。予定タブ表示中だけロックする。
-  const isActive = useIsActiveTripTab("schedule");
+  const isActive = useActiveTripTab() === "schedule";
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
   useEffect(() => {
     if (!isActive || !isNarrow) return;

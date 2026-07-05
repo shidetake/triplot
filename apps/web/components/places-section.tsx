@@ -20,8 +20,8 @@ import {
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
-import { useIsActiveTripTab } from "./trip-detail-tabs";
 import { useMediaQuery } from "./use-media-query";
+import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
@@ -59,7 +59,7 @@ export function PlacesSection({
   // 場所タブが今表示中か。4タブとも常時マウントされたまま CSS の hidden/block で
   // 出し分けているが、下のボトムシート(Drawer)は document.body に直接ポータルする
   // ため親の hidden では隠れない。他タブ表示中はこの isActive で明示的に畳む/外す。
-  const isActive = useIsActiveTripTab("places");
+  const isActive = useActiveTripTab() === "places";
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
   const showPlacesSheet = isActive && isNarrow;
 

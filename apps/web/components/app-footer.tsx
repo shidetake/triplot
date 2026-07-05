@@ -2,15 +2,12 @@
 
 import { usePathname } from "next/navigation";
 
+import { useActiveTripTab } from "@/lib/activeTripTab";
+import { MOBILE_TAB_BOTTOM_OFFSET } from "@/lib/mobileTabChrome";
 import { useMediaQuery } from "./use-media-query";
 
 // 旅行詳細ページの md ブレークポイントと同じ（trip-detail-tabs.tsx）。
 const NARROW_SCREEN_QUERY = "(max-width: 767px)";
-// 旅行詳細ページ（/trips/[tripId]）だけ、狭い画面でカレンダー/地図を
-// position:fixed の全画面ブリードにしている。そのタブ領域は position:fixed
-// で高さゼロのため、後続のこのフッターは通常の flow で押し出されず、
-// フッターの位置に固定コンテンツが被って見えなくなる。旅行詳細×狭い画面だけ
-// フッター自体を隠す（広い画面・他ページは元通り表示）。
 const TRIP_DETAIL_PATH = /^\/trips\/[^/]+/;
 
 export function AppFooter({
@@ -22,10 +19,25 @@ export function AppFooter({
 }) {
   const pathname = usePathname();
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
-  if (isNarrow && TRIP_DETAIL_PATH.test(pathname)) return null;
+  const activeTab = useActiveTripTab();
+  const onTripDetail = isNarrow && TRIP_DETAIL_PATH.test(pathname);
+
+  // 予定/場所タブはカレンダー/地図を position:fixed で全画面ブリードしている。
+  // fixed は通常の flow から外れ高さゼロになるため、このフッターは押し出され
+  // ず固定コンテンツの下に隠れる。その2タブでは元々フッターを見る意味も
+  // 無い（全画面表示の意図どおり）ので非表示にする。
+  if (onTripDetail && (activeTab === "schedule" || activeTab === "places")) {
+    return null;
+  }
 
   return (
-    <footer className="px-6 py-3 text-center text-xs text-subtle-foreground">
+    <footer
+      className="px-6 py-3 text-center text-xs text-subtle-foreground"
+      // 費用/TODOタブは通常の縦積みで自然にスクロール末尾に来るが、狭い画面
+      // では下に固定タブバーが常時被さっているため、その分の余白を足して
+      // タブバーの下に隠れないようにする（隠れず自然なスクロール末尾で見える）。
+      style={onTripDetail ? { paddingBottom: MOBILE_TAB_BOTTOM_OFFSET } : undefined}
+    >
       {deployEnv} · {version}
     </footer>
   );

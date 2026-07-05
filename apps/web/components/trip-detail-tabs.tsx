@@ -1,6 +1,5 @@
 "use client";
 
-import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -9,6 +8,11 @@ import {
   MapIcon,
   WalletIcon,
 } from "@/components/icons";
+import {
+  setActiveTripTab,
+  useActiveTripTab,
+  type TripTabKey as TabKey,
+} from "@/lib/activeTripTab";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -16,39 +20,7 @@ const TABS = [
   { key: "places", Icon: MapIcon },
   { key: "expenses", Icon: WalletIcon },
   { key: "todos", Icon: ListTodoIcon },
-] as const;
-
-type TabKey = (typeof TABS)[number]["key"];
-
-function isTabKey(value: string | null): value is TabKey {
-  return TABS.some((tab) => tab.key === value);
-}
-
-// 各タブの中身（PlacesSection 等）が「自分は今表示中のタブか」を知るための Context。
-// タブ切替は CSS の hidden/block だけで行うが、vaul の Drawer.Portal のように
-// document.body に直接ポータルする要素は親の hidden では隠れない。そういう要素は
-// この Context の isActive で自分自身の表示/非表示を制御する。
-const ActiveTabContext = createContext<TabKey>("schedule");
-
-export function useIsActiveTripTab(key: TabKey): boolean {
-  return useContext(ActiveTabContext) === key;
-}
-
-// 初期タブを ?tab= から読む。useSyncExternalStore で SSR/初期クライアント描画は
-// 常に "schedule"（getServerSnapshot）に揃え、hydration 後にブラウザの実際の
-// URL（getSnapshot）へ React 側で安全に切り替える（useEffect 内で setState する
-// 自前実装だと cascading render になるため、外部システム同期用のこのフックに乗せる）。
-function subscribeToUrl(callback: () => void) {
-  window.addEventListener("popstate", callback);
-  return () => window.removeEventListener("popstate", callback);
-}
-function getUrlTab(): TabKey {
-  const param = new URLSearchParams(window.location.search).get("tab");
-  return isTabKey(param) ? param : "schedule";
-}
-function getServerTab(): TabKey {
-  return "schedule";
-}
+] as const satisfies { key: TabKey; Icon: unknown }[];
 
 // 狭い画面（< md=768px）だけタブ化し、広い画面は今までどおり全セクション縦積み
 // （旅行詳細のコンテナ幅 max-w-3xl=768px を下回ると縦積みの同時表示の旨味が
@@ -67,17 +39,7 @@ export function TripDetailTabs({
   todos,
 }: Record<TabKey, React.ReactNode>) {
   const t = useTranslations("tripTabs");
-  const urlTab = useSyncExternalStore(subscribeToUrl, getUrlTab, getServerTab);
-  // クリックによる切替はここでだけ上書きする（URL 変化の反映は urlTab に任せる）。
-  const [overrideTab, setOverrideTab] = useState<TabKey | null>(null);
-  const activeTab = overrideTab ?? urlTab;
-
-  const selectTab = (key: TabKey) => {
-    setOverrideTab(key);
-    const url = new URL(window.location.href);
-    url.searchParams.set("tab", key);
-    window.history.replaceState(null, "", url);
-  };
+  const activeTab = useActiveTripTab();
 
   const content: Record<TabKey, React.ReactNode> = {
     schedule,
@@ -87,7 +49,7 @@ export function TripDetailTabs({
   };
 
   return (
-    <ActiveTabContext.Provider value={activeTab}>
+    <>
       {/* 狭い画面でだけ下の固定タブバー分の余白を確保。広い画面は不要（タブバー非表示）。
           全画面ブリードするタブ（予定のカレンダー・場所の地図）は各セクション内部で
           自身を position:fixed にして画面いっぱいに描く（lib/mobileTabChrome.ts）。
@@ -113,7 +75,7 @@ export function TripDetailTabs({
             <button
               key={key}
               type="button"
-              onClick={() => selectTab(key)}
+              onClick={() => setActiveTripTab(key)}
               aria-current={active ? "page" : undefined}
               className={cn(
                 "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
@@ -126,6 +88,6 @@ export function TripDetailTabs({
           );
         })}
       </nav>
-    </ActiveTabContext.Provider>
+    </>
   );
 }
