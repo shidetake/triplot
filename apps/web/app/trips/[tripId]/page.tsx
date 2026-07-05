@@ -679,10 +679,10 @@ export default async function TripDetailPage({
           </section>
         }
         places={
-          // 狭い画面はタブラッパー(trip-detail-tabs.tsx)がこのタブだけ画面いっぱいの
-          // 固定パネルにする（Google マップ風）ので、ここは h-full で満たすだけにし
-          // 見出し・上マージンは広い画面だけに戻す。
-          <section className="h-full md:mt-10 md:h-auto md:space-y-6">
+          // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
+          // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
+          // （見出しは広い画面だけ）。
+          <section className="mt-10 space-y-6">
             <h2 className="hidden text-lg font-semibold md:block">
               {t("tripDetail.places")}
             </h2>

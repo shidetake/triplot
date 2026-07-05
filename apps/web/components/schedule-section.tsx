@@ -18,6 +18,10 @@ import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
+import {
+  MOBILE_TAB_BOTTOM_OFFSET,
+  MOBILE_TAB_TOP_OFFSET,
+} from "@/lib/mobileTabChrome";
 
 export type EventRow = ScheduleEvent & { createdByMemberId: string };
 
@@ -183,7 +187,10 @@ export function ScheduleSection({
   const hasReservation = events.some((e) => e.needsReservation);
 
   return (
-    <div className="space-y-4">
+    // space-y-4 は md: のみ。狭い画面の子要素(取り込みバナー・カレンダー・FAB)は
+    // 全て position:fixed で画面基準に配置するため、Tailwind の space-y が
+    // 兄弟要素に margin-top を付けると fixed の top/bottom オフセットとズレる。
+    <div className="md:space-y-4">
       {/* 広い画面のみの見出し行。狭い画面（タブ化）はカレンダーを画面端まで
           広げるためこの行自体を無くし、+ はフローティングボタンに逃がす
           （下の fixed ボタン群）。*/}
@@ -205,12 +212,25 @@ export function ScheduleSection({
         </div>
       </div>
 
-      {afterHeading}
+      {/* 狭い画面: 取り込みバナーはカレンダーを押し下げず、上部に浮かせる
+          （中身が多い時のために自身でスクロール）。広い画面は元通り通常フロー。 */}
+      {afterHeading && (
+        <div
+          className="fixed inset-x-3 z-20 max-h-[35vh] overflow-y-auto rounded-lg shadow-lg md:static md:inset-auto md:z-auto md:max-h-none md:overflow-visible md:rounded-none md:shadow-none"
+          style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 8px)` }}
+        >
+          {afterHeading}
+        </div>
+      )}
 
-      {/* -mx-6: 旅行詳細ページの共通コンテナ(max-w-3xl px-6)の左右余白を狭い画面
-          だけ打ち消し、カレンダーを画面端まで広げる（ui-guidelines「薄くする手段」の
-          コンテナ相殺と同じ考え方）。広い画面は元通り px-6 の中に収まる。 */}
-      <div className="-mx-6 md:mx-0">
+      {/* カレンダー本体を直接 position:fixed で画面いっぱいに描く（狭い画面）。
+          h-full の多段継承は地図で実機不具合を起こしたため使わず、この1階層の
+          ラッパーだけで完結させる（lib/mobileTabChrome.ts）。広い画面は static
+          に戻り元通りページ内の1コンポーネント。 */}
+      <div
+        className="fixed inset-x-0 md:static md:inset-auto"
+        style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+      >
         <WeekCalendar
           schedule={schedule}
           placeName={placeName}
@@ -223,15 +243,14 @@ export function ScheduleSection({
           onSlotClick={onSlotClick}
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
-          className="max-h-none h-[calc(100dvh-93px-58px-env(safe-area-inset-bottom))] rounded-none border-x-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border-x"
+          className="h-full max-h-none rounded-none border-x-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border-x"
         />
       </div>
 
-      {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。
-          93px = AppHeader(49px) + 圧縮ヘッダー(44px)、58px = 下部タブバーの実測高。 */}
+      {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。 */}
       <div
         className="fixed right-4 z-20 flex flex-col items-end gap-2 md:hidden"
-        style={{ bottom: "calc(58px + env(safe-area-inset-bottom) + 16px)" }}
+        style={{ bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)` }}
       >
         <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
           {t("addHelp")}
@@ -248,8 +267,10 @@ export function ScheduleSection({
         </Button>
       </div>
 
+      {/* 狭い画面はカレンダーが fixed で画面を覆うため、この凡例は隠れて見えなく
+          なる（下に隠れた不可視コンテンツを残さないよう非表示にする）。 */}
       {hasReservation && (
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="hidden items-center gap-4 text-xs text-muted-foreground md:flex">
           <span className="inline-flex items-center gap-1">
             <ReservationIcon size={12} />
             {t("needsReservation")}

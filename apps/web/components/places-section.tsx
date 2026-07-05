@@ -21,6 +21,10 @@ import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
 import { ChevronIcon } from "./icons";
 import { cn } from "@/lib/utils";
+import {
+  MOBILE_TAB_BOTTOM_OFFSET,
+  MOBILE_TAB_TOP_OFFSET,
+} from "@/lib/mobileTabChrome";
 
 export function PlacesSection({
   tripId,
@@ -226,13 +230,20 @@ export function PlacesSection({
 
   return (
     <APIProvider apiKey={apiKey} language={locale}>
-      {/* 狭い画面: 地図が親パネル(h-full)を埋める Google マップ風レイアウト。
-          検索は地図に重ねて浮かせ、一覧はタップで開閉するボトムパネルにする。
-          広い画面(md:)は元通り「検索→地図→一覧」の縦積み。 */}
-      <div className="relative h-full w-full md:static md:h-auto md:space-y-4">
+      {/* 狭い画面: 検索・地図・一覧パネルをそれぞれ直接 position:fixed で
+          画面いっぱいに配置する（Google マップ風）。地図は h-full の多段継承
+          （祖先の fixed → h-full section → relative → absolute inset-0 →
+          h-full）だと実機で初期化タイミングと噛み合わず描画されない不具合が
+          出たため、中間層を作らずこのコンポーネント自身が直接 fixed+top/bottom
+          を持つ（lib/mobileTabChrome.ts の単一の真実）。広い画面(md:)は
+          static に戻り「検索→地図→一覧」の通常縦積み。 */}
+      <div className="md:space-y-4">
         {/* DOM順は広い画面の見た目順（検索→地図）に合わせる。狭い画面は
-            absolute+z-10 で検索を地図の上に重ねるので順序に影響されない。 */}
-        <div className="absolute inset-x-3 top-3 z-10 md:static md:inset-auto md:z-auto">
+            z-10 で検索を地図の上に重ねるので順序に影響されない。 */}
+        <div
+          className="fixed inset-x-3 z-10 md:static md:inset-auto md:z-auto"
+          style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 12px)` }}
+        >
           <div className="rounded-md bg-background shadow-lg md:rounded-none md:bg-transparent md:shadow-none">
             <PlaceSearch
               query={query}
@@ -244,7 +255,10 @@ export function PlacesSection({
           </div>
         </div>
 
-        <div className="absolute inset-0 md:static md:inset-auto">
+        <div
+          className="fixed inset-x-0 md:static md:inset-auto"
+          style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+        >
           <PlaceMap
             places={places}
             memberHueById={memberHueById}
@@ -265,7 +279,10 @@ export function PlacesSection({
           />
         </div>
 
-        <div className="absolute inset-x-0 bottom-0 z-10 md:hidden">
+        <div
+          className="fixed inset-x-0 z-10 md:hidden"
+          style={{ bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+        >
           <button
             type="button"
             onClick={() => setListExpanded((v) => !v)}

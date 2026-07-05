@@ -371,13 +371,19 @@ export function PlaceMap({
   }, [selected, places, candidates, poi]);
 
   return (
-    <div className="space-y-1">
-      <div
-        className={cn(
-          "relative h-[32rem] w-full overflow-hidden rounded-md border border-foreground/10",
-          className,
-        )}
-      >
+    // className はこの外枠（サイズ・角丸・枠線）に当てる。地図 div 自身に
+    // h-full を持たせて祖先が全部 h-full の多段継承にすると、実機で Google
+    // Maps の初期化タイミングと噛み合わず何も描画されない不具合が起きたため
+    // （祖先の1つが space-y-1 で高さ未確定のまま伝播していたのが実際の原因）、
+    // ここを flex-col の唯一の「サイズを持つ箱」にし、地図は flex-1 で
+    // 残り領域を埋めるだけにする（percentage-height の多段継承をやめる）。
+    <div
+      className={cn(
+        "flex h-[32rem] w-full flex-col gap-1 overflow-hidden rounded-md border border-foreground/10",
+        className,
+      )}
+    >
+      <div className="relative min-h-0 flex-1">
         <Map
           mapId={mapId}
           colorScheme={colorScheme}

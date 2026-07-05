@@ -40,12 +40,6 @@ function getServerTab(): TabKey {
   return "schedule";
 }
 
-// 狭い画面のクロムの実測高。AppHeader(h-12=48px+border1px=49px) + 圧縮ヘッダー
-// (h-11=44px+border1px=45px) = 94px。下部タブバーは 58px（内訳: 24pxアイコン+
-// 2px gap+約12px ラベル行+py-2=16px+1px border）＋ セーフエリア。
-const TOP_OFFSET = "94px";
-const BOTTOM_OFFSET = "calc(58px + env(safe-area-inset-bottom))";
-
 // 狭い画面（< md=768px）だけタブ化し、広い画面は今までどおり全セクション縦積み
 // （旅行詳細のコンテナ幅 max-w-3xl=768px を下回ると縦積みの同時表示の旨味が
 // 落ちるため、そこで切り替える）。表示の出し分けは Tailwind の
@@ -84,40 +78,19 @@ export function TripDetailTabs({
 
   return (
     <>
-      {/* 狭い画面でだけ下の固定タブバー分の余白を確保。広い画面は不要（タブバー非表示）。 */}
+      {/* 狭い画面でだけ下の固定タブバー分の余白を確保。広い画面は不要（タブバー非表示）。
+          全画面ブリードするタブ（予定のカレンダー・場所の地図）は各セクション内部で
+          自身を position:fixed にして画面いっぱいに描く（lib/mobileTabChrome.ts）。
+          ここでの出し分けは他タブと同じ hidden/block のみで統一する。 */}
       <div className="pb-24 md:pb-0">
-        {TABS.map(({ key }) => {
-          const active = key === activeTab;
-          // 場所タブだけ、狭い画面では地図を画面いっぱいに見せるため通常の文書
-          // フローから外し、ヘッダー〜タブバーの間を埋める固定パネルにする
-          // （Google マップ風）。広い画面は他タブと同じ通常フローに戻す。
-          if (key === "places") {
-            return (
-              <div
-                key={key}
-                style={
-                  active
-                    ? { top: TOP_OFFSET, bottom: BOTTOM_OFFSET }
-                    : undefined
-                }
-                className={cn(
-                  active ? "fixed inset-x-0 z-10" : "hidden",
-                  "md:static md:inset-auto md:block",
-                )}
-              >
-                {content[key]}
-              </div>
-            );
-          }
-          return (
-            <div
-              key={key}
-              className={cn(active ? "block" : "hidden", "md:block")}
-            >
-              {content[key]}
-            </div>
-          );
-        })}
+        {TABS.map(({ key }) => (
+          <div
+            key={key}
+            className={cn(key === activeTab ? "block" : "hidden", "md:block")}
+          >
+            {content[key]}
+          </div>
+        ))}
       </div>
 
       <nav
