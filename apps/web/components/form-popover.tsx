@@ -43,10 +43,6 @@ function makeOnOpenChange(onClose: () => void) {
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
 const SHEET_MAX_PERCENT = 93;
-// 開いたときに上のヘッダー帯がちょうど見える高さで止める余白。画面高に対する
-// 割合の決め打ちだと端末ごとに実際の余白がブレるため、実測した chrome の高さ
-// （useMobileChromeMargins の [data-mobile-chrome-top]）から動的に算出する
-// （下の openSnapPx）。8px は一息つく余白。
 
 // 狭い画面のボトムシート（Vaul）。snapPoints で「上のヘッダー帯が見える高さで開く
 // →上限(約93%)まで拡大」。拡大/縮小/閉じの挙動は vaul のデフォルトに任せる
@@ -79,16 +75,21 @@ function NarrowSheet({
 }) {
   const [open, setOpen] = useState(true);
 
-  // 開いたときの可視高 = viewport高 − 実測した上の chrome 高 − 一息つく余白。
-  // 拡大上限（SHEET_MAX_PERCENT）を超えて開こうとする場合はそこで頭打ちにする
-  // （chrome が薄いページでは「開いた高さ」が「拡大上限」に一致 or それ以下に
-  // なる）。Content 自身の高さは SHEET_MAX_PERCENT なので、開いた時の snapPoint
-  // は「Content の何 px を見せるか」で指定する（bottom-0 なので Content の
-  // 下端＝viewport の下端、そこから逆算できる）。
+  // 開いたときに見せる高さの逆算。vaul は px の snapPoint を「viewport 高
+  // (containerSize.height) からの translateY オフセット」として扱う（Content
+  // 自身の高さ＝SHEET_MAX_PERCENT ではなく、常に viewport 高が基準）。Content
+  // は bottom-0・高さ SHEET_MAX_PERCENT なので、無変形（translateY=0）の時点で
+  // 既に上に (1-SHEET_MAX_PERCENT/100) 分の隙間を自然に持っている。この分を
+  // 考慮せず「viewport高 − chrome高」だけで px を出すと、実際に見える上余白が
+  // その隙間ぶん多く出てしまう（実機で発覚）。
+  //   見える上余白 = 2×viewport高 − Content高 − 開いたsnapのpx
+  // を解いて px を逆算する。
   const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
+  const maxFraction = SHEET_MAX_PERCENT / 100;
+  const desiredTopMargin = chromeTopPx + 8; // 8px は一息つく余白
   const openSnapPx = Math.min(
-    (SHEET_MAX_PERCENT / 100) * viewportHeight,
-    Math.max(0, viewportHeight - chromeTopPx - 8),
+    viewportHeight,
+    Math.max(0, viewportHeight * (2 - maxFraction) - desiredTopMargin),
   );
   const sheetSnapPoints = [`${openSnapPx}px`, 1];
 
