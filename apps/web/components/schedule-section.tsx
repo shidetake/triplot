@@ -360,7 +360,7 @@ export function ScheduleSection({
           onSlotClick={onSlotClick}
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
-          className="h-full max-h-none rounded-none border-x-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border-x"
+          className="h-full max-h-none rounded-none border-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border"
         />
       </div>
 
