@@ -10,10 +10,19 @@ type ChromeMargins = {
   viewportHeight: number;
 };
 
+// iOS Safari はツールバーの折りたたみ状態で window.innerHeight と実際に
+// 描画される dvh（シート側で使っている単位）がズレることがある。
+// visualViewport.height の方が「今実際に見えているビューポート」に近く、
+// dvh とのズレが小さいのでこちらを優先する（無ければ innerHeight に fallback）。
+function currentViewportHeight(): number {
+  return window.visualViewport?.height ?? window.innerHeight;
+}
+
 function measure(): ChromeMargins {
   if (typeof window === "undefined") {
     return { top: 0, bottom: 0, viewportHeight: 0 };
   }
+  const viewportHeight = currentViewportHeight();
   const topEls = document.querySelectorAll<HTMLElement>(
     "[data-mobile-chrome-top]",
   );
@@ -27,10 +36,10 @@ function measure(): ChromeMargins {
   const bottom = Math.max(
     0,
     ...Array.from(bottomEls).map(
-      (el) => window.innerHeight - el.getBoundingClientRect().top,
+      (el) => viewportHeight - el.getBoundingClientRect().top,
     ),
   );
-  return { top, bottom, viewportHeight: window.innerHeight };
+  return { top, bottom, viewportHeight };
 }
 
 // 狭い画面のボトムシートが「展開時にどこまで見せるか」を、決め打ちの割合
@@ -58,7 +67,13 @@ export function useMobileChromeMargins(): ChromeMargins {
   useEffect(() => {
     const onResize = () => setState(measure());
     window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    // ツールバー折りたたみ等、window の resize イベントを伴わない visualViewport
+    // だけの変化も拾う。
+    window.visualViewport?.addEventListener("resize", onResize);
+    return () => {
+      window.removeEventListener("resize", onResize);
+      window.visualViewport?.removeEventListener("resize", onResize);
+    };
   }, []);
 
   return state;
