@@ -29,7 +29,18 @@ import {
   type CalendarExportEvent,
 } from "./calendar-export-dialog";
 import { type Anchor, FormPopover } from "./form-popover";
-import { ShareIcon, EllipsisIcon } from "./icons";
+import {
+  CalendarDaysIcon,
+  DownloadIcon,
+  EditIcon,
+  EllipsisIcon,
+  MapIcon,
+  ShareIcon,
+  TagIcon,
+  TrashIcon,
+  UsersIcon,
+  WalletIcon,
+} from "./icons";
 import { menuItemClass } from "./menu-item";
 import { EditTripForm } from "./edit-trip-form";
 import type { Currency } from "@triplot/shared/types/database";
@@ -288,36 +299,47 @@ export function TripActions({
                         onClick={(e) =>
                           setEditAnchor({ x: e.clientX, y: e.clientY })
                         }
-                        className={`block ${menuItemClass}`}
+                        className={`flex items-center gap-2 ${menuItemClass}`}
                       >
+                        <EditIcon size={16} className="text-muted-foreground" />
                         {t("editTrip")}
                       </Menu.Item>
                     )}
                     <Menu.Item
                       render={<Link href={`/trips/${tripId}/members`} />}
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <UsersIcon size={16} className="text-muted-foreground" />
                       {t("manageMembers")}
                     </Menu.Item>
                     <Menu.Item
                       render={<Link href={`/trips/${tripId}/categories`} />}
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <TagIcon size={16} className="text-muted-foreground" />
                       {t("manageCategories")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <ShareIcon size={16} className="text-muted-foreground" />
                       {t("share")}
                     </Menu.Item>
                     <Menu.Item
                       closeOnClick={false}
                       onClick={() => setMenuView("export")}
-                      className={`flex items-center justify-between ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <DownloadIcon
+                        size={16}
+                        className="text-muted-foreground"
+                      />
                       {t("export")}
-                      <span aria-hidden className="text-subtle-foreground">
+                      <span
+                        aria-hidden
+                        className="ml-auto text-subtle-foreground"
+                      >
                         ›
                       </span>
                     </Menu.Item>
@@ -325,8 +347,9 @@ export function TripActions({
                       <Menu.Item
                         onClick={onDelete}
                         disabled={isPending}
-                        className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
                       >
+                        <TrashIcon size={16} />
                         {t("deleteTrip")}
                       </Menu.Item>
                     )}
@@ -344,20 +367,26 @@ export function TripActions({
                       onClick={(e) =>
                         onExportCalendar({ x: e.clientX, y: e.clientY })
                       }
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <CalendarDaysIcon
+                        size={16}
+                        className="text-muted-foreground"
+                      />
                       {t("exportCalendar")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={onExportMap}
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <MapIcon size={16} className="text-muted-foreground" />
                       {t("exportMap")}
                     </Menu.Item>
                     <Menu.Item
                       onClick={onExportExpenses}
-                      className={`block ${menuItemClass}`}
+                      className={`flex items-center gap-2 ${menuItemClass}`}
                     >
+                      <WalletIcon size={16} className="text-muted-foreground" />
                       {t("exportExpenses")}
                     </Menu.Item>
                   </>

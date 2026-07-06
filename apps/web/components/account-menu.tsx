@@ -97,28 +97,33 @@ export function AccountMenu({
                   {email}
                 </div>
               )}
+              {/* ラベルは foreground・アイコンだけ muted（shadcn/ui の
+                  DropdownMenu と同じ配色。旅行の ⋯ メニューとも揃える）。 */}
               <Menu.Item
                 render={<Link href="/settings" />}
-                className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+                className={`flex items-center gap-2 ${menuItemClass}`}
               >
-                <SettingsIcon size={16} />
+                <SettingsIcon size={16} className="text-muted-foreground" />
                 {t("settings.heading")}
               </Menu.Item>
               <Menu.Item
                 onClick={(e) =>
                   setFeedbackAnchor({ x: e.clientX, y: e.clientY })
                 }
-                className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+                className={`flex items-center gap-2 ${menuItemClass}`}
               >
-                <MessageSquareIcon size={16} />
+                <MessageSquareIcon
+                  size={16}
+                  className="text-muted-foreground"
+                />
                 {t("feedback.menuLink")}
               </Menu.Item>
               {isAdmin && (
                 <Menu.Item
                   render={<Link href="/admin" />}
-                  className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
                 >
-                  <ShieldIcon size={16} />
+                  <ShieldIcon size={16} className="text-muted-foreground" />
                   {t("admin.menuLink")}
                   {openFeedbackCount > 0 && (
                     <span className="ml-auto flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground">
@@ -129,9 +134,9 @@ export function AccountMenu({
               )}
               <Menu.Item
                 onClick={handleSignOut}
-                className={`flex items-center gap-2 text-muted-foreground ${menuItemClass}`}
+                className={`flex items-center gap-2 ${menuItemClass}`}
               >
-                <LogOutIcon size={16} />
+                <LogOutIcon size={16} className="text-muted-foreground" />
                 {t("account.signOut")}
               </Menu.Item>
               <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">
