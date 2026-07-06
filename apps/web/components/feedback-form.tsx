@@ -72,7 +72,7 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
+      className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
       {!inSheet && (
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />

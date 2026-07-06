@@ -59,7 +59,7 @@ export function EditTripForm({
   return (
     <form
       action={formAction}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
+      className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
       {/* ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
       {!inSheet && (

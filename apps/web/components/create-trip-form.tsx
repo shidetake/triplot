@@ -124,7 +124,7 @@ export function CreateTripForm({
       // 破棄しておけば、成功（=このまま遷移してアンマウント）後に残らない。HTML バリデーションで
       // 弾かれた時は onSubmit 自体が発火しないので消えない。
       onSubmit={() => clearDraft()}
-      className="relative space-y-3 rounded-md border border-foreground/10 bg-background p-4"
+      className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
       {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
           先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。

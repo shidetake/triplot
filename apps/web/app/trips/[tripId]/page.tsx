@@ -702,7 +702,13 @@ export default async function TripDetailPage({
         }
         expenses={
           <section className="mt-10 space-y-6">
-            <div className="flex items-center justify-between gap-2">
+            {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
+                見出し+追加ボタンの行までは見えるようにする実測対象
+                （components/use-mobile-chrome-margins.ts）。 */}
+            <div
+              data-mobile-chrome-top
+              className="flex items-center justify-between gap-2"
+            >
               <h2 className="text-lg font-semibold">{t("tripDetail.expenses")}</h2>
               <AddExpenseButton
                 tripId={tripId}
