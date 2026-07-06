@@ -438,7 +438,15 @@ export function PlacesSection({
             <Drawer.Portal>
               <Drawer.Content
                 aria-label={t("placesListLabel")}
-                style={{ height: "100dvh", bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+                // 高さは 100dvh（CSS単位）ではなく、expandedSnap の計算と vaul の
+                // オフセット計算が使っているのと同じ window.innerHeight の実測値
+                // （px）にする。dvh と innerHeight は iOS Safari で一致しないこと
+                // があり、ズレたぶんシートの静止位置が計算と食い違って展開時の
+                // 上限がずれる（NarrowSheet と同種の「配置と基準の不一致」バグ）。
+                style={{
+                  height: `${viewportHeight}px`,
+                  bottom: MOBILE_TAB_BOTTOM_OFFSET,
+                }}
                 className="fixed inset-x-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
               >
                 <Drawer.Title className="sr-only">
