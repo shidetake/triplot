@@ -30,9 +30,21 @@ import {
 // タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
 const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
-// 場所一覧ボトムシートの snapPoints。peek=ハンドル+件数だけの帯(96px)、
-// expanded=viewport の 75%。
-const PLACES_SHEET_SNAP_POINTS: (number | string)[] = ["96px", 0.75];
+// 場所一覧ボトムシートの snapPoints。
+// - mini: ハンドル+件数の行だけがちょうど収まる高さ（48px）。地図を触った・
+//   一覧の項目を選んだ・展開後に閉じた、など「もう見た」後はここまで畳む。
+// - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
+//   一覧の先頭が少し覗く高さで、何があるか一目で分かる（mini と違い意図的に
+//   覗かせている）。
+// - expanded: viewport の 75%。
+const MINI_SNAP = "48px";
+const WELCOME_SNAP = "96px";
+const EXPANDED_SNAP = 0.75;
+const PLACES_SHEET_SNAP_POINTS: (number | string)[] = [
+  MINI_SNAP,
+  WELCOME_SNAP,
+  EXPANDED_SNAP,
+];
 
 export function PlacesSection({
   tripId,
@@ -71,21 +83,22 @@ export function PlacesSection({
   // 壊れたため不採用。bottom オフセットでタブバーの上に固定する側で対応）。
   const [placesSheetSnap, setPlacesSheetSnap] = useState<
     number | string | null
-  >(PLACES_SHEET_SNAP_POINTS[0]);
-  // 一覧で場所をタップしたら地図を見たいはず＝シートを畳んで地図を見せる。
+  >(WELCOME_SNAP);
+  // 地図を触った・一覧の項目を選んだ、など「もう見た」操作の後はここまで畳む。
   const collapsePlacesSheet = useCallback(() => {
-    setPlacesSheetSnap(PLACES_SHEET_SNAP_POINTS[0]);
+    setPlacesSheetSnap(MINI_SNAP);
   }, []);
 
-  // 他タブに移ったら畳んでおく（React 公式の「props の変化に応じて state を
-  // 調整する」パターン＝render中の直接setState。useEffectでのcascading更新を
-  // 避けるため、isActive の変化を ref 相当の前回値比較で検知する）。展開した
-  // まま他タブへ行ってまた場所タブに戻ると、いきなり展開済みで出てきて驚く
-  // ため、非表示になった瞬間に畳んでおく。
+  // 他タブに移ったら welcome（初期表示の高さ）に戻しておく（React 公式の
+  // 「props の変化に応じて state を調整する」パターン＝render中の直接setState。
+  // useEffectでのcascading更新を避けるため、isActive の変化を前回値比較で
+  // 検知する）。展開したまま他タブへ行ってまた場所タブに戻ると、いきなり
+  // 展開済みで出てきて驚くため、非表示になった瞬間に戻しておく。再度この
+  // タブに来た時にまた「何があるか一目で分かる」表示から始まってほしい。
   const [prevIsActive, setPrevIsActive] = useState(isActive);
   if (isActive !== prevIsActive) {
     setPrevIsActive(isActive);
-    if (!isActive) setPlacesSheetSnap(PLACES_SHEET_SNAP_POINTS[0]);
+    if (!isActive) setPlacesSheetSnap(WELCOME_SNAP);
   }
 
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
@@ -318,6 +331,10 @@ export function PlacesSection({
         <div
           className="fixed inset-x-0 md:static md:inset-auto"
           style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+          // 地図に触ったら一覧シートは邪魔なので mini まで畳む（タップ・ピン
+          // ドラッグ開始・パン開始、いずれも pointerdown で拾える）。検索バーは
+          // 別の兄弟要素なのでここには含まれない。
+          onPointerDown={collapsePlacesSheet}
         >
           <PlaceMap
             places={places}
@@ -369,10 +386,12 @@ export function PlacesSection({
                 <button
                   type="button"
                   onClick={() =>
+                    // 開いていた（expanded）ものを閉じる操作＝「一度開いて閉じた」
+                    // なので mini まで畳む。閉じていれば expanded まで開く。
                     setPlacesSheetSnap(
-                      placesSheetSnap === PLACES_SHEET_SNAP_POINTS[0]
-                        ? PLACES_SHEET_SNAP_POINTS[1]
-                        : PLACES_SHEET_SNAP_POINTS[0],
+                      placesSheetSnap === EXPANDED_SNAP
+                        ? MINI_SNAP
+                        : EXPANDED_SNAP,
                     )
                   }
                   className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
