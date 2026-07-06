@@ -744,7 +744,13 @@ export function WeekCalendar({
         </div>
 
         {/* ── 終日帯 ── */}
-        <div className="flex border-b border-foreground/10 bg-muted">
+        {/* data-mobile-chrome-top: 予定追加のボトムシートを開いた時、この
+            終日帯の下端までは見えるようにする実測対象
+            （components/use-mobile-chrome-margins.ts）。 */}
+        <div
+          data-mobile-chrome-top
+          className="flex border-b border-foreground/10 bg-muted"
+        >
           <div
             className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-muted text-[10px] text-muted-foreground"
             style={{ width: GUTTER }}
