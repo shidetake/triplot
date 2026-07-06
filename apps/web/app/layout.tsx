@@ -5,8 +5,6 @@ import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Toaster } from "@/components/toast";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
-import { AppFooter } from "@/components/app-footer";
-import { getDeployEnv, getVersion } from "@/lib/version";
 import { resolveTheme } from "@/i18n/theme.server";
 import { ThemeSync } from "@/components/theme-sync";
 
@@ -64,7 +62,6 @@ export default async function RootLayout({
         <ThemeSync />
         <NextIntlClientProvider messages={messages}>
           <div className="flex-1">{children}</div>
-          <AppFooter deployEnv={getDeployEnv()} version={getVersion()} />
           <Toaster />
           <ConfirmDialogHost />
         </NextIntlClientProvider>

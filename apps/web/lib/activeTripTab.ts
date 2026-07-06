@@ -3,15 +3,14 @@
 import { useSyncExternalStore } from "react";
 
 // 旅行詳細ページの4タブ（予定/場所/費用/TODO）。TripDetailTabs だけでなく、
-// タブ内容の外側にあるコンポーネント（例: app-footer.tsx）からも「今どのタブが
-// アクティブか」を読めるようにするための最小限の外部ストア。
+// PlacesSection・ScheduleSection 等、タブ内容側からも「今どのタブがアクティブか」
+// を読めるようにするための最小限の外部ストア。React Context だと Provider の
+// 子孫でしか読めず、Provider の外側にいるコンポーネントからは読めないため、
+// モジュールスコープの pub/sub にして木構造の位置に関係なく購読できるようにする。
 //
 // タブ切替は実ナビゲーションにせず history.replaceState だけで URL を同期する
 // （TripDetailTabs 参照）。replaceState は popstate を発火しないため、クリック
-// 直後の反映は自前の CustomEvent で配る。React Context だと Provider の子孫
-// でしか読めないが、フッターは root layout の {children} と兄弟関係で
-// Provider の外にいるため Context は使えない。モジュールスコープの
-// pub/sub にすることで、Provider 配下かどうかに関係なくどこからでも購読できる。
+// 直後の反映は自前の CustomEvent で配る。
 export const TRIP_TABS = ["schedule", "places", "expenses", "todos"] as const;
 export type TripTabKey = (typeof TRIP_TABS)[number];
 
@@ -40,7 +39,7 @@ function subscribe(callback: () => void) {
 }
 
 // タブバーのクリック等、明示的な切替はここから呼ぶ。URL を書き換えつつ
-// 全購読者（他タブの isActive・フッター等）へ即座に配る。
+// 全購読者（各タブの isActive 判定）へ即座に配る。
 export function setActiveTripTab(tab: TripTabKey) {
   const url = new URL(window.location.href);
   url.searchParams.set("tab", tab);

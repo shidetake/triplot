@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AccountMenu } from "@/components/account-menu";
 import { InboxIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/server";
+import { getDeployEnv, getVersion } from "@/lib/version";
 
 // アプリ内全ページ共通のヘッダー（薄い常時表示バー・auto-hide しない）。
 // 左＝ワードマーク（アプリ内なので → /trips）、右＝受信箱＋アバター。
@@ -84,6 +85,8 @@ export async function AppHeader() {
             avatarUrl={avatarUrl}
             isAdmin={profile?.is_admin ?? false}
             openFeedbackCount={openFeedbackCount}
+            deployEnv={getDeployEnv()}
+            version={getVersion()}
           />
         </div>
       </div>

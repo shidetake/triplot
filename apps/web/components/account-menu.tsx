@@ -30,6 +30,8 @@ export function AccountMenu({
   avatarUrl,
   isAdmin,
   openFeedbackCount = 0,
+  deployEnv,
+  version,
 }: {
   email: string | null;
   name: string | null;
@@ -37,6 +39,12 @@ export function AccountMenu({
   isAdmin: boolean;
   // admin のみ: 未対応フィードバック件数（「管理」行のバッジ＋アバターの右上バッジ）。
   openFeedbackCount?: number;
+  // デプロイ反映の目視確認用。以前は全ページ共通フッターに常時表示していたが、
+  // 一般ユーザーには意味のない文字列を常時見せることになる・狭い画面のタブ
+  // レイアウトで表示位置の計算が壊れやすいため撤去し、世の中の慣習
+  // （Settings/About 相当）に合わせてここに移した。
+  deployEnv: string;
+  version: string;
 }) {
   const router = useRouter();
   const t = useTranslations();
@@ -126,6 +134,9 @@ export function AccountMenu({
                 <LogOutIcon size={16} />
                 {t("account.signOut")}
               </Menu.Item>
+              <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">
+                {deployEnv} · {version}
+              </div>
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>

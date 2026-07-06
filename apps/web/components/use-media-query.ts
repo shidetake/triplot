@@ -8,7 +8,7 @@ import { useSyncExternalStore } from "react";
 // useSyncExternalStore パターン）。旧実装（useState の初期化子で
 // window.matchMedia を直接読む）は、サーバー(false)とクライアント初回描画
 // (実際のmatches)が食い違うhydrationミスマッチの原因になり、この値で
-// mount/unmountを切り替える箇所（例: app-footer.tsx）でDOM重複を起こした。
+// 要素の mount/unmount を切り替える箇所で DOM 重複を起こした（実例で発覚）。
 export function useMediaQuery(query: string): boolean {
   return useSyncExternalStore(
     (callback) => {
