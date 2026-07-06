@@ -49,17 +49,31 @@ function measure(): ChromeMargins {
 //
 // 初期値は useState の遅延初期化子で同期的に実測する（useEffect 任せだと、
 // vaul の非制御 snapPoints（NarrowSheet）はマウント時の初期値に固定されて
-// しまい、実測が後から効いても反映されない）。このフックはページ常設の
-// chrome（AppHeader 等）が既に DOM にある状態でだけ使われる想定なので、
-// 同期読みでも問題ない（SSR・hydration より後、ユーザ操作でシートが開く
-// 時にしか呼ばれないため）。
+// しまい、実測が後から効いても反映されない）。
+//
+// ただし初期化子はレンダー中に走るため、クライアント遷移（旅行一覧→旅行詳細）
+// の途中では遷移先ページの chrome（TripHeaderCompact 等）がまだ DOM に無く、
+// 実測から漏れる（リロード時は hydration 時点で全部あるので漏れない——
+// 「入り方によって展開位置が変わる」不具合として実機で発覚）。マウント後
+// （DOM 反映後）に一度再実測して取りこぼしを拾う。値が変わらない時は
+// setState しない（NarrowSheet のようにマウント時点で DOM が揃っている
+// 呼び出し元では無駄な再レンダーを起こさない）。
 export function useMobileChromeMargins(): ChromeMargins {
   const [state, setState] = useState(measure);
 
   useEffect(() => {
-    const onResize = () => setState(measure());
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
+    const remeasure = () =>
+      setState((prev) => {
+        const next = measure();
+        return next.top === prev.top &&
+          next.bottom === prev.bottom &&
+          next.viewportHeight === prev.viewportHeight
+          ? prev
+          : next;
+      });
+    remeasure();
+    window.addEventListener("resize", remeasure);
+    return () => window.removeEventListener("resize", remeasure);
   }, []);
 
   return state;

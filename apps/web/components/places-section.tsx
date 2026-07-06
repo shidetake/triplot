@@ -43,9 +43,10 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 //   （下の expandedSnap）。
 const MINI_SNAP = "48px";
 const WELCOME_SNAP = "96px";
-// 検索欄の行の高さ(h-9=36px) + 検索バーの上マージン(12px) + 一息つく余白(8px)。
-// PlaceSearch の見た目を変えたらここも見直す。
-const SEARCH_ROW_EXTRA_PX = 36 + 12 + 8;
+// 検索欄の行の高さ(h-9=36px) + 検索バーの上マージン(12px) + 検索欄の下の余白。
+// 下の余白は上マージンと同じ 12px（検索欄の上に見えている地図の帯と同じだけ
+// 下にも見せる）。PlaceSearch の見た目を変えたらここも見直す。
+const SEARCH_ROW_EXTRA_PX = 36 + 12 + 12;
 
 export function PlacesSection({
   tripId,
