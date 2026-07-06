@@ -76,19 +76,21 @@ export function PlacesSection({
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
   const showPlacesSheet = isActive && isNarrow;
 
-  // 展開時の高さ = viewport高 − 実測した上下の chrome − 検索欄ぶん。画面高の
+  // 展開時の高さ = viewport高 − 実測した上の chrome − 検索欄ぶん。画面高の
   // 割合ではなく実測値からの引き算にすることで、端末の画面高が変わっても
-  // 検索欄がちょうど見える位置で止まるようにする。resize/visualViewport の
-  // 変化のたびに再計算されるため、この値自体は毎レンダー変わりうる。
-  const { top: chromeTopPx, bottom: chromeBottomPx, viewportHeight } =
-    useMobileChromeMargins();
+  // 検索欄がちょうど見える位置で止まるようにする。
+  //
+  // 下部タブバーぶん（chrome bottom）はここでは引かない: 実機計測で、引くと
+  // シート上端が狙いよりちょうどタブバー高ぶん下に出た。この Drawer.Content
+  // は bottom をタブバー上端にオフセットして置いているが、vaul の px snapPoint
+  // の translate 幅は viewport 下端起点で計算されるため、オフセットぶんは
+  // 相殺されず二重に効いてしまう（NarrowSheet は bottom-0 なのでこの項自体が
+  // 発生しない）。
+  const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
   const expandedSnap = useMemo(
     () =>
-      `${Math.max(
-        0,
-        viewportHeight - chromeBottomPx - chromeTopPx - SEARCH_ROW_EXTRA_PX,
-      )}px`,
-    [viewportHeight, chromeBottomPx, chromeTopPx],
+      `${Math.max(0, viewportHeight - chromeTopPx - SEARCH_ROW_EXTRA_PX)}px`,
+    [viewportHeight, chromeTopPx],
   );
 
   const [query, setQuery] = useState("");
