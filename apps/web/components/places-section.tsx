@@ -78,7 +78,8 @@ export function PlacesSection({
 
   // 展開時の高さ = viewport高 − 実測した上下の chrome − 検索欄ぶん。画面高の
   // 割合ではなく実測値からの引き算にすることで、端末の画面高が変わっても
-  // 検索欄がちょうど見える位置で止まるようにする。
+  // 検索欄がちょうど見える位置で止まるようにする。resize/visualViewport の
+  // 変化のたびに再計算されるため、この値自体は毎レンダー変わりうる。
   const { top: chromeTopPx, bottom: chromeBottomPx, viewportHeight } =
     useMobileChromeMargins();
   const expandedSnap = useMemo(
@@ -96,12 +97,37 @@ export function PlacesSection({
   // の fixed + 明示的 height」パターンに合わせる（container prop で地図パネルに
   // 閉じ込める案は snapPoints の内部計算と噛み合わず実機以前にレイアウトが
   // 壊れたため不採用。bottom オフセットでタブバーの上に固定する側で対応）。
-  const [placesSheetSnap, setPlacesSheetSnap] = useState<
-    number | string | null
-  >(WELCOME_SNAP);
+  //
+  // 「今どの段か」は px 文字列そのものではなく意味（mini/welcome/expanded）で
+  // 持つ。expandedSnap は resize のたびに値が変わりうるため、literal な px
+  // 文字列を state に持つと、展開中に resize が起きて expandedSnap の値が
+  // ずれた瞬間 activeSnapPoint が snapPoints 配列のどれとも一致しなくなり、
+  // vaul 側の位置計算が壊れる（実機で「展開時の上限がずれる」不具合として発覚）。
+  // モードで持てば、resize後も常に最新の expandedSnap を渡せる。
+  const [placesSheetMode, setPlacesSheetMode] = useState<
+    "mini" | "welcome" | "expanded"
+  >("welcome");
+  const snapForMode = useCallback(
+    (mode: "mini" | "welcome" | "expanded") =>
+      mode === "mini"
+        ? MINI_SNAP
+        : mode === "welcome"
+          ? WELCOME_SNAP
+          : expandedSnap,
+    [expandedSnap],
+  );
+  const placesSheetSnap = snapForMode(placesSheetMode);
+  const setPlacesSheetSnap = useCallback(
+    (snap: number | string | null) => {
+      setPlacesSheetMode(
+        snap === MINI_SNAP ? "mini" : snap === WELCOME_SNAP ? "welcome" : "expanded",
+      );
+    },
+    [],
+  );
   // 地図を触った・一覧の項目を選んだ、など「もう見た」操作の後はここまで畳む。
   const collapsePlacesSheet = useCallback(() => {
-    setPlacesSheetSnap(MINI_SNAP);
+    setPlacesSheetMode("mini");
   }, []);
 
   // 他タブに移ったら welcome（初期表示の高さ）に戻しておく（React 公式の
@@ -113,7 +139,7 @@ export function PlacesSection({
   const [prevIsActive, setPrevIsActive] = useState(isActive);
   if (isActive !== prevIsActive) {
     setPrevIsActive(isActive);
-    if (!isActive) setPlacesSheetSnap(WELCOME_SNAP);
+    if (!isActive) setPlacesSheetMode("welcome");
   }
 
   // welcome は今まさにそこで静止している間だけ snapPoints に含める。ドラッグは
@@ -125,10 +151,10 @@ export function PlacesSection({
   // なり、次にこのタブへ入り直すまで welcome は候補に戻らない。
   const placesSheetSnapPoints = useMemo<(number | string)[]>(
     () =>
-      placesSheetSnap === WELCOME_SNAP
+      placesSheetMode === "welcome"
         ? [MINI_SNAP, WELCOME_SNAP, expandedSnap]
         : [MINI_SNAP, expandedSnap],
-    [placesSheetSnap, expandedSnap],
+    [placesSheetMode, expandedSnap],
   );
 
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
@@ -423,10 +449,8 @@ export function PlacesSection({
                   onClick={() =>
                     // 開いていた（expanded）ものを閉じる操作＝「一度開いて閉じた」
                     // なので mini まで畳む。閉じていれば expanded まで開く。
-                    setPlacesSheetSnap(
-                      placesSheetSnap === expandedSnap
-                        ? MINI_SNAP
-                        : expandedSnap,
+                    setPlacesSheetMode(
+                      placesSheetMode === "expanded" ? "mini" : "expanded",
                     )
                   }
                   className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
