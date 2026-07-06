@@ -30,7 +30,7 @@ import {
 // タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
 const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
-// 場所一覧ボトムシートの snapPoints。
+// 場所一覧ボトムシートの3つの高さ。
 // - mini: ハンドル+件数の行だけがちょうど収まる高さ（48px）。地図を触った・
 //   一覧の項目を選んだ・展開後に閉じた、など「もう見た」後はここまで畳む。
 // - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
@@ -40,11 +40,6 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 const MINI_SNAP = "48px";
 const WELCOME_SNAP = "96px";
 const EXPANDED_SNAP = 0.75;
-const PLACES_SHEET_SNAP_POINTS: (number | string)[] = [
-  MINI_SNAP,
-  WELCOME_SNAP,
-  EXPANDED_SNAP,
-];
 
 export function PlacesSection({
   tripId,
@@ -100,6 +95,21 @@ export function PlacesSection({
     setPrevIsActive(isActive);
     if (!isActive) setPlacesSheetSnap(WELCOME_SNAP);
   }
+
+  // welcome は今まさにそこで静止している間だけ snapPoints に含める。ドラッグは
+  // 常にその時点の snapPoints の中でしか止まれないため、mini↔expanded の
+  // ドラッグ中は welcome を候補から外しておかないと、途中で一瞬引っかかって
+  // 見える（ミニマムから開く時／マックスから閉じる時に welcome で止まらない
+  // でほしい、というフィードバックへの対応）。welcome から一度でも離れたら
+  // （タップ・ドラッグ・地図操作いずれでも）以降は mini/expanded の2点だけに
+  // なり、次にこのタブへ入り直すまで welcome は候補に戻らない。
+  const placesSheetSnapPoints = useMemo<(number | string)[]>(
+    () =>
+      placesSheetSnap === WELCOME_SNAP
+        ? [MINI_SNAP, WELCOME_SNAP, EXPANDED_SNAP]
+        : [MINI_SNAP, EXPANDED_SNAP],
+    [placesSheetSnap],
+  );
 
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
   // 生かす他の用途と合わせた設計）なので vaul 自身の scroll-lock には乗れない
@@ -368,7 +378,7 @@ export function PlacesSection({
             open
             modal={false}
             dismissible={false}
-            snapPoints={PLACES_SHEET_SNAP_POINTS}
+            snapPoints={placesSheetSnapPoints}
             activeSnapPoint={placesSheetSnap}
             setActiveSnapPoint={setPlacesSheetSnap}
             scrollLockTimeout={0}
