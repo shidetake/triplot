@@ -36,10 +36,11 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 // - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
 //   一覧の先頭が少し覗く高さで、何があるか一目で分かる（mini と違い意図的に
 //   覗かせている）。
-// - expanded: viewport の 75%。
+// - expanded: viewport の 68%。上の検索欄がちょうど見える高さ止まり（0.75だと
+//   検索欄まで覆ってしまうとのフィードバックで下げた）。
 const MINI_SNAP = "48px";
 const WELCOME_SNAP = "96px";
-const EXPANDED_SNAP = 0.75;
+const EXPANDED_SNAP = 0.68;
 
 export function PlacesSection({
   tripId,
@@ -324,6 +325,11 @@ export function PlacesSection({
         <div
           className="fixed inset-x-3 z-10 md:static md:inset-auto md:z-auto"
           style={{ top: `calc(${MOBILE_TAB_TOP_OFFSET} + 12px)` }}
+          // 検索欄にフォーカスしたら一覧シートは邪魔なので mini まで畳む
+          // （地図タップと同じ扱い）。React の focus イベントは合成 focusin
+          // 相当でバブリングするため、この親要素の onFocus で子の input の
+          // フォーカスも拾える。
+          onFocus={collapsePlacesSheet}
         >
           {/* 入力欄・ボタンをそれぞれ自前の bg/border で浮かせる（Google マップ風）。
               周りを覆う不透明な枠は敷かない＝入力とボタンの間からも地図が見える
