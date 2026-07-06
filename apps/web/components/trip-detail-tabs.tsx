@@ -65,7 +65,10 @@ export function TripDetailTabs({
         ))}
       </div>
 
+      {/* data-mobile-chrome-bottom: 場所シートが「下端をこのタブバーの上まで」
+          にする実測対象（use-mobile-chrome-margins.ts）。 */}
       <nav
+        data-mobile-chrome-bottom
         aria-label={t("navLabel")}
         className="fixed inset-x-0 bottom-0 z-30 flex border-t border-foreground/10 bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)] md:hidden"
       >

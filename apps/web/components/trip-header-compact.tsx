@@ -29,7 +29,12 @@ export function TripHeaderCompact({
   actions: ReactNode;
 }) {
   return (
-    <div className="flex h-11 items-center gap-2 border-b border-foreground/10 px-3 md:hidden">
+    // data-mobile-chrome-top: AppHeader と同じく、狭い画面のボトムシートが
+    // 開いた時にこの帯の下端まで見せる実測対象（use-mobile-chrome-margins.ts）。
+    <div
+      data-mobile-chrome-top
+      className="flex h-11 items-center gap-2 border-b border-foreground/10 px-3 md:hidden"
+    >
       <Link
         href="/trips"
         aria-label={backLabel}

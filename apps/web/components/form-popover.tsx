@@ -14,6 +14,7 @@ import { Drawer } from "vaul";
 
 import { FormHostProvider } from "./form-host";
 import { useMediaQuery } from "./use-media-query";
+import { useMobileChromeMargins } from "./use-mobile-chrome-margins";
 
 export type Anchor = { x: number; y: number };
 
@@ -42,17 +43,14 @@ function makeOnOpenChange(onClose: () => void) {
 // された状態になり vaul がボディドラッグを拡大/閉じに使ってスクロールできなくなる。だから上限は
 // 「Content 高」で作り、snapPoints の上点は必ず 1.0（translate 0）に保つ。
 const SHEET_MAX_PERCENT = 93;
-// 開いたときの可視高（viewport 比）。
-const SHEET_OPEN_VISIBLE = 0.72;
-// snapPoints（viewport 比）。可視高 = Content高 −(1−snap) なので、開く可視高に対応する下スナップを
-// 逆算する（上点は 1.0 固定＝そこでだけボディがスクロールする）。
-const SHEET_SNAP_POINTS: number[] = [
-  SHEET_OPEN_VISIBLE - SHEET_MAX_PERCENT / 100 + 1,
-  1,
-];
+// 開いたときに上のヘッダー帯がちょうど見える高さで止める余白。画面高に対する
+// 割合の決め打ちだと端末ごとに実際の余白がブレるため、実測した chrome の高さ
+// （useMobileChromeMargins の [data-mobile-chrome-top]）から動的に算出する
+// （下の openSnapPx）。8px は一息つく余白。
 
-// 狭い画面のボトムシート（Vaul）。snapPoints で「約0.72 で開く→上限(約93%)まで拡大」。
-// 拡大/縮小/閉じの挙動は vaul のデフォルトに任せる（自前の閉じ override は安定優先で持たない）:
+// 狭い画面のボトムシート（Vaul）。snapPoints で「上のヘッダー帯が見える高さで開く
+// →上限(約93%)まで拡大」。拡大/縮小/閉じの挙動は vaul のデフォルトに任せる
+// （自前の閉じ override は安定優先で持たない）:
 //  - 下スナップ(開いた高さ)では、ボディ／ハンドルどちらのドラッグでもシートを動かす（上で拡大・下で閉じる）。
 //  - 上スナップ(Content が全部見える＝約93%)では、ボディは中身をスクロールし、スクロール上端で下に引くと縮小→閉じる。
 //  - 「閉じる/縮小する」は vaul が下スワイプの平均速度で決める: 速いフリック→閉じる／中速→1段下げる
@@ -80,6 +78,19 @@ function NarrowSheet({
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+
+  // 開いたときの可視高 = viewport高 − 実測した上の chrome 高 − 一息つく余白。
+  // 拡大上限（SHEET_MAX_PERCENT）を超えて開こうとする場合はそこで頭打ちにする
+  // （chrome が薄いページでは「開いた高さ」が「拡大上限」に一致 or それ以下に
+  // なる）。Content 自身の高さは SHEET_MAX_PERCENT なので、開いた時の snapPoint
+  // は「Content の何 px を見せるか」で指定する（bottom-0 なので Content の
+  // 下端＝viewport の下端、そこから逆算できる）。
+  const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
+  const openSnapPx = Math.min(
+    (SHEET_MAX_PERCENT / 100) * viewportHeight,
+    Math.max(0, viewportHeight - chromeTopPx - 8),
+  );
+  const sheetSnapPoints = [`${openSnapPx}px`, 1];
 
   const requestClose = useCallback(() => setOpen(false), []);
 
@@ -129,9 +140,10 @@ function NarrowSheet({
       <Drawer.Root
         open={open}
         modal={false}
-        // 約3/4 で開き、上限まで拡大できる。handleOnly は付けない＝中間スナップのボディ
-        // ドラッグ（拡大/閉じ）と上限スナップでのスクロール（vaul の素の挙動）を生かす。
-        snapPoints={SHEET_SNAP_POINTS}
+        // ヘッダー帯が見える高さで開き、上限まで拡大できる。handleOnly は付けない
+        // ＝中間スナップのボディドラッグ（拡大/閉じ）と上限スナップでのスクロール
+        // （vaul の素の挙動）を生かす。
+        snapPoints={sheetSnapPoints}
         // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
         // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
         scrollLockTimeout={0}

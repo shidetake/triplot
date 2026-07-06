@@ -60,7 +60,12 @@ export async function AppHeader() {
 
   return (
     // z-30: ページ内容より上、ポップオーバー/モーダル（z-40/50）より下。
-    <header className="sticky top-0 z-30 border-b border-foreground/10 bg-background">
+    // data-mobile-chrome-top: 狭い画面のボトムシートが「開いた時にこの帯の
+    // 下端まで見せる」ため実測する対象（use-mobile-chrome-margins.ts 参照）。
+    <header
+      data-mobile-chrome-top
+      className="sticky top-0 z-30 border-b border-foreground/10 bg-background"
+    >
       <div className="flex h-12 items-center justify-between px-6">
         <Link href="/trips" className="text-lg font-semibold tracking-tight">
           triplot

@@ -21,6 +21,7 @@ import {
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
 import { useMediaQuery } from "./use-media-query";
+import { useMobileChromeMargins } from "./use-mobile-chrome-margins";
 import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
@@ -36,12 +37,15 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 // - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
 //   一覧の先頭が少し覗く高さで、何があるか一目で分かる（mini と違い意図的に
 //   覗かせている）。
-// - expanded: viewport の 70%。上の検索欄がちょうど見える高さ止まり（0.75だと
-//   検索欄まで覆ってしまうとのフィードバックで下げた。画面高に対する割合の
-//   ため、iPhone mini等の低い画面では余白がさらに減る可能性がある）。
+// - expanded: 上の検索欄がちょうど見える高さで止める。画面高に対する割合の
+//   決め打ちだと端末ごとに余白がブレるため、実測した chrome の高さ
+//   （useMobileChromeMargins）+ 検索欄自身の高さから動的に算出する
+//   （下の expandedSnap）。
 const MINI_SNAP = "48px";
 const WELCOME_SNAP = "96px";
-const EXPANDED_SNAP = 0.7;
+// 検索欄の行の高さ(h-9=36px) + 検索バーの上マージン(12px) + 一息つく余白(8px)。
+// PlaceSearch の見た目を変えたらここも見直す。
+const SEARCH_ROW_EXTRA_PX = 36 + 12 + 8;
 
 export function PlacesSection({
   tripId,
@@ -71,6 +75,20 @@ export function PlacesSection({
   const isActive = useActiveTripTab() === "places";
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
   const showPlacesSheet = isActive && isNarrow;
+
+  // 展開時の高さ = viewport高 − 実測した上下の chrome − 検索欄ぶん。画面高の
+  // 割合ではなく実測値からの引き算にすることで、端末の画面高が変わっても
+  // 検索欄がちょうど見える位置で止まるようにする。
+  const { top: chromeTopPx, bottom: chromeBottomPx, viewportHeight } =
+    useMobileChromeMargins();
+  const expandedSnap = useMemo(
+    () =>
+      `${Math.max(
+        0,
+        viewportHeight - chromeBottomPx - chromeTopPx - SEARCH_ROW_EXTRA_PX,
+      )}px`,
+    [viewportHeight, chromeBottomPx, chromeTopPx],
+  );
 
   const [query, setQuery] = useState("");
   // 狭い画面のみ: 場所リストを Vaul のドラッグ可能なボトムシートにする
@@ -108,9 +126,9 @@ export function PlacesSection({
   const placesSheetSnapPoints = useMemo<(number | string)[]>(
     () =>
       placesSheetSnap === WELCOME_SNAP
-        ? [MINI_SNAP, WELCOME_SNAP, EXPANDED_SNAP]
-        : [MINI_SNAP, EXPANDED_SNAP],
-    [placesSheetSnap],
+        ? [MINI_SNAP, WELCOME_SNAP, expandedSnap]
+        : [MINI_SNAP, expandedSnap],
+    [placesSheetSnap, expandedSnap],
   );
 
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
@@ -406,9 +424,9 @@ export function PlacesSection({
                     // 開いていた（expanded）ものを閉じる操作＝「一度開いて閉じた」
                     // なので mini まで畳む。閉じていれば expanded まで開く。
                     setPlacesSheetSnap(
-                      placesSheetSnap === EXPANDED_SNAP
+                      placesSheetSnap === expandedSnap
                         ? MINI_SNAP
-                        : EXPANDED_SNAP,
+                        : expandedSnap,
                     )
                   }
                   className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
