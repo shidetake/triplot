@@ -36,11 +36,12 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 // - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
 //   一覧の先頭が少し覗く高さで、何があるか一目で分かる（mini と違い意図的に
 //   覗かせている）。
-// - expanded: viewport の 68%。上の検索欄がちょうど見える高さ止まり（0.75だと
-//   検索欄まで覆ってしまうとのフィードバックで下げた）。
+// - expanded: viewport の 70%。上の検索欄がちょうど見える高さ止まり（0.75だと
+//   検索欄まで覆ってしまうとのフィードバックで下げた。画面高に対する割合の
+//   ため、iPhone mini等の低い画面では余白がさらに減る可能性がある）。
 const MINI_SNAP = "48px";
 const WELCOME_SNAP = "96px";
-const EXPANDED_SNAP = 0.68;
+const EXPANDED_SNAP = 0.7;
 
 export function PlacesSection({
   tripId,
