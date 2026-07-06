@@ -106,9 +106,13 @@ export function PlacesSection({
   // ずれた瞬間 activeSnapPoint が snapPoints 配列のどれとも一致しなくなり、
   // vaul 側の位置計算が壊れる（実機で「展開時の上限がずれる」不具合として発覚）。
   // モードで持てば、resize後も常に最新の expandedSnap を渡せる。
+  //
+  // welcome（一覧の先頭を少し覗かせる初期表示）は場所が1件以上ある時だけ。
+  // 0件では覗かせる中身が無く、無駄に地図を隠すだけなので mini から始める。
+  const entryMode = places.length > 0 ? "welcome" : "mini";
   const [placesSheetMode, setPlacesSheetMode] = useState<
     "mini" | "welcome" | "expanded"
-  >("welcome");
+  >(entryMode);
   const snapForMode = useCallback(
     (mode: "mini" | "welcome" | "expanded") =>
       mode === "mini"
@@ -132,7 +136,7 @@ export function PlacesSection({
     setPlacesSheetMode("mini");
   }, []);
 
-  // 他タブに移ったら welcome（初期表示の高さ）に戻しておく（React 公式の
+  // 他タブに移ったら初期表示の高さ（entryMode）に戻しておく（React 公式の
   // 「props の変化に応じて state を調整する」パターン＝render中の直接setState。
   // useEffectでのcascading更新を避けるため、isActive の変化を前回値比較で
   // 検知する）。展開したまま他タブへ行ってまた場所タブに戻ると、いきなり
@@ -141,7 +145,7 @@ export function PlacesSection({
   const [prevIsActive, setPrevIsActive] = useState(isActive);
   if (isActive !== prevIsActive) {
     setPrevIsActive(isActive);
-    if (!isActive) setPlacesSheetMode("welcome");
+    if (!isActive) setPlacesSheetMode(entryMode);
   }
 
   // welcome は今まさにそこで静止している間だけ snapPoints に含める。ドラッグは
