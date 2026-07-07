@@ -51,14 +51,9 @@ type Member = {
   color: number | null; // メンバー色 hue（チップの色付けに使う）
 };
 
-export type Category = {
-  id: string;
-  name: string;
-  icon: string;
-  color: string;
-  sort_order: number;
-  key: string | null;
-};
+// 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
+import type { Category } from "@triplot/shared/tripDerive";
+export type { Category };
 
 const initialState: CreateExpenseState = { ok: false, error: null };
 

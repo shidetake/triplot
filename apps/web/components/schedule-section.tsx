@@ -15,7 +15,6 @@ import {
   buildSchedule,
   buildTripTzTimeline,
   formatMinutes,
-  type ScheduleEvent,
 } from "@triplot/shared/schedule";
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 
@@ -37,7 +36,9 @@ import {
 // タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
 const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
-export type EventRow = ScheduleEvent & { createdByMemberId: string };
+// 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
+import type { EventRow } from "@triplot/shared/tripDerive";
+export type { EventRow };
 
 // メール取り込みの未確定予定1件。page.tsx が資料（tzTimeline 等）から事前に
 // 組み立てた create モードの EventFormMode をそのまま持つ（確定フォームは

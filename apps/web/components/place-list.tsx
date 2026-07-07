@@ -1,29 +1,14 @@
 "use client";
 
 import { getIconPath } from "@triplot/shared/placeIcons";
-import type { Visibility } from "@triplot/shared/types/database";
 import { useTranslations } from "next-intl";
 
 import { ColorBadge } from "./color-badge";
 import { PrivateBadge } from "./private-badge";
 
-export type PlaceRow = {
-  id: string;
-  name: string;
-  // 未マップ（自由入力）の場所は座標・住所・gpid を持たない。
-  lat: number | null;
-  lng: number | null;
-  google_place_id: string | null;
-  formatted_address: string | null;
-  region: string | null;
-  locality: string | null;
-  tentative: boolean;
-  visibility: Visibility;
-  note: string | null;
-  icon: string;
-  created_by_member_id: string;
-  created_at: string;
-};
+// 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
+import type { PlaceRow } from "@triplot/shared/tripDerive";
+export type { PlaceRow };
 
 // PLACE_ICONS / ICON_PATHS は lib/placeIcons.ts に統合した。
 // アイコン集合は今や trip_pin_options（DB）から来る。アイコン SVG パスは

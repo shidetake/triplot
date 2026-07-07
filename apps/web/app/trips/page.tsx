@@ -3,6 +3,10 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateTripButton } from "@/components/create-trip-button";
+import {
+  fetchMyTrips,
+  fetchUserProfile,
+} from "@triplot/shared/data/reads/trips";
 import { createClient } from "@/lib/supabase/server";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
@@ -22,21 +26,13 @@ export default async function TripsPage() {
 }
 
 async function TripsSection({ userId }: { userId: string }) {
+  // 読み取りクエリは shared（RN の旅行一覧と共用）。
   const supabase = await createClient();
-  const [{ data: profile }, { data: memberships, error }] = await Promise.all([
-    supabase.from("users").select("display_name").eq("id", userId).single(),
-    supabase
-      .from("trip_members")
-      .select("trips(id, title, default_currency, start_date, end_date)")
-      .eq("user_id", userId)
-      .is("left_at", null)
-      .order("joined_at", { ascending: false }),
+  const [profile, { trips, error }] = await Promise.all([
+    fetchUserProfile(supabase, userId),
+    fetchMyTrips(supabase, userId),
   ]);
   const defaultDisplayName = profile?.display_name?.trim() || null;
-
-  const trips = (memberships ?? [])
-    .map((m) => m.trips)
-    .filter((t): t is NonNullable<typeof t> => t !== null);
 
   const [t, locale] = await Promise.all([
     getTranslations("trips"),

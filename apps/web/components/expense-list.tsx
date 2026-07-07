@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { chipStyle } from "@triplot/shared/memberColors";
 import type { LatLng } from "@triplot/shared/placeMap";
 import type { TripTzTimeline } from "@triplot/shared/schedule";
-import type { Currency, Visibility } from "@triplot/shared/types/database";
+import type { Currency } from "@triplot/shared/types/database";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
 
@@ -18,27 +18,9 @@ import { MemberAvatar } from "./member-avatar";
 import { PlaceIcon } from "./place-list";
 import { PrivateBadge } from "./private-badge";
 
-export type ExpenseRow = {
-  id: string;
-  local_price: number;
-  local_currency: Currency;
-  rate_to_default: number;
-  category_id: string;
-  visibility: Visibility;
-  splittable: boolean;
-  note: string | null;
-  paid_at: string;
-  created_at: string;
-  payer_member_id: string;
-  created_by_member_id: string;
-  split_member_ids: string[];
-  place_id: string | null;
-  // 実効TZ（旅程から解決済み。表示・編集フォームの初期値に使う）。
-  tz: string;
-  // 乗継当日の選択（保存値そのまま）。編集フォームのラジオ初期選択に使う。
-  tzDisambigTransitId: string | null;
-  tzDisambigSide: "depart" | "arrive" | null;
-};
+// 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
+import type { ExpenseRow } from "@triplot/shared/tripDerive";
+export type { ExpenseRow };
 
 type Member = {
   id: string;

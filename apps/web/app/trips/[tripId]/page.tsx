@@ -22,20 +22,26 @@ import { type TodoRow, TodoSection } from "@/components/todo-section";
 import { TripActions } from "@/components/trip-actions";
 import { TripDetailTabs } from "@/components/trip-detail-tabs";
 import { TripHeaderCompact } from "@/components/trip-header-compact";
-import {
-  calculateExpenseSummary,
-  type SummaryExpense,
-} from "@triplot/shared/expenseSummary";
+import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
   resolveEventTz,
   resolveExpenseTz,
-  wallClockToUtcMs,
 } from "@triplot/shared/schedule";
+import { calculateSettlements } from "@triplot/shared/settlement";
+import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
+import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
 import {
-  calculateSettlements,
-  type SettlementExpense,
-} from "@triplot/shared/settlement";
+  deriveAverageRates,
+  deriveCategories,
+  deriveExpenseFormDefaults,
+  deriveOrderedExpenses,
+  derivePlaces,
+  deriveScheduleEvents,
+  deriveTodos,
+  toSettlementExpenses,
+  toSummaryExpenses,
+} from "@triplot/shared/tripDerive";
 import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
@@ -44,12 +50,7 @@ import { eventDraftWhenLabel, monthDayLabel } from "@/lib/import/draftLabel";
 import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
 import type { EventDraft, Receipt } from "@/lib/import/schema";
 import { createClient } from "@/lib/supabase/server";
-import type {
-  Currency,
-  TodoKind,
-  TodoPriority,
-  Visibility,
-} from "@triplot/shared/types/database";
+import type { Currency } from "@triplot/shared/types/database";
 
 
 export default async function TripDetailPage({
@@ -67,73 +68,18 @@ export default async function TripDetailPage({
   // 本文の随所（kmlPlacemarks 等）で早い段階から使うので先に解決しておく。
   const [t, locale] = await Promise.all([getTranslations(), getLocale()]);
 
-  // 4 本とも tripId キーで互いに独立。RLS で保護されているので並列で叩く
-  // （直列だと Vercel→Supabase の RTT が 4 回積み上がる）。
-  const [
-    { data: trip, error: tripError },
-    { data: members },
-    { data: categoriesRaw },
-    { data: expensesRaw },
-    { data: placesRaw },
-    { data: eventsRaw },
-    { data: todosRaw },
-    { data: pinOptionsRaw },
-  ] = await Promise.all([
-    supabase
-      .from("trips")
-      .select(
-        "id, title, start_date, end_date, default_currency, default_timezone",
-      )
-      .eq("id", tripId)
-      .single(),
-    supabase
-      .from("trip_members")
-      .select("id, user_id, display_name, kind, color, is_admin, users(avatar_url)")
-      .eq("trip_id", tripId)
-      .is("left_at", null)
-      .order("joined_at", { ascending: true }),
-    supabase
-      .from("expense_categories")
-      .select("id, name, color, icon, sort_order, key")
-      .eq("trip_id", tripId)
-      .order("sort_order", { ascending: true }),
-    supabase
-      .from("expenses")
-      .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
-      )
-      .eq("trip_id", tripId)
-      // 発生順の確定はアプリ側（resolveEventTz で解決したTZ + paid_at から
-      // 都度算出、下記 expenses 参照）。ここでは安定した基準順だけ与える。
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("places")
-      .select(
-        "id, name, lat, lng, google_place_id, formatted_address, region, locality, tentative, visibility, note, icon, created_by_member_id, created_at",
-      )
-      .eq("trip_id", tripId)
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("events")
-      .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, tz_disambig_transit_id, tz_disambig_side, place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
-      )
-      .eq("trip_id", tripId)
-      .order("start_at", { ascending: true }),
-    supabase
-      .from("todos")
-      .select(
-        "id, title, priority, done, created_at, created_by_member_id, kind, event_id, visibility, todo_likes(member_id)",
-      )
-      .eq("trip_id", tripId)
-      // 表示順は lib/todoSort（優先度→作成順）でアプリ側に統一。
-      .order("created_at", { ascending: true }),
-    supabase
-      .from("trip_pin_options")
-      .select("id, icon, label, sort_order")
-      .eq("trip_id", tripId)
-      .order("sort_order", { ascending: true }),
-  ]);
+  // 読み取りクエリは shared（RN と共用）。派生計算も tripDerive に集約。
+  const {
+    trip,
+    tripError,
+    members,
+    categoriesRaw,
+    expensesRaw,
+    placesRaw,
+    eventsRaw,
+    todosRaw,
+    pinOptionsRaw,
+  } = await fetchTripDetailRows(supabase, tripId);
 
   if (tripError || !trip) notFound();
 
@@ -141,15 +87,7 @@ export default async function TripDetailPage({
   const me = activeMembers.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
-  const categories: Category[] = (categoriesRaw ?? []).map((c) => ({
-    id: c.id,
-    name: c.name,
-    icon: c.icon,
-    color: c.color,
-    sort_order: c.sort_order,
-    // key は migration 20260625000002 で追加。生成型更新後は cast 不要になる。
-    key: (c as { key?: string | null }).key ?? null,
-  }));
+  const categories: Category[] = deriveCategories(categoriesRaw);
 
   // gen-types は CHECK 制約を読めず string を返すので、DB 境界でドメイン型に絞る
   const defaultCurrency = trip.default_currency as Currency;
@@ -161,111 +99,17 @@ export default async function TripDetailPage({
     sort_order: p.sort_order,
   }));
 
-  const places: PlaceRow[] = (placesRaw ?? []).map((p) => ({
-    id: p.id,
-    name: p.name,
-    lat: p.lat,
-    lng: p.lng,
-    google_place_id: p.google_place_id,
-    formatted_address: p.formatted_address,
-    region: p.region,
-    locality: p.locality,
-    tentative: p.tentative,
-    visibility: p.visibility as Visibility,
-    note: p.note,
-    icon: p.icon,
-    created_by_member_id: p.created_by_member_id,
-    created_at: p.created_at,
-  }));
+  const places: PlaceRow[] = derivePlaces(placesRaw);
 
-  // 予約TODO（event_id 付き）から予定ごとの予約状態を引く。
-  // has = 要予約、値(done) = 予約済か。
-  const reservationByEvent = new Map<string, boolean>();
-  for (const t of todosRaw ?? []) {
-    if (t.event_id) reservationByEvent.set(t.event_id, t.done);
-  }
-
-  // events は壁時計（timestamp without tz）。文字列のまま素通しする
-  // （new Date でローカルTZ解釈させない）。
-  const scheduleEvents: EventRow[] = (eventsRaw ?? []).map((e) => ({
-    id: e.id,
-    title: e.title,
-    kind: e.kind as "normal" | "transit",
-    allDay: e.all_day,
-    startAt: e.start_at,
-    endAt: e.end_at,
-    startTz: e.start_tz,
-    endTz: e.end_tz,
-    tzDisambigTransitId: e.tz_disambig_transit_id,
-    tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
-    placeId: e.place_id,
-    visibility: e.visibility as Visibility,
-    note: e.note,
-    createdByMemberId: e.created_by_member_id,
-    needsReservation: reservationByEvent.has(e.id),
-    reservationDone: reservationByEvent.get(e.id) ?? false,
-    participantMemberIds: (e.event_participants ?? []).map((p) => p.member_id),
-  }));
+  const scheduleEvents: EventRow[] = deriveScheduleEvents(eventsRaw, todosRaw);
 
   // 費用/予定の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く。
   // transit が無い旅行の唯一の拠り所は trips.default_timezone）。
   const tzTimeline = buildTripTzTimeline(scheduleEvents, trip.default_timezone);
 
-  // 発生順（古い→新しい、新しいものが下）は保存済みキャッシュを持たず、都度
-  // resolveEventTz で解決したTZ + paid_at（壁時計）から絶対時刻を算出して
-  // 決める（乗継の追加・編集に自動追従する）。同時刻は作成順で安定させる。
-  const expenses: ExpenseRow[] = (expensesRaw ?? [])
-    .map((e) => {
-      const tz = resolveEventTz(
-        e.paid_at.slice(0, 10),
-        e.tz_disambig_transit_id,
-        e.tz_disambig_side as "depart" | "arrive" | null,
-        tzTimeline,
-      );
-      const row: ExpenseRow = {
-        id: e.id,
-        local_price: Number(e.local_price),
-        local_currency: e.local_currency as Currency,
-        rate_to_default: Number(e.rate_to_default),
-        category_id: e.category_id,
-        visibility: e.visibility as Visibility,
-        splittable: e.splittable,
-        note: e.note,
-        paid_at: e.paid_at,
-        created_at: e.created_at,
-        payer_member_id: e.payer_member_id,
-        created_by_member_id: e.created_by_member_id,
-        split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
-        place_id: e.place_id,
-        tz,
-        tzDisambigTransitId: e.tz_disambig_transit_id,
-        tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
-      };
-      return { row, occurredAtMs: wallClockToUtcMs(e.paid_at, tz) };
-    })
-    .sort(
-      (a, b) =>
-        a.occurredAtMs - b.occurredAtMs ||
-        (a.row.created_at < b.row.created_at ? -1 : 1),
-    )
-    .map((x) => x.row);
+  const expenses: ExpenseRow[] = deriveOrderedExpenses(expensesRaw, tzTimeline);
 
-  const todos: TodoRow[] = (todosRaw ?? []).map((t) => {
-    const likes = t.todo_likes ?? [];
-    return {
-      id: t.id,
-      title: t.title,
-      priority: t.priority as TodoPriority,
-      done: t.done,
-      created_at: t.created_at,
-      created_by_member_id: t.created_by_member_id,
-      kind: t.kind as TodoKind,
-      event_id: t.event_id,
-      visibility: t.visibility as Visibility,
-      likeCount: likes.length,
-      iLiked: likes.some((l) => l.member_id === me.id),
-    };
-  });
+  const todos: TodoRow[] = deriveTodos(todosRaw, me.id);
   const prepTodos = todos.filter((t) => t.kind === "prep");
   const onsiteTodos = todos.filter((t) => t.kind === "onsite");
   const todoMembers = activeMembers.map((m) => ({
@@ -305,44 +149,15 @@ export default async function TripDetailPage({
   const inviteBaseUrl = host ? `${proto}://${host}` : "";
 
   // 通貨ごとの平均レート（フォームのデフォルトと表示用）
-  const ratesByCurrency = new Map<Currency, number[]>();
-  for (const e of expenses) {
-    const arr = ratesByCurrency.get(e.local_currency) ?? [];
-    arr.push(e.rate_to_default);
-    ratesByCurrency.set(e.local_currency, arr);
-  }
-  const averageRates: Partial<Record<Currency, number>> = {};
-  for (const [c, rates] of ratesByCurrency) {
-    averageRates[c] = rates.reduce((s, r) => s + r, 0) / rates.length;
-  }
-  // default_currency は常に 1
-  averageRates[defaultCurrency] = 1;
+  const averageRates = deriveAverageRates(expenses, defaultCurrency);
 
   // Settlement / Summary 用に default_currency に換算済みで渡す
-  const settlementExpenses: SettlementExpense[] = expenses
-    .filter((e) => e.visibility === "shared" && e.splittable)
-    .map((e) => ({
-      id: e.id,
-      amount: e.local_price * e.rate_to_default,
-      payerMemberId: e.payer_member_id,
-      splitMemberIds: e.split_member_ids,
-    }));
-
   const settlements = calculateSettlements(
-    settlementExpenses,
+    toSettlementExpenses(expenses),
     activeMembers.map((m) => ({ id: m.id })),
   );
 
-  const summaryExpenses: SummaryExpense[] = expenses.map((e) => ({
-    visibility: e.visibility,
-    amountInDefault: e.local_price * e.rate_to_default,
-    payerMemberId: e.payer_member_id,
-    splittable: e.splittable,
-    splitMemberIds: e.split_member_ids,
-    createdByMemberId: e.created_by_member_id,
-  }));
-
-  const summary = calculateExpenseSummary(summaryExpenses, me.id);
+  const summary = calculateExpenseSummary(toSummaryExpenses(expenses), me.id);
 
   // CSV エクスポート用: ID を名前に解決した行。発生順（expenses は既に
   // 発生順に並んでいる）。
@@ -408,38 +223,23 @@ export default async function TripDetailPage({
     note: e.note ?? "",
   }));
 
-  // フォームの初期値は「最後に入力した費用」に揃える（通貨・カテゴリ・日付）。
-  // 履歴が無いときだけ trip のデフォルトにフォールバック。
-  const lastEntered = expenses.reduce<ExpenseRow | null>(
-    (acc, e) => (acc && acc.created_at >= e.created_at ? acc : e),
-    null,
-  );
-
   const today = new Date().toISOString().slice(0, 10);
   // 旅行開始日以降か（準備TODOの既定折りたたみ判定に使う）。開始日未設定は未開始扱い。
   const tripStarted = trip.start_date != null && today >= trip.start_date;
-  const initialCurrency: Currency =
-    lastEntered?.local_currency ?? defaultCurrency;
-  // 初回（費用ゼロ）は一番上のカテゴリ（= 渡航。sort_order 昇順の先頭）。
-  // 2件目以降は最後に使ったカテゴリを既定に。
-  const initialCategoryId =
-    lastEntered?.category_id ?? categories[0]?.id ?? "";
-  // 初回（費用ゼロ）は旅行開始日、それ以降は最後に作った費用の日を既定に。
-  // 開始日未設定の trip では今日にフォールバック。
-  const initialPaidAt = lastEntered
-    ? lastEntered.paid_at.slice(0, 10)
-    : (trip.start_date ?? today);
+  // フォームの初期値は「最後に入力した費用」に揃える（通貨・カテゴリ・日付）。
+  // 履歴が無いときだけ trip のデフォルトにフォールバック。
+  const { initialCurrency, initialCategoryId, initialPaidAt } =
+    deriveExpenseFormDefaults(
+      expenses,
+      categories,
+      defaultCurrency,
+      trip.start_date,
+      today,
+    );
 
-  // この旅行に割り当て済み・未確定の取り込み下書き（自分の分。RLS で own のみ）。
-  // 費用/予定の1項目 = inbound_drafts の1行。確定は費用/予定それぞれのセクションの
-  // 事前入力フォームで行う。
-  const { data: tripDrafts } = await supabase
-    .from("inbound_drafts")
-    .select("id, kind, payload, inbound_emails!inner(trip_id, status)")
-    .eq("inbound_emails.trip_id", tripId)
-    .eq("inbound_emails.status", "extracted")
-    .eq("status", "pending")
-    .order("created_at", { ascending: false });
+  // この旅行に割り当て済み・未確定の取り込み下書き。確定は費用/予定それぞれの
+  // セクションの事前入力フォームで行う。
+  const tripDrafts = await fetchTripPendingDrafts(supabase, tripId);
 
   const placesForMatch: TripPlace[] = places.map((p) => ({
     id: p.id,

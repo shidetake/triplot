@@ -13,6 +13,7 @@ import { buildImportAddress } from "@/lib/import/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/import/importConfig";
 import { EXTRACT_ERROR_NO_CONTENT } from "@/lib/import/process";
 import type { EventDraft, Extraction, Receipt } from "@/lib/import/schema";
+import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import { createClient } from "@/lib/supabase/server";
 
 import {
@@ -44,82 +45,40 @@ export default async function ImportPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  // 転送先アドレス（per-user・固定。無ければ発行）。受信箱ですぐ見えるように出す。
-  const { data: importToken } = await supabase.rpc("ensure_import_token");
-  const importAddress = importToken ? buildImportAddress(importToken) : null;
+  // 読み取りクエリは shared（RN の受信箱と共用）。
+  const {
+    importToken,
+    trips,
+    emails,
+    draftRows,
+    errorRows,
+    usedThisMonth,
+    overQuota,
+    mergedChildren,
+  } = await fetchImportInboxRows(supabase, user.id);
 
-  // 自分が在籍中の旅行（割り当て先 ＋ 旅行推測）。
-  const { data: memberships } = await supabase
-    .from("trip_members")
-    .select("trips(id, title, start_date, end_date)")
-    .eq("user_id", user.id)
-    .is("left_at", null);
-  const trips = (memberships ?? [])
-    .map((m) => m.trips)
-    .filter((trip): trip is NonNullable<typeof trip> => trip !== null);
+  // 転送先アドレス（per-user・固定。無ければ発行済み）。
+  const importAddress = importToken ? buildImportAddress(importToken) : null;
   const tripTitle = new Map(trips.map((trip) => [trip.id, trip.title]));
 
-  // 自分の抽出済みメール（RLS で自分の行のみ）。割当済も未割当もここに出す。
-  const { data: emails } = await supabase
-    .from("inbound_emails")
-    .select("id, received_at, subject, extracted, trip_id")
-    .eq("status", "extracted")
-    .order("received_at", { ascending: false });
-
-  // 各メールの未確定の下書き（作業状態）。確定済みは各旅行に反映済みなので出さない。
-  const emailIds = (emails ?? []).map((e) => e.id);
+  // 各メールの未確定の下書き（作業状態）をメール単位にまとめる。
   const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
-  if (emailIds.length > 0) {
-    const { data: draftRows } = await supabase
-      .from("inbound_drafts")
-      .select("email_id, kind, payload")
-      .eq("status", "pending")
-      .in("email_id", emailIds)
-      .order("created_at", { ascending: true });
-    for (const d of draftRows ?? []) {
-      const arr = itemsByEmail.get(d.email_id) ?? [];
-      arr.push(d);
-      itemsByEmail.set(d.email_id, arr);
-    }
+  for (const d of draftRows ?? []) {
+    const arr = itemsByEmail.get(d.email_id) ?? [];
+    arr.push(d);
+    itemsByEmail.set(d.email_id, arr);
   }
 
-  // 取り込みに失敗した行（RLS で自分の行のみ）。next_retry_at があれば自動リトライ待ち。
-  const { data: errorRows } = await supabase
-    .from("inbound_emails")
-    .select("id, subject, sender, received_at, extract_error, next_retry_at")
-    .eq("status", "error")
-    .order("received_at", { ascending: false });
-
-  // 当月の取り込み使用量と、上限超過で保留中の件数。
-  const monthStart = new Date(
-    Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1),
-  ).toISOString();
-  const { count: usedThisMonth } = await supabase
-    .from("inbound_emails")
-    .select("id", { count: "exact", head: true })
-    .gte("extracted_at", monthStart);
-  const { count: overQuota } = await supabase
-    .from("inbound_emails")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "over_quota");
-
-  // 各メールに合体された子メール（誤マージ確認・split 用）。
+  // 各メールに合体された子メール（誤マージ確認・split 用）をメール単位にまとめる。
   const childrenByParent = new Map<
     string,
     { id: string; own: Extraction | null }[]
   >();
-  if (emailIds.length > 0) {
-    const { data: children } = await supabase
-      .from("inbound_emails")
-      .select("id, extracted, merged_into")
-      .eq("status", "merged")
-      .in("merged_into", emailIds);
-    for (const c of children ?? []) {
-      if (!c.merged_into) continue;
-      const arr = childrenByParent.get(c.merged_into) ?? [];
-      arr.push({ id: c.id, own: c.extracted as unknown as Extraction | null });
-      childrenByParent.set(c.merged_into, arr);
-    }
+  for (const c of mergedChildren ?? []) {
+    if (!c.merged_into) continue;
+    const arr = childrenByParent.get(c.merged_into) ?? [];
+    arr.push({ id: c.id, own: c.extracted as unknown as Extraction | null });
+    childrenByParent.set(c.merged_into, arr);
   }
 
   const rows = (emails ?? []).map((e) => {

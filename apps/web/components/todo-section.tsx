@@ -41,22 +41,9 @@ import type {
 } from "@triplot/shared/types/database";
 import { PrivateBadge } from "@/components/private-badge";
 
-export type TodoRow = {
-  id: string;
-  title: string;
-  priority: TodoPriority;
-  done: boolean;
-  created_at: string;
-  created_by_member_id: string;
-  kind: TodoKind;
-  // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
-  event_id: string | null;
-  // private 予約TODO（private 予定由来）は作成者だけに見える。手動TODOは常に shared。
-  visibility: Visibility;
-  // 現地TODO のいいね（prep は常に 0/false）。
-  likeCount: number;
-  iLiked: boolean;
-};
+// 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
+import type { TodoRow } from "@triplot/shared/tripDerive";
+export type { TodoRow };
 
 type MemberLite = {
   id: string;
