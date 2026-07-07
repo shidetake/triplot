@@ -22,6 +22,9 @@ const config: ExpoConfig = {
     bundleIdentifier: "app.triplot.mobile",
     supportsTablet: false,
     usesAppleSignIn: true,
+    // ローカルビルドの署名チーム（Apple Development 証明書の OU）。
+    // 対話プロンプト無しで expo run:ios の署名を通すために明示する。
+    appleTeamId: "D37LHZNVW3",
     // 標準暗号（HTTPS）のみ使用＝輸出コンプライアンスの申告を事前に済ませる
     // （TestFlight 提出のたびに質問されるのを防ぐ）。infoPlist を明示しておかないと
     // config-plugins の base mod が undefined 参照で prebuild に失敗する事情もある。
