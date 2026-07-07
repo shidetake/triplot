@@ -8,6 +8,7 @@
   ],
   "scripts": {
     "dev": "npm -w @triplot/web run dev",
+    "dev:mobile": "npm -w @triplot/mobile run start",
     "build": "npm -w @triplot/web run build",
     "start": "npm -w @triplot/web run start",
     "lint": "npm -w @triplot/web run lint",
@@ -21,5 +22,9 @@
   "devDependencies": {
     "husky": "^9.1.7",
     "supabase": "^2.95.5"
+  },
+  "overrides": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3"
   }
 }
