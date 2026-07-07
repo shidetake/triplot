@@ -6,7 +6,7 @@ import { formatDayLabel, wallClockToUtcMs } from "@triplot/shared/schedule";
 
 import { supabase } from "@/lib/supabase";
 
-// ── M0 の受け入れ確認用の一時画面（M3 で旅行一覧に置き換える） ──
+// ── M0 の受け入れ確認用の一時画面（サインイン画面の __DEV__ リンクから開く） ──
 // 1. i18n: 共有カタログの文言が出るか
 // 2. Supabase: auth.getSession() が通るか（未ログインで session=null が正常）
 // 3. Hermes の Intl: schedule.ts が依存する IANA timeZone 計算が web と同値か
@@ -40,10 +40,10 @@ function runIntlChecks(): Check[] {
 export default function DevCheckScreen() {
   const t = useTranslations("tripTabs");
   const [sessionState, setSessionState] = useState("確認中...");
-  const [checks, setChecks] = useState<Check[]>([]);
+  // Intl チェックは同期計算なので初期化子で実行（effect での setState を避ける）。
+  const [checks] = useState<Check[]>(runIntlChecks);
 
   useEffect(() => {
-    setChecks(runIntlChecks());
     supabase.auth
       .getSession()
       .then(({ data, error }) => {

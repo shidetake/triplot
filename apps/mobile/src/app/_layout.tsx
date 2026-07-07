@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { IntlProvider } from "use-intl";
 
 import { deviceLocale, messagesFor } from "@/lib/i18n";
+import { SessionProvider } from "@/lib/session";
 
 export default function RootLayout() {
   const locale = deviceLocale();
@@ -13,7 +14,13 @@ export default function RootLayout() {
       // アプリは常に端末 TZ が正）。
       timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
     >
-      <Stack />
+      <SessionProvider>
+        <Stack>
+          <Stack.Screen name="sign-in" options={{ headerShown: false }} />
+          <Stack.Screen name="(app)" options={{ headerShown: false }} />
+          <Stack.Screen name="dev-check" options={{ title: "M0 チェック" }} />
+        </Stack>
+      </SessionProvider>
     </IntlProvider>
   );
 }
