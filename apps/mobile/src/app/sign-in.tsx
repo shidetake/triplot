@@ -1,5 +1,5 @@
 import { Link, Redirect } from "expo-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -13,8 +13,11 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import { useTranslations } from "use-intl";
 
 import {
+  devAutoLogin,
+  devSignInAvailable,
   googleSignInAvailable,
   signInWithApple,
+  signInWithDevPassword,
   signInWithGoogle,
 } from "@/lib/auth";
 import { useSession } from "@/lib/session";
@@ -50,6 +53,17 @@ export default function SignInScreen() {
   const { session, isLoading } = useSession();
   const dark = useColorScheme() === "dark";
   const [busy, setBusy] = useState(false);
+
+  // EXPO_PUBLIC_DEV_AUTO_LOGIN=1 のとき、セッション復元が済んで未ログインなら
+  // 開発用ログインを1回だけ自動実行（ヘッドレス検証でタップを省くため）。
+  const autoTried = useRef(false);
+  useEffect(() => {
+    if (!devAutoLogin || autoTried.current || isLoading || session) return;
+    autoTried.current = true;
+    void signInWithDevPassword().catch((e: unknown) =>
+      Alert.alert(String(e)),
+    );
+  }, [isLoading, session]);
 
   if (!isLoading && session) {
     return <Redirect href="/" />;
@@ -100,9 +114,20 @@ export default function SignInScreen() {
         )}
       </View>
       {__DEV__ && (
-        <Link href="/dev-check" style={styles.devLink}>
-          M0 チェック画面
-        </Link>
+        <View style={styles.devArea}>
+          {devSignInAvailable && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void run(signInWithDevPassword)}
+              style={styles.devButton}
+            >
+              <Text style={styles.devLink}>開発用ログイン</Text>
+            </Pressable>
+          )}
+          <Link href="/dev-check" style={styles.devLink}>
+            M0 チェック画面
+          </Link>
+        </View>
       )}
     </View>
   );
@@ -140,5 +165,7 @@ const styles = StyleSheet.create({
   },
   googleLabel: { fontSize: 15, fontWeight: "500", color: "#1f1f1f" },
   googleLabelDark: { color: "#E3E3E3" },
+  devArea: { alignItems: "center", gap: 16 },
+  devButton: { padding: 8 },
   devLink: { color: "#2563eb", fontSize: 12 },
 });

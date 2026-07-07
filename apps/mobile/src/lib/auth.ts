@@ -76,6 +76,31 @@ export async function signInWithGoogle(): Promise<boolean> {
   return true;
 }
 
+// ── 開発用ログイン（__DEV__ のみ） ──
+// シミュレータの Apple ID サインインが不安定で Sign in with Apple の検証が
+// できないため、開発中はメール+パスワードで自分のアカウントに入る。
+// 資格情報は gitignore された .env.local（EXPO_PUBLIC_DEV_LOGIN_*）にだけ置く。
+// 本番ビルド（__DEV__=false）ではボタン自体を出さない。
+const devEmail = process.env.EXPO_PUBLIC_DEV_LOGIN_EMAIL;
+const devPassword = process.env.EXPO_PUBLIC_DEV_LOGIN_PASSWORD;
+
+export const devSignInAvailable = __DEV__ && Boolean(devEmail && devPassword);
+
+// さらに EXPO_PUBLIC_DEV_AUTO_LOGIN=1 なら、サインイン画面表示時に自動で
+// 開発用ログインする（シミュレータをヘッドレス検証する時のタップ省略用）。
+export const devAutoLogin =
+  devSignInAvailable && process.env.EXPO_PUBLIC_DEV_AUTO_LOGIN === "1";
+
+export async function signInWithDevPassword(): Promise<boolean> {
+  if (!devEmail || !devPassword) throw new Error("dev login not configured");
+  const { error } = await supabase.auth.signInWithPassword({
+    email: devEmail,
+    password: devPassword,
+  });
+  if (error) throw error;
+  return true;
+}
+
 export async function signOut(): Promise<void> {
   if (googleSignInAvailable) {
     // Google 側のセッションも切っておく（次回サインインでアカウント選択を出すため）。
