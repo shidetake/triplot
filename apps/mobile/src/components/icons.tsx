@@ -185,3 +185,13 @@ export function CircleIcon(p: IconProps) {
     </LucideIcon>
   );
 }
+
+// Lucide: search（検索）
+export function SearchIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Circle cx={11} cy={11} r={8} />
+      <Path d="m21 21-4.3-4.3" />
+    </LucideIcon>
+  );
+}

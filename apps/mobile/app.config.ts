@@ -31,10 +31,11 @@ const config: ExpoConfig = {
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
     },
-    // react-native-maps (PROVIDER_GOOGLE) 用。M5 で実キーを設定するまで空。
-    ...(process.env.GOOGLE_MAPS_IOS_API_KEY
-      ? { config: { googleMapsApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY } }
-      : {}),
+    // 注: react-native-maps の iOS Google Maps キーは ios.config.googleMapsApiKey
+    // では設定しない。それを使うと Expo 組み込みの旧 Maps プラグインが動いて
+    // 旧 pod 名 `react-native-google-maps`（1.27 で `react-native-maps/Google`
+    // に改名済み）を Podfile に書き、pod install が失敗する。代わりに下の
+    // react-native-maps プラグイン（iosGoogleMapsApiKey）で設定する。
   },
   android: {
     package: "app.triplot.mobile",
@@ -49,6 +50,17 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-localization",
     "expo-apple-authentication",
+    // react-native-maps: iOS の Google Maps キーは自身のプラグインで注入する
+    // （Podfile に正しい `react-native-maps/Google` subspec を書く）。キー未設定
+    // でも Apple Maps で動くので、キーがある時だけ Google を有効化。
+    ...(process.env.GOOGLE_MAPS_IOS_API_KEY
+      ? [
+          [
+            "react-native-maps",
+            { iosGoogleMapsApiKey: process.env.GOOGLE_MAPS_IOS_API_KEY },
+          ] satisfies [string, unknown],
+        ]
+      : []),
     [
       "expo-build-properties",
       {
