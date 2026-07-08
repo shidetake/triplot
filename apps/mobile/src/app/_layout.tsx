@@ -1,3 +1,4 @@
+import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { Stack } from "expo-router";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { IntlProvider } from "use-intl";
@@ -19,14 +20,19 @@ export default function RootLayout() {
       >
         <SessionProvider>
           <AppQueryProvider>
-            <Stack>
-              <Stack.Screen name="sign-in" options={{ headerShown: false }} />
-              <Stack.Screen name="(app)" options={{ headerShown: false }} />
-              <Stack.Screen
-                name="dev-check"
-                options={{ title: "M0 チェック" }}
-              />
-            </Stack>
+            <BottomSheetModalProvider>
+              <Stack>
+                <Stack.Screen
+                  name="sign-in"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                <Stack.Screen
+                  name="dev-check"
+                  options={{ title: "M0 チェック" }}
+                />
+              </Stack>
+            </BottomSheetModalProvider>
           </AppQueryProvider>
         </SessionProvider>
       </IntlProvider>
