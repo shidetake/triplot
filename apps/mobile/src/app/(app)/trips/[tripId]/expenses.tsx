@@ -1,4 +1,3 @@
-import { useLocalSearchParams } from "expo-router";
 import { useRef, useState } from "react";
 import {
   Pressable,
@@ -33,11 +32,12 @@ import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon } from "@/components/icons";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { useTripId } from "@/lib/useTripId";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
 // 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（ボトムシート）。
 export default function ExpensesTab() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const tripId = useTripId();
   const t = useTranslations();
   const tExp = useTranslations("expense");
   const { data, me, refetch, isRefetching } = useTripDetail(tripId);

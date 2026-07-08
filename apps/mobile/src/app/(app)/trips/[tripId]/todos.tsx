@@ -1,5 +1,4 @@
 import { useMutation } from "@tanstack/react-query";
-import { useLocalSearchParams } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -37,6 +36,7 @@ import {
 } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { useTripId } from "@/lib/useTripId";
 
 // TODO タブ。web の components/todo-section.tsx 相当（準備/現地の2セクション、
 // チェック・いいねは楽観更新、他は invalidate で再取得）。
@@ -66,7 +66,7 @@ type MemberLite = {
 };
 
 export default function TodosTab() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const tripId = useTripId();
   const t = useTranslations();
   const { data, me, userId, refetch, isRefetching } = useTripDetail(tripId);
 

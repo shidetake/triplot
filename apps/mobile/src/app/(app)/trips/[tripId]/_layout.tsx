@@ -1,4 +1,4 @@
-import { Stack, Tabs, useLocalSearchParams } from "expo-router";
+import { Stack, Tabs } from "expo-router";
 import { useTranslations } from "use-intl";
 
 import {
@@ -8,13 +8,14 @@ import {
   WalletIcon,
 } from "@/components/icons";
 import { useTripDetail } from "@/lib/useTripDetail";
+import { useTripId } from "@/lib/useTripId";
 
 // 旅行詳細 = 予定/場所/費用/TODO の4タブ（画面サイズによらず常時タブ固定。
 // web のモバイル幅タブと同じ並び・同じ Lucide アイコン）。
 // ヘッダーは親 Stack の1本だけ（旅行名+戻る）。Tabs 側のヘッダーは出さない
 // （二重ヘッダー防止）。
 export default function TripTabsLayout() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const tripId = useTripId();
   const t = useTranslations("tripTabs");
   const { data } = useTripDetail(tripId);
   const tripTitle = data?.trip?.title ?? "";

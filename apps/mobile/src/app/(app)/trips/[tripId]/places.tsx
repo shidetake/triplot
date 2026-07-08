@@ -1,5 +1,4 @@
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { useLocalSearchParams } from "expo-router";
 import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -30,6 +29,7 @@ import { PlaceForm } from "@/components/place-form";
 import { PlaceMarker, RedPin } from "@/components/place-marker";
 import { SearchIcon } from "@/components/icons";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { useTripId } from "@/lib/useTripId";
 
 const PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUNDLE_ID = "app.triplot.mobile";
@@ -37,7 +37,7 @@ const BUNDLE_ID = "app.triplot.mobile";
 // 場所タブ（RN・M5）: Google 地図 + 保存済みピン + 検索 + ドラッグ式ボトムシート
 // 一覧 + 追加/編集。web の PlacesSection 相当。地図は PROVIDER_GOOGLE で世界観統一。
 export default function PlacesTab() {
-  const { tripId } = useLocalSearchParams<{ tripId: string }>();
+  const tripId = useTripId();
   const t = useTranslations("place");
   const { data, me } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
