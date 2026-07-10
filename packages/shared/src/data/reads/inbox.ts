@@ -17,6 +17,21 @@ export async function fetchTripPendingDrafts(sb: DB, tripId: string) {
   return data;
 }
 
+// 受信箱バッジの件数 = まだ旅行に割り当てていない下書きメール（要割当）。
+// web の AppHeader と RN の旅行一覧ヘッダーで共有。
+export async function fetchUnassignedInboundCount(
+  sb: DB,
+  userId: string,
+): Promise<number> {
+  const { count } = await sb
+    .from("inbound_emails")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", userId)
+    .eq("status", "extracted")
+    .is("trip_id", null);
+  return count ?? 0;
+}
+
 // 受信箱ページの読み取り一式。RLS で全て自分の行に絞られる。
 export async function fetchImportInboxRows(sb: DB, userId: string) {
   // 転送先アドレス（per-user・固定。無ければ発行）。

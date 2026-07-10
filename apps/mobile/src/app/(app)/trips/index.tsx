@@ -11,6 +11,7 @@ import {
 import { useLocale, useTranslations } from "use-intl";
 
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
+import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 
 import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
@@ -34,6 +35,14 @@ export default function TripsScreen() {
 
   const trips = data?.trips ?? [];
 
+  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。web の
+  // AppHeader と同じ shared read。
+  const { data: inboxCount } = useQuery({
+    queryKey: ["inboxCount", userId],
+    queryFn: () => fetchUnassignedInboundCount(supabase, userId!),
+    enabled: !!userId,
+  });
+
   return (
     <View style={styles.container}>
       <Stack.Screen
@@ -43,7 +52,16 @@ export default function TripsScreen() {
             <View style={styles.headerButtons}>
               <Link href="/inbox" asChild>
                 <Pressable hitSlop={8} accessibilityLabel="取り込み">
-                  <InboxIcon size={20} color="rgba(0,0,0,0.7)" />
+                  <View>
+                    <InboxIcon size={20} color="rgba(0,0,0,0.7)" />
+                    {(inboxCount ?? 0) > 0 && (
+                      <View style={styles.inboxBadge}>
+                        <Text style={styles.inboxBadgeText}>
+                          {(inboxCount ?? 0) > 9 ? "9+" : inboxCount}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
                 </Pressable>
               </Link>
               <Link href="/trips/new" asChild>
@@ -109,4 +127,20 @@ const styles = StyleSheet.create({
   empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
   error: { padding: 24, fontSize: 14, color: "#dc2626" },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
+  // 受信箱の件数バッジ（web の AppHeader と同じ primary 塗り＋白縁）。
+  inboxBadge: {
+    position: "absolute",
+    top: -5,
+    right: -7,
+    minWidth: 15,
+    height: 15,
+    borderRadius: 8,
+    paddingHorizontal: 3,
+    backgroundColor: "#09090b",
+    borderWidth: 1,
+    borderColor: "#fff",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  inboxBadgeText: { fontSize: 9, fontWeight: "600", color: "#fff" },
 });

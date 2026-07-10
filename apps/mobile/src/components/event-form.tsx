@@ -23,6 +23,7 @@ import {
   resolveExpenseTz,
   type TzCandidate,
 } from "@triplot/shared/schedule";
+import type { EventDraftItem } from "@triplot/shared/import/drafts";
 import type { EventRow } from "@triplot/shared/tripDerive";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
 import type { Visibility } from "@triplot/shared/types/database";
@@ -47,7 +48,9 @@ export function EventForm({
   defaultTimezone,
   events,
   editEvent,
+  draft,
   onDone,
+  onSuccess,
 }: {
   tripId: string;
   members: Member[];
@@ -57,10 +60,17 @@ export function EventForm({
   defaultTimezone: string | null;
   events: EventRow[];
   editEvent?: EventRow;
+  // メール取り込みの未確定下書きの確定フロー。create モードの事前入力として
+  // 使う（editEvent と排他）。確定処理自体は onSuccess 側（呼び出し元）。
+  draft?: EventDraftItem;
   onDone: () => void;
+  // 追加/更新が成功したときだけ呼ぶ（キャンセルでは呼ばれない）。追加成功時は
+  // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
+  onSuccess?: (eventId?: string) => void;
 }) {
   const t = useTranslations("event");
   const isEdit = !!editEvent;
+  const prefill = draft?.prefill ?? null;
 
   const tzTimeline = useMemo(
     () => buildTripTzTimeline(events, defaultTimezone),
@@ -73,39 +83,50 @@ export function EventForm({
       : editEvent.allDay
         ? "allday"
         : "timed"
-    : "timed";
+    : (prefill?.kind3 ?? "timed");
   const [kind, setKind] = useState<Kind3>(initKind);
 
-  const [title, setTitle] = useState(editEvent?.title ?? "");
-  const [note, setNote] = useState(editEvent?.note ?? "");
+  const [title, setTitle] = useState(editEvent?.title ?? prefill?.title ?? "");
+  const [note, setNote] = useState(editEvent?.note ?? prefill?.note ?? "");
   const [visibility, setVisibility] = useState<Visibility>(
     editEvent?.visibility ?? "shared",
   );
   const [needsReservation, setNeedsReservation] = useState(
     editEvent?.needsReservation ?? false,
   );
-  const [place, setPlace] = useState<PlaceInput>(() =>
-    editEvent
-      ? { kind: "saved", placeId: editEvent.placeId }
-      : { kind: "saved", placeId: null },
-  );
+  const [place, setPlace] = useState<PlaceInput>(() => {
+    if (editEvent) return { kind: "saved", placeId: editEvent.placeId };
+    // 下書き: 保存済みマッチはそれを、無ければ抽出した場所名を自由入力テキスト
+    // として事前入力（RN は Google 自動解決を持たないので web の低確信時と同じ
+    // 自由入力フォールバック）。
+    if (prefill?.place) return { kind: "saved", placeId: prefill.place.id };
+    if (prefill?.autoResolvePlace)
+      return { kind: "free", label: prefill.autoResolvePlace.name };
+    return { kind: "saved", placeId: null };
+  });
 
   // 日時。start/end は "YYYY-MM-DD" と "HH:MM"。
-  const initDate = editEvent?.startAt.slice(0, 10) ?? tripStart ?? today();
-  const initTime = editEvent?.startAt.slice(11, 16) ?? "09:00";
+  const initDate =
+    editEvent?.startAt.slice(0, 10) ?? draft?.date ?? tripStart ?? today();
+  const initTime = editEvent?.startAt.slice(11, 16) ?? draft?.time ?? "09:00";
   const [startDate, setStartDate] = useState(initDate);
   const [startTime, setStartTime] = useState(initTime);
-  const initEndDate = editEvent?.endAt?.slice(0, 10) ?? initDate;
-  const initEndTime = editEvent?.endAt?.slice(11, 16) ?? addHour(initTime);
+  const initEndDate =
+    editEvent?.endAt?.slice(0, 10) ?? prefill?.endDate ?? initDate;
+  const initEndTime =
+    editEvent?.endAt?.slice(11, 16) ?? prefill?.endTime ?? addHour(initTime);
   const [endDate, setEndDate] = useState(initEndDate);
   const [endTime, setEndTime] = useState(initEndTime);
 
   // 時差移動の出発/到着TZ。
   const [departTz, setDepartTz] = useState(
-    editEvent?.startTz ?? defaultTimezone ?? "Asia/Tokyo",
+    editEvent?.startTz ??
+      prefill?.departTz ??
+      defaultTimezone ??
+      "Asia/Tokyo",
   );
   const [arriveTz, setArriveTz] = useState(
-    editEvent?.endTz ?? defaultTimezone ?? "Asia/Tokyo",
+    editEvent?.endTz ?? prefill?.arriveTz ?? defaultTimezone ?? "Asia/Tokyo",
   );
 
   // 通常/終日予定の乗継日TZ曖昧解決（web と同じ契約）。
@@ -218,13 +239,28 @@ export function EventForm({
       place,
     };
 
-    const result = isEdit
-      ? await updateEvent(supabase, editEvent!.id, fields, needsReservation)
-      : await createEvent(supabase, tripId, fields, needsReservation);
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    if (isEdit) {
+      const result = await updateEvent(
+        supabase,
+        editEvent!.id,
+        fields,
+        needsReservation,
+      );
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onSuccess?.();
+    } else {
+      const result = await createEvent(supabase, tripId, fields, needsReservation);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      // 作成した予定の id を渡す（取り込み下書きの確定リンクに使う）。
+      onSuccess?.(result.data);
     }
     onDone();
   };

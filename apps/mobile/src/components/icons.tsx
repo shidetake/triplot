@@ -90,6 +90,16 @@ export function PlusIcon(p: IconProps) {
   );
 }
 
+// Lucide: x（閉じる・破棄）
+export function XIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M18 6 6 18" />
+      <Path d="m6 6 12 12" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: trash-2（削除）
 export function TrashIcon(p: IconProps) {
   return (

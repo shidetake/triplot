@@ -1,6 +1,8 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
+import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
+
 import { AccountMenu } from "@/components/account-menu";
 import { InboxIcon } from "@/components/icons";
 import { createClient } from "@/lib/supabase/server";
@@ -34,14 +36,8 @@ export async function AppHeader() {
     profile?.display_name?.trim() ??
     null;
 
-  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。
-  const { count } = await supabase
-    .from("inbound_emails")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("status", "extracted")
-    .is("trip_id", null);
-  const inboxCount = count ?? 0;
+  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。RN と共有。
+  const inboxCount = await fetchUnassignedInboundCount(supabase, user.id);
 
   // admin だけ: 未対応フィードバックの件数（アカウントメニューの「管理」行バッジ）。
   // RLS の feedback_admin_select で admin 以外は読めない（クエリ自体もしない）。

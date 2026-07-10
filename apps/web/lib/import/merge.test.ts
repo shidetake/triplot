@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { type DraftCandidate, selectMergeCandidates } from "./merge";
-import type { EventDraft, Extraction, Receipt } from "./schema";
+import type { EventDraft, Extraction, Receipt } from "@triplot/shared/import/schema";
 
 function receipt(p: Partial<Receipt>): Receipt {
   return {

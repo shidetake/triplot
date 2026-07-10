@@ -19,7 +19,7 @@ import {
   type EventDraft,
   type Extraction,
   type Receipt,
-} from "./schema";
+} from "@triplot/shared/import/schema";
 import type { createServiceClient } from "@/lib/supabase/service";
 
 // 受信メールの抽出・マージ・自動リトライ（バックグラウンド処理）。route handler から

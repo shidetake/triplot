@@ -17,6 +17,12 @@ import {
   formatMinutes,
 } from "@triplot/shared/schedule";
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
+import {
+  draftEventId,
+  draftIdFromEventId,
+  draftToScheduleEvent,
+  type EventDraftItem,
+} from "@triplot/shared/import/drafts";
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
@@ -40,15 +46,18 @@ const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 import type { EventRow } from "@triplot/shared/tripDerive";
 export type { EventRow };
 
-// メール取り込みの未確定予定1件。page.tsx が資料（tzTimeline 等）から事前に
-// 組み立てた create モードの EventFormMode をそのまま持つ（確定フォームは
-// これをそのまま prefill として使う）。
-export type EventDraftItem = {
-  id: string;
-  labelParts: string[];
-  tz: string;
-  formState: EventFormMode;
-};
+// メール取り込みの未確定予定1件。組み立て（EventDraftItem）と疑似イベント変換
+// （draftToScheduleEvent）は shared（RN と共用）。確定フォームは item の
+// date/time/tz/prefill から create モードの EventFormMode を組む。
+function draftFormState(d: EventDraftItem): EventFormMode {
+  return {
+    mode: "create",
+    date: d.date,
+    time: d.time,
+    tz: d.tz,
+    prefill: d.prefill,
+  };
+}
 
 type OpenForm = {
   form: EventFormMode;
@@ -57,46 +66,6 @@ type OpenForm = {
   // 下書きを confirmed にする（resolveInboundDraft）。
   draftId?: string;
 };
-
-const DRAFT_ID_PREFIX = "draft:";
-
-// EventDraftItem（メール取り込みの未確定予定）をカレンダー描画用の疑似
-// ScheduleEvent に変換する。DB には存在しない表示専用イベント（isDraft）。
-function draftToScheduleEvent(
-  d: EventDraftItem,
-  myMemberId: string,
-): EventRow {
-  const form = d.formState;
-  // eventDrafts は必ず mode:"create" + prefill 付きで組み立てられる（page.tsx）。
-  if (form.mode !== "create" || !form.prefill) {
-    throw new Error("event draft formState must be create mode with prefill");
-  }
-  const prefill = form.prefill;
-  const kind3 = prefill.kind3;
-  const startAt = `${form.date}T${form.time}`;
-  const endDate = prefill.endDate ?? form.date;
-  const endAt = prefill.endTime ? `${endDate}T${prefill.endTime}` : null;
-  return {
-    id: `${DRAFT_ID_PREFIX}${d.id}`,
-    title: d.labelParts[0],
-    kind: kind3 === "transit" ? "transit" : "normal",
-    allDay: kind3 === "allday",
-    startAt,
-    endAt,
-    startTz: kind3 === "transit" ? (prefill.departTz ?? form.tz) : null,
-    endTz: kind3 === "transit" ? (prefill.arriveTz ?? form.tz) : null,
-    tzDisambigTransitId: null,
-    tzDisambigSide: null,
-    placeId: null,
-    visibility: "shared",
-    note: null,
-    needsReservation: false,
-    reservationDone: false,
-    participantMemberIds: [], // 空 = 全員のシュガー（不参加によるdimを避ける）
-    createdByMemberId: myMemberId,
-    isDraft: true,
-  };
-}
 
 export function ScheduleSection({
   tripId,
@@ -266,11 +235,11 @@ export function ScheduleSection({
 
   const onEventClick = useCallback(
     (eventId: string, anchor: Anchor) => {
-      if (eventId.startsWith(DRAFT_ID_PREFIX)) {
-        const draftId = eventId.slice(DRAFT_ID_PREFIX.length);
+      const draftId = draftIdFromEventId(eventId);
+      if (draftId) {
         const d = eventDrafts.find((x) => x.id === draftId);
         if (!d) return;
-        setOpen({ form: d.formState, anchor, draftId: d.id });
+        setOpen({ form: draftFormState(d), anchor, draftId: d.id });
         return;
       }
       const ev = events.find((e) => e.id === eventId);
@@ -304,7 +273,7 @@ export function ScheduleSection({
     open?.form.mode === "edit"
       ? open.form.event.id
       : open?.draftId
-        ? `${DRAFT_ID_PREFIX}${open.draftId}`
+        ? draftEventId(open.draftId)
         : null;
 
   // 予約マーカーの凡例。予約のある予定が1件でもある時だけ出す。

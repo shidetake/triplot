@@ -7,7 +7,7 @@ import {
   eventDraftSchema,
   receiptSchema,
   sanitizeEventDraft,
-} from "./schema";
+} from "@triplot/shared/import/schema";
 
 // 後からマージ：新しく届いたメールが、既存の未確定下書きと「同じ取引・同じ予約」かを
 // 判定し、同一なら合体する。決済元に依存しない汎用判定（referenceId 一致・店名/金額/

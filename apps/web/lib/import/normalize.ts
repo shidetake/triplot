@@ -1,4 +1,4 @@
-import type { EventDraft, Receipt } from "./schema";
+import type { EventDraft, Receipt } from "@triplot/shared/import/schema";
 
 // 全角 ASCII（Ａ-Ｚ ０-９ ＊ 等 = U+FF01〜U+FF5E）を半角へ、全角スペース(U+3000)を
 // 半角スペースへ。連続スペースは1つに詰める。日本語・カタカナ(U+30xx)は触らない

@@ -2,6 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
+import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
 
 import { supabase } from "./supabase";
 import { useSession } from "./session";
@@ -22,6 +23,17 @@ export function useTripDetail(tripId: string) {
   const me = query.data?.members?.find((m) => m.user_id === userId) ?? null;
 
   return { ...query, me, userId };
+}
+
+// この旅行に割り当て済み・未確定の取り込み下書き（予定タブの疑似ブロックと
+// 費用タブの未確定ボックスが使う）。["trip", tripId] のプレフィックス配下に
+// 置くので useInvalidateTrip がまとめて再取得する（確定/破棄後も1本で済む）。
+export function useTripDrafts(tripId: string) {
+  return useQuery({
+    queryKey: ["trip", tripId, "drafts"],
+    queryFn: () => fetchTripPendingDrafts(supabase, tripId),
+    enabled: !!tripId,
+  });
 }
 
 export function useInvalidateTrip(tripId: string) {

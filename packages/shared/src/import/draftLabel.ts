@@ -1,4 +1,4 @@
-import { formatDayLabel } from "@triplot/shared/schedule";
+import { formatDayLabel } from "../schedule";
 
 import type { EventDraft } from "./schema";
 

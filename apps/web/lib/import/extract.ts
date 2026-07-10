@@ -8,7 +8,7 @@ import {
   eventDraftSchema,
   receiptSchema,
   sanitizeEventDraft,
-} from "./schema";
+} from "@triplot/shared/import/schema";
 
 export type { TripHint } from "./prompt";
 

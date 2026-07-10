@@ -27,6 +27,7 @@ import {
   type ExpenseFields,
 } from "@triplot/shared/data/expenses";
 import { formatRate } from "@triplot/shared/formatRate";
+import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
   resolveExpenseTz,
   type TripTzTimeline,
@@ -64,7 +65,9 @@ export function ExpenseForm({
   places,
   tzTimeline,
   editExpense,
+  draft,
   onDone,
+  onSuccess,
 }: {
   tripId: string;
   members: Member[];
@@ -78,16 +81,28 @@ export function ExpenseForm({
   places: { id: string; name: string }[];
   tzTimeline: TripTzTimeline;
   editExpense?: ExpenseRow;
+  // メール取り込みの未確定下書きの確定フロー。create モードの事前入力として
+  // 使う（editExpense と排他）。確定処理自体は onSuccess 側（呼び出し元）。
+  draft?: ExpenseDraftItem;
   onDone: () => void;
+  // 追加/更新が成功したときだけ呼ぶ（キャンセルでは呼ばれない）。追加成功時は
+  // 作成した費用の id が渡る（取り込み下書きの確定リンクに使う）。
+  onSuccess?: (expenseId?: string) => void;
 }) {
   const t = useTranslations("expense");
   const isEdit = !!editExpense;
 
   const [price, setPrice] = useState(
-    isEdit ? String(editExpense.local_price) : "",
+    isEdit
+      ? String(editExpense.local_price)
+      : draft
+        ? String(draft.initialPrice)
+        : "",
   );
   const [localCurrency, setLocalCurrency] = useState<Currency>(
-    isEdit ? editExpense.local_currency : initialCurrency,
+    isEdit
+      ? editExpense.local_currency
+      : (draft?.initialCurrency ?? initialCurrency),
   );
   const rateFor = (c: Currency): string => {
     if (c === defaultCurrency) return "1";
@@ -98,13 +113,21 @@ export function ExpenseForm({
     isEdit ? String(editExpense.rate_to_default) : rateFor(localCurrency),
   );
   const [categoryId, setCategoryId] = useState(
-    isEdit ? editExpense.category_id : initialCategoryId,
-  );
-  const [place, setPlace] = useState<PlaceInput>(() =>
     isEdit
-      ? { kind: "saved", placeId: editExpense.place_id }
-      : { kind: "saved", placeId: null },
+      ? editExpense.category_id
+      : (draft?.initialCategoryId ?? initialCategoryId),
   );
+  const [place, setPlace] = useState<PlaceInput>(() => {
+    if (isEdit) return { kind: "saved", placeId: editExpense.place_id };
+    // 下書き: 保存済みマッチはそれを、無ければ抽出した店名を自由入力テキスト
+    // として事前入力（RN は Google 自動解決を持たないので web の低確信時と同じ
+    // 自由入力フォールバック）。
+    if (draft?.initialPlace)
+      return { kind: "saved", placeId: draft.initialPlace.id };
+    if (draft?.autoResolvePlace)
+      return { kind: "free", label: draft.autoResolvePlace.name };
+    return { kind: "saved", placeId: null };
+  });
   const [note, setNote] = useState(isEdit ? (editExpense.note ?? "") : "");
   const [visibility, setVisibility] = useState<Visibility>(
     isEdit ? editExpense.visibility : "shared",
@@ -118,13 +141,13 @@ export function ExpenseForm({
   // ＝一覧で時刻非表示。web と同じ）。
   const initPaidAtDate = isEdit
     ? editExpense.paid_at.slice(0, 10)
-    : initialPaidAt;
-  const initPaidAtTime = isEdit ? editExpense.paid_at.slice(11, 16) : "00:00";
+    : (draft?.initialPaidAt ?? initialPaidAt);
+  const initPaidAtTime = isEdit
+    ? editExpense.paid_at.slice(11, 16)
+    : (draft?.initialTime ?? "00:00");
   const [paidAtDate, setPaidAtDate] = useState(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState(initPaidAtTime);
-  const [showTime, setShowTime] = useState(
-    isEdit && initPaidAtTime !== "00:00",
-  );
+  const [showTime, setShowTime] = useState(initPaidAtTime !== "00:00");
 
   // 費用の発生TZ（乗継日の曖昧解決）。web と同じ契約。
   const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
@@ -258,13 +281,23 @@ export function ExpenseForm({
       splitMemberIds: splitIds,
       place,
     };
-    const result = isEdit
-      ? await updateExpense(supabase, editExpense.id, fields)
-      : await createExpense(supabase, tripId, fields);
-    setBusy(false);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+    if (isEdit) {
+      const result = await updateExpense(supabase, editExpense.id, fields);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      onSuccess?.();
+    } else {
+      const result = await createExpense(supabase, tripId, fields);
+      setBusy(false);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      // 作成した費用の id を渡す（取り込み下書きの確定リンクに使う）。
+      onSuccess?.(result.data);
     }
     onDone();
   };

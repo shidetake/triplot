@@ -8,11 +8,11 @@ import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
-import { eventDraftWhenLabel } from "@/lib/import/draftLabel";
+import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
 import { buildImportAddress } from "@/lib/import/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/import/importConfig";
 import { EXTRACT_ERROR_NO_CONTENT } from "@/lib/import/process";
-import type { EventDraft, Extraction, Receipt } from "@/lib/import/schema";
+import type { EventDraft, Extraction, Receipt } from "@triplot/shared/import/schema";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import { createClient } from "@/lib/supabase/server";
 

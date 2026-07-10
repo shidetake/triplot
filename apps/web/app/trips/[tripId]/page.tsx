@@ -8,7 +8,6 @@ import { ChevronIcon } from "@/components/icons";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
-import { type EventFormMode } from "@/components/event-form";
 import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
@@ -26,7 +25,6 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
   resolveEventTz,
-  resolveExpenseTz,
 } from "@triplot/shared/schedule";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
@@ -46,9 +44,12 @@ import { type ExpenseCsvRow } from "@/lib/expenseCsv";
 import { type KmlPlacemark } from "@/lib/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
-import { eventDraftWhenLabel, monthDayLabel } from "@/lib/import/draftLabel";
-import { matchPlace, type TripPlace } from "@/lib/import/placeMatch";
-import type { EventDraft, Receipt } from "@/lib/import/schema";
+import { monthDayLabel } from "@triplot/shared/import/draftLabel";
+import {
+  deriveEventDraftItems,
+  deriveExpenseDraftItems,
+} from "@triplot/shared/import/drafts";
+import type { TripPlace } from "@triplot/shared/import/placeMatch";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency } from "@triplot/shared/types/database";
 
@@ -247,104 +248,22 @@ export default async function TripDetailPage({
     formattedAddress: p.formatted_address,
   }));
 
-  // 名前・場所ヒントを保存済みの場所に照合。マッチすればそれを事前入力し、無ければ
-  // 確定フォームで Google に自動解決して（高確信なら）丸める。
-  const matchSavedPlace = (name: string, location: string | null) => {
-    const matched = matchPlace({ merchant: name, location }, placesForMatch);
-    return matched
-      ? {
-          kind: "saved" as const,
-          id: matched.placeId,
-          name: places.find((p) => p.id === matched.placeId)?.name ?? "",
-        }
-      : null;
-  };
+  // 下書き → 事前入力の組み立ては shared（RN と共用）。
+  const importDrafts = deriveExpenseDraftItems(tripDrafts, {
+    categories,
+    defaultCurrency,
+    fallbackCategoryId: initialCategoryId,
+    places: placesForMatch,
+    unknownMerchantLabel: t("tripDetail.unknownMerchant"),
+  });
 
-  const importDrafts = (tripDrafts ?? [])
-    .filter((d) => d.kind === "expense")
-    .flatMap((d) => {
-      const r = d.payload as unknown as Receipt | null;
-      if (!r) return [];
-      const currency: Currency =
-        /^[A-Z]{3}$/.test(r.currency ?? "") ? r.currency : defaultCurrency;
-      const categoryId =
-        categories.find((c) => c.name === r.category)?.id ?? initialCategoryId;
-      const place = matchSavedPlace(r.merchant, r.location);
-      return [
-        {
-          id: d.id,
-          // ボタンに出す見出しの各部品（区切りは InlineDivider＝縦棒で挟む。スラッシュ連結にしない）。
-          // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
-          labelParts: [
-            r.merchant || t("tripDetail.unknownMerchant"),
-            `${r.total} ${r.currency}`,
-            monthDayLabel(r.date),
-          ],
-          initialPrice: r.total,
-          initialCurrency: currency,
-          initialCategoryId: categoryId,
-          initialPaidAt: r.date,
-          // 店名はメモではなく場所へ（低確信は店名のままテキスト場所になる）。
-          initialPlace: place,
-          autoResolvePlace: place ? null : { name: r.merchant, location: r.location },
-          initialTime: r.time ?? undefined,
-        },
-      ];
-    });
-
-  // 予定の下書き → EventForm の create モード＋事前入力へ。
-  const eventDrafts = (tripDrafts ?? [])
-    .filter((d) => d.kind === "event")
-    .flatMap((d) => {
-      const ev = d.payload as unknown as EventDraft | null;
-      if (!ev) return [];
-      // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
-      const res = resolveExpenseTz(ev.startDate, tzTimeline);
-      const tz = res.kind === "single" ? res.tz : res.options[0].tz;
-      // 場所欄: 出発地（transit は departLocation、それ以外はタイトル）を手がかりにする。
-      // transit で出発地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
-      // 試し、高確信ならターミナル単位の場所に丸まる。低確信/不明なら素の空港名のまま
-      // （PlacePicker の autoResolve.searchQuery は表示・フォールバックには影響しない）。
-      const placeName = ev.kind === "transit" ? ev.departLocation : ev.title;
-      const placeHint = ev.kind === "transit" ? null : ev.location;
-      const place = placeName ? matchSavedPlace(placeName, placeHint) : null;
-      const title = ev.title || t("common.untitledEvent");
-      const whenLabel = eventDraftWhenLabel(ev, locale);
-      // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。
-      const noteParts = [
-        ev.vehicleNumber,
-        ev.referenceId
-          ? t("tripDetail.reservationRefNote", { ref: ev.referenceId })
-          : null,
-      ].filter((p): p is string => !!p);
-      const formState: EventFormMode = {
-        mode: "create",
-        date: ev.startDate,
-        time: ev.startTime ?? "09:00",
-        tz,
-        prefill: {
-          kind3: ev.kind,
-          title: ev.title,
-          note: noteParts.length > 0 ? noteParts.join(" ・ ") : null,
-          endDate: ev.endDate,
-          endTime: ev.endTime,
-          departTz: ev.departTz,
-          arriveTz: ev.arriveTz,
-          place,
-          autoResolvePlace:
-            place || !placeName
-              ? null
-              : {
-                  name: placeName,
-                  location: placeHint,
-                  searchQuery: ev.departTerminal
-                    ? `${placeName} ${ev.departTerminal}`
-                    : undefined,
-                },
-        },
-      };
-      return [{ id: d.id, labelParts: [title, whenLabel], tz, formState }];
-    });
+  const eventDrafts = deriveEventDraftItems(tripDrafts, {
+    tzTimeline,
+    places: placesForMatch,
+    locale,
+    untitledLabel: t("common.untitledEvent"),
+    reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+  });
 
   // ⋯メニュー等（TripActions）は広い画面のヘッダーと狭い画面の圧縮ヘッダーの
   // 両方に置く。同じ要素オブジェクトを2箇所で使うと React はそれぞれ独立に
@@ -461,7 +380,13 @@ export default async function TripDetailPage({
                           defaultTz={d.tz}
                           tripStart={trip.start_date}
                           tripEnd={trip.end_date}
-                          state={d.formState}
+                          state={{
+                            mode: "create",
+                            date: d.date,
+                            time: d.time,
+                            tz: d.tz,
+                            prefill: d.prefill,
+                          }}
                           places={placesForPicker}
                           members={activeMembers.map((m) => ({
                             id: m.id,

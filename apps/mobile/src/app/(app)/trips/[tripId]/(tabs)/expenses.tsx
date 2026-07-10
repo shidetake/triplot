@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import {
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -13,6 +14,11 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
+import { resolveInboundDraft } from "@triplot/shared/data/inbox";
+import {
+  deriveExpenseDraftItems,
+  type ExpenseDraftItem,
+} from "@triplot/shared/import/drafts";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   deriveAverageRates,
@@ -30,21 +36,34 @@ import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { ExpenseForm } from "@/components/expense-form";
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
-import { PlusIcon } from "@/components/icons";
-import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { PlusIcon, XIcon } from "@/components/icons";
+import { supabase } from "@/lib/supabase";
+import {
+  useInvalidateTrip,
+  useTripDetail,
+  useTripDrafts,
+} from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
 // 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（ボトムシート）。
+// メール取り込みの未確定下書きは amber の「未確定の取り込み」ボックスに出し、
+// タップで事前入力済みの確定フォームを開く（× で破棄）。
 export default function ExpensesTab() {
   const tripId = useTripId();
   const t = useTranslations();
   const tExp = useTranslations("expense");
+  const tImport = useTranslations("import");
   const { data, me, refetch, isRefetching } = useTripDetail(tripId);
+  const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
 
   const sheetRef = useRef<FormSheetRef>(null);
   const [editing, setEditing] = useState<ExpenseRow | null>(null);
+  // 取り込み下書きの確定フローで開いた時だけ持つ。ExpenseForm 成功時にこの
+  // 下書きを confirmed にする（resolveInboundDraft）。
+  const [confirmingDraft, setConfirmingDraft] =
+    useState<ExpenseDraftItem | null>(null);
 
   if (!data?.trip || !me) return null;
 
@@ -84,9 +103,58 @@ export default function ExpensesTab() {
     today,
   );
 
+  // 下書き → 事前入力の組み立ては shared（web と共用）。
+  const draftItems = deriveExpenseDraftItems(tripDrafts ?? null, {
+    categories,
+    defaultCurrency,
+    fallbackCategoryId: defaults.initialCategoryId,
+    places: (data.placesRaw ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      formattedAddress: p.formatted_address,
+    })),
+    unknownMerchantLabel: t("tripDetail.unknownMerchant"),
+  });
+
   const openForm = (row: ExpenseRow | null) => {
     setEditing(row);
+    setConfirmingDraft(null);
     sheetRef.current?.present();
+  };
+
+  const openDraftForm = (d: ExpenseDraftItem) => {
+    setEditing(null);
+    setConfirmingDraft(d);
+    sheetRef.current?.present();
+  };
+
+  // 取り込み下書きの確定。ExpenseForm 成功時に呼ばれ、下書きを confirmed に
+  // する（web の DraftConfirmButton と同じ resolveInboundDraft）。
+  const confirmDraft = async (draftId: string, expenseId?: string) => {
+    const r = await resolveInboundDraft(supabase, draftId, "confirmed", {
+      expenseId,
+    });
+    if (!r.ok) Alert.alert(r.error);
+    void invalidate();
+  };
+
+  const dismissDraft = (draftId: string) => {
+    Alert.alert(tImport("dismissDraftTitle"), undefined, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: tImport("dismiss"),
+        style: "destructive",
+        onPress: () => {
+          void resolveInboundDraft(supabase, draftId, "dismissed").then((r) => {
+            if (!r.ok) {
+              Alert.alert(tImport("dismissFailed", { error: r.error }));
+              return;
+            }
+            void invalidate();
+          });
+        },
+      },
+    ]);
   };
 
   const rateHints = Object.entries(averageRates)
@@ -104,6 +172,49 @@ export default function ExpensesTab() {
           />
         }
       >
+        {/* 未確定の取り込み（amber）。タップで事前入力済みフォーム、× で破棄。 */}
+        {draftItems.length > 0 && (
+          <View style={styles.draftBox}>
+            <Text style={styles.draftHeading}>
+              {t("tripDetail.pendingImports", { count: draftItems.length })}
+            </Text>
+            {draftItems.map((d) => (
+              <View key={d.id} style={styles.draftRow}>
+                <Pressable
+                  onPress={() => openDraftForm(d)}
+                  style={styles.draftButton}
+                >
+                  <View style={styles.draftLabelParts}>
+                    {d.labelParts.map((part, i) => (
+                      <View key={i} style={styles.draftLabelPart}>
+                        {i > 0 && <View style={styles.draftDivider} />}
+                        <Text
+                          style={styles.draftLabelText}
+                          numberOfLines={1}
+                        >
+                          {part}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.confirmChip}>
+                    <Text style={styles.confirmChipText}>
+                      {t("common.confirm")}
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => dismissDraft(d.id)}
+                  hitSlop={8}
+                  accessibilityLabel={tImport("dismiss")}
+                >
+                  <XIcon size={16} color="rgba(0,0,0,0.45)" />
+                </Pressable>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* 集計（自己負担 / private / 合計） */}
         <View style={styles.summaryGrid}>
           <SummaryCell
@@ -237,10 +348,17 @@ export default function ExpensesTab() {
             }))}
             tzTimeline={tzTimeline}
             editExpense={editing ?? undefined}
+            draft={confirmingDraft ?? undefined}
             onDone={() => {
               dismiss();
               void invalidate();
             }}
+            onSuccess={
+              confirmingDraft
+                ? (expenseId) =>
+                    void confirmDraft(confirmingDraft.id, expenseId)
+                : undefined
+            }
           />
         )}
       </FormSheet>
@@ -279,6 +397,53 @@ function formatDateTime(iso: string): string {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
   content: { padding: 16, gap: 8, paddingBottom: 96 },
+  // 未確定の取り込み（warning=amber。web の amber-50/200/900 と同じ）。
+  draftBox: {
+    borderWidth: 1,
+    borderColor: "#fde68a", // amber-200
+    backgroundColor: "#fffbeb", // amber-50
+    borderRadius: 8,
+    padding: 12,
+    gap: 8,
+    marginBottom: 8,
+  },
+  draftHeading: { fontSize: 13, fontWeight: "500", color: "#78350f" }, // amber-900
+  draftRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  draftButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.1)",
+    borderRadius: 6,
+    backgroundColor: "#fff",
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  draftLabelParts: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  draftLabelPart: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 1,
+  },
+  // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
+  draftDivider: { width: 1, height: 12, backgroundColor: "rgba(0,0,0,0.1)" },
+  draftLabelText: { fontSize: 13, flexShrink: 1 },
+  confirmChip: {
+    borderRadius: 4,
+    backgroundColor: "#09090b",
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  confirmChipText: { fontSize: 11, fontWeight: "500", color: "#fff" },
   summaryGrid: {
     flexDirection: "row",
     gap: 8,

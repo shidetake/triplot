@@ -84,8 +84,19 @@ export function WeekCalendar({
     });
   };
 
+  // 取り込み下書き（未確定）の見た目。まだ実データが無く参加者/公開範囲が
+  // 未定なので、参加者構成に基づく色分けより優先して warning(amber)＋破線で
+  // 「未確定」を示す（web の draftAppearance と同じ。ui-guidelines のセマンティック色）。
+  const DRAFT_COLORS = {
+    bg: "#fffbeb", // amber-50
+    border: "#fbbf24", // amber-400
+    text: "#78350f", // amber-900
+    dim: false,
+  };
+
   // 予定ブロックの色（web の pickEventColor + hsl ヘルパーと同じ）。
   const blockColors = (ev: EventRow) => {
+    if (ev.isDraft) return DRAFT_COLORS;
     const c = pickEventColor({
       visibility: ev.visibility,
       participantMemberIds: ev.participantMemberIds,
@@ -114,6 +125,7 @@ export function WeekCalendar({
     };
   };
   const barColors = (ev: EventRow) => {
+    if (ev.isDraft) return { bg: DRAFT_COLORS.bg, text: DRAFT_COLORS.text };
     const c = pickEventColor({
       visibility: ev.visibility,
       participantMemberIds: ev.participantMemberIds,
@@ -185,6 +197,7 @@ export function WeekCalendar({
                       onPress={() => onEventPress(ev)}
                       style={[
                         styles.allDayBar,
+                        ev.isDraft && styles.draftBar,
                         {
                           left: left + 2,
                           width: width - 4,
@@ -270,6 +283,7 @@ export function WeekCalendar({
                     onPress={() => onEventPress(ev)}
                     style={[
                       styles.eventBlock,
+                      ev.isDraft && styles.draftBlock,
                       {
                         left: ci * COL + p.lane * laneW + 1,
                         width: laneW - 2,
@@ -439,6 +453,14 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   transitBlock: { borderStyle: "dashed" },
+  // 取り込み下書きの疑似ブロック（amber 破線）。timed でも破線にする。
+  draftBlock: { borderStyle: "dashed" },
+  // 終日バーは通常枠なし → 下書きだけ amber 破線の枠を足す（web と同じ）。
+  draftBar: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: "#fbbf24", // amber-400
+  },
   eventTitle: { fontSize: 11, fontWeight: "500" },
   eventTime: { fontSize: 9, opacity: 0.7 },
 });
