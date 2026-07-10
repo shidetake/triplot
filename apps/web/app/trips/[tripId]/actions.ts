@@ -28,6 +28,7 @@ import {
   ensureTripInvite,
   regenerateTripInvite,
 } from "@triplot/shared/data/invites";
+import { generateInviteToken } from "@triplot/shared/invite";
 import { type PlaceInput } from "@triplot/shared/data/place";
 import {
   removeTripMember,
@@ -845,7 +846,11 @@ export async function ensureInviteAction(
   }
 
   const tErr = await getTranslations("errors");
-  const result = await ensureTripInvite(supabase, tripId);
+  const result = await ensureTripInvite(
+    supabase,
+    tripId,
+    generateInviteToken(),
+  );
   if (!result.ok) return { token: null, error: translateSharedError(result.error, tErr) };
   return { token: result.data.token, error: null };
 }
@@ -864,7 +869,11 @@ export async function regenerateInviteAction(
   }
 
   const tErr = await getTranslations("errors");
-  const result = await regenerateTripInvite(supabase, tripId);
+  const result = await regenerateTripInvite(
+    supabase,
+    tripId,
+    generateInviteToken(),
+  );
   if (!result.ok) return { token: null, error: translateSharedError(result.error, tErr) };
   return { token: result.data.token, error: null };
 }

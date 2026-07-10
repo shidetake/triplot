@@ -11,14 +11,15 @@ import {
 import { useLocale, useTranslations } from "use-intl";
 
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
+
+import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
-import { signOut } from "@/lib/auth";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 
 // 旅行一覧（アプリのホーム）。web の apps/web/app/trips/page.tsx 相当。
-// 旅行作成は M7（今は一覧と詳細への遷移のみ）。
+// ヘッダー右に旅行作成（+）と設定（歯車）。
 export default function TripsScreen() {
   const t = useTranslations("trips");
   const locale = useLocale();
@@ -38,11 +39,24 @@ export default function TripsScreen() {
       <Stack.Screen
         options={{
           title: t("heading"),
-          // アカウントメニューは M7。それまでの暫定サインアウト導線。
           headerRight: () => (
-            <Pressable onPress={() => void signOut()} hitSlop={8}>
-              <Text style={styles.signOut}>ログアウト</Text>
-            </Pressable>
+            <View style={styles.headerButtons}>
+              <Link href="/inbox" asChild>
+                <Pressable hitSlop={8} accessibilityLabel="取り込み">
+                  <InboxIcon size={20} color="rgba(0,0,0,0.7)" />
+                </Pressable>
+              </Link>
+              <Link href="/trips/new" asChild>
+                <Pressable hitSlop={8} accessibilityLabel={t("create")}>
+                  <PlusIcon size={20} color="rgba(0,0,0,0.7)" />
+                </Pressable>
+              </Link>
+              <Link href="/settings" asChild>
+                <Pressable hitSlop={8} accessibilityLabel="設定">
+                  <SettingsIcon size={20} color="rgba(0,0,0,0.7)" />
+                </Pressable>
+              </Link>
+            </View>
           ),
         }}
       />
@@ -94,5 +108,5 @@ const styles = StyleSheet.create({
   cardSub: { marginTop: 4, fontSize: 13, color: "rgba(0,0,0,0.6)" },
   empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
   error: { padding: 24, fontSize: 14, color: "#dc2626" },
-  signOut: { fontSize: 13, color: "#2563eb" },
+  headerButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
 });

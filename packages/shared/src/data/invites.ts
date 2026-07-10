@@ -1,4 +1,3 @@
-import { generateInviteToken } from "../invite";
 import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
@@ -18,13 +17,17 @@ export async function joinTripViaInvite(
 }
 
 // 共有リンクの取得 or 初回発行（冪等）。既にあれば既存トークンが返る。
+// newToken はプラットフォーム側で生成して渡す（web=node:crypto の
+// generateInviteToken、RN=expo-crypto。shared 自身は乱数源を持たない
+// —— node:crypto は RN で動かないため）。
 export async function ensureTripInvite(
   sb: DB,
   tripId: string,
+  newToken: string,
 ): Promise<Result<{ token: string }>> {
   const { data: token, error } = await sb.rpc("ensure_trip_invite", {
     p_trip_id: tripId,
-    p_token: generateInviteToken(),
+    p_token: newToken,
   });
   if (error || !token) return err(error?.message ?? "errors.issueFailed");
   return ok({ token });
@@ -34,10 +37,11 @@ export async function ensureTripInvite(
 export async function regenerateTripInvite(
   sb: DB,
   tripId: string,
+  newToken: string,
 ): Promise<Result<{ token: string }>> {
   const { data: token, error } = await sb.rpc("regenerate_trip_invite", {
     p_trip_id: tripId,
-    p_token: generateInviteToken(),
+    p_token: newToken,
   });
   if (error || !token) return err(error?.message ?? "errors.regenerateFailed");
   return ok({ token });
