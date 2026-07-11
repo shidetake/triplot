@@ -1,6 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQuery } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   Pressable,
@@ -73,7 +73,6 @@ export default function NewTripScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen options={{ title: "旅行を作成", presentation: "modal" }} />
 
       <View>
         <Text style={styles.label}>{t("title")}</Text>

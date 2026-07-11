@@ -1,6 +1,5 @@
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
-import { Stack } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -97,9 +96,6 @@ export default function InboxScreen() {
         />
       }
     >
-      <Stack.Screen
-        options={{ title: t("heading"), presentation: "modal" }}
-      />
 
       <Text style={styles.description}>{t("description")}</Text>
 

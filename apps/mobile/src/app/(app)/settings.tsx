@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { router } from "expo-router";
 import { useState } from "react";
 import {
   Pressable,
@@ -49,9 +49,6 @@ export default function SettingsScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen
-        options={{ title: t("settings.heading"), presentation: "modal" }}
-      />
 
       <Text style={styles.email}>{session?.user.email}</Text>
 

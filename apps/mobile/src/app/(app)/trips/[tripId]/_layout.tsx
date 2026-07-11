@@ -5,17 +5,18 @@ import { SettingsIcon } from "@/components/icons";
 import { useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
-// 旅行詳細のルート: Stack（ヘッダー1本 = 旅行名 + 戻る + 編集ボタン）。
-// 4タブは配下の (tabs) グループ、旅行編集はこの Stack の modal。
+// 旅行詳細のルート。ヘッダーは親 Stack の1本だけ（戻る + 旅行名 + 編集）。
+// 最初の <Stack.Screen> は自分を内包する親 Stack（(app)/_layout.tsx）の
+// この route のオプションを注入する（旅行名が動的なので layout 側に書けない）。
+// ネストした Stack 自身はヘッダーを出さない（二重ヘッダー防止）。
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
   const tripTitle = data?.trip?.title ?? "";
 
   return (
-    <Stack>
+    <>
       <Stack.Screen
-        name="(tabs)"
         options={{
           title: tripTitle,
           headerBackButtonDisplayMode: "minimal",
@@ -28,7 +29,10 @@ export default function TripLayout() {
           ),
         }}
       />
-      <Stack.Screen name="edit" options={{ presentation: "modal" }} />
-    </Stack>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="edit" options={{ presentation: "modal" }} />
+      </Stack>
+    </>
   );
 }

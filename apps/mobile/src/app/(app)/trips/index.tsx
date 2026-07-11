@@ -45,9 +45,11 @@ export default function TripsScreen() {
 
   return (
     <View style={styles.container}>
+      {/* タイトル（triplot・ラージタイトル）は (app)/_layout.tsx で静的に宣言。
+          ここは動的な headerRight（受信箱バッジ）だけ注入する。旅行追加は
+          ヘッダーではなく右下 FAB（予定/費用タブと同じ「追加はいつも右下」）。 */}
       <Stack.Screen
         options={{
-          title: t("heading"),
           headerRight: () => (
             <View style={styles.headerButtons}>
               <Link href="/inbox" asChild>
@@ -62,11 +64,6 @@ export default function TripsScreen() {
                       </View>
                     )}
                   </View>
-                </Pressable>
-              </Link>
-              <Link href="/trips/new" asChild>
-                <Pressable hitSlop={8} accessibilityLabel={t("create")}>
-                  <PlusIcon size={20} color="rgba(0,0,0,0.7)" />
                 </Pressable>
               </Link>
               <Link href="/settings" asChild>
@@ -90,6 +87,9 @@ export default function TripsScreen() {
         <FlatList
           data={trips}
           keyExtractor={(item) => item.id}
+          // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
+          // スクロールでタイトルが縮む標準挙動を効かせる。
+          contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
           refreshControl={
             <RefreshControl
@@ -109,6 +109,13 @@ export default function TripsScreen() {
           )}
         />
       )}
+
+      {/* 追加 FAB（予定/費用タブと同じ位置・同じ見た目） */}
+      <Link href="/trips/new" asChild>
+        <Pressable style={styles.fab} accessibilityLabel={t("create")}>
+          <PlusIcon size={24} color="#fff" />
+        </Pressable>
+      </Link>
     </View>
   );
 }
@@ -127,6 +134,22 @@ const styles = StyleSheet.create({
   empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
   error: { padding: 24, fontSize: 14, color: "#dc2626" },
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
+  fab: {
+    position: "absolute",
+    right: 20,
+    bottom: 28,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#09090b",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
   // 受信箱の件数バッジ（web の AppHeader と同じ primary 塗り＋白縁）。
   inboxBadge: {
     position: "absolute",
