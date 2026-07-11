@@ -18,7 +18,8 @@ export type PlaceCandidate = {
   userRatingCount: number | null;
 };
 
-type AddressComponent = { types: string[]; longText?: string | null };
+// types は Google の応答で欠けることがある（実機で TypeError になった実データあり）。
+type AddressComponent = { types?: string[] | null; longText?: string | null };
 
 // Google の住所成分から region(州/県) と locality(市) を取り出す。
 // web（place-search.tsx の extractRegion）と同じ規則。REST の addressComponents も
@@ -28,7 +29,7 @@ export function extractRegion(components: AddressComponent[] | null | undefined)
   locality: string | null;
 } {
   const pick = (type: string) =>
-    components?.find((c) => c.types.includes(type))?.longText ?? null;
+    components?.find((c) => c.types?.includes(type))?.longText ?? null;
   return {
     region: pick("administrative_area_level_1"),
     locality: pick("locality") ?? pick("sublocality_level_1"),
@@ -123,6 +124,60 @@ export async function searchPlaces(
         userRatingCount: p.userRatingCount ?? null,
       };
     });
+}
+
+// Places API (New): 単一の場所の詳細（地図の POI タップから保存する時に使う。
+// POI イベントは placeId/名前/座標しか持たないので住所・region を補完する）。
+export async function fetchPlaceDetails(
+  placeId: string,
+  opts: SearchPlacesOptions,
+): Promise<PlaceCandidate | null> {
+  const headers: Record<string, string> = {
+    "X-Goog-Api-Key": opts.apiKey,
+    "X-Goog-FieldMask": [
+      "id",
+      "displayName",
+      "formattedAddress",
+      "location",
+      "addressComponents",
+      "rating",
+      "userRatingCount",
+    ].join(","),
+  };
+  if (opts.iosBundleId) {
+    headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
+  }
+  const lang = opts.languageCode ?? "ja";
+  const res = await fetch(
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${lang}`,
+    { headers },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Places details ${res.status}: ${text}`);
+  }
+  const p = (await res.json()) as {
+    id: string;
+    displayName?: { text?: string };
+    formattedAddress?: string;
+    location?: { latitude: number; longitude: number };
+    addressComponents?: AddressComponent[];
+    rating?: number;
+    userRatingCount?: number;
+  };
+  if (!p.location) return null;
+  const { region, locality } = extractRegion(p.addressComponents);
+  return {
+    placeId: p.id,
+    name: p.displayName?.text ?? "",
+    formattedAddress: p.formattedAddress ?? "",
+    lat: p.location.latitude,
+    lng: p.location.longitude,
+    region,
+    locality,
+    rating: p.rating ?? null,
+    userRatingCount: p.userRatingCount ?? null,
+  };
 }
 
 // 候補 → 場所欄の3モードの google（予定・費用フォームで使う）。

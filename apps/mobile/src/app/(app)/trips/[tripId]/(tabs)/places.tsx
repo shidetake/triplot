@@ -20,6 +20,7 @@ import { useTranslations } from "use-intl";
 import { boundsOf, centroid, TOKYO } from "@triplot/shared/placeMap";
 import { getIconLabel } from "@triplot/shared/placeIcons";
 import {
+  fetchPlaceDetails,
   searchPlaces,
   type PlaceCandidate,
 } from "@triplot/shared/placesSearch";
@@ -144,6 +145,22 @@ export default function PlacesTab() {
     setSelectedCandidate(null);
     formRef.current?.present();
   };
+
+  // ベースマップの POI（Google の店・施設アイコン）タップ: Place Details で
+  // 住所・region を補完して、検索候補と同じ保存フォームを開く（web の POI
+  // タップ→追加と同じ入口）。
+  const onPoiPress = async (placeId: string) => {
+    if (!PLACES_API_KEY) return;
+    try {
+      const c = await fetchPlaceDetails(placeId, {
+        apiKey: PLACES_API_KEY,
+        iosBundleId: BUNDLE_ID,
+      });
+      if (c) openAddCandidate(c);
+    } catch (e) {
+      Alert.alert(t("searchFailed"), String(e));
+    }
+  };
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
@@ -180,6 +197,7 @@ export default function PlacesTab() {
           const c = e.nativeEvent.coordinate;
           onMapLongPress(c.latitude, c.longitude);
         }}
+        onPoiClick={(e) => void onPoiPress(e.nativeEvent.placeId)}
       >
         {places
           .filter((p) => p.lat != null && p.lng != null)

@@ -1,6 +1,6 @@
 import { Link, Stack } from "expo-router";
-import { Pressable } from "react-native";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { SettingsIcon } from "@/components/icons";
 import { useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -22,9 +22,9 @@ export default function TripLayout() {
           headerBackButtonDisplayMode: "minimal",
           headerRight: () => (
             <Link href={`/trips/${tripId}/edit`} asChild>
-              <Pressable hitSlop={8} accessibilityLabel="旅行を編集">
-                <SettingsIcon size={20} color="rgba(0,0,0,0.6)" />
-              </Pressable>
+              <HeaderIconButton accessibilityLabel="旅行を編集">
+                <SettingsIcon size={20} color="rgba(0,0,0,0.7)" />
+              </HeaderIconButton>
             </Link>
           ),
         }}

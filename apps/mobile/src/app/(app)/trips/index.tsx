@@ -3,7 +3,6 @@ import { Link, Stack } from "expo-router";
 import {
   FlatList,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
@@ -13,6 +12,7 @@ import { useLocale, useTranslations } from "use-intl";
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
 import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
 import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
@@ -27,7 +27,7 @@ export default function TripsScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
 
-  const { data, error, isLoading, refetch, isRefetching } = useQuery({
+  const { data, error, isLoading } = useQuery({
     queryKey: ["trips", userId],
     queryFn: () => fetchMyTrips(supabase, userId!),
     enabled: !!userId,
@@ -53,7 +53,7 @@ export default function TripsScreen() {
           headerRight: () => (
             <View style={styles.headerButtons}>
               <Link href="/inbox" asChild>
-                <Pressable hitSlop={8} accessibilityLabel="取り込み">
+                <HeaderIconButton accessibilityLabel="取り込み">
                   <View>
                     <InboxIcon size={20} color="rgba(0,0,0,0.7)" />
                     {(inboxCount ?? 0) > 0 && (
@@ -64,12 +64,12 @@ export default function TripsScreen() {
                       </View>
                     )}
                   </View>
-                </Pressable>
+                </HeaderIconButton>
               </Link>
               <Link href="/settings" asChild>
-                <Pressable hitSlop={8} accessibilityLabel="設定">
+                <HeaderIconButton accessibilityLabel="設定">
                   <SettingsIcon size={20} color="rgba(0,0,0,0.7)" />
-                </Pressable>
+                </HeaderIconButton>
               </Link>
             </View>
           ),
@@ -89,14 +89,11 @@ export default function TripsScreen() {
           keyExtractor={(item) => item.id}
           // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
           // スクロールでタイトルが縮む標準挙動を効かせる。
+          // 引っ張り更新は付けない: ラージタイトルとの組み合わせで1回更新すると
+          // 二度と引けなくなる不具合（実機）があり、フォーカス時の自動再取得と
+          // 操作後の invalidate で足りるため撤去（挙動の一貫性優先）。
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={() => void refetch()}
-            />
-          }
           renderItem={({ item }) => (
             <Link href={`/trips/${item.id}`} asChild>
               <Pressable style={styles.card}>
@@ -133,9 +130,8 @@ const styles = StyleSheet.create({
   cardSub: { marginTop: 4, fontSize: 13, color: "rgba(0,0,0,0.6)" },
   empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
   error: { padding: 24, fontSize: 14, color: "#dc2626" },
-  // タップ領域が被らないよう広めに空ける（20px アイコン + hitSlop 8 が
-  // 干渉しない下限 = 16 だと視覚的に窮屈だったため 28）。
-  headerButtons: { flexDirection: "row", alignItems: "center", gap: 28 },
+  // グリフ間の見た目の間隔 = gap + 両ボタンの padding(10×2) ≒ 28 を維持。
+  headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
   fab: {
     position: "absolute",
     right: 20,
