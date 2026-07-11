@@ -29,6 +29,7 @@ import { MemberAvatar } from "@/components/member-avatar";
 import { TrashIcon } from "@/components/icons";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -39,6 +40,8 @@ const JOIN_BASE_URL = "https://triplot.app";
 // 旅行の編集・メンバー・招待・削除（モーダル）。web の TripActions ＋
 // members ページの機能を1画面に集約した RN 版。
 export default function EditTripScreen() {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const tripId = useTripId();
   const t = useTranslations();
   const { session } = useSession();
@@ -292,7 +295,7 @@ export default function EditTripScreen() {
                     name: m.display_name,
                   })}
                 >
-                  <TrashIcon size={16} color="rgba(0,0,0,0.4)" />
+                  <TrashIcon size={16} color={theme.subtleForeground} />
                 </Pressable>
               )}
             </View>
@@ -353,51 +356,53 @@ function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
   // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
   // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: "#fff" },
+  screen: { backgroundColor: t.background },
   content: { padding: 16, gap: 16, paddingBottom: 48 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8 },
-  hint: { fontSize: 12, color: "rgba(0,0,0,0.6)", marginBottom: 8 },
-  warn: { fontSize: 11, color: "#b45309", marginTop: 6 },
+  label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
+  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: t.foreground },
+  hint: { fontSize: 12, color: t.mutedForeground, marginBottom: 8 },
+  warn: { fontSize: 11, color: t.warnAccent, marginTop: 6 },
   input: {
     height: 36,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 14,
+    color: t.foreground,
   },
   inputDisabled: { opacity: 0.5 },
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dateSep: { fontSize: 14, color: "rgba(0,0,0,0.4)" },
+  dateSep: { fontSize: 14, color: t.subtleForeground },
   currencyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   currencyChip: {
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  currencyChipOn: { backgroundColor: "#09090b", borderColor: "#09090b" },
-  currencyText: { fontSize: 13 },
-  currencyTextOn: { color: "#fff" },
+  currencyChipOn: { backgroundColor: t.primary, borderColor: t.primary },
+  currencyText: { fontSize: 13, color: t.foreground },
+  currencyTextOn: { color: t.primaryForeground },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.08)",
+    borderBottomColor: t.fgAlpha(0.08),
   },
-  memberName: { flex: 1, fontSize: 14 },
+  memberName: { flex: 1, fontSize: 14, color: t.foreground },
   memberNameInput: { flex: 1 },
   adminBadge: {
     fontSize: 11,
-    color: "rgba(0,0,0,0.55)",
-    backgroundColor: "rgba(0,0,0,0.06)",
+    color: t.mutedForeground,
+    backgroundColor: t.fgAlpha(0.06),
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
@@ -408,34 +413,34 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     alignItems: "center",
     justifyContent: "center",
   },
-  outlineLabel: { fontSize: 13, fontWeight: "500" },
+  outlineLabel: { fontSize: 13, fontWeight: "500", color: t.foreground },
   submitButton: {
     height: 44,
     borderRadius: 6,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
   },
-  submitLabel: { color: "#fff", fontSize: 15, fontWeight: "500" },
+  submitLabel: { color: t.primaryForeground, fontSize: 15, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   deleteTripButton: {
     height: 40,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.25)",
+    borderColor: t.destructiveBorder,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 24,
   },
-  deleteTripLabel: { fontSize: 13, color: "#dc2626", fontWeight: "500" },
+  deleteTripLabel: { fontSize: 13, color: t.destructiveText, fontWeight: "500" },
   error: {
     fontSize: 13,
-    color: "#b91c1c",
-    backgroundColor: "#fef2f2",
+    color: t.errorText,
+    backgroundColor: t.errorBg,
     borderRadius: 6,
     padding: 10,
   },

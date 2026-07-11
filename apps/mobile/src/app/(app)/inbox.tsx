@@ -20,12 +20,14 @@ import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { supabase } from "@/lib/supabase";
+import { type Theme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
 // 受信箱（メール取り込み）。web の /import 相当（M8 スコープ = 割当/破棄/
 // アドレス表示。確定は各旅行の画面で）。
 export default function InboxScreen() {
   const t = useTranslations("import");
+  const styles = useThemedStyles(makeStyles);
   const { session } = useSession();
   const userId = session?.user.id;
 
@@ -202,42 +204,43 @@ export default function InboxScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
   // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
   // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: "#fff" },
+  screen: { backgroundColor: t.background },
   content: { padding: 16, gap: 12, paddingBottom: 48 },
-  description: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
+  description: { fontSize: 12, color: t.mutedForeground },
   addressBox: {
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
     padding: 12,
     gap: 6,
   },
-  addressLabel: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  address: { fontSize: 13, fontVariant: ["tabular-nums"] },
+  addressLabel: { fontSize: 12, color: t.mutedForeground },
+  address: { fontSize: 13, fontVariant: ["tabular-nums"], color: t.foreground },
   copyButton: {
     height: 32,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     alignItems: "center",
     justifyContent: "center",
     marginTop: 4,
   },
-  copyLabel: { fontSize: 12, fontWeight: "500" },
-  empty: { fontSize: 13, color: "rgba(0,0,0,0.6)", paddingVertical: 16 },
+  copyLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
+  empty: { fontSize: 13, color: t.mutedForeground, paddingVertical: 16 },
   emailCard: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.15)",
+    borderColor: t.fgAlpha(0.15),
     borderRadius: 6,
     padding: 12,
     gap: 6,
   },
-  emailSummary: { fontSize: 14, fontWeight: "500" },
+  emailSummary: { fontSize: 14, fontWeight: "500", color: t.foreground },
   emailMeta: { flexDirection: "row", gap: 10 },
-  metaText: { fontSize: 12, color: "rgba(0,0,0,0.55)" },
+  metaText: { fontSize: 12, color: t.mutedForeground },
   actionsRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -247,19 +250,19 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    backgroundColor: "rgba(0,0,0,0.05)",
+    backgroundColor: t.fgAlpha(0.05),
   },
-  assignButtonWarn: { backgroundColor: "#fef3c7" },
-  assignLabel: { fontSize: 12, fontWeight: "500" },
-  assignLabelWarn: { color: "#b45309" },
-  dismissLabel: { fontSize: 12, color: "rgba(0,0,0,0.5)" },
+  assignButtonWarn: { backgroundColor: t.warnChipBg },
+  assignLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
+  assignLabelWarn: { color: t.warnAccent },
+  dismissLabel: { fontSize: 12, color: t.mutedForeground },
   tripChoices: { gap: 6 },
   tripChoice: {
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.15)",
+    borderColor: t.fgAlpha(0.15),
     borderRadius: 6,
     padding: 10,
   },
-  tripChoiceLabel: { fontSize: 13 },
-  usage: { fontSize: 11, color: "rgba(0,0,0,0.5)", marginTop: 8 },
+  tripChoiceLabel: { fontSize: 13, color: t.foreground },
+  usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
 });

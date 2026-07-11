@@ -2,12 +2,15 @@ import { View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { getIconPath } from "@triplot/shared/placeIcons";
-import { vividColor } from "@triplot/shared/memberColors";
+import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
+
+import { useTheme } from "@/lib/theme";
 
 // 保存済み場所のマーカー（web の place-map と同形＝色付き丸＋白縁＋白カテゴリ
 // アイコン）。確定=green(#10b981)、未確定(tentative)=作成者のメンバー色
 // （vivid）＋半透明。hue が無い未確定は中立グレー（ドット/マーカーのフォール
-// バック規約）。
+// バック規約）。ダーク地図では web と同じく「パステル面＋グレー縁＋濃色アイコン」
+// に反転して地図に馴染ませる。
 export function PlaceMarker({
   icon,
   tentative,
@@ -19,7 +22,14 @@ export function PlaceMarker({
   creatorHue: number | null;
   size?: number;
 }) {
-  const bg = tentative ? (vividColor(creatorHue) ?? "#6b7280") : "#10b981";
+  const t = useTheme();
+  const bg = t.dark
+    ? pastelBgColor(tentative ? creatorHue : 140)
+    : tentative
+      ? (vividColor(creatorHue) ?? "#6b7280")
+      : "#10b981";
+  const border = t.dark ? "#6b7280" : "#fff";
+  const glyph = t.dark ? "#202124" : "#fff";
   return (
     <View
       style={{
@@ -27,7 +37,7 @@ export function PlaceMarker({
         height: size,
         borderRadius: size / 2,
         borderWidth: 2,
-        borderColor: "#fff",
+        borderColor: border,
         backgroundColor: bg,
         alignItems: "center",
         justifyContent: "center",
@@ -40,14 +50,15 @@ export function PlaceMarker({
       }}
     >
       <Svg viewBox="0 -960 960 960" width={16} height={16}>
-        <Path d={getIconPath(icon)} fill="#fff" />
+        <Path d={getIconPath(icon)} fill={glyph} />
       </Svg>
     </View>
   );
 }
 
 // 検索候補・ドラッグ仮ピン（web の RedPin と同じ Material location_on の雫、
-// Google 純正マーカー色 赤 #EA4335・白縁・濃赤の内円）。
+// Google 純正マーカー色 赤 #EA4335・白縁・濃赤の内円）。ブランド色なので
+// ダークでもそのまま。
 export function RedPin({ size = 34 }: { size?: number }) {
   return (
     <Svg viewBox="0 -960 960 960" width={size} height={size}>

@@ -5,8 +5,6 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* ダークモードは未実装。実装するまで OS のダークモードに追従させず、ライト UI で出す。
-     dark: variant を個別に足すのは避け、BACKLOG #13 で一括対応する。 */
   color-scheme: light;
   --background: #ffffff;
   --foreground: oklch(0.248 0 0); /* Material Design high-emphasis: 87% black */

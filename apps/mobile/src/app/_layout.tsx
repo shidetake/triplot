@@ -1,5 +1,6 @@
 import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
-import { Stack } from "expo-router";
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
+import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { IntlProvider } from "use-intl";
 
@@ -9,6 +10,9 @@ import { SessionProvider } from "@/lib/session";
 
 export default function RootLayout() {
   const locale = deviceLocale();
+  // ナビバー/タブバー（React Navigation 描画）の配色を OS のライト/ダークに
+  // 追従させる。アプリ本体の色は lib/theme.ts のトークン側で切り替える。
+  const navTheme = useColorScheme() === "dark" ? DarkTheme : DefaultTheme;
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <IntlProvider
@@ -21,6 +25,7 @@ export default function RootLayout() {
         <SessionProvider>
           <AppQueryProvider>
             <BottomSheetModalProvider>
+              <ThemeProvider value={navTheme}>
               <Stack>
                 <Stack.Screen
                   name="sign-in"
@@ -32,6 +37,7 @@ export default function RootLayout() {
                   options={{ title: "M0 チェック" }}
                 />
               </Stack>
+              </ThemeProvider>
             </BottomSheetModalProvider>
           </AppQueryProvider>
         </SessionProvider>

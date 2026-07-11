@@ -18,11 +18,14 @@ import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 旅行一覧（アプリのホーム）。web の apps/web/app/trips/page.tsx 相当。
 // ヘッダー右に旅行作成（+）と設定（歯車）。
 export default function TripsScreen() {
   const t = useTranslations("trips");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const locale = useLocale();
   const { session } = useSession();
   const userId = session?.user.id;
@@ -55,7 +58,7 @@ export default function TripsScreen() {
               <Link href="/inbox" asChild>
                 <HeaderIconButton accessibilityLabel="取り込み">
                   <View>
-                    <InboxIcon size={20} color="#666666" />
+                    <InboxIcon size={20} color={theme.mutedForeground} />
                     {(inboxCount ?? 0) > 0 && (
                       <View style={styles.inboxBadge}>
                         <Text style={styles.inboxBadgeText}>
@@ -68,7 +71,7 @@ export default function TripsScreen() {
               </Link>
               <Link href="/settings" asChild>
                 <HeaderIconButton accessibilityLabel="設定">
-                  <SettingsIcon size={20} color="#666666" />
+                  <SettingsIcon size={20} color={theme.mutedForeground} />
                 </HeaderIconButton>
               </Link>
             </View>
@@ -110,26 +113,27 @@ export default function TripsScreen() {
       {/* 追加 FAB（予定/費用タブと同じ位置・同じ見た目） */}
       <Link href="/trips/new" asChild>
         <Pressable style={styles.fab} accessibilityLabel={t("create")}>
-          <PlusIcon size={24} color="#fff" />
+          <PlusIcon size={24} color={theme.primaryForeground} />
         </Pressable>
       </Link>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.background },
   list: { padding: 16, gap: 8 },
   card: {
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
     padding: 16,
   },
-  cardTitle: { fontSize: 15, fontWeight: "500" },
-  cardSub: { marginTop: 4, fontSize: 13, color: "rgba(0,0,0,0.6)" },
-  empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
-  error: { padding: 24, fontSize: 14, color: "#dc2626" },
+  cardTitle: { fontSize: 15, fontWeight: "500", color: t.foreground },
+  cardSub: { marginTop: 4, fontSize: 13, color: t.mutedForeground },
+  empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
+  error: { padding: 24, fontSize: 14, color: t.destructiveText },
   // グリフ間の見た目の間隔 = gap + 両ボタンの padding(10×2) ≒ 28 を維持。
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
   fab: {
@@ -139,7 +143,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -157,11 +161,11 @@ const styles = StyleSheet.create({
     height: 15,
     borderRadius: 8,
     paddingHorizontal: 3,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     borderWidth: 1,
-    borderColor: "#fff",
+    borderColor: t.background,
     alignItems: "center",
     justifyContent: "center",
   },
-  inboxBadgeText: { fontSize: 9, fontWeight: "600", color: "#fff" },
+  inboxBadgeText: { fontSize: 9, fontWeight: "600", color: t.primaryForeground },
 });

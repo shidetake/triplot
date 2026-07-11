@@ -9,6 +9,8 @@ import {
 
 import type { PlaceInput } from "@triplot/shared/data/place";
 
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+
 // 場所欄（RN 版・M4 スコープ）: 保存済み(saved) / 自由入力(free) の2モード。
 // Google サジェスト確定(google)は M5 の Places 検索実装後に追加する
 // （PlaceInput の3分岐契約は shared 済みなので後付けできる）。
@@ -23,6 +25,8 @@ export function PlacePicker({
   value: PlaceInput;
   onChange: (v: PlaceInput) => void;
 }) {
+  const t = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
 
   const text =
@@ -53,7 +57,7 @@ export function PlacePicker({
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder="Eggs 'n Things"
-        placeholderTextColor="rgba(0,0,0,0.38)"
+        placeholderTextColor={t.subtleForeground}
         style={styles.input}
       />
       {suggestions.length > 0 && (
@@ -77,27 +81,29 @@ export function PlacePicker({
   );
 }
 
-const styles = StyleSheet.create({
-  input: {
-    height: 36,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 14,
-  },
-  suggestions: {
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
-    borderRadius: 6,
-    marginTop: 4,
-    backgroundColor: "#fff",
-  },
-  suggestionRow: {
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.08)",
-  },
-  suggestionText: { fontSize: 14 },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    input: {
+      height: 36,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      fontSize: 14,
+      color: t.foreground,
+    },
+    suggestions: {
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      marginTop: 4,
+      backgroundColor: t.background,
+    },
+    suggestionRow: {
+      paddingHorizontal: 10,
+      paddingVertical: 8,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.08),
+    },
+    suggestionText: { fontSize: 14, color: t.foreground },
+  });

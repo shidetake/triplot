@@ -20,6 +20,7 @@ import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { PlusIcon } from "@/components/icons";
 import { WeekCalendar } from "@/components/week-calendar";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import {
   useInvalidateTrip,
   useTripDetail,
@@ -35,6 +36,8 @@ export default function ScheduleTab() {
   const tripId = useTripId();
   const locale = useLocale();
   const t = useTranslations();
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { data, me } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
@@ -142,7 +145,7 @@ export default function ScheduleTab() {
         style={styles.fab}
         accessibilityLabel="予定を追加"
       >
-        <PlusIcon size={24} color="#fff" />
+        <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
 
       <FormSheet ref={formRef}>
@@ -180,12 +183,13 @@ export default function ScheduleTab() {
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.background },
   empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
   emptyText: {
     fontSize: 14,
-    color: "rgba(0,0,0,0.6)",
+    color: t.mutedForeground,
     textAlign: "center",
   },
   fab: {
@@ -197,7 +201,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",

@@ -1,5 +1,7 @@
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 
+import { useTheme } from "@/lib/theme";
+
 // 操作系 UI アイコン（RN 版）。web の components/icons.tsx と同じ Lucide の
 // パスを react-native-svg で描く（docs/ui-guidelines.md「ナビも操作系も同じ
 // 中立な線画。iOS でも SF Symbols に置き換えず同じ Lucide パスを RN 側で描き、
@@ -9,9 +11,11 @@ type IconProps = { size?: number; color?: import("react-native").ColorValue };
 
 function LucideIcon({
   size = 18,
-  color = "#000",
+  color,
   children,
 }: IconProps & { children: React.ReactNode }) {
+  const t = useTheme();
+  color = color ?? t.foreground;
   return (
     <Svg
       viewBox="0 0 24 24"

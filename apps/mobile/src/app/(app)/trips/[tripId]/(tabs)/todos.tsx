@@ -35,6 +35,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -68,6 +69,7 @@ type MemberLite = {
 export default function TodosTab() {
   const tripId = useTripId();
   const t = useTranslations();
+  const styles = useThemedStyles(makeStyles);
   const { data, me, userId, refetch, isRefetching } = useTripDetail(tripId);
 
   if (!data?.trip || !me) return null;
@@ -136,6 +138,8 @@ function TodoSection({
   userId: string;
 }) {
   const t = useTranslations("todo");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
   const memberById = new Map(members.map((m) => [m.id, m]));
 
@@ -237,7 +241,7 @@ function TodoSection({
         onPress={() => setCollapsed((c) => !c)}
         style={styles.sectionHeader}
       >
-        <ChevronIcon size={16} color="rgba(0,0,0,0.6)" rotate={collapsed ? 0 : 90} />
+        <ChevronIcon size={16} color={theme.mutedForeground} rotate={collapsed ? 0 : 90} />
         <Text style={styles.sectionTitle}>{title}</Text>
         <Text style={styles.sectionCount}>{todos.length}</Text>
       </Pressable>
@@ -252,7 +256,7 @@ function TodoSection({
               placeholder={
                 kind === "prep" ? t("placeholderPrep") : t("placeholderOnsite")
               }
-              placeholderTextColor="rgba(0,0,0,0.38)"
+              placeholderTextColor={theme.subtleForeground}
               style={styles.input}
               returnKeyType="done"
               onSubmitEditing={() => addMutation.mutate()}
@@ -267,7 +271,7 @@ function TodoSection({
             >
               <LockIcon
                 size={16}
-                color={draftPrivate ? "#09090b" : "rgba(0,0,0,0.38)"}
+                color={draftPrivate ? theme.foreground : theme.subtleForeground}
               />
             </Pressable>
             <Pressable
@@ -295,7 +299,7 @@ function TodoSection({
                   styles.disabled,
               ]}
             >
-              <PlusIcon size={16} color="#fff" />
+              <PlusIcon size={16} color={theme.primaryForeground} />
             </Pressable>
           </View>
 
@@ -314,7 +318,7 @@ function TodoSection({
                   }
                   style={[styles.checkbox, todo.done && styles.checkboxDone]}
                 >
-                  {todo.done && <CheckIcon size={13} color="#fff" />}
+                  {todo.done && <CheckIcon size={13} color={theme.primaryForeground} />}
                 </Pressable>
 
                 <Pressable onPress={() => void cyclePriority(todo)} hitSlop={8}>
@@ -334,7 +338,7 @@ function TodoSection({
                 </Pressable>
 
                 {todo.visibility === "private" && (
-                  <LockIcon size={14} color="rgba(0,0,0,0.5)" />
+                  <LockIcon size={14} color={theme.mutedForeground} />
                 )}
 
                 {creator && <Avatar member={creator} />}
@@ -348,7 +352,7 @@ function TodoSection({
                   >
                     <HeartIcon
                       size={15}
-                      color={todo.iLiked ? "#f43f5e" : "rgba(0,0,0,0.4)"}
+                      color={todo.iLiked ? "#f43f5e" : theme.subtleForeground}
                       filled={todo.iLiked}
                     />
                     {todo.likeCount > 0 && (
@@ -362,7 +366,7 @@ function TodoSection({
                   hitSlop={8}
                   accessibilityLabel={t("deleteAria")}
                 >
-                  <TrashIcon size={15} color="rgba(0,0,0,0.4)" />
+                  <TrashIcon size={15} color={theme.subtleForeground} />
                 </Pressable>
               </View>
             );
@@ -375,6 +379,8 @@ function TodoSection({
 
 // 色丸＋頭文字（web の MemberAvatar 相当。写真があれば写真）。
 function Avatar({ member }: { member: MemberLite }) {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   if (member.avatarUrl) {
     return <Image source={{ uri: member.avatarUrl }} style={styles.avatar} />;
   }
@@ -386,39 +392,41 @@ function Avatar({ member }: { member: MemberLite }) {
     <View
       style={[
         styles.avatar,
-        { backgroundColor: s.backgroundColor ?? "rgba(0,0,0,0.08)" },
+        { backgroundColor: s.backgroundColor ?? theme.fgAlpha(0.08) },
       ]}
     >
-      <Text style={[styles.avatarText, { color: s.color ?? "#333" }]}>
+      <Text style={[styles.avatarText, { color: s.color ?? theme.mutedForeground }]}>
         {firstChar(member.display_name)}
       </Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.background },
   content: { padding: 16, gap: 20, paddingBottom: 48 },
   section: { gap: 8 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  sectionTitle: { fontSize: 15, fontWeight: "600" },
-  sectionCount: { fontSize: 12, color: "rgba(0,0,0,0.45)" },
+  sectionTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
+  sectionCount: { fontSize: 12, color: t.subtleForeground },
   addRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   input: {
     flex: 1,
     height: 36,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 14,
+    color: t.foreground,
   },
   iconButton: { padding: 4 },
   addButton: {
     width: 32,
     height: 32,
     borderRadius: 6,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -434,19 +442,19 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.3)",
+    borderColor: t.fgAlpha(0.3),
     alignItems: "center",
     justifyContent: "center",
   },
-  checkboxDone: { backgroundColor: "#09090b", borderColor: "#09090b" },
+  checkboxDone: { backgroundColor: t.primary, borderColor: t.primary },
   titleArea: { flex: 1 },
-  title: { fontSize: 14 },
+  title: { fontSize: 14, color: t.foreground },
   titleDone: {
     textDecorationLine: "line-through",
-    color: "rgba(0,0,0,0.4)",
+    color: t.subtleForeground,
   },
   likeArea: { flexDirection: "row", alignItems: "center", gap: 2 },
-  likeCount: { fontSize: 11, color: "rgba(0,0,0,0.5)" },
+  likeCount: { fontSize: 11, color: t.mutedForeground },
   avatar: {
     width: 18,
     height: 18,

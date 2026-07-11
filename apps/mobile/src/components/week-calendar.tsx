@@ -21,6 +21,8 @@ import {
 import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+
 // 週カレンダーの描画（RN）。レイアウト計算は shared の buildSchedule に委ね、
 // ここはその出力（列・配置済みブロック・終日バー）を描くだけ（web の
 // week-calendar.tsx と同じ役割分担）。寸法も web に合わせる。
@@ -55,6 +57,8 @@ export function WeekCalendar({
   myMemberId: string;
   onEventPress: (event: EventRow) => void;
 }) {
+  const t = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
 
@@ -88,9 +92,9 @@ export function WeekCalendar({
   // 未定なので、参加者構成に基づく色分けより優先して warning(amber)＋破線で
   // 「未確定」を示す（web の draftAppearance と同じ。ui-guidelines のセマンティック色）。
   const DRAFT_COLORS = {
-    bg: "#fffbeb", // amber-50
-    border: "#fbbf24", // amber-400
-    text: "#78350f", // amber-900
+    bg: t.warnBg,
+    border: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400（darkは/50）
+    text: t.warnText,
     dim: false,
   };
 
@@ -111,9 +115,9 @@ export function WeekCalendar({
     if (hue == null) {
       // private / 自分不参加の mixed = 中立グレー。
       return {
-        bg: "rgba(0,0,0,0.06)",
-        border: "rgba(0,0,0,0.15)",
-        text: "rgba(0,0,0,0.7)",
+        bg: t.fgAlpha(0.06),
+        border: t.fgAlpha(0.15),
+        text: t.mutedForeground,
         dim: c.kind === "mixed",
       };
     }
@@ -138,7 +142,7 @@ export function WeekCalendar({
     else if (c.kind === "hue") hue = c.hue;
     else if (c.kind === "mixed") hue = c.selfHue;
     if (hue == null)
-      return { bg: "rgba(0,0,0,0.08)", text: "rgba(0,0,0,0.7)" };
+      return { bg: t.fgAlpha(0.08), text: t.mutedForeground };
     return { bg: eventBarHueBg(hue, false), text: eventBarHueText(hue) };
   };
 
@@ -392,31 +396,32 @@ export function WeekCalendar({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.background },
   headerRow: {
     flexDirection: "row",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.12)",
+    borderBottomColor: t.fgAlpha(0.12),
   },
   corner: {
     borderRightWidth: StyleSheet.hairlineWidth,
-    borderRightColor: "rgba(0,0,0,0.08)",
+    borderRightColor: t.fgAlpha(0.08),
   },
   dayHeaderRow: { flexDirection: "row" },
   dayHeaderCell: {
     alignItems: "center",
     justifyContent: "center",
     borderLeftWidth: StyleSheet.hairlineWidth,
-    borderLeftColor: "rgba(0,0,0,0.08)",
+    borderLeftColor: t.fgAlpha(0.08),
     paddingHorizontal: 2,
   },
-  dayHeaderLabel: { fontSize: 12, fontWeight: "600" },
-  tzNote: { fontSize: 9, color: "rgba(0,0,0,0.5)" },
+  dayHeaderLabel: { fontSize: 12, fontWeight: "600", color: t.foreground },
+  tzNote: { fontSize: 9, color: t.mutedForeground },
   allDayArea: {
-    backgroundColor: "rgba(0,0,0,0.02)",
+    backgroundColor: t.fgAlpha(0.02),
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: "rgba(0,0,0,0.06)",
+    borderTopColor: t.fgAlpha(0.06),
   },
   allDayBar: {
     position: "absolute",
@@ -431,18 +436,18 @@ const styles = StyleSheet.create({
   gutterHour: { position: "absolute", right: 4 },
   gutterLabel: {
     fontSize: 10,
-    color: "rgba(0,0,0,0.4)",
+    color: t.subtleForeground,
     transform: [{ translateY: -6 }],
   },
   hourLine: {
     position: "absolute",
     height: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: t.fgAlpha(0.06),
   },
   colLine: {
     position: "absolute",
     width: StyleSheet.hairlineWidth,
-    backgroundColor: "rgba(0,0,0,0.06)",
+    backgroundColor: t.fgAlpha(0.06),
   },
   eventBlock: {
     position: "absolute",
@@ -459,7 +464,7 @@ const styles = StyleSheet.create({
   draftBar: {
     borderWidth: 1,
     borderStyle: "dashed",
-    borderColor: "#fbbf24", // amber-400
+    borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
   },
   eventTitle: { fontSize: 11, fontWeight: "500" },
   eventTime: { fontSize: 9, opacity: 0.7 },

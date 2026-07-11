@@ -38,6 +38,7 @@ import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon, XIcon } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import {
   useInvalidateTrip,
   useTripDetail,
@@ -54,6 +55,8 @@ export default function ExpensesTab() {
   const t = useTranslations();
   const tExp = useTranslations("expense");
   const tImport = useTranslations("import");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { data, me, refetch, isRefetching } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
@@ -208,7 +211,7 @@ export default function ExpensesTab() {
                   hitSlop={8}
                   accessibilityLabel={tImport("dismiss")}
                 >
-                  <XIcon size={16} color="rgba(0,0,0,0.45)" />
+                  <XIcon size={16} color={theme.subtleForeground} />
                 </Pressable>
               </View>
             ))}
@@ -327,7 +330,7 @@ export default function ExpensesTab() {
         style={styles.fab}
         accessibilityLabel={tExp("addAria")}
       >
-        <PlusIcon size={24} color="#fff" />
+        <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
 
       <FormSheet ref={sheetRef}>
@@ -377,6 +380,7 @@ function SummaryCell({
   currency: Currency;
   emphasized?: boolean;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.summaryCell}>
       <Text style={styles.summaryLabel}>{label}</Text>
@@ -394,20 +398,21 @@ function formatDateTime(iso: string): string {
   return hhmm === "00:00" ? `${mo}/${d}` : `${mo}/${d} ${hhmm}`;
 }
 
-const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: "#fff" },
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.background },
   content: { padding: 16, gap: 8, paddingBottom: 96 },
   // 未確定の取り込み（warning=amber。web の amber-50/200/900 と同じ）。
   draftBox: {
     borderWidth: 1,
-    borderColor: "#fde68a", // amber-200
-    backgroundColor: "#fffbeb", // amber-50
+    borderColor: t.warnBorder,
+    backgroundColor: t.warnBg,
     borderRadius: 8,
     padding: 12,
     gap: 8,
     marginBottom: 8,
   },
-  draftHeading: { fontSize: 13, fontWeight: "500", color: "#78350f" }, // amber-900
+  draftHeading: { fontSize: 13, fontWeight: "500", color: t.warnText },
   draftRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   draftButton: {
     flex: 1,
@@ -416,9 +421,9 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     gap: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
-    backgroundColor: "#fff",
+    backgroundColor: t.background,
     paddingHorizontal: 10,
     paddingVertical: 8,
   },
@@ -435,43 +440,43 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
-  draftDivider: { width: 1, height: 12, backgroundColor: "rgba(0,0,0,0.1)" },
-  draftLabelText: { fontSize: 13, flexShrink: 1 },
+  draftDivider: { width: 1, height: 12, backgroundColor: t.fgAlpha(0.1) },
+  draftLabelText: { fontSize: 13, flexShrink: 1, color: t.foreground },
   confirmChip: {
     borderRadius: 4,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  confirmChipText: { fontSize: 11, fontWeight: "500", color: "#fff" },
+  confirmChipText: { fontSize: 11, fontWeight: "500", color: t.primaryForeground },
   summaryGrid: {
     flexDirection: "row",
     gap: 8,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
     padding: 16,
   },
   summaryCell: { flex: 1 },
-  summaryLabel: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  summaryValue: { marginTop: 4, fontSize: 14, fontWeight: "500" },
-  summaryValueLg: { marginTop: 4, fontSize: 18, fontWeight: "600" },
+  summaryLabel: { fontSize: 12, color: t.mutedForeground },
+  summaryValue: { marginTop: 4, fontSize: 14, fontWeight: "500", color: t.foreground },
+  summaryValueLg: { marginTop: 4, fontSize: 18, fontWeight: "600", color: t.foreground },
   card: {
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
+    borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
     padding: 16,
     gap: 6,
     marginBottom: 8,
   },
-  cardTitle: { fontSize: 14, fontWeight: "500" },
-  muted: { fontSize: 14, color: "rgba(0,0,0,0.6)" },
-  settlementRow: { fontSize: 14, color: "rgba(0,0,0,0.6)" },
-  settlementName: { fontWeight: "500", color: "#000" },
-  rateHint: { marginTop: 6, fontSize: 12, color: "rgba(0,0,0,0.6)" },
+  cardTitle: { fontSize: 14, fontWeight: "500", color: t.foreground },
+  muted: { fontSize: 14, color: t.mutedForeground },
+  settlementRow: { fontSize: 14, color: t.mutedForeground },
+  settlementName: { fontWeight: "500", color: t.foreground },
+  rateHint: { marginTop: 6, fontSize: 12, color: t.mutedForeground },
   expenseRow: {
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: "rgba(0,0,0,0.12)",
+    borderColor: t.fgAlpha(0.12),
     borderRadius: 6,
     padding: 12,
     gap: 4,
@@ -483,17 +488,17 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   categoryBadge: { flexDirection: "row", alignItems: "center", gap: 4 },
-  categoryName: { fontSize: 12, color: "rgba(0,0,0,0.7)" },
-  amount: { fontSize: 14, fontWeight: "500" },
-  foreign: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
+  categoryName: { fontSize: 12, color: t.mutedForeground },
+  amount: { fontSize: 14, fontWeight: "500", color: t.foreground },
+  foreign: { fontSize: 12, color: t.mutedForeground },
   expenseMeta: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
     gap: 8,
   },
-  metaText: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
+  metaText: { fontSize: 12, color: t.mutedForeground },
+  empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
   fab: {
     position: "absolute",
     right: 20,
@@ -501,7 +506,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",

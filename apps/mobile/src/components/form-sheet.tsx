@@ -12,6 +12,8 @@ import {
 import { StyleSheet } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useTheme } from "@/lib/theme";
+
 // iOS 標準のコンパクトナビバー高（pt）。ヘッダー帯の実高 = safe area 上端 + これ。
 const NAV_BAR_HEIGHT = 44;
 
@@ -32,6 +34,7 @@ export const FormSheet = forwardRef<
 >(function FormSheet({ children }, ref) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
+  const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
 
   useImperativeHandle(ref, () => ({
@@ -48,6 +51,8 @@ export const FormSheet = forwardRef<
       enableDynamicSizing={false}
       // 背景は薄暗く（モーダル）＋ドラッグで閉じ。上に元画面が残る。
       backdropComponent={undefined}
+      backgroundStyle={{ backgroundColor: t.background }}
+      handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView contentContainerStyle={styles.content}>
         {children(dismiss)}

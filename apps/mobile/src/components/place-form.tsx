@@ -15,6 +15,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 
 import { TrashIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import Svg, { Path } from "react-native-svg";
 
 // 場所の追加/編集フォーム（RN・M5）。新規は検索候補(PlaceCandidate)または
@@ -41,6 +42,8 @@ export function PlaceForm({
   onDone: () => void;
 }) {
   const t = useTranslations("place");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const isEdit = !!editPlace;
   const name = editPlace?.name ?? candidate?.name ?? "";
   // 仮ピンは名前を自由入力（web の「ピンを設定」と同じ）。
@@ -140,7 +143,7 @@ export function PlaceForm({
           value={pinName}
           onChangeText={setPinName}
           placeholder={t("placeholderName")}
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={[styles.input, styles.nameInput]}
           autoFocus
         />
@@ -164,7 +167,7 @@ export function PlaceForm({
               <Svg viewBox="0 -960 960 960" width={20} height={20}>
                 <Path
                   d={getIconPath(key)}
-                  fill={on ? "#fff" : "rgba(0,0,0,0.7)"}
+                  fill={on ? theme.primaryForeground : theme.mutedForeground}
                 />
               </Svg>
             </Pressable>
@@ -217,7 +220,7 @@ export function PlaceForm({
           value={note}
           onChangeText={setNote}
           placeholder={t("placeholderMemo")}
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -230,7 +233,7 @@ export function PlaceForm({
             style={styles.deleteButton}
             accessibilityLabel="削除"
           >
-            <TrashIcon size={18} color="#dc2626" />
+            <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
         <Pressable
@@ -249,68 +252,74 @@ export function PlaceForm({
   );
 }
 
-const styles = StyleSheet.create({
-  content: { padding: 16, gap: 14 },
-  name: { fontSize: 18, fontWeight: "600" },
-  nameInput: { fontSize: 16 },
-  address: { fontSize: 13, color: "rgba(0,0,0,0.6)", marginTop: -6 },
-  iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  iconChip: {
-    width: 40,
-    height: 40,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  iconChipOn: { backgroundColor: "#09090b", borderColor: "#09090b" },
-  inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  label: { fontSize: 13, fontWeight: "500" },
-  radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.35)",
-  },
-  radioOn: { borderWidth: 5, borderColor: "#09090b" },
-  radioLabel: { fontSize: 13 },
-  input: {
-    height: 36,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 14,
-    marginTop: 4,
-  },
-  footer: { flexDirection: "row", gap: 8, marginTop: 4 },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: "#09090b",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitLabel: { color: "#fff", fontSize: 15, fontWeight: "500" },
-  disabled: { opacity: 0.5 },
-  error: {
-    fontSize: 13,
-    color: "#b91c1c",
-    backgroundColor: "#fef2f2",
-    borderRadius: 6,
-    padding: 10,
-  },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    content: { padding: 16, gap: 14 },
+    name: { fontSize: 18, fontWeight: "600", color: t.foreground },
+    nameInput: { fontSize: 16 },
+    address: { fontSize: 13, color: t.mutedForeground, marginTop: -6 },
+    iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    iconChip: {
+      width: 40,
+      height: 40,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    iconChipOn: { backgroundColor: t.primary, borderColor: t.primary },
+    inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    label: { fontSize: 13, fontWeight: "500", color: t.foreground },
+    radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    radio: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: t.fgAlpha(0.35),
+    },
+    radioOn: { borderWidth: 5, borderColor: t.primary },
+    radioLabel: { fontSize: 13, color: t.foreground },
+    input: {
+      height: 36,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      fontSize: 14,
+      marginTop: 4,
+      color: t.foreground,
+    },
+    footer: { flexDirection: "row", gap: 8, marginTop: 4 },
+    deleteButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    submitButton: {
+      flex: 1,
+      height: 44,
+      borderRadius: 6,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    submitLabel: {
+      color: t.primaryForeground,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    disabled: { opacity: 0.5 },
+    error: {
+      fontSize: 13,
+      color: t.errorText,
+      backgroundColor: t.errorBg,
+      borderRadius: 6,
+      padding: 10,
+    },
+  });

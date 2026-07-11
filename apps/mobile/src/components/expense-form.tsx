@@ -41,6 +41,7 @@ import { ChevronIcon, PlusIcon, TrashIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
 import { ToggleChip } from "./toggle-chip";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Member = {
   id: string;
@@ -90,6 +91,8 @@ export function ExpenseForm({
   onSuccess?: (expenseId?: string) => void;
 }) {
   const t = useTranslations("expense");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const isEdit = !!editExpense;
 
   const [price, setPrice] = useState(
@@ -335,7 +338,7 @@ export function ExpenseForm({
             onChangeText={setPrice}
             keyboardType="decimal-pad"
             placeholder="0"
-            placeholderTextColor="rgba(0,0,0,0.38)"
+            placeholderTextColor={theme.subtleForeground}
             style={styles.input}
           />
         </View>
@@ -346,7 +349,7 @@ export function ExpenseForm({
             style={[styles.input, styles.selectTrigger]}
           >
             <Text style={styles.selectText}>{localCurrency}</Text>
-            <ChevronIcon size={14} color="rgba(0,0,0,0.45)" rotate={90} />
+            <ChevronIcon size={14} color={theme.subtleForeground} rotate={90} />
           </Pressable>
         </View>
       </View>
@@ -366,7 +369,7 @@ export function ExpenseForm({
                 ? formatRate(averageRates[localCurrency]!)
                 : t("placeholderRate")
             }
-            placeholderTextColor="rgba(0,0,0,0.38)"
+            placeholderTextColor={theme.subtleForeground}
             style={styles.input}
           />
           <Text style={styles.hint}>
@@ -396,7 +399,7 @@ export function ExpenseForm({
                 <ExpenseCategoryIcon
                   icon={c.icon}
                   size={14}
-                  color={on ? "#fff" : c.color}
+                  color={on ? theme.primaryForeground : c.color}
                 />
                 <Text
                   style={[
@@ -511,7 +514,7 @@ export function ExpenseForm({
           value={note}
           onChangeText={setNote}
           placeholder={t("placeholderMemo")}
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -548,7 +551,7 @@ export function ExpenseForm({
             </Text>
             <ChevronIcon
               size={16}
-              color="rgba(0,0,0,0.45)"
+              color={theme.subtleForeground}
               rotate={payerOpen ? -90 : 90}
             />
           </Pressable>
@@ -589,7 +592,7 @@ export function ExpenseForm({
             </Text>
             <ChevronIcon
               size={16}
-              color="rgba(0,0,0,0.45)"
+              color={theme.subtleForeground}
               rotate={splitMode === "all" ? 90 : -90}
             />
           </Pressable>
@@ -617,7 +620,7 @@ export function ExpenseForm({
             style={styles.deleteButton}
             accessibilityLabel="削除"
           >
-            <TrashIcon size={18} color="#dc2626" />
+            <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
         <Pressable
@@ -626,7 +629,7 @@ export function ExpenseForm({
           style={[styles.submitButton, busy && styles.disabled]}
           accessibilityLabel={isEdit ? "保存" : t("addAria")}
         >
-          <PlusIcon size={20} color="#fff" />
+          <PlusIcon size={20} color={theme.primaryForeground} />
         </Pressable>
       </View>
 
@@ -639,7 +642,10 @@ export function ExpenseForm({
         presentationStyle="pageSheet"
         onRequestClose={() => setCurrencyOpen(false)}
       >
-        <ScrollView contentContainerStyle={styles.currencyList}>
+        <ScrollView
+          style={{ backgroundColor: theme.background }}
+          contentContainerStyle={styles.currencyList}
+        >
           {currencyChoices.map((c) => (
             <Pressable
               key={c}
@@ -676,109 +682,120 @@ function formatLocalTime(d: Date): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const styles = StyleSheet.create({
-  content: { padding: 16, gap: 14, paddingBottom: 48 },
-  row2: { flexDirection: "row", gap: 8 },
-  grow: { flex: 1 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
-  required: { color: "#dc2626" },
-  invisible: { opacity: 0 },
-  input: {
-    height: 36,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 14,
-    minWidth: 72,
-  },
-  selectTrigger: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 6,
-  },
-  selectText: { fontSize: 14 },
-  hint: { marginTop: 4, fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  categoryChip: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-  },
-  categoryChipOn: { backgroundColor: "#09090b", borderColor: "#09090b" },
-  categoryLabel: { fontSize: 12 },
-  categoryLabelOn: { color: "#fff" },
-  datePicker: { alignSelf: "flex-start", marginLeft: -8 },
-  timeHeader: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  removeTime: { fontSize: 11, color: "rgba(0,0,0,0.5)" },
-  addTime: {
-    height: 36,
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: "rgba(0,0,0,0.2)",
-    borderRadius: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  addTimeText: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  tzOptions: { marginTop: 6, gap: 6 },
-  tzOption: { flexDirection: "row", alignItems: "center", gap: 6 },
-  tzOptionLabel: { fontSize: 13 },
-  radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.35)",
-  },
-  radioOn: { borderWidth: 5, borderColor: "#09090b" },
-  radioLabel: { fontSize: 13 },
-  inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
-  disclosureLabel: { fontSize: 13, fontWeight: "500", color: "rgba(0,0,0,0.6)" },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
-  footer: { flexDirection: "row", gap: 8, marginTop: 8 },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: "#09090b",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disabled: { opacity: 0.5 },
-  error: {
-    fontSize: 13,
-    color: "#b91c1c",
-    backgroundColor: "#fef2f2",
-    borderRadius: 6,
-    padding: 10,
-  },
-  currencyList: { padding: 16 },
-  currencyRow: {
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.08)",
-  },
-  currencyText: { fontSize: 15 },
-  currencyTextOn: { fontWeight: "700" },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    content: { padding: 16, gap: 14, paddingBottom: 48 },
+    row2: { flexDirection: "row", gap: 8 },
+    grow: { flex: 1 },
+    label: {
+      fontSize: 13,
+      fontWeight: "500",
+      marginBottom: 4,
+      color: t.foreground,
+    },
+    required: { color: t.destructiveText },
+    invisible: { opacity: 0 },
+    input: {
+      height: 36,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      fontSize: 14,
+      minWidth: 72,
+      color: t.foreground,
+    },
+    selectTrigger: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 6,
+    },
+    selectText: { fontSize: 14, color: t.foreground },
+    hint: { marginTop: 4, fontSize: 12, color: t.mutedForeground },
+    categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+    categoryChip: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      paddingHorizontal: 8,
+      paddingVertical: 6,
+    },
+    categoryChipOn: { backgroundColor: t.primary, borderColor: t.primary },
+    categoryLabel: { fontSize: 12, color: t.foreground },
+    categoryLabelOn: { color: t.primaryForeground },
+    datePicker: { alignSelf: "flex-start", marginLeft: -8 },
+    timeHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    removeTime: { fontSize: 11, color: t.mutedForeground },
+    addTime: {
+      height: 36,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    addTimeText: { fontSize: 12, color: t.mutedForeground },
+    tzOptions: { marginTop: 6, gap: 6 },
+    tzOption: { flexDirection: "row", alignItems: "center", gap: 6 },
+    tzOptionLabel: { fontSize: 13, color: t.foreground },
+    radio: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: t.fgAlpha(0.35),
+    },
+    radioOn: { borderWidth: 5, borderColor: t.primary },
+    radioLabel: { fontSize: 13, color: t.foreground },
+    inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
+    disclosureLabel: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.mutedForeground,
+    },
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+    footer: { flexDirection: "row", gap: 8, marginTop: 8 },
+    deleteButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    submitButton: {
+      flex: 1,
+      height: 44,
+      borderRadius: 6,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    disabled: { opacity: 0.5 },
+    error: {
+      fontSize: 13,
+      color: t.errorText,
+      backgroundColor: t.errorBg,
+      borderRadius: 6,
+      padding: 10,
+    },
+    currencyList: { padding: 16 },
+    currencyRow: {
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.08),
+    },
+    currencyText: { fontSize: 15, color: t.foreground },
+    currencyTextOn: { fontWeight: "700" },
+  });

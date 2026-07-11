@@ -18,11 +18,14 @@ import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
 // 旅行作成（モーダル）。web の create-trip-form 相当（コピー作成は後回し、
 // 新規のみ）。成功で作成した旅行の詳細へ遷移。
 export default function NewTripScreen() {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
   const { session } = useSession();
   const userId = session?.user.id;
@@ -81,7 +84,7 @@ export default function NewTripScreen() {
           value={title}
           onChangeText={setTitle}
           placeholder={t("titlePlaceholder")}
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -92,7 +95,7 @@ export default function NewTripScreen() {
           value={effectiveName}
           onChangeText={setDisplayName}
           placeholder="名前"
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -173,47 +176,49 @@ function fmtDate(d: Date): string {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
   // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
   // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: "#fff" },
+  screen: { backgroundColor: t.background },
   content: { padding: 16, gap: 16 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
+  label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
   input: {
     height: 36,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
     paddingHorizontal: 10,
     fontSize: 14,
+    color: t.foreground,
   },
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  dateSep: { fontSize: 14, color: "rgba(0,0,0,0.4)" },
+  dateSep: { fontSize: 14, color: t.subtleForeground },
   currencyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   currencyChip: {
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
+    borderColor: t.fgAlpha(0.2),
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  currencyChipOn: { backgroundColor: "#09090b", borderColor: "#09090b" },
-  currencyText: { fontSize: 13 },
-  currencyTextOn: { color: "#fff" },
+  currencyChipOn: { backgroundColor: t.primary, borderColor: t.primary },
+  currencyText: { fontSize: 13, color: t.foreground },
+  currencyTextOn: { color: t.primaryForeground },
   submitButton: {
     height: 44,
     borderRadius: 6,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
     marginTop: 8,
   },
-  submitLabel: { color: "#fff", fontSize: 15, fontWeight: "500" },
+  submitLabel: { color: t.primaryForeground, fontSize: 15, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   error: {
     fontSize: 13,
-    color: "#b91c1c",
-    backgroundColor: "#fef2f2",
+    color: t.errorText,
+    backgroundColor: t.errorBg,
     borderRadius: 6,
     padding: 10,
   },

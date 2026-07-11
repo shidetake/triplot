@@ -31,6 +31,7 @@ import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceForm } from "@/components/place-form";
 import { PlaceMarker, RedPin } from "@/components/place-marker";
 import { SearchIcon } from "@/components/icons";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -42,6 +43,8 @@ const BUNDLE_ID = "app.triplot.mobile";
 export default function PlacesTab() {
   const tripId = useTripId();
   const t = useTranslations("place");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const { data, me } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
 
@@ -193,6 +196,7 @@ export default function PlacesTab() {
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
         onLongPress={(e) => {
           const c = e.nativeEvent.coordinate;
           onMapLongPress(c.latitude, c.longitude);
@@ -247,7 +251,7 @@ export default function PlacesTab() {
           value={query}
           onChangeText={setQuery}
           placeholder={t("searchPlaceholder")}
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.searchInput}
           returnKeyType="search"
           onSubmitEditing={() => void runSearch()}
@@ -259,15 +263,21 @@ export default function PlacesTab() {
           accessibilityLabel={t("searchAria")}
         >
           {searching ? (
-            <ActivityIndicator size="small" color="#fff" />
+            <ActivityIndicator size="small" color={theme.primaryForeground} />
           ) : (
-            <SearchIcon size={18} color="#fff" />
+            <SearchIcon size={18} color={theme.primaryForeground} />
           )}
         </Pressable>
       </View>
 
       {/* 場所一覧（ドラッグ式ボトムシート） */}
-      <BottomSheet ref={listSheetRef} index={0} snapPoints={["12%", "45%", "88%"]}>
+      <BottomSheet
+        ref={listSheetRef}
+        index={0}
+        snapPoints={["12%", "45%", "88%"]}
+        backgroundStyle={{ backgroundColor: theme.background }}
+        handleIndicatorStyle={{ backgroundColor: theme.fgAlpha(0.2) }}
+      >
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetCount}>{places.length}件の場所</Text>
         </View>
@@ -329,7 +339,83 @@ export default function PlacesTab() {
   );
 }
 
-const styles = StyleSheet.create({
+// Google 公式サンプルの夜間スタイル（ダーク時のベースマップ。web は Map の
+// colorScheme に任せるが、react-native-maps の Google provider は JSON 指定）。
+const DARK_MAP_STYLE = [
+  { elementType: "geometry", stylers: [{ color: "#242f3e" }] },
+  { elementType: "labels.text.fill", stylers: [{ color: "#746855" }] },
+  { elementType: "labels.text.stroke", stylers: [{ color: "#242f3e" }] },
+  {
+    featureType: "administrative.locality",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "geometry",
+    stylers: [{ color: "#263c3f" }],
+  },
+  {
+    featureType: "poi.park",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#6b9a76" }],
+  },
+  { featureType: "road", elementType: "geometry", stylers: [{ color: "#38414e" }] },
+  {
+    featureType: "road",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#212a37" }],
+  },
+  {
+    featureType: "road",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#9ca5b3" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry",
+    stylers: [{ color: "#746855" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "geometry.stroke",
+    stylers: [{ color: "#1f2835" }],
+  },
+  {
+    featureType: "road.highway",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#f3d19c" }],
+  },
+  {
+    featureType: "transit",
+    elementType: "geometry",
+    stylers: [{ color: "#2f3948" }],
+  },
+  {
+    featureType: "transit.station",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#d59563" }],
+  },
+  { featureType: "water", elementType: "geometry", stylers: [{ color: "#17263c" }] },
+  {
+    featureType: "water",
+    elementType: "labels.text.fill",
+    stylers: [{ color: "#515c6d" }],
+  },
+  {
+    featureType: "water",
+    elementType: "labels.text.stroke",
+    stylers: [{ color: "#17263c" }],
+  },
+];
+
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
   screen: { flex: 1 },
   searchBar: {
     position: "absolute",
@@ -343,9 +429,10 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 44,
     borderRadius: 8,
-    backgroundColor: "#fff",
+    backgroundColor: t.background,
     paddingHorizontal: 14,
     fontSize: 15,
+    color: t.foreground,
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 6,
@@ -356,12 +443,12 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 8,
-    backgroundColor: "#09090b",
+    backgroundColor: t.primary,
     alignItems: "center",
     justifyContent: "center",
   },
   sheetHeader: { paddingHorizontal: 16, paddingBottom: 8, alignItems: "center" },
-  sheetCount: { fontSize: 13, color: "rgba(0,0,0,0.55)" },
+  sheetCount: { fontSize: 13, color: t.mutedForeground },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   placeRow: {
     flexDirection: "row",
@@ -369,10 +456,10 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "rgba(0,0,0,0.08)",
+    borderBottomColor: t.fgAlpha(0.08),
   },
   placeInfo: { flex: 1 },
-  placeName: { fontSize: 15 },
-  placeMeta: { fontSize: 12, color: "rgba(0,0,0,0.55)", marginTop: 2 },
-  empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
+  placeName: { fontSize: 15, color: t.foreground },
+  placeMeta: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
+  empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
 });

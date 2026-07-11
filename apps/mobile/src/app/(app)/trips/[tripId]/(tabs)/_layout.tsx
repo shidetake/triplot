@@ -7,6 +7,7 @@ import {
   MapIcon,
   WalletIcon,
 } from "@/components/icons";
+import { useTheme } from "@/lib/theme";
 
 // 旅行詳細 = 予定/場所/費用/TODO の4タブ（画面サイズによらず常時タブ固定。
 // web のモバイル幅タブと同じ並び・同じ Lucide アイコン）。
@@ -14,18 +15,18 @@ import {
 // Tabs 側のヘッダーは出さない（二重ヘッダー防止）。
 export default function TripTabsLayout() {
   const t = useTranslations("tripTabs");
+  const theme = useTheme();
 
   return (
     <>
       <Tabs
         screenOptions={{
           headerShown: false,
-          tabBarActiveTintColor: "#09090b",
-          // web の text-muted-foreground（oklch(0.510)＝白地60%黒相当）と同値の
-          // 不透明グレー。半透明(rgba)だと Lucide の複数パスが重なる箇所だけ
-          // 透明度が二重にかかって黒ずむため、web と同じく濃度を焼き込んだ
-          // 不透明値で塗る。
-          tabBarInactiveTintColor: "#666666",
+          // 選択=foreground / 非選択=muted（web のタブと同じ意味構造）。
+          // 半透明(rgba)だと Lucide の複数パスが重なる箇所だけ透明度が二重に
+          // かかって黒ずむため、web と同じく濃度を焼き込んだ不透明値で塗る。
+          tabBarActiveTintColor: theme.foreground,
+          tabBarInactiveTintColor: theme.mutedForeground,
         }}
       >
       <Tabs.Screen

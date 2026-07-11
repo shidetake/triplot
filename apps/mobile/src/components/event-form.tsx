@@ -33,6 +33,7 @@ import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
 import { TrashIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Member = { id: string; display_name: string; color: number | null };
 type Kind3 = "timed" | "allday" | "transit";
@@ -69,6 +70,8 @@ export function EventForm({
   onSuccess?: (eventId?: string) => void;
 }) {
   const t = useTranslations("event");
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
   const isEdit = !!editEvent;
   const prefill = draft?.prefill ?? null;
 
@@ -318,7 +321,7 @@ export function EventForm({
           placeholder={
             isTransit ? t("placeholderTitleTransit") : t("placeholderTitle")
           }
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -419,7 +422,7 @@ export function EventForm({
           placeholder={
             isTransit ? t("placeholderNoteTransit") : t("placeholderNote")
           }
-          placeholderTextColor="rgba(0,0,0,0.38)"
+          placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
       </View>
@@ -487,7 +490,7 @@ export function EventForm({
             style={styles.deleteButton}
             accessibilityLabel="削除"
           >
-            <TrashIcon size={18} color="#dc2626" />
+            <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
         <Pressable
@@ -513,6 +516,7 @@ function DateField({
   date: string;
   onChange: (d: string) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.grow}>
       <Text style={styles.label}>{label}</Text>
@@ -538,6 +542,7 @@ function TimeField({
   time: string;
   onChange: (t: string) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.timeCol}>
       <Text style={[styles.label, styles.invisible]}>時刻</Text>
@@ -571,89 +576,100 @@ function fmtTime(d: Date): string {
   return `${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-const styles = StyleSheet.create({
-  content: { padding: 16, gap: 14 },
-  segment: {
-    flexDirection: "row",
-    gap: 4,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.1)",
-    borderRadius: 6,
-    padding: 4,
-  },
-  segItem: {
-    flex: 1,
-    borderRadius: 4,
-    paddingVertical: 6,
-    alignItems: "center",
-  },
-  segItemOn: { backgroundColor: "#09090b" },
-  segText: { fontSize: 12, fontWeight: "500", color: "rgba(0,0,0,0.6)" },
-  segTextOn: { color: "#fff" },
-  hint: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },
-  invisible: { opacity: 0 },
-  input: {
-    height: 36,
-    borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.2)",
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 14,
-  },
-  row2: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
-  grow: { flex: 1 },
-  timeCol: { width: 110 },
-  picker: { alignSelf: "flex-start", marginLeft: -8 },
-  tzOptions: { marginTop: 6, gap: 6 },
-  inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  switchRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-  radio: {
-    width: 16,
-    height: 16,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: "rgba(0,0,0,0.35)",
-  },
-  radioOn: { borderWidth: 5, borderColor: "#09090b" },
-  radioLabel: { fontSize: 13 },
-  disclosure: { flexDirection: "row", alignItems: "center" },
-  disclosureLabel: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "rgba(0,0,0,0.6)",
-  },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
-  footer: { flexDirection: "row", gap: 8, marginTop: 4 },
-  deleteButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "rgba(220,38,38,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitButton: {
-    flex: 1,
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: "#09090b",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  submitLabel: { color: "#fff", fontSize: 15, fontWeight: "500" },
-  disabled: { opacity: 0.5 },
-  error: {
-    fontSize: 13,
-    color: "#b91c1c",
-    backgroundColor: "#fef2f2",
-    borderRadius: 6,
-    padding: 10,
-  },
-});
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    content: { padding: 16, gap: 14 },
+    segment: {
+      flexDirection: "row",
+      gap: 4,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      padding: 4,
+    },
+    segItem: {
+      flex: 1,
+      borderRadius: 4,
+      paddingVertical: 6,
+      alignItems: "center",
+    },
+    segItemOn: { backgroundColor: t.primary },
+    segText: { fontSize: 12, fontWeight: "500", color: t.mutedForeground },
+    segTextOn: { color: t.primaryForeground },
+    hint: { fontSize: 12, color: t.mutedForeground },
+    label: {
+      fontSize: 13,
+      fontWeight: "500",
+      marginBottom: 4,
+      color: t.foreground,
+    },
+    invisible: { opacity: 0 },
+    input: {
+      height: 36,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      fontSize: 14,
+      color: t.foreground,
+    },
+    row2: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
+    grow: { flex: 1 },
+    timeCol: { width: 110 },
+    picker: { alignSelf: "flex-start", marginLeft: -8 },
+    tzOptions: { marginTop: 6, gap: 6 },
+    inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    switchRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+    radio: {
+      width: 16,
+      height: 16,
+      borderRadius: 8,
+      borderWidth: 1.5,
+      borderColor: t.fgAlpha(0.35),
+    },
+    radioOn: { borderWidth: 5, borderColor: t.primary },
+    radioLabel: { fontSize: 13, color: t.foreground },
+    disclosure: { flexDirection: "row", alignItems: "center" },
+    disclosureLabel: {
+      fontSize: 13,
+      fontWeight: "500",
+      color: t.mutedForeground,
+    },
+    chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
+    footer: { flexDirection: "row", gap: 8, marginTop: 4 },
+    deleteButton: {
+      width: 44,
+      height: 44,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    submitButton: {
+      flex: 1,
+      height: 44,
+      borderRadius: 6,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    submitLabel: {
+      color: t.primaryForeground,
+      fontSize: 15,
+      fontWeight: "500",
+    },
+    disabled: { opacity: 0.5 },
+    error: {
+      fontSize: 13,
+      color: t.errorText,
+      backgroundColor: t.errorBg,
+      borderRadius: 6,
+      padding: 10,
+    },
+  });

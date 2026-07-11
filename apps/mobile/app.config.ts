@@ -17,10 +17,9 @@ const config: ExpoConfig = {
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: "triplot",
-  // アプリ UI がライト決め打ちのため、当面ライト固定（OS がダークだと
-  // ネイティブ部品〔日付ピッカー・Alert〕だけダーク表示になり、薄地に
-  // 白文字の壊れたコントラストになる）。RN のダーク対応を入れたら automatic に戻す。
-  userInterfaceStyle: "light",
+  // OS のライト/ダークに追従（アプリ内にモード設定は置かない）。UI 側は
+  // lib/theme.ts のトークンが useColorScheme で切り替わる。
+  userInterfaceStyle: "automatic",
   ios: {
     bundleIdentifier: "app.triplot.mobile",
     supportsTablet: false,
