@@ -17,13 +17,15 @@ import { TrashIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
 import Svg, { Path } from "react-native-svg";
 
-// 場所の追加/編集フォーム（RN・M5）。新規は検索候補(PlaceCandidate)から、
-// 編集は保存済み(PlaceRow)から。アイコン・未確定・公開範囲・メモを編集し、
+// 場所の追加/編集フォーム（RN・M5）。新規は検索候補(PlaceCandidate)または
+// 地図長押しの仮ピン(pinDraft=座標のみ・名前は自由入力)から、編集は保存済み
+// (PlaceRow)から。アイコン・未確定・公開範囲・メモを編集し、
 // shared の createPlace/updatePlace/deletePlace を呼ぶ。
 export function PlaceForm({
   tripId,
   pinKeys,
   candidate,
+  pinDraft,
   editPlace,
   myMemberId,
   onDone,
@@ -32,6 +34,8 @@ export function PlaceForm({
   // 選べるピンアイコンのキー（trip_pin_options 由来）。
   pinKeys: string[];
   candidate?: PlaceCandidate;
+  // 地図長押しで置いた仮ピンの座標（web の draft ピンと同じ）。
+  pinDraft?: { lat: number; lng: number };
   editPlace?: PlaceRow;
   myMemberId: string;
   onDone: () => void;
@@ -39,6 +43,8 @@ export function PlaceForm({
   const t = useTranslations("place");
   const isEdit = !!editPlace;
   const name = editPlace?.name ?? candidate?.name ?? "";
+  // 仮ピンは名前を自由入力（web の「ピンを設定」と同じ）。
+  const [pinName, setPinName] = useState("");
 
   const [icon, setIcon] = useState(editPlace?.icon ?? pinKeys[0] ?? "pin");
   const [tentative, setTentative] = useState(editPlace?.tentative ?? false);
@@ -56,6 +62,10 @@ export function PlaceForm({
       : true);
 
   const submit = async () => {
+    if (pinDraft && !pinName.trim()) {
+      setError(`${t("placeholderName")}?`);
+      return;
+    }
     setBusy(true);
     setError(null);
     const result =
@@ -79,7 +89,21 @@ export function PlaceForm({
                 note: note.trim(),
               },
             )
-          : { ok: false as const, error: "no input" };
+          : pinDraft
+            ? await createPlace(supabase, tripId, {
+                name: pinName.trim(),
+                tentative,
+                visibility,
+                note: note.trim(),
+                googlePlaceId: "", // 自由ピンは Google 由来ではない（DB 側 nullif）
+                lat: pinDraft.lat,
+                lng: pinDraft.lng,
+                formattedAddress: "",
+                icon,
+                region: "",
+                locality: "",
+              })
+            : { ok: false as const, error: "no input" };
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
@@ -110,7 +134,19 @@ export function PlaceForm({
 
   return (
     <View style={styles.content}>
-      <Text style={styles.name}>{name || t("unknownName")}</Text>
+      {pinDraft ? (
+        // 仮ピン: 名前を自由入力（placeholder 規約「ピンの場所名 = 集合場所」）。
+        <TextInput
+          value={pinName}
+          onChangeText={setPinName}
+          placeholder={t("placeholderName")}
+          placeholderTextColor="rgba(0,0,0,0.38)"
+          style={[styles.input, styles.nameInput]}
+          autoFocus
+        />
+      ) : (
+        <Text style={styles.name}>{name || t("unknownName")}</Text>
+      )}
       {candidate?.formattedAddress ? (
         <Text style={styles.address}>{candidate.formattedAddress}</Text>
       ) : null}
@@ -216,6 +252,7 @@ export function PlaceForm({
 const styles = StyleSheet.create({
   content: { padding: 16, gap: 14 },
   name: { fontSize: 18, fontWeight: "600" },
+  nameInput: { fontSize: 16 },
   address: { fontSize: 13, color: "rgba(0,0,0,0.6)", marginTop: -6 },
   iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   iconChip: {

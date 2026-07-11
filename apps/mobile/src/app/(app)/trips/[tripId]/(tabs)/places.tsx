@@ -2,6 +2,7 @@ import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -54,6 +55,10 @@ export default function PlacesTab() {
   const [selectedCandidate, setSelectedCandidate] =
     useState<PlaceCandidate | null>(null);
   const [editing, setEditing] = useState<PlaceRow | null>(null);
+  // 地図長押しで置いた仮ピン（web の draft ピンと同じ。保存/閉じで消す）。
+  const [pinDraft, setPinDraft] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
 
   const places = useMemo(
     () => (data ? derivePlaces(data.placesRaw) : []),
@@ -114,7 +119,10 @@ export default function PlacesTab() {
           longitudeDelta: 0.05,
         });
       }
-    } catch {
+    } catch (e) {
+      // 失敗は握りつぶさず見せる（原因の詳細付き。実機でのキー制限・
+      // ネットワーク問題の切り分けに使う）。
+      Alert.alert(t("searchFailed"), String(e));
       setCandidates([]);
     } finally {
       setSearching(false);
@@ -124,6 +132,16 @@ export default function PlacesTab() {
   const openAddCandidate = (c: PlaceCandidate) => {
     setSelectedCandidate(c);
     setEditing(null);
+    setPinDraft(null);
+    formRef.current?.present();
+  };
+
+  // 地図長押し: その座標に仮ピンを置き、名前を入力して保存するフォームを開く
+  // （web の「長押しでピンを置く → ピンを設定」と同じ）。
+  const onMapLongPress = (lat: number, lng: number) => {
+    setPinDraft({ lat, lng });
+    setEditing(null);
+    setSelectedCandidate(null);
     formRef.current?.present();
   };
   const openEditPlace = (p: PlaceRow) => {
@@ -158,6 +176,10 @@ export default function PlacesTab() {
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        onLongPress={(e) => {
+          const c = e.nativeEvent.coordinate;
+          onMapLongPress(c.latitude, c.longitude);
+        }}
       >
         {places
           .filter((p) => p.lat != null && p.lng != null)
@@ -180,6 +202,14 @@ export default function PlacesTab() {
               />
             </Marker>
           ))}
+        {pinDraft && (
+          <Marker
+            coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
+            anchor={{ x: 0.5, y: 0.9 }}
+          >
+            <RedPin />
+          </Marker>
+        )}
         {candidates.map((c) => (
           <Marker
             key={c.placeId}
@@ -264,12 +294,14 @@ export default function PlacesTab() {
             tripId={tripId}
             pinKeys={pinKeys}
             candidate={selectedCandidate ?? undefined}
+            pinDraft={pinDraft ?? undefined}
             editPlace={editing ?? undefined}
             myMemberId={me.id}
             onDone={() => {
               dismiss();
               setCandidates([]);
               setQuery("");
+              setPinDraft(null);
               void invalidate();
             }}
           />
