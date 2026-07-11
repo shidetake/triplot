@@ -46,6 +46,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView
+      style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
@@ -85,6 +86,9 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
+  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
+  // 割れて見えるのを防ぐ）。
+  screen: { backgroundColor: "#fff" },
   content: { padding: 16, gap: 16 },
   email: { fontSize: 13, color: "rgba(0,0,0,0.6)" },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 4 },

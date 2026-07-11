@@ -88,6 +88,7 @@ export default function InboxScreen() {
 
   return (
     <ScrollView
+      style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={
         <RefreshControl
@@ -202,6 +203,9 @@ export default function InboxScreen() {
 }
 
 const styles = StyleSheet.create({
+  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
+  // 割れて見えるのを防ぐ）。
+  screen: { backgroundColor: "#fff" },
   content: { padding: 16, gap: 12, paddingBottom: 48 },
   description: { fontSize: 12, color: "rgba(0,0,0,0.6)" },
   addressBox: {

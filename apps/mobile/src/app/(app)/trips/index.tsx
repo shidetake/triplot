@@ -133,7 +133,9 @@ const styles = StyleSheet.create({
   cardSub: { marginTop: 4, fontSize: 13, color: "rgba(0,0,0,0.6)" },
   empty: { padding: 24, fontSize: 14, color: "rgba(0,0,0,0.6)" },
   error: { padding: 24, fontSize: 14, color: "#dc2626" },
-  headerButtons: { flexDirection: "row", alignItems: "center", gap: 16 },
+  // タップ領域が被らないよう広めに空ける（20px アイコン + hitSlop 8 が
+  // 干渉しない下限 = 16 だと視覚的に窮屈だったため 28）。
+  headerButtons: { flexDirection: "row", alignItems: "center", gap: 28 },
   fab: {
     position: "absolute",
     right: 20,

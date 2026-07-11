@@ -86,6 +86,10 @@ export default function PlacesTab() {
   if (!data?.trip || !me) return null;
 
   const pinKeys = (data.pinOptionsRaw ?? []).map((p) => p.icon);
+  // 未確定ピンの色 = 作成者のメンバー hue（web の place-map と同じ）。
+  const memberHueById = new Map(
+    (data.members ?? []).map((m) => [m.id, m.color]),
+  );
 
   const runSearch = async () => {
     if (!PLACES_API_KEY || !query.trim()) return;
@@ -166,9 +170,14 @@ export default function PlacesTab() {
               coordinate={{ latitude: p.lat!, longitude: p.lng! }}
               title={p.name}
               onCalloutPress={() => openEditPlace(p)}
-              anchor={{ x: 0.5, y: 1 }}
+              // 丸マーカーは中心を座標に合わせる（雫ピンと違い先端が無い）。
+              anchor={{ x: 0.5, y: 0.5 }}
             >
-              <PlaceMarker icon={p.icon} tentative={p.tentative} />
+              <PlaceMarker
+                icon={p.icon}
+                tentative={p.tentative}
+                creatorHue={memberHueById.get(p.created_by_member_id) ?? null}
+              />
             </Marker>
           ))}
         {candidates.map((c) => (
@@ -176,7 +185,8 @@ export default function PlacesTab() {
             key={c.placeId}
             coordinate={{ latitude: c.lat, longitude: c.lng }}
             onPress={() => openAddCandidate(c)}
-            anchor={{ x: 0.5, y: 1 }}
+            // 雫の先端は viewBox 下端より 10% 上（y=-100/960）にある。
+            anchor={{ x: 0.5, y: 0.9 }}
           >
             <RedPin />
           </Marker>
