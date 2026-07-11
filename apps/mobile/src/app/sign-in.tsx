@@ -9,7 +9,6 @@ import {
   View,
 } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import * as AppleAuthentication from "expo-apple-authentication";
 import { useTranslations } from "use-intl";
 
 import {
@@ -21,6 +20,19 @@ import {
   signInWithGoogle,
 } from "@/lib/auth";
 import { useSession } from "@/lib/session";
+
+// Apple ロゴ（単色シルエット。web の oauth-brand-icons.tsx の AppleGlyph と同一
+// パス）。ボタン文字色に追従させるため fill は呼び出し側で渡す。
+function AppleGlyph({ size, color }: { size: number; color: string }) {
+  return (
+    <Svg viewBox="0 0 24 24" width={size} height={size}>
+      <Path
+        fill={color}
+        d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"
+      />
+    </Svg>
+  );
+}
 
 // Google "G" ロゴ（4色、web の components/oauth-brand-icons.tsx と同じ公式パス）。
 // ボタン配色は web の OAuthSignInButton と同じ「全プロバイダ共通のニュートラル枠線
@@ -86,28 +98,29 @@ export default function SignInScreen() {
     <View style={[styles.container, dark && styles.containerDark]}>
       <Text style={[styles.wordmark, dark && styles.textDark]}>triplot</Text>
       <View style={styles.buttons}>
-        {/* Apple 公式のネイティブボタン（ガイドライン準拠・先頭に配置） */}
-        <AppleAuthentication.AppleAuthenticationButton
-          buttonType={
-            AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN
-          }
-          buttonStyle={
-            dark
-              ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
-              : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
-          }
-          cornerRadius={6}
-          style={styles.appleButton}
+        {/* Apple / Google 共通のニュートラル枠線ボタン＋ロゴだけブランド
+            （web の OAuthSignInButton と同じ方針。Strava 等の実例と同様、
+            ダークモードは黒地＋白枠。Apple 公式ボタンは白固定になるので使わず、
+            ガイドライン準拠のカスタムボタンにして web と見た目を揃える）。
+            Apple 先頭。 */}
+        <Pressable
+          accessibilityRole="button"
           onPress={() => void run(signInWithApple)}
-        />
+          style={[styles.oauthButton, dark && styles.oauthButtonDark]}
+        >
+          <AppleGlyph size={18} color={dark ? "#E3E3E3" : "#1f1f1f"} />
+          <Text style={[styles.oauthLabel, dark && styles.oauthLabelDark]}>
+            {t("signInWithApple")}
+          </Text>
+        </Pressable>
         {googleSignInAvailable && (
           <Pressable
             accessibilityRole="button"
             onPress={() => void run(signInWithGoogle)}
-            style={[styles.googleButton, dark && styles.googleButtonDark]}
+            style={[styles.oauthButton, dark && styles.oauthButtonDark]}
           >
             <GoogleGlyph size={18} />
-            <Text style={[styles.googleLabel, dark && styles.googleLabelDark]}>
+            <Text style={[styles.oauthLabel, dark && styles.oauthLabelDark]}>
               {t("signInWithGoogle")}
             </Text>
           </Pressable>
@@ -145,10 +158,9 @@ const styles = StyleSheet.create({
   wordmark: { fontSize: 32, fontWeight: "600", letterSpacing: -0.5 },
   textDark: { color: "#fafafa" },
   buttons: { width: 280, gap: 12 },
-  appleButton: { width: "100%", height: 44 },
   // web の OAuthSignInButton と同じニュートラル配色（白地+#747775枠 /
-  // ダーク #131314 地+#8E918F 枠、文字 #E3E3E3）。
-  googleButton: {
+  // ダーク #131314 地+#8E918F 枠、文字 #E3E3E3）。Apple/Google 共通。
+  oauthButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -159,12 +171,12 @@ const styles = StyleSheet.create({
     borderColor: "#747775",
     backgroundColor: "#ffffff",
   },
-  googleButtonDark: {
+  oauthButtonDark: {
     backgroundColor: "#131314",
     borderColor: "#8E918F",
   },
-  googleLabel: { fontSize: 15, fontWeight: "500", color: "#1f1f1f" },
-  googleLabelDark: { color: "#E3E3E3" },
+  oauthLabel: { fontSize: 15, fontWeight: "500", color: "#1f1f1f" },
+  oauthLabelDark: { color: "#E3E3E3" },
   devArea: { alignItems: "center", gap: 16 },
   devButton: { padding: 8 },
   devLink: { color: "#2563eb", fontSize: 12 },

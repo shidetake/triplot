@@ -126,11 +126,89 @@ export async function searchPlaces(
     });
 }
 
-// Places API (New): 単一の場所の詳細（地図の POI タップから保存する時に使う。
-// POI イベントは placeId/名前/座標しか持たないので住所・region を補完する）。
+// 検索バーの入力中サジェスト1件（web の AutocompleteSuggestion 相当）。
+// placeId は確定時に fetchPlaceDetails で詳細を引くための ID。
+export type PlacePrediction = {
+  placeId: string;
+  // 主表記（店名）と副表記（住所）。web の structuredFormat と同じ2段。
+  primaryText: string;
+  secondaryText: string;
+};
+
+// Places API (New): places:autocomplete。入力中サジェスト（web の
+// AutocompleteSuggestion.fetchAutocompleteSuggestions と同じ役割）。session
+// トークンで autocomplete 群 + 確定時の details を1セッションに束ねて課金最適化
+// （web も sessionToken を使う。呼び出し側が debounce する）。
+export async function autocompletePlaces(
+  input: string,
+  opts: SearchPlacesOptions & { sessionToken?: string },
+): Promise<PlacePrediction[]> {
+  const trimmed = input.trim();
+  if (!trimmed) return [];
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Goog-Api-Key": opts.apiKey,
+  };
+  if (opts.iosBundleId) {
+    headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
+  }
+
+  const body: Record<string, unknown> = {
+    input: trimmed,
+    languageCode: opts.languageCode ?? "ja",
+    regionCode: opts.regionCode ?? "jp",
+  };
+  if (opts.sessionToken) body.sessionToken = opts.sessionToken;
+  if (opts.biasCenter) {
+    body.locationBias = {
+      circle: {
+        center: {
+          latitude: opts.biasCenter.lat,
+          longitude: opts.biasCenter.lng,
+        },
+        radius: 30000,
+      },
+    };
+  }
+
+  const res = await fetch(
+    "https://places.googleapis.com/v1/places:autocomplete",
+    { method: "POST", headers, body: JSON.stringify(body) },
+  );
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`Places autocomplete ${res.status}: ${text}`);
+  }
+  const json = (await res.json()) as {
+    suggestions?: {
+      placePrediction?: {
+        placeId: string;
+        structuredFormat?: {
+          mainText?: { text?: string };
+          secondaryText?: { text?: string };
+        };
+        text?: { text?: string };
+      };
+    }[];
+  };
+
+  return (json.suggestions ?? [])
+    .map((s) => s.placePrediction)
+    .filter((p): p is NonNullable<typeof p> => !!p?.placeId)
+    .slice(0, 6)
+    .map((p) => ({
+      placeId: p.placeId,
+      primaryText: p.structuredFormat?.mainText?.text ?? p.text?.text ?? "",
+      secondaryText: p.structuredFormat?.secondaryText?.text ?? "",
+    }));
+}
+
+// Places API (New): 単一の場所の詳細（地図の POI タップから保存する時と、
+// autocomplete サジェストの確定時に使う。住所・region を補完する）。
 export async function fetchPlaceDetails(
   placeId: string,
-  opts: SearchPlacesOptions,
+  opts: SearchPlacesOptions & { sessionToken?: string },
 ): Promise<PlaceCandidate | null> {
   const headers: Record<string, string> = {
     "X-Goog-Api-Key": opts.apiKey,
@@ -148,8 +226,13 @@ export async function fetchPlaceDetails(
     headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
   }
   const lang = opts.languageCode ?? "ja";
+  // sessionToken を渡すと直前の autocomplete 群と1セッションで課金される
+  // （web の fetchFields と同じ。details は token を消費してセッションを閉じる）。
+  const tokenParam = opts.sessionToken
+    ? `&sessionToken=${encodeURIComponent(opts.sessionToken)}`
+    : "";
   const res = await fetch(
-    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${lang}`,
+    `https://places.googleapis.com/v1/places/${encodeURIComponent(placeId)}?languageCode=${lang}${tokenParam}`,
     { headers },
   );
   if (!res.ok) {

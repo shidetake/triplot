@@ -20,9 +20,11 @@ import { useTranslations } from "use-intl";
 import { boundsOf, centroid, TOKYO } from "@triplot/shared/placeMap";
 import { getIconLabel } from "@triplot/shared/placeIcons";
 import {
+  autocompletePlaces,
   fetchPlaceDetails,
   searchPlaces,
   type PlaceCandidate,
+  type PlacePrediction,
 } from "@triplot/shared/placesSearch";
 import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
 
@@ -37,6 +39,12 @@ import { useTripId } from "@/lib/useTripId";
 
 const PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUNDLE_ID = "app.triplot.mobile";
+
+// Places autocomplete のセッショントークン（課金束ね用）。render 中には
+// 呼ばない（イベントハンドラから使う）。
+function newSessionToken(): string {
+  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
 
 // 場所タブ（RN・M5）: Google 地図 + 保存済みピン + 検索 + ドラッグ式ボトムシート
 // 一覧 + 追加/編集。web の PlacesSection 相当。地図は PROVIDER_GOOGLE で世界観統一。
@@ -56,6 +64,11 @@ export default function PlacesTab() {
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([]);
   const [searching, setSearching] = useState(false);
+  // 入力中サジェスト（web の検索窓ドロップダウンと同じ）。debounce + 課金
+  // 最適化のセッショントークン。
+  const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sessionTokenRef = useRef<string | null>(null);
   const [selectedCandidate, setSelectedCandidate] =
     useState<PlaceCandidate | null>(null);
   const [editing, setEditing] = useState<PlaceRow | null>(null);
@@ -100,6 +113,63 @@ export default function PlacesTab() {
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
 
+  const biasCenter = () =>
+    centroid(
+      places
+        .filter((p) => p.lat != null && p.lng != null)
+        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
+    ) ?? undefined;
+
+  // 入力ごとにサジェストを引く（web と同じ 300ms debounce）。1 セッションの
+  // 課金トークンを維持し、確定（details）で消費する。
+  const onQueryChange = (v: string) => {
+    setQuery(v);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!PLACES_API_KEY || !v.trim()) {
+      setPredictions([]);
+      return;
+    }
+    if (!sessionTokenRef.current) {
+      sessionTokenRef.current = newSessionToken();
+    }
+    debounceRef.current = setTimeout(() => {
+      void autocompletePlaces(v, {
+        apiKey: PLACES_API_KEY,
+        iosBundleId: BUNDLE_ID,
+        biasCenter: biasCenter(),
+        sessionToken: sessionTokenRef.current ?? undefined,
+      })
+        .then(setPredictions)
+        .catch(() => setPredictions([]));
+    }, 300);
+  };
+
+  // サジェスト確定: details で座標・住所を補完し、候補ピンを立てて保存フォームへ
+  // （web の pick → fetchFields と同じ。session トークンをここで消費）。
+  const pickPrediction = async (p: PlacePrediction) => {
+    if (!PLACES_API_KEY) return;
+    setPredictions([]);
+    try {
+      const c = await fetchPlaceDetails(p.placeId, {
+        apiKey: PLACES_API_KEY,
+        iosBundleId: BUNDLE_ID,
+        sessionToken: sessionTokenRef.current ?? undefined,
+      });
+      sessionTokenRef.current = null; // セッション終了
+      if (!c) return;
+      setCandidates([c]);
+      mapRef.current?.animateToRegion({
+        latitude: c.lat,
+        longitude: c.lng,
+        latitudeDelta: 0.02,
+        longitudeDelta: 0.02,
+      });
+      openAddCandidate(c);
+    } catch (e) {
+      Alert.alert(t("searchFailed"), String(e));
+    }
+  };
+
   const runSearch = async () => {
     if (!PLACES_API_KEY || !query.trim()) return;
     setSearching(true);
@@ -137,6 +207,7 @@ export default function PlacesTab() {
     setSelectedCandidate(c);
     setEditing(null);
     setPinDraft(null);
+    setPredictions([]);
     formRef.current?.present();
   };
 
@@ -245,18 +316,43 @@ export default function PlacesTab() {
         ))}
       </MapView>
 
-      {/* 検索バー（地図上に重ねる） */}
+      {/* 検索バー（地図上に重ねる）＋入力中サジェスト */}
       <View style={styles.searchBar}>
-        <TextInput
-          value={query}
-          onChangeText={setQuery}
-          placeholder={t("searchPlaceholder")}
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.searchInput}
-          returnKeyType="search"
-          onSubmitEditing={() => void runSearch()}
-          editable={!!PLACES_API_KEY}
-        />
+        <View style={styles.searchInputWrap}>
+          <TextInput
+            value={query}
+            onChangeText={onQueryChange}
+            placeholder={t("searchPlaceholder")}
+            placeholderTextColor={theme.subtleForeground}
+            style={styles.searchInput}
+            returnKeyType="search"
+            onSubmitEditing={() => void runSearch()}
+            editable={!!PLACES_API_KEY}
+          />
+          {predictions.length > 0 && (
+            <View style={styles.suggestions}>
+              {predictions.map((p) => (
+                <Pressable
+                  key={p.placeId}
+                  onPress={() => void pickPrediction(p)}
+                  style={styles.suggestionRow}
+                >
+                  <Text style={styles.suggestionPrimary} numberOfLines={1}>
+                    {p.primaryText}
+                  </Text>
+                  {p.secondaryText ? (
+                    <Text
+                      style={styles.suggestionSecondary}
+                      numberOfLines={1}
+                    >
+                      {p.secondaryText}
+                    </Text>
+                  ) : null}
+                </Pressable>
+              ))}
+            </View>
+          )}
+        </View>
         <Pressable
           onPress={() => void runSearch()}
           style={styles.searchButton}
@@ -329,6 +425,7 @@ export default function PlacesTab() {
               dismiss();
               setCandidates([]);
               setQuery("");
+              setPredictions([]);
               setPinDraft(null);
               void invalidate();
             }}
@@ -425,19 +522,45 @@ const makeStyles = (t: Theme) =>
     flexDirection: "row",
     gap: 8,
   },
-  searchInput: {
+  // 入力欄とサジェストを縦に重ねる器（検索ボタンとは横並び）。
+  searchInputWrap: {
     flex: 1,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  searchInput: {
     height: 44,
     borderRadius: 8,
     backgroundColor: t.background,
     paddingHorizontal: 14,
     fontSize: 15,
     color: t.foreground,
-    shadowColor: "#000",
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+  },
+  // 入力直下のサジェスト（レイヤーとサイズは ui-guidelines のドロップダウン規約:
+  // rounded-md 相当・max-h-64・shadow）。
+  suggestions: {
+    marginTop: 6,
+    maxHeight: 256,
+    borderRadius: 8,
+    backgroundColor: t.background,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.fgAlpha(0.1),
+    overflow: "hidden",
+  },
+  suggestionRow: {
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.08),
+  },
+  suggestionPrimary: { fontSize: 15, color: t.foreground },
+  suggestionSecondary: {
+    fontSize: 12,
+    color: t.mutedForeground,
+    marginTop: 2,
   },
   searchButton: {
     width: 44,
