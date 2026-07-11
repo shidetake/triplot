@@ -33,6 +33,11 @@ const config: ExpoConfig = {
     // config-plugins の base mod が undefined 参照で prebuild に失敗する事情もある。
     infoPlist: {
       ITSAppUsesNonExemptEncryption: false,
+      // 対応言語の宣言。これがあると iOS の 設定 → triplot → 言語 で
+      // アプリ単位の言語切替が出る（アプリ内に言語設定は置かない＝OS 追従）。
+      CFBundleAllowMixedLocalizations: true,
+      CFBundleLocalizations: ["ja", "en"],
+      CFBundleDevelopmentRegion: "ja",
     },
     // 注: react-native-maps の iOS Google Maps キーは ios.config.googleMapsApiKey
     // では設定しない。それを使うと Expo 組み込みの旧 Maps プラグインが動いて
