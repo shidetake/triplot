@@ -96,6 +96,12 @@ const config: ExpoConfig = {
     typedRoutes: true,
     reactCompiler: true,
   },
+  owner: "hdtk",
+  extra: {
+    eas: {
+      projectId: "9fc880e2-573b-49e9-8279-01418e9c665a",
+    },
+  },
 };
 
 export default config;
