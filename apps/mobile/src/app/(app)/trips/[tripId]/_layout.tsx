@@ -23,7 +23,7 @@ export default function TripLayout() {
           headerRight: () => (
             <Link href={`/trips/${tripId}/edit`} asChild>
               <HeaderIconButton accessibilityLabel="旅行を編集">
-                <SettingsIcon size={20} color="rgba(0,0,0,0.7)" />
+                <SettingsIcon size={20} color="#666666" />
               </HeaderIconButton>
             </Link>
           ),

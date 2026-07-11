@@ -21,9 +21,11 @@ export default function TripTabsLayout() {
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: "#09090b",
-          // 半透明(rgba)だと Lucide の複数パスが重なる箇所だけ透明度が二重に
-          // かかって黒ずむ。白地に 45% 黒相当の不透明グレーで均一にする。
-          tabBarInactiveTintColor: "#8c8c8c",
+          // web の text-muted-foreground（oklch(0.510)＝白地60%黒相当）と同値の
+          // 不透明グレー。半透明(rgba)だと Lucide の複数パスが重なる箇所だけ
+          // 透明度が二重にかかって黒ずむため、web と同じく濃度を焼き込んだ
+          // 不透明値で塗る。
+          tabBarInactiveTintColor: "#666666",
         }}
       >
       <Tabs.Screen

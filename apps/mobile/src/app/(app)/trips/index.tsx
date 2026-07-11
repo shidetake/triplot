@@ -55,7 +55,7 @@ export default function TripsScreen() {
               <Link href="/inbox" asChild>
                 <HeaderIconButton accessibilityLabel="取り込み">
                   <View>
-                    <InboxIcon size={20} color="rgba(0,0,0,0.7)" />
+                    <InboxIcon size={20} color="#666666" />
                     {(inboxCount ?? 0) > 0 && (
                       <View style={styles.inboxBadge}>
                         <Text style={styles.inboxBadgeText}>
@@ -68,7 +68,7 @@ export default function TripsScreen() {
               </Link>
               <Link href="/settings" asChild>
                 <HeaderIconButton accessibilityLabel="設定">
-                  <SettingsIcon size={20} color="rgba(0,0,0,0.7)" />
+                  <SettingsIcon size={20} color="#666666" />
                 </HeaderIconButton>
               </Link>
             </View>
