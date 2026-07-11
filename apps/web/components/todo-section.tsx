@@ -33,6 +33,7 @@ import {
 import { MemberAvatar } from "@/components/member-avatar";
 import { chipStyle } from "@triplot/shared/memberColors";
 import { ReservationIcon } from "@/components/reservation-icon";
+import { useMediaQuery } from "@/components/use-media-query";
 import { sortTodos } from "@triplot/shared/todoSort";
 import type {
   TodoKind,
@@ -159,12 +160,16 @@ export function TodoSection({
   const placeholder =
     kind === "prep" ? t("placeholderPrep") : t("placeholderOnsite");
 
-  // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)。手動で開閉したら
+  // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)だが、適用するのは広い画面
+  // だけ。狭い画面（タブ表示）は TODO タブを開いた人が見に来ているので常に開く
+  // （trip-detail-tabs と同じ md ブレークポイントで判定）。手動で開閉したら
   // localStorage に覚え、次回以降は既定より優先する。
+  const isWide = useMediaQuery("(min-width: 768px)");
   const storageKey = `triplot.todoCollapsed.${tripId}.${kind}`;
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   // localStorage はクライアント専用。SSR/初回描画は defaultCollapsed で揃え、
-  // マウント後に保存値があればそれに同期する（hydration 不一致を避ける正当な用途）。
+  // マウント後に保存値があればそれに、狭い画面なら「開」に同期する
+  // （hydration 不一致を避ける正当な用途）。
   useEffect(() => {
     let saved: string | null = null;
     try {
@@ -175,8 +180,10 @@ export function TodoSection({
     if (saved === "1" || saved === "0") {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- 外部ストア同期
       setCollapsed(saved === "1");
+    } else if (!isWide) {
+      setCollapsed(false);
     }
-  }, [storageKey]);
+  }, [storageKey, isWide]);
   const toggleCollapsed = () => {
     setCollapsed((c) => {
       const next = !c;

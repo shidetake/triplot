@@ -11,6 +11,7 @@ import {
 import MapView, {
   Marker,
   PROVIDER_GOOGLE,
+  type MapMarker,
   type Region,
 } from "react-native-maps";
 import { useTranslations } from "use-intl";
@@ -44,6 +45,8 @@ export default function PlacesTab() {
 
   const mapRef = useRef<MapView>(null);
   const formRef = useRef<FormSheetRef>(null);
+  const listSheetRef = useRef<BottomSheet>(null);
+  const markerRefs = useRef(new Map<string, MapMarker | null>());
 
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([]);
@@ -125,6 +128,25 @@ export default function PlacesTab() {
     formRef.current?.present();
   };
 
+  // 一覧から場所を選択: web のタブ表示と同じく、シートを畳んで地図でその場所の
+  // ピンを見せる（編集フォームは開かない。編集はピン/行の操作から）。
+  // 未マップの場所はピンが無いので従来どおり編集フォームへ。
+  const showPlaceOnMap = (p: PlaceRow) => {
+    if (p.lat == null || p.lng == null) {
+      openEditPlace(p);
+      return;
+    }
+    listSheetRef.current?.snapToIndex(0);
+    mapRef.current?.animateToRegion({
+      latitude: p.lat,
+      longitude: p.lng,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.02,
+    });
+    // アニメーション後に吹き出し（場所名）を出して、どのピンか分かるようにする。
+    setTimeout(() => markerRefs.current.get(p.id)?.showCallout(), 400);
+  };
+
   return (
     <View style={styles.screen}>
       <MapView
@@ -138,8 +160,12 @@ export default function PlacesTab() {
           .map((p) => (
             <Marker
               key={p.id}
+              ref={(r) => {
+                markerRefs.current.set(p.id, r);
+              }}
               coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-              onPress={() => openEditPlace(p)}
+              title={p.name}
+              onCalloutPress={() => openEditPlace(p)}
               anchor={{ x: 0.5, y: 1 }}
             >
               <PlaceMarker icon={p.icon} tentative={p.tentative} />
@@ -183,7 +209,7 @@ export default function PlacesTab() {
       </View>
 
       {/* 場所一覧（ドラッグ式ボトムシート） */}
-      <BottomSheet index={0} snapPoints={["12%", "45%", "88%"]}>
+      <BottomSheet ref={listSheetRef} index={0} snapPoints={["12%", "45%", "88%"]}>
         <View style={styles.sheetHeader}>
           <Text style={styles.sheetCount}>{places.length}件の場所</Text>
         </View>
@@ -193,17 +219,7 @@ export default function PlacesTab() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => {
-                if (item.lat != null && item.lng != null) {
-                  mapRef.current?.animateToRegion({
-                    latitude: item.lat,
-                    longitude: item.lng,
-                    latitudeDelta: 0.02,
-                    longitudeDelta: 0.02,
-                  });
-                }
-                openEditPlace(item);
-              }}
+              onPress={() => showPlaceOnMap(item)}
               style={styles.placeRow}
             >
               <PlaceCategoryIcon

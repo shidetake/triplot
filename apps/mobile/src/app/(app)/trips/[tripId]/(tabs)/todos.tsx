@@ -79,10 +79,6 @@ export default function TodosTab() {
     color: m.color,
     avatarUrl: m.users?.avatar_url ?? null,
   }));
-  const today = new Date().toISOString().slice(0, 10);
-  const tripStarted =
-    data.trip.start_date != null && today >= data.trip.start_date;
-
   return (
     <ScrollView
       style={styles.screen}
@@ -94,12 +90,13 @@ export default function TodosTab() {
         />
       }
     >
-      <Text style={styles.heading}>{t("tripDetail.todoList")}</Text>
+      {/* タブ自体が「TODO」なので画面内見出しは重複＝出さない。準備TODOも
+          タブ表示では常に開いて出す（旅行開始後に畳むのは web の広い画面だけ）。 */}
       <TodoSection
         tripId={tripId}
         kind="prep"
         title={t("tripDetail.todoPrep")}
-        defaultCollapsed={tripStarted}
+        defaultCollapsed={false}
         todos={todos.filter((x) => x.kind === "prep")}
         members={members}
         myMemberId={me.id}
@@ -402,7 +399,6 @@ function Avatar({ member }: { member: MemberLite }) {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: "#fff" },
   content: { padding: 16, gap: 20, paddingBottom: 48 },
-  heading: { fontSize: 18, fontWeight: "600" },
   section: { gap: 8 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontSize: 15, fontWeight: "600" },
