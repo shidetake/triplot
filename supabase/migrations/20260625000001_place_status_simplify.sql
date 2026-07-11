@@ -186,6 +186,62 @@ end;
 $body$;
 
 -- ────────────────────────────────────────────────────────────
+-- find_or_create_trip_freetext_place: place_statuses の確定 status 引きを
+-- tentative=false の直接指定に置き換え（自由入力の場所は入れた時点で確定）
+-- ────────────────────────────────────────────────────────────
+create or replace function public.find_or_create_trip_freetext_place(
+  p_trip_id    text,
+  p_member_id  uuid,
+  p_name       text
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $body$
+declare
+  v_name      text := nullif(trim(coalesce(p_name, '')), '');
+  v_place_id  uuid;
+begin
+  if v_name is null then
+    raise exception 'name required';
+  end if;
+
+  -- 同名・shared の既存を再利用（Google 由来でも可。マップ済みを優先）。
+  -- 重複を作らない。逆順（Google 先 → 自由入力後）でも 1 つに収束する。
+  select id into v_place_id
+  from places
+  where trip_id = p_trip_id
+    and visibility = 'shared'
+    and lower(name) = lower(v_name)
+  order by (lat is not null) desc, created_at
+  limit 1;
+
+  if v_place_id is not null then
+    return v_place_id;
+  end if;
+
+  -- 確定（tentative=false）。予定/費用に入れた時点で「行く/行った」は
+  -- 確定済み（未確定なのは座標だけ）。Google 経路と揃え順序非依存にする。
+  insert into places (
+    trip_id, created_by_member_id, visibility, google_place_id,
+    name, lat, lng, tentative, note, formatted_address, icon
+  )
+  values (
+    p_trip_id, p_member_id, 'shared', null,
+    v_name, null, null, false, null, null, 'pin'
+  )
+  returning id into v_place_id;
+
+  return v_place_id;
+end;
+$body$;
+
+revoke all on function public.find_or_create_trip_freetext_place(
+  text, uuid, text
+) from public;
+
+-- ────────────────────────────────────────────────────────────
 -- create_place: p_status_id uuid → p_tentative boolean
 -- ────────────────────────────────────────────────────────────
 drop function if exists public.create_place(
