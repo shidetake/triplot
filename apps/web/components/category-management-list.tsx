@@ -179,7 +179,7 @@ export function CategoryManagementList({
             value={addValue}
             onChange={(e) => setAddValue(e.target.value)}
             disabled={isSavePending}
-            placeholder={t("namePlaceholder")}
+            placeholder={t("nameLabel")}
             className={`flex-1 ${inputClass}`}
             onBlur={saveNew}
             onKeyDown={(e) => {

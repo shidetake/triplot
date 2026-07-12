@@ -193,16 +193,16 @@ export default function EditTripScreen() {
         }}
       />
 
-      {/* 旅行情報（admin 以外は読み取りのみ） */}
-      <View>
-        <Text style={styles.label}>{t("createTrip.title")}</Text>
-        <TextInput
-          value={vTitle}
-          onChangeText={setTitle}
-          editable={isAdmin}
-          style={[styles.input, !isAdmin && styles.inputDisabled]}
-        />
-      </View>
+      {/* 旅行情報（admin 以外は読み取りのみ）。タイトルはラベル無し＋
+          placeholder＝フィールド名（iOS カレンダー方式）。 */}
+      <TextInput
+        value={vTitle}
+        onChangeText={setTitle}
+        editable={isAdmin}
+        placeholder={t("createTrip.title")}
+        accessibilityLabel={t("createTrip.title")}
+        style={[styles.input, !isAdmin && styles.inputDisabled]}
+      />
 
       <View>
         <Text style={styles.label}>{t("createTrip.dates")}</Text>

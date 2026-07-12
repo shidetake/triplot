@@ -327,31 +327,28 @@ export function ExpenseForm({
 
   return (
     <View style={styles.content}>
-      {/* 価格 + 通貨 */}
+      {/* 価格 + 通貨: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          必須は * でなく「埋まるまで送信無効」。通貨は選択値（JPY 等）自体が説明。 */}
       <View style={styles.row2}>
         <View style={styles.grow}>
-          <Text style={styles.label}>
-            {t("price")} <Text style={styles.required}>*</Text>
-          </Text>
           <TextInput
             value={price}
             onChangeText={setPrice}
             keyboardType="decimal-pad"
-            placeholder="0"
+            placeholder={t("price")}
+            accessibilityLabel={t("price")}
             placeholderTextColor={theme.subtleForeground}
             style={styles.input}
           />
         </View>
-        <View>
-          <Text style={styles.label}>{t("currency")}</Text>
-          <Pressable
-            onPress={() => setCurrencyOpen(true)}
-            style={[styles.input, styles.selectTrigger]}
-          >
-            <Text style={styles.selectText}>{localCurrency}</Text>
-            <ChevronIcon size={14} color={theme.subtleForeground} rotate={90} />
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={() => setCurrencyOpen(true)}
+          accessibilityLabel={t("currency")}
+          style={[styles.input, styles.selectTrigger]}
+        >
+          <Text style={styles.selectText}>{localCurrency}</Text>
+          <ChevronIcon size={14} color={theme.subtleForeground} rotate={90} />
+        </Pressable>
       </View>
 
       {/* 為替レート（外貨のときだけ） */}
@@ -416,10 +413,12 @@ export function ExpenseForm({
       </View>
 
       {/* 場所 */}
-      <View>
-        <Text style={styles.label}>{t("place")}</Text>
-        <PlacePicker places={places} value={place} onChange={setPlace} />
-      </View>
+      <PlacePicker
+        places={places}
+        value={place}
+        onChange={setPlace}
+        placeholder={t("place")}
+      />
 
       {/* 日付 + 時刻 */}
       <View style={styles.row2}>
@@ -508,16 +507,14 @@ export function ExpenseForm({
         ))}
 
       {/* メモ */}
-      <View>
-        <Text style={styles.label}>{t("memo")}</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          placeholder={t("placeholderMemo")}
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.input}
-        />
-      </View>
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder={t("memo")}
+        accessibilityLabel={t("memo")}
+        placeholderTextColor={theme.subtleForeground}
+        style={styles.input}
+      />
 
       {/* 公開範囲 */}
       <View style={styles.inlineRow}>
@@ -625,8 +622,12 @@ export function ExpenseForm({
         )}
         <Pressable
           onPress={() => void submit()}
-          disabled={busy}
-          style={[styles.submitButton, busy && styles.disabled]}
+          // 必須（価格）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={busy || price.trim() === ""}
+          style={[
+            styles.submitButton,
+            (busy || price.trim() === "") && styles.disabled,
+          ]}
           accessibilityLabel={isEdit ? "保存" : t("addAria")}
         >
           <PlusIcon size={20} color={theme.primaryForeground} />

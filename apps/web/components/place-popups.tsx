@@ -17,7 +17,6 @@ import type { Visibility } from "@triplot/shared/types/database";
 import { getIcon, type PinOption } from "@triplot/shared/placeIcons";
 
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
-import { FieldLabel } from "./field-label";
 import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
 import { PrivateBadge } from "./private-badge";
@@ -267,16 +266,14 @@ export function CandidateInfo({
           onChange={setVisibility}
           editable
         />
-        <label className="block text-sm" htmlFor={noteId}>
-          <FieldLabel>{t("memo")}</FieldLabel>
-          <Input
-            id={noteId}
-            type="text"
-            name="note"
-            placeholder={t("placeholderMemo")}
-            className="mt-1 block w-full"
-          />
-        </label>
+        <Input
+          id={noteId}
+          type="text"
+          name="note"
+          placeholder={t("memo")}
+          aria-label={t("memo")}
+          className="block w-full"
+        />
 
         <Button
           type="submit"
@@ -318,6 +315,8 @@ export function DraftInfo({
   const [visibility, setVisibility] = useState<Visibility>("shared");
   const t = useTranslations("place");
   const [icon, setIcon] = useState("pin");
+  // 名前は「埋まるまで追加無効」の判定に使うため controlled。
+  const [name, setName] = useState("");
   const nameId = useId();
   const noteId = useId();
 
@@ -342,18 +341,18 @@ export function DraftInfo({
         <input type="hidden" name="lng" value={draft.lng} />
         <input type="hidden" name="icon" value={icon} />
 
-        <label className="block text-sm" htmlFor={nameId}>
-          <FieldLabel>{t("name")}</FieldLabel>
-          <Input
-            id={nameId}
-            type="text"
-            name="name"
-            required
-            autoFocus
-            placeholder={t("placeholderName")}
-            className="mt-1 block w-full"
-          />
-        </label>
+        <Input
+          id={nameId}
+          type="text"
+          name="name"
+          required
+          autoFocus
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder={t("name")}
+          aria-label={t("name")}
+          className="block w-full"
+        />
         <TentativeField value={tentative} onChange={setTentative} />
         <IconPicker
           tripId={tripId}
@@ -366,20 +365,19 @@ export function DraftInfo({
           onChange={setVisibility}
           editable
         />
-        <label className="block text-sm" htmlFor={noteId}>
-          <FieldLabel>{t("memo")}</FieldLabel>
-          <Input
-            id={noteId}
-            type="text"
-            name="note"
-            placeholder={t("placeholderMemo")}
-            className="mt-1 block w-full"
-          />
-        </label>
+        <Input
+          id={noteId}
+          type="text"
+          name="note"
+          placeholder={t("memo")}
+          aria-label={t("memo")}
+          className="block w-full"
+        />
 
         <Button
           type="submit"
-          disabled={isPending}
+          // 必須（名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={isPending || !name.trim()}
           aria-label={t("addPinAria")}
           title={t("addPinAria")}
           className="w-full"
@@ -588,17 +586,15 @@ export function SavedInfo({
             onChange={setVisibility}
             editable={canChangeVisibility}
           />
-          <label className="block text-sm" htmlFor={noteId}>
-            <FieldLabel>{t("memo")}</FieldLabel>
-            <Input
-              id={noteId}
-              type="text"
-              name="note"
-              defaultValue={place.note ?? ""}
-              placeholder={t("placeholderMemo")}
-              className="mt-1 block w-full"
-            />
-          </label>
+          <Input
+            id={noteId}
+            type="text"
+            name="note"
+            defaultValue={place.note ?? ""}
+            placeholder={t("memo")}
+            aria-label={t("memo")}
+            className="block w-full"
+          />
           <div className="flex gap-2">
             {deleteButton}
             <Button

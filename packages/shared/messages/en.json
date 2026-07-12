@@ -46,7 +46,7 @@
     "themeLight": "Light",
     "themeDark": "Dark",
     "themeSystem": "System",
-    "namePlaceholder": "Name",
+    "namePlaceholder": "Display name",
     "displayNameHelpLabel": "About your default display name",
     "displayNameHelp": "Your default display name when joining a trip (existing trip names won't change)."
   },
@@ -124,7 +124,6 @@
     "copySource": "Source trip",
     "selectTrip": "Select a trip",
     "title": "Title",
-    "titlePlaceholder": "Hawaii trip",
     "displayName": "Your display name (in this trip)",
     "dates": "Dates",
     "settlementCurrency": "Settlement currency",
@@ -228,12 +227,6 @@
     "participants": "Participants",
     "participantsAll": "Everyone",
     "participantsSome": "Some",
-    "placeholderTitle": "Hiking",
-    "placeholderTitleTransit": "NRT-HNL",
-    "placeholderPlace": "Diamond Head",
-    "placeholderPlaceTransit": "Narita International Airport",
-    "placeholderNote": "Bring sunscreen",
-    "placeholderNoteTransit": "Terminal 1",
     "deleteTitle": "Delete this event?",
     "deleteFailed": "Delete failed: {error}",
     "transitDay": "This is a transit day. Which timezone is this event in?"
@@ -267,7 +260,6 @@
     "editFormLabel": "Edit expense",
     "deleteTitle": "Delete this expense?",
     "deleteFailed": "Delete failed: {error}",
-    "placeholderMemo": "Lunch",
     "placeholderRate": "e.g. 150",
     "cat": {
       "flight": "Transport",
@@ -298,8 +290,7 @@
     "like": "Like",
     "deleteAria": "Delete",
     "addAria": "Add",
-    "placeholderPrep": "Book flights",
-    "placeholderOnsite": "Buy souvenirs for family"
+    "placeholderAdd": "Add a to-do"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",
@@ -313,8 +304,6 @@
     "addPin": "Add pin to map",
     "dragHint": " (drag to fine-tune)",
     "settingLocationFor": "\"{name}\"",
-    "placeholderMemo": "Open until 10pm",
-    "placeholderName": "Meeting point",
     "setLocation": "Set location",
     "cancelLocation": "Cancel",
     "settingLocation": "Setting...",
@@ -330,7 +319,7 @@
     "locatingHint": "Click or long-press on the map to place a pin",
     "cancelLocate": "Cancel",
     "setPin": "Set pin",
-    "searchPlaceholder": "Pancakes",
+    "searchPlaceholder": "Search places",
     "searchClear": "Clear search",
     "searchAria": "Search",
     "detailFailed": "Failed to get place details",
@@ -575,7 +564,6 @@
     "addHeading": "Add Category",
     "editHeading": "Edit Category",
     "nameLabel": "Name",
-    "namePlaceholder": "Shopping",
     "colorLabel": "Color",
     "iconLabel": "Icon",
     "add": "Add category",

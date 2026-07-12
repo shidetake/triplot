@@ -21,6 +21,7 @@ export function CurrencySelect({
   onChange,
   id,
   className,
+  "aria-label": ariaLabel,
 }: {
   name: string;
   value: string;
@@ -29,6 +30,8 @@ export function CurrencySelect({
   id?: string;
   // trigger に追加するレイアウトクラス（例: "mt-1 w-full"）。
   className?: string;
+  // 可視ラベル無しで使うときのアクセシブル名。
+  "aria-label"?: string;
 }) {
   return (
     <Select.Root
@@ -38,6 +41,7 @@ export function CurrencySelect({
     >
       <Select.Trigger
         id={id}
+        aria-label={ariaLabel}
         className={`flex items-center gap-1.5 text-left ${inputClass} group ${className ?? ""}`}
       >
         <Select.Value className="tabular-nums">

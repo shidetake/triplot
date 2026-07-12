@@ -57,11 +57,12 @@ export default function SettingsScreen() {
       <Text style={styles.email}>{session?.user.email}</Text>
 
       <View>
-        <Text style={styles.label}>{t("createTrip.displayName")}</Text>
+        {/* ラベル無し＋placeholder＝フィールド名（表示名）。説明は下のヒントが担う。 */}
         <TextInput
           value={vName}
           onChangeText={setName}
           placeholder={t("settings.namePlaceholder")}
+          accessibilityLabel={t("settings.namePlaceholder")}
           placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />

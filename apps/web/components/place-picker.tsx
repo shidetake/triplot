@@ -125,13 +125,14 @@ export function PlacePicker({
   places,
   biasCenter,
   initial,
-  placeholder = "Eggs 'n Things",
+  placeholder,
   autoResolve,
 }: {
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   initial: PlacePickerInitial;
-  placeholder?: string;
+  // ラベルは置かない規約なので placeholder＝フィールド名（場所）を呼び出し側が渡す。
+  placeholder: string;
   // 取り込み用: 開いた時にこの店名を Google で自動解決し、高確信なら Google の場所に丸める
   // （低確信なら name のままテキスト場所）。initial（保存済みマッチ）が有る時は無視。
   // searchQuery を渡すと Google への検索語だけを差し替えられる（表示・低確信時の

@@ -157,8 +157,7 @@ export function TodoSection({
   myMemberId: string;
 }) {
   const t = useTranslations("todo");
-  const placeholder =
-    kind === "prep" ? t("placeholderPrep") : t("placeholderOnsite");
+  const placeholder = t("placeholderAdd");
 
   // 折りたたみ: 既定はフェーズ由来(defaultCollapsed)だが、適用するのは広い画面
   // だけ。狭い画面（タブ表示）は TODO タブを開いた人が見に来ているので常に開く

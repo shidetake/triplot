@@ -312,19 +312,15 @@ export function EventForm({
       </View>
       {isTransit && <Text style={styles.hint}>{t("transitHint")}</Text>}
 
-      {/* タイトル */}
-      <View>
-        <Text style={styles.label}>{t("title")}</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder={
-            isTransit ? t("placeholderTitleTransit") : t("placeholderTitle")
-          }
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.input}
-        />
-      </View>
+      {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
+      <TextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder={t("title")}
+        accessibilityLabel={t("title")}
+        placeholderTextColor={theme.subtleForeground}
+        style={styles.input}
+      />
 
       {/* 日時: iOS カレンダーの予定作成と同じ「ラベル左・チップ右」の2行。
           チップは OS のコンパクトピッカー（日付タップでカレンダー、時刻タップで
@@ -389,24 +385,22 @@ export function EventForm({
         )}
 
       {/* 場所 */}
-      <View>
-        <Text style={styles.label}>{t("place")}</Text>
-        <PlacePicker places={places} value={place} onChange={setPlace} />
-      </View>
+      <PlacePicker
+        places={places}
+        value={place}
+        onChange={setPlace}
+        placeholder={t("place")}
+      />
 
       {/* メモ */}
-      <View>
-        <Text style={styles.label}>{t("memo")}</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          placeholder={
-            isTransit ? t("placeholderNoteTransit") : t("placeholderNote")
-          }
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.input}
-        />
-      </View>
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder={t("memo")}
+        accessibilityLabel={t("memo")}
+        placeholderTextColor={theme.subtleForeground}
+        style={styles.input}
+      />
 
       {/* 要予約 */}
       <View style={styles.switchRow}>
@@ -476,8 +470,12 @@ export function EventForm({
         )}
         <Pressable
           onPress={() => void submit()}
-          disabled={busy}
-          style={[styles.submitButton, busy && styles.disabled]}
+          // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={busy || !title.trim()}
+          style={[
+            styles.submitButton,
+            (busy || !title.trim()) && styles.disabled,
+          ]}
         >
           <Text style={styles.submitLabel}>{isEdit ? "保存" : "追加"}</Text>
         </Pressable>

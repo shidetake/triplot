@@ -252,9 +252,7 @@ function TodoSection({
             <TextInput
               value={draft}
               onChangeText={setDraft}
-              placeholder={
-                kind === "prep" ? t("placeholderPrep") : t("placeholderOnsite")
-              }
+              placeholder={t("placeholderAdd")}
               placeholderTextColor={theme.subtleForeground}
               style={styles.input}
               returnKeyType="done"

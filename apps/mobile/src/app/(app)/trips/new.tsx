@@ -78,16 +78,16 @@ export default function NewTripScreen() {
       keyboardShouldPersistTaps="handled"
     >
 
-      <View>
-        <Text style={styles.label}>{t("title")}</Text>
-        <TextInput
-          value={title}
-          onChangeText={setTitle}
-          placeholder={t("titlePlaceholder")}
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.input}
-        />
-      </View>
+      {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          必須は * でなく「埋まるまで作成無効」。表示名は説明を持つラベルなので残す。 */}
+      <TextInput
+        value={title}
+        onChangeText={setTitle}
+        placeholder={t("title")}
+        accessibilityLabel={t("title")}
+        placeholderTextColor={theme.subtleForeground}
+        style={styles.input}
+      />
 
       <View>
         <Text style={styles.label}>{t("displayName")}</Text>
@@ -154,8 +154,12 @@ export default function NewTripScreen() {
 
       <Pressable
         onPress={() => void submit()}
-        disabled={busy}
-        style={[styles.submitButton, busy && styles.disabled]}
+        // 必須（タイトル）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
+        disabled={busy || !title.trim()}
+        style={[
+          styles.submitButton,
+          (busy || !title.trim()) && styles.disabled,
+        ]}
       >
         <Text style={styles.submitLabel}>
           {busy ? "作成中..." : "旅行を作成"}

@@ -46,7 +46,7 @@
     "themeLight": "ライト",
     "themeDark": "ダーク",
     "themeSystem": "システム",
-    "namePlaceholder": "名前",
+    "namePlaceholder": "表示名",
     "displayNameHelpLabel": "デフォルト表示名について",
     "displayNameHelp": "旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。"
   },
@@ -124,7 +124,6 @@
     "copySource": "コピー元",
     "selectTrip": "旅行を選択",
     "title": "タイトル",
-    "titlePlaceholder": "ハワイ旅行",
     "displayName": "あなたの表示名（旅行内）",
     "dates": "日程",
     "settlementCurrency": "精算通貨",
@@ -228,12 +227,6 @@
     "participants": "参加者",
     "participantsAll": "全員",
     "participantsSome": "一部",
-    "placeholderTitle": "ハイキング",
-    "placeholderTitleTransit": "NRT-HNL",
-    "placeholderPlace": "ダイヤモンドヘッド",
-    "placeholderPlaceTransit": "成田国際空港",
-    "placeholderNote": "日焼け止め持参",
-    "placeholderNoteTransit": "ターミナル1",
     "deleteTitle": "この予定を削除しますか？",
     "deleteFailed": "削除に失敗しました: {error}",
     "transitDay": "移動日のため、どのタイムゾーンの予定か選んでください。"
@@ -267,7 +260,6 @@
     "editFormLabel": "費用を編集",
     "deleteTitle": "この費用を削除しますか？",
     "deleteFailed": "削除に失敗しました: {error}",
-    "placeholderMemo": "ランチ",
     "placeholderRate": "例: 150",
     "cat": {
       "flight": "渡航",
@@ -298,8 +290,7 @@
     "like": "いいね",
     "deleteAria": "削除",
     "addAria": "追加",
-    "placeholderPrep": "航空券の予約",
-    "placeholderOnsite": "両親にお土産買う"
+    "placeholderAdd": "TODOを追加"
   },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",
@@ -313,8 +304,6 @@
     "addPin": "地図にピンを追加",
     "dragHint": "（ドラッグで微調整）",
     "settingLocationFor": "「{name}」",
-    "placeholderMemo": "22時まで",
-    "placeholderName": "集合場所",
     "setLocation": "位置を設定",
     "cancelLocation": "やめる",
     "settingLocation": "設定中...",
@@ -330,7 +319,7 @@
     "locatingHint": "地図でクリック / 長押しでピンを置いてください",
     "cancelLocate": "やめる",
     "setPin": "ピンを設定",
-    "searchPlaceholder": "パンケーキ",
+    "searchPlaceholder": "場所を検索",
     "searchClear": "検索をクリア",
     "searchAria": "検索",
     "detailFailed": "場所の詳細を取得できませんでした",
@@ -575,7 +564,6 @@
     "addHeading": "カテゴリを追加",
     "editHeading": "カテゴリを編集",
     "nameLabel": "カテゴリ名",
-    "namePlaceholder": "買い物",
     "colorLabel": "色",
     "iconLabel": "アイコン",
     "add": "カテゴリを追加",

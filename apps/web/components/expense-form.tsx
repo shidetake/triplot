@@ -421,31 +421,28 @@ export function ExpenseForm({
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
+      {/* 価格はラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          隣の通貨セレクトは選択値（JPY 等）自体が説明になるのでラベル無しで高さを揃える。 */}
       <div className="grid grid-cols-[1fr_auto] gap-2">
-        <label className="block text-sm">
-          <FieldLabel required>{t("price")}</FieldLabel>
-          <Input
-            type="number"
-            name="local_price"
-            required
-            min="0"
-            step="0.01"
-            inputMode="decimal"
-            placeholder="0"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 block w-full"
-          />
-        </label>
-        <label className="block text-sm">
-          <FieldLabel>{t("currency")}</FieldLabel>
-          <CurrencySelect
-            name="local_currency"
-            value={localCurrency}
-            onChange={(v) => onCurrencyChange(v as Currency)}
-            className="mt-1"
-          />
-        </label>
+        <Input
+          type="number"
+          name="local_price"
+          required
+          min="0"
+          step="0.01"
+          inputMode="decimal"
+          placeholder={t("price")}
+          aria-label={t("price")}
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="block w-full"
+        />
+        <CurrencySelect
+          name="local_currency"
+          value={localCurrency}
+          onChange={(v) => onCurrencyChange(v as Currency)}
+          aria-label={t("currency")}
+        />
       </div>
 
       {localCurrency !== defaultCurrency && (
@@ -495,7 +492,6 @@ export function ExpenseForm({
       </div>
 
       <div className="block text-sm">
-        <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey} language={locale}>
             <PlacePicker
@@ -503,6 +499,7 @@ export function ExpenseForm({
               biasCenter={biasCenter}
               initial={placePickerInitial}
               autoResolve={autoResolvePlace}
+              placeholder={t("place")}
             />
           </APIProvider>
         ) : (
@@ -511,6 +508,7 @@ export function ExpenseForm({
             biasCenter={biasCenter}
             initial={placePickerInitial}
             autoResolve={autoResolvePlace}
+            placeholder={t("place")}
           />
         )}
       </div>
@@ -626,18 +624,16 @@ export function ExpenseForm({
 
       {/* メモは費用の説明を兼ねるので「細々したオプション（公開範囲・支払者・割り勘）」より
           上に置く（日付の下）。最下は設定系オプションに固める。 */}
-      <label className="block text-sm" htmlFor={noteId}>
-        <FieldLabel>{t("memo")}</FieldLabel>
-        <Input
-          id={noteId}
-          type="text"
-          name="note"
-          placeholder={t("placeholderMemo")}
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          className="mt-1 block w-full"
-        />
-      </label>
+      <Input
+        id={noteId}
+        type="text"
+        name="note"
+        placeholder={t("memo")}
+        aria-label={t("memo")}
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        className="block w-full"
+      />
 
       {/* 公開範囲は予定フォームと同じくラベル＋選択肢を1行インラインに（ラベルは text-sm で
           他のフィールドラベルと揃える）。 */}
@@ -785,7 +781,8 @@ export function ExpenseForm({
         )}
         <Button
           type="submit"
-          disabled={isPending}
+          // 必須（価格）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={isPending || price.trim() === ""}
           aria-label={isEdit ? tCommon("save") : tCommon("add")}
           title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"

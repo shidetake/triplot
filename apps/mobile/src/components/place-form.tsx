@@ -65,10 +65,6 @@ export function PlaceForm({
       : true);
 
   const submit = async () => {
-    if (pinDraft && !pinName.trim()) {
-      setError(`${t("placeholderName")}?`);
-      return;
-    }
     setBusy(true);
     setError(null);
     const result =
@@ -138,11 +134,12 @@ export function PlaceForm({
   return (
     <View style={styles.content}>
       {pinDraft ? (
-        // 仮ピン: 名前を自由入力（placeholder 規約「ピンの場所名 = 集合場所」）。
+        // 仮ピン: 名前を自由入力（ラベル無し・placeholder＝フィールド名）。
         <TextInput
           value={pinName}
           onChangeText={setPinName}
-          placeholder={t("placeholderName")}
+          placeholder={t("name")}
+          accessibilityLabel={t("name")}
           placeholderTextColor={theme.subtleForeground}
           style={[styles.input, styles.nameInput]}
           autoFocus
@@ -214,16 +211,14 @@ export function PlaceForm({
       </View>
 
       {/* メモ */}
-      <View>
-        <Text style={styles.label}>{t("memo")}</Text>
-        <TextInput
-          value={note}
-          onChangeText={setNote}
-          placeholder={t("placeholderMemo")}
-          placeholderTextColor={theme.subtleForeground}
-          style={styles.input}
-        />
-      </View>
+      <TextInput
+        value={note}
+        onChangeText={setNote}
+        placeholder={t("memo")}
+        accessibilityLabel={t("memo")}
+        placeholderTextColor={theme.subtleForeground}
+        style={styles.input}
+      />
 
       {/* フッター */}
       <View style={styles.footer}>
@@ -238,8 +233,12 @@ export function PlaceForm({
         )}
         <Pressable
           onPress={() => void submit()}
-          disabled={busy}
-          style={[styles.submitButton, busy && styles.disabled]}
+          // 必須（仮ピンの名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={busy || (!!pinDraft && !pinName.trim())}
+          style={[
+            styles.submitButton,
+            (busy || (!!pinDraft && !pinName.trim())) && styles.disabled,
+          ]}
         >
           <Text style={styles.submitLabel}>
             {isEdit ? "保存" : t("addPlaceAria")}

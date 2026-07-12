@@ -66,17 +66,16 @@ export function EditTripForm({
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
       )}
 
-      <label className="block min-w-0 text-sm">
-        <FieldLabel required>{t("createTrip.title")}</FieldLabel>
-        <Input
-          name="title"
-          required
-          placeholder={t("createTrip.titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full min-w-0"
-        />
-      </label>
+      {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
+      <Input
+        name="title"
+        required
+        placeholder={t("createTrip.title")}
+        aria-label={t("createTrip.title")}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="block w-full min-w-0"
+      />
 
       <div className="text-sm">
         <FieldLabel required>{t("createTrip.dates")}</FieldLabel>
@@ -113,7 +112,8 @@ export function EditTripForm({
 
       <Button
         type="submit"
-        disabled={isPending}
+        // 必須（タイトル）は * でなく「埋まるまで保存無効」で表現（iOS 方式）。
+        disabled={isPending || !title.trim()}
         aria-label={t("common.save")}
         title={t("common.save")}
         className="w-full"

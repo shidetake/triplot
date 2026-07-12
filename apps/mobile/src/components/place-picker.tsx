@@ -20,10 +20,13 @@ export function PlacePicker({
   places,
   value,
   onChange,
+  placeholder,
 }: {
   places: { id: string; name: string }[];
   value: PlaceInput;
   onChange: (v: PlaceInput) => void;
+  // ラベルは置かない規約なので placeholder＝フィールド名（場所）を呼び出し側が渡す。
+  placeholder: string;
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -56,7 +59,8 @@ export function PlacePicker({
         }
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
-        placeholder="Eggs 'n Things"
+        placeholder={placeholder}
+        accessibilityLabel={placeholder}
         placeholderTextColor={t.subtleForeground}
         style={styles.input}
       />

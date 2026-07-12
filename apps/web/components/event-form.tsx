@@ -42,7 +42,6 @@ import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 const initialState: EventMutationState = { ok: false, error: null };
 
-const inputLayout = "mt-1 block w-full min-w-0"; // <Input>／native <select> 共通レイアウト
 
 // セグメントトラックの各ピル（sr-only native radio を内包）。ui-guidelines「セグメントトラック」。
 // sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
@@ -481,23 +480,20 @@ export function EventForm({
         </p>
       )}
 
-      <label className="block text-sm">
-        <FieldLabel required>{t("title")}</FieldLabel>
-        <Input
-          type="text"
-          name="title"
-          required
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder={
-            kind3 === "transit" ? t("placeholderTitleTransit") : t("placeholderTitle")
-          }
-          className={inputLayout}
-        />
-      </label>
+      {/* ラベルは置かず placeholder＝フィールド名（iOS カレンダー方式）。
+          可視ラベルが無いぶん aria-label で名前を担保する。 */}
+      <Input
+        type="text"
+        name="title"
+        required
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        placeholder={t("title")}
+        aria-label={t("title")}
+        className="block w-full min-w-0"
+      />
 
       <div className="block text-sm">
-        <FieldLabel>{t("place")}</FieldLabel>
         {mapsApiKey ? (
           <APIProvider apiKey={mapsApiKey} language={locale}>
             <PlacePicker
@@ -505,7 +501,7 @@ export function EventForm({
               biasCenter={biasCenter}
               initial={placePickerInitial}
               autoResolve={prefill?.autoResolvePlace}
-              placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
+              placeholder={t("place")}
             />
           </APIProvider>
         ) : (
@@ -514,7 +510,7 @@ export function EventForm({
             biasCenter={biasCenter}
             initial={placePickerInitial}
             autoResolve={prefill?.autoResolvePlace}
-            placeholder={kind3 === "transit" ? t("placeholderPlaceTransit") : t("placeholderPlace")}
+            placeholder={t("place")}
           />
         )}
       </div>
@@ -703,17 +699,15 @@ export function EventForm({
       )}
 
       {/* メモは公開範囲などの設定オプションより上に置く（費用フォームと並びを統一）。 */}
-      <label className="block text-sm">
-        <FieldLabel>{t("memo")}</FieldLabel>
-        <Input
-          type="text"
-          name="note"
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder={kind3 === "transit" ? t("placeholderNoteTransit") : t("placeholderNote")}
-          className={inputLayout}
-        />
-      </label>
+      <Input
+        type="text"
+        name="note"
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={t("memo")}
+        aria-label={t("memo")}
+        className="block w-full min-w-0"
+      />
 
       {/* 公開範囲 と 要予約 を同一行に左詰め＋縦区切り線で同居（1行節約）。両者は無関係な
           設定なので、付属物に見えないよう区切り線で「別グループ」と示す。要予約は公開範囲に
@@ -838,7 +832,8 @@ export function EventForm({
         )}
         <Button
           type="submit"
-          disabled={isPending}
+          // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={isPending || !title.trim()}
           aria-label={isEdit ? tCommon("save") : tCommon("add")}
           title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"

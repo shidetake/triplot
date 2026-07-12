@@ -209,17 +209,17 @@ export function CreateTripForm({
           ユーザーには見せない・選ばせない。 */}
       <input type="hidden" name="client_tz" value={browserTz()} />
 
-      <label className="block min-w-0 text-sm">
-        <FieldLabel required>{t("title")}</FieldLabel>
-        <Input
-          name="title"
-          required
-          placeholder={t("titlePlaceholder")}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          className="mt-1 block w-full min-w-0"
-        />
-      </label>
+      {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          必須は * でなく「埋まるまで作成ボタン無効」（既存の fillAll 検証）で表現。 */}
+      <Input
+        name="title"
+        required
+        placeholder={t("title")}
+        aria-label={t("title")}
+        value={title}
+        onChange={(e) => setTitle(e.target.value)}
+        className="block w-full min-w-0"
+      />
 
       <Field
         label={t("displayName")}
@@ -261,7 +261,9 @@ export function CreateTripForm({
 
       <Button
         type="submit"
-        disabled={isPending}
+        // 必須（タイトル）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
+        // 他の必須（日程・表示名）はラベルが残るので従来どおり fillAll 検証。
+        disabled={isPending || !title.trim()}
         aria-label={tCommon("create")}
         title={tCommon("create")}
         className="w-full"
