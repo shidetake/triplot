@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Pressable,
   StyleSheet,
   Text,
@@ -148,6 +149,8 @@ export default function PlacesTab() {
   // （web の pick → fetchFields と同じ。session トークンをここで消費）。
   const pickPrediction = async (p: PlacePrediction) => {
     if (!PLACES_API_KEY) return;
+    // 候補を選んだら入力は終わり＝キーボードを畳む（地図とフォームを見せる）。
+    Keyboard.dismiss();
     setPredictions([]);
     try {
       const c = await fetchPlaceDetails(p.placeId, {
@@ -158,12 +161,6 @@ export default function PlacesTab() {
       sessionTokenRef.current = null; // セッション終了
       if (!c) return;
       setCandidates([c]);
-      mapRef.current?.animateToRegion({
-        latitude: c.lat,
-        longitude: c.lng,
-        latitudeDelta: 0.02,
-        longitudeDelta: 0.02,
-      });
       openAddCandidate(c);
     } catch (e) {
       Alert.alert(t("searchFailed"), String(e));
@@ -203,11 +200,31 @@ export default function PlacesTab() {
     }
   };
 
+  // フォームシートを開く前の共通処理: 一覧シートを最小へ畳む（フォームの
+  // 後ろに完全に隠れる＝シートの二枚重ねを見せない）。
+  const collapseListSheet = () => listSheetRef.current?.snapToIndex(0);
+
+  // 座標を「フォームシートに隠れない画面上寄り（上から約25%）」に置くカメラ
+  // 移動。中央に置くと下から出るフォームシートとちょうど重なる。ピンタップ時は
+  // Google SDK 既定の「ピンを中央へ」アニメーションと競合するので、フォームを
+  // 開く各経路で必ずこれを呼び、最後に発行したこの移動で確定させる。
+  const focusCoord = (lat: number, lng: number) => {
+    const latDelta = 0.02;
+    mapRef.current?.animateToRegion({
+      latitude: lat - latDelta * 0.25,
+      longitude: lng,
+      latitudeDelta: latDelta,
+      longitudeDelta: latDelta,
+    });
+  };
+
   const openAddCandidate = (c: PlaceCandidate) => {
     setSelectedCandidate(c);
     setEditing(null);
     setPinDraft(null);
     setPredictions([]);
+    collapseListSheet();
+    focusCoord(c.lat, c.lng);
     formRef.current?.present();
   };
 
@@ -217,6 +234,8 @@ export default function PlacesTab() {
     setPinDraft({ lat, lng });
     setEditing(null);
     setSelectedCandidate(null);
+    collapseListSheet();
+    focusCoord(lat, lng);
     formRef.current?.present();
   };
 
@@ -235,43 +254,24 @@ export default function PlacesTab() {
       Alert.alert(t("searchFailed"), String(e));
     }
   };
+  // 保存済みの場所を開く（一覧行タップ・ピンの吹き出しタップの両方から）:
+  // 地図でそのピンへ寄せる＋編集シートを出すハイブリッド。一覧シートは畳む。
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
+    collapseListSheet();
+    if (p.lat != null && p.lng != null) {
+      focusCoord(p.lat, p.lng);
+      // 寄せた後に吹き出し（場所名）を出して、どのピンの編集中か分かるようにする。
+      setTimeout(() => markerRefs.current.get(p.id)?.showCallout(), 400);
+    }
     formRef.current?.present();
   };
 
   // ピンのタップに地図の寄りで応える（どの場所を選んだかのフィードバック）。
-  // 中心をピンよりやや南に置く＝ピンが画面上寄りに来て、下から出るフォーム
-  // シートに隠れない（画面下方のピンをタップした時も見えたままになる）。
   const focusPlacePin = (p: PlaceRow) => {
     if (p.lat == null || p.lng == null) return;
-    const latDelta = 0.02;
-    mapRef.current?.animateToRegion({
-      latitude: p.lat - latDelta * 0.18,
-      longitude: p.lng,
-      latitudeDelta: latDelta,
-      longitudeDelta: latDelta,
-    });
-  };
-
-  // 一覧から場所を選択: web のタブ表示と同じく、シートを畳んで地図でその場所の
-  // ピンを見せる（編集フォームは開かない。編集はピン/行の操作から）。
-  // 未マップの場所はピンが無いので従来どおり編集フォームへ。
-  const showPlaceOnMap = (p: PlaceRow) => {
-    if (p.lat == null || p.lng == null) {
-      openEditPlace(p);
-      return;
-    }
-    listSheetRef.current?.snapToIndex(0);
-    mapRef.current?.animateToRegion({
-      latitude: p.lat,
-      longitude: p.lng,
-      latitudeDelta: 0.02,
-      longitudeDelta: 0.02,
-    });
-    // アニメーション後に吹き出し（場所名）を出して、どのピンか分かるようにする。
-    setTimeout(() => markerRefs.current.get(p.id)?.showCallout(), 400);
+    focusCoord(p.lat, p.lng);
   };
 
   return (
@@ -398,7 +398,7 @@ export default function PlacesTab() {
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => showPlaceOnMap(item)}
+              onPress={() => openEditPlace(item)}
               style={styles.placeRow}
             >
               <PlaceCategoryIcon
