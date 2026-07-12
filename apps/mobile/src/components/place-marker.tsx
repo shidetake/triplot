@@ -56,13 +56,11 @@ export function PlaceMarker({
   );
 }
 
-// 検索候補ピン（本家 Google マップの検索結果ピンと同形＝白ピル＋赤丸の
-// カテゴリグリフ＋評価値＋下向きの尻尾）。ブランド色・白ピルはダークでも
-// そのまま（本家と同じ。「地図・Google 連携のビジュアルは Google に合わせる」）。
-// 選択中は本家同様に一回り拡大して示す。
-//
-// 寸法は candidatePinSize と同じ定数から決める（ラベル衝突計算・Marker の
-// anchor 計算がこの箱の実寸に依存するため、実測でなく数値で確定させる）。
+// 検索候補ピン（本家 Google マップの検索結果ピンと同形＝ピル＋丸のカテゴリ
+// グリフ＋評価値＋下向きの尻尾）。選択中は本家と同じく大きさを変えず配色を
+// 反転して示す（ピル地が赤になり、丸が白抜きになる）。ダークの配色は本家
+// ダークのスクリーンショット実測値、ライトは同じ反転則をライト配色に写した
+// もの（「地図・Google 連携のビジュアルは Google に合わせる」）。
 const CANDIDATE_PIN = {
   pillHeight: 30,
   circle: 26,
@@ -74,51 +72,63 @@ const CANDIDATE_PIN = {
   fontSize: 13,
   tailWidth: 12,
   tailHeight: 5,
-  selectedScale: 1.3,
+};
+
+// 配色（pill 地 / circle 丸 / glyph 丸中のグリフ / text 評価値）。
+const CANDIDATE_COLORS = {
+  light: {
+    normal: { pill: "#fff", circle: "#EA4335", glyph: "#fff", text: "#202124" },
+    selected: { pill: "#EA4335", circle: "#fff", glyph: "#EA4335", text: "#fff" },
+  },
+  dark: {
+    normal: { pill: "#5A616F", circle: "#DD6E62", glyph: "#202124", text: "#fff" },
+    selected: { pill: "#DD6E62", circle: "#fff", glyph: "#DD6E62", text: "#fff" },
+  },
 };
 
 // ピン箱（先端＝下端中央）の実寸。mapLabelLayout の LabelLayoutItem.pin と
-// Marker コンテナの絶対配置の両方がこれを使う。
-export function candidatePinSize(
-  rating: number | null,
-  selected: boolean,
-): { width: number; height: number } {
+// Marker コンテナの絶対配置の両方がこれを使う（実測でなく数値で確定させる）。
+// 選択で大きさは変わらない。
+export function candidatePinSize(rating: number | null): {
+  width: number;
+  height: number;
+} {
   const c = CANDIDATE_PIN;
-  const s = selected ? c.selectedScale : 1;
   const pillWidth =
     rating != null
       ? c.pad + c.circle + c.ratingGap + c.ratingWidth + c.ratingPadRight
       : c.pad + c.circle + c.pad;
-  return {
-    width: Math.round(pillWidth * s),
-    height: Math.round((c.pillHeight + c.tailHeight) * s),
-  };
+  return { width: pillWidth, height: c.pillHeight + c.tailHeight };
 }
 
 export function CandidatePin({
   icon,
   rating,
   selected,
+  dark,
 }: {
   icon: string;
   rating: number | null;
   selected: boolean;
+  dark: boolean;
 }) {
   const c = CANDIDATE_PIN;
-  const s = selected ? c.selectedScale : 1;
-  const size = candidatePinSize(rating, selected);
+  const col = CANDIDATE_COLORS[dark ? "dark" : "light"][
+    selected ? "selected" : "normal"
+  ];
+  const size = candidatePinSize(rating);
   return (
     <View style={{ width: size.width, height: size.height, alignItems: "center" }}>
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
-          height: c.pillHeight * s,
-          borderRadius: (c.pillHeight / 2) * s,
-          backgroundColor: "#fff",
-          paddingLeft: c.pad * s,
-          paddingRight: (rating != null ? c.ratingPadRight : c.pad) * s,
-          gap: c.ratingGap * s,
+          height: c.pillHeight,
+          borderRadius: c.pillHeight / 2,
+          backgroundColor: col.pill,
+          paddingLeft: c.pad,
+          paddingRight: rating != null ? c.ratingPadRight : c.pad,
+          gap: c.ratingGap,
           shadowColor: "#000",
           shadowOpacity: 0.25,
           shadowRadius: 2,
@@ -128,40 +138,32 @@ export function CandidatePin({
       >
         <View
           style={{
-            width: c.circle * s,
-            height: c.circle * s,
-            borderRadius: (c.circle / 2) * s,
-            backgroundColor: "#EA4335",
+            width: c.circle,
+            height: c.circle,
+            borderRadius: c.circle / 2,
+            backgroundColor: col.circle,
             alignItems: "center",
             justifyContent: "center",
           }}
         >
-          <Svg
-            viewBox="0 -960 960 960"
-            width={c.glyph * s}
-            height={c.glyph * s}
-          >
-            <Path d={getIconPath(icon)} fill="#fff" />
+          <Svg viewBox="0 -960 960 960" width={c.glyph} height={c.glyph}>
+            <Path d={getIconPath(icon)} fill={col.glyph} />
           </Svg>
         </View>
         {rating != null && (
           <Text
             style={{
-              fontSize: c.fontSize * s,
+              fontSize: c.fontSize,
               fontWeight: "500",
-              color: "#202124",
+              color: col.text,
             }}
           >
             {rating.toFixed(1)}
           </Text>
         )}
       </View>
-      <Svg
-        width={c.tailWidth * s}
-        height={c.tailHeight * s}
-        viewBox="0 0 12 5"
-      >
-        <Path d="M0 0h12L6 5Z" fill="#fff" />
+      <Svg width={c.tailWidth} height={c.tailHeight} viewBox="0 0 12 5">
+        <Path d="M0 0h12L6 5Z" fill={col.pill} />
       </Svg>
     </View>
   );

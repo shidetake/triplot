@@ -153,7 +153,7 @@ export default function PlacesTab() {
         id: c.placeId,
         lat: c.lat,
         lng: c.lng,
-        pin: candidatePinSize(c.rating, c.placeId === selectedId),
+        pin: candidatePinSize(c.rating),
         label: estimateLabelBox(c.name, CANDIDATE_LABEL),
       }));
     return layoutLabels(
@@ -601,8 +601,9 @@ export default function PlacesTab() {
   );
 }
 
-// 検索候補のマーカー（本家 Google マップの検索結果ピンと同形＝白ピル＋店名
-// ラベル）。placement は親が layoutLabels で衝突回避済みに決めた位置。
+// 検索候補のマーカー（本家 Google マップの検索結果ピンと同形＝ピル＋店名
+// ラベル。選択中は配色反転）。placement は親が layoutLabels で衝突回避済みに
+// 決めた位置。
 // コンテナの形と anchor は shared の markerGeometry（衝突計算と単一の真実）。
 // tracksViewChanges は初回描画後に切って CPU を抑える。見た目が変わるとき
 // （placement / selected / ダーク切替）は親が key を変えて再マウントする。
@@ -625,7 +626,7 @@ function CandidateMarker({
     return () => clearTimeout(id);
   }, []);
 
-  const pin = candidatePinSize(c.rating, selected);
+  const pin = candidatePinSize(c.rating);
   const label = estimateLabelBox(c.name, CANDIDATE_LABEL);
   const g = markerGeometry(placement, pin, label, CANDIDATE_LABEL_GAP);
   return (
@@ -642,6 +643,7 @@ function CandidateMarker({
             icon={iconKeyForGoogleType(c.primaryType)}
             rating={c.rating}
             selected={selected}
+            dark={dark}
           />
         </View>
         {placement !== "hidden" && g.labelX != null && g.labelY != null && (
