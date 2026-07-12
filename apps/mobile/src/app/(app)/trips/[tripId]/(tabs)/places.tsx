@@ -241,6 +241,20 @@ export default function PlacesTab() {
     formRef.current?.present();
   };
 
+  // ピンのタップに地図の寄りで応える（どの場所を選んだかのフィードバック）。
+  // 中心をピンよりやや南に置く＝ピンが画面上寄りに来て、下から出るフォーム
+  // シートに隠れない（画面下方のピンをタップした時も見えたままになる）。
+  const focusPlacePin = (p: PlaceRow) => {
+    if (p.lat == null || p.lng == null) return;
+    const latDelta = 0.02;
+    mapRef.current?.animateToRegion({
+      latitude: p.lat - latDelta * 0.18,
+      longitude: p.lng,
+      latitudeDelta: latDelta,
+      longitudeDelta: latDelta,
+    });
+  };
+
   // 一覧から場所を選択: web のタブ表示と同じく、シートを畳んで地図でその場所の
   // ピンを見せる（編集フォームは開かない。編集はピン/行の操作から）。
   // 未マップの場所はピンが無いので従来どおり編集フォームへ。
@@ -284,6 +298,7 @@ export default function PlacesTab() {
               }}
               coordinate={{ latitude: p.lat!, longitude: p.lng! }}
               title={p.name}
+              onPress={() => focusPlacePin(p)}
               onCalloutPress={() => openEditPlace(p)}
               // 丸マーカーは中心を座標に合わせる（雫ピンと違い先端が無い）。
               anchor={{ x: 0.5, y: 0.5 }}

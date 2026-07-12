@@ -18,6 +18,7 @@ import { useTranslations } from "use-intl";
 import {
   ALL_CURRENCIES,
   COMMON_CURRENCIES,
+  CURRENCY_NAMES,
 } from "@triplot/shared/currencies";
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
@@ -37,9 +38,10 @@ import type { Category, ExpenseRow } from "@triplot/shared/tripDerive";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 import { ExpenseCategoryIcon } from "./expense-category-icon";
-import { ChevronIcon, PlusIcon, TrashIcon } from "./icons";
+import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
 import { ToggleChip } from "./toggle-chip";
+import { VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -237,6 +239,7 @@ export function ExpenseForm({
 
   // 通貨選択（COMMON を先頭に、以降は全通貨）。
   const [currencyOpen, setCurrencyOpen] = useState(false);
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const currencyChoices = useMemo(() => {
     const rest = ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c));
     return [...COMMON_CURRENCIES, ...rest];
@@ -246,6 +249,8 @@ export function ExpenseForm({
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
     [categories],
   );
+  const selectedCategory =
+    sortedCategories.find((c) => c.id === categoryId) ?? null;
 
   const canDelete =
     !!editExpense &&
@@ -381,35 +386,29 @@ export function ExpenseForm({
         </View>
       )}
 
-      {/* カテゴリ */}
-      <View>
-        <Text style={styles.label}>{t("category")}</Text>
-        <View style={styles.categoryWrap}>
-          {sortedCategories.map((c) => {
-            const on = c.id === categoryId;
-            return (
-              <Pressable
-                key={c.id}
-                onPress={() => setCategoryId(c.id)}
-                style={[styles.categoryChip, on && styles.categoryChipOn]}
-              >
-                <ExpenseCategoryIcon
-                  icon={c.icon}
-                  size={14}
-                  color={on ? theme.primaryForeground : c.color}
-                />
-                <Text
-                  style={[
-                    styles.categoryLabel,
-                    on && styles.categoryLabelOn,
-                  ]}
-                >
-                  {c.name}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+      {/* カテゴリ: web のドロップダウン相当＝選択値トリガ→タップでリスト。
+          ラベル左・トリガ右で1行（チップ全展開をやめて縦を節約）。 */}
+      <View style={styles.inlineRow}>
+        <Text style={[styles.label, styles.labelInline]}>{t("category")}</Text>
+        <Pressable
+          onPress={() => setCategoryOpen(true)}
+          accessibilityLabel={t("category")}
+          style={[styles.input, styles.selectTrigger, styles.growTrigger]}
+        >
+          <View style={styles.categoryValue}>
+            {selectedCategory && (
+              <ExpenseCategoryIcon
+                icon={selectedCategory.icon}
+                size={16}
+                color={selectedCategory.color}
+              />
+            )}
+            <Text style={styles.selectText}>
+              {selectedCategory?.name ?? ""}
+            </Text>
+          </View>
+          <ChevronIcon size={14} color={theme.subtleForeground} rotate={90} />
+        </Pressable>
       </View>
 
       {/* 場所 */}
@@ -420,12 +419,11 @@ export function ExpenseForm({
         placeholder={t("place")}
       />
 
-      {/* 日付 + 時刻 */}
-      <View style={styles.row2}>
-        <View style={styles.grow}>
-          <Text style={styles.label}>
-            {t("date")} <Text style={styles.required}>*</Text>
-          </Text>
+      {/* 日付＋時刻: 予定フォームの開始/終了と同形の「ラベル左・チップ右」1行。
+          時刻は任意＝「＋時刻を指定」で追加、× でやめる。 */}
+      <View style={styles.dtRow}>
+        <Text style={[styles.label, styles.labelInline]}>{t("date")}</Text>
+        <View style={styles.dtPickers}>
           <DateTimePicker
             value={new Date(`${paidAtDate}T12:00:00`)}
             mode="date"
@@ -433,24 +431,9 @@ export function ExpenseForm({
             onChange={(_, d) => {
               if (d) onDateChange(formatLocalDate(d));
             }}
-            style={styles.datePicker}
           />
-        </View>
-        <View style={styles.grow}>
           {showTime ? (
             <>
-              <View style={styles.timeHeader}>
-                <Text style={styles.label}>{t("time")}</Text>
-                <Pressable
-                  onPress={() => {
-                    setPaidAtTime("00:00");
-                    setShowTime(false);
-                  }}
-                  hitSlop={8}
-                >
-                  <Text style={styles.removeTime}>{t("removeTime")}</Text>
-                </Pressable>
-              </View>
               <DateTimePicker
                 value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
                 mode="time"
@@ -458,22 +441,28 @@ export function ExpenseForm({
                 onChange={(_, d) => {
                   if (d) setPaidAtTime(formatLocalTime(d));
                 }}
-                style={styles.datePicker}
               />
-            </>
-          ) : (
-            <>
-              <Text style={[styles.label, styles.invisible]}>{t("time")}</Text>
               <Pressable
                 onPress={() => {
-                  setPaidAtTime("12:00");
-                  setShowTime(true);
+                  setPaidAtTime("00:00");
+                  setShowTime(false);
                 }}
-                style={styles.addTime}
+                hitSlop={8}
+                accessibilityLabel={t("removeTime")}
               >
-                <Text style={styles.addTimeText}>{t("addTime")}</Text>
+                <XIcon size={16} color={theme.mutedForeground} />
               </Pressable>
             </>
+          ) : (
+            <Pressable
+              onPress={() => {
+                setPaidAtTime("12:00");
+                setShowTime(true);
+              }}
+              style={styles.addTime}
+            >
+              <Text style={styles.addTimeText}>{t("addTime")}</Text>
+            </Pressable>
           )}
         </View>
       </View>
@@ -516,21 +505,12 @@ export function ExpenseForm({
         style={styles.input}
       />
 
-      {/* 公開範囲 */}
+      {/* 公開範囲: iOS 標準の排他選択＝セグメント。 */}
       <View style={styles.inlineRow}>
-        <Text style={styles.label}>{t("visibility")}</Text>
-        {(["shared", "private"] as const).map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVisibility(v)}
-            style={styles.tzOption}
-          >
-            <View style={[styles.radio, visibility === v && styles.radioOn]} />
-            <Text style={styles.radioLabel}>
-              {v === "shared" ? t("visibilityShared") : t("visibilitySelfOnly")}
-            </Text>
-          </Pressable>
-        ))}
+        <Text style={[styles.label, styles.labelInline]}>
+          {t("visibility")}
+        </Text>
+        <VisibilitySegment value={visibility} onChange={setVisibility} />
       </View>
 
       {/* 支払った人（shared かつ複数メンバーのときだけ・既定は自分で折りたたみ） */}
@@ -636,38 +616,101 @@ export function ExpenseForm({
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {/* 通貨選択モーダル */}
+      {/* 通貨選択モーダル。ヘッダーに × を置いて「選ばずに閉じる」を明示
+          （pageSheet の下スワイプでも閉じられるが分かりにくいため）。
+          各行は web と同じ「コード + 通貨名」。 */}
       <Modal
         visible={currencyOpen}
         animationType="slide"
         presentationStyle="pageSheet"
         onRequestClose={() => setCurrencyOpen(false)}
       >
-        <ScrollView
-          style={{ backgroundColor: theme.background }}
-          contentContainerStyle={styles.currencyList}
-        >
-          {currencyChoices.map((c) => (
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>{t("currency")}</Text>
             <Pressable
-              key={c}
-              onPress={() => {
-                setLocalCurrency(c);
-                setRateInput(rateFor(c));
-                setCurrencyOpen(false);
-              }}
-              style={styles.currencyRow}
+              onPress={() => setCurrencyOpen(false)}
+              hitSlop={8}
+              accessibilityLabel="閉じる"
             >
-              <Text
-                style={[
-                  styles.currencyText,
-                  c === localCurrency && styles.currencyTextOn,
-                ]}
-              >
-                {c}
-              </Text>
+              <XIcon size={20} color={theme.mutedForeground} />
             </Pressable>
-          ))}
-        </ScrollView>
+          </View>
+          <ScrollView contentContainerStyle={styles.pickerList}>
+            {currencyChoices.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  setLocalCurrency(c);
+                  setRateInput(rateFor(c));
+                  setCurrencyOpen(false);
+                }}
+                style={styles.pickerRow}
+              >
+                <Text
+                  style={[
+                    styles.currencyCode,
+                    c === localCurrency && styles.pickerTextOn,
+                  ]}
+                >
+                  {c}
+                </Text>
+                <Text style={styles.pickerSub} numberOfLines={1}>
+                  {CURRENCY_NAMES[c] ?? ""}
+                </Text>
+                {c === localCurrency && (
+                  <CheckIcon size={16} color={theme.foreground} />
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
+      </Modal>
+
+      {/* カテゴリ選択モーダル（通貨と同形）。 */}
+      <Modal
+        visible={categoryOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setCategoryOpen(false)}
+      >
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>{t("category")}</Text>
+            <Pressable
+              onPress={() => setCategoryOpen(false)}
+              hitSlop={8}
+              accessibilityLabel="閉じる"
+            >
+              <XIcon size={20} color={theme.mutedForeground} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.pickerList}>
+            {sortedCategories.map((c) => (
+              <Pressable
+                key={c.id}
+                onPress={() => {
+                  setCategoryId(c.id);
+                  setCategoryOpen(false);
+                }}
+                style={styles.pickerRow}
+              >
+                <ExpenseCategoryIcon icon={c.icon} size={18} color={c.color} />
+                <Text
+                  style={[
+                    styles.pickerText,
+                    c.id === categoryId && styles.pickerTextOn,
+                  ]}
+                >
+                  {c.name}
+                </Text>
+                {c.id === categoryId && (
+                  <CheckIcon size={16} color={theme.foreground} />
+                )}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       </Modal>
     </View>
   );
@@ -695,7 +738,6 @@ const makeStyles = (t: Theme) =>
       color: t.foreground,
     },
     required: { color: t.destructiveText },
-    invisible: { opacity: 0 },
     input: {
       height: 36,
       borderWidth: 1,
@@ -712,29 +754,20 @@ const makeStyles = (t: Theme) =>
       justifyContent: "space-between",
       gap: 6,
     },
+    // ラベル左の行でトリガに残り幅を使わせる。
+    growTrigger: { flex: 1 },
     selectText: { fontSize: 14, color: t.foreground },
+    categoryValue: { flexDirection: "row", alignItems: "center", gap: 6 },
     hint: { marginTop: 4, fontSize: 12, color: t.mutedForeground },
-    categoryWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-    categoryChip: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 4,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: t.fgAlpha(0.2),
-      paddingHorizontal: 8,
-      paddingVertical: 6,
-    },
-    categoryChipOn: { backgroundColor: t.primary, borderColor: t.primary },
-    categoryLabel: { fontSize: 12, color: t.foreground },
-    categoryLabelOn: { color: t.primaryForeground },
-    datePicker: { alignSelf: "flex-start", marginLeft: -8 },
-    timeHeader: {
+    // 日付＋時刻の「ラベル左・チップ右」行（予定フォームの開始/終了と同形）。
+    dtRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-    removeTime: { fontSize: 11, color: t.mutedForeground },
+    dtPickers: { flexDirection: "row", alignItems: "center", gap: 8 },
+    // label の marginBottom は上置き用なので、横並び行では打ち消す。
+    labelInline: { marginBottom: 0 },
     addTime: {
       height: 36,
       borderWidth: 1,
@@ -743,9 +776,16 @@ const makeStyles = (t: Theme) =>
       borderRadius: 6,
       alignItems: "center",
       justifyContent: "center",
+      paddingHorizontal: 10,
     },
     addTimeText: { fontSize: 12, color: t.mutedForeground },
-    tzOptions: { marginTop: 6, gap: 6 },
+    // TZ曖昧解決のラジオは横並び（web と同じ。縦積みは場所を食う）。
+    tzOptions: {
+      marginTop: 6,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+    },
     tzOption: { flexDirection: "row", alignItems: "center", gap: 6 },
     tzOptionLabel: { fontSize: 13, color: t.foreground },
     radio: {
@@ -756,7 +796,6 @@ const makeStyles = (t: Theme) =>
       borderColor: t.fgAlpha(0.35),
     },
     radioOn: { borderWidth: 5, borderColor: t.primary },
-    radioLabel: { fontSize: 13, color: t.foreground },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
     disclosureLabel: {
@@ -791,12 +830,34 @@ const makeStyles = (t: Theme) =>
       borderRadius: 6,
       padding: 10,
     },
-    currencyList: { padding: 16 },
-    currencyRow: {
+    // 通貨/カテゴリ選択モーダル共通（ヘッダー＝タイトル＋×、行＝値＋補足＋✓）。
+    pickerSheet: { flex: 1, backgroundColor: t.background },
+    pickerHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      paddingHorizontal: 16,
+      paddingVertical: 14,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.1),
+    },
+    pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
+    pickerList: { padding: 16, paddingTop: 4 },
+    pickerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
       paddingVertical: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
-    currencyText: { fontSize: 15, color: t.foreground },
-    currencyTextOn: { fontWeight: "700" },
+    currencyCode: {
+      fontSize: 15,
+      color: t.foreground,
+      fontVariant: ["tabular-nums"],
+      width: 48,
+    },
+    pickerText: { fontSize: 15, color: t.foreground, flex: 1 },
+    pickerSub: { fontSize: 13, color: t.mutedForeground, flex: 1 },
+    pickerTextOn: { fontWeight: "700" },
   });

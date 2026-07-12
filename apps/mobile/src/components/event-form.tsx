@@ -31,6 +31,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 import { PlacePicker } from "./place-picker";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
+import { VisibilitySegment } from "./visibility-segment";
 import { TrashIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -402,27 +403,19 @@ export function EventForm({
         style={styles.input}
       />
 
-      {/* 要予約 */}
-      <View style={styles.switchRow}>
-        <Text style={styles.label}>{t("needsReservation")}</Text>
-        <Switch value={needsReservation} onValueChange={setNeedsReservation} />
-      </View>
-
-      {/* 公開範囲 */}
-      <View style={styles.inlineRow}>
-        <Text style={styles.label}>{t("visibility")}</Text>
-        {(["shared", "private"] as const).map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVisibility(v)}
-            style={styles.radioRow}
-          >
-            <View style={[styles.radio, visibility === v && styles.radioOn]} />
-            <Text style={styles.radioLabel}>
-              {v === "shared" ? t("visibilityShared") : t("visibilitySelfOnly")}
-            </Text>
-          </Pressable>
-        ))}
+      {/* 公開範囲（セグメント）と要予約（スイッチ）を1行に同居（web と同じ1行節約）。 */}
+      <View style={styles.optionsRow}>
+        <View style={styles.optionPair}>
+          <Text style={styles.label}>{t("visibility")}</Text>
+          <VisibilitySegment value={visibility} onChange={setVisibility} />
+        </View>
+        <View style={styles.optionPair}>
+          <Text style={styles.label}>{t("needsReservation")}</Text>
+          <Switch
+            value={needsReservation}
+            onValueChange={setNeedsReservation}
+          />
+        </View>
       </View>
 
       {/* 参加者（複数メンバーのときだけ） */}
@@ -590,13 +583,20 @@ const makeStyles = (t: Theme) =>
     dtPickers: { flexDirection: "row", gap: 4 },
     // label の marginBottom は上置き用なので、横並び行では打ち消す。
     dtRowLabel: { marginBottom: 0 },
-    tzOptions: { marginTop: 6, gap: 6 },
-    inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    switchRow: {
+    // TZ曖昧解決のラジオは横並び（web と同じ。縦積みだと4行で場所を食う）。
+    tzOptions: {
+      marginTop: 6,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      gap: 12,
+    },
+    // 公開範囲＋要予約の同居行。ラベルと部品のペア2組を両端に。
+    optionsRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
+    optionPair: { flexDirection: "row", alignItems: "center", gap: 8 },
     radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
     radio: {
       width: 16,

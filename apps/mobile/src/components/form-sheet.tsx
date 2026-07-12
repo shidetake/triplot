@@ -63,6 +63,10 @@ export const FormSheet = forwardRef<
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView
+        // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
+        // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動）。
+        automaticallyAdjustKeyboardInsets
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={[
           styles.content,
           // フィット時はシート下端＝画面下端なので、ホームインジケータぶんを

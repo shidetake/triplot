@@ -14,6 +14,7 @@ import type { PlaceRow } from "@triplot/shared/tripDerive";
 import type { Visibility } from "@triplot/shared/types/database";
 
 import { TrashIcon } from "./icons";
+import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import Svg, { Path } from "react-native-svg";
@@ -172,42 +173,22 @@ export function PlaceForm({
         })}
       </View>
 
-      {/* ステータス（確定 / 候補） */}
+      {/* ステータス（確定 / 候補）・公開範囲: iOS 標準の排他選択＝セグメント。 */}
       <View style={styles.inlineRow}>
         <Text style={styles.label}>{t("status")}</Text>
-        {([false, true] as const).map((v) => (
-          <Pressable
-            key={String(v)}
-            onPress={() => setTentative(v)}
-            style={styles.radioRow}
-          >
-            <View style={[styles.radio, tentative === v && styles.radioOn]} />
-            <Text style={styles.radioLabel}>
-              {v ? t("statusCandidate") : t("statusConfirmed")}
-            </Text>
-          </Pressable>
-        ))}
+        <CompactSegment
+          options={[
+            { key: "confirmed", label: t("statusConfirmed") },
+            { key: "tentative", label: t("statusCandidate") },
+          ]}
+          value={tentative ? "tentative" : "confirmed"}
+          onChange={(v) => setTentative(v === "tentative")}
+        />
       </View>
 
-      {/* 公開範囲 */}
       <View style={styles.inlineRow}>
         <Text style={styles.label}>{t("visibility")}</Text>
-        {(["shared", "private"] as const).map((v) => (
-          <Pressable
-            key={v}
-            onPress={() => setVisibility(v)}
-            style={styles.radioRow}
-          >
-            <View
-              style={[styles.radio, visibility === v && styles.radioOn]}
-            />
-            <Text style={styles.radioLabel}>
-              {v === "shared"
-                ? t("visibilityShared")
-                : t("visibilitySelfOnly")}
-            </Text>
-          </Pressable>
-        ))}
+        <VisibilitySegment value={visibility} onChange={setVisibility} />
       </View>
 
       {/* メモ */}
@@ -270,16 +251,6 @@ const makeStyles = (t: Theme) =>
     iconChipOn: { backgroundColor: t.primary, borderColor: t.primary },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     label: { fontSize: 13, fontWeight: "500", color: t.foreground },
-    radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-    radio: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      borderWidth: 1.5,
-      borderColor: t.fgAlpha(0.35),
-    },
-    radioOn: { borderWidth: 5, borderColor: t.primary },
-    radioLabel: { fontSize: 13, color: t.foreground },
     input: {
       height: 36,
       borderWidth: 1,
