@@ -411,8 +411,10 @@ export default function PlacesTab() {
         />
       </BottomSheet>
 
-      {/* 追加/編集フォーム */}
-      <FormSheet ref={formRef}>
+      {/* 追加/編集フォーム。地図タブだけ中身の高さちょうどまで＝全開だと
+          どのピンの話か（地図の文脈）が見えなくなるため。予定・費用のフォームは
+          従来どおり全開（sizeToContent を渡していない）。 */}
+      <FormSheet ref={formRef} sizeToContent>
         {(dismiss) => (
           <PlaceForm
             tripId={tripId}

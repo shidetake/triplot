@@ -39,6 +39,7 @@ import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon, XIcon } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { usePullRefresh } from "@/lib/usePullRefresh";
 import {
   useInvalidateTrip,
   useTripDetail,
@@ -57,7 +58,8 @@ export default function ExpensesTab() {
   const tImport = useTranslations("import");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, refetch, isRefetching } = useTripDetail(tripId);
+  const { data, me, refetch } = useTripDetail(tripId);
+  const { refreshing, onRefresh } = usePullRefresh(refetch);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
 
@@ -169,10 +171,7 @@ export default function ExpensesTab() {
       <ScrollView
         contentContainerStyle={styles.content}
         refreshControl={
-          <RefreshControl
-            refreshing={isRefetching}
-            onRefresh={() => void refetch()}
-          />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         {/* 未確定の取り込み（amber）。タップで事前入力済みフォーム、× で破棄。 */}

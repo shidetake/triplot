@@ -30,8 +30,13 @@ export type FormSheetRef = {
 
 export const FormSheet = forwardRef<
   FormSheetRef,
-  { children: (dismiss: () => void) => ReactNode }
->(function FormSheet({ children }, ref) {
+  {
+    // 中身の高さちょうどまで開く（地図のピン→場所フォームなど、地図の文脈を
+    // 残したい用途）。既定 false = 従来どおりヘッダー帯下端まで全開。
+    sizeToContent?: boolean;
+    children: (dismiss: () => void) => ReactNode;
+  }
+>(function FormSheet({ sizeToContent = false, children }, ref) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -45,16 +50,26 @@ export const FormSheet = forwardRef<
   return (
     <BottomSheetModal
       ref={modalRef}
-      snapPoints={["100%"]}
+      // sizeToContent: snap 点は中身の実測高（enableDynamicSizing が
+      // BottomSheetScrollView を測って追加する）。上限は topInset で
+      // 従来の全開位置と同じ＝中身が長い時は従来と同じ高さでスクロール。
+      snapPoints={sizeToContent ? undefined : ["100%"]}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
-      enableDynamicSizing={false}
+      enableDynamicSizing={sizeToContent}
       // 背景は薄暗く（モーダル）＋ドラッグで閉じ。上に元画面が残る。
       backdropComponent={undefined}
       backgroundStyle={{ backgroundColor: t.background }}
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
-      <BottomSheetScrollView contentContainerStyle={styles.content}>
+      <BottomSheetScrollView
+        contentContainerStyle={[
+          styles.content,
+          // フィット時はシート下端＝画面下端なので、ホームインジケータぶんを
+          // 足して最下段の要素まで「ちょうど全部見える」ようにする。
+          sizeToContent && { paddingBottom: insets.bottom + 24 },
+        ]}
+      >
         {children(dismiss)}
       </BottomSheetScrollView>
     </BottomSheetModal>

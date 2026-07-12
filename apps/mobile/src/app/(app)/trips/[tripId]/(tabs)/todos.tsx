@@ -36,6 +36,7 @@ import {
 } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -70,7 +71,8 @@ export default function TodosTab() {
   const tripId = useTripId();
   const t = useTranslations();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, userId, refetch, isRefetching } = useTripDetail(tripId);
+  const { data, me, userId, refetch } = useTripDetail(tripId);
+  const { refreshing, onRefresh } = usePullRefresh(refetch);
 
   if (!data?.trip || !me) return null;
 
@@ -86,10 +88,7 @@ export default function TodosTab() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {/* タブ自体が「TODO」なので画面内見出しは重複＝出さない。準備TODOも

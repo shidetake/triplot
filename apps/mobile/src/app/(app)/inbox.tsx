@@ -21,6 +21,7 @@ import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { supabase } from "@/lib/supabase";
 import { type Theme, useThemedStyles } from "@/lib/theme";
+import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useSession } from "@/lib/session";
 
 // 受信箱（メール取り込み）。web の /import 相当（M8 スコープ = 割当/破棄/
@@ -31,11 +32,12 @@ export default function InboxScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
 
-  const { data, refetch, isRefetching } = useQuery({
+  const { data, refetch } = useQuery({
     queryKey: ["inbox", userId],
     queryFn: () => fetchImportInboxRows(supabase, userId!),
     enabled: !!userId,
   });
+  const { refreshing, onRefresh } = usePullRefresh(refetch);
 
   const [assigning, setAssigning] = useState<string | null>(null);
 
@@ -93,10 +95,7 @@ export default function InboxScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       refreshControl={
-        <RefreshControl
-          refreshing={isRefetching}
-          onRefresh={() => void refetch()}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
 
