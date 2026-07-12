@@ -29,17 +29,24 @@ import {
 } from "@triplot/shared/placesSearch";
 import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
 
+import Svg, { Path } from "react-native-svg";
+
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceForm } from "@/components/place-form";
 import { PlaceMarker, RedPin } from "@/components/place-marker";
-import { SearchIcon } from "@/components/icons";
+import { SearchIcon, XIcon } from "@/components/icons";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
 const PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
 const BUNDLE_ID = "app.triplot.mobile";
+
+// Google 評価の★（web の place-popups と同じ Material Symbols star 塗り・amber）。
+// 地図・Google 連携のビジュアルは Google に合わせる（ui-guidelines）。
+const STAR_PATH =
+  "m233-120 65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z";
 
 // Places autocomplete のセッショントークン（課金束ね用）。render 中には
 // 呼ばない（イベントハンドラから使う）。
@@ -169,6 +176,11 @@ export default function PlacesTab() {
 
   const runSearch = async () => {
     if (!PLACES_API_KEY || !query.trim()) return;
+    // 検索実行＝入力は終わり。キーボードと入力中サジェストを畳んで
+    // 地図（候補ピン）と結果一覧を見せる。
+    Keyboard.dismiss();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    setPredictions([]);
     setSearching(true);
     try {
       const bias = centroid(
@@ -189,6 +201,9 @@ export default function PlacesTab() {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         });
+        // 一覧シートを中段まで開いて検索結果のリストを見せる
+        // （searchText の応答に全候補の情報が揃っている＝追加 API 呼び出しなし）。
+        listSheetRef.current?.snapToIndex(1);
       }
     } catch (e) {
       // 失敗は握りつぶさず見せる（原因の詳細付き。実機でのキー制限・
@@ -389,41 +404,104 @@ export default function PlacesTab() {
         backgroundStyle={{ backgroundColor: theme.background }}
         handleIndicatorStyle={{ backgroundColor: theme.fgAlpha(0.2) }}
       >
-        <View style={styles.sheetHeader}>
-          <Text style={styles.sheetCount}>{places.length}件の場所</Text>
-        </View>
-        <BottomSheetFlatList
-          data={places}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              onPress={() => openEditPlace(item)}
-              style={styles.placeRow}
-            >
-              <PlaceCategoryIcon
-                icon={item.icon}
-                size={20}
-                color={item.tentative ? "#f59e0b" : "#10b981"}
-              />
-              <View style={styles.placeInfo}>
-                <Text style={styles.placeName} numberOfLines={1}>
-                  {item.name}
-                </Text>
-                <Text style={styles.placeMeta}>
-                  {item.tentative
-                    ? t("statusCandidate")
-                    : t("statusConfirmed")}
-                  {" ・ "}
-                  {getIconLabel(item.icon)}
-                </Text>
-              </View>
-            </Pressable>
-          )}
-          ListEmptyComponent={
-            <Text style={styles.empty}>まだ場所がありません。</Text>
-          }
-        />
+        {candidates.length > 0 ? (
+          // 検索結果モード: searchText で取得済みの候補情報を一覧で見せる
+          // （表示は取得済みデータの描画だけ＝追加の API 課金なし）。
+          <>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetCount}>
+                検索結果 {candidates.length}件
+              </Text>
+              <Pressable
+                onPress={() => setCandidates([])}
+                style={styles.sheetClose}
+                accessibilityLabel="検索結果を閉じる"
+              >
+                <XIcon size={16} color={theme.mutedForeground} />
+              </Pressable>
+            </View>
+            <BottomSheetFlatList
+              data={candidates}
+              keyExtractor={(item) => item.placeId}
+              contentContainerStyle={styles.list}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => openAddCandidate(item)}
+                  style={styles.placeRow}
+                >
+                  {/* 行の先頭グリフ＝地図の候補ピンと同じ Google 赤の雫 */}
+                  <PlaceCategoryIcon icon="pin" size={20} color="#EA4335" />
+                  <View style={styles.placeInfo}>
+                    <Text style={styles.placeName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.candidateMeta}>
+                      {item.rating != null && (
+                        <>
+                          <Svg viewBox="0 -960 960 960" width={12} height={12}>
+                            <Path d={STAR_PATH} fill="#d97706" />
+                          </Svg>
+                          <Text style={styles.candidateRating}>
+                            {item.rating.toFixed(1)}
+                          </Text>
+                          {item.userRatingCount != null && (
+                            <Text style={styles.candidateCount}>
+                              ({item.userRatingCount})
+                            </Text>
+                          )}
+                        </>
+                      )}
+                      <Text
+                        style={styles.candidateAddress}
+                        numberOfLines={1}
+                      >
+                        {item.formattedAddress}
+                      </Text>
+                    </View>
+                  </View>
+                </Pressable>
+              )}
+            />
+          </>
+        ) : (
+          <>
+            <View style={styles.sheetHeader}>
+              <Text style={styles.sheetCount}>{places.length}件の場所</Text>
+            </View>
+            <BottomSheetFlatList
+              data={places}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={styles.list}
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => openEditPlace(item)}
+                  style={styles.placeRow}
+                >
+                  <PlaceCategoryIcon
+                    icon={item.icon}
+                    size={20}
+                    color={item.tentative ? "#f59e0b" : "#10b981"}
+                  />
+                  <View style={styles.placeInfo}>
+                    <Text style={styles.placeName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <Text style={styles.placeMeta}>
+                      {item.tentative
+                        ? t("statusCandidate")
+                        : t("statusConfirmed")}
+                      {" ・ "}
+                      {getIconLabel(item.icon)}
+                    </Text>
+                  </View>
+                </Pressable>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.empty}>まだ場所がありません。</Text>
+              }
+            />
+          </>
+        )}
       </BottomSheet>
 
       {/* 追加/編集フォーム。地図タブだけ中身の高さちょうどまで＝全開だと
@@ -589,6 +667,32 @@ const makeStyles = (t: Theme) =>
   },
   sheetHeader: { paddingHorizontal: 16, paddingBottom: 8, alignItems: "center" },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
+  // 検索結果モードの × （ヘッダー右端に重ねる。専用行は作らない）。
+  sheetClose: {
+    position: "absolute",
+    right: 12,
+    top: -4,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // 検索候補行の2行目: ★評価 + 住所（web の place-popups と同じ並び）。
+  candidateMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    marginTop: 2,
+  },
+  candidateRating: { fontSize: 12, color: "#d97706" },
+  candidateCount: { fontSize: 12, color: t.mutedForeground },
+  candidateAddress: {
+    flex: 1,
+    fontSize: 12,
+    color: t.mutedForeground,
+    marginLeft: 3,
+  },
   list: { paddingHorizontal: 16, paddingBottom: 24 },
   placeRow: {
     flexDirection: "row",
