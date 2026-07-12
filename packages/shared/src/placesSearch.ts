@@ -16,6 +16,8 @@ export type PlaceCandidate = {
   locality: string | null;
   rating: number | null;
   userRatingCount: number | null;
+  // Google の主カテゴリ（restaurant / cafe / hotel …）。候補ピンのグリフ用。
+  primaryType: string | null;
 };
 
 // types は Google の応答で欠けることがある（実機で TypeError になった実データあり）。
@@ -65,6 +67,7 @@ export async function searchPlaces(
       "places.addressComponents",
       "places.rating",
       "places.userRatingCount",
+      "places.primaryType",
     ].join(","),
   };
   if (opts.iosBundleId) {
@@ -105,6 +108,7 @@ export async function searchPlaces(
       addressComponents?: AddressComponent[];
       rating?: number;
       userRatingCount?: number;
+      primaryType?: string;
     }[];
   };
 
@@ -122,6 +126,7 @@ export async function searchPlaces(
         locality,
         rating: p.rating ?? null,
         userRatingCount: p.userRatingCount ?? null,
+        primaryType: p.primaryType ?? null,
       };
     });
 }
@@ -220,6 +225,7 @@ export async function fetchPlaceDetails(
       "addressComponents",
       "rating",
       "userRatingCount",
+      "primaryType",
     ].join(","),
   };
   if (opts.iosBundleId) {
@@ -247,6 +253,7 @@ export async function fetchPlaceDetails(
     addressComponents?: AddressComponent[];
     rating?: number;
     userRatingCount?: number;
+    primaryType?: string;
   };
   if (!p.location) return null;
   const { region, locality } = extractRegion(p.addressComponents);
@@ -260,6 +267,7 @@ export async function fetchPlaceDetails(
     locality,
     rating: p.rating ?? null,
     userRatingCount: p.userRatingCount ?? null,
+    primaryType: p.primaryType ?? null,
   };
 }
 

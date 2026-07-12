@@ -1,4 +1,4 @@
-import { View } from "react-native";
+import { Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { getIconPath } from "@triplot/shared/placeIcons";
@@ -56,7 +56,118 @@ export function PlaceMarker({
   );
 }
 
-// 検索候補・ドラッグ仮ピン（web の RedPin と同じ Material location_on の雫、
+// 検索候補ピン（本家 Google マップの検索結果ピンと同形＝白ピル＋赤丸の
+// カテゴリグリフ＋評価値＋下向きの尻尾）。ブランド色・白ピルはダークでも
+// そのまま（本家と同じ。「地図・Google 連携のビジュアルは Google に合わせる」）。
+// 選択中は本家同様に一回り拡大して示す。
+//
+// 寸法は candidatePinSize と同じ定数から決める（ラベル衝突計算・Marker の
+// anchor 計算がこの箱の実寸に依存するため、実測でなく数値で確定させる）。
+const CANDIDATE_PIN = {
+  pillHeight: 30,
+  circle: 26,
+  glyph: 16,
+  pad: 2,
+  ratingGap: 3,
+  ratingWidth: 25, // "4.6" ＝ 3文字 × fontSize 13 × 0.6 + 予備
+  ratingPadRight: 8,
+  fontSize: 13,
+  tailWidth: 12,
+  tailHeight: 5,
+  selectedScale: 1.3,
+};
+
+// ピン箱（先端＝下端中央）の実寸。mapLabelLayout の LabelLayoutItem.pin と
+// Marker コンテナの絶対配置の両方がこれを使う。
+export function candidatePinSize(
+  rating: number | null,
+  selected: boolean,
+): { width: number; height: number } {
+  const c = CANDIDATE_PIN;
+  const s = selected ? c.selectedScale : 1;
+  const pillWidth =
+    rating != null
+      ? c.pad + c.circle + c.ratingGap + c.ratingWidth + c.ratingPadRight
+      : c.pad + c.circle + c.pad;
+  return {
+    width: Math.round(pillWidth * s),
+    height: Math.round((c.pillHeight + c.tailHeight) * s),
+  };
+}
+
+export function CandidatePin({
+  icon,
+  rating,
+  selected,
+}: {
+  icon: string;
+  rating: number | null;
+  selected: boolean;
+}) {
+  const c = CANDIDATE_PIN;
+  const s = selected ? c.selectedScale : 1;
+  const size = candidatePinSize(rating, selected);
+  return (
+    <View style={{ width: size.width, height: size.height, alignItems: "center" }}>
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          height: c.pillHeight * s,
+          borderRadius: (c.pillHeight / 2) * s,
+          backgroundColor: "#fff",
+          paddingLeft: c.pad * s,
+          paddingRight: (rating != null ? c.ratingPadRight : c.pad) * s,
+          gap: c.ratingGap * s,
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 2,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 2,
+        }}
+      >
+        <View
+          style={{
+            width: c.circle * s,
+            height: c.circle * s,
+            borderRadius: (c.circle / 2) * s,
+            backgroundColor: "#EA4335",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Svg
+            viewBox="0 -960 960 960"
+            width={c.glyph * s}
+            height={c.glyph * s}
+          >
+            <Path d={getIconPath(icon)} fill="#fff" />
+          </Svg>
+        </View>
+        {rating != null && (
+          <Text
+            style={{
+              fontSize: c.fontSize * s,
+              fontWeight: "500",
+              color: "#202124",
+            }}
+          >
+            {rating.toFixed(1)}
+          </Text>
+        )}
+      </View>
+      <Svg
+        width={c.tailWidth * s}
+        height={c.tailHeight * s}
+        viewBox="0 0 12 5"
+      >
+        <Path d="M0 0h12L6 5Z" fill="#fff" />
+      </Svg>
+    </View>
+  );
+}
+
+// ドラッグ仮ピン（web の RedPin と同じ Material location_on の雫、
 // Google 純正マーカー色 赤 #EA4335・白縁・濃赤の内円）。ブランド色なので
 // ダークでもそのまま。
 export function RedPin({ size = 34 }: { size?: number }) {

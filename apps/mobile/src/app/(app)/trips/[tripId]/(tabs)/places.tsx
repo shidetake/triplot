@@ -1,5 +1,5 @@
 import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -19,7 +19,16 @@ import MapView, {
 import { useTranslations } from "use-intl";
 
 import { boundsOf, centroid, TOKYO } from "@triplot/shared/placeMap";
-import { getIconLabel } from "@triplot/shared/placeIcons";
+import {
+  getIconLabel,
+  iconKeyForGoogleType,
+} from "@triplot/shared/placeIcons";
+import {
+  estimateLabelBox,
+  layoutLabels,
+  markerGeometry,
+  type LabelPlacement,
+} from "@triplot/shared/mapLabelLayout";
 import {
   autocompletePlaces,
   fetchPlaceDetails,
@@ -34,7 +43,12 @@ import Svg, { Path } from "react-native-svg";
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceForm } from "@/components/place-form";
-import { PlaceMarker, RedPin } from "@/components/place-marker";
+import {
+  CandidatePin,
+  candidatePinSize,
+  PlaceMarker,
+  RedPin,
+} from "@/components/place-marker";
 import { SearchIcon, XIcon } from "@/components/icons";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
@@ -53,6 +67,11 @@ const STAR_PATH =
 function newSessionToken(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
+
+// 候補ピンの店名ラベルの文字設定（衝突計算の箱見積もりと描画で共有）。
+const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
+// ピンとラベルの間隔（px）。
+const CANDIDATE_LABEL_GAP = 4;
 
 // 場所タブ（RN・M5）: Google 地図 + 保存済みピン + 検索 + ドラッグ式ボトムシート
 // 一覧 + 追加/編集。web の PlacesSection 相当。地図は PROVIDER_GOOGLE で世界観統一。
@@ -84,6 +103,14 @@ export default function PlacesTab() {
   const [pinDraft, setPinDraft] = useState<{ lat: number; lng: number } | null>(
     null,
   );
+  // 候補ピンの店名ラベル配置用: 現在のリージョン（パン/ズーム確定ごと）と
+  // 地図ビューの実寸。ジェスチャ中は再計算せず、確定時に一括で振り直す
+  // （本家 Google マップのラベル再配置と同じタイミング）。
+  const [region, setRegion] = useState<Region | null>(null);
+  const [mapSize, setMapSize] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
 
   const places = useMemo(
     () => (data ? derivePlaces(data.placesRaw) : []),
@@ -112,6 +139,30 @@ export default function PlacesTab() {
       longitudeDelta: 0.1,
     };
   }, [places]);
+
+  // 候補ピンの店名ラベル配置（greedy 衝突回避）。選択中を先頭にして
+  // 一番良い位置（右）を優先的に取らせる。
+  const labelPlacements = useMemo<Record<string, LabelPlacement>>(() => {
+    if (!mapSize || candidates.length === 0) return {};
+    const selectedId = selectedCandidate?.placeId ?? null;
+    const items = [...candidates]
+      .sort((a, b) =>
+        a.placeId === selectedId ? -1 : b.placeId === selectedId ? 1 : 0,
+      )
+      .map((c) => ({
+        id: c.placeId,
+        lat: c.lat,
+        lng: c.lng,
+        pin: candidatePinSize(c.rating, c.placeId === selectedId),
+        label: estimateLabelBox(c.name, CANDIDATE_LABEL),
+      }));
+    return layoutLabels(
+      items,
+      region ?? initialRegion,
+      mapSize,
+      CANDIDATE_LABEL_GAP,
+    );
+  }, [candidates, selectedCandidate, region, initialRegion, mapSize]);
 
   if (!data?.trip || !me) return null;
 
@@ -297,6 +348,11 @@ export default function PlacesTab() {
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
+        onRegionChangeComplete={setRegion}
+        onLayout={(e) => {
+          const { width, height } = e.nativeEvent.layout;
+          setMapSize({ width, height });
+        }}
         onLongPress={(e) => {
           const c = e.nativeEvent.coordinate;
           onMapLongPress(c.latitude, c.longitude);
@@ -333,17 +389,22 @@ export default function PlacesTab() {
             <RedPin />
           </Marker>
         )}
-        {candidates.map((c) => (
-          <Marker
-            key={c.placeId}
-            coordinate={{ latitude: c.lat, longitude: c.lng }}
-            onPress={() => openAddCandidate(c)}
-            // 雫の先端は viewBox 下端より 10% 上（y=-100/960）にある。
-            anchor={{ x: 0.5, y: 0.9 }}
-          >
-            <RedPin />
-          </Marker>
-        ))}
+        {candidates.map((c) => {
+          const placement = labelPlacements[c.placeId] ?? "right";
+          const selected = c.placeId === selectedCandidate?.placeId;
+          return (
+            <CandidateMarker
+              // 見た目が変わる要素を key に含めて再マウントさせる
+              // （tracksViewChanges を切った後の再描画手段）。
+              key={`${c.placeId}:${placement}:${selected ? 1 : 0}:${theme.dark ? 1 : 0}`}
+              candidate={c}
+              placement={placement}
+              selected={selected}
+              dark={theme.dark}
+              onPress={() => openAddCandidate(c)}
+            />
+          );
+        })}
       </MapView>
 
       {/* 検索バー（地図上に重ねる）＋入力中サジェスト */}
@@ -429,8 +490,12 @@ export default function PlacesTab() {
                   onPress={() => openAddCandidate(item)}
                   style={styles.placeRow}
                 >
-                  {/* 行の先頭グリフ＝地図の候補ピンと同じ Google 赤の雫 */}
-                  <PlaceCategoryIcon icon="pin" size={20} color="#EA4335" />
+                  {/* 行の先頭グリフ＝地図の候補ピンと同じカテゴリアイコン（Google 赤） */}
+                  <PlaceCategoryIcon
+                    icon={iconKeyForGoogleType(item.primaryType)}
+                    size={20}
+                    color="#EA4335"
+                  />
                   <View style={styles.placeInfo}>
                     <Text style={styles.placeName} numberOfLines={1}>
                       {item.name}
@@ -507,7 +572,12 @@ export default function PlacesTab() {
       {/* 追加/編集フォーム。地図タブだけ中身の高さちょうどまで＝全開だと
           どのピンの話か（地図の文脈）が見えなくなるため。予定・費用のフォームは
           従来どおり全開（sizeToContent を渡していない）。 */}
-      <FormSheet ref={formRef} sizeToContent>
+      <FormSheet
+        ref={formRef}
+        sizeToContent
+        // 閉じたら（保存・スワイプ閉じとも）候補ピンの選択ハイライトを解除。
+        onDismiss={() => setSelectedCandidate(null)}
+      >
         {(dismiss) => (
           <PlaceForm
             tripId={tripId}
@@ -528,6 +598,82 @@ export default function PlacesTab() {
         )}
       </FormSheet>
     </View>
+  );
+}
+
+// 検索候補のマーカー（本家 Google マップの検索結果ピンと同形＝白ピル＋店名
+// ラベル）。placement は親が layoutLabels で衝突回避済みに決めた位置。
+// コンテナの形と anchor は shared の markerGeometry（衝突計算と単一の真実）。
+// tracksViewChanges は初回描画後に切って CPU を抑える。見た目が変わるとき
+// （placement / selected / ダーク切替）は親が key を変えて再マウントする。
+function CandidateMarker({
+  candidate: c,
+  placement,
+  selected,
+  dark,
+  onPress,
+}: {
+  candidate: PlaceCandidate;
+  placement: LabelPlacement;
+  selected: boolean;
+  dark: boolean;
+  onPress: () => void;
+}) {
+  const [tracks, setTracks] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setTracks(false), 400);
+    return () => clearTimeout(id);
+  }, []);
+
+  const pin = candidatePinSize(c.rating, selected);
+  const label = estimateLabelBox(c.name, CANDIDATE_LABEL);
+  const g = markerGeometry(placement, pin, label, CANDIDATE_LABEL_GAP);
+  return (
+    <Marker
+      coordinate={{ latitude: c.lat, longitude: c.lng }}
+      anchor={{ x: g.anchorX, y: g.anchorY }}
+      onPress={onPress}
+      zIndex={selected ? 100 : 10}
+      tracksViewChanges={tracks}
+    >
+      <View style={{ width: g.width, height: g.height }}>
+        <View style={{ position: "absolute", left: g.pinX, top: g.pinY }}>
+          <CandidatePin
+            icon={iconKeyForGoogleType(c.primaryType)}
+            rating={c.rating}
+            selected={selected}
+          />
+        </View>
+        {placement !== "hidden" && g.labelX != null && g.labelY != null && (
+          <Text
+            numberOfLines={label.lines}
+            style={{
+              position: "absolute",
+              left: g.labelX,
+              top: g.labelY,
+              width: label.width,
+              fontSize: CANDIDATE_LABEL.fontSize,
+              lineHeight: CANDIDATE_LABEL.lineHeight,
+              fontWeight: "500",
+              textAlign:
+                placement === "left"
+                  ? "right"
+                  : placement === "right"
+                    ? "left"
+                    : "center",
+              // 地図ラベルと同じハロー付き文字（ライト=濃字+白縁、ダーク=白字+
+              // 夜間スタイルの地色縁）。ベースマップの地名より一段目立たせる。
+              color: dark ? "#ffffff" : "#202124",
+              textShadowColor: dark ? "#242f3e" : "#ffffff",
+              textShadowRadius: 2,
+              textShadowOffset: { width: 0, height: 0 },
+            }}
+          >
+            {c.name}
+          </Text>
+        )}
+      </View>
+    </Marker>
   );
 }
 

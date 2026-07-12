@@ -34,9 +34,12 @@ export const FormSheet = forwardRef<
     // 中身の高さちょうどまで開く（地図のピン→場所フォームなど、地図の文脈を
     // 残したい用途）。既定 false = 従来どおりヘッダー帯下端まで全開。
     sizeToContent?: boolean;
+    // 完全に閉じた後（スワイプ閉じ・プログラム dismiss の両方）。地図タブが
+    // 候補ピンの選択ハイライトを解除するのに使う。
+    onDismiss?: () => void;
     children: (dismiss: () => void) => ReactNode;
   }
->(function FormSheet({ sizeToContent = false, children }, ref) {
+>(function FormSheet({ sizeToContent = false, onDismiss, children }, ref) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -54,6 +57,7 @@ export const FormSheet = forwardRef<
       // BottomSheetScrollView を測って追加する）。上限は topInset で
       // 従来の全開位置と同じ＝中身が長い時は従来と同じ高さでスクロール。
       snapPoints={sizeToContent ? undefined : ["100%"]}
+      onDismiss={onDismiss}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
       enableDynamicSizing={sizeToContent}

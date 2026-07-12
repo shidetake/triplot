@@ -104,6 +104,168 @@ export function getIconLabel(key: string): string {
   return BY_KEY.get(key)?.label ?? key;
 }
 
+// Google Places API (New) の primaryType → 場所ピンカタログの key。
+// 本家 Google マップの検索候補ピンがカテゴリのグリフを出すのに合わせる
+// （「地図・Google 連携のビジュアルは Google に合わせる」規約）。
+// 値は必ず ICON_CATALOG の key（placeIcons.test.ts が不変条件として検査）。
+export const GOOGLE_TYPE_ICON: Record<string, string> = {
+  // 飲食
+  cafe: "cafe",
+  coffee_shop: "cafe",
+  tea_house: "cafe",
+  cat_cafe: "cafe",
+  dog_cafe: "cafe",
+  bakery: "bakery_dining",
+  donut_shop: "bakery_dining",
+  bagel_shop: "bakery_dining",
+  bar: "bar",
+  pub: "bar",
+  wine_bar: "bar",
+  night_club: "bar",
+  ramen_restaurant: "ramen_dining",
+  fast_food_restaurant: "fastfood",
+  hamburger_restaurant: "fastfood",
+  sandwich_shop: "fastfood",
+  meal_takeaway: "fastfood",
+  meal_delivery: "fastfood",
+  ice_cream_shop: "icecream",
+  dessert_shop: "icecream",
+  dessert_restaurant: "icecream",
+  confectionery: "icecream",
+  candy_store: "icecream",
+  chocolate_shop: "icecream",
+  restaurant: "food",
+  food_court: "food",
+  diner: "food",
+  // 日用・買い物
+  supermarket: "local_grocery_store",
+  grocery_store: "local_grocery_store",
+  asian_grocery_store: "local_grocery_store",
+  market: "local_grocery_store",
+  convenience_store: "local_convenience_store",
+  pharmacy: "local_pharmacy",
+  drugstore: "local_pharmacy",
+  hospital: "local_hospital",
+  doctor: "local_hospital",
+  dental_clinic: "local_hospital",
+  dentist: "local_hospital",
+  atm: "local_atm",
+  bank: "local_atm",
+  shopping_mall: "shopping",
+  department_store: "shopping",
+  // 交通
+  airport: "airport",
+  international_airport: "airport",
+  airstrip: "airport",
+  heliport: "airport",
+  train_station: "station",
+  subway_station: "station",
+  transit_station: "station",
+  light_rail_station: "station",
+  monorail_station: "station",
+  bus_station: "directions_bus",
+  bus_stop: "directions_bus",
+  ferry_terminal: "directions_boat",
+  marina: "directions_boat",
+  taxi_stand: "local_taxi",
+  car_rental: "car_rental",
+  parking: "parking",
+  rest_stop: "parking",
+  // 宿・湯
+  hotel: "lodging",
+  motel: "lodging",
+  hostel: "lodging",
+  lodging: "lodging",
+  resort_hotel: "lodging",
+  extended_stay_hotel: "lodging",
+  bed_and_breakfast: "lodging",
+  guest_house: "lodging",
+  inn: "lodging",
+  japanese_inn: "lodging",
+  budget_japanese_inn: "lodging",
+  private_guest_room: "lodging",
+  campground: "lodging",
+  camping_cabin: "lodging",
+  rv_park: "lodging",
+  cottage: "lodging",
+  farmstay: "lodging",
+  public_bath: "onsen",
+  sauna: "onsen",
+  hot_spring: "onsen",
+  spa: "spa",
+  massage: "spa",
+  wellness_center: "spa",
+  // 文化・観光
+  museum: "museum",
+  art_gallery: "museum",
+  planetarium: "museum",
+  tourist_attraction: "sightseeing",
+  historical_landmark: "sightseeing",
+  historical_place: "sightseeing",
+  monument: "sightseeing",
+  observation_deck: "sightseeing",
+  visitor_center: "sightseeing",
+  cultural_landmark: "sightseeing",
+  performing_arts_theater: "theaters",
+  movie_theater: "theaters",
+  opera_house: "theaters",
+  concert_hall: "theaters",
+  amphitheatre: "theaters",
+  auditorium: "theaters",
+  church: "church",
+  synagogue: "church",
+  mosque: "mosque",
+  hindu_temple: "temple_buddhist",
+  buddhist_temple: "temple_buddhist",
+  shinto_shrine: "temple_buddhist",
+  place_of_worship: "temple_buddhist",
+  // 自然・レジャー
+  park: "nature",
+  national_park: "nature",
+  state_park: "nature",
+  botanical_garden: "nature",
+  garden: "nature",
+  dog_park: "nature",
+  picnic_ground: "nature",
+  beach: "beach_access",
+  hiking_area: "hiking",
+  zoo: "activity",
+  aquarium: "activity",
+  amusement_park: "activity",
+  amusement_center: "activity",
+  water_park: "activity",
+  playground: "activity",
+  bowling_alley: "activity",
+  video_arcade: "activity",
+  karaoke: "activity",
+  stadium: "activity",
+  sports_complex: "activity",
+  sports_club: "activity",
+  arena: "activity",
+  athletic_field: "activity",
+  casino: "casino",
+  gym: "fitness_center",
+  fitness_center: "fitness_center",
+  swimming_pool: "pool",
+  golf_course: "golf_course",
+  ski_resort: "downhill_skiing",
+};
+
+export function iconKeyForGoogleType(
+  primaryType: string | null | undefined,
+): string {
+  if (!primaryType) return "pin";
+  const exact = GOOGLE_TYPE_ICON[primaryType];
+  if (exact) return exact;
+  // 個別対応の無い type は系統の suffix で拾う（italian_restaurant → 食事 等）。
+  if (primaryType.endsWith("_restaurant")) return "food";
+  if (primaryType.endsWith("_store") || primaryType.endsWith("_shop")) {
+    return "shopping";
+  }
+  if (primaryType.endsWith("_station")) return "station";
+  return "pin";
+}
+
 // 新規 trip 作成時に seed する 12 個。駐車場は外す（追加で入れたい人だけ追加）。
 // 「買い物」は意外と使われないので外して「スーパー」を入れた。
 // SQL 側の seed_default_trip_pin_options と一致させること。
