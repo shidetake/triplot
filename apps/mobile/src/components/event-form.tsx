@@ -20,6 +20,7 @@ import {
 } from "@triplot/shared/data/events";
 import {
   buildTripTzTimeline,
+  dedupeTzCandidates,
   resolveExpenseTz,
   type TzCandidate,
 } from "@triplot/shared/schedule";
@@ -31,7 +32,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 import { PlacePicker } from "./place-picker";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
-import { VisibilitySegment } from "./visibility-segment";
+import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { TrashIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -357,30 +358,32 @@ export function EventForm({
         </>
       )}
 
-      {/* 通常/終日: 乗継日のTZ曖昧解決 */}
+      {/* 通常/終日: 乗継日のTZ曖昧解決（セグメント）。同じ TZ の候補は
+          dedupeTzCandidates で1つに畳み、キーも TZ で照合する（選択の実体は
+          transitId/side だが、ユーザにとっての選択単位は TZ のため）。 */}
       {!isTransit &&
         multiTz &&
         startTzRes.kind === "ambiguous" && (
           <View>
             <Text style={styles.hint}>{t("transitDay")}</Text>
             <View style={styles.tzOptions}>
-              {startTzRes.options.map((opt) => {
-                const on =
-                  tzDisambigTransitId === opt.transitId &&
-                  tzDisambigSide === opt.side;
-                return (
-                  <Pressable
-                    key={`${opt.transitId}-${opt.side}`}
-                    onPress={() => selectTz(opt)}
-                    style={styles.radioRow}
-                  >
-                    <View style={[styles.radio, on && styles.radioOn]} />
-                    <Text style={styles.radioLabel}>
-                      {tzDisplayLabel(opt.tz)}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+              <CompactSegment
+                options={dedupeTzCandidates(startTzRes.options).map((opt) => ({
+                  key: opt.tz,
+                  label: tzDisplayLabel(opt.tz),
+                }))}
+                value={
+                  startTzRes.options.find(
+                    (o) =>
+                      o.transitId === tzDisambigTransitId &&
+                      o.side === tzDisambigSide,
+                  )?.tz ?? ""
+                }
+                onChange={(tz) => {
+                  const opt = startTzRes.options.find((o) => o.tz === tz);
+                  if (opt) selectTz(opt);
+                }}
+              />
             </View>
           </View>
         )}
@@ -597,16 +600,6 @@ const makeStyles = (t: Theme) =>
       justifyContent: "space-between",
     },
     optionPair: { flexDirection: "row", alignItems: "center", gap: 8 },
-    radioRow: { flexDirection: "row", alignItems: "center", gap: 6 },
-    radio: {
-      width: 16,
-      height: 16,
-      borderRadius: 8,
-      borderWidth: 1.5,
-      borderColor: t.fgAlpha(0.35),
-    },
-    radioOn: { borderWidth: 5, borderColor: t.primary },
-    radioLabel: { fontSize: 13, color: t.foreground },
     disclosure: { flexDirection: "row", alignItems: "center" },
     disclosureLabel: {
       fontSize: 13,

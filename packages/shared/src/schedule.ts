@@ -743,6 +743,15 @@ export type TzResolution =
   | { kind: "ambiguous"; options: TzCandidate[] };
 
 /**
+ * 同じ TZ を指す候補を1つに畳む（表示用）。移動が同一暦日に複数あると
+ * 「日本/ハワイ/日本/ハワイ」のように同じ TZ の選択肢が重複して並ぶが、
+ * どの候補を選んでも解決される TZ は同じなので先頭だけ残せばよい。
+ */
+export function dedupeTzCandidates(options: TzCandidate[]): TzCandidate[] {
+  return options.filter((o, i, a) => a.findIndex((x) => x.tz === o.tz) === i);
+}
+
+/**
  * その日付に費用が発生したと仮定したときの現地TZを旅程から引く。
  * 乗継日（出発日==到着日の移動を含む日）だけは一意に決まらないので ambiguous を返す。
  * 同日に複数回乗り継ぐ（3つ以上のTZを跨ぐ）場合も、その日に触れる全TZを時系列順に集める。

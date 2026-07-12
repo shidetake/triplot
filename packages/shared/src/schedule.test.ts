@@ -4,6 +4,7 @@ import {
   addDays,
   buildSchedule,
   buildTripTzTimeline,
+  dedupeTzCandidates,
   formatDayLabel,
   formatMinutes,
   parseWall,
@@ -739,5 +740,28 @@ describe("buildSchedule: 縦軸は常に0:00-24:00固定", () => {
       tripEnd: "2026-05-01",
     });
     expect(s.window).toEqual({ startMin: 0, endMin: 24 * 60 });
+  });
+});
+
+describe("dedupeTzCandidates: 同一TZ候補の畳み込み", () => {
+  it("同じ TZ を指す候補は先頭だけ残す（日本/ハワイ/日本/ハワイ → 日本/ハワイ）", () => {
+    const options = [
+      { tz: "Asia/Tokyo", transitId: "t1", side: "depart" as const },
+      { tz: "Pacific/Honolulu", transitId: "t1", side: "arrive" as const },
+      { tz: "Asia/Tokyo", transitId: "t2", side: "arrive" as const },
+      { tz: "Pacific/Honolulu", transitId: "t2", side: "depart" as const },
+    ];
+    expect(dedupeTzCandidates(options)).toEqual([
+      { tz: "Asia/Tokyo", transitId: "t1", side: "depart" },
+      { tz: "Pacific/Honolulu", transitId: "t1", side: "arrive" },
+    ]);
+  });
+
+  it("重複が無ければそのまま", () => {
+    const options = [
+      { tz: "Asia/Tokyo", transitId: "t1", side: "depart" as const },
+      { tz: "Pacific/Honolulu", transitId: "t1", side: "arrive" as const },
+    ];
+    expect(dedupeTzCandidates(options)).toEqual(options);
   });
 });

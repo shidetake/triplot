@@ -63,6 +63,8 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     track: {
       flexDirection: "row",
+      // 選択肢が多く横幅を超えた場合のガード＝枠内で折り返す（見切れさせない）。
+      flexWrap: "wrap",
       gap: 4,
       borderWidth: 1,
       borderColor: t.fgAlpha(0.1),

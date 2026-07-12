@@ -15,6 +15,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
+  dedupeTzCandidates,
   formatMinutes,
   resolveEventTz,
   resolveExpenseTz,
@@ -674,18 +675,23 @@ export function EventForm({
           {multiTz && tzRes.kind === "ambiguous" && (
             <fieldset className="text-sm">
               <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
+              {/* 同じ TZ の候補は畳む（移動が複数あると重複して並ぶ）。選択状態も
+                  TZ 単位で照合する（実体の transitId/side は selectTz が保持）。 */}
               <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
-                {tzRes.options.map((opt) => (
+                {dedupeTzCandidates(tzRes.options).map((opt) => (
                   <label
-                    key={`${opt.transitId}-${opt.side}`}
+                    key={opt.tz}
                     className="inline-flex items-center gap-2"
                   >
                     <input
                       type="radio"
                       name="tz_choice"
                       checked={
-                        tzDisambigTransitId === opt.transitId &&
-                        tzDisambigSide === opt.side
+                        tzRes.options.find(
+                          (o) =>
+                            o.transitId === tzDisambigTransitId &&
+                            o.side === tzDisambigSide,
+                        )?.tz === opt.tz
                       }
                       onChange={() => selectTz(opt)}
                     />
