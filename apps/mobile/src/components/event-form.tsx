@@ -326,44 +326,25 @@ export function EventForm({
         />
       </View>
 
-      {/* 日時 */}
-      {kind === "allday" ? (
-        <View style={styles.row2}>
-          <DateField
-            label={t("date")}
-            date={startDate}
-            onChange={onStartDateChange}
-          />
-          <DateField
-            label={t("endDateTime")}
-            date={endDate}
-            onChange={setEndDate}
-          />
-        </View>
-      ) : (
-        <>
-          <View style={styles.row2}>
-            <DateField
-              label={isTransit ? t("departDateTime") : t("startDateTime")}
-              date={startDate}
-              onChange={onStartDateChange}
-            />
-            <TimeField
-              date={startDate}
-              time={startTime}
-              onChange={setStartTime}
-            />
-          </View>
-          <View style={styles.row2}>
-            <DateField
-              label={isTransit ? t("arriveDateTime") : t("endDateTime")}
-              date={endDate}
-              onChange={setEndDate}
-            />
-            <TimeField date={endDate} time={endTime} onChange={setEndTime} />
-          </View>
-        </>
-      )}
+      {/* 日時: iOS カレンダーの予定作成と同じ「ラベル左・チップ右」の2行。
+          チップは OS のコンパクトピッカー（日付タップでカレンダー、時刻タップで
+          ホイールのポップオーバー）。終日は日付チップのみ。 */}
+      <View style={styles.dtGroup}>
+        <DateTimeRow
+          label={isTransit ? t("depart") : t("start")}
+          date={startDate}
+          time={kind === "allday" ? undefined : startTime}
+          onDateChange={onStartDateChange}
+          onTimeChange={setStartTime}
+        />
+        <DateTimeRow
+          label={isTransit ? t("arrive") : t("end")}
+          date={endDate}
+          time={kind === "allday" ? undefined : endTime}
+          onDateChange={setEndDate}
+          onTimeChange={setEndTime}
+        />
+      </View>
 
       {/* 時差移動: 出発/到着TZ */}
       {isTransit && (
@@ -507,54 +488,43 @@ export function EventForm({
   );
 }
 
-function DateField({
+function DateTimeRow({
   label,
   date,
-  onChange,
+  time,
+  onDateChange,
+  onTimeChange,
 }: {
   label: string;
   date: string;
-  onChange: (d: string) => void;
+  time?: string; // undefined = 終日（日付チップのみ）
+  onDateChange: (d: string) => void;
+  onTimeChange?: (t: string) => void;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
-    <View style={styles.grow}>
-      <Text style={styles.label}>{label}</Text>
-      <DateTimePicker
-        value={new Date(`${date}T12:00:00`)}
-        mode="date"
-        display="compact"
-        onChange={(_, d) => {
-          if (d) onChange(fmtDate(d));
-        }}
-        style={styles.picker}
-      />
-    </View>
-  );
-}
-
-function TimeField({
-  date,
-  time,
-  onChange,
-}: {
-  date: string;
-  time: string;
-  onChange: (t: string) => void;
-}) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.timeCol}>
-      <Text style={[styles.label, styles.invisible]}>時刻</Text>
-      <DateTimePicker
-        value={new Date(`${date}T${time}:00`)}
-        mode="time"
-        display="compact"
-        onChange={(_, d) => {
-          if (d) onChange(fmtTime(d));
-        }}
-        style={styles.picker}
-      />
+    <View style={styles.dtRow}>
+      <Text style={[styles.label, styles.dtRowLabel]}>{label}</Text>
+      <View style={styles.dtPickers}>
+        <DateTimePicker
+          value={new Date(`${date}T12:00:00`)}
+          mode="date"
+          display="compact"
+          onChange={(_, d) => {
+            if (d) onDateChange(fmtDate(d));
+          }}
+        />
+        {time != null && (
+          <DateTimePicker
+            value={new Date(`${date}T${time}:00`)}
+            mode="time"
+            display="compact"
+            onChange={(_, d) => {
+              if (d) onTimeChange?.(fmtTime(d));
+            }}
+          />
+        )}
+      </View>
     </View>
   );
 }
@@ -603,7 +573,6 @@ const makeStyles = (t: Theme) =>
       marginBottom: 4,
       color: t.foreground,
     },
-    invisible: { opacity: 0 },
     input: {
       height: 36,
       borderWidth: 1,
@@ -613,10 +582,16 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
-    row2: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
-    grow: { flex: 1 },
-    timeCol: { width: 110 },
-    picker: { alignSelf: "flex-start", marginLeft: -8 },
+    // 日時の「ラベル左・チップ右」行（iOS カレンダー方式）。
+    dtGroup: { gap: 10 },
+    dtRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    dtPickers: { flexDirection: "row", gap: 4 },
+    // label の marginBottom は上置き用なので、横並び行では打ち消す。
+    dtRowLabel: { marginBottom: 0 },
     tzOptions: { marginTop: 6, gap: 6 },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     switchRow: {
