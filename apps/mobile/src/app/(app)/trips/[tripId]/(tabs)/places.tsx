@@ -13,7 +13,6 @@ import {
 import MapView, {
   Marker,
   PROVIDER_GOOGLE,
-  type MapMarker,
   type Region,
 } from "react-native-maps";
 import { useTranslations } from "use-intl";
@@ -86,7 +85,6 @@ export default function PlacesTab() {
   const mapRef = useRef<MapView>(null);
   const formRef = useRef<FormSheetRef>(null);
   const listSheetRef = useRef<BottomSheet>(null);
-  const markerRefs = useRef(new Map<string, MapMarker | null>());
 
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([]);
@@ -95,6 +93,8 @@ export default function PlacesTab() {
   // 最適化のセッショントークン。
   const [predictions, setPredictions] = useState<PlacePrediction[]>([]);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // サジェストの世代番号。閉じるたびに進め、古い世代の応答は捨てる。
+  const suggestEpochRef = useRef(0);
   const sessionTokenRef = useRef<string | null>(null);
   const [selectedCandidate, setSelectedCandidate] =
     useState<PlaceCandidate | null>(null);
@@ -179,27 +179,44 @@ export default function PlacesTab() {
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
     ) ?? undefined;
 
+  // 入力中サジェストを閉じる唯一の経路。保留中の debounce タイマーと、既に
+  // 飛んでいる fetch の応答（閉じた後に届いて窓を開き直すのが「開きっぱなし」の
+  // 原因）の両方を世代番号で無効化する。閉じたい全経路がこれを呼ぶ。
+  const closeSuggestions = () => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    suggestEpochRef.current += 1;
+    setPredictions([]);
+  };
+
   // 入力ごとにサジェストを引く（web と同じ 300ms debounce）。1 セッションの
   // 課金トークンを維持し、確定（details）で消費する。
   const onQueryChange = (v: string) => {
     setQuery(v);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     if (!PLACES_API_KEY || !v.trim()) {
-      setPredictions([]);
+      closeSuggestions();
       return;
     }
     if (!sessionTokenRef.current) {
       sessionTokenRef.current = newSessionToken();
     }
     debounceRef.current = setTimeout(() => {
+      const epoch = suggestEpochRef.current;
       void autocompletePlaces(v, {
         apiKey: PLACES_API_KEY,
         iosBundleId: BUNDLE_ID,
         biasCenter: biasCenter(),
         sessionToken: sessionTokenRef.current ?? undefined,
       })
-        .then(setPredictions)
-        .catch(() => setPredictions([]));
+        .then((r) => {
+          if (epoch === suggestEpochRef.current) setPredictions(r);
+        })
+        .catch(() => {
+          if (epoch === suggestEpochRef.current) setPredictions([]);
+        });
     }, 300);
   };
 
@@ -209,7 +226,7 @@ export default function PlacesTab() {
     if (!PLACES_API_KEY) return;
     // 候補を選んだら入力は終わり＝キーボードを畳む（地図とフォームを見せる）。
     Keyboard.dismiss();
-    setPredictions([]);
+    closeSuggestions();
     try {
       const c = await fetchPlaceDetails(p.placeId, {
         apiKey: PLACES_API_KEY,
@@ -230,8 +247,7 @@ export default function PlacesTab() {
     // 検索実行＝入力は終わり。キーボードと入力中サジェストを畳んで
     // 地図（候補ピン）と結果一覧を見せる。
     Keyboard.dismiss();
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setPredictions([]);
+    closeSuggestions();
     setSearching(true);
     try {
       const bias = centroid(
@@ -288,7 +304,7 @@ export default function PlacesTab() {
     setSelectedCandidate(c);
     setEditing(null);
     setPinDraft(null);
-    setPredictions([]);
+    closeSuggestions();
     collapseListSheet();
     focusCoord(c.lat, c.lng);
     formRef.current?.present();
@@ -300,6 +316,7 @@ export default function PlacesTab() {
     setPinDraft({ lat, lng });
     setEditing(null);
     setSelectedCandidate(null);
+    closeSuggestions();
     collapseListSheet();
     focusCoord(lat, lng);
     formRef.current?.present();
@@ -320,24 +337,16 @@ export default function PlacesTab() {
       Alert.alert(t("searchFailed"), String(e));
     }
   };
-  // 保存済みの場所を開く（一覧行タップ・ピンの吹き出しタップの両方から）:
-  // 地図でそのピンへ寄せる＋編集シートを出すハイブリッド。一覧シートは畳む。
+  // 保存済みの場所を開く（一覧行タップ・地図のピンタップの両方から同じ動き）:
+  // そのピンへ寄せ、本家と同じ赤ピンを立てて、編集シートを出す。場所名の
+  // 吹き出しは出さない（名前はボトムシートにある。本家も出さない）。
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
+    closeSuggestions();
     collapseListSheet();
-    if (p.lat != null && p.lng != null) {
-      focusCoord(p.lat, p.lng);
-      // 寄せた後に吹き出し（場所名）を出して、どのピンの編集中か分かるようにする。
-      setTimeout(() => markerRefs.current.get(p.id)?.showCallout(), 400);
-    }
+    if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng);
     formRef.current?.present();
-  };
-
-  // ピンのタップに地図の寄りで応える（どの場所を選んだかのフィードバック）。
-  const focusPlacePin = (p: PlaceRow) => {
-    if (p.lat == null || p.lng == null) return;
-    focusCoord(p.lat, p.lng);
   };
 
   return (
@@ -353,6 +362,12 @@ export default function PlacesTab() {
           const { width, height } = e.nativeEvent.layout;
           setMapSize({ width, height });
         }}
+        // 地図の素のタップ＝入力から離れた合図。キーボードとサジェストを畳む
+        // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
+        onPress={() => {
+          Keyboard.dismiss();
+          closeSuggestions();
+        }}
         onLongPress={(e) => {
           const c = e.nativeEvent.coordinate;
           onMapLongPress(c.latitude, c.longitude);
@@ -364,13 +379,8 @@ export default function PlacesTab() {
           .map((p) => (
             <Marker
               key={p.id}
-              ref={(r) => {
-                markerRefs.current.set(p.id, r);
-              }}
               coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-              title={p.name}
-              onPress={() => focusPlacePin(p)}
-              onCalloutPress={() => openEditPlace(p)}
+              onPress={() => openEditPlace(p)}
               // 丸マーカーは中心を座標に合わせる（雫ピンと違い先端が無い）。
               anchor={{ x: 0.5, y: 0.5 }}
             >
@@ -381,6 +391,17 @@ export default function PlacesTab() {
               />
             </Marker>
           ))}
+        {/* 編集中の保存済み場所に立てる赤ピン（本家がタップした場所に立てるのと
+            同じ表示。どのピンの編集中かを示す）。シートを閉じると消える。 */}
+        {editing && editing.lat != null && editing.lng != null && (
+          <Marker
+            coordinate={{ latitude: editing.lat, longitude: editing.lng }}
+            anchor={{ x: 0.5, y: 0.9 }}
+            zIndex={200}
+          >
+            <RedPin />
+          </Marker>
+        )}
         {pinDraft && (
           <Marker
             coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
@@ -575,8 +596,13 @@ export default function PlacesTab() {
       <FormSheet
         ref={formRef}
         sizeToContent
-        // 閉じたら（保存・スワイプ閉じとも）候補ピンの選択ハイライトを解除。
-        onDismiss={() => setSelectedCandidate(null)}
+        // 閉じたら（保存・スワイプ閉じとも）地図上の一時表示を全部解除する:
+        // 候補ピンの選択ハイライト・編集中の赤ピン・長押しの仮ピン。
+        onDismiss={() => {
+          setSelectedCandidate(null);
+          setEditing(null);
+          setPinDraft(null);
+        }}
       >
         {(dismiss) => (
           <PlaceForm
