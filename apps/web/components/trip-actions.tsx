@@ -11,14 +11,14 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
-import { buildExpensesCsv, type ExpenseCsvRow } from "@/lib/expenseCsv";
+import { buildExpensesCsv, type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
 import { hexToKmlColor } from "@triplot/shared/placeColor";
 import { getIconPath } from "@triplot/shared/placeIcons";
 import {
   buildPlacesKml,
   type KmlPlacemark,
   type KmlStyle,
-} from "@/lib/placeKml";
+} from "@triplot/shared/placeKml";
 import { renderPinPng } from "@/lib/placePinImage";
 import { buildZip, type ZipEntry } from "@/lib/zip";
 

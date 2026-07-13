@@ -3,11 +3,22 @@
 import { revalidatePath } from "next/cache";
 import { getTranslations } from "next-intl/server";
 
+import {
+  CATEGORY_IN_USE,
+  createExpenseCategory,
+  deleteExpenseCategory,
+  updateExpenseCategoryName,
+} from "@triplot/shared/data/categories";
+
 import { createClient } from "@/lib/supabase/server";
 
-// カスタムカテゴリのアイコン・色は固定（汎用「category」アイコン＋青でその他と区別）
-const CUSTOM_ICON = "category";
-const CUSTOM_COLOR = "#3b82f6";
+// 本体は shared/data/categories（RN と共通）。ここは i18n のエラーメッセージ化と
+// revalidatePath だけを担う薄いラッパー。
+
+function revalidate(tripId: string) {
+  revalidatePath(`/trips/${tripId}`);
+  revalidatePath(`/trips/${tripId}/categories`);
+}
 
 export async function createCategoryAction(
   tripId: string,
@@ -17,26 +28,9 @@ export async function createCategoryAction(
   if (!name.trim()) return { error: t("nameRequired") };
 
   const supabase = await createClient();
-  const { data: maxRow } = await supabase
-    .from("expense_categories")
-    .select("sort_order")
-    .eq("trip_id", tripId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const { error } = await supabase.from("expense_categories").insert({
-    trip_id: tripId,
-    name: name.trim(),
-    color: CUSTOM_COLOR,
-    icon: CUSTOM_ICON,
-    sort_order: (maxRow?.sort_order ?? 0) + 1,
-    key: null,
-  });
-
-  if (error) return { error: t("saveFailed") };
-  revalidatePath(`/trips/${tripId}`);
-  revalidatePath(`/trips/${tripId}/categories`);
+  const r = await createExpenseCategory(supabase, tripId, name);
+  if (!r.ok) return { error: t("saveFailed") };
+  revalidate(tripId);
   return { error: null };
 }
 
@@ -49,14 +43,9 @@ export async function updateCategoryAction(
   if (!name.trim()) return { error: t("nameRequired") };
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("expense_categories")
-    .update({ name: name.trim(), color: CUSTOM_COLOR, icon: CUSTOM_ICON, key: null })
-    .eq("id", id);
-
-  if (error) return { error: t("saveFailed") };
-  revalidatePath(`/trips/${tripId}`);
-  revalidatePath(`/trips/${tripId}/categories`);
+  const r = await updateExpenseCategoryName(supabase, id, name);
+  if (!r.ok) return { error: t("saveFailed") };
+  revalidate(tripId);
   return { error: null };
 }
 
@@ -66,16 +55,12 @@ export async function deleteCategoryAction(
 ): Promise<{ error: string | null }> {
   const t = await getTranslations("categories");
   const supabase = await createClient();
-  const { error } = await supabase
-    .from("expense_categories")
-    .delete()
-    .eq("id", id);
-
-  if (error) {
-    if (error.code === "23503") return { error: t("deleteInUse") };
-    return { error: t("deleteFailed") };
+  const r = await deleteExpenseCategory(supabase, id);
+  if (!r.ok) {
+    return {
+      error: r.error === CATEGORY_IN_USE ? t("deleteInUse") : t("deleteFailed"),
+    };
   }
-  revalidatePath(`/trips/${tripId}`);
-  revalidatePath(`/trips/${tripId}/categories`);
+  revalidate(tripId);
   return { error: null };
 }

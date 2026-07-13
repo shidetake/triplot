@@ -5,7 +5,6 @@ import {
   Alert,
   Pressable,
   ScrollView,
-  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -14,28 +13,40 @@ import {
 import { useTranslations } from "use-intl";
 
 import { COMMON_CURRENCIES } from "@triplot/shared/currencies";
-import {
-  ensureTripInvite,
-  regenerateTripInvite,
-} from "@triplot/shared/data/invites";
+import { regenerateTripInvite } from "@triplot/shared/data/invites";
 import {
   removeTripMember,
   updateMyMemberName,
 } from "@triplot/shared/data/members";
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
+import { buildExpensesCsv, type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
+import { hexToKmlColor } from "@triplot/shared/placeColor";
+import { buildPlacesKml, type KmlPlacemark } from "@triplot/shared/placeKml";
+import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import {
+  deriveCategories,
+  deriveOrderedExpenses,
+  derivePlaces,
+  deriveScheduleEvents,
+} from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { MemberAvatar } from "@/components/member-avatar";
-import { TrashIcon } from "@/components/icons";
+import {
+  ChevronIcon,
+  MapIcon,
+  TagIcon,
+  TrashIcon,
+  WalletIcon,
+} from "@/components/icons";
+import { exportFileViaShareSheet, safeFilename } from "@/lib/exportFile";
 import { generateInviteToken } from "@/lib/inviteToken";
+import { shareTripInvite } from "@/lib/shareTripInvite";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
-
-// 招待リンクの受け側は web（/join/[token]）。アプリからは共有のみ。
-const JOIN_BASE_URL = "https://triplot.app";
 
 // 旅行の編集・メンバー・招待・削除（モーダル）。web の TripActions ＋
 // members ページの機能を1画面に集約した RN 版。
@@ -103,17 +114,6 @@ export default function EditTripScreen() {
     router.back();
   };
 
-  const shareInvite = async () => {
-    const r = await ensureTripInvite(supabase, tripId, generateInviteToken());
-    if (!r.ok) {
-      Alert.alert(r.error);
-      return;
-    }
-    await Share.share({
-      message: `${JOIN_BASE_URL}/join/${r.data.token}`,
-    });
-  };
-
   const regenerateInvite = () => {
     Alert.alert(
       t("tripActions.regenerateTitle"),
@@ -154,6 +154,85 @@ export default function EditTripScreen() {
         },
       },
     ]);
+  };
+
+  // 地図エクスポート（KML）。web は canvas でピン画像を焼いた KMZ だが、
+  // モバイルは KML の標準機能の範囲＝既定マーカー＋色（確定/未確定）のみ。
+  // カテゴリはデータ列で出るのでマイマップの色分けは同等にできる。
+  const onExportMap = async () => {
+    const mapped = derivePlaces(data.placesRaw).filter(
+      (p) => p.lat != null && p.lng != null,
+    );
+    if (mapped.length === 0) {
+      Alert.alert(t("tripActions.noPlaces"));
+      return;
+    }
+    const marks: KmlPlacemark[] = mapped.map((p) => ({
+      name: p.name,
+      lat: p.lat!,
+      lng: p.lng!,
+      description:
+        [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
+      styleId: p.tentative ? "tentative" : "confirmed",
+      category: p.tentative
+        ? t("place.statusCandidate")
+        : t("place.statusConfirmed"),
+    }));
+    const kml = buildPlacesKml(trip.title, marks, [
+      { id: "confirmed", color: hexToKmlColor("#10b981") },
+      { id: "tentative", color: hexToKmlColor("#f59e0b") },
+    ]);
+    try {
+      await exportFileViaShareSheet(`${safeFilename(trip.title)}.kml`, kml);
+    } catch {
+      Alert.alert(t("tripActions.mapExportFailed"));
+    }
+  };
+
+  // 費用エクスポート（CSV）。行の組み立ては web の page.tsx と同じ名前解決。
+  const onExportExpenses = async () => {
+    const scheduleEvents = deriveScheduleEvents(data.eventsRaw, data.todosRaw);
+    const tzTimeline = buildTripTzTimeline(
+      scheduleEvents,
+      data.trip!.default_timezone,
+    );
+    const expenses = deriveOrderedExpenses(data.expensesRaw, tzTimeline);
+    if (expenses.length === 0) {
+      Alert.alert(t("tripActions.noExpenses"));
+      return;
+    }
+    const categoryNameById = new Map(
+      deriveCategories(data.categoriesRaw).map((c) => [c.id, c.name]),
+    );
+    const memberNameById = new Map(
+      members.map((m) => [m.id, m.display_name]),
+    );
+    const placeNameById = new Map(
+      derivePlaces(data.placesRaw).map((p) => [p.id, p.name]),
+    );
+    const defaultCurrency = trip.default_currency as Currency;
+    const rows: ExpenseCsvRow[] = expenses.map((e) => ({
+      date: e.paid_at.slice(0, 10),
+      category: categoryNameById.get(e.category_id) ?? "",
+      payer: memberNameById.get(e.payer_member_id) ?? "",
+      localAmount: e.local_price,
+      localCurrency: e.local_currency,
+      // 小数誤差を避けて精算通貨の最小単位想定で 2 桁に丸め（web と同じ）。
+      defaultAmount: Math.round(e.local_price * e.rate_to_default * 100) / 100,
+      defaultCurrency,
+      splittable: e.splittable,
+      visibility: e.visibility,
+      place: e.place_id ? (placeNameById.get(e.place_id) ?? "") : "",
+      note: e.note ?? "",
+    }));
+    try {
+      await exportFileViaShareSheet(
+        `${safeFilename(trip.title)}-expenses.csv`,
+        buildExpensesCsv(rows),
+      );
+    } catch {
+      Alert.alert(t("tripActions.mapExportFailed"));
+    }
   };
 
   const confirmDeleteTrip = () => {
@@ -308,7 +387,10 @@ export default function EditTripScreen() {
         <Text style={styles.sectionTitle}>{t("tripActions.share")}</Text>
         <Text style={styles.hint}>{t("tripActions.shareDesc")}</Text>
         <View style={styles.inviteRow}>
-          <Pressable onPress={() => void shareInvite()} style={styles.outlineButton}>
+          <Pressable
+            onPress={() => void shareTripInvite(tripId)}
+            style={styles.outlineButton}
+          >
             <Text style={styles.outlineLabel}>共有リンクを送る</Text>
           </Pressable>
           <Pressable onPress={regenerateInvite} style={styles.outlineButton}>
@@ -317,6 +399,32 @@ export default function EditTripScreen() {
             </Text>
           </Pressable>
         </View>
+      </View>
+
+      {/* 管理・エクスポート（iOS 設定流のドリルイン/アクション行。
+          web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
+      <View style={styles.navList}>
+        <Pressable
+          onPress={() => router.push(`/trips/${tripId}/categories`)}
+          style={styles.navRow}
+        >
+          <TagIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>{t("categories.heading")}</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+        <Pressable onPress={() => void onExportMap()} style={styles.navRow}>
+          <MapIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>{t("tripActions.exportMap")}</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => void onExportExpenses()}
+          style={styles.navRow}
+        >
+          <WalletIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>
+            {t("tripActions.exportExpenses")}
+          </Text>
+        </Pressable>
       </View>
 
       {/* 保存 */}
@@ -408,6 +516,20 @@ const makeStyles = (t: Theme) =>
     paddingVertical: 2,
   },
   inviteRow: { flexDirection: "row", gap: 8 },
+  // iOS 設定流の行リスト（ドリルイン・アクション）。
+  navList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.08),
+  },
+  navRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.08),
+  },
+  navRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
   outlineButton: {
     flex: 1,
     height: 40,

@@ -40,8 +40,8 @@ import {
   toSettlementExpenses,
   toSummaryExpenses,
 } from "@triplot/shared/tripDerive";
-import { type ExpenseCsvRow } from "@/lib/expenseCsv";
-import { type KmlPlacemark } from "@/lib/placeKml";
+import { type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
+import { type KmlPlacemark } from "@triplot/shared/placeKml";
 import { centroid, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import { monthDayLabel } from "@triplot/shared/import/draftLabel";
