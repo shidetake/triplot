@@ -16,10 +16,13 @@ import {
 } from "@triplot/shared/eventColor";
 import {
   formatMinutes,
-  MIN_EVENT_MIN,
   type Schedule,
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
+import {
+  computeGhostLaneOverrides,
+  GHOST_LANE_KEY,
+} from "@triplot/shared/ghostLanes";
 import { vividColor } from "@triplot/shared/memberColors";
 
 import { CheckIcon } from "./icons";
@@ -543,102 +546,31 @@ export function WeekCalendar({
   // を踏襲して、ゴーストの列に居る既存 PlacedEvent ＋ ゴーストを並べ替え、
   // 重なるクラスタ内の lane/laneCount を override する map を作る。
   // 重ならない時は map に何も入れない＝既存も従来通り、ゴーストも全幅。
-  const GHOST_KEY = "__ghost__";
   const laneOverrides = useMemo<Map<
     string,
     { lane: number; laneCount: number }
   > | null>(() => {
     // タッチの長押しゴースト or PC ドラッグゴーストどちらかを対象に。
+    // 計算本体は shared/ghostLanes（RN の週カレンダーと共用）。
     const target = ghost
       ? {
-          col: columns[ghost.columnIndex],
+          columnKey: columns[ghost.columnIndex]?.key,
           topMin: ghost.startMin,
           endMin: ghost.startMin + 60,
         }
       : pcDrag
         ? {
-            col: columns[pcDrag.columnIndex],
+            columnKey: columns[pcDrag.columnIndex]?.key,
             topMin: pcDrag.startMin,
             endMin: pcDrag.endMin,
           }
         : null;
-    if (!target || !target.col) return null;
-    const ghostColKey = target.col.key;
-    type Entry = { topMin: number; endMin: number; id: string };
-    const entries: Entry[] = [
-      ...timed
-        .filter((p) => p.columnKey === ghostColKey)
-        .map((p) => ({
-          topMin: p.topMin,
-          endMin: p.endMin,
-          id: p.event.id,
-        })),
-      // 時差移動もゴーストと同じ土俵で重なりを取り合う（通常予定と同様）。
-      // 出発側・到着側は別列のことがあるので、ゴーストの列に居る側だけ拾う。
-      ...transits.flatMap((t) => {
-        if (t.departColumnKey === t.arriveColumnKey) {
-          return t.departColumnKey === ghostColKey
-            ? [{ topMin: t.departMin, endMin: t.arriveMin, id: t.event.id }]
-            : [];
-        }
-        if (t.departColumnKey === ghostColKey) {
-          return [{ topMin: t.departMin, endMin: 24 * 60, id: t.event.id }];
-        }
-        if (t.arriveColumnKey === ghostColKey) {
-          return [{ topMin: 0, endMin: t.arriveMin, id: t.event.id }];
-        }
-        return [];
-      }),
-      {
-        topMin: target.topMin,
-        endMin: target.endMin,
-        id: GHOST_KEY,
-      },
-    ];
-    entries.sort((a, b) => a.topMin - b.topMin || a.endMin - b.endMin);
-
-    const result = new Map<string, { lane: number; laneCount: number }>();
-    let cluster: Entry[] = [];
-    let clusterEnd = -1;
-    const flush = () => {
-      const laneEnds: number[] = [];
-      const assigned: { e: Entry; lane: number }[] = [];
-      for (const e of cluster) {
-        const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
-        let lane = laneEnds.findIndex((ee) => ee <= e.topMin);
-        if (lane === -1) {
-          lane = laneEnds.length;
-          laneEnds.push(dispEnd);
-        } else {
-          laneEnds[lane] = dispEnd;
-        }
-        assigned.push({ e, lane });
-      }
-      const laneCount = laneEnds.length;
-      const hasGhost = cluster.some((c) => c.id === GHOST_KEY);
-      // ゴーストが他予定と重なる時だけ override（laneCount>1）。重ならない
-      // クラスタや、ゴースト不在クラスタは元の lane を使う。
-      if (hasGhost && laneCount > 1) {
-        for (const { e, lane } of assigned) {
-          result.set(e.id, { lane, laneCount });
-        }
-      }
-      cluster = [];
-      clusterEnd = -1;
-    };
-    for (const e of entries) {
-      const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
-      if (cluster.length === 0 || e.topMin < clusterEnd) {
-        cluster.push(e);
-        clusterEnd = Math.max(clusterEnd, dispEnd);
-      } else {
-        flush();
-        cluster.push(e);
-        clusterEnd = dispEnd;
-      }
-    }
-    if (cluster.length) flush();
-    return result;
+    if (!target?.columnKey) return null;
+    return computeGhostLaneOverrides(
+      { columnKey: target.columnKey, topMin: target.topMin, endMin: target.endMin },
+      timed,
+      transits,
+    );
   }, [ghost, pcDrag, timed, transits, columns]);
 
   // 終日ゴーストの行（rowStack）。ゴーストの列を覆う既存バーの行を避けて
@@ -1175,7 +1107,7 @@ export function WeekCalendar({
             {/* スマホ長押し中のゴースト枠（1時間・半透明） */}
             {ghost &&
               (() => {
-                const ov = laneOverrides?.get(GHOST_KEY);
+                const ov = laneOverrides?.get(GHOST_LANE_KEY);
                 const lane = ov?.lane ?? 0;
                 const laneCount = ov?.laneCount ?? 1;
                 const w = COL / laneCount;
@@ -1199,7 +1131,7 @@ export function WeekCalendar({
             {/* PC ドラッグ中のゴースト枠（可変長・半透明） */}
             {pcDrag &&
               (() => {
-                const ov = laneOverrides?.get(GHOST_KEY);
+                const ov = laneOverrides?.get(GHOST_LANE_KEY);
                 const lane = ov?.lane ?? 0;
                 const laneCount = ov?.laneCount ?? 1;
                 const w = COL / laneCount;

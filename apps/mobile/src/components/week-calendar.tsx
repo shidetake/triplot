@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Pressable,
   ScrollView,
@@ -8,6 +8,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import {
   eventBarHueBg,
@@ -18,6 +19,10 @@ import {
   GREEN_HUE,
   pickEventColor,
 } from "@triplot/shared/eventColor";
+import {
+  computeGhostLaneOverrides,
+  GHOST_LANE_KEY,
+} from "@triplot/shared/ghostLanes";
 import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
@@ -48,7 +53,7 @@ export function WeekCalendar({
   activeMemberCount,
   myMemberId,
   onEventPress,
-  onSlotLongPress,
+  onSlotPick,
 }: {
   schedule: Schedule;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
@@ -57,9 +62,9 @@ export function WeekCalendar({
   activeMemberCount: number;
   myMemberId: string;
   onEventPress: (event: EventRow) => void;
-  // 空き枠の長押し（iOS 標準カレンダーと同じ「長押しでその時刻に予定作成」）。
-  // date は列の日付、minutes は 0時からの通算分（30分スナップ済み）。
-  onSlotLongPress: (date: string, minutes: number) => void;
+  // 空き枠の長押し→ゴースト→ドラッグ→離した位置で確定（web と同じ）。
+  // date は確定した列の日付、minutes は 0時からの通算分（30分スナップ済み）。
+  onSlotPick: (date: string, minutes: number) => void;
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -70,6 +75,7 @@ export function WeekCalendar({
   // 本体の2つの HorizontalScrollView を onScroll で同期させる（ガターは固定）。
   const headerScroll = useRef<ScrollView>(null);
   const bodyScroll = useRef<ScrollView>(null);
+  const verticalScroll = useRef<ScrollView>(null);
 
   const COL = colWidth(columns.length);
   const totalW = columns.length * COL;
@@ -79,7 +85,12 @@ export function WeekCalendar({
 
   const y = (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * HOUR_PX;
 
+  // 現在のスクロール量（auto-scroll と指位置→グリッド座標の変換に使う）。
+  const scrollXRef = useRef(0);
+  const scrollYRef = useRef(6 * HOUR_PX); // contentOffset 初期値と同じ
+
   const syncFromBody = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollXRef.current = e.nativeEvent.contentOffset.x;
     headerScroll.current?.scrollTo({
       x: e.nativeEvent.contentOffset.x,
       animated: false,
@@ -91,6 +102,174 @@ export function WeekCalendar({
       animated: false,
     });
   };
+
+  // ── 空き枠の長押し→ゴースト→ドラッグ→離して確定（web と同じ UX） ──
+  // 長押し成立でゴースト（1時間・半透明）を置き、縦ドラッグ＝時刻・
+  // 横ドラッグ＝日付で動かし、離した位置の日時でフォームを開く。
+  // ゴースト中は2軸のスクロールを止め、画面端では auto-scroll で
+  // 見えていない時刻・日付へ持っていける。
+  type GhostState = { columnIndex: number; startMin: number };
+  const [ghost, setGhostState] = useState<GhostState | null>(null);
+  const ghostRef = useRef<GhostState | null>(null);
+  const setGhost = useCallback((g: GhostState | null) => {
+    ghostRef.current = g;
+    setGhostState(g);
+  }, []);
+  // 縦スクロール領域（ガター含む）の画面上の枠。ゴースト開始時に実測。
+  const bodyWrap = useRef<View>(null);
+  const viewportRef = useRef<{
+    x: number;
+    y: number;
+    w: number;
+    h: number;
+  } | null>(null);
+  // 指の絶対座標（auto-scroll の端判定と、scroll 中のゴースト追従に使う）。
+  const dragAbsRef = useRef<{ x: number; y: number } | null>(null);
+  const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // グリッド内容座標 → ゴースト位置。web と同じく指の30分上を開始時刻に
+  // （指で隠れず見やすい）、30分スナップ。
+  const ghostAt = useCallback(
+    (contentX: number, contentY: number): GhostState => {
+      const raw = (contentY / HOUR_PX) * 60;
+      const snapped = Math.max(0, Math.min(1380, Math.round(raw / 30) * 30));
+      return {
+        columnIndex: Math.max(
+          0,
+          Math.min(columns.length - 1, Math.floor(contentX / COL)),
+        ),
+        startMin: Math.max(0, snapped - 30),
+      };
+    },
+    [columns.length, COL],
+  );
+
+  const stopAutoScroll = useCallback(() => {
+    if (autoTimer.current) {
+      clearInterval(autoTimer.current);
+      autoTimer.current = null;
+    }
+  }, []);
+
+  // 画面端にいる間 16ms ごとにスクロールし、ゴーストを指の下に追従させる。
+  const updateAutoScroll = useCallback(() => {
+    const EDGE = 40;
+    const SPEED = 8;
+    const tick = () => {
+      const vp = viewportRef.current;
+      const pos = dragAbsRef.current;
+      if (!vp || !pos) {
+        stopAutoScroll();
+        return;
+      }
+      let vy = 0;
+      let vx = 0;
+      if (pos.y < vp.y + EDGE) vy = -SPEED;
+      else if (pos.y > vp.y + vp.h - EDGE) vy = SPEED;
+      // 左端は時刻ガターが居座るので、列が始まる位置を基準にする（web と同じ）。
+      if (pos.x < vp.x + GUTTER + EDGE) vx = -SPEED;
+      else if (pos.x > vp.x + vp.w - EDGE) vx = SPEED;
+      if (vx === 0 && vy === 0) {
+        stopAutoScroll();
+        return;
+      }
+      scrollYRef.current = Math.max(
+        0,
+        Math.min(bodyH - vp.h, scrollYRef.current + vy),
+      );
+      scrollXRef.current = Math.max(
+        0,
+        Math.min(totalW - (vp.w - GUTTER), scrollXRef.current + vx),
+      );
+      verticalScroll.current?.scrollTo({
+        y: scrollYRef.current,
+        animated: false,
+      });
+      bodyScroll.current?.scrollTo({ x: scrollXRef.current, animated: false });
+      // 指は動いていなくても内容が流れる＝指の絶対座標から内容座標を再計算。
+      const g = ghostAt(
+        pos.x - vp.x - GUTTER + scrollXRef.current,
+        pos.y - vp.y + scrollYRef.current,
+      );
+      const cur = ghostRef.current;
+      if (
+        cur &&
+        (g.columnIndex !== cur.columnIndex || g.startMin !== cur.startMin)
+      ) {
+        setGhost(g);
+      }
+    };
+    if (!autoTimer.current) autoTimer.current = setInterval(tick, 16);
+  }, [bodyH, totalW, ghostAt, setGhost, stopAutoScroll]);
+
+  // pan のコールバック。ref を触るので useCallback に置く（render 中には
+  // 走らない＝React Compiler の ref ルールに沿う）。
+  type GhostTouch = { x: number; y: number; absoluteX: number; absoluteY: number };
+  const onGhostStart = useCallback(
+    (e: GhostTouch) => {
+      bodyWrap.current?.measureInWindow((x, y2, w, h) => {
+        viewportRef.current = { x, y: y2, w, h };
+      });
+      dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
+      setGhost(ghostAt(e.x, e.y));
+    },
+    [ghostAt, setGhost],
+  );
+  const onGhostUpdate = useCallback(
+    (e: GhostTouch) => {
+      dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
+      const g = ghostAt(e.x, e.y);
+      const cur = ghostRef.current;
+      if (
+        !cur ||
+        g.columnIndex !== cur.columnIndex ||
+        g.startMin !== cur.startMin
+      ) {
+        setGhost(g);
+      }
+      updateAutoScroll();
+    },
+    [ghostAt, setGhost, updateAutoScroll],
+  );
+  const onGhostEnd = useCallback(() => {
+    const g = ghostRef.current;
+    const col = g ? columns[g.columnIndex] : null;
+    if (g && col) onSlotPick(col.date, g.startMin);
+  }, [columns, onSlotPick]);
+  const onGhostFinalize = useCallback(() => {
+    stopAutoScroll();
+    dragAbsRef.current = null;
+    setGhost(null);
+  }, [setGhost, stopAutoScroll]);
+
+  // 長押しで発動する pan。e.x/e.y はグリッド内容 View 基準＝そのまま内容座標。
+  // react-hooks/refs は「ref を触る関数を未知の関数に渡した」ことを render 中
+  // 実行の可能性ありと誤検知する。Gesture のビルダーはコールバックを保存する
+  // だけで、実行はジェスチャーイベント時のみなので無効化してよい。
+  /* eslint-disable react-hooks/refs */
+  const ghostPan = Gesture.Pan()
+    .maxPointers(1)
+    .activateAfterLongPress(500)
+    .runOnJS(true)
+    .onStart(onGhostStart)
+    .onUpdate(onGhostUpdate)
+    .onEnd(onGhostEnd)
+    .onFinalize(onGhostFinalize);
+  /* eslint-enable react-hooks/refs */
+
+  // ゴーストが既存予定と重なるときのレーン引き直し（shared・web と共用）。
+  const ghostColKey = ghost ? columns[ghost.columnIndex]?.key : undefined;
+  const laneOverrides = computeGhostLaneOverrides(
+    ghost && ghostColKey
+      ? {
+          columnKey: ghostColKey,
+          topMin: ghost.startMin,
+          endMin: ghost.startMin + 60,
+        }
+      : null,
+    timed,
+    transits,
+  );
 
   // 取り込み下書き（未確定）の見た目。まだ実データが無く参加者/公開範囲が
   // 未定なので、参加者構成に基づく色分けより優先して warning(amber)＋破線で
@@ -229,11 +408,18 @@ export function WeekCalendar({
         </ScrollView>
       </View>
 
-      {/* ── 本体（時間グリッド）。縦スクロール ── */}
+      {/* ── 本体（時間グリッド）。縦スクロール。ゴースト中は2軸とも
+          スクロールを止めてドラッグに専念させる（web の scroll lock 相当） ── */}
+      <View ref={bodyWrap} style={styles.body} collapsable={false}>
       <ScrollView
-        style={styles.body}
+        ref={verticalScroll}
         contentOffset={{ x: 0, y: 6 * HOUR_PX }}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={ghost == null}
+        onScroll={(e) => {
+          scrollYRef.current = e.nativeEvent.contentOffset.y;
+        }}
+        scrollEventThrottle={16}
       >
         <View style={styles.bodyRow}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
@@ -253,30 +439,12 @@ export function WeekCalendar({
             ref={bodyScroll}
             horizontal
             showsHorizontalScrollIndicator={false}
+            scrollEnabled={ghost == null}
             onScroll={syncFromBody}
             scrollEventThrottle={16}
           >
+            <GestureDetector gesture={ghostPan}>
             <View style={{ width: totalW, height: bodyH }}>
-              {/* 空き枠の長押し → その列・その時刻で予定作成（iOS 標準
-                  カレンダーの流儀）。イベントブロックはこの上に重なるので、
-                  ブロック上の操作（タップ）はブロック側が受ける。 */}
-              <Pressable
-                style={StyleSheet.absoluteFill}
-                onLongPress={(e) => {
-                  const { locationX, locationY } = e.nativeEvent;
-                  const ci = Math.min(
-                    columns.length - 1,
-                    Math.max(0, Math.floor(locationX / COL)),
-                  );
-                  // 触った 30 分枠の頭に丸め、終了(+1h)が日を跨がないよう
-                  // 23:00 で頭打ち。
-                  const minutes = Math.min(
-                    23 * 60,
-                    Math.floor(locationY / (HOUR_PX / 2)) * 30,
-                  );
-                  onSlotLongPress(columns[ci].date, minutes);
-                }}
-              />
               {/* 時間グリッド線 */}
               {Array.from({ length: 25 }, (_, h) => (
                 <View
@@ -304,7 +472,10 @@ export function WeekCalendar({
                   MIN_BLOCK,
                   y(p.endMin) - y(p.topMin),
                 );
-                const laneW = COL / p.laneCount;
+                // ゴーストとレーン共有する時だけ override（web と同じ）。
+                const ov = laneOverrides?.get(p.event.id);
+                const lane = ov?.lane ?? p.lane;
+                const laneW = COL / (ov?.laneCount ?? p.laneCount);
                 return (
                   <Pressable
                     key={p.event.id + p.columnKey}
@@ -313,7 +484,7 @@ export function WeekCalendar({
                       styles.eventBlock,
                       ev.isDraft && styles.draftBlock,
                       {
-                        left: ci * COL + p.lane * laneW + 1,
+                        left: ci * COL + lane * laneW + 1,
                         width: laneW - 2,
                         top,
                         height: height - 1,
@@ -357,6 +528,10 @@ export function WeekCalendar({
                 }[] = [];
                 const depCi = colIndexByKey.get(t.departColumnKey);
                 const arrCi = colIndexByKey.get(t.arriveColumnKey);
+                // ゴーストが同じ列に居る側だけレーンを引き直す（web と同じ）。
+                const ov = laneOverrides?.get(t.event.id);
+                const depOv = ov && ghostColKey === t.departColumnKey;
+                const arrOv = ov && ghostColKey === t.arriveColumnKey;
                 if (depCi != null) {
                   const endMin =
                     t.departColumnKey === t.arriveColumnKey
@@ -367,8 +542,8 @@ export function WeekCalendar({
                     ci: depCi,
                     top: y(t.departMin),
                     height: Math.max(MIN_BLOCK, y(endMin) - y(t.departMin)),
-                    lane: t.departLane,
-                    laneCount: t.departLaneCount,
+                    lane: depOv ? ov.lane : t.departLane,
+                    laneCount: depOv ? ov.laneCount : t.departLaneCount,
                     label: `${t.event.title} 発`,
                   });
                 }
@@ -378,8 +553,8 @@ export function WeekCalendar({
                     ci: arrCi,
                     top: 0,
                     height: Math.max(MIN_BLOCK, y(t.arriveMin)),
-                    lane: t.arriveLane,
-                    laneCount: t.arriveLaneCount,
+                    lane: arrOv ? ov.lane : t.arriveLane,
+                    laneCount: arrOv ? ov.laneCount : t.arriveLaneCount,
                     label: `${t.event.title} 着`,
                   });
                 }
@@ -412,10 +587,38 @@ export function WeekCalendar({
                   );
                 });
               })}
+
+              {/* 長押し中のゴースト枠（1時間・半透明。web と同じ見た目） */}
+              {ghost &&
+                (() => {
+                  const ov = laneOverrides?.get(GHOST_LANE_KEY);
+                  const lane = ov?.lane ?? 0;
+                  const laneW = COL / (ov?.laneCount ?? 1);
+                  return (
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.ghostBlock,
+                        {
+                          left: ghost.columnIndex * COL + lane * laneW + 1,
+                          width: laneW - 2,
+                          top: y(ghost.startMin),
+                          height: HOUR_PX,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.ghostTime} numberOfLines={1}>
+                        {hhmm(ghost.startMin)}–{hhmm(ghost.startMin + 60)}
+                      </Text>
+                    </View>
+                  );
+                })()}
             </View>
+            </GestureDetector>
           </ScrollView>
         </View>
       </ScrollView>
+      </View>
     </View>
   );
 }
@@ -492,4 +695,22 @@ const makeStyles = (t: Theme) =>
   },
   eventTitle: { fontSize: 11, fontWeight: "500" },
   eventTime: { fontSize: 9, opacity: 0.7 },
+  // 長押しゴースト（web の border-slate-400 / bg-slate-100/50 / text-slate-800
+  // と同値の焼き込み。web も両モード同色）。
+  ghostBlock: {
+    position: "absolute",
+    zIndex: 20,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#94a3b8",
+    backgroundColor: "rgba(241,245,249,0.5)",
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+  },
+  ghostTime: {
+    fontSize: 10,
+    color: "#1e293b",
+    opacity: 0.7,
+    fontVariant: ["tabular-nums"],
+  },
 });

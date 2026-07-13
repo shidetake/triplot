@@ -101,9 +101,9 @@ export default function ScheduleTab() {
     formRef.current?.present();
   };
 
-  // 空き枠長押し → その日時を開始時刻に事前入力して追加フォーム
-  // （iOS 標準カレンダーの「長押しで予定作成」）。
-  const onSlotLongPress = (date: string, minutes: number) => {
+  // 空き枠長押し→ゴーストをドラッグ→離した日時を開始時刻に事前入力して
+  // 追加フォーム（web と同じ UX。ゴースト自体は WeekCalendar が持つ）。
+  const onSlotPick = (date: string, minutes: number) => {
     setEditing(null);
     setConfirmingDraft(null);
     const h = String(Math.floor(minutes / 60)).padStart(2, "0");
@@ -152,7 +152,7 @@ export default function ScheduleTab() {
           activeMemberCount={activeMemberCount}
           myMemberId={me.id}
           onEventPress={onEventPress}
-          onSlotLongPress={onSlotLongPress}
+          onSlotPick={onSlotPick}
         />
       )}
 
