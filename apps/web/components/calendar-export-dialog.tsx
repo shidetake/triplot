@@ -29,7 +29,12 @@ declare global {
 }
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
-const SCOPE = "https://www.googleapis.com/auth/calendar";
+// calendar.app.created = 「このアプリが作った専用カレンダーの作成・書き込み」
+// のみの granular スコープ。フルアクセス（auth/calendar）と違い非 sensitive で、
+// Google の sensitive スコープ審査（正当性説明＋デモ動画）が不要。代わりに
+// 「ユーザの既存カレンダーを選んで追加」はできない＝エクスポート先は常に
+// triplot が作ったカレンダー（新規 or 過去に triplot が作ったもの）。
+const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
 
 type CalendarItem = { id: string; summary: string; accessRole: string };
 
@@ -107,23 +112,31 @@ export function CalendarExportDialog({
   const mineEvents = events.filter((e) => e.mine);
   const targetEvents = scope === "mine" ? mineEvents : events;
 
-  // 書き込み可能なカレンダーを取得。
+  // 書き込み先候補＝過去に triplot が作ったカレンダーを取得（app.created
+  // スコープでは calendarList にこのアプリ作成分だけが見える）。一覧が
+  // 取れなくても新規作成はできるので、失敗は空リストに落として先へ進める。
   const fetchCalendars = useCallback(async (token: string) => {
     setPhase("loading");
-    const res = await fetch(
-      "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&maxResults=250",
-      { headers: { Authorization: `Bearer ${token}` } },
-    );
-    if (!res.ok) throw new Error(t("calendarListFailed", { status: res.status }));
-    const json = (await res.json()) as { items?: CalendarItem[] };
-    const items = (json.items ?? []).filter(
-      (c) => c.accessRole === "writer" || c.accessRole === "owner",
-    );
-    setCalendars(items);
+    try {
+      const res = await fetch(
+        "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&maxResults=250",
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const json = res.ok
+        ? ((await res.json()) as { items?: CalendarItem[] })
+        : { items: [] };
+      setCalendars(
+        (json.items ?? []).filter(
+          (c) => c.accessRole === "writer" || c.accessRole === "owner",
+        ),
+      );
+    } catch {
+      setCalendars([]);
+    }
     // 既定は「新規カレンダー作成」。
     setSelected(NEW);
     setPhase("pick");
-  }, [t]);
+  }, []);
 
   const connect = useCallback(() => {
     setError(null);

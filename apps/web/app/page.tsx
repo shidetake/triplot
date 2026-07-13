@@ -38,6 +38,17 @@ export default async function LandingPage() {
           </div>
         )}
       </section>
+
+      {/* Google OAuth 確認の要件: プライバシーポリシーへのリンクをホームページに
+          可視で置くこと（App Store の要件も同じ URL で満たす）。 */}
+      <footer className="mt-24 border-t border-foreground/10 pt-6">
+        <Link
+          href="/privacy"
+          className="text-xs text-muted-foreground transition hover:text-foreground"
+        >
+          プライバシーポリシー
+        </Link>
+      </footer>
     </main>
   );
 }
