@@ -456,6 +456,8 @@
   "calendarExport": {
     "formLabel": "Export to calendar",
     "heading": "Export to Google Calendar",
+    "scopeLabel": "Events to export",
+    "targetLabel": "Export to",
     "scopeMine": "Events I'm attending ({count})",
     "scopeAll": "All events ({count})",
     "connectButton": "Connect to Google",

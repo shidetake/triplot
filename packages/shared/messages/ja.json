@@ -456,6 +456,8 @@
   "calendarExport": {
     "formLabel": "カレンダーに書き出す",
     "heading": "Google カレンダーへエクスポート",
+    "scopeLabel": "出力する予定",
+    "targetLabel": "エクスポート先",
     "scopeMine": "自分が参加する予定のみ（{count}件）",
     "scopeAll": "全ての予定（{count}件）",
     "connectButton": "Google に接続",

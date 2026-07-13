@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { type GcalEventInput, toGcalEvent } from "@/lib/gcalEvent";
 
+import { FieldLabel } from "./field-label";
 import { type Anchor, FormPopover } from "./form-popover";
 import { CheckIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
@@ -249,8 +250,14 @@ export function CalendarExportDialog({
           {t("heading")}
         </p>
 
+        {/* 2つのラジオグループ（出力範囲 / エクスポート先）が地続きに
+            見えないよう、それぞれ FieldLabel の見出しを付ける（非テキスト
+            コントロールにはラベルを付ける規約）。 */}
         {(phase === "connect" || phase === "pick") && (
-          <div className="space-y-1">
+          <div className="space-y-1 text-sm">
+            <div>
+              <FieldLabel>{t("scopeLabel")}</FieldLabel>
+            </div>
             <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
               <input
                 type="radio"
@@ -286,7 +293,10 @@ export function CalendarExportDialog({
 
         {phase === "pick" && (
           <div className="space-y-3">
-            <div className="max-h-64 space-y-1 overflow-y-auto">
+            <div className="max-h-64 space-y-1 overflow-y-auto text-sm">
+              <div>
+                <FieldLabel>{t("targetLabel")}</FieldLabel>
+              </div>
               <label className={`flex items-center gap-2 rounded-md ${menuItemClass}`}>
                 <input
                   type="radio"
