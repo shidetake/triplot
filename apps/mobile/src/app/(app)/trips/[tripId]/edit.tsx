@@ -33,12 +33,14 @@ import type { Currency } from "@triplot/shared/types/database";
 
 import { MemberAvatar } from "@/components/member-avatar";
 import {
+  CalendarDaysIcon,
   ChevronIcon,
   MapIcon,
   TagIcon,
   TrashIcon,
   WalletIcon,
 } from "@/components/icons";
+import { googleSignInAvailable } from "@/lib/auth";
 import { exportFileViaShareSheet, safeFilename } from "@/lib/exportFile";
 import { generateInviteToken } from "@/lib/inviteToken";
 import { shareTripInvite } from "@/lib/shareTripInvite";
@@ -412,6 +414,19 @@ export default function EditTripScreen() {
           <Text style={styles.navRowLabel}>{t("categories.heading")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
+        {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
+        {googleSignInAvailable && (
+          <Pressable
+            onPress={() => router.push(`/trips/${tripId}/calendar-export`)}
+            style={styles.navRow}
+          >
+            <CalendarDaysIcon size={18} color={theme.mutedForeground} />
+            <Text style={styles.navRowLabel}>
+              {t("tripActions.exportCalendar")}
+            </Text>
+            <ChevronIcon size={16} color={theme.subtleForeground} />
+          </Pressable>
+        )}
         <Pressable onPress={() => void onExportMap()} style={styles.navRow}>
           <MapIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("tripActions.exportMap")}</Text>

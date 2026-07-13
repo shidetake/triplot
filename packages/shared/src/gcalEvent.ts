@@ -1,3 +1,9 @@
+import {
+  resolveEventTz,
+  type ScheduleEvent,
+  type TripTzTimeline,
+} from "./schedule";
+
 // triplot の予定 → Google Calendar API の event リソースへの変換（純粋関数）。
 // triplot は壁時計（timezone なしの timestamp）＋ IANA TZ を別々に持つので、
 // Google には dateTime（オフセット無しの壁時計）＋ timeZone を渡す。終日は
@@ -41,6 +47,61 @@ function normalizeWallClock(s: string): string {
   t = t.replace(/(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/, "");
   if (/T\d{2}:\d{2}$/.test(t)) t += ":00";
   return t;
+}
+
+// エクスポート対象の予定。mine = 自分が参加する予定か（全員予定 or 自分が当事者）。
+// 出力範囲（自分のみ/全て）の絞り込みに使う。
+export type CalendarExportEvent = GcalEventInput & { mine: boolean };
+
+// スケジュールの予定 → エクスポート対象への変換（web の trip ページと RN の
+// エクスポート画面で共用）。場所は「名前 + 住所」を location に、TZ は
+// transit 以外は旅程から都度解決する（乗継編集にも自動追従）。
+export function buildCalendarExportEvents(
+  scheduleEvents: ScheduleEvent[],
+  opts: {
+    myMemberId: string;
+    places: { id: string; name: string; formatted_address: string | null }[];
+    tzTimeline: TripTzTimeline;
+  },
+): CalendarExportEvent[] {
+  const placeNameById = new Map(opts.places.map((p) => [p.id, p.name]));
+  const placeAddressById = new Map(
+    opts.places.map((p) => [p.id, p.formatted_address]),
+  );
+  return scheduleEvents.map((e) => {
+    const placeName = e.placeId ? (placeNameById.get(e.placeId) ?? "") : "";
+    const placeAddr = e.placeId
+      ? (placeAddressById.get(e.placeId) ?? null)
+      : null;
+    const location = [placeName, placeAddr].filter(Boolean).join(" ") || null;
+    // 参加者空配列 = 全員参加のシュガー。自分が当事者か全員予定なら mine。
+    const mine =
+      e.participantMemberIds.length === 0 ||
+      e.participantMemberIds.includes(opts.myMemberId);
+    // transit は実TZを直接使う。normal/allday は startTz を持たないことが
+    // あるので旅程から都度解決する。
+    const startTz =
+      e.kind === "transit"
+        ? (e.startTz as string)
+        : resolveEventTz(
+            e.startAt.slice(0, 10),
+            e.tzDisambigTransitId,
+            e.tzDisambigSide,
+            opts.tzTimeline,
+          );
+    const endTz = e.kind === "transit" ? (e.endTz as string) : startTz;
+    return {
+      title: e.title,
+      allDay: e.allDay,
+      startAt: e.startAt,
+      endAt: e.endAt,
+      startTz,
+      endTz,
+      location,
+      description: e.note,
+      mine,
+    };
+  });
 }
 
 export function toGcalEvent(e: GcalEventInput): GcalEvent {

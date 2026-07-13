@@ -3,7 +3,18 @@
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { type GcalEventInput, toGcalEvent } from "@/lib/gcalEvent";
+import {
+  createGcalCalendar,
+  GCAL_SCOPE,
+  GcalApiError,
+  type GcalCalendarItem,
+  insertGcalEvent,
+  listWritableGcalCalendars,
+} from "@triplot/shared/gcalApi";
+import {
+  type CalendarExportEvent,
+  toGcalEvent,
+} from "@triplot/shared/gcalEvent";
 
 import { FieldLabel } from "./field-label";
 import { type Anchor, FormPopover } from "./form-popover";
@@ -30,18 +41,10 @@ declare global {
 }
 
 const GIS_SRC = "https://accounts.google.com/gsi/client";
-// calendar.app.created = 「このアプリが作った専用カレンダーの作成・書き込み」
-// のみの granular スコープ。フルアクセス（auth/calendar）と違い非 sensitive で、
-// Google の sensitive スコープ審査（正当性説明＋デモ動画）が不要。代わりに
-// 「ユーザの既存カレンダーを選んで追加」はできない＝エクスポート先は常に
-// triplot が作ったカレンダー（新規 or 過去に triplot が作ったもの）。
-const SCOPE = "https://www.googleapis.com/auth/calendar.app.created";
-
-type CalendarItem = { id: string; summary: string; accessRole: string };
-
-// エクスポート対象の予定。mine = 自分が参加する予定か（全員予定 or 自分が当事者）。
-// 変換に必要な GcalEventInput に、スコープ絞り込み用の mine を足したもの。
-export type CalendarExportEvent = GcalEventInput & { mine: boolean };
+// スコープ・API 呼び出し・CalendarExportEvent は shared（gcalApi / gcalEvent）
+// に集約（RN のエクスポート画面と共用）。calendar.app.created = 非 sensitive の
+// granular スコープで、エクスポート先は常に triplot が作ったカレンダー。
+export type { CalendarExportEvent };
 
 // GIS スクリプトを一度だけ読み込む。
 function loadGis(): Promise<void> {
@@ -98,7 +101,7 @@ export function CalendarExportDialog({
 
   const [phase, setPhase] = useState<Phase>("connect");
   const [error, setError] = useState<string | null>(null);
-  const [calendars, setCalendars] = useState<CalendarItem[]>([]);
+  const [calendars, setCalendars] = useState<GcalCalendarItem[]>([]);
   const [selected, setSelected] = useState<string>(NEW);
   const [newName, setNewName] = useState(`triplot_${tripTitle}`);
   // 出力範囲。既定は「自分が参加する予定だけ」。
@@ -119,18 +122,7 @@ export function CalendarExportDialog({
   const fetchCalendars = useCallback(async (token: string) => {
     setPhase("loading");
     try {
-      const res = await fetch(
-        "https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=writer&maxResults=250",
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const json = res.ok
-        ? ((await res.json()) as { items?: CalendarItem[] })
-        : { items: [] };
-      setCalendars(
-        (json.items ?? []).filter(
-          (c) => c.accessRole === "writer" || c.accessRole === "owner",
-        ),
-      );
+      setCalendars(await listWritableGcalCalendars(token));
     } catch {
       setCalendars([]);
     }
@@ -157,7 +149,7 @@ export function CalendarExportDialog({
         if (!oauth2) throw new Error("gisInitFailed");
         clientRef.current = oauth2.initTokenClient({
           client_id: clientId,
-          scope: SCOPE,
+          scope: GCAL_SCOPE,
           callback: (resp) => {
             if (resp.error || !resp.access_token) {
               setError(t("authCancelled"));
@@ -191,21 +183,15 @@ export function CalendarExportDialog({
       let calendarId = selected;
       if (selected === NEW) {
         const name = newName.trim() || `triplot_${tripTitle}`;
-        const res = await fetch(
-          "https://www.googleapis.com/calendar/v3/calendars",
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ summary: name }),
-          },
-        );
-        if (!res.ok)
-          throw new Error(t("calendarCreateFailed", { status: res.status }));
-        const created = (await res.json()) as { id: string };
-        calendarId = created.id;
+        try {
+          calendarId = await createGcalCalendar(token, name);
+        } catch (e) {
+          throw new Error(
+            t("calendarCreateFailed", {
+              status: e instanceof GcalApiError ? e.status : "?",
+            }),
+          );
+        }
       }
 
       let done = 0;
@@ -213,21 +199,8 @@ export function CalendarExportDialog({
       setProgress({ done: 0, total: targetEvents.length, failed: 0 });
       // 直列で投入（レート制限・部分失敗の把握を簡単にする）。
       for (const ev of targetEvents) {
-        const body = toGcalEvent(ev);
-        const res = await fetch(
-          `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(
-            calendarId,
-          )}/events`,
-          {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(body),
-          },
-        );
-        if (res.ok) done += 1;
+        const ok = await insertGcalEvent(token, calendarId, toGcalEvent(ev));
+        if (ok) done += 1;
         else failed += 1;
         setProgress({ done, total: targetEvents.length, failed });
       }

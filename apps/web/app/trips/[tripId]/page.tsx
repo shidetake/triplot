@@ -8,7 +8,10 @@ import { ChevronIcon } from "@/components/icons";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
-import { type CalendarExportEvent } from "@/components/calendar-export-dialog";
+import {
+  buildCalendarExportEvents,
+  type CalendarExportEvent,
+} from "@triplot/shared/gcalEvent";
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
@@ -24,7 +27,6 @@ import { TripHeaderCompact } from "@/components/trip-header-compact";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
-  resolveEventTz,
 } from "@triplot/shared/schedule";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
@@ -167,48 +169,21 @@ export default async function TripDetailPage({
     activeMembers.map((m) => [m.id, m.display_name]),
   );
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
-  // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ。
-  // 場所は名前＋住所を location に、メモを description に。normal/allday は
-  // start_tz を持たないので旅程から解決した値を流用。RLS で既に
-  // shared+private(自分) に絞られている。
-  const placeAddressById = new Map(
-    places.map((p) => [p.id, p.formatted_address]),
+  // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ
+  // （変換は shared/gcalEvent、RN と共用）。RLS で既に shared+private(自分) に
+  // 絞られている。
+  const calendarEvents: CalendarExportEvent[] = buildCalendarExportEvents(
+    scheduleEvents,
+    {
+      myMemberId: me.id,
+      places: places.map((p) => ({
+        id: p.id,
+        name: p.name,
+        formatted_address: p.formatted_address,
+      })),
+      tzTimeline,
+    },
   );
-  const calendarEvents: CalendarExportEvent[] = scheduleEvents.map((e) => {
-    const placeName = e.placeId ? (placeNameById.get(e.placeId) ?? "") : "";
-    const placeAddr = e.placeId
-      ? (placeAddressById.get(e.placeId) ?? null)
-      : null;
-    const location =
-      [placeName, placeAddr].filter(Boolean).join(" ") || null;
-    // 参加者空配列 = 全員参加のシュガー。自分が当事者か全員予定なら mine。
-    const mine =
-      e.participantMemberIds.length === 0 ||
-      e.participantMemberIds.includes(me.id);
-    // transit は実TZを直接使う。normal/allday は startTz を持たないことが
-    // あるので旅程から都度解決する（乗継編集にも自動追従する）。
-    const startTz =
-      e.kind === "transit"
-        ? (e.startTz as string)
-        : resolveEventTz(
-            e.startAt.slice(0, 10),
-            e.tzDisambigTransitId,
-            e.tzDisambigSide,
-            tzTimeline,
-          );
-    const endTz = e.kind === "transit" ? (e.endTz as string) : startTz;
-    return {
-      title: e.title,
-      allDay: e.allDay,
-      startAt: e.startAt,
-      endAt: e.endAt,
-      startTz,
-      endTz,
-      location,
-      description: e.note,
-      mine,
-    };
-  });
   const expenseCsvRows: ExpenseCsvRow[] = expenses.map((e) => ({
     date: e.paid_at.slice(0, 10),
     category: categoryNameById.get(e.category_id) ?? "",

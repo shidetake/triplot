@@ -45,6 +45,10 @@ export default function TripLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="edit" options={{ presentation: "modal" }} />
         <Stack.Screen name="categories" options={{ presentation: "modal" }} />
+        <Stack.Screen
+          name="calendar-export"
+          options={{ presentation: "modal" }}
+        />
       </Stack>
     </>
   );
