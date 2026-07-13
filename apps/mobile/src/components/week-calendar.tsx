@@ -48,6 +48,7 @@ export function WeekCalendar({
   activeMemberCount,
   myMemberId,
   onEventPress,
+  onSlotLongPress,
 }: {
   schedule: Schedule;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
@@ -56,6 +57,9 @@ export function WeekCalendar({
   activeMemberCount: number;
   myMemberId: string;
   onEventPress: (event: EventRow) => void;
+  // 空き枠の長押し（iOS 標準カレンダーと同じ「長押しでその時刻に予定作成」）。
+  // date は列の日付、minutes は 0時からの通算分（30分スナップ済み）。
+  onSlotLongPress: (date: string, minutes: number) => void;
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -253,6 +257,26 @@ export function WeekCalendar({
             scrollEventThrottle={16}
           >
             <View style={{ width: totalW, height: bodyH }}>
+              {/* 空き枠の長押し → その列・その時刻で予定作成（iOS 標準
+                  カレンダーの流儀）。イベントブロックはこの上に重なるので、
+                  ブロック上の操作（タップ）はブロック側が受ける。 */}
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onLongPress={(e) => {
+                  const { locationX, locationY } = e.nativeEvent;
+                  const ci = Math.min(
+                    columns.length - 1,
+                    Math.max(0, Math.floor(locationX / COL)),
+                  );
+                  // 触った 30 分枠の頭に丸め、終了(+1h)が日を跨がないよう
+                  // 23:00 で頭打ち。
+                  const minutes = Math.min(
+                    23 * 60,
+                    Math.floor(locationY / (HOUR_PX / 2)) * 30,
+                  );
+                  onSlotLongPress(columns[ci].date, minutes);
+                }}
+              />
               {/* 時間グリッド線 */}
               {Array.from({ length: 25 }, (_, h) => (
                 <View

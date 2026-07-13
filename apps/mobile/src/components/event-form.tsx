@@ -52,6 +52,7 @@ export function EventForm({
   events,
   editEvent,
   draft,
+  slot,
   onDone,
   onSuccess,
 }: {
@@ -66,6 +67,8 @@ export function EventForm({
   // メール取り込みの未確定下書きの確定フロー。create モードの事前入力として
   // 使う（editEvent と排他）。確定処理自体は onSuccess 側（呼び出し元）。
   draft?: EventDraftItem;
+  // 週カレンダーの空き枠長押しからの事前入力（開始日時。iOS カレンダー流）。
+  slot?: { date: string; time: string };
   onDone: () => void;
   // 追加/更新が成功したときだけ呼ぶ（キャンセルでは呼ばれない）。追加成功時は
   // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
@@ -112,8 +115,13 @@ export function EventForm({
 
   // 日時。start/end は "YYYY-MM-DD" と "HH:MM"。
   const initDate =
-    editEvent?.startAt.slice(0, 10) ?? draft?.date ?? tripStart ?? today();
-  const initTime = editEvent?.startAt.slice(11, 16) ?? draft?.time ?? "09:00";
+    editEvent?.startAt.slice(0, 10) ??
+    draft?.date ??
+    slot?.date ??
+    tripStart ??
+    today();
+  const initTime =
+    editEvent?.startAt.slice(11, 16) ?? draft?.time ?? slot?.time ?? "09:00";
   const [startDate, setStartDate] = useState(initDate);
   const [startTime, setStartTime] = useState(initTime);
   const initEndDate =

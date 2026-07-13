@@ -49,6 +49,10 @@ export default function ScheduleTab() {
   const [confirmingDraft, setConfirmingDraft] = useState<EventDraftItem | null>(
     null,
   );
+  // 空き枠長押しからの事前入力（開始日時）。FAB・編集で開いた時は null。
+  const [slot, setSlot] = useState<{ date: string; time: string } | null>(
+    null,
+  );
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
   const events = data
@@ -93,6 +97,18 @@ export default function ScheduleTab() {
   const openForm = (ev: EventRow | null) => {
     setEditing(ev);
     setConfirmingDraft(null);
+    setSlot(null);
+    formRef.current?.present();
+  };
+
+  // 空き枠長押し → その日時を開始時刻に事前入力して追加フォーム
+  // （iOS 標準カレンダーの「長押しで予定作成」）。
+  const onSlotLongPress = (date: string, minutes: number) => {
+    setEditing(null);
+    setConfirmingDraft(null);
+    const h = String(Math.floor(minutes / 60)).padStart(2, "0");
+    const m = String(minutes % 60).padStart(2, "0");
+    setSlot({ date, time: `${h}:${m}` });
     formRef.current?.present();
   };
 
@@ -136,6 +152,7 @@ export default function ScheduleTab() {
           activeMemberCount={activeMemberCount}
           myMemberId={me.id}
           onEventPress={onEventPress}
+          onSlotLongPress={onSlotLongPress}
         />
       )}
 
@@ -167,6 +184,7 @@ export default function ScheduleTab() {
             events={events}
             editEvent={editing ?? undefined}
             draft={confirmingDraft ?? undefined}
+            slot={slot ?? undefined}
             onDone={() => {
               dismiss();
               void invalidate();
