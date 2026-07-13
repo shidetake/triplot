@@ -18,14 +18,11 @@ Apple ログイン（#9）が前提になる。デザインルールやコピー
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。
 
-### 15. Google カレンダーエクスポートの本番公開（OAuth 同意画面の公開切替）
-機能（`CalendarExportDialog`）は実装済み。スコープは `calendar.app.created`
-（triplot が作ったカレンダーのみ作成・書き込み。既存カレンダー選択は廃止）に
-絞り済み — 非 sensitive のため sensitive スコープ審査（正当性説明＋デモ動画）は
-不要になる想定。プライバシーポリシー（`/privacy`）も作成済み。残タスク:
-- GCP Console のスコープ設定を `calendar.app.created` に差し替え、sensitive
-  バッジが付かないことを確認（付いたら分類が想定と違う＝審査前提で再計画）
-- Search Console でのドメイン所有権確認（Cloudflare に TXT レコード追加）
-- OAuth 同意画面に homepage（`https://triplot.app`）とプライバシーポリシー
-  （`https://triplot.app/privacy`）の URL を設定し、「テスト中」→「本番」へ公開切替
-- 非 sensitive のみならブランド確認（アプリ名/ロゴ、数日）だけで完了の想定
+### 15. OAuth 同意画面のロゴ設定（ブランド確認）
+カレンダーエクスポートの本番公開は完了（2026-07-14。スコープを非 sensitive の
+`calendar.app.created` に絞り、`/privacy` 作成・ドメイン確認のうえ公開切替。
+一般アカウントでのエクスポート動作確認済み）。残っているのはロゴのみ:
+アップロードするとブランド確認（審査・数日）が発動するため未設定にしてある。
+同意画面にロゴを出したくなったら設定して審査を通す。
+- iOS でのカレンダーエクスポート対応も未着手（native Google Sign-In に
+  `calendar.app.created` スコープを追加リクエストする実装。審査は不要）
