@@ -15,11 +15,6 @@ import {
 // ルートは View（二重スクロール回避）。通貨モーダルの中だけ ScrollView を使う。
 import { useTranslations } from "use-intl";
 
-import {
-  ALL_CURRENCIES,
-  COMMON_CURRENCIES,
-  CURRENCY_NAMES,
-} from "@triplot/shared/currencies";
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
   createExpense,
@@ -38,6 +33,7 @@ import {
 import type { Category, ExpenseRow } from "@triplot/shared/tripDerive";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
+import { CurrencyPickerModal } from "./currency-picker";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
@@ -238,13 +234,9 @@ export function ExpenseForm({
       ? t("splitAll")
       : t("splitSome");
 
-  // 通貨選択（COMMON を先頭に、以降は全通貨）。
+  // 通貨選択（CurrencyPickerModal が主要通貨→全通貨の並びを持つ）。
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
-  const currencyChoices = useMemo(() => {
-    const rest = ALL_CURRENCIES.filter((c) => !COMMON_CURRENCIES.includes(c));
-    return [...COMMON_CURRENCIES, ...rest];
-  }, []);
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -620,56 +612,16 @@ export function ExpenseForm({
 
       {error && <Text style={styles.error}>{error}</Text>}
 
-      {/* 通貨選択モーダル。ヘッダーに × を置いて「選ばずに閉じる」を明示
-          （pageSheet の下スワイプでも閉じられるが分かりにくいため）。
-          各行は web と同じ「コード + 通貨名」。 */}
-      <Modal
+      <CurrencyPickerModal
         visible={currencyOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setCurrencyOpen(false)}
-      >
-        <View style={styles.pickerSheet}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>{t("currency")}</Text>
-            <Pressable
-              onPress={() => setCurrencyOpen(false)}
-              hitSlop={8}
-              accessibilityLabel="閉じる"
-            >
-              <XIcon size={20} color={theme.mutedForeground} />
-            </Pressable>
-          </View>
-          <ScrollView contentContainerStyle={styles.pickerList}>
-            {currencyChoices.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => {
-                  setLocalCurrency(c);
-                  setRateInput(rateFor(c));
-                  setCurrencyOpen(false);
-                }}
-                style={styles.pickerRow}
-              >
-                <Text
-                  style={[
-                    styles.currencyCode,
-                    c === localCurrency && styles.pickerTextOn,
-                  ]}
-                >
-                  {c}
-                </Text>
-                <Text style={styles.pickerSub} numberOfLines={1}>
-                  {CURRENCY_NAMES[c] ?? ""}
-                </Text>
-                {c === localCurrency && (
-                  <CheckIcon size={16} color={theme.foreground} />
-                )}
-              </Pressable>
-            ))}
-          </ScrollView>
-        </View>
-      </Modal>
+        value={localCurrency}
+        onSelect={(c) => {
+          setLocalCurrency(c);
+          setRateInput(rateFor(c));
+        }}
+        onClose={() => setCurrencyOpen(false)}
+        title={t("currency")}
+      />
 
       {/* カテゴリ選択モーダル（通貨と同形）。 */}
       <Modal
@@ -845,13 +797,6 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
-    currencyCode: {
-      fontSize: 15,
-      color: t.foreground,
-      fontVariant: ["tabular-nums"],
-      width: 48,
-    },
     pickerText: { fontSize: 15, color: t.foreground, flex: 1 },
-    pickerSub: { fontSize: 13, color: t.mutedForeground, flex: 1 },
     pickerTextOn: { fontWeight: "700" },
   });

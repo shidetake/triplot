@@ -12,7 +12,6 @@ import {
 } from "react-native";
 import { useTranslations } from "use-intl";
 
-import { COMMON_CURRENCIES } from "@triplot/shared/currencies";
 import { regenerateTripInvite } from "@triplot/shared/data/invites";
 import {
   removeTripMember,
@@ -21,6 +20,7 @@ import {
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import type { Currency } from "@triplot/shared/types/database";
 
+import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
 import { MemberAvatar } from "@/components/member-avatar";
 import {
   ChevronIcon,
@@ -57,6 +57,7 @@ export default function EditTripScreen() {
   const [myName, setMyName] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
 
   if (!trip || !me) return null;
   const isAdmin = me.is_admin;
@@ -217,32 +218,26 @@ export default function EditTripScreen() {
 
       <View>
         <Text style={styles.label}>{t("createTrip.settlementCurrency")}</Text>
-        <View style={styles.currencyWrap}>
-          {currencyChoices(vCurrency).map((c) => (
-            <Pressable
-              key={c}
-              disabled={!isAdmin}
-              onPress={() => setCurrency(c)}
-              style={[
-                styles.currencyChip,
-                vCurrency === c && styles.currencyChipOn,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.currencyText,
-                  vCurrency === c && styles.currencyTextOn,
-                ]}
-              >
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* 通貨は web と同じ全170通貨から選べる（以前は6件に絞った独自
+            chip 実装だった＝仕様の揺れ）。トリガー＋モーダルは
+            CurrencyPickerModal に集約（expense-form と共用）。 */}
+        <CurrencyPickerTrigger
+          value={vCurrency}
+          disabled={!isAdmin}
+          onPress={() => setCurrencyPickerOpen(true)}
+        />
         {isAdmin && (
           <Text style={styles.warn}>{t("tripDetail.rateChangeWarning")}</Text>
         )}
       </View>
+
+      <CurrencyPickerModal
+        visible={currencyPickerOpen}
+        value={vCurrency}
+        onSelect={setCurrency}
+        onClose={() => setCurrencyPickerOpen(false)}
+        title={t("createTrip.settlementCurrency")}
+      />
 
       {/* メンバー */}
       <View>
@@ -360,12 +355,6 @@ export default function EditTripScreen() {
   );
 }
 
-// 現在の通貨が主要6通貨に無ければ先頭に足して選択肢に含める。
-function currencyChoices(current: Currency): Currency[] {
-  const base = COMMON_CURRENCIES.slice(0, 6);
-  return base.includes(current) ? base : [current, ...base.slice(0, 5)];
-}
-
 function todayStr(): string {
   return fmtDate(new Date());
 }
@@ -396,17 +385,6 @@ const makeStyles = (t: Theme) =>
   inputDisabled: { opacity: 0.5 },
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dateSep: { fontSize: 14, color: t.subtleForeground },
-  currencyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  currencyChip: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  currencyChipOn: { backgroundColor: t.primary, borderColor: t.primary },
-  currencyText: { fontSize: 13, color: t.foreground },
-  currencyTextOn: { color: t.primaryForeground },
   memberRow: {
     flexDirection: "row",
     alignItems: "center",
