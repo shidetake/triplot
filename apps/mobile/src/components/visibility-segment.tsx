@@ -13,10 +13,14 @@ export function CompactSegment<T extends string>({
   options,
   value,
   onChange,
+  grow = false,
 }: {
   options: { key: T; label: string }[];
   value: T;
   onChange: (v: T) => void;
+  // 全幅トラックで単独に置くとき true＝各セグメントを等幅にする（内容幅の
+  // ままだと選択肢の文字数差でトラック内の左右バランスが崩れて見える）。
+  grow?: boolean;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
@@ -27,7 +31,11 @@ export function CompactSegment<T extends string>({
           onPress={() => onChange(o.key)}
           accessibilityRole="radio"
           accessibilityState={{ selected: value === o.key }}
-          style={[styles.item, value === o.key && styles.itemOn]}
+          style={[
+            styles.item,
+            grow && styles.itemGrow,
+            value === o.key && styles.itemOn,
+          ]}
         >
           <Text style={[styles.text, value === o.key && styles.textOn]}>
             {o.label}
@@ -77,6 +85,7 @@ const makeStyles = (t: Theme) =>
       paddingHorizontal: 10,
       alignItems: "center",
     },
+    itemGrow: { flex: 1 },
     itemOn: { backgroundColor: t.primary },
     text: { fontSize: 12, fontWeight: "500", color: t.mutedForeground },
     textOn: { color: t.primaryForeground },

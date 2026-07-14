@@ -89,15 +89,13 @@ export function WeekCalendar({
   const scrollXRef = useRef(0);
   const scrollYRef = useRef(6 * HOUR_PX); // contentOffset 初期値と同じ
 
+  // 同期は本体→ヘッダの一方向のみ。ヘッダは scrollEnabled=false で自発的に
+  // 動かないので逆方向の同期は不要（以前はヘッダの onScroll から本体へ
+  // scrollTo を返していて、右端バウンス中に「本体→ヘッダ→本体…」の発振＝
+  // バウンドを無限に繰り返す状態になることがあった）。
   const syncFromBody = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     scrollXRef.current = e.nativeEvent.contentOffset.x;
     headerScroll.current?.scrollTo({
-      x: e.nativeEvent.contentOffset.x,
-      animated: false,
-    });
-  };
-  const syncFromHeader = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    bodyScroll.current?.scrollTo({
       x: e.nativeEvent.contentOffset.x,
       animated: false,
     });
@@ -339,8 +337,6 @@ export function WeekCalendar({
           horizontal
           scrollEnabled={false}
           showsHorizontalScrollIndicator={false}
-          onScroll={syncFromHeader}
-          scrollEventThrottle={16}
         >
           <View style={{ width: totalW }}>
             {/* 日付ヘッダ行 */}

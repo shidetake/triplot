@@ -1,4 +1,3 @@
-import { Stack } from "expo-router";
 import { useState } from "react";
 import {
   Alert,
@@ -23,6 +22,7 @@ import { deriveCategories, type Category } from "@triplot/shared/tripDerive";
 
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { PlusIcon, TrashIcon, XIcon } from "@/components/icons";
+import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
@@ -120,9 +120,7 @@ export default function CategoriesScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen
-        options={{ title: t("heading"), presentation: "modal" }}
-      />
+      <SheetTitle>{t("heading")}</SheetTitle>
 
       {categories.map((c) => {
         const isEditing = editId === c.id;

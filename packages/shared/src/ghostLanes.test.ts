@@ -32,10 +32,20 @@ describe("computeGhostLaneOverrides", () => {
     expect(r!.size).toBe(0);
   });
 
-  it("重なる既存予定とレーンを分け合う", () => {
+  it("重なる既存予定とレーンを分け合う（ゴーストは右）", () => {
     const r = computeGhostLaneOverrides(
       { columnKey: "d1", topMin: 600, endMin: 660 },
       [ev("a", "d1", 570, 630)],
+      [],
+    )!;
+    expect(r.get("a")).toEqual({ lane: 0, laneCount: 2 });
+    expect(r.get(GHOST_LANE_KEY)).toEqual({ lane: 1, laneCount: 2 });
+  });
+
+  it("ゴーストが既存予定より早い開始でも右端（ドラッグ中に左右が入れ替わらない）", () => {
+    const r = computeGhostLaneOverrides(
+      { columnKey: "d1", topMin: 570, endMin: 630 },
+      [ev("a", "d1", 600, 660)],
       [],
     )!;
     expect(r.get("a")).toEqual({ lane: 0, laneCount: 2 });
@@ -51,18 +61,15 @@ describe("computeGhostLaneOverrides", () => {
     expect(r.size).toBe(0);
   });
 
-  it("3つ巴の重なりは laneCount=3", () => {
+  it("3つ巴の重なりは laneCount=3・ゴーストが右端", () => {
     const r = computeGhostLaneOverrides(
       { columnKey: "d1", topMin: 600, endMin: 720 },
       [ev("a", "d1", 590, 700), ev("b", "d1", 610, 710)],
       [],
     )!;
-    expect(r.get("a")!.laneCount).toBe(3);
-    expect(r.get("b")!.laneCount).toBe(3);
-    expect(r.get(GHOST_LANE_KEY)!.laneCount).toBe(3);
-    // レーンは重複しない
-    const lanes = ["a", "b", GHOST_LANE_KEY].map((k) => r.get(k)!.lane);
-    expect(new Set(lanes).size).toBe(3);
+    expect(r.get("a")).toEqual({ lane: 0, laneCount: 3 });
+    expect(r.get("b")).toEqual({ lane: 1, laneCount: 3 });
+    expect(r.get(GHOST_LANE_KEY)).toEqual({ lane: 2, laneCount: 3 });
   });
 
   it("時差移動の出発側（ゴーストの列）とも重なりを取り合う", () => {

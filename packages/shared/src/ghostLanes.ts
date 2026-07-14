@@ -1,9 +1,10 @@
 // 週カレンダーの「追加中ゴースト」のレーン合流計算（純粋関数）。
 // ゴースト（長押し/ドラッグで置く仮ブロック）が既存予定と時間帯で重なるとき、
-// ゴーストを含めてその列のレーンを引き直す。schedule.ts の cluster + greedy
-// lane と同じアルゴリズムで、重なるクラスタ内の lane/laneCount を override
-// する map を返す。重ならないクラスタ・ゴースト不在クラスタは含めない＝
-// 既存ブロックは従来のレーン、ゴーストは全幅で描かれる。web / RN 共用。
+// ゴーストを含めてその列のレーンを引き直す。既存予定同士は schedule.ts の
+// cluster + greedy lane と同じアルゴリズム、**ゴーストは常に右端の専用レーン**
+// （開始時刻の前後で左右が入れ替わるとドラッグ中に落ち着かないため固定）。
+// 重ならないクラスタ・ゴースト不在クラスタは含めない＝既存ブロックは従来の
+// レーン、ゴーストは全幅で描かれる。web / RN 共用。
 
 import {
   MIN_EVENT_MIN,
@@ -59,26 +60,29 @@ export function computeGhostLaneOverrides(
   let cluster: Entry[] = [];
   let clusterEnd = -1;
   const flush = () => {
-    const laneEnds: number[] = [];
-    const assigned: { e: Entry; lane: number }[] = [];
-    for (const e of cluster) {
-      const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
-      let lane = laneEnds.findIndex((ee) => ee <= e.topMin);
-      if (lane === -1) {
-        lane = laneEnds.length;
-        laneEnds.push(dispEnd);
-      } else {
-        laneEnds[lane] = dispEnd;
-      }
-      assigned.push({ e, lane });
-    }
-    const laneCount = laneEnds.length;
     const hasGhost = cluster.some((c) => c.id === GHOST_LANE_KEY);
-    // ゴーストが他予定と重なる時だけ override（laneCount>1）。
-    if (hasGhost && laneCount > 1) {
+    const others = cluster.filter((c) => c.id !== GHOST_LANE_KEY);
+    // ゴーストが他予定と重なる時だけ override。既存予定は greedy に詰め、
+    // ゴーストはその右に専用レーンを1本足す（常に右端）。
+    if (hasGhost && others.length > 0) {
+      const laneEnds: number[] = [];
+      const assigned: { e: Entry; lane: number }[] = [];
+      for (const e of others) {
+        const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
+        let lane = laneEnds.findIndex((ee) => ee <= e.topMin);
+        if (lane === -1) {
+          lane = laneEnds.length;
+          laneEnds.push(dispEnd);
+        } else {
+          laneEnds[lane] = dispEnd;
+        }
+        assigned.push({ e, lane });
+      }
+      const laneCount = laneEnds.length + 1;
       for (const { e, lane } of assigned) {
         result.set(e.id, { lane, laneCount });
       }
+      result.set(GHOST_LANE_KEY, { lane: laneCount - 1, laneCount });
     }
     cluster = [];
     clusterEnd = -1;

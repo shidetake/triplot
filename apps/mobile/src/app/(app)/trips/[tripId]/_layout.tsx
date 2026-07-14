@@ -43,12 +43,24 @@ export default function TripLayout() {
       />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="edit" options={{ presentation: "modal" }} />
-        <Stack.Screen name="categories" options={{ presentation: "modal" }} />
-        <Stack.Screen
-          name="calendar-export"
-          options={{ presentation: "modal" }}
-        />
+        {/* 管理系モーダルは formSheet ＝ iOS 純正の持ち手（grabber）付きシート。
+            アプリ内の @gorhom ボトムシート（フォーム・一覧）と「持ち手のある
+            シート」で見た目を揃える。formSheet はナビヘッダーを出さないので
+            タイトルは各画面が SheetTitle で描く。 */}
+        {(["edit", "categories", "export", "calendar-export"] as const).map(
+          (name) => (
+            <Stack.Screen
+              key={name}
+              name={name}
+              options={{
+                presentation: "formSheet",
+                sheetAllowedDetents: [1.0],
+                sheetGrabberVisible: true,
+                headerShown: false,
+              }}
+            />
+          ),
+        )}
       </Stack>
     </>
   );

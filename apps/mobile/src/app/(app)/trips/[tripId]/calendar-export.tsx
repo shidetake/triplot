@@ -1,4 +1,3 @@
-import { Stack } from "expo-router";
 import { useState } from "react";
 import {
   Linking,
@@ -26,6 +25,7 @@ import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
 import { CheckIcon } from "@/components/icons";
+import { SheetTitle } from "@/components/sheet-title";
 import { CompactSegment } from "@/components/visibility-segment";
 import { getGcalAccessToken } from "@/lib/gcalToken";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -145,17 +145,18 @@ export default function CalendarExportScreen() {
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
     >
-      <Stack.Screen
-        options={{ title: t("heading"), presentation: "modal" }}
-      />
+      <SheetTitle>{t("heading")}</SheetTitle>
 
       {(phase === "connect" || phase === "pick") && (
         <View>
           <Text style={styles.label}>{t("scopeLabel")}</Text>
+          {/* 件数はセグメントに詰め込まず送信ボタン側に出す（ラベルの
+              文字数差で左右バランスが崩れるのを避ける）。 */}
           <CompactSegment
+            grow
             options={[
-              { key: "mine", label: t("scopeMine", { count: mineEvents.length }) },
-              { key: "all", label: t("scopeAll", { count: events.length }) },
+              { key: "mine", label: t("scopeMineSegment") },
+              { key: "all", label: t("scopeAllSegment") },
             ]}
             value={scope}
             onChange={setScope}

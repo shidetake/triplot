@@ -220,6 +220,17 @@ export function InboxIcon(p: IconProps) {
   );
 }
 
+// Lucide: download（エクスポート。web の DownloadIcon と同一パス）
+export function DownloadIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M12 15V3" />
+      <Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <Path d="m7 10 5 5 5-5" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: tag（費用カテゴリ管理。web の TagIcon と同一パス）
 export function TagIcon(p: IconProps) {
   return (
