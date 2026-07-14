@@ -24,6 +24,7 @@ import type { Currency } from "@triplot/shared/types/database";
 import { MemberAvatar } from "@/components/member-avatar";
 import {
   ChevronIcon,
+  CrownIcon,
   DownloadIcon,
   TagIcon,
   TrashIcon,
@@ -250,15 +251,27 @@ export default function EditTripScreen() {
           const isMe = m.id === me.id;
           return (
             <View key={m.id} style={styles.memberRow}>
-              <MemberAvatar
-                member={{
-                  id: m.id,
-                  display_name: m.display_name,
-                  color: m.color,
-                  avatarUrl: m.users?.avatar_url ?? null,
-                }}
-                size={24}
-              />
+              {/* 管理者はアバター右上に王冠バッジ（web と同形。テキストの
+                  「管理者」ラベルは使わない＝仕様の単一化）。 */}
+              <View>
+                <MemberAvatar
+                  member={{
+                    id: m.id,
+                    display_name: m.display_name,
+                    color: m.color,
+                    avatarUrl: m.users?.avatar_url ?? null,
+                  }}
+                  size={24}
+                />
+                {m.is_admin && (
+                  <View
+                    style={styles.crownBadge}
+                    accessibilityLabel={t("members.admin")}
+                  >
+                    <CrownIcon size={10} color="#f59e0b" />
+                  </View>
+                )}
+              </View>
               {isMe ? (
                 <TextInput
                   value={vMyName}
@@ -267,9 +280,6 @@ export default function EditTripScreen() {
                 />
               ) : (
                 <Text style={styles.memberName}>{m.display_name}</Text>
-              )}
-              {m.is_admin && (
-                <Text style={styles.adminBadge}>{t("members.admin")}</Text>
               )}
               {isAdmin && !isMe && (
                 <Pressable
@@ -407,13 +417,17 @@ const makeStyles = (t: Theme) =>
   },
   memberName: { flex: 1, fontSize: 14, color: t.foreground },
   memberNameInput: { flex: 1 },
-  adminBadge: {
-    fontSize: 11,
-    color: t.mutedForeground,
-    backgroundColor: t.fgAlpha(0.06),
-    borderRadius: 4,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+  // アバター右上の王冠（14px 丸に 10px の琥珀の王冠。web の管理者バッジと同形）。
+  crownBadge: {
+    position: "absolute",
+    right: -4,
+    top: -4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   inviteRow: { flexDirection: "row", gap: 8 },
   // iOS 設定流の行リスト（ドリルイン・アクション）。

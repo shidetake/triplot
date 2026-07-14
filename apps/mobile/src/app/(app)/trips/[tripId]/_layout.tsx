@@ -45,8 +45,13 @@ export default function TripLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         {/* 管理系モーダルは formSheet ＝ iOS 純正の持ち手（grabber）付きシート。
             アプリ内の @gorhom ボトムシート（フォーム・一覧）と「持ち手のある
-            シート」で見た目を揃える。formSheet はナビヘッダーを出さないので
-            タイトルは各画面が SheetTitle で描く。 */}
+            シート」で見た目を揃える。高さは内容量で決める
+            （sheetAllowedDetents="fitToContents"）＝ 3行だけのエクスポート
+            画面は低く、フォームが長い編集画面は自然と高くなる。中身が画面を
+            超える場合は iOS 側が全開にクランプし、ScrollView 内でスクロール
+            可能（ui-guidelines「画面高からの引き算」原則の RN 版＝ここでは
+            引き算をコンテンツ実測に任せる形）。formSheet はナビヘッダーを
+            出さないのでタイトルは各画面が SheetTitle で描く。 */}
         {(["edit", "categories", "export", "calendar-export"] as const).map(
           (name) => (
             <Stack.Screen
@@ -54,7 +59,7 @@ export default function TripLayout() {
               name={name}
               options={{
                 presentation: "formSheet",
-                sheetAllowedDetents: [1.0],
+                sheetAllowedDetents: "fitToContents",
                 sheetGrabberVisible: true,
                 headerShown: false,
               }}
