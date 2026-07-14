@@ -1,4 +1,13 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useMemo, useState } from "react";
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 
 import {
   ALL_CURRENCIES,
@@ -7,7 +16,7 @@ import {
 } from "@triplot/shared/currencies";
 import type { Currency } from "@triplot/shared/types/database";
 
-import { CheckIcon, ChevronIcon, XIcon } from "./icons";
+import { CheckIcon, ChevronIcon, SearchIcon, XIcon } from "./icons";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 主要通貨 → その他全通貨（web の CurrencySelect と同じ並び。COMMON_CURRENCIES
@@ -37,39 +46,81 @@ export function CurrencyPickerModal({
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const [query, setQuery] = useState("");
+
+  // コード（USD）or 通貨名（日本語/英語）の部分一致。170件をスクロールで
+  // 探すのは辛いので検索を主役にする（右端の索引ジャンプは iOS 標準だが
+  // RN 標準機能に無く、通貨コードは50音/アルファベット位置の感覚も
+  // つかみにくいので採用しない）。
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return CURRENCY_CHOICES;
+    return CURRENCY_CHOICES.filter((c) => {
+      const name = (CURRENCY_NAMES[c] ?? "").toLowerCase();
+      return c.toLowerCase().includes(q) || name.includes(q);
+    });
+  }, [query]);
+
+  const close = () => {
+    setQuery("");
+    onClose();
+  };
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
       presentationStyle="pageSheet"
-      onRequestClose={onClose}
+      onRequestClose={close}
     >
       <View style={styles.sheet}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="閉じる">
+          <Pressable onPress={close} hitSlop={8} accessibilityLabel="閉じる">
             <XIcon size={20} color={theme.mutedForeground} />
           </Pressable>
         </View>
-        <ScrollView contentContainerStyle={styles.list}>
-          {CURRENCY_CHOICES.map((c) => (
-            <Pressable
-              key={c}
-              onPress={() => {
-                onSelect(c);
-                onClose();
-              }}
-              style={styles.row}
-            >
-              <Text style={[styles.code, c === value && styles.textOn]}>
-                {c}
-              </Text>
-              <Text style={styles.name} numberOfLines={1}>
-                {CURRENCY_NAMES[c] ?? ""}
-              </Text>
-              {c === value && <CheckIcon size={16} color={theme.foreground} />}
-            </Pressable>
-          ))}
+        <View style={styles.searchWrap}>
+          <SearchIcon size={16} color={theme.subtleForeground} />
+          <TextInput
+            value={query}
+            onChangeText={setQuery}
+            placeholder="検索"
+            placeholderTextColor={theme.subtleForeground}
+            style={styles.searchInput}
+            autoCorrect={false}
+            autoCapitalize="none"
+            clearButtonMode="while-editing"
+          />
+        </View>
+        <ScrollView
+          contentContainerStyle={styles.list}
+          keyboardShouldPersistTaps="handled"
+        >
+          {filtered.length === 0 ? (
+            <Text style={styles.empty}>該当する通貨がありません</Text>
+          ) : (
+            filtered.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  onSelect(c);
+                  close();
+                }}
+                style={styles.row}
+              >
+                <Text style={[styles.code, c === value && styles.textOn]}>
+                  {c}
+                </Text>
+                <Text style={styles.name} numberOfLines={1}>
+                  {CURRENCY_NAMES[c] ?? ""}
+                </Text>
+                {c === value && (
+                  <CheckIcon size={16} color={theme.foreground} />
+                )}
+              </Pressable>
+            ))
+          )}
         </ScrollView>
       </View>
     </Modal>
@@ -114,7 +165,30 @@ const makeStyles = (t: Theme) =>
       borderBottomColor: t.fgAlpha(0.1),
     },
     title: { fontSize: 15, fontWeight: "600", color: t.foreground },
-    list: { padding: 16, paddingTop: 4 },
+    searchWrap: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginHorizontal: 16,
+      marginTop: 12,
+      paddingHorizontal: 10,
+      height: 36,
+      borderRadius: 8,
+      backgroundColor: t.fgAlpha(0.06),
+    },
+    searchInput: {
+      flex: 1,
+      fontSize: 15,
+      color: t.foreground,
+      paddingVertical: 0,
+    },
+    empty: {
+      paddingVertical: 24,
+      textAlign: "center",
+      fontSize: 13,
+      color: t.mutedForeground,
+    },
+    list: { padding: 16, paddingTop: 8 },
     row: {
       flexDirection: "row",
       alignItems: "center",
