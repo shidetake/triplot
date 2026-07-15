@@ -1,6 +1,8 @@
 import {
+  BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
+  type BottomSheetBackdropProps,
 } from "@gorhom/bottom-sheet";
 import {
   forwardRef,
@@ -57,6 +59,23 @@ export const FormSheet = forwardRef<
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
 
+  // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
+  // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
+  // はユーザーを欺くので非推奨」と明言）。FormSheet は常に単一の snapPoint
+  // （index 0）で開閉するため、appearsOnIndex/disappearsOnIndex の既定値
+  // （複数スナップポイント前提の 1/0）のままだと backdrop が常に透明になる
+  // ＝明示的に 0/-1 を指定する。
+  const renderBackdrop = useCallback(
+    (props: BottomSheetBackdropProps) => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+      />
+    ),
+    [],
+  );
+
   useImperativeHandle(ref, () => ({
     present: () => modalRef.current?.present(),
     dismiss,
@@ -82,8 +101,9 @@ export const FormSheet = forwardRef<
       // 戻す。
       keyboardBehavior="extend"
       keyboardBlurBehavior="restore"
-      // 背景は薄暗く（モーダル）＋ドラッグで閉じ。上に元画面が残る。
-      backdropComponent={undefined}
+      // 背景は薄暗く（モーダル・scrim）＋ドラッグで閉じ・背景タップで閉じ
+      // （pressBehavior 既定 "close"）。上に元画面が薄暗く透けて残る。
+      backdropComponent={renderBackdrop}
       backgroundStyle={{ backgroundColor: t.background }}
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
