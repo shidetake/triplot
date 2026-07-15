@@ -165,7 +165,11 @@ export default function ScheduleTab() {
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
 
-      <FormSheet ref={formRef}>
+      {/* 種別（通常/終日/時差移動）で中身の量が変わるため、常に全開(100%)に
+          せず、一番中身が多いパターン（時差移動＋参加者複数選択）が収まる
+          高さに固定する（他の種別に切り替えてもシートの高さは変わらない）。
+          見積もり値。実機で高さが合わなければここを調整する。 */}
+      <FormSheet ref={formRef} snapPoints={["88%"]}>
         {(dismiss) => (
           <EventForm
             tripId={tripId}

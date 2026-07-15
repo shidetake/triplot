@@ -332,7 +332,10 @@ export default function ExpensesTab() {
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
 
-      <FormSheet ref={sheetRef}>
+      {/* 外貨表示・割り勘カスタム・支払者展開・乗継TZ選択などで中身の量が
+          変わるため、常に全開(100%)にせず、一番多いパターンが収まる高さに
+          固定する。見積もり値。実機で高さが合わなければここを調整する。 */}
+      <FormSheet ref={sheetRef} snapPoints={["88%"]}>
         {(dismiss) => (
           <ExpenseForm
             tripId={tripId}

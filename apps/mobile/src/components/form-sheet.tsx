@@ -35,6 +35,11 @@ export const FormSheet = forwardRef<
     // 中身の高さちょうどまで開く（地図のピン→場所フォームなど、地図の文脈を
     // 残したい用途）。既定 false = 従来どおりヘッダー帯下端まで全開。
     sizeToContent?: boolean;
+    // 固定の展開位置（例 ["85%"]）。予定/費用フォームのように「種別の切替で
+    // 中身の量が変わる」フォーム用＝最初から毎回いきなり全開になるのを避け、
+    // 一番中身が多いパターン（時差移動＋参加者複数選択、外貨＋割り勘カスタム
+    // 等）が収まる高さを事前に見積もって固定する。sizeToContent より優先。
+    snapPoints?: string[];
     // 完全に閉じた後（スワイプ閉じ・プログラム dismiss の両方）。地図タブが
     // 候補ピンの選択ハイライトを解除するのに使う。
     onDismiss?: () => void;
@@ -44,7 +49,7 @@ export const FormSheet = forwardRef<
     children: (dismiss: () => void) => ReactNode;
   }
 >(function FormSheet(
-  { sizeToContent = false, onDismiss, refreshControl, children },
+  { sizeToContent = false, snapPoints, onDismiss, refreshControl, children },
   ref,
 ) {
   const modalRef = useRef<BottomSheetModal>(null);
@@ -63,11 +68,20 @@ export const FormSheet = forwardRef<
       // sizeToContent: snap 点は中身の実測高（enableDynamicSizing が
       // BottomSheetScrollView を測って追加する）。上限は topInset で
       // 従来の全開位置と同じ＝中身が長い時は従来と同じ高さでスクロール。
-      snapPoints={sizeToContent ? undefined : ["100%"]}
+      // snapPoints 指定時はそれを固定の展開位置として使う。
+      snapPoints={snapPoints ?? (sizeToContent ? undefined : ["100%"])}
       onDismiss={onDismiss}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
-      enableDynamicSizing={sizeToContent}
+      enableDynamicSizing={!snapPoints && sizeToContent}
+      // sizeToContent（中身の実測高さで開く）のシートは、開いた時点のサイズに
+      // 固定されたまま。後からキーボードが出ると、シートの高さはそのままで
+      // 中身だけキーボードに押し潰され隠れる（地図長押しの仮ピン→名前入力等で
+      // 顕著）。keyboardBehavior="extend" でキーボード表示時にシート自体を
+      // キーボード上端まで拡張し、"restore" でキーボードを閉じたら元の高さに
+      // 戻す。
+      keyboardBehavior="extend"
+      keyboardBlurBehavior="restore"
       // 背景は薄暗く（モーダル）＋ドラッグで閉じ。上に元画面が残る。
       backdropComponent={undefined}
       backgroundStyle={{ backgroundColor: t.background }}
@@ -79,10 +93,12 @@ export const FormSheet = forwardRef<
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         // 内容がシートの高さにぴったり収まる（fitToContents/sizeToContent）とき、
-        // 引っ張ると中身だけラバーバンドして不自然に見えるのを防ぐ
-        // （refreshControl があるシートは pull-to-refresh のジェスチャーに
-        // bounce が要るので対象外）。
-        alwaysBounceVertical={refreshControl ? undefined : false}
+        // 引っ張ると中身だけラバーバンドして不自然に見えるのを防ぐ。
+        // pull-to-refresh（RefreshControl）は alwaysBounceVertical=false でも
+        // 指で引っ張っている間は contentOffset が動くため機能する
+        // （受信箱だけ条件分岐で有効にしていたところ、そこだけラバーバンドが
+        // 残る＝画面によって手触りが違う、という実機報告を受けて統一）。
+        alwaysBounceVertical={false}
         refreshControl={refreshControl}
         contentContainerStyle={[
           styles.content,
