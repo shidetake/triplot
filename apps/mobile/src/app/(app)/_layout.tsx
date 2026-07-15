@@ -1,5 +1,4 @@
 import { Redirect, Stack } from "expo-router";
-import { useTranslations } from "use-intl";
 
 import { useSession } from "@/lib/session";
 
@@ -13,7 +12,6 @@ import { useSession } from "@/lib/session";
 // （旅行名タイトル・headerRight 等）だけ。
 export default function AppLayout() {
   const { session, isLoading } = useSession();
-  const t = useTranslations();
 
   if (isLoading) return null;
   if (!session) return <Redirect href="/sign-in" />;
@@ -26,18 +24,24 @@ export default function AppLayout() {
         name="trips/index"
         options={{ title: "triplot", headerLargeTitle: true }}
       />
-      <Stack.Screen
-        name="trips/new"
-        options={{ title: t("trips.create"), presentation: "modal" }}
-      />
-      <Stack.Screen
-        name="inbox"
-        options={{ title: t("import.heading"), presentation: "modal" }}
-      />
-      <Stack.Screen
-        name="settings"
-        options={{ title: t("settings.heading"), presentation: "modal" }}
-      />
+      {/* 管理系モーダルは formSheet ＝ iOS 純正の持ち手（grabber）付きシート。
+          高さは内容量で決める（sheetAllowedDetents="fitToContents"）。
+          trips/[tripId] 配下（編集/カテゴリ/エクスポート等）と同じ規約
+          （そちらは統一済みで、この3画面だけ旧 pageSheet のまま漏れていた）。
+          formSheet はナビヘッダーを出さないのでタイトルは各画面が
+          SheetTitle で描く。 */}
+      {(["trips/new", "inbox", "settings"] as const).map((name) => (
+        <Stack.Screen
+          key={name}
+          name={name}
+          options={{
+            presentation: "formSheet",
+            sheetAllowedDetents: "fitToContents",
+            sheetGrabberVisible: true,
+            headerShown: false,
+          }}
+        />
+      ))}
       {/* 旅行詳細はネストした Stack が自分でヘッダーを構成する（旅行名+編集）。
           タイトル等は trips/[tripId]/_layout.tsx が Stack.Screen で注入する。 */}
     </Stack>

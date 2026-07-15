@@ -144,6 +144,9 @@ export default function CalendarExportScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
+      // 入力欄がキーボードの裏に隠れないようにする。
+      automaticallyAdjustKeyboardInsets
     >
       <SheetTitle>{t("heading")}</SheetTitle>
 

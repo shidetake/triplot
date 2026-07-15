@@ -19,6 +19,7 @@ import {
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
+import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -98,6 +99,7 @@ export default function InboxScreen() {
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
+      <SheetTitle>{t("heading")}</SheetTitle>
 
       <Text style={styles.description}>{t("description")}</Text>
 

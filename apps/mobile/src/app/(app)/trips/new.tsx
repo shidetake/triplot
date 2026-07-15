@@ -12,21 +12,29 @@ import {
 } from "react-native";
 import { useTranslations } from "use-intl";
 
-import { COMMON_CURRENCIES } from "@triplot/shared/currencies";
 import { createTrip } from "@triplot/shared/data/trips";
-import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
+import { fetchMyTrips, fetchUserProfile } from "@triplot/shared/data/reads/trips";
+import { tripDayCount } from "@triplot/shared/tripCopy";
 import type { Currency } from "@triplot/shared/types/database";
 
+import {
+  CopySourceModal,
+  CopySourceTrigger,
+} from "@/components/copy-source-picker";
+import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
+import { SheetTitle } from "@/components/sheet-title";
+import { CompactSegment } from "@/components/visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
-// 旅行作成（モーダル）。web の create-trip-form 相当（コピー作成は後回し、
-// 新規のみ）。成功で作成した旅行の詳細へ遷移。
+// 旅行作成（モーダル）。web の create-trip-form と同じ2モード
+// （新規/過去の旅行をコピー）。成功で作成した旅行の詳細へ遷移。
 export default function NewTripScreen() {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
+  const tTrips = useTranslations("trips");
   const { session } = useSession();
   const userId = session?.user.id;
 
@@ -35,18 +43,54 @@ export default function NewTripScreen() {
     queryFn: () => fetchUserProfile(supabase, userId!),
     enabled: !!userId,
   });
+  // コピー元候補（自分が参加している既存の旅行）。
+  const { data: myTrips } = useQuery({
+    queryKey: ["myTrips", userId],
+    queryFn: () => fetchMyTrips(supabase, userId!),
+    enabled: !!userId,
+  });
+  const trips = myTrips?.trips ?? [];
+  const canCopy = trips.length > 0;
 
+  const [mode, setMode] = useState<"new" | "copy">("new");
+  const [sourceId, setSourceId] = useState("");
+  const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [displayName, setDisplayName] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(todayStr());
   const [endDate, setEndDate] = useState(todayStr());
-  const [currency, setCurrency] = useState<Currency>("JPY");
+  // 既定は前回旅行の精算通貨。過去の旅行がなければ JPY（web と同じ）。
+  const lastCurrency = (trips[0]?.default_currency ?? "JPY") as Currency;
+  const [currency, setCurrency] = useState<Currency>(lastCurrency);
+  const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // 表示名はプロフィールの既定値をプレースホルダ兼初期値に。
   const effectiveName =
     displayName ?? profile?.display_name?.trim() ?? "";
+
+  // コピー元を選んだらタイトル・通貨をプリフィル（web の pickSource と同じ）。
+  const pickSource = (id: string) => {
+    setSourceId(id);
+    const src = trips.find((x) => x.id === id);
+    if (src) {
+      setTitle(src.title);
+      if (/^[A-Z]{3}$/.test(src.default_currency)) {
+        setCurrency(src.default_currency as Currency);
+      }
+    }
+  };
+
+  // 新しい日程がコピー元より短いと、両端優先で中日の予定が省かれる警告。
+  const source = trips.find((x) => x.id === sourceId);
+  const sourceDays =
+    source?.start_date && source.end_date
+      ? tripDayCount(source.start_date, source.end_date)
+      : null;
+  const newDays = tripDayCount(startDate, endDate);
+  const showShorterWarning =
+    mode === "copy" && sourceDays !== null && newDays < sourceDays;
 
   const submit = async () => {
     if (!title.trim() || !effectiveName.trim()) {
@@ -61,6 +105,7 @@ export default function NewTripScreen() {
       endDate: endDate < startDate ? startDate : endDate,
       displayName: effectiveName.trim(),
       currency,
+      sourceTripId: mode === "copy" && sourceId ? sourceId : undefined,
       clientTz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
     setBusy(false);
@@ -76,7 +121,48 @@ export default function NewTripScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
+      // 入力欄がキーボードの裏に隠れないようにする。
+      automaticallyAdjustKeyboardInsets
     >
+      <SheetTitle>{tTrips("create")}</SheetTitle>
+
+      {/* 作り方の選択（過去の旅行が無ければ出さない。web と同じセグメント）。 */}
+      {canCopy && (
+        <CompactSegment
+          grow
+          options={[
+            { key: "new", label: t("modeNew") },
+            { key: "copy", label: t("modeCopy") },
+          ]}
+          value={mode}
+          onChange={(v) => {
+            setMode(v);
+            if (v === "new") setSourceId("");
+          }}
+        />
+      )}
+
+      {mode === "copy" && (
+        <View>
+          <Text style={styles.label}>{t("copySource")}</Text>
+          <CopySourceTrigger
+            trips={trips}
+            value={sourceId}
+            onPress={() => setSourcePickerOpen(true)}
+            placeholder={t("selectTrip")}
+          />
+        </View>
+      )}
+
+      <CopySourceModal
+        visible={sourcePickerOpen}
+        trips={trips}
+        value={sourceId}
+        onSelect={pickSource}
+        onClose={() => setSourcePickerOpen(false)}
+        title={t("copySource")}
+      />
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           必須は * でなく「埋まるまで作成無効」。表示名は説明を持つラベルなので残す。 */}
@@ -129,28 +215,27 @@ export default function NewTripScreen() {
 
       <View>
         <Text style={styles.label}>{t("settlementCurrency")}</Text>
-        <View style={styles.currencyWrap}>
-          {COMMON_CURRENCIES.slice(0, 6).map((c) => (
-            <Pressable
-              key={c}
-              onPress={() => setCurrency(c)}
-              style={[
-                styles.currencyChip,
-                currency === c && styles.currencyChipOn,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.currencyText,
-                  currency === c && styles.currencyTextOn,
-                ]}
-              >
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* 通貨は web と同じ全170通貨から選べる（以前は6件に絞った独自
+            chip 実装だった）。トリガー＋モーダルは編集画面と共通の
+            CurrencyPickerModal。web の「精算通貨とは」ヘルプツールチップは
+            RN 側に HelpTip 部品が無いので今回は省略（別途対応する）。 */}
+        <CurrencyPickerTrigger
+          value={currency}
+          onPress={() => setCurrencyPickerOpen(true)}
+        />
       </View>
+
+      <CurrencyPickerModal
+        visible={currencyPickerOpen}
+        value={currency}
+        onSelect={setCurrency}
+        onClose={() => setCurrencyPickerOpen(false)}
+        title={t("settlementCurrency")}
+      />
+
+      {showShorterWarning && (
+        <Text style={styles.warn}>{t("shorterWarning")}</Text>
+      )}
 
       <Pressable
         onPress={() => void submit()}
@@ -198,17 +283,7 @@ const makeStyles = (t: Theme) =>
   },
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dateSep: { fontSize: 14, color: t.subtleForeground },
-  currencyWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  currencyChip: {
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-  },
-  currencyChipOn: { backgroundColor: t.primary, borderColor: t.primary },
-  currencyText: { fontSize: 13, color: t.foreground },
-  currencyTextOn: { color: t.primaryForeground },
+  warn: { fontSize: 12, color: t.warnAccent },
   submitButton: {
     height: 44,
     borderRadius: 6,

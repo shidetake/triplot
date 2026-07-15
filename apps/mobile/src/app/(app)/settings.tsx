@@ -15,6 +15,7 @@ import { updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
 import { signOut } from "@/lib/auth";
+import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -52,7 +53,11 @@ export default function SettingsScreen() {
       style={styles.screen}
       contentContainerStyle={styles.content}
       keyboardShouldPersistTaps="handled"
+      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
+      // 入力欄がキーボードの裏に隠れないようにする。
+      automaticallyAdjustKeyboardInsets
     >
+      <SheetTitle>{t("settings.heading")}</SheetTitle>
 
       <Text style={styles.email}>{session?.user.email}</Text>
 
