@@ -127,7 +127,14 @@ export default function ExportScreen() {
   };
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <ScrollView
+      style={styles.screen}
+      contentContainerStyle={styles.content}
+      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
+      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
+      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない。
+      alwaysBounceVertical={false}
+    >
       <SheetTitle>{t("tripActions.export")}</SheetTitle>
 
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}

@@ -179,6 +179,11 @@ export default function EditTripScreen() {
       // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
       // 入力欄がキーボードの裏に隠れないようにする。
       automaticallyAdjustKeyboardInsets
+      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
+      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
+      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
+      // （収まらない時は通常どおりスクロール・端バウンスする）。
+      alwaysBounceVertical={false}
     >
       <SheetTitle>{t("tripActions.editTrip")}</SheetTitle>
 
