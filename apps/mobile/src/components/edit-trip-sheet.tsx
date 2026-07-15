@@ -1,6 +1,6 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Pressable,
@@ -19,10 +19,7 @@ import {
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import type { Currency } from "@triplot/shared/types/database";
 
-import { CategoriesSheet } from "@/components/categories-sheet";
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
-import { ExportSheet } from "@/components/export-sheet";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar } from "@/components/member-avatar";
 import {
   ChevronIcon,
@@ -40,15 +37,22 @@ import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 
 // 旅行の編集・メンバー・招待・削除（FormSheet の中身）。web の TripActions ＋
-// members ページの機能を1画面に集約した RN 版。カテゴリ管理・エクスポートは
-// 自身の FormSheet にネストしたシートへドリルイン（旅行詳細のヘッダーから
-// 開く最上位のシート）。
+// members ページの機能を1画面に集約した RN 版。カテゴリ管理・エクスポートへの
+// ドリルインは、呼び出し元（trips/[tripId]/_layout.tsx）が兄弟の FormSheet
+// として持つ present() をコールバックで受け取って呼ぶだけにする（自身の
+// BottomSheetScrollView の中に子の BottomSheetModal をネストすると、子の
+// enableDynamicSizing の高さ測定が親のレイアウト計算と干渉し、開ききった
+// 瞬間に親ごと閉じる @gorhom の既知不具合を踏むため、兄弟構成にフラット化）。
 export function EditTripSheet({
   tripId,
   onDone,
+  onOpenCategories,
+  onOpenExport,
 }: {
   tripId: string;
   onDone: () => void;
+  onOpenCategories: () => void;
+  onOpenExport: () => void;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -56,8 +60,6 @@ export function EditTripSheet({
   const { session } = useSession();
   const { data, me, refetch } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
-  const categoriesRef = useRef<FormSheetRef>(null);
-  const exportRef = useRef<FormSheetRef>(null);
 
   const trip = data?.trip;
   const [title, setTitle] = useState<string | null>(null);
@@ -321,18 +323,12 @@ export function EditTripSheet({
       {/* 管理・エクスポート（iOS 設定流のドリルイン/アクション行。
           web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
       <View style={styles.navList}>
-        <Pressable
-          onPress={() => categoriesRef.current?.present()}
-          style={styles.navRow}
-        >
+        <Pressable onPress={onOpenCategories} style={styles.navRow}>
           <TagIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("categories.heading")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
-        <Pressable
-          onPress={() => exportRef.current?.present()}
-          style={styles.navRow}
-        >
+        <Pressable onPress={onOpenExport} style={styles.navRow}>
           <DownloadIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("tripActions.export")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
@@ -358,13 +354,6 @@ export function EditTripSheet({
           </Text>
         </Pressable>
       )}
-
-      <FormSheet ref={categoriesRef} sizeToContent>
-        {() => <CategoriesSheet tripId={tripId} />}
-      </FormSheet>
-      <FormSheet ref={exportRef} sizeToContent>
-        {() => <ExportSheet tripId={tripId} />}
-      </FormSheet>
     </View>
   );
 }

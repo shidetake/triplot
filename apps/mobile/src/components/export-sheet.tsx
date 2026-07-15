@@ -1,4 +1,3 @@
-import { useRef } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -14,8 +13,6 @@ import {
 } from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
-import { CalendarExportSheet } from "@/components/calendar-export-sheet";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import {
   CalendarDaysIcon,
   ChevronIcon,
@@ -29,15 +26,20 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 
 // エクスポート（FormSheet の中身）。出力先ごとの3行: 予定（Google カレンダー）
-// は自身の FormSheet にネストしたシートへドリルイン、地図（KML）・費用（CSV）
-// はその場で生成して共有シートへ（web の ⋯ メニュー > エクスポートの
-// ドリルインに対応）。旅行編集シートからドリルインで開く。
-export function ExportSheet({ tripId }: { tripId: string }) {
+// は兄弟の FormSheet（呼び出し元が持つ）の present() をコールバックで開く、
+// 地図（KML）・費用（CSV）はその場で生成して共有シートへ（web の ⋯ メニュー
+// > エクスポートのドリルインに対応）。旅行編集シートからドリルインで開く。
+export function ExportSheet({
+  tripId,
+  onOpenCalendarExport,
+}: {
+  tripId: string;
+  onOpenCalendarExport: () => void;
+}) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
   const { data, me } = useTripDetail(tripId);
-  const calendarExportRef = useRef<FormSheetRef>(null);
 
   if (!data?.trip || !me) return null;
   const trip = data.trip;
@@ -128,10 +130,7 @@ export function ExportSheet({ tripId }: { tripId: string }) {
 
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
       {googleSignInAvailable && (
-        <Pressable
-          onPress={() => calendarExportRef.current?.present()}
-          style={styles.navRow}
-        >
+        <Pressable onPress={onOpenCalendarExport} style={styles.navRow}>
           <CalendarDaysIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>
             {t("tripActions.exportCalendar")}
@@ -147,10 +146,6 @@ export function ExportSheet({ tripId }: { tripId: string }) {
         <WalletIcon size={18} color={theme.mutedForeground} />
         <Text style={styles.navRowLabel}>{t("tripActions.exportExpenses")}</Text>
       </Pressable>
-
-      <FormSheet ref={calendarExportRef} sizeToContent>
-        {() => <CalendarExportSheet tripId={tripId} />}
-      </FormSheet>
     </View>
   );
 }

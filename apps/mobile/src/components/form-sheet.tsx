@@ -64,13 +64,17 @@ export const FormSheet = forwardRef<
   // はユーザーを欺くので非推奨」と明言）。FormSheet は常に単一の snapPoint
   // （index 0）で開閉するため、appearsOnIndex/disappearsOnIndex の既定値
   // （複数スナップポイント前提の 1/0）のままだと backdrop が常に透明になる
-  // ＝明示的に 0/-1 を指定する。
+  // ＝明示的に 0/-1 を指定する。opacity は既定 0.5 だと弱く見える＝
+  // ダークモードの地色（#0a0a0a）がほぼ黒なので、黒い半透明幕を重ねても
+  // 明るさの変化が乏しいため（実機フィードバック）。X/TripIt 程度の
+  // 沈み込みに近づけて 0.75 に上げる。
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         appearsOnIndex={0}
         disappearsOnIndex={-1}
+        opacity={0.75}
       />
     ),
     [],
