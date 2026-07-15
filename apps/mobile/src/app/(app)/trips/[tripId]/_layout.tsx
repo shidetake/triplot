@@ -1,6 +1,9 @@
-import { Link, Stack } from "expo-router";
+import { Stack } from "expo-router";
+import { useRef } from "react";
 import { View } from "react-native";
 
+import { EditTripSheet } from "@/components/edit-trip-sheet";
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { HeaderIconButton } from "@/components/header-icon-button";
 import { SettingsIcon, ShareIcon } from "@/components/icons";
 import { shareTripInvite } from "@/lib/shareTripInvite";
@@ -13,10 +16,19 @@ import { useTripId } from "@/lib/useTripId";
 // 最初の <Stack.Screen> は自分を内包する親 Stack（(app)/_layout.tsx）の
 // この route のオプションを注入する（旅行名が動的なので layout 側に書けない）。
 // ネストした Stack 自身はヘッダーを出さない（二重ヘッダー防止）。
+//
+// 旅行の編集・カテゴリ管理・エクスポート・カレンダーエクスポートは、以前は
+// native の formSheet（別ルートへの画面遷移）で実装していたが、地図タブの
+// 場所フォームだけ @gorhom ベースのシート（背後の地図の文脈を残す必要が
+// あるため native に置き換えられない）を使っており、native と @gorhom が
+// 画面ごとに混在していた。ユーザーには「なぜここだけ質感が違うのか」が
+// 分からず違和感になる（Slack が PanModal で全モーダルを1つの実装に統一した
+// のと同じ理屈）ため、@gorhom ベースの FormSheet に統一した。
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
   const tripTitle = data?.trip?.title ?? "";
+  const editRef = useRef<FormSheetRef>(null);
 
   return (
     <>
@@ -32,41 +44,23 @@ export default function TripLayout() {
               >
                 <ShareIcon size={20} color="#666666" />
               </HeaderIconButton>
-              <Link href={`/trips/${tripId}/edit`} asChild>
-                <HeaderIconButton accessibilityLabel="旅行を編集">
-                  <SettingsIcon size={20} color="#666666" />
-                </HeaderIconButton>
-              </Link>
+              <HeaderIconButton
+                accessibilityLabel="旅行を編集"
+                onPress={() => editRef.current?.present()}
+              >
+                <SettingsIcon size={20} color="#666666" />
+              </HeaderIconButton>
             </View>
           ),
         }}
       />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        {/* 管理系モーダルは formSheet ＝ iOS 純正の持ち手（grabber）付きシート。
-            アプリ内の @gorhom ボトムシート（フォーム・一覧）と「持ち手のある
-            シート」で見た目を揃える。高さは内容量で決める
-            （sheetAllowedDetents="fitToContents"）＝ 3行だけのエクスポート
-            画面は低く、フォームが長い編集画面は自然と高くなる。中身が画面を
-            超える場合は iOS 側が全開にクランプし、ScrollView 内でスクロール
-            可能（ui-guidelines「画面高からの引き算」原則の RN 版＝ここでは
-            引き算をコンテンツ実測に任せる形）。formSheet はナビヘッダーを
-            出さないのでタイトルは各画面が SheetTitle で描く。 */}
-        {(["edit", "categories", "export", "calendar-export"] as const).map(
-          (name) => (
-            <Stack.Screen
-              key={name}
-              name={name}
-              options={{
-                presentation: "formSheet",
-                sheetAllowedDetents: "fitToContents",
-                sheetGrabberVisible: true,
-                headerShown: false,
-              }}
-            />
-          ),
-        )}
       </Stack>
+
+      <FormSheet ref={editRef} sizeToContent>
+        {(dismiss) => <EditTripSheet tripId={tripId} onDone={dismiss} />}
+      </FormSheet>
     </>
   );
 }

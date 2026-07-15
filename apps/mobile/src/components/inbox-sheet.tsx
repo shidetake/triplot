@@ -1,15 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import {
-  Alert,
-  Pressable,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import {
@@ -22,12 +14,16 @@ import { buildImportAddress } from "@triplot/shared/importAddress";
 import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useThemedStyles } from "@/lib/theme";
-import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useSession } from "@/lib/session";
 
-// 受信箱（メール取り込み）。web の /import 相当（M8 スコープ = 割当/破棄/
-// アドレス表示。確定は各旅行の画面で）。
-export default function InboxScreen() {
+// 受信箱（メール取り込み、FormSheet の中身）。web の /import 相当
+// （M8 スコープ = 割当/破棄/アドレス表示。確定は各旅行の画面で）。
+// pull-to-refresh の RefreshControl は呼び出し元（trips/index.tsx）が
+// FormSheet の refreshControl prop として渡す（RefreshControl は
+// ScrollView 直下の prop としてしか機能しないため）。同じ queryKey で
+// useQuery を呼ぶことで TanStack Query のキャッシュ共有により二重取得
+// にはならず、呼び出し元の refetch がこのコンポーネントの data も更新する。
+export function InboxSheet() {
   const t = useTranslations("import");
   const styles = useThemedStyles(makeStyles);
   const { session } = useSession();
@@ -38,7 +34,6 @@ export default function InboxScreen() {
     queryFn: () => fetchImportInboxRows(supabase, userId!),
     enabled: !!userId,
   });
-  const { refreshing, onRefresh } = usePullRefresh(refetch);
 
   const [assigning, setAssigning] = useState<string | null>(null);
 
@@ -92,13 +87,7 @@ export default function InboxScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("heading")}</SheetTitle>
 
       <Text style={styles.description}>{t("description")}</Text>
@@ -201,16 +190,13 @@ export default function InboxScreen() {
           {t("usageCount", { used: data.usedThisMonth ?? 0, cap: 30 })}
         </Text>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
-  // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: t.background },
-  content: { padding: 16, gap: 12, paddingBottom: 48 },
+  content: { paddingHorizontal: 16, gap: 12 },
   description: { fontSize: 12, color: t.mutedForeground },
   addressBox: {
     borderWidth: 1,

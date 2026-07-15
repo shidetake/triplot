@@ -7,9 +7,10 @@ import {
   useCallback,
   useImperativeHandle,
   useRef,
+  type ReactElement,
   type ReactNode,
 } from "react";
-import { StyleSheet } from "react-native";
+import { StyleSheet, type RefreshControlProps } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/lib/theme";
@@ -37,9 +38,15 @@ export const FormSheet = forwardRef<
     // 完全に閉じた後（スワイプ閉じ・プログラム dismiss の両方）。地図タブが
     // 候補ピンの選択ハイライトを解除するのに使う。
     onDismiss?: () => void;
+    // pull-to-refresh のあるシート（受信箱等）用。RN の <RefreshControl /> を
+    // そのまま渡す（BottomSheetScrollView は RN の ScrollView 互換 API）。
+    refreshControl?: ReactElement<RefreshControlProps>;
     children: (dismiss: () => void) => ReactNode;
   }
->(function FormSheet({ sizeToContent = false, onDismiss, children }, ref) {
+>(function FormSheet(
+  { sizeToContent = false, onDismiss, refreshControl, children },
+  ref,
+) {
   const modalRef = useRef<BottomSheetModal>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
@@ -71,6 +78,12 @@ export const FormSheet = forwardRef<
         // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動）。
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
+        // 内容がシートの高さにぴったり収まる（fitToContents/sizeToContent）とき、
+        // 引っ張ると中身だけラバーバンドして不自然に見えるのを防ぐ
+        // （refreshControl があるシートは pull-to-refresh のジェスチャーに
+        // bounce が要るので対象外）。
+        alwaysBounceVertical={refreshControl ? undefined : false}
+        refreshControl={refreshControl}
         contentContainerStyle={[
           styles.content,
           // フィット時はシート下端＝画面下端なので、ホームインジケータぶんを

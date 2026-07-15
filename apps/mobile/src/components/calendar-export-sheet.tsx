@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Linking,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -30,21 +29,20 @@ import { CompactSegment } from "@/components/visibility-segment";
 import { getGcalAccessToken } from "@/lib/gcalToken";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
-import { useTripId } from "@/lib/useTripId";
 
 const NEW = "__new__";
 
 type Phase = "connect" | "loading" | "pick" | "exporting" | "done" | "error";
 
-// Google カレンダーへエクスポート（モーダル）。web の CalendarExportDialog と
-// 同じ流れ（接続 → 出力範囲/エクスポート先を選ぶ → 直列投入 → 完了）。
-// トークンは native Google Sign-In の追加スコープで取得（lib/gcalToken）、
-// API 呼び出し・予定変換は shared（gcalApi / gcalEvent）で web と共用。
-// 出力範囲は RN の流儀でセグメント（web はラジオ）。
-export default function CalendarExportScreen() {
+// Google カレンダーへエクスポート（FormSheet の中身）。web の
+// CalendarExportDialog と同じ流れ（接続 → 出力範囲/エクスポート先を選ぶ →
+// 直列投入 → 完了）。トークンは native Google Sign-In の追加スコープで取得
+// （lib/gcalToken）、API 呼び出し・予定変換は shared（gcalApi / gcalEvent）
+// で web と共用。出力範囲は RN の流儀でセグメント（web はラジオ）。
+// エクスポート画面（ExportSheet）からドリルインで開く。
+export function CalendarExportSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const tripId = useTripId();
   const t = useTranslations("calendarExport");
   const { data, me } = useTripDetail(tripId);
 
@@ -140,19 +138,7 @@ export default function CalendarExportScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
-      // 入力欄がキーボードの裏に隠れないようにする。
-      automaticallyAdjustKeyboardInsets
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
-      // （収まらない時は通常どおりスクロール・端バウンスする）。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("heading")}</SheetTitle>
 
       {(phase === "connect" || phase === "pick") && (
@@ -273,14 +259,13 @@ export default function CalendarExportScreen() {
           </Pressable>
         </View>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    screen: { backgroundColor: t.background },
-    content: { padding: 16, gap: 16, paddingBottom: 48 },
+    content: { paddingHorizontal: 16, gap: 16 },
     label: {
       fontSize: 13,
       fontWeight: "500",

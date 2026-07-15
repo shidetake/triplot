@@ -24,26 +24,12 @@ export default function AppLayout() {
         name="trips/index"
         options={{ title: "triplot", headerLargeTitle: true }}
       />
-      {/* 管理系モーダルは formSheet ＝ iOS 純正の持ち手（grabber）付きシート。
-          高さは内容量で決める（sheetAllowedDetents="fitToContents"）。
-          trips/[tripId] 配下（編集/カテゴリ/エクスポート等）と同じ規約
-          （そちらは統一済みで、この3画面だけ旧 pageSheet のまま漏れていた）。
-          formSheet はナビヘッダーを出さないのでタイトルは各画面が
-          SheetTitle で描く。 */}
-      {(["trips/new", "inbox", "settings"] as const).map((name) => (
-        <Stack.Screen
-          key={name}
-          name={name}
-          options={{
-            presentation: "formSheet",
-            sheetAllowedDetents: "fitToContents",
-            sheetGrabberVisible: true,
-            headerShown: false,
-          }}
-        />
-      ))}
-      {/* 旅行詳細はネストした Stack が自分でヘッダーを構成する（旅行名+編集）。
-          タイトル等は trips/[tripId]/_layout.tsx が Stack.Screen で注入する。 */}
+      {/* 取り込み・設定・旅行作成・旅行編集・カテゴリ管理・エクスポートは
+          すべて @gorhom ベースの FormSheet（各画面が自分でマウントする）に
+          統一済み。native の formSheet ルート（presentation: "formSheet"）は
+          もう使わない。旅行詳細はネストした Stack が自分でヘッダーを構成する
+          （旅行名+編集）。タイトル等は trips/[tripId]/_layout.tsx が
+          Stack.Screen で注入する。 */}
     </Stack>
   );
 }

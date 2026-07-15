@@ -1,11 +1,5 @@
-import { router } from "expo-router";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-} from "react-native";
+import { useRef } from "react";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { buildExpensesCsv, type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
@@ -20,6 +14,8 @@ import {
 } from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
+import { CalendarExportSheet } from "@/components/calendar-export-sheet";
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import {
   CalendarDaysIcon,
   ChevronIcon,
@@ -31,17 +27,17 @@ import { googleSignInAvailable } from "@/lib/auth";
 import { exportFileViaShareSheet, safeFilename } from "@/lib/exportFile";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
-import { useTripId } from "@/lib/useTripId";
 
-// エクスポート（モーダル）。出力先ごとの3行: 予定（Google カレンダー）は
-// 専用画面へドリルイン、地図（KML）・費用（CSV）はその場で生成して
-// 共有シートへ（web の ⋯ メニュー > エクスポートのドリルインに対応）。
-export default function ExportScreen() {
+// エクスポート（FormSheet の中身）。出力先ごとの3行: 予定（Google カレンダー）
+// は自身の FormSheet にネストしたシートへドリルイン、地図（KML）・費用（CSV）
+// はその場で生成して共有シートへ（web の ⋯ メニュー > エクスポートの
+// ドリルインに対応）。旅行編集シートからドリルインで開く。
+export function ExportSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const tripId = useTripId();
   const t = useTranslations();
   const { data, me } = useTripDetail(tripId);
+  const calendarExportRef = useRef<FormSheetRef>(null);
 
   if (!data?.trip || !me) return null;
   const trip = data.trip;
@@ -127,20 +123,13 @@ export default function ExportScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("tripActions.export")}</SheetTitle>
 
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
       {googleSignInAvailable && (
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/calendar-export`)}
+          onPress={() => calendarExportRef.current?.present()}
           style={styles.navRow}
         >
           <CalendarDaysIcon size={18} color={theme.mutedForeground} />
@@ -158,14 +147,17 @@ export default function ExportScreen() {
         <WalletIcon size={18} color={theme.mutedForeground} />
         <Text style={styles.navRowLabel}>{t("tripActions.exportExpenses")}</Text>
       </Pressable>
-    </ScrollView>
+
+      <FormSheet ref={calendarExportRef} sizeToContent>
+        {() => <CalendarExportSheet tripId={tripId} />}
+      </FormSheet>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    screen: { backgroundColor: t.background },
-    content: { paddingHorizontal: 16, paddingBottom: 48 },
+    content: { paddingHorizontal: 16 },
     navRow: {
       flexDirection: "row",
       alignItems: "center",

@@ -1,10 +1,9 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,7 +19,10 @@ import {
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import type { Currency } from "@triplot/shared/types/database";
 
+import { CategoriesSheet } from "@/components/categories-sheet";
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
+import { ExportSheet } from "@/components/export-sheet";
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar } from "@/components/member-avatar";
 import {
   ChevronIcon,
@@ -36,18 +38,26 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
-import { useTripId } from "@/lib/useTripId";
 
-// 旅行の編集・メンバー・招待・削除（モーダル）。web の TripActions ＋
-// members ページの機能を1画面に集約した RN 版。
-export default function EditTripScreen() {
+// 旅行の編集・メンバー・招待・削除（FormSheet の中身）。web の TripActions ＋
+// members ページの機能を1画面に集約した RN 版。カテゴリ管理・エクスポートは
+// 自身の FormSheet にネストしたシートへドリルイン（旅行詳細のヘッダーから
+// 開く最上位のシート）。
+export function EditTripSheet({
+  tripId,
+  onDone,
+}: {
+  tripId: string;
+  onDone: () => void;
+}) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const tripId = useTripId();
   const t = useTranslations();
   const { session } = useSession();
   const { data, me, refetch } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const categoriesRef = useRef<FormSheetRef>(null);
+  const exportRef = useRef<FormSheetRef>(null);
 
   const trip = data?.trip;
   const [title, setTitle] = useState<string | null>(null);
@@ -102,7 +112,7 @@ export default function EditTripScreen() {
     }
     setBusy(false);
     void invalidate();
-    router.back();
+    onDone();
   };
 
   const regenerateInvite = () => {
@@ -162,6 +172,7 @@ export default function EditTripScreen() {
                 Alert.alert(r.error);
                 return;
               }
+              // 旅行詳細画面全体から離脱＝画面遷移でシートごと消える。
               router.dismissAll();
               router.replace("/trips");
             });
@@ -172,19 +183,7 @@ export default function EditTripScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
-      // 入力欄がキーボードの裏に隠れないようにする。
-      automaticallyAdjustKeyboardInsets
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
-      // （収まらない時は通常どおりスクロール・端バウンスする）。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("tripActions.editTrip")}</SheetTitle>
 
       {/* 旅行情報（admin 以外は読み取りのみ）。タイトルはラベル無し＋
@@ -323,7 +322,7 @@ export default function EditTripScreen() {
           web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
       <View style={styles.navList}>
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/categories`)}
+          onPress={() => categoriesRef.current?.present()}
           style={styles.navRow}
         >
           <TagIcon size={18} color={theme.mutedForeground} />
@@ -331,7 +330,7 @@ export default function EditTripScreen() {
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/export`)}
+          onPress={() => exportRef.current?.present()}
           style={styles.navRow}
         >
           <DownloadIcon size={18} color={theme.mutedForeground} />
@@ -359,7 +358,14 @@ export default function EditTripScreen() {
           </Text>
         </Pressable>
       )}
-    </ScrollView>
+
+      <FormSheet ref={categoriesRef} sizeToContent>
+        {() => <CategoriesSheet tripId={tripId} />}
+      </FormSheet>
+      <FormSheet ref={exportRef} sizeToContent>
+        {() => <ExportSheet tripId={tripId} />}
+      </FormSheet>
+    </View>
   );
 }
 
@@ -373,10 +379,7 @@ function fmtDate(d: Date): string {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
-  // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: t.background },
-  content: { padding: 16, gap: 16, paddingBottom: 48 },
+  content: { paddingHorizontal: 16, gap: 16 },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
   sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginBottom: 8 },

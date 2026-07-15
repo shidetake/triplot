@@ -1,27 +1,42 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link, Stack } from "expo-router";
+import { router, Stack } from "expo-router";
+import { useRef } from "react";
 import {
   FlatList,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
+import {
+  fetchImportInboxRows,
+  fetchUnassignedInboundCount,
+} from "@triplot/shared/data/reads/inbox";
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
-import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { HeaderIconButton } from "@/components/header-icon-button";
 import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
+import { InboxSheet } from "@/components/inbox-sheet";
+import { NewTripSheet } from "@/components/new-trip-sheet";
+import { SettingsSheet } from "@/components/settings-sheet";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { usePullRefresh } from "@/lib/usePullRefresh";
 
 // 旅行一覧（アプリのホーム）。web の apps/web/app/trips/page.tsx 相当。
-// ヘッダー右に旅行作成（+）と設定（歯車）。
+// ヘッダー右に旅行作成（+）と設定（歯車）。取り込み・設定・旅行作成は
+// すべて @gorhom ベースの FormSheet（予定/費用/場所のフォームと同じ実装）
+// で開く。旅行編集・カテゴリ管理等の旅行詳細系シートと合わせてアプリ全体で
+// 1つのシート実装に統一している（native の formSheet とカスタムシートを
+// 画面ごとに使い分けると、ユーザーには理由の分からない質感の違いとして
+// 違和感になるため）。
 export default function TripsScreen() {
   const t = useTranslations("trips");
   const theme = useTheme();
@@ -46,6 +61,22 @@ export default function TripsScreen() {
     enabled: !!userId,
   });
 
+  // 受信箱シートの pull-to-refresh。InboxSheet 本体と同じ queryKey で
+  // 呼ぶことで TanStack Query のキャッシュ共有により二重取得にはならず、
+  // ここでの refetch が InboxSheet の data も更新する（RefreshControl は
+  // ScrollView 直下の prop としてしか機能しないため FormSheet 側に渡す）。
+  const { refetch: refetchInbox } = useQuery({
+    queryKey: ["inbox", userId],
+    queryFn: () => fetchImportInboxRows(supabase, userId!),
+    enabled: !!userId,
+  });
+  const { refreshing: inboxRefreshing, onRefresh: onInboxRefresh } =
+    usePullRefresh(refetchInbox);
+
+  const inboxRef = useRef<FormSheetRef>(null);
+  const settingsRef = useRef<FormSheetRef>(null);
+  const newTripRef = useRef<FormSheetRef>(null);
+
   return (
     <View style={styles.container}>
       {/* タイトル（triplot・ラージタイトル）は (app)/_layout.tsx で静的に宣言。
@@ -55,25 +86,27 @@ export default function TripsScreen() {
         options={{
           headerRight: () => (
             <View style={styles.headerButtons}>
-              <Link href="/inbox" asChild>
-                <HeaderIconButton accessibilityLabel="取り込み">
-                  <View>
-                    <InboxIcon size={20} color={theme.mutedForeground} />
-                    {(inboxCount ?? 0) > 0 && (
-                      <View style={styles.inboxBadge}>
-                        <Text style={styles.inboxBadgeText}>
-                          {(inboxCount ?? 0) > 9 ? "9+" : inboxCount}
-                        </Text>
-                      </View>
-                    )}
-                  </View>
-                </HeaderIconButton>
-              </Link>
-              <Link href="/settings" asChild>
-                <HeaderIconButton accessibilityLabel="設定">
-                  <SettingsIcon size={20} color={theme.mutedForeground} />
-                </HeaderIconButton>
-              </Link>
+              <HeaderIconButton
+                accessibilityLabel="取り込み"
+                onPress={() => inboxRef.current?.present()}
+              >
+                <View>
+                  <InboxIcon size={20} color={theme.mutedForeground} />
+                  {(inboxCount ?? 0) > 0 && (
+                    <View style={styles.inboxBadge}>
+                      <Text style={styles.inboxBadgeText}>
+                        {(inboxCount ?? 0) > 9 ? "9+" : inboxCount}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </HeaderIconButton>
+              <HeaderIconButton
+                accessibilityLabel="設定"
+                onPress={() => settingsRef.current?.present()}
+              >
+                <SettingsIcon size={20} color={theme.mutedForeground} />
+              </HeaderIconButton>
             </View>
           ),
         }}
@@ -98,24 +131,46 @@ export default function TripsScreen() {
           contentInsetAdjustmentBehavior="automatic"
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
-            <Link href={`/trips/${item.id}`} asChild>
-              <Pressable style={styles.card}>
-                <Text style={styles.cardTitle}>{item.title}</Text>
-                <Text style={styles.cardSub}>
-                  {formatTripDateRange(item.start_date, item.end_date, locale)}
-                </Text>
-              </Pressable>
-            </Link>
+            <Pressable
+              style={styles.card}
+              onPress={() => router.push(`/trips/${item.id}`)}
+            >
+              <Text style={styles.cardTitle}>{item.title}</Text>
+              <Text style={styles.cardSub}>
+                {formatTripDateRange(item.start_date, item.end_date, locale)}
+              </Text>
+            </Pressable>
           )}
         />
       )}
 
       {/* 追加 FAB（予定/費用タブと同じ位置・同じ見た目） */}
-      <Link href="/trips/new" asChild>
-        <Pressable style={styles.fab} accessibilityLabel={t("create")}>
-          <PlusIcon size={24} color={theme.primaryForeground} />
-        </Pressable>
-      </Link>
+      <Pressable
+        style={styles.fab}
+        accessibilityLabel={t("create")}
+        onPress={() => newTripRef.current?.present()}
+      >
+        <PlusIcon size={24} color={theme.primaryForeground} />
+      </Pressable>
+
+      <FormSheet
+        ref={inboxRef}
+        sizeToContent
+        refreshControl={
+          <RefreshControl
+            refreshing={inboxRefreshing}
+            onRefresh={onInboxRefresh}
+          />
+        }
+      >
+        {() => <InboxSheet />}
+      </FormSheet>
+      <FormSheet ref={settingsRef} sizeToContent>
+        {(dismiss) => <SettingsSheet onDone={dismiss} />}
+      </FormSheet>
+      <FormSheet ref={newTripRef} sizeToContent>
+        {(dismiss) => <NewTripSheet onDone={dismiss} />}
+      </FormSheet>
     </View>
   );
 }

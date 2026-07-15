@@ -2,14 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { createTrip } from "@triplot/shared/data/trips";
@@ -28,9 +21,9 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
-// 旅行作成（モーダル）。web の create-trip-form と同じ2モード
-// （新規/過去の旅行をコピー）。成功で作成した旅行の詳細へ遷移。
-export default function NewTripScreen() {
+// 旅行作成（FormSheet の中身）。web の create-trip-form と同じ2モード
+// （新規/過去の旅行をコピー）。成功でシートを閉じ、作成した旅行の詳細へ遷移。
+export function NewTripSheet({ onDone }: { onDone: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
@@ -113,23 +106,12 @@ export default function NewTripScreen() {
       setError(r.error);
       return;
     }
+    onDone();
     router.replace(`/trips/${r.data.tripId}`);
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
-      // 入力欄がキーボードの裏に隠れないようにする。
-      automaticallyAdjustKeyboardInsets
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
-      // （収まらない時は通常どおりスクロール・端バウンスする）。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{tTrips("create")}</SheetTitle>
 
       {/* 作り方の選択（過去の旅行が無ければ出さない。web と同じセグメント）。 */}
@@ -221,7 +203,7 @@ export default function NewTripScreen() {
       <View>
         <Text style={styles.label}>{t("settlementCurrency")}</Text>
         {/* 通貨は web と同じ全170通貨から選べる（以前は6件に絞った独自
-            chip 実装だった）。トリガー＋モーダルは編集画面と共通の
+            chip 実装だった）。トリガー＋モーダルは編集シートと共通の
             CurrencyPickerModal。web の「精算通貨とは」ヘルプツールチップは
             RN 側に HelpTip 部品が無いので今回は省略（別途対応する）。 */}
         <CurrencyPickerTrigger
@@ -257,7 +239,7 @@ export default function NewTripScreen() {
       </Pressable>
 
       {error && <Text style={styles.error}>{error}</Text>}
-    </ScrollView>
+    </View>
   );
 }
 
@@ -272,10 +254,7 @@ function fmtDate(d: Date): string {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
-  // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: t.background },
-  content: { padding: 16, gap: 16 },
+  content: { paddingHorizontal: 16, gap: 16 },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
   input: {
     height: 36,

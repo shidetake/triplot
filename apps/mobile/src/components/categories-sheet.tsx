@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Alert,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -26,15 +25,14 @@ import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
-import { useTripId } from "@/lib/useTripId";
 
-// 費用カテゴリ管理（モーダル）。web の categories ページと同じ機能:
+// 費用カテゴリ管理（FormSheet の中身）。web の categories ページと同じ機能:
 // デフォルトカテゴリ（key あり）は名前固定、カスタム（key なし）は改名・削除可、
-// 追加はカスタム固定アイコン＋青。旅行の編集モーダルからドリルインで開く。
-export default function CategoriesScreen() {
+// 追加はカスタム固定アイコン＋青。旅行の編集シートからドリルインで開く
+// （EditTripSheet が自身の FormSheet にこれをネストして描画する）。
+export function CategoriesSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const tripId = useTripId();
   const t = useTranslations("categories");
   const { data } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
@@ -115,19 +113,7 @@ export default function CategoriesScreen() {
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
-      // 入力欄がキーボードの裏に隠れないようにする。
-      automaticallyAdjustKeyboardInsets
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
-      // （収まらない時は通常どおりスクロール・端バウンスする）。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("heading")}</SheetTitle>
 
       {categories.map((c) => {
@@ -229,14 +215,13 @@ export default function CategoriesScreen() {
           <Text style={styles.addLabel}>{t("add")}</Text>
         </Pressable>
       )}
-    </ScrollView>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    screen: { backgroundColor: t.background },
-    content: { padding: 16, gap: 4, paddingBottom: 48 },
+    content: { paddingHorizontal: 16, gap: 4 },
     row: {
       flexDirection: "row",
       alignItems: "center",

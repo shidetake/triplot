@@ -1,28 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
 import { useState } from "react";
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
-import { signOut } from "@/lib/auth";
 import { SheetTitle } from "@/components/sheet-title";
+import { signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
-// 設定（モーダル）。デフォルト表示名の変更とサインアウト。
+// 設定（FormSheet の中身）。デフォルト表示名の変更とサインアウト。
 // テーマは RN では OS 追従（設定不要）、言語切替は端末設定準拠（M7 では固定）。
-export default function SettingsScreen() {
+export function SettingsSheet({ onDone }: { onDone: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
@@ -45,23 +37,11 @@ export default function SettingsScreen() {
     setBusy(false);
     if (!r.ok) return;
     void refetch();
-    router.back();
+    onDone();
   };
 
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      keyboardShouldPersistTaps="handled"
-      // iOS: キーボード表示時に自動でスクロール領域を調整し、フォーカス中の
-      // 入力欄がキーボードの裏に隠れないようにする。
-      automaticallyAdjustKeyboardInsets
-      // formSheet が fitToContents（内容ちょうどの高さ）のとき、内容が
-      // コンテナより小さいのに引っ張るとラバーバンドして「中身だけ動く」
-      // 不自然な見た目になる。中身がぴったり収まる時はバウンスさせない
-      // （収まらない時は通常どおりスクロール・端バウンスする）。
-      alwaysBounceVertical={false}
-    >
+    <View style={styles.content}>
       <SheetTitle>{t("settings.heading")}</SheetTitle>
 
       <Text style={styles.email}>{session?.user.email}</Text>
@@ -89,22 +69,20 @@ export default function SettingsScreen() {
 
       <Pressable
         onPress={() => {
-          void signOut().then(() => router.dismissAll());
+          onDone();
+          void signOut();
         }}
         style={styles.signOutButton}
       >
         <Text style={styles.signOutLabel}>{t("account.signOut")}</Text>
       </Pressable>
-    </ScrollView>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  // モーダルの地色はアプリ本体と同じ白（ナビバー帯とコンテンツ部で色が
-  // 割れて見えるのを防ぐ）。
-  screen: { backgroundColor: t.background },
-  content: { padding: 16, gap: 16 },
+  content: { paddingHorizontal: 16, gap: 16 },
   email: { fontSize: 13, color: t.mutedForeground },
   label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginTop: 6 },
