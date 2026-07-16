@@ -1,5 +1,4 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -15,6 +14,11 @@ import {
   CopySourceModal,
   CopySourceTrigger,
 } from "@/components/copy-source-picker";
+import {
+  chipDateText,
+  InlineNativePicker,
+  PickerChip,
+} from "@/components/datetime-field";
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
 import { PlusIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
@@ -58,6 +62,8 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
   const lastCurrency = (trips[0]?.default_currency ?? "JPY") as Currency;
   const [currency, setCurrency] = useState<Currency>(lastCurrency);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
+  // 日程の inline カレンダーの開閉（同時に開くのは1つだけ）。
+  const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -181,31 +187,49 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
         />
       </View>
 
+      {/* 日程: チップ→直下に inline カレンダー、日付タップ＝確定で閉じる
+          （datetime-field の共通方式）。範囲選択カレンダーは iOS ネイティブに
+          存在しないため開始/終了の2チップ。 */}
       <View>
         <Text style={styles.label}>{t("dates")}</Text>
         <View style={styles.dateRow}>
-          <DateTimePicker
+          <PickerChip
+            text={chipDateText(startDate)}
+            active={openPicker === "start"}
+            onPress={() =>
+              setOpenPicker((p) => (p === "start" ? null : "start"))
+            }
+          />
+          <Text style={styles.dateSep}>→</Text>
+          <PickerChip
+            text={chipDateText(endDate)}
+            active={openPicker === "end"}
+            onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
+          />
+        </View>
+        {openPicker === "start" && (
+          <InlineNativePicker
             value={new Date(`${startDate}T12:00:00`)}
             mode="date"
-            display="compact"
-            onChange={(_, d) => {
-              if (!d) return;
+            onChange={(d) => {
               const v = fmtDate(d);
               setStartDate(v);
               if (endDate < v) setEndDate(v);
+              setOpenPicker(null);
             }}
           />
-          <Text style={styles.dateSep}>→</Text>
-          <DateTimePicker
+        )}
+        {openPicker === "end" && (
+          <InlineNativePicker
             value={new Date(`${endDate}T12:00:00`)}
             mode="date"
-            display="compact"
             minimumDate={new Date(`${startDate}T12:00:00`)}
-            onChange={(_, d) => {
-              if (d) setEndDate(fmtDate(d));
+            onChange={(d) => {
+              setEndDate(fmtDate(d));
+              setOpenPicker(null);
             }}
           />
-        </View>
+        )}
       </View>
 
       <View>

@@ -1,5 +1,4 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -29,6 +28,13 @@ import type { EventRow } from "@triplot/shared/tripDerive";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
 import type { Visibility } from "@triplot/shared/types/database";
 
+import {
+  chipDateText,
+  chipDateTimeText,
+  chipEndTimeText,
+  InlineNativePicker,
+  PickerChip,
+} from "./datetime-field";
 import { PlacePicker } from "./place-picker";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
@@ -130,6 +136,8 @@ export function EventForm({
     editEvent?.endAt?.slice(11, 16) ?? prefill?.endTime ?? addHour(initTime);
   const [endDate, setEndDate] = useState(initEndDate);
   const [endTime, setEndTime] = useState(initEndTime);
+  // inline ピッカーの開閉（同時に開くのは1つだけ）。
+  const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
 
   // 時差移動の出発/到着TZ。
   const [departTz, setDepartTz] = useState(
@@ -332,38 +340,84 @@ export function EventForm({
         style={styles.input}
       />
 
-      {/* 日時: iOS カレンダーの予定作成と同じ「ラベル左・チップ右」の2行。
-          チップは OS のコンパクトピッカー（日付タップでカレンダー、時刻タップで
-          ホイールのポップオーバー）。終日は日付チップのみ。 */}
+      {/* 日時: 「ラベル左・チップ右」の2行＋タップで直下に inline ネイティブ
+          ピッカー（TripIt / Apple カレンダーと同方式）。通常/時差移動は
+          日時一体チップ（"2026/4/28 09:00"）で、終了側は短縮表記（同日なら
+          時刻のみ・日跨ぎは "+n日"）。終日は日付チップのみで、日付タップ＝
+          確定として自動で閉じる。 */}
       <View style={styles.dtGroup}>
-        <DateTimeRow
-          label={isTransit ? t("depart") : t("start")}
-          date={startDate}
-          time={kind === "allday" ? undefined : startTime}
-          onDateChange={onStartDateChange}
-          onTimeChange={setStartTime}
-        />
-        <DateTimeRow
-          label={isTransit ? t("arrive") : t("end")}
-          date={endDate}
-          time={kind === "allday" ? undefined : endTime}
-          onDateChange={setEndDate}
-          onTimeChange={setEndTime}
-        />
+        <View style={styles.dtRow}>
+          <Text style={[styles.label, styles.dtRowLabel]}>
+            {isTransit ? t("depart") : t("start")}
+          </Text>
+          <PickerChip
+            text={
+              kind === "allday"
+                ? chipDateText(startDate)
+                : chipDateTimeText(startDate, startTime)
+            }
+            active={openPicker === "start"}
+            onPress={() =>
+              setOpenPicker((p) => (p === "start" ? null : "start"))
+            }
+          />
+        </View>
+        {openPicker === "start" && (
+          <InlineNativePicker
+            value={new Date(`${startDate}T${kind === "allday" ? "12:00" : startTime}:00`)}
+            mode={kind === "allday" ? "date" : "datetime"}
+            onChange={(d) => {
+              onStartDateChange(fmtDate(d));
+              if (kind === "allday") {
+                setOpenPicker(null); // 日付タップ＝確定で閉じる
+              } else {
+                setStartTime(fmtTime(d));
+              }
+            }}
+          />
+        )}
+        <View style={styles.dtRow}>
+          <Text style={[styles.label, styles.dtRowLabel]}>
+            {isTransit ? t("arrive") : t("end")}
+          </Text>
+          <PickerChip
+            text={
+              kind === "allday"
+                ? chipDateText(endDate)
+                : chipEndTimeText(startDate, endDate, endTime)
+            }
+            active={openPicker === "end"}
+            onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
+          />
+        </View>
+        {openPicker === "end" && (
+          <InlineNativePicker
+            value={new Date(`${endDate}T${kind === "allday" ? "12:00" : endTime}:00`)}
+            mode={kind === "allday" ? "date" : "datetime"}
+            onChange={(d) => {
+              setEndDate(fmtDate(d));
+              if (kind === "allday") {
+                setOpenPicker(null);
+              } else {
+                setEndTime(fmtTime(d));
+              }
+            }}
+          />
+        )}
       </View>
 
-      {/* 時差移動: 出発/到着TZ */}
+      {/* 時差移動: 出発/到着TZ（web と同じ1行2列） */}
       {isTransit && (
-        <>
-          <View>
+        <View style={styles.tzRow}>
+          <View style={styles.tzCol}>
             <Text style={styles.label}>{t("departTz")}</Text>
             <TimezonePicker value={departTz} onChange={setDepartTz} />
           </View>
-          <View>
+          <View style={styles.tzCol}>
             <Text style={styles.label}>{t("arriveTz")}</Text>
             <TimezonePicker value={arriveTz} onChange={setArriveTz} />
           </View>
-        </>
+        </View>
       )}
 
       {/* 通常/終日: 乗継日のTZ曖昧解決（セグメント）。同じ TZ の候補は
@@ -495,47 +549,6 @@ export function EventForm({
   );
 }
 
-function DateTimeRow({
-  label,
-  date,
-  time,
-  onDateChange,
-  onTimeChange,
-}: {
-  label: string;
-  date: string;
-  time?: string; // undefined = 終日（日付チップのみ）
-  onDateChange: (d: string) => void;
-  onTimeChange?: (t: string) => void;
-}) {
-  const styles = useThemedStyles(makeStyles);
-  return (
-    <View style={styles.dtRow}>
-      <Text style={[styles.label, styles.dtRowLabel]}>{label}</Text>
-      <View style={styles.dtPickers}>
-        <DateTimePicker
-          value={new Date(`${date}T12:00:00`)}
-          mode="date"
-          display="compact"
-          onChange={(_, d) => {
-            if (d) onDateChange(fmtDate(d));
-          }}
-        />
-        {time != null && (
-          <DateTimePicker
-            value={new Date(`${date}T${time}:00`)}
-            mode="time"
-            display="compact"
-            onChange={(_, d) => {
-              if (d) onTimeChange?.(fmtTime(d));
-            }}
-          />
-        )}
-      </View>
-    </View>
-  );
-}
-
 function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -591,12 +604,14 @@ const makeStyles = (t: Theme) =>
     },
     // 日時の「ラベル左・チップ右」行（iOS カレンダー方式）。
     dtGroup: { gap: 10 },
+    // 時差移動の出発/到着TZ（1行2列。web と同じ）。
+    tzRow: { flexDirection: "row", gap: 8 },
+    tzCol: { flex: 1, minWidth: 0 },
     dtRow: {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
     },
-    dtPickers: { flexDirection: "row", gap: 4 },
     // label の marginBottom は上置き用なので、横並び行では打ち消す。
     dtRowLabel: { marginBottom: 0 },
     // TZ曖昧解決のラジオは横並び（web と同じ。縦積みだと4行で場所を食う）。

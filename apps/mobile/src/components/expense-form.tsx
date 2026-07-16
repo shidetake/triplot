@@ -34,6 +34,11 @@ import type { Category, ExpenseRow } from "@triplot/shared/tripDerive";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 import { CurrencyPickerModal } from "./currency-picker";
+import {
+  chipDateText,
+  InlineNativePicker,
+  PickerChip,
+} from "./datetime-field";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
@@ -150,9 +155,10 @@ export function ExpenseForm({
   const [paidAtDate, setPaidAtDate] = useState(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState(initPaidAtTime);
   const [showTime, setShowTime] = useState(initPaidAtTime !== "00:00");
-  // 「＋時刻を指定」タップと同時に開くホイール（compact チップだと出現後に
-  // もう1タップしないと選べない＝だるい、という実機フィードバック対応）。
-  const [timeWheelOpen, setTimeWheelOpen] = useState(false);
+  // inline ピッカーの開閉（同時に開くのは1つだけ）。「＋時刻を指定」は
+  // タップと同時にホイールを開く（チップだけ出す方式だともう1タップ要る、
+  // という実機フィードバック対応）。
+  const [openPicker, setOpenPicker] = useState<"date" | "time" | null>(null);
 
   // 費用の発生TZ（乗継日の曖昧解決）。web と同じ契約。
   const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
@@ -421,33 +427,34 @@ export function ExpenseForm({
         placeholder={t("place")}
       />
 
-      {/* 日付＋時刻: 予定フォームの開始/終了と同形の「ラベル左・チップ右」1行。
-          時刻は任意＝「＋時刻を指定」で追加、× でやめる。 */}
+      {/* 日付＋時刻: 「ラベル左・チップ右」1行＋タップで直下に inline
+          ネイティブピッカー（予定フォームと同方式）。日付は選択＝確定で
+          自動で閉じる。時刻は任意＝「＋時刻を指定」でその場にホイールが
+          展開（勝手に閉じない・チップ再タップで閉じる）、× でやめる。 */}
       <View style={styles.dtRow}>
         <Text style={[styles.label, styles.labelInline]}>{t("date")}</Text>
         <View style={styles.dtPickers}>
-          <DateTimePicker
-            value={new Date(`${paidAtDate}T12:00:00`)}
-            mode="date"
-            display="compact"
-            onChange={(_, d) => {
-              if (d) onDateChange(formatLocalDate(d));
-            }}
+          <PickerChip
+            text={chipDateText(paidAtDate)}
+            active={openPicker === "date"}
+            onPress={() =>
+              setOpenPicker((p) => (p === "date" ? null : "date"))
+            }
           />
           {showTime ? (
             <>
-              <DateTimePicker
-                value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
-                mode="time"
-                display="compact"
-                onChange={(_, d) => {
-                  if (d) setPaidAtTime(formatLocalTime(d));
-                }}
+              <PickerChip
+                text={paidAtTime}
+                active={openPicker === "time"}
+                onPress={() =>
+                  setOpenPicker((p) => (p === "time" ? null : "time"))
+                }
               />
               <Pressable
                 onPress={() => {
                   setPaidAtTime("00:00");
                   setShowTime(false);
+                  setOpenPicker(null);
                 }}
                 hitSlop={8}
                 accessibilityLabel={t("removeTime")}
@@ -460,9 +467,9 @@ export function ExpenseForm({
               onPress={() => {
                 setPaidAtTime("12:00");
                 setShowTime(true);
-                // 追加と同時に選択ホイールを開く（チップを出すだけだと
+                // 追加と同時にその場のホイールを開く（チップを出すだけだと
                 // もう1タップ要る）。
-                setTimeWheelOpen(true);
+                setOpenPicker("time");
               }}
               style={styles.addTime}
             >
@@ -471,38 +478,26 @@ export function ExpenseForm({
           )}
         </View>
       </View>
-
-      {/* 「＋時刻を指定」直後の時刻ホイール（通貨/カテゴリのモーダルと同形）。
-          閉じた後の変更は行内の時刻チップ（OS 標準ポップオーバー）から。 */}
-      <Modal
-        visible={timeWheelOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setTimeWheelOpen(false)}
-      >
-        <View style={styles.pickerSheet}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>{t("addTime")}</Text>
-            <Pressable
-              onPress={() => setTimeWheelOpen(false)}
-              hitSlop={8}
-              accessibilityLabel="閉じる"
-            >
-              <XIcon size={20} color={theme.mutedForeground} />
-            </Pressable>
-          </View>
-          <View style={styles.timeWheelBody}>
-            <DateTimePicker
-              value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
-              mode="time"
-              display="spinner"
-              onChange={(_, d) => {
-                if (d) setPaidAtTime(formatLocalTime(d));
-              }}
-            />
-          </View>
-        </View>
-      </Modal>
+      {openPicker === "date" && (
+        <InlineNativePicker
+          value={new Date(`${paidAtDate}T12:00:00`)}
+          mode="date"
+          onChange={(d) => {
+            onDateChange(formatLocalDate(d));
+            setOpenPicker(null); // 日付タップ＝確定で閉じる
+          }}
+        />
+      )}
+      {openPicker === "time" && showTime && (
+        <DateTimePicker
+          value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
+          mode="time"
+          display="spinner"
+          onChange={(_, d) => {
+            if (d) setPaidAtTime(formatLocalTime(d));
+          }}
+        />
+      )}
 
       {/* 乗継日の TZ 選択（時刻指定時のみ・web と同じ契約）。セグメント＋
           同一 TZ の候補は畳む（予定フォームと同じ）。 */}
@@ -831,8 +826,6 @@ const makeStyles = (t: Theme) =>
     },
     pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
     pickerList: { padding: 16, paddingTop: 4 },
-    // 時刻ホイールをシート内で中央寄せ（wheel は固有サイズを持つ）。
-    timeWheelBody: { alignItems: "center", paddingTop: 24 },
     pickerRow: {
       flexDirection: "row",
       alignItems: "center",

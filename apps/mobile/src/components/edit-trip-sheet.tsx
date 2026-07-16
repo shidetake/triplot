@@ -1,5 +1,4 @@
 import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -20,6 +19,11 @@ import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
+import {
+  chipDateText,
+  InlineNativePicker,
+  PickerChip,
+} from "@/components/datetime-field";
 import { MemberAvatar } from "@/components/member-avatar";
 import {
   ChevronIcon,
@@ -71,6 +75,8 @@ export function EditTripSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
+  // 日程の inline カレンダーの開閉（同時に開くのは1つだけ）。
+  const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
 
   if (!trip || !me) return null;
   const isAdmin = me.is_admin;
@@ -247,30 +253,48 @@ export function EditTripSheet({
         style={[styles.input, !isAdmin && styles.inputDisabled]}
       />
 
+      {/* 日程: チップ→直下に inline カレンダー、日付タップ＝確定で閉じる
+          （datetime-field の共通方式。旅行作成と同形）。 */}
       <View>
         <Text style={styles.label}>{t("createTrip.dates")}</Text>
         <View style={styles.dateRow}>
-          <DateTimePicker
-            value={new Date(`${vStart}T12:00:00`)}
-            mode="date"
-            display="compact"
+          <PickerChip
+            text={chipDateText(vStart)}
+            active={openPicker === "start"}
             disabled={!isAdmin}
-            onChange={(_, d) => {
-              if (d) setStartDate(fmtDate(d));
-            }}
+            onPress={() =>
+              setOpenPicker((p) => (p === "start" ? null : "start"))
+            }
           />
           <Text style={styles.dateSep}>→</Text>
-          <DateTimePicker
-            value={new Date(`${vEnd}T12:00:00`)}
-            mode="date"
-            display="compact"
+          <PickerChip
+            text={chipDateText(vEnd)}
+            active={openPicker === "end"}
             disabled={!isAdmin}
-            minimumDate={new Date(`${vStart}T12:00:00`)}
-            onChange={(_, d) => {
-              if (d) setEndDate(fmtDate(d));
-            }}
+            onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
           />
         </View>
+        {openPicker === "start" && (
+          <InlineNativePicker
+            value={new Date(`${vStart}T12:00:00`)}
+            mode="date"
+            onChange={(d) => {
+              setStartDate(fmtDate(d));
+              setOpenPicker(null);
+            }}
+          />
+        )}
+        {openPicker === "end" && (
+          <InlineNativePicker
+            value={new Date(`${vEnd}T12:00:00`)}
+            mode="date"
+            minimumDate={new Date(`${vStart}T12:00:00`)}
+            onChange={(d) => {
+              setEndDate(fmtDate(d));
+              setOpenPicker(null);
+            }}
+          />
+        )}
       </View>
 
       <View>
