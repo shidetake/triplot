@@ -46,12 +46,10 @@ import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 // 瞬間に親ごと閉じる @gorhom の既知不具合を踏むため、兄弟構成にフラット化）。
 export function EditTripSheet({
   tripId,
-  onDone,
   onOpenCategories,
   onOpenExport,
 }: {
   tripId: string;
-  onDone: () => void;
   onOpenCategories: () => void;
   onOpenExport: () => void;
 }) {
@@ -83,39 +81,55 @@ export function EditTripSheet({
 
   const members = data.members ?? [];
 
+  // 旅行情報（タイトル・日程・通貨）に変更がある時だけ保存を有効に
+  // （web の「変更がある時だけ保存ボタンを有効」規約）。
+  const tripDirty =
+    vTitle.trim() !== trip.title ||
+    vStart !== (trip.start_date ?? vStart) ||
+    vEnd !== (trip.end_date ?? vEnd) ||
+    vCurrency !== trip.default_currency;
+
+  // 旅行情報（タイトル・日程・通貨）だけを保存する（ボタンはそのブロックの
+  // 直下・その場保存でシートは閉じない）。自分の表示名はメンバー行で
+  // その場保存＝この保存の対象外。
   const saveTrip = async () => {
     setBusy(true);
     setError(null);
-    // 旅行情報（admin のみ）と自分の表示名を保存。
-    if (isAdmin) {
-      const r = await updateTrip(supabase, tripId, {
-        title: vTitle.trim(),
-        startDate: vStart,
-        endDate: vEnd < vStart ? vStart : vEnd,
-        currency: vCurrency,
-      });
-      if (!r.ok) {
-        setBusy(false);
-        setError(r.error);
-        return;
-      }
-    }
-    if (vMyName.trim() && vMyName.trim() !== me.display_name) {
-      const r = await updateMyMemberName(
-        supabase,
-        tripId,
-        session!.user.id,
-        vMyName.trim(),
-      );
-      if (!r.ok) {
-        setBusy(false);
-        setError(r.error);
-        return;
-      }
-    }
+    const r = await updateTrip(supabase, tripId, {
+      title: vTitle.trim(),
+      startDate: vStart,
+      endDate: vEnd < vStart ? vStart : vEnd,
+      currency: vCurrency,
+    });
     setBusy(false);
+    if (!r.ok) {
+      setError(r.error);
+      return;
+    }
     void invalidate();
-    onDone();
+    // 入力値は見た目が変わらないので成功を通知（web はトースト、RN は Alert）。
+    setTitle(null);
+    setStartDate(null);
+    setEndDate(null);
+    setCurrency(null);
+    Alert.alert(t("common.saved"));
+  };
+
+  // 自分の表示名のその場保存（入力を離れた/確定したタイミング。カテゴリ改名と
+  // 同じ blur 保存パターン。以前は画面下部の保存ボタンに相乗りしていて
+  // 「何の保存か」が分からなかった）。
+  const commitMyName = () => {
+    const v = vMyName.trim();
+    if (!v || v === me.display_name) return;
+    void updateMyMemberName(supabase, tripId, session!.user.id, v).then(
+      (r) => {
+        if (!r.ok) {
+          Alert.alert(r.error);
+          return;
+        }
+        void refetch();
+      },
+    );
   };
 
   const regenerateInvite = () => {
@@ -271,6 +285,24 @@ export function EditTripSheet({
         title={t("createTrip.settlementCurrency")}
       />
 
+      {/* 旅行情報の保存（対象＝上のタイトル・日程・通貨のみ。入力の直下に置き、
+          変更がある時だけ有効にする。メンバーの表示名はメンバー行でその場保存）。 */}
+      {isAdmin && (
+        <Pressable
+          onPress={() => void saveTrip()}
+          disabled={busy || !tripDirty}
+          accessibilityLabel={t("common.save")}
+          style={[
+            styles.submitButton,
+            (busy || !tripDirty) && styles.disabled,
+          ]}
+        >
+          <SaveIcon size={20} color={theme.primaryForeground} />
+        </Pressable>
+      )}
+
+      {error && <Text style={styles.error}>{error}</Text>}
+
       {/* メンバー */}
       <View>
         <Text style={styles.sectionTitle}>{t("members.heading")}</Text>
@@ -303,6 +335,9 @@ export function EditTripSheet({
                 <TextInput
                   value={vMyName}
                   onChangeText={setMyName}
+                  onBlur={commitMyName}
+                  onSubmitEditing={commitMyName}
+                  returnKeyType="done"
                   style={[styles.input, styles.memberNameInput]}
                 />
               ) : (
@@ -369,18 +404,6 @@ export function EditTripSheet({
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
       </View>
-
-      {/* 保存（アイコンのみ。文言は極力アイコンに寄せる規約＋web と同じ SaveIcon） */}
-      <Pressable
-        onPress={() => void saveTrip()}
-        disabled={busy}
-        accessibilityLabel={t("common.save")}
-        style={[styles.submitButton, busy && styles.disabled]}
-      >
-        <SaveIcon size={20} color={theme.primaryForeground} />
-      </Pressable>
-
-      {error && <Text style={styles.error}>{error}</Text>}
 
       {/* 旅行削除（admin のみ・最下部） */}
       {isAdmin && (

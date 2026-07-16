@@ -56,14 +56,19 @@ export function SettingsSheet({
   const [busy, setBusy] = useState(false);
   const [avatarBusy, setAvatarBusy] = useState(false);
   const vName = name ?? profile?.display_name ?? "";
+  // 変更がある時だけ保存を有効に（web の DisplayNameForm と同じ無駄押し防止）。
+  const dirty = vName.trim() !== (profile?.display_name ?? "").trim();
 
+  // その場保存（シートは閉じない）。入力値は変わらず「保存された感」が無いので
+  // 成功を通知する（web はトースト、RN は Alert）。
   const save = async () => {
     setBusy(true);
     const r = await updateDisplayName(supabase, userId!, vName);
     setBusy(false);
     if (!r.ok) return;
     void refetch();
-    onDone();
+    setName(null);
+    Alert.alert(t("common.saved"));
   };
 
   // アバターの変更（web の AvatarUpload と同じ設計）:
@@ -182,27 +187,32 @@ export function SettingsSheet({
           </View>
         </Pressable>
         <View style={styles.grow}>
-          {/* ラベル無し＋placeholder＝フィールド名（表示名）。説明は下のヒントが担う。 */}
-          <TextInput
-            value={vName}
-            onChangeText={setName}
-            placeholder={t("settings.namePlaceholder")}
-            accessibilityLabel={t("settings.namePlaceholder")}
-            placeholderTextColor={theme.subtleForeground}
-            style={styles.input}
-          />
+          {/* ラベル無し＋placeholder＝フィールド名（表示名）。説明は下のヒントが担う。
+              保存は入力の右のアイコンボタン（web の DisplayNameForm と同形）。 */}
+          <View style={styles.nameRow}>
+            <TextInput
+              value={vName}
+              onChangeText={setName}
+              placeholder={t("settings.namePlaceholder")}
+              accessibilityLabel={t("settings.namePlaceholder")}
+              placeholderTextColor={theme.subtleForeground}
+              style={[styles.input, styles.grow]}
+            />
+            <Pressable
+              onPress={() => void save()}
+              disabled={busy || !dirty}
+              accessibilityLabel="保存"
+              style={[
+                styles.saveButton,
+                (busy || !dirty) && styles.disabled,
+              ]}
+            >
+              <SaveIcon size={18} color={theme.primaryForeground} />
+            </Pressable>
+          </View>
           <Text style={styles.hint}>{t("settings.displayNameHelp")}</Text>
         </View>
       </View>
-
-      <Pressable
-        onPress={() => void save()}
-        disabled={busy}
-        accessibilityLabel="保存"
-        style={[styles.submitButton, busy && styles.disabled]}
-      >
-        <SaveIcon size={20} color={theme.primaryForeground} />
-      </Pressable>
 
       {/* フィードバック（iOS 設定流のドリルイン行。旅行編集のカテゴリ管理行と同形） */}
       <Pressable onPress={onOpenFeedback} style={styles.navRow}>
@@ -265,8 +275,11 @@ const makeStyles = (t: Theme) =>
     fontSize: 14,
     color: t.foreground,
   },
-  submitButton: {
-    height: 44,
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // 入力と同じ高さ 36px の正方アイコンボタン（web の size="icon" h-9 w-9 と同形）。
+  saveButton: {
+    width: 36,
+    height: 36,
     borderRadius: 6,
     backgroundColor: t.primary,
     alignItems: "center",

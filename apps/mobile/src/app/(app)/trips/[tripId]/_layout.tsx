@@ -79,10 +79,9 @@ export default function TripLayout() {
       </Stack>
 
       <FormSheet ref={editRef} sizeToContent>
-        {(dismiss) => (
+        {() => (
           <EditTripSheet
             tripId={tripId}
-            onDone={dismiss}
             onOpenCategories={() => categoriesRef.current?.present()}
             onOpenExport={() => exportRef.current?.present()}
           />

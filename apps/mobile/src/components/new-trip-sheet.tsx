@@ -131,8 +131,14 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
         />
       )}
 
-      {mode === "copy" && (
-        <View>
+      {/* コピー元行は新規モードでも透明のまま場所を確保する（条件レンダーだと
+          モード切替のたびにシートの高さが伸縮して気持ち悪い＝高い方の
+          「コピーして作成」の高さに固定する）。 */}
+      {canCopy && (
+        <View
+          style={mode === "new" && styles.hiddenKeepSpace}
+          pointerEvents={mode === "new" ? "none" : "auto"}
+        >
           <Text style={styles.label}>{t("copySource")}</Text>
           <CopySourceTrigger
             trips={trips}
@@ -268,6 +274,8 @@ const makeStyles = (t: Theme) =>
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dateSep: { fontSize: 14, color: t.subtleForeground },
   warn: { fontSize: 12, color: t.warnAccent },
+  // 新規モードでコピー元行の場所だけ確保する（シート高さをモードで変えない）。
+  hiddenKeepSpace: { opacity: 0 },
   submitButton: {
     height: 44,
     borderRadius: 6,
