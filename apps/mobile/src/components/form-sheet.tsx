@@ -3,6 +3,7 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
+  type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
 import {
   forwardRef,
@@ -48,16 +49,38 @@ export const FormSheet = forwardRef<
     // pull-to-refresh のあるシート（受信箱等）用。RN の <RefreshControl /> を
     // そのまま渡す（BottomSheetScrollView は RN の ScrollView 互換 API）。
     refreshControl?: ReactElement<RefreshControlProps>;
-    children: (dismiss: () => void) => ReactNode;
+    // scrim（背景の暗さ）の濃さ。既定 0.75。地図タブの場所フォームだけ 0 を
+    // 渡す＝背後の地図を暗くせず、地図とフォームを同時に見せるのがこのシートの
+    // 存在意義のため（本家 Google/Apple マップの場所カードも背景を暗くしない）。
+    backdropOpacity?: number;
+    // 第2引数は子要素の TextInput にフォーカスが当たった時などに呼ぶスクロール
+    // 補助（カテゴリ追加行がキーボードに隠れる問題の対策。sizeToContent の
+    // シートは開いた時点の高さに固定され、後から追加された行は自動では
+    // 可視域に入らないため、呼び出し側が明示的にスクロールさせる）。
+    children: (
+      dismiss: () => void,
+      scrollToEnd: (animated?: boolean) => void,
+    ) => ReactNode;
   }
 >(function FormSheet(
-  { sizeToContent = false, snapPoints, onDismiss, refreshControl, children },
+  {
+    sizeToContent = false,
+    snapPoints,
+    onDismiss,
+    refreshControl,
+    backdropOpacity = 0.75,
+    children,
+  },
   ref,
 ) {
   const modalRef = useRef<BottomSheetModal>(null);
+  const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
+  const scrollToEnd = useCallback((animated = true) => {
+    scrollRef.current?.scrollToEnd({ animated });
+  }, []);
 
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
@@ -67,17 +90,17 @@ export const FormSheet = forwardRef<
   // ＝明示的に 0/-1 を指定する。opacity は既定 0.5 だと弱く見える＝
   // ダークモードの地色（#0a0a0a）がほぼ黒なので、黒い半透明幕を重ねても
   // 明るさの変化が乏しいため（実機フィードバック）。X/TripIt 程度の
-  // 沈み込みに近づけて 0.75 に上げる。
+  // 沈み込みに近づけて 0.75 に上げる（backdropOpacity で個別に上書き可）。
   const renderBackdrop = useCallback(
     (props: BottomSheetBackdropProps) => (
       <BottomSheetBackdrop
         {...props}
         appearsOnIndex={0}
         disappearsOnIndex={-1}
-        opacity={0.75}
+        opacity={backdropOpacity}
       />
     ),
-    [],
+    [backdropOpacity],
   );
 
   useImperativeHandle(ref, () => ({
@@ -112,6 +135,7 @@ export const FormSheet = forwardRef<
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView
+        ref={scrollRef}
         // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
         // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動）。
         automaticallyAdjustKeyboardInsets
@@ -131,7 +155,7 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
-        {children(dismiss)}
+        {children(dismiss, scrollToEnd)}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );

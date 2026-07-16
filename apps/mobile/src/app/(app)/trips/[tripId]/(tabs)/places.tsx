@@ -592,10 +592,15 @@ export default function PlacesTab() {
 
       {/* 追加/編集フォーム。地図タブだけ中身の高さちょうどまで＝全開だと
           どのピンの話か（地図の文脈）が見えなくなるため。予定・費用のフォームは
-          従来どおり全開（sizeToContent を渡していない）。 */}
+          従来どおり全開（sizeToContent を渡していない）。
+          scrim も無し（backdropOpacity 0）: 他の管理系シートと違い、この
+          シートは背後の地図（どのピンの話かという文脈・仮ピンの位置）を見せる
+          ことこそが存在意義。本家 Google/Apple マップの場所カードも背景の
+          地図を暗くしない。 */}
       <FormSheet
         ref={formRef}
         sizeToContent
+        backdropOpacity={0}
         // 閉じたら（保存・スワイプ閉じとも）地図上の一時表示を全部解除する:
         // 候補ピンの選択ハイライト・編集中の赤ピン・長押しの仮ピン。
         onDismiss={() => {

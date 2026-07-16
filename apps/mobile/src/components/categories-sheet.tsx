@@ -28,9 +28,14 @@ import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 
 // 費用カテゴリ管理（FormSheet の中身）。web の categories ページと同じ機能:
 // デフォルトカテゴリ（key あり）は名前固定、カスタム（key なし）は改名・削除可、
-// 追加はカスタム固定アイコン＋青。旅行の編集シートからドリルインで開く
-// （EditTripSheet が自身の FormSheet にこれをネストして描画する）。
-export function CategoriesSheet({ tripId }: { tripId: string }) {
+// 追加はカスタム固定アイコン＋青。旅行の編集シートからドリルインで開く。
+export function CategoriesSheet({
+  tripId,
+  scrollToEnd,
+}: {
+  tripId: string;
+  scrollToEnd: (animated?: boolean) => void;
+}) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("categories");
@@ -197,6 +202,11 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
             onBlur={saveNew}
             onSubmitEditing={saveNew}
             returnKeyType="done"
+            // sizeToContent のシートは開いた時点の高さに固定されるため、この
+            // 追加行のようにキーボード表示後に生えた要素は自動では可視域に
+            // 入らない。フォーカス時（＝キーボードが上がる時）に明示的に
+            // 末尾までスクロールする。
+            onFocus={() => setTimeout(() => scrollToEnd(), 250)}
           />
           <Pressable
             onPress={() => {
