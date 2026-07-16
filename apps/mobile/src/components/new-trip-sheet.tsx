@@ -15,6 +15,7 @@ import {
   CopySourceTrigger,
 } from "@/components/copy-source-picker";
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
+import { PlusIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { CompactSegment } from "@/components/visibility-segment";
 import { supabase } from "@/lib/supabase";
@@ -228,14 +229,13 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
         onPress={() => void submit()}
         // 必須（タイトル）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
         disabled={busy || !title.trim()}
+        accessibilityLabel="旅行を作成"
         style={[
           styles.submitButton,
           (busy || !title.trim()) && styles.disabled,
         ]}
       >
-        <Text style={styles.submitLabel}>
-          {busy ? "作成中..." : "旅行を作成"}
-        </Text>
+        <PlusIcon size={20} color={theme.primaryForeground} />
       </Pressable>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -276,7 +276,6 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
     marginTop: 8,
   },
-  submitLabel: { color: t.primaryForeground, fontSize: 15, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   error: {
     fontSize: 13,

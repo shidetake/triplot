@@ -6,6 +6,7 @@ import { useTranslations } from "use-intl";
 import { updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
+import { SaveIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
@@ -62,9 +63,10 @@ export function SettingsSheet({ onDone }: { onDone: () => void }) {
       <Pressable
         onPress={() => void save()}
         disabled={busy}
+        accessibilityLabel="保存"
         style={[styles.submitButton, busy && styles.disabled]}
       >
-        <Text style={styles.submitLabel}>{busy ? "保存中..." : "保存"}</Text>
+        <SaveIcon size={20} color={theme.primaryForeground} />
       </Pressable>
 
       <Pressable
@@ -102,7 +104,6 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
-  submitLabel: { color: t.primaryForeground, fontSize: 15, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   signOutButton: {
     height: 40,

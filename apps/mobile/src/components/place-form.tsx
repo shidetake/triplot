@@ -13,7 +13,7 @@ import { candidateToCreatePlace } from "@triplot/shared/placesSearch";
 import type { PlaceRow } from "@triplot/shared/tripDerive";
 import type { Visibility } from "@triplot/shared/types/database";
 
-import { TrashIcon } from "./icons";
+import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -216,14 +216,17 @@ export function PlaceForm({
           onPress={() => void submit()}
           // 必須（仮ピンの名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={busy || (!!pinDraft && !pinName.trim())}
+          accessibilityLabel={isEdit ? "保存" : t("addPlaceAria")}
           style={[
             styles.submitButton,
             (busy || (!!pinDraft && !pinName.trim())) && styles.disabled,
           ]}
         >
-          <Text style={styles.submitLabel}>
-            {isEdit ? "保存" : t("addPlaceAria")}
-          </Text>
+          {isEdit ? (
+            <SaveIcon size={20} color={theme.primaryForeground} />
+          ) : (
+            <PlusIcon size={20} color={theme.primaryForeground} />
+          )}
         </Pressable>
       </View>
 
@@ -278,11 +281,6 @@ const makeStyles = (t: Theme) =>
       backgroundColor: t.primary,
       alignItems: "center",
       justifyContent: "center",
-    },
-    submitLabel: {
-      color: t.primaryForeground,
-      fontSize: 15,
-      fontWeight: "500",
     },
     disabled: { opacity: 0.5 },
     error: {

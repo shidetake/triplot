@@ -25,6 +25,7 @@ import {
   ChevronIcon,
   CrownIcon,
   DownloadIcon,
+  SaveIcon,
   TagIcon,
   TrashIcon,
 } from "@/components/icons";
@@ -335,13 +336,14 @@ export function EditTripSheet({
         </Pressable>
       </View>
 
-      {/* 保存 */}
+      {/* 保存（アイコンのみ。文言は極力アイコンに寄せる規約＋web と同じ SaveIcon） */}
       <Pressable
         onPress={() => void saveTrip()}
         disabled={busy}
+        accessibilityLabel={t("common.save")}
         style={[styles.submitButton, busy && styles.disabled]}
       >
-        <Text style={styles.submitLabel}>{busy ? "保存中..." : "保存"}</Text>
+        <SaveIcon size={20} color={theme.primaryForeground} />
       </Pressable>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -439,7 +441,6 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
-  submitLabel: { color: t.primaryForeground, fontSize: 15, fontWeight: "500" },
   disabled: { opacity: 0.5 },
   deleteTripButton: {
     height: 40,
