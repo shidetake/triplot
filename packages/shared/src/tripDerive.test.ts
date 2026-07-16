@@ -208,9 +208,10 @@ describe("deriveExpenseFormDefaults", () => {
   const categories = [
     { id: "c-first", name: "渡航", icon: "flight", color: "#000", sort_order: 0, key: null },
     { id: "c-second", name: "飲食", icon: "food", color: "#000", sort_order: 1, key: null },
+    { id: "c-unc", name: "未分類", icon: "label_off", color: "#a1a1aa", sort_order: 12, key: "uncategorized" },
   ];
 
-  it("履歴があれば最後に入力した費用に揃える", () => {
+  it("通貨・日付は最後に入力した費用に揃え、カテゴリは常に未分類", () => {
     const expenses = deriveOrderedExpenses(
       [
         rawExpense({
@@ -238,11 +239,11 @@ describe("deriveExpenseFormDefaults", () => {
       "2026-07-07",
     );
     expect(d.initialCurrency).toBe("USD");
-    expect(d.initialCategoryId).toBe("c-second");
+    expect(d.initialCategoryId).toBe("c-unc");
     expect(d.initialPaidAt).toBe("2026-05-02");
   });
 
-  it("履歴が無ければ trip のデフォルト（先頭カテゴリ・開始日）", () => {
+  it("履歴が無ければ trip のデフォルト（未分類カテゴリ・開始日）", () => {
     const d = deriveExpenseFormDefaults(
       [],
       categories,
@@ -251,8 +252,19 @@ describe("deriveExpenseFormDefaults", () => {
       "2026-07-07",
     );
     expect(d.initialCurrency).toBe("JPY");
-    expect(d.initialCategoryId).toBe("c-first");
+    expect(d.initialCategoryId).toBe("c-unc");
     expect(d.initialPaidAt).toBe("2026-04-28");
+  });
+
+  it("未分類カテゴリが無い旅行（想定外データ）は先頭カテゴリにフォールバック", () => {
+    const d = deriveExpenseFormDefaults(
+      [],
+      categories.filter((c) => c.key !== "uncategorized"),
+      "JPY",
+      "2026-04-28",
+      "2026-07-07",
+    );
+    expect(d.initialCategoryId).toBe("c-first");
   });
 
   it("開始日未設定なら今日にフォールバック", () => {

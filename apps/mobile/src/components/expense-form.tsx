@@ -387,13 +387,15 @@ export function ExpenseForm({
       )}
 
       {/* カテゴリ: web のドロップダウン相当＝選択値トリガ→タップでリスト。
-          ラベル左・トリガ右で1行（チップ全展開をやめて縦を節約）。 */}
-      <View style={styles.inlineRow}>
-        <Text style={[styles.label, styles.labelInline]}>{t("category")}</Text>
+          ラベル行＋全幅トリガの2行（1行だとトリガの開始位置がラベル幅ぶん
+          右にずれて他のフィールドと揃わない、という実機フィードバック対応）。
+          既定は「未分類」＝分類したい人だけ選ぶ。 */}
+      <View>
+        <Text style={styles.label}>{t("category")}</Text>
         <Pressable
           onPress={() => setCategoryOpen(true)}
           accessibilityLabel={t("category")}
-          style={[styles.input, styles.selectTrigger, styles.growTrigger]}
+          style={[styles.input, styles.selectTrigger]}
         >
           <View style={styles.categoryValue}>
             {selectedCategory && (
@@ -752,8 +754,6 @@ const makeStyles = (t: Theme) =>
       justifyContent: "space-between",
       gap: 6,
     },
-    // ラベル左の行でトリガに残り幅を使わせる。
-    growTrigger: { flex: 1 },
     selectText: { fontSize: 14, color: t.foreground },
     categoryValue: { flexDirection: "row", alignItems: "center", gap: 6 },
     hint: { marginTop: 4, fontSize: 12, color: t.mutedForeground },

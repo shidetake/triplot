@@ -274,7 +274,8 @@
       "communication": "Communication",
       "medical": "Medical",
       "casino": "Casino",
-      "other": "Other"
+      "other": "Other",
+      "uncategorized": "Uncategorized"
     }
   },
   "todo": {

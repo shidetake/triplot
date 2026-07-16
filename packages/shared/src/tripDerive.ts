@@ -347,8 +347,8 @@ export function toSummaryExpenses(expenses: ExpenseRow[]): SummaryExpense[] {
   }));
 }
 
-// 費用フォームの初期値は「最後に入力した費用」に揃える（通貨・カテゴリ・日付）。
-// 履歴が無いときだけ trip のデフォルトにフォールバック。
+// 費用フォームの初期値は「最後に入力した費用」に揃える（通貨・日付）。
+// カテゴリだけは履歴に追従しない＝常に「未分類」既定（下記）。
 export function deriveExpenseFormDefaults(
   expenses: ExpenseRow[],
   categories: Category[],
@@ -366,9 +366,13 @@ export function deriveExpenseFormDefaults(
   );
   return {
     initialCurrency: lastEntered?.local_currency ?? defaultCurrency,
-    // 初回（費用ゼロ）は一番上のカテゴリ（= 渡航。sort_order 昇順の先頭）。
-    // 2件目以降は最後に使ったカテゴリを既定に。
-    initialCategoryId: lastEntered?.category_id ?? categories[0]?.id ?? "",
+    // 既定は常に「未分類」。実カテゴリを既定選択にすると「選ばざるを得ない」
+    // 見え方になるため（分類したい人だけ選ぶ）。未分類が無い旅行（seed 更新
+    // 前の想定外データ）だけ先頭カテゴリにフォールバック。
+    initialCategoryId:
+      categories.find((c) => c.key === "uncategorized")?.id ??
+      categories[0]?.id ??
+      "",
     // 初回（費用ゼロ）は旅行開始日、それ以降は最後に作った費用の日を既定に。
     // 開始日未設定の trip では今日にフォールバック。
     initialPaidAt: lastEntered
