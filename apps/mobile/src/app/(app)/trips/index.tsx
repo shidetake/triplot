@@ -144,38 +144,43 @@ export default function TripsScreen() {
           ),
         }}
       />
-      {error || data?.error ? (
-        <Text style={styles.error}>
-          {t("loadError", {
-            message: String(data?.error?.message ?? error),
-          })}
-        </Text>
-      ) : trips.length === 0 && !isLoading ? (
-        <Text style={styles.empty}>{t("empty")}</Text>
-      ) : (
-        <FlatList
-          data={trips}
-          keyExtractor={(item) => item.id}
-          // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
-          // スクロールでタイトルが縮む標準挙動を効かせる。
-          // 引っ張り更新は付けない: ラージタイトルとの組み合わせで1回更新すると
-          // 二度と引けなくなる不具合（実機）があり、フォーカス時の自動再取得と
-          // 操作後の invalidate で足りるため撤去（挙動の一貫性優先）。
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={styles.list}
-          renderItem={({ item }) => (
-            <Pressable
-              style={styles.card}
-              onPress={() => router.push(`/trips/${item.id}`)}
-            >
-              <Text style={styles.cardTitle}>{item.title}</Text>
-              <Text style={styles.cardSub}>
-                {formatTripDateRange(item.start_date, item.end_date, locale)}
-              </Text>
-            </Pressable>
-          )}
-        />
-      )}
+      {/* 空・エラーの文言も FlatList の中（ListEmptyComponent）に置く。外の
+          素の <Text> だとラージタイトルヘッダーのインセット
+          （contentInsetAdjustmentBehavior）が効かず、ステータスバーの裏
+          （ヘッダーの下）に描かれてしまう（実機で発生）。 */}
+      <FlatList
+        data={trips}
+        keyExtractor={(item) => item.id}
+        // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
+        // スクロールでタイトルが縮む標準挙動を効かせる。
+        // 引っ張り更新は付けない: ラージタイトルとの組み合わせで1回更新すると
+        // 二度と引けなくなる不具合（実機）があり、フォーカス時の自動再取得と
+        // 操作後の invalidate で足りるため撤去（挙動の一貫性優先）。
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.list}
+        renderItem={({ item }) => (
+          <Pressable
+            style={styles.card}
+            onPress={() => router.push(`/trips/${item.id}`)}
+          >
+            <Text style={styles.cardTitle}>{item.title}</Text>
+            <Text style={styles.cardSub}>
+              {formatTripDateRange(item.start_date, item.end_date, locale)}
+            </Text>
+          </Pressable>
+        )}
+        ListEmptyComponent={
+          error || data?.error ? (
+            <Text style={styles.error}>
+              {t("loadError", {
+                message: String(data?.error?.message ?? error),
+              })}
+            </Text>
+          ) : !isLoading ? (
+            <Text style={styles.empty}>{t("empty")}</Text>
+          ) : null
+        }
+      />
 
       {/* 追加 FAB（予定/費用タブと同じ位置・同じ見た目） */}
       <Pressable
