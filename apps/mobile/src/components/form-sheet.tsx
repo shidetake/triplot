@@ -3,6 +3,7 @@ import {
   BottomSheetModal,
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
+  type BottomSheetModalProps,
   type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
 import {
@@ -53,6 +54,12 @@ export const FormSheet = forwardRef<
     // 渡す＝背後の地図を暗くせず、地図とフォームを同時に見せるのがこのシートの
     // 存在意義のため（本家 Google/Apple マップの場所カードも背景を暗くしない）。
     backdropOpacity?: number;
+    // 別の FormSheet が開いている状態でこれを present() した時の重なり方。
+    // @gorhom 既定は "switch"（前のシートを minimize→このシートが閉じたら
+    // restore）。ドリルイン（旅行編集→カテゴリ管理 等）は "push"（前のシートを
+    // 閉じずそのまま裏に残し、このシートを上に重ねる。閉じれば裏のシートが
+    // そのまま見える＝Discord 等のモーダルスタックと同じ）を渡す。
+    stackBehavior?: BottomSheetModalProps["stackBehavior"];
     // 第2引数は子要素の TextInput にフォーカスが当たった時などに呼ぶスクロール
     // 補助（カテゴリ追加行がキーボードに隠れる問題の対策。sizeToContent の
     // シートは開いた時点の高さに固定され、後から追加された行は自動では
@@ -69,6 +76,7 @@ export const FormSheet = forwardRef<
     onDismiss,
     refreshControl,
     backdropOpacity = 0.75,
+    stackBehavior,
     children,
   },
   ref,
@@ -116,6 +124,7 @@ export const FormSheet = forwardRef<
       // 従来の全開位置と同じ＝中身が長い時は従来と同じ高さでスクロール。
       // snapPoints 指定時はそれを固定の展開位置として使う。
       snapPoints={snapPoints ?? (sizeToContent ? undefined : ["100%"])}
+      stackBehavior={stackBehavior}
       onDismiss={onDismiss}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}

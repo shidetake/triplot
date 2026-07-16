@@ -35,12 +35,12 @@ import { useTripId } from "@/lib/useTripId";
 // enableDynamicSizing の高さ測定が親のレイアウト計算と干渉し、開ききった
 // 瞬間に親ごと閉じる @gorhom の既知不具合を踏むため。
 //
-// 開閉は「子を開く時に親を明示的に dismiss()、子が閉じたら onDismiss で親を
-// 明示的に present()」で自前制御する（@gorhom の BottomSheetModal 既定の
-// stackBehavior="switch"＝前のシートを自動で minimize/restore する仕組みには
-// 乗らない）。乗ると常に1つのシートしか「presented」にならないので、
-// enableDynamicSizing との組み合わせでの復元崩れを避けられ、かつ「子を
-// 閉じたら必ず1段階親に戻る」という意図をコードから直接読める形にできる。
+// 開閉は @gorhom 標準の stackBehavior="push"（FormSheet の子）に任せる。
+// push は前のシートを閉じずに裏へ残したまま新しいシートを上に重ねる、
+// ドリルイン用に用意された組み込みの挙動（Discord のモーダルスタックと同じ:
+// 一番上を閉じれば自動的に1段階下へ戻る）。既定の "switch"（前のシートを
+// minimize→このシートが閉じたら restore）は enableDynamicSizing との
+// 組み合わせで復元が崩れることがあったため使わない。
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
@@ -83,45 +83,30 @@ export default function TripLayout() {
           <EditTripSheet
             tripId={tripId}
             onDone={dismiss}
-            onOpenCategories={() => {
-              editRef.current?.dismiss();
-              categoriesRef.current?.present();
-            }}
-            onOpenExport={() => {
-              editRef.current?.dismiss();
-              exportRef.current?.present();
-            }}
+            onOpenCategories={() => categoriesRef.current?.present()}
+            onOpenExport={() => exportRef.current?.present()}
           />
         )}
       </FormSheet>
-      <FormSheet
-        ref={categoriesRef}
-        sizeToContent
-        onDismiss={() => editRef.current?.present()}
-      >
+      <FormSheet ref={categoriesRef} sizeToContent stackBehavior="push">
         {(_dismiss, scrollToEnd) => (
           <CategoriesSheet tripId={tripId} scrollToEnd={scrollToEnd} />
         )}
       </FormSheet>
-      <FormSheet
-        ref={exportRef}
-        sizeToContent
-        onDismiss={() => editRef.current?.present()}
-      >
+      <FormSheet ref={exportRef} sizeToContent stackBehavior="push">
         {() => (
           <ExportSheet
             tripId={tripId}
-            onOpenCalendarExport={() => {
-              exportRef.current?.dismiss();
-              calendarExportRef.current?.present();
-            }}
+            onOpenCalendarExport={() =>
+              calendarExportRef.current?.present()
+            }
           />
         )}
       </FormSheet>
       <FormSheet
         ref={calendarExportRef}
         sizeToContent
-        onDismiss={() => exportRef.current?.present()}
+        stackBehavior="push"
       >
         {() => <CalendarExportSheet tripId={tripId} />}
       </FormSheet>
