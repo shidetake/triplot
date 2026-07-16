@@ -1,9 +1,9 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useMemo, useState } from "react";
 import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -48,7 +48,7 @@ export function PlacePicker({
 
   return (
     <View>
-      <TextInput
+      <BottomSheetTextInput
         value={text}
         onChangeText={(next) =>
           onChange(

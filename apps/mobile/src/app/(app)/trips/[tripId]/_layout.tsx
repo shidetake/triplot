@@ -88,9 +88,7 @@ export default function TripLayout() {
         )}
       </FormSheet>
       <FormSheet ref={categoriesRef} sizeToContent stackBehavior="push">
-        {(_dismiss, scrollToEnd) => (
-          <CategoriesSheet tripId={tripId} scrollToEnd={scrollToEnd} />
-        )}
+        {() => <CategoriesSheet tripId={tripId} />}
       </FormSheet>
       <FormSheet ref={exportRef} sizeToContent stackBehavior="push">
         {() => (

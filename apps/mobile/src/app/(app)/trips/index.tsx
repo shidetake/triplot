@@ -3,6 +3,7 @@ import { router, Stack } from "expo-router";
 import { useRef } from "react";
 import {
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -15,12 +16,15 @@ import {
   fetchImportInboxRows,
   fetchUnassignedInboundCount,
 } from "@triplot/shared/data/reads/inbox";
-import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
+import {
+  fetchMyTrips,
+  fetchUserProfile,
+} from "@triplot/shared/data/reads/trips";
 
 import { FeedbackSheet } from "@/components/feedback-sheet";
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { HeaderIconButton } from "@/components/header-icon-button";
-import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
+import { InboxIcon, PlusIcon } from "@/components/icons";
 import { InboxSheet } from "@/components/inbox-sheet";
 import { NewTripSheet } from "@/components/new-trip-sheet";
 import { SettingsSheet } from "@/components/settings-sheet";
@@ -61,6 +65,20 @@ export default function TripsScreen() {
     queryFn: () => fetchUnassignedInboundCount(supabase, userId!),
     enabled: !!userId,
   });
+
+  // ヘッダー右のアバター（web の AppHeader 右上のアバターと同じ「自分の
+  // アカウント」の入口＝タップで設定シート）。queryKey は設定シートと同じ
+  // なのでキャッシュ共有され、アバター変更が即ここにも反映する。
+  const { data: profile } = useQuery({
+    queryKey: ["profile", userId],
+    queryFn: () => fetchUserProfile(supabase, userId!),
+    enabled: !!userId,
+  });
+  const avatarInitial =
+    (profile?.display_name ?? session?.user.email ?? "?")
+      .trim()
+      .charAt(0)
+      .toUpperCase() || "?";
 
   // 受信箱シートの pull-to-refresh。InboxSheet 本体と同じ queryKey で
   // 呼ぶことで TanStack Query のキャッシュ共有により二重取得にはならず、
@@ -103,11 +121,24 @@ export default function TripsScreen() {
                   )}
                 </View>
               </HeaderIconButton>
+              {/* アバター＝アカウント（設定）の入口。web の右上アバターと同じ。
+                  自分のアバターは中立 zinc（メンバー色 hue とは別系統）。 */}
               <HeaderIconButton
                 accessibilityLabel="設定"
                 onPress={() => settingsRef.current?.present()}
               >
-                <SettingsIcon size={20} color={theme.mutedForeground} />
+                {profile?.avatar_url ? (
+                  <Image
+                    source={{ uri: profile.avatar_url }}
+                    style={styles.headerAvatar}
+                  />
+                ) : (
+                  <View style={styles.headerAvatarFallback}>
+                    <Text style={styles.headerAvatarInitial}>
+                      {avatarInitial}
+                    </Text>
+                  </View>
+                )}
               </HeaderIconButton>
             </View>
           ),
@@ -204,6 +235,21 @@ const makeStyles = (t: Theme) =>
   error: { padding: 24, fontSize: 14, color: t.destructiveText },
   // グリフ間の見た目の間隔 = gap + 両ボタンの padding(10×2) ≒ 28 を維持。
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // ヘッダーのアバター（24px 丸。ナビアイコンの 24 と同段）。
+  headerAvatar: { width: 24, height: 24, borderRadius: 12 },
+  headerAvatarFallback: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: t.fgAlpha(0.1),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  headerAvatarInitial: {
+    fontSize: 12,
+    fontWeight: "500",
+    color: t.mutedForeground,
+  },
   fab: {
     position: "absolute",
     right: 20,

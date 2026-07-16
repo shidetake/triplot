@@ -1,3 +1,4 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { router } from "expo-router";
 import { useState } from "react";
@@ -6,7 +7,6 @@ import {
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -30,8 +30,10 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import * as Clipboard from "expo-clipboard";
+
 import { generateInviteToken } from "@/lib/inviteToken";
-import { shareTripInvite } from "@/lib/shareTripInvite";
+import { JOIN_BASE_URL, shareTripInvite } from "@/lib/shareTripInvite";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -132,6 +134,8 @@ export function EditTripSheet({
     );
   };
 
+  // 再生成したら新リンクをそのままクリップボードへ（再生成する人は当然
+  // 次にコピーして配り直すので、2タップに分けさせない）。
   const regenerateInvite = () => {
     Alert.alert(
       t("tripActions.regenerateTitle"),
@@ -146,8 +150,15 @@ export function EditTripSheet({
               supabase,
               tripId,
               generateInviteToken(),
-            ).then((r) => {
-              if (!r.ok) Alert.alert(r.error);
+            ).then(async (r) => {
+              if (!r.ok) {
+                Alert.alert(r.error);
+                return;
+              }
+              await Clipboard.setStringAsync(
+                `${JOIN_BASE_URL}/join/${r.data.token}`,
+              );
+              Alert.alert(t("tripActions.regenerateCopied"));
             });
           },
         },
@@ -227,7 +238,7 @@ export function EditTripSheet({
 
       {/* 旅行情報（admin 以外は読み取りのみ）。タイトルはラベル無し＋
           placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <TextInput
+      <BottomSheetTextInput
         value={vTitle}
         onChangeText={setTitle}
         editable={isAdmin}
@@ -332,7 +343,7 @@ export function EditTripSheet({
                 )}
               </View>
               {isMe ? (
-                <TextInput
+                <BottomSheetTextInput
                   value={vMyName}
                   onChangeText={setMyName}
                   onBlur={commitMyName}

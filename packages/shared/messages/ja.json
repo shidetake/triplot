@@ -191,13 +191,14 @@
     "fetchFailed": "リンクの取得に失敗しました",
     "copySuccess": "リンクをコピーしました",
     "copyFailed": "コピーに失敗しました",
-    "noPlaces": "地図に出せる場所がありません",
+    "noPlaces": "エクスポートする場所がありません",
     "mapExportFailed": "地図の書き出しに失敗しました",
     "noExpenses": "エクスポートする費用がありません",
     "noEvents": "エクスポートする予定がありません",
     "deleteTripFailed": "削除に失敗しました: {error}",
     "regenerateFailed": "再生成に失敗しました",
     "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください",
+    "regenerateCopied": "新しいリンクを作成してコピーしました",
     "manageCategories": "費用カテゴリ管理"
   },
   "event": {

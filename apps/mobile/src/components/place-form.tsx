@@ -1,5 +1,6 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import {
@@ -136,7 +137,7 @@ export function PlaceForm({
     <View style={styles.content}>
       {pinDraft ? (
         // 仮ピン: 名前を自由入力（ラベル無し・placeholder＝フィールド名）。
-        <TextInput
+        <BottomSheetTextInput
           value={pinName}
           onChangeText={setPinName}
           placeholder={t("name")}
@@ -192,7 +193,7 @@ export function PlaceForm({
       </View>
 
       {/* メモ */}
-      <TextInput
+      <BottomSheetTextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}

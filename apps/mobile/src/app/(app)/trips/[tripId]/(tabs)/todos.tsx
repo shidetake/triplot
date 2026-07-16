@@ -87,6 +87,9 @@ export default function TodosTab() {
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
+      // 現地セクションの追加行など画面下方の入力がソフトウェアキーボードに
+      // 隠れないよう、キーボード表示時に下インセットを足す（iOS 標準挙動）。
+      automaticallyAdjustKeyboardInsets
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }

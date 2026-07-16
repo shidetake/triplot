@@ -4,7 +4,6 @@ import {
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
-  type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
 import {
   forwardRef,
@@ -60,14 +59,7 @@ export const FormSheet = forwardRef<
     // 閉じずそのまま裏に残し、このシートを上に重ねる。閉じれば裏のシートが
     // そのまま見える＝Discord 等のモーダルスタックと同じ）を渡す。
     stackBehavior?: BottomSheetModalProps["stackBehavior"];
-    // 第2引数は子要素の TextInput にフォーカスが当たった時などに呼ぶスクロール
-    // 補助（カテゴリ追加行がキーボードに隠れる問題の対策。sizeToContent の
-    // シートは開いた時点の高さに固定され、後から追加された行は自動では
-    // 可視域に入らないため、呼び出し側が明示的にスクロールさせる）。
-    children: (
-      dismiss: () => void,
-      scrollToEnd: (animated?: boolean) => void,
-    ) => ReactNode;
+    children: (dismiss: () => void) => ReactNode;
   }
 >(function FormSheet(
   {
@@ -82,13 +74,9 @@ export const FormSheet = forwardRef<
   ref,
 ) {
   const modalRef = useRef<BottomSheetModal>(null);
-  const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
-  const scrollToEnd = useCallback((animated = true) => {
-    scrollRef.current?.scrollToEnd({ animated });
-  }, []);
 
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
@@ -129,13 +117,17 @@ export const FormSheet = forwardRef<
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
       enableDynamicSizing={!snapPoints && sizeToContent}
-      // sizeToContent（中身の実測高さで開く）のシートは、開いた時点のサイズに
-      // 固定されたまま。後からキーボードが出ると、シートの高さはそのままで
-      // 中身だけキーボードに押し潰され隠れる（地図長押しの仮ピン→名前入力等で
-      // 顕著）。keyboardBehavior="extend" でキーボード表示時にシート自体を
-      // キーボード上端まで拡張し、"restore" でキーボードを閉じたら元の高さに
-      // 戻す。
-      keyboardBehavior="extend"
+      // キーボード対応。"interactive" = キーボード表示時にシート全体を
+      // キーボードの高さぶん持ち上げる（Apple の Reminders 等と同じ挙動）。
+      // 短いフォーム（フィードバック・カテゴリ管理・設定等）はシートごと
+      // キーボードの上に乗るので、下部の入力も隠れない。以前の "extend" は
+      // シート位置を動かさず中身の表示領域だけ縮めるため、短いシートで
+      // 下部の入力がキーボードに隠れたままになっていた（実機で頻発）。
+      // 前提: シート内の入力は必ず BottomSheetTextInput を使うこと（素の
+      // TextInput だと「どの入力にフォーカスしたか」がシートに伝わらず、
+      // キーボードイベントが処理待ちのまま放置される＝この持ち上げ自体が
+      // 動かない）。
+      keyboardBehavior="interactive"
       keyboardBlurBehavior="restore"
       // 背景は薄暗く（モーダル・scrim）＋ドラッグで閉じ・背景タップで閉じ
       // （pressBehavior 既定 "close"）。上に元画面が薄暗く透けて残る。
@@ -144,9 +136,9 @@ export const FormSheet = forwardRef<
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView
-        ref={scrollRef}
         // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
-        // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動）。
+        // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動。
+        // シートが持ち上がりきれない大きいシートでの保険）。
         automaticallyAdjustKeyboardInsets
         keyboardShouldPersistTaps="handled"
         // 内容がシートの高さにぴったり収まる（fitToContents/sizeToContent）とき、
@@ -164,7 +156,7 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
-        {children(dismiss, scrollToEnd)}
+        {children(dismiss)}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );

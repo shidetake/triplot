@@ -198,6 +198,7 @@
     "deleteTripFailed": "Delete failed: {error}",
     "regenerateFailed": "Failed to regenerate",
     "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it.",
+    "regenerateCopied": "New link created and copied",
     "manageCategories": "Manage Expense Categories"
   },
   "event": {

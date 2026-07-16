@@ -1,3 +1,4 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
@@ -7,7 +8,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 
@@ -150,6 +150,9 @@ export function ExpenseForm({
   const [paidAtDate, setPaidAtDate] = useState(initPaidAtDate);
   const [paidAtTime, setPaidAtTime] = useState(initPaidAtTime);
   const [showTime, setShowTime] = useState(initPaidAtTime !== "00:00");
+  // 「＋時刻を指定」タップと同時に開くホイール（compact チップだと出現後に
+  // もう1タップしないと選べない＝だるい、という実機フィードバック対応）。
+  const [timeWheelOpen, setTimeWheelOpen] = useState(false);
 
   // 費用の発生TZ（乗継日の曖昧解決）。web と同じ契約。
   const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
@@ -333,7 +336,7 @@ export function ExpenseForm({
           必須は * でなく「埋まるまで送信無効」。通貨は選択値（JPY 等）自体が説明。 */}
       <View style={styles.row2}>
         <View style={styles.grow}>
-          <TextInput
+          <BottomSheetTextInput
             value={price}
             onChangeText={setPrice}
             keyboardType="decimal-pad"
@@ -359,7 +362,7 @@ export function ExpenseForm({
           <Text style={styles.label}>
             {t("exchangeRate")} <Text style={styles.required}>*</Text>
           </Text>
-          <TextInput
+          <BottomSheetTextInput
             value={rateInput}
             onChangeText={setRateInput}
             keyboardType="decimal-pad"
@@ -455,6 +458,9 @@ export function ExpenseForm({
               onPress={() => {
                 setPaidAtTime("12:00");
                 setShowTime(true);
+                // 追加と同時に選択ホイールを開く（チップを出すだけだと
+                // もう1タップ要る）。
+                setTimeWheelOpen(true);
               }}
               style={styles.addTime}
             >
@@ -463,6 +469,38 @@ export function ExpenseForm({
           )}
         </View>
       </View>
+
+      {/* 「＋時刻を指定」直後の時刻ホイール（通貨/カテゴリのモーダルと同形）。
+          閉じた後の変更は行内の時刻チップ（OS 標準ポップオーバー）から。 */}
+      <Modal
+        visible={timeWheelOpen}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setTimeWheelOpen(false)}
+      >
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>{t("addTime")}</Text>
+            <Pressable
+              onPress={() => setTimeWheelOpen(false)}
+              hitSlop={8}
+              accessibilityLabel="閉じる"
+            >
+              <XIcon size={20} color={theme.mutedForeground} />
+            </Pressable>
+          </View>
+          <View style={styles.timeWheelBody}>
+            <DateTimePicker
+              value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
+              mode="time"
+              display="spinner"
+              onChange={(_, d) => {
+                if (d) setPaidAtTime(formatLocalTime(d));
+              }}
+            />
+          </View>
+        </View>
+      </Modal>
 
       {/* 乗継日の TZ 選択（時刻指定時のみ・web と同じ契約）。セグメント＋
           同一 TZ の候補は畳む（予定フォームと同じ）。 */}
@@ -496,7 +534,7 @@ export function ExpenseForm({
         ))}
 
       {/* メモ */}
-      <TextInput
+      <BottomSheetTextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}
@@ -793,6 +831,8 @@ const makeStyles = (t: Theme) =>
     },
     pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
     pickerList: { padding: 16, paddingTop: 4 },
+    // 時刻ホイールをシート内で中央寄せ（wheel は固有サイズを持つ）。
+    timeWheelBody: { alignItems: "center", paddingTop: 24 },
     pickerRow: {
       flexDirection: "row",
       alignItems: "center",

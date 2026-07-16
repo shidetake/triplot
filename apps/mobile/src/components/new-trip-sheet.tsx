@@ -1,8 +1,9 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { createTrip } from "@triplot/shared/data/trips";
@@ -160,7 +161,7 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           必須は * でなく「埋まるまで作成無効」。表示名は説明を持つラベルなので残す。 */}
-      <TextInput
+      <BottomSheetTextInput
         value={title}
         onChangeText={setTitle}
         placeholder={t("title")}
@@ -171,7 +172,7 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
 
       <View>
         <Text style={styles.label}>{t("displayName")}</Text>
-        <TextInput
+        <BottomSheetTextInput
           value={effectiveName}
           onChangeText={setDisplayName}
           placeholder="名前"

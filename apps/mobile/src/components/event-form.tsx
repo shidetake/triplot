@@ -1,3 +1,4 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
@@ -6,7 +7,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -323,7 +323,7 @@ export function EventForm({
       {isTransit && <Text style={styles.hint}>{t("transitHint")}</Text>}
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <TextInput
+      <BottomSheetTextInput
         value={title}
         onChangeText={setTitle}
         placeholder={t("title")}
@@ -405,7 +405,7 @@ export function EventForm({
       />
 
       {/* メモ */}
-      <TextInput
+      <BottomSheetTextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}

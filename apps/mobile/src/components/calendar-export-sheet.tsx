@@ -1,10 +1,10 @@
+import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useState } from "react";
 import {
   Linking,
   Pressable,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -194,7 +194,7 @@ export function CalendarExportSheet({ tripId }: { tripId: string }) {
               )}
             </Pressable>
             {selected === NEW && (
-              <TextInput
+              <BottomSheetTextInput
                 value={vNewName}
                 onChangeText={setNewName}
                 placeholder={`triplot_${trip.title}`}
