@@ -318,6 +318,7 @@
     "deleteFailed": "Delete failed: {error}",
     "unmapped": "Not on map",
     "locatingHint": "Click or long-press on the map to place a pin",
+    "locatingHintTouch": "Tap or long-press on the map to place a pin",
     "cancelLocate": "Cancel",
     "setPin": "Set pin",
     "searchPlaceholder": "Search places",

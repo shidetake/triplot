@@ -84,6 +84,35 @@ export function ListTodoIcon(p: IconProps) {
   );
 }
 
+// Lucide: pencil（編集。アバターの編集バッジ等）
+export function EditIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" />
+      <Path d="m15 5 4 4" />
+    </LucideIcon>
+  );
+}
+
+// Lucide: message-square（フィードバックの導線）
+export function MessageSquareIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" />
+    </LucideIcon>
+  );
+}
+
+// Lucide: send（フィードバック送信）
+export function SendIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" />
+      <Path d="m21.854 2.147-10.94 10.939" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: save（保存）
 export function SaveIcon(p: IconProps) {
   return (

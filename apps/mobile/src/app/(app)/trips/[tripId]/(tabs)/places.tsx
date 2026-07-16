@@ -35,6 +35,7 @@ import {
   type PlaceCandidate,
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
+import { setPlaceLocation } from "@triplot/shared/data/places";
 import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
 
 import Svg, { Path } from "react-native-svg";
@@ -48,7 +49,8 @@ import {
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
-import { SearchIcon, XIcon } from "@/components/icons";
+import { LockIcon, SearchIcon, XIcon } from "@/components/icons";
+import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -77,6 +79,7 @@ const CANDIDATE_LABEL_GAP = 4;
 export default function PlacesTab() {
   const tripId = useTripId();
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { data, me } = useTripDetail(tripId);
@@ -101,6 +104,11 @@ export default function PlacesTab() {
   const [editing, setEditing] = useState<PlaceRow | null>(null);
   // 地図長押しで置いた仮ピン（web の draft ピンと同じ。保存/閉じで消す）。
   const [pinDraft, setPinDraft] = useState<{ lat: number; lng: number } | null>(
+    null,
+  );
+  // 「位置を指定」モード（web の pendingLocationFor と同じ）: 地図未登録の
+  // 場所を一覧でタップ → 地図をタップ/長押しでその場所に座標を設定する。
+  const [locating, setLocating] = useState<{ id: string; name: string } | null>(
     null,
   );
   // 候補ピンの店名ラベル配置用: 現在のリージョン（パン/ズーム確定ごと）と
@@ -349,6 +357,52 @@ export default function PlacesTab() {
     formRef.current?.present();
   };
 
+  // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
+  // 他の選択状態をクリアして地図に集中させ、シートを畳む。
+  const startLocate = (p: PlaceRow) => {
+    setEditing(null);
+    setSelectedCandidate(null);
+    setPinDraft(null);
+    setLocating({ id: p.id, name: p.name });
+    Keyboard.dismiss();
+    closeSuggestions();
+    collapseListSheet();
+  };
+
+  // 「位置を指定」モード中の地図タップ/長押し: 赤ピンを立てて確定を確認し、
+  // set_place_location RPC で座標を設定する（web の LocateInfo の確定と同じ）。
+  const pickLocation = (lat: number, lng: number) => {
+    if (!locating) return;
+    setPinDraft({ lat, lng });
+    Alert.alert(
+      t("setLocation"),
+      t("settingLocationFor", { name: locating.name }),
+      [
+        {
+          text: "キャンセル",
+          style: "cancel",
+          onPress: () => setPinDraft(null),
+        },
+        {
+          text: tCommon("confirm"),
+          onPress: () => {
+            void setPlaceLocation(supabase, locating.id, lat, lng).then(
+              (r) => {
+                setPinDraft(null);
+                if (!r.ok) {
+                  Alert.alert(r.error);
+                  return;
+                }
+                setLocating(null);
+                void invalidate();
+              },
+            );
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.screen}>
       <MapView
@@ -364,12 +418,22 @@ export default function PlacesTab() {
         }}
         // 地図の素のタップ＝入力から離れた合図。キーボードとサジェストを畳む
         // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
-        onPress={() => {
+        // 「位置を指定」モード中はタップ座標をその場所の位置として確定に回す
+        // （web の locatingHint「クリック / 長押し」と同じく両ジェスチャ対応）。
+        onPress={(e) => {
           Keyboard.dismiss();
           closeSuggestions();
+          if (locating) {
+            const c = e.nativeEvent.coordinate;
+            pickLocation(c.latitude, c.longitude);
+          }
         }}
         onLongPress={(e) => {
           const c = e.nativeEvent.coordinate;
+          if (locating) {
+            pickLocation(c.latitude, c.longitude);
+            return;
+          }
           onMapLongPress(c.latitude, c.longitude);
         }}
         onPoiClick={(e) => void onPoiPress(e.nativeEvent.placeId)}
@@ -427,6 +491,27 @@ export default function PlacesTab() {
           );
         })}
       </MapView>
+
+      {/* 「位置を指定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
+      {locating && (
+        <View style={styles.locatingBanner}>
+          <Text style={styles.locatingText} numberOfLines={2}>
+            {t("setLocation")} {t("settingLocationFor", { name: locating.name })}
+            {": "}
+            {t("locatingHintTouch")}
+          </Text>
+          <Pressable
+            onPress={() => {
+              setLocating(null);
+              setPinDraft(null);
+            }}
+            hitSlop={8}
+            accessibilityLabel={t("cancelLocate")}
+          >
+            <XIcon size={16} color={theme.warnAccent} />
+          </Pressable>
+        </View>
+      )}
 
       {/* 検索バー（地図上に重ねる）＋入力中サジェスト */}
       <View style={styles.searchBar}>
@@ -558,30 +643,68 @@ export default function PlacesTab() {
               data={places}
               keyExtractor={(item) => item.id}
               contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
-                <Pressable
-                  onPress={() => openEditPlace(item)}
-                  style={styles.placeRow}
-                >
-                  <PlaceCategoryIcon
-                    icon={item.icon}
-                    size={20}
-                    color={item.tentative ? "#f59e0b" : "#10b981"}
-                  />
-                  <View style={styles.placeInfo}>
-                    <Text style={styles.placeName} numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    <Text style={styles.placeMeta}>
-                      {item.tentative
-                        ? t("statusCandidate")
-                        : t("statusConfirmed")}
-                      {" ・ "}
-                      {getIconLabel(item.icon)}
-                    </Text>
-                  </View>
-                </Pressable>
-              )}
+              renderItem={({ item }) => {
+                const unmapped = item.lat == null;
+                const isLocating = unmapped && item.id === locating?.id;
+                return (
+                  <Pressable
+                    onPress={() =>
+                      isLocating
+                        ? (setLocating(null), setPinDraft(null))
+                        : unmapped
+                          ? startLocate(item)
+                          : openEditPlace(item)
+                    }
+                    style={[styles.placeRow, isLocating && styles.locatingRow]}
+                  >
+                    <PlaceCategoryIcon
+                      icon={item.icon}
+                      size={20}
+                      color={item.tentative ? "#f59e0b" : "#10b981"}
+                    />
+                    <View style={styles.placeInfo}>
+                      <View style={styles.placeNameRow}>
+                        <Text style={styles.placeName} numberOfLines={1}>
+                          {item.name}
+                        </Text>
+                        {item.visibility === "private" && (
+                          <LockIcon size={16} color={theme.mutedForeground} />
+                        )}
+                        {unmapped && (
+                          <View style={styles.unmappedBadge}>
+                            <Text style={styles.unmappedBadgeText}>
+                              {t("unmapped")}
+                            </Text>
+                          </View>
+                        )}
+                      </View>
+                      <Text style={styles.placeMeta}>
+                        {item.tentative
+                          ? t("statusCandidate")
+                          : t("statusConfirmed")}
+                        {" ・ "}
+                        {getIconLabel(item.icon)}
+                      </Text>
+                      {item.note ? (
+                        <Text style={styles.placeMeta} numberOfLines={2}>
+                          {item.note}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {unmapped && (
+                      <Text
+                        style={
+                          isLocating
+                            ? styles.cancelLocateLabel
+                            : styles.setPinLabel
+                        }
+                      >
+                        {isLocating ? t("cancelLocate") : t("setPin")}
+                      </Text>
+                    )}
+                  </Pressable>
+                );
+              }}
               ListEmptyComponent={
                 <Text style={styles.empty}>まだ場所がありません。</Text>
               }
@@ -882,7 +1005,41 @@ const makeStyles = (t: Theme) =>
     borderBottomColor: t.fgAlpha(0.08),
   },
   placeInfo: { flex: 1 },
-  placeName: { fontSize: 15, color: t.foreground },
+  placeNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  placeName: { fontSize: 15, color: t.foreground, flexShrink: 1 },
+  // 「地図未登録」バッジ（amber 塗りチップ。web の bg-amber-100 text-amber-700 相当）。
+  unmappedBadge: {
+    borderRadius: 4,
+    backgroundColor: t.warnChipBg,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  unmappedBadgeText: { fontSize: 11, color: t.warnAccent },
+  // 位置指定モード中の行（amber の面＋左の縦棒。web の locating 行と同じ）。
+  locatingRow: {
+    backgroundColor: t.warnBg,
+    borderLeftWidth: 4,
+    borderLeftColor: "#fbbf24",
+  },
+  setPinLabel: { fontSize: 12, color: "#2563eb" },
+  cancelLocateLabel: { fontSize: 12, color: t.warnAccent },
+  // 位置指定モードのヒント帯（検索バーの下に重ねる）。
+  locatingBanner: {
+    position: "absolute",
+    top: 64,
+    left: 12,
+    right: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: t.warnBorder,
+    backgroundColor: t.warnBg,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  locatingText: { flex: 1, fontSize: 12, color: t.warnText },
   placeMeta: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
   empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
 });

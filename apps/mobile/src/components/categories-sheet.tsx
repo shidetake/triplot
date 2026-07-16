@@ -39,8 +39,13 @@ export function CategoriesSheet({
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("categories");
+  const tExp = useTranslations("expense");
   const { data } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
+
+  // デフォルトカテゴリ（key あり）は i18n 名、カスタムは DB の名前
+  // （web の category-management-list と同じ解決）。
+  const catName = (c: Category) => (c.key ? tExp(`cat.${c.key}`) : c.name);
 
   const [editId, setEditId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
@@ -159,7 +164,7 @@ export function CategoriesSheet({
                 style={styles.nameButton}
               >
                 <Text style={styles.name} numberOfLines={1}>
-                  {c.name}
+                  {catName(c)}
                 </Text>
               </Pressable>
             )}

@@ -36,7 +36,8 @@ import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { ExpenseForm } from "@/components/expense-form";
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
-import { PlusIcon, XIcon } from "@/components/icons";
+import { LockIcon, PlusIcon, XIcon } from "@/components/icons";
+import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -268,10 +269,17 @@ export default function ExpensesTab() {
           )}
         </View>
 
-        {/* 一覧（発生順） */}
+        {/* 一覧（発生順）。行の情報は web の ExpenseRowItem と同じ:
+            カテゴリ色ピル・金額・外貨・private 鍵・日時・支払・割勘メンバー・
+            場所（pin アイコン付き）・メモ。 */}
         {expenses.map((e) => {
           const category = categoryById.get(e.category_id);
           const payer = memberById.get(e.payer_member_id);
+          const splitMembers = e.splittable
+            ? e.split_member_ids
+                .map((id) => memberById.get(id))
+                .filter((m): m is MemberLite => !!m)
+            : null;
           const isForeign = e.local_currency !== defaultCurrency;
           const amountInDefault = e.local_price * e.rate_to_default;
           const placeName = e.place_id
@@ -285,11 +293,16 @@ export default function ExpensesTab() {
             >
               <View style={styles.expenseTop}>
                 {category && (
-                  <View style={styles.categoryBadge}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: category.color },
+                    ]}
+                  >
                     <ExpenseCategoryIcon
                       icon={category.icon}
                       size={13}
-                      color={category.color}
+                      color="#fff"
                     />
                     <Text style={styles.categoryName}>{category.name}</Text>
                   </View>
@@ -303,17 +316,40 @@ export default function ExpensesTab() {
                     {formatRate(e.rate_to_default)})
                   </Text>
                 )}
+                {e.visibility === "private" && (
+                  <LockIcon size={16} color={theme.mutedForeground} />
+                )}
               </View>
               <View style={styles.expenseMeta}>
                 <Text style={styles.metaText}>{formatDateTime(e.paid_at)}</Text>
-                <Text style={styles.metaText}>{tExp("paidLabel")}</Text>
-                {payer && <MemberAvatar member={payer} size={16} />}
-                {placeName && (
+                <View style={styles.metaGroup}>
+                  <Text style={styles.metaText}>{tExp("paidLabel")}</Text>
+                  {payer && <MemberAvatar member={payer} size={16} />}
+                </View>
+                {splitMembers && splitMembers.length > 0 && (
+                  <View style={styles.metaGroup}>
+                    <Text style={styles.metaText}>{tExp("splitLabel")}</Text>
+                    {splitMembers.map((m) => (
+                      <MemberAvatar key={m.id} member={m} size={16} />
+                    ))}
+                  </View>
+                )}
+              </View>
+              {placeName && (
+                <View style={styles.placeRow}>
+                  <PlaceCategoryIcon
+                    icon="pin"
+                    size={12}
+                    color={theme.mutedForeground}
+                  />
                   <Text style={styles.metaText} numberOfLines={1}>
                     {placeName}
                   </Text>
-                )}
-              </View>
+                </View>
+              )}
+              {e.note ? (
+                <Text style={styles.metaText}>{e.note}</Text>
+              ) : null}
             </Pressable>
           );
         })}
@@ -489,8 +525,18 @@ const makeStyles = (t: Theme) =>
     flexWrap: "wrap",
     gap: 8,
   },
-  categoryBadge: { flexDirection: "row", alignItems: "center", gap: 4 },
-  categoryName: { fontSize: 12, color: t.mutedForeground },
+  // カテゴリの色付きピル（web の ColorBadge と同形: 色地・白文字・rounded-full）。
+  categoryBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    borderRadius: 999,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  categoryName: { fontSize: 12, fontWeight: "500", color: "#fff" },
+  metaGroup: { flexDirection: "row", alignItems: "center", gap: 4 },
+  placeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   amount: { fontSize: 14, fontWeight: "500", color: t.foreground },
   foreign: { fontSize: 12, color: t.mutedForeground },
   expenseMeta: {

@@ -318,6 +318,7 @@
     "deleteFailed": "削除に失敗しました: {error}",
     "unmapped": "地図未登録",
     "locatingHint": "地図でクリック / 長押しでピンを置いてください",
+    "locatingHintTouch": "地図をタップ / 長押しでピンを置いてください",
     "cancelLocate": "やめる",
     "setPin": "ピンを設定",
     "searchPlaceholder": "場所を検索",

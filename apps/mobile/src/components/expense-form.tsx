@@ -245,6 +245,10 @@ export function ExpenseForm({
   const selectedCategory =
     sortedCategories.find((c) => c.id === categoryId) ?? null;
 
+  // デフォルトカテゴリ（key あり）は i18n 名、カスタムは DB の名前
+  // （web の category-select と同じ解決）。
+  const catName = (c: Category) => (c.key ? t(`cat.${c.key}`) : c.name);
+
   const canDelete =
     !!editExpense &&
     (editExpense.visibility === "private"
@@ -397,7 +401,7 @@ export function ExpenseForm({
               />
             )}
             <Text style={styles.selectText}>
-              {selectedCategory?.name ?? ""}
+              {selectedCategory ? catName(selectedCategory) : ""}
             </Text>
           </View>
           <ChevronIcon size={14} color={theme.subtleForeground} rotate={90} />
@@ -658,7 +662,7 @@ export function ExpenseForm({
                     c.id === categoryId && styles.pickerTextOn,
                   ]}
                 >
-                  {c.name}
+                  {catName(c)}
                 </Text>
                 {c.id === categoryId && (
                   <CheckIcon size={16} color={theme.foreground} />

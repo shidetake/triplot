@@ -17,6 +17,7 @@ import {
 } from "@triplot/shared/data/reads/inbox";
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
 
+import { FeedbackSheet } from "@/components/feedback-sheet";
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { HeaderIconButton } from "@/components/header-icon-button";
 import { InboxIcon, PlusIcon, SettingsIcon } from "@/components/icons";
@@ -76,6 +77,7 @@ export default function TripsScreen() {
   const inboxRef = useRef<FormSheetRef>(null);
   const settingsRef = useRef<FormSheetRef>(null);
   const newTripRef = useRef<FormSheetRef>(null);
+  const feedbackRef = useRef<FormSheetRef>(null);
 
   return (
     <View style={styles.container}>
@@ -166,7 +168,18 @@ export default function TripsScreen() {
         {() => <InboxSheet />}
       </FormSheet>
       <FormSheet ref={settingsRef} sizeToContent>
-        {(dismiss) => <SettingsSheet onDone={dismiss} />}
+        {(dismiss) => (
+          <SettingsSheet
+            onDone={dismiss}
+            onOpenFeedback={() => feedbackRef.current?.present()}
+          />
+        )}
+      </FormSheet>
+      {/* フィードバックは設定からのドリルイン＝push で設定の上に重ねる
+          （旅行編集→カテゴリ管理と同じ）。送信成功でトースト代わりに
+          フィードバックシートだけ閉じ、設定に戻る。 */}
+      <FormSheet ref={feedbackRef} sizeToContent stackBehavior="push">
+        {(dismiss) => <FeedbackSheet onDone={dismiss} />}
       </FormSheet>
       <FormSheet ref={newTripRef} sizeToContent>
         {(dismiss) => <NewTripSheet onDone={dismiss} />}

@@ -160,6 +160,28 @@ export function EditTripSheet({
     ]);
   };
 
+  // 自分の退出（web の members ページと同じ。同 RPC で自分相手なら admin 不要）。
+  // 退出後はこの旅行が見えなくなるので旅行一覧へ戻る。
+  const confirmLeave = () => {
+    Alert.alert(t("members.leaveTitle"), t("members.leaveBody"), [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: t("members.leaveConfirm"),
+        style: "destructive",
+        onPress: () => {
+          void removeTripMember(supabase, me!.id).then((r) => {
+            if (!r.ok) {
+              Alert.alert(t("members.removeFailed", { error: r.error }));
+              return;
+            }
+            router.dismissAll();
+            router.replace("/trips");
+          });
+        },
+      },
+    ]);
+  };
+
   const confirmDeleteTrip = () => {
     Alert.alert(
       t("tripActions.deleteTripTitle"),
@@ -286,16 +308,28 @@ export function EditTripSheet({
               ) : (
                 <Text style={styles.memberName}>{m.display_name}</Text>
               )}
-              {isAdmin && !isMe && (
+              {/* 自分の行は「退出」、他人の行は削除（admin のみ）。web の
+                  members ページと同じ使い分け（自分の退出に admin は不要）。 */}
+              {isMe ? (
                 <Pressable
-                  onPress={() => confirmRemoveMember(m.id, m.display_name)}
+                  onPress={confirmLeave}
                   hitSlop={8}
-                  accessibilityLabel={t("members.removeAria", {
-                    name: m.display_name,
-                  })}
+                  accessibilityLabel={t("members.leaveAction")}
                 >
                   <TrashIcon size={16} color={theme.subtleForeground} />
                 </Pressable>
+              ) : (
+                isAdmin && (
+                  <Pressable
+                    onPress={() => confirmRemoveMember(m.id, m.display_name)}
+                    hitSlop={8}
+                    accessibilityLabel={t("members.removeAria", {
+                      name: m.display_name,
+                    })}
+                  >
+                    <TrashIcon size={16} color={theme.subtleForeground} />
+                  </Pressable>
+                )
               )}
             </View>
           );

@@ -9,6 +9,10 @@ import {
   dismissInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
+import {
+  EXTRACT_ERROR_NO_CONTENT,
+  MONTHLY_EMAIL_CAP,
+} from "@triplot/shared/import/config";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { SheetTitle } from "@/components/sheet-title";
@@ -105,6 +109,43 @@ export function InboxSheet() {
         </View>
       )}
 
+      {/* 上限超過の警告（web の overQuotaWarning と同じ） */}
+      {(data?.overQuota ?? 0) > 0 && (
+        <View style={styles.warnBox}>
+          <Text style={styles.warnText}>
+            {t("overQuotaWarning", {
+              cap: MONTHLY_EMAIL_CAP,
+              over: data?.overQuota ?? 0,
+            })}
+          </Text>
+        </View>
+      )}
+
+      {/* 取り込みに失敗したメール（web のエラー行と同じ。× で破棄） */}
+      {(data?.errorRows ?? []).map((e) => (
+        <View key={e.id} style={styles.errorCard}>
+          <View style={styles.errorBody}>
+            <Text style={styles.emailSummary} numberOfLines={1}>
+              {e.subject || e.sender || t("unknownMerchant")}
+            </Text>
+            <Text style={styles.errorText}>
+              {e.extract_error === EXTRACT_ERROR_NO_CONTENT
+                ? t("errorNoContent")
+                : e.next_retry_at
+                  ? t("errorWillRetry")
+                  : t("errorNoRetry")}
+            </Text>
+          </View>
+          <Pressable
+            onPress={() => dismiss(e.id)}
+            hitSlop={8}
+            accessibilityLabel={t("dismiss")}
+          >
+            <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
+          </Pressable>
+        </View>
+      ))}
+
       {/* メール一覧 */}
       {emails.length === 0 ? (
         <Text style={styles.empty}>{t("emptyState")}</Text>
@@ -187,7 +228,10 @@ export function InboxSheet() {
       {/* 使用量 */}
       {data && (
         <Text style={styles.usage}>
-          {t("usageCount", { used: data.usedThisMonth ?? 0, cap: 30 })}
+          {t("usageCount", {
+            used: data.usedThisMonth ?? 0,
+            cap: MONTHLY_EMAIL_CAP,
+          })}
         </Text>
       )}
     </View>
@@ -218,6 +262,28 @@ const makeStyles = (t: Theme) =>
   },
   copyLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
   empty: { fontSize: 13, color: t.mutedForeground, paddingVertical: 16 },
+  // 上限超過の警告（amber。web の MessageBox kind="warning" と同段）。
+  warnBox: {
+    borderWidth: 1,
+    borderColor: t.warnBorder,
+    backgroundColor: t.warnBg,
+    borderRadius: 6,
+    padding: 10,
+  },
+  warnText: { fontSize: 12, color: t.warnText },
+  // 取り込み失敗メール（red。web のエラー行と同じ薄い赤面＋赤枠）。
+  errorCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: t.destructiveBorder,
+    backgroundColor: t.errorBg,
+    borderRadius: 6,
+    padding: 12,
+  },
+  errorBody: { flex: 1, gap: 2 },
+  errorText: { fontSize: 12, color: t.errorText },
   emailCard: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.fgAlpha(0.15),

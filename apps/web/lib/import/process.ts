@@ -3,6 +3,7 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
+import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
   isAllowedReceiptHost,
   isLikelyUnsubscribeUrl,
@@ -29,7 +30,8 @@ import type { createServiceClient } from "@/lib/supabase/service";
 const MERGE_LOOKBACK_DAYS = 30;
 
 // 抽出は成功したが費用も予定も見つからなかったメールの恒久エラー（UI が翻訳して表示）。
-export const EXTRACT_ERROR_NO_CONTENT = "no_content";
+// 値は shared（RN の受信箱も表示分岐に使う）。既存 import を壊さないよう re-export。
+export { EXTRACT_ERROR_NO_CONTENT };
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
 

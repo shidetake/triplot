@@ -21,11 +21,12 @@ export type TripSummary = Awaited<
   ReturnType<typeof fetchMyTrips>
 >["trips"][number];
 
-// 自分のプロフィール（表示名）。旅行作成フォームの初期値に使う。
+// 自分のプロフィール（表示名・アバター）。旅行作成フォームの初期値と
+// 設定画面のアバター表示に使う。
 export async function fetchUserProfile(sb: DB, userId: string) {
   const { data } = await sb
     .from("users")
-    .select("display_name")
+    .select("display_name, avatar_url")
     .eq("id", userId)
     .single();
   return data;

@@ -57,6 +57,16 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-localization",
     "expo-apple-authentication",
+    // アバター画像の選択（設定 → アバター変更）。写真ライブラリの利用文言を
+    // Info.plist に注入する。カメラ・マイクは使わない（文言を注入しない）。
+    [
+      "expo-image-picker",
+      {
+        photosPermission: "アバターに設定する写真を選ぶために使用します。",
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
     // react-native-maps: iOS の Google Maps キーは自身のプラグインで注入する
     // （Podfile に正しい `react-native-maps/Google` subspec を書く）。キー未設定
     // でも Apple Maps で動くので、キーがある時だけ Google を有効化。

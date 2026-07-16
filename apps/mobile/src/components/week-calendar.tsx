@@ -26,6 +26,8 @@ import {
 import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
+import { CheckIcon } from "@/components/icons";
+import { ReservationIcon } from "@/components/reservation-icon";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 週カレンダーの描画（RN）。レイアウト計算は shared の buildSchedule に委ね、
@@ -45,6 +47,23 @@ function colWidth(n: number): number {
 }
 
 const hhmm = (min: number) => formatMinutes(min, false);
+
+// 予約マーカー（タイトル先頭。web の ReservationMark と同じ意味）:
+// 要予約（未）= チケット黄 / 予約済 = 淡色チェック。ブロック地色はそのまま。
+function ReservationMark({
+  ev,
+  textColor,
+}: {
+  ev: EventRow;
+  textColor: string;
+}) {
+  if (!ev.needsReservation) return null;
+  return ev.reservationDone ? (
+    <CheckIcon size={12} color={textColor} />
+  ) : (
+    <ReservationIcon size={12} />
+  );
+}
 
 export function WeekCalendar({
   schedule,
@@ -389,12 +408,15 @@ export function WeekCalendar({
                         },
                       ]}
                     >
-                      <Text
-                        style={[styles.allDayText, { color: col.text }]}
-                        numberOfLines={1}
-                      >
-                        {b.event.title}
-                      </Text>
+                      <View style={styles.titleRow}>
+                        <ReservationMark ev={ev} textColor={col.text} />
+                        <Text
+                          style={[styles.allDayText, { color: col.text }]}
+                          numberOfLines={1}
+                        >
+                          {b.event.title}
+                        </Text>
+                      </View>
                     </Pressable>
                   );
                 })}
@@ -490,12 +512,15 @@ export function WeekCalendar({
                       },
                     ]}
                   >
-                    <Text
-                      style={[styles.eventTitle, { color: col.text }]}
-                      numberOfLines={2}
-                    >
-                      {p.event.title}
-                    </Text>
+                    <View style={styles.titleRow}>
+                      <ReservationMark ev={ev} textColor={col.text} />
+                      <Text
+                        style={[styles.eventTitle, { color: col.text }]}
+                        numberOfLines={2}
+                      >
+                        {p.event.title}
+                      </Text>
+                    </View>
                     {height > 34 && (
                       <Text
                         style={[styles.eventTime, { color: col.text }]}
@@ -573,12 +598,15 @@ export function WeekCalendar({
                         },
                       ]}
                     >
-                      <Text
-                        style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        {part.label}
-                      </Text>
+                      <View style={styles.titleRow}>
+                        <ReservationMark ev={ev} textColor={col.text} />
+                        <Text
+                          style={[styles.eventTitle, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          {part.label}
+                        </Text>
+                      </View>
                     </Pressable>
                   );
                 });
@@ -653,7 +681,7 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
     paddingHorizontal: 4,
   },
-  allDayText: { fontSize: 10, fontWeight: "500" },
+  allDayText: { fontSize: 10, fontWeight: "500", flexShrink: 1 },
   body: { flex: 1 },
   bodyRow: { flexDirection: "row" },
   gutterHour: { position: "absolute", right: 4 },
@@ -689,7 +717,9 @@ const makeStyles = (t: Theme) =>
     borderStyle: "dashed",
     borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
   },
-  eventTitle: { fontSize: 11, fontWeight: "500" },
+  eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
+  // タイトル行（予約マーク＋タイトル。マークが無ければ Text のみと同じ見た目）。
+  titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
   eventTime: { fontSize: 9, opacity: 0.7 },
   // 長押しゴースト（web の border-slate-400 / bg-slate-100/50 / text-slate-800
   // と同値の焼き込み。web も両モード同色）。
