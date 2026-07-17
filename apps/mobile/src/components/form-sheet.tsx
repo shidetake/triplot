@@ -150,7 +150,10 @@ export const FormSheet = forwardRef<
         // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
         // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動。
         // シートが持ち上がりきれない大きいシートでの保険）。
-        automaticallyAdjustKeyboardInsets
+        // extend（部分リフト）のシートでは切る — この iOS 側の自動スクロールと
+        // 自前リフトが二重に効いて、中身だけ上に飛び「シートが真っ黒」になる
+        // 実機バグの原因だった。extend の動きは KeyboardMinimalLift に一本化。
+        automaticallyAdjustKeyboardInsets={keyboardBehavior !== "extend"}
         keyboardShouldPersistTaps="handled"
         // 内容がシートの高さにぴったり収まる（fitToContents/sizeToContent）とき、
         // 引っ張ると中身だけラバーバンドして不自然に見えるのを防ぐ。

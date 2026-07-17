@@ -235,6 +235,13 @@ export default function PlacesTab() {
     // 候補を選んだら入力は終わり＝キーボードを畳む（地図とフォームを見せる）。
     Keyboard.dismiss();
     closeSuggestions();
+    // 登録済みの場所なら details を引かず（課金なし）既存を開く。
+    const saved = findSavedByGoogleId(p.placeId);
+    if (saved) {
+      setQuery("");
+      openEditPlace(saved);
+      return;
+    }
     try {
       const c = await fetchPlaceDetails(p.placeId, {
         apiKey: PLACES_API_KEY,
@@ -308,7 +315,18 @@ export default function PlacesTab() {
     });
   };
 
+  // この Google place が旅行に登録済みなら、その保存済みの場所を返す
+  // （同じ店を POI タップ・検索・候補ピンから何度でも追加できてしまい、
+  // 重複登録される実機報告への対策。同じ場所なら追加ではなく既存を開く）。
+  const findSavedByGoogleId = (googlePlaceId: string) =>
+    places.find((p) => p.google_place_id === googlePlaceId) ?? null;
+
   const openAddCandidate = (c: PlaceCandidate) => {
+    const saved = findSavedByGoogleId(c.placeId);
+    if (saved) {
+      openEditPlace(saved);
+      return;
+    }
     setSelectedCandidate(c);
     setEditing(null);
     setPinDraft(null);
@@ -333,14 +351,34 @@ export default function PlacesTab() {
   // ベースマップの POI（Google の店・施設アイコン）タップ: Place Details で
   // 住所・region を補完して、検索候補と同じ保存フォームを開く（web の POI
   // タップ→追加と同じ入口）。
-  const onPoiPress = async (placeId: string) => {
+  // 座標は Details の location でなく「タップした POI アイコンの座標」
+  // （onPoiClick の coordinate）で上書きする。Details の座標は建物重心など
+  // ベースマップの POI アイコン描画位置と数m ずれることがあり、登録後の
+  // 自前マーカーが POI と二重にずれて見える実機報告への対策（アイコン位置に
+  // 揃えれば自前マーカーがベース POI にぴったり重なる）。
+  const onPoiPress = async (
+    placeId: string,
+    coord: { latitude: number; longitude: number },
+  ) => {
     if (!PLACES_API_KEY) return;
+    // 登録済みの POI なら details を引かず（課金なし）既存を開く。
+    const saved = findSavedByGoogleId(placeId);
+    if (saved) {
+      openEditPlace(saved);
+      return;
+    }
     try {
       const c = await fetchPlaceDetails(placeId, {
         apiKey: PLACES_API_KEY,
         iosBundleId: BUNDLE_ID,
       });
-      if (c) openAddCandidate(c);
+      if (c) {
+        openAddCandidate({
+          ...c,
+          lat: coord.latitude,
+          lng: coord.longitude,
+        });
+      }
     } catch (e) {
       Alert.alert(t("searchFailed"), String(e));
     }
@@ -436,7 +474,9 @@ export default function PlacesTab() {
           }
           onMapLongPress(c.latitude, c.longitude);
         }}
-        onPoiClick={(e) => void onPoiPress(e.nativeEvent.placeId)}
+        onPoiClick={(e) =>
+          void onPoiPress(e.nativeEvent.placeId, e.nativeEvent.coordinate)
+        }
       >
         {places
           .filter((p) => p.lat != null && p.lng != null)
