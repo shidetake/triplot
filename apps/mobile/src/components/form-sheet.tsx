@@ -2,17 +2,19 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
-  useBottomSheet,
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
   type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
+import { useSharedValue } from "react-native-reanimated";
 import {
   forwardRef,
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
+  useState,
   type ReactElement,
   type ReactNode,
 } from "react";
@@ -102,6 +104,56 @@ export const FormSheet = forwardRef<
     scrollRef.current?.scrollToEnd({ animated });
   }, []);
 
+  // extend の部分リフト（原則「シートだけを動かし、中身には触らない」）。
+  // キーボード表示時にフォーカス入力を実測し、被る分「だけ」シートを高くする。
+  // 実現方法は「snapPoints の値を lift 分増やす」＝gorhom 公式の snapPoints
+  // 変更（SNAP_POINT_CHANGE）で index 0 のまま新しい高さへアニメさせる。
+  // snapToPosition（一時位置）は BottomSheetModal で dismiss（index=-1）を
+  // 誘発するので使わない（実測で特定）。そのため extend シートは
+  // enableDynamicSizing を使わず、中身の高さも自前で実測して snapPoints を組む。
+  const isExtend = keyboardBehavior === "extend";
+  const topFloor = insets.top + NAV_BAR_HEIGHT;
+  const { height: windowHeight } = useWindowDimensions();
+  const animatedPosition = useSharedValue(0);
+  const [contentH, setContentH] = useState(0);
+  const [liftExtra, setLiftExtra] = useState(0);
+  const kbHandledRef = useRef(false);
+  // 持ち手まわりの高さ（enableDynamicSizing が detent に足すのと同等の値）。
+  const HANDLE_HEIGHT = 24;
+  const extendSnapPoints = useMemo(() => {
+    const base = Math.max(contentH + HANDLE_HEIGHT, 120);
+    return [Math.min(base + liftExtra, windowHeight - topFloor)];
+  }, [contentH, liftExtra, windowHeight, topFloor]);
+  useEffect(() => {
+    if (!isExtend) return;
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      if (kbHandledRef.current) return; // 1表示につき1回（再発火ラチェット防止）
+      kbHandledRef.current = true;
+      const focused = TextInput.State.currentlyFocusedInput();
+      if (!focused) return;
+      focused.measureInWindow((_x, y, _w, h) => {
+        const keyboardTop = e.endCoordinates.screenY;
+        const overlap = y + h + 24 - keyboardTop;
+        if (overlap <= 0) return;
+        const sheetTop = animatedPosition.value; // 画面上端からの実測位置
+        const lift = Math.min(overlap, Math.max(0, sheetTop - topFloor));
+        if (lift > 0) setLiftExtra(lift);
+        // 持ち上げきれない分（背の高いフォームのみ）はシート内スクロールで補う。
+        if (overlap - lift > 4) {
+          setTimeout(() => scrollToEnd(), 300);
+        }
+      });
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      kbHandledRef.current = false;
+      setLiftExtra(0); // 元の高さへ戻す
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [isExtend, scrollToEnd, topFloor, animatedPosition]);
+
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
   // はユーザーを欺くので非推奨」と明言）。FormSheet は常に単一の snapPoint
@@ -135,17 +187,27 @@ export const FormSheet = forwardRef<
       // BottomSheetScrollView を測って追加する）。上限は topInset で
       // 従来の全開位置と同じ＝中身が長い時は従来と同じ高さでスクロール。
       // snapPoints 指定時はそれを固定の展開位置として使う。
-      snapPoints={snapPoints ?? (sizeToContent ? undefined : ["100%"])}
+      snapPoints={
+        isExtend
+          ? extendSnapPoints
+          : (snapPoints ?? (sizeToContent ? undefined : ["100%"]))
+      }
       stackBehavior={stackBehavior}
+      animatedPosition={animatedPosition}
       onDismiss={onDismiss}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
-      enableDynamicSizing={!snapPoints && sizeToContent}
-      // キーボード対応（prop の説明参照）。
-      // 前提: シート内の入力は必ず BottomSheetTextInput を使うこと（素の
-      // TextInput だと「どの入力にフォーカスしたか」がシートに伝わらず、
-      // キーボードイベントが処理待ちのまま放置される＝持ち上げ/縮小自体が
-      // 動かない）。
+      enableDynamicSizing={!isExtend && !snapPoints && sizeToContent}
+      // キーボード対応（prop の説明参照）。入力部品の使い分けが重要:
+      // - interactive のシート: 入力は BottomSheetTextInput（フォーカスが
+      //   シートに伝わって初めて gorhom の持ち上げが動く）
+      // - extend のシート: 入力は素の TextInput にする。BottomSheetTextInput
+      //   だと gorhom が表示域をキーボード上端まで縮め、その ScrollView の
+      //   リサイズに反応した UIKit が「キャレットを見せよう」と中身を勝手に
+      //   スクロール＝中身だけ飛んで真っ白/真っ黒になる（実測で特定）。
+      //   素の TextInput なら gorhom はキーボードに完全無反応で、動くのは
+      //   KeyboardMinimalLift（シートの平行移動）だけ＝中身は誰にも
+      //   触られない
       keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior="restore"
       // 背景は薄暗く（モーダル・scrim）＋ドラッグで閉じ・背景タップで閉じ
@@ -170,6 +232,9 @@ export const FormSheet = forwardRef<
         // （受信箱だけ条件分岐で有効にしていたところ、そこだけラバーバンドが
         // 残る＝画面によって手触りが違う、という実機報告を受けて統一）。
         alwaysBounceVertical={false}
+        onContentSizeChange={(_w: number, h: number) => {
+          if (isExtend) setContentH(h);
+        }}
         refreshControl={refreshControl}
         contentContainerStyle={[
           styles.content,
@@ -178,79 +243,12 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
-        {keyboardBehavior === "extend" && (
-          <KeyboardMinimalLift
-            topFloor={insets.top + NAV_BAR_HEIGHT}
-            scrollToEnd={scrollToEnd}
-          />
-        )}
-        {/* eslint-disable-next-line react-hooks/refs -- dismiss/scrollToEnd は
-            押下時に初めて ref を読む遅延コールバック（render 中は読まない） */}
+        { }
         {children(dismiss, scrollToEnd)}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
 });
-
-// keyboardBehavior="extend" のシート用の部分リフト。原則は「シートだけを
-// 動かし、中身には触らない」（シート移動と中身スクロールの二重適用が
-// 「中身がシートからはみ出して真っ黒」の原因だった）:
-//
-// 1. キーボードが出たらフォーカス中の入力を実測し、キーボードに被る分
-//    「だけ」シートを持ち上げる（中身はシートについてくる）
-// 2. 持ち上げは「必要量」と「上げられる残量（ヘッダー帯まで）」の小さい方。
-//    背の高いフォームでは物理的に持ち上げきれない（シート高＋キーボードが
-//    画面を超える）ので、その不足分だけ持ち上げ完了後に一度だけ末尾へ
-//    スクロールする
-// 3. 過去の暴走（全画面まで持ち上がる）対策として、キーボードが閉じるまで
-//    一度しか発火しないガードを持つ
-function KeyboardMinimalLift({
-  topFloor,
-  scrollToEnd,
-}: {
-  // これ以上シート上端を上げない床（ヘッダー帯の下端）。
-  topFloor: number;
-  scrollToEnd: (animated?: boolean) => void;
-}) {
-  const { animatedPosition, snapToPosition, snapToIndex } = useBottomSheet();
-  const { height: windowHeight } = useWindowDimensions();
-  // キーボード1回の表示につき1回だけ動く（再発火ラチェット防止）。
-  const handledRef = useRef(false);
-
-  useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", (e) => {
-      if (handledRef.current) return;
-      handledRef.current = true;
-      const focused = TextInput.State.currentlyFocusedInput();
-      if (!focused) return;
-      focused.measureInWindow((_x, y, _w, h) => {
-        const keyboardTop = e.endCoordinates.screenY;
-        const overlap = y + h + 24 - keyboardTop;
-        if (overlap <= 0) return;
-        const position = animatedPosition.value; // シート上端（コンテナ上端から）
-        const lift = Math.min(overlap, Math.max(0, position - topFloor));
-        if (lift > 0) {
-          snapToPosition(windowHeight - position + lift);
-        }
-        // 持ち上げきれない分（背の高いフォームのみ）はシート内スクロールで
-        // 補う。リフトのアニメが落ち着いてから一度だけ。
-        if (overlap - lift > 4) {
-          setTimeout(() => scrollToEnd(), 300);
-        }
-      });
-    });
-    const hide = Keyboard.addListener("keyboardDidHide", () => {
-      handledRef.current = false;
-      snapToIndex(0); // 元の高さ（唯一のデテント）へ戻す
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [animatedPosition, snapToPosition, snapToIndex, windowHeight, topFloor, scrollToEnd]);
-
-  return null;
-}
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 24 },

@@ -1,6 +1,12 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useTranslations } from "use-intl";
 
 import {
@@ -140,7 +146,7 @@ export function PlaceForm({
         // autoFocus は付けない — シートの出現とキーボードの持ち上げが同時に
         // 走って表示が飛ぶ＋ピンタップ編集と開き方が揃わないため（実機
         // フィードバック）。名前を入れる時にユーザーがタップする。
-        <BottomSheetTextInput
+        <TextInput
           value={pinName}
           onChangeText={setPinName}
           placeholder={t("name")}
@@ -195,7 +201,7 @@ export function PlaceForm({
       </View>
 
       {/* メモ */}
-      <BottomSheetTextInput
+      <TextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}
