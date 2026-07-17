@@ -724,6 +724,10 @@ export default function PlacesTab() {
         ref={formRef}
         sizeToContent
         backdropOpacity={0}
+        // キーボードでシート全体を持ち上げない（持ち上げると背景の地図＝
+        // どのピンの話かの文脈が丸ごと隠れて本末転倒）。シート位置は保ち、
+        // フォーカス中の入力だけ FormSheet の自前スクロールで見せる。
+        keyboardBehavior="extend"
         // 閉じたら（保存・スワイプ閉じとも）地図上の一時表示を全部解除する:
         // 候補ピンの選択ハイライト・編集中の赤ピン・長押しの仮ピン。
         onDismiss={() => {

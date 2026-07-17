@@ -4,16 +4,24 @@ import {
   BottomSheetScrollView,
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
+  type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   type ReactElement,
   type ReactNode,
 } from "react";
-import { StyleSheet, type RefreshControlProps } from "react-native";
+import {
+  findNodeHandle,
+  Keyboard,
+  StyleSheet,
+  TextInput,
+  type RefreshControlProps,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/lib/theme";
@@ -59,6 +67,13 @@ export const FormSheet = forwardRef<
     // 閉じずそのまま裏に残し、このシートを上に重ねる。閉じれば裏のシートが
     // そのまま見える＝Discord 等のモーダルスタックと同じ）を渡す。
     stackBehavior?: BottomSheetModalProps["stackBehavior"];
+    // キーボード表示時のシートの動き。既定 "interactive" = シート全体を
+    // キーボードの高さぶん持ち上げる（背景の文脈が要らない管理系シート向け。
+    // 全項目が見えるのが正義）。"extend" = シート位置は動かさず、キーボードに
+    // 重なる分だけ表示域を縮める＋下の自前スクロールでフォーカス入力だけを
+    // 必要な分見せる（地図の場所フォームなど、背景を見せ続けたいシート向け。
+    // 全体持ち上げだと背景が丸ごと隠れて本末転倒になる）。
+    keyboardBehavior?: "interactive" | "extend";
     children: (dismiss: () => void) => ReactNode;
   }
 >(function FormSheet(
@@ -69,14 +84,36 @@ export const FormSheet = forwardRef<
     refreshControl,
     backdropOpacity = 0.75,
     stackBehavior,
+    keyboardBehavior = "interactive",
     children,
   },
   ref,
 ) {
   const modalRef = useRef<BottomSheetModal>(null);
+  const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
+
+  // キーボードが出たら、フォーカス中の入力をキーボード上端の少し上まで
+  // 「必要な分だけ」スクロールして見せる（iOS 標準の最小限の移動）。
+  // interactive ではシートごと持ち上がるので大抵は不要だが無害、extend では
+  // これが無いとシート下方の入力がキーボードに隠れたままになる。
+  useEffect(() => {
+    const sub = Keyboard.addListener("keyboardDidShow", () => {
+      const focused = TextInput.State.currentlyFocusedInput();
+      // New Architecture の型（ReactNativeElement）が findNodeHandle の型定義に
+      // まだ入っていないためのキャスト（実行時は受け付ける）。
+      const node = focused
+        ? findNodeHandle(focused as unknown as Parameters<typeof findNodeHandle>[0])
+        : null;
+      const responder = scrollRef.current?.getScrollResponder();
+      if (node && responder?.scrollResponderScrollNativeHandleToKeyboard) {
+        responder.scrollResponderScrollNativeHandleToKeyboard(node, 24, true);
+      }
+    });
+    return () => sub.remove();
+  }, []);
 
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
@@ -117,17 +154,12 @@ export const FormSheet = forwardRef<
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
       enableDynamicSizing={!snapPoints && sizeToContent}
-      // キーボード対応。"interactive" = キーボード表示時にシート全体を
-      // キーボードの高さぶん持ち上げる（Apple の Reminders 等と同じ挙動）。
-      // 短いフォーム（フィードバック・カテゴリ管理・設定等）はシートごと
-      // キーボードの上に乗るので、下部の入力も隠れない。以前の "extend" は
-      // シート位置を動かさず中身の表示領域だけ縮めるため、短いシートで
-      // 下部の入力がキーボードに隠れたままになっていた（実機で頻発）。
+      // キーボード対応（prop の説明参照）。
       // 前提: シート内の入力は必ず BottomSheetTextInput を使うこと（素の
       // TextInput だと「どの入力にフォーカスしたか」がシートに伝わらず、
-      // キーボードイベントが処理待ちのまま放置される＝この持ち上げ自体が
+      // キーボードイベントが処理待ちのまま放置される＝持ち上げ/縮小自体が
       // 動かない）。
-      keyboardBehavior="interactive"
+      keyboardBehavior={keyboardBehavior}
       keyboardBlurBehavior="restore"
       // 背景は薄暗く（モーダル・scrim）＋ドラッグで閉じ・背景タップで閉じ
       // （pressBehavior 既定 "close"）。上に元画面が薄暗く透けて残る。
@@ -136,6 +168,7 @@ export const FormSheet = forwardRef<
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView
+        ref={scrollRef}
         // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
         // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動。
         // シートが持ち上がりきれない大きいシートでの保険）。

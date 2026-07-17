@@ -489,14 +489,17 @@ export function ExpenseForm({
         />
       )}
       {openPicker === "time" && showTime && (
-        <DateTimePicker
-          value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
-          mode="time"
-          display="spinner"
-          onChange={(_, d) => {
-            if (d) setPaidAtTime(formatLocalTime(d));
-          }}
-        />
+        // ホイールも inline カレンダーと同じく中央揃え（固有幅を持つため）。
+        <View style={styles.timeSpinnerWrap}>
+          <DateTimePicker
+            value={new Date(`${paidAtDate}T${paidAtTime}:00`)}
+            mode="time"
+            display="spinner"
+            onChange={(_, d) => {
+              if (d) setPaidAtTime(formatLocalTime(d));
+            }}
+          />
+        </View>
       )}
 
       {/* 乗継日の TZ 選択（時刻指定時のみ・web と同じ契約）。セグメント＋
@@ -826,6 +829,7 @@ const makeStyles = (t: Theme) =>
     },
     pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
     pickerList: { padding: 16, paddingTop: 4 },
+    timeSpinnerWrap: { alignItems: "center" },
     pickerRow: {
       flexDirection: "row",
       alignItems: "center",

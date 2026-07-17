@@ -137,6 +137,9 @@ export function PlaceForm({
     <View style={styles.content}>
       {pinDraft ? (
         // 仮ピン: 名前を自由入力（ラベル無し・placeholder＝フィールド名）。
+        // autoFocus は付けない — シートの出現とキーボードの持ち上げが同時に
+        // 走って表示が飛ぶ＋ピンタップ編集と開き方が揃わないため（実機
+        // フィードバック）。名前を入れる時にユーザーがタップする。
         <BottomSheetTextInput
           value={pinName}
           onChangeText={setPinName}
@@ -144,7 +147,6 @@ export function PlaceForm({
           accessibilityLabel={t("name")}
           placeholderTextColor={theme.subtleForeground}
           style={[styles.input, styles.nameInput]}
-          autoFocus
         />
       ) : (
         <Text style={styles.name}>{name || t("unknownName")}</Text>
