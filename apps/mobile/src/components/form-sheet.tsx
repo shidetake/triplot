@@ -2,9 +2,9 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
+  useBottomSheet,
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
-  type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
 import {
   forwardRef,
@@ -16,10 +16,10 @@ import {
   type ReactNode,
 } from "react";
 import {
-  findNodeHandle,
   Keyboard,
   StyleSheet,
   TextInput,
+  useWindowDimensions,
   type RefreshControlProps,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -90,30 +90,9 @@ export const FormSheet = forwardRef<
   ref,
 ) {
   const modalRef = useRef<BottomSheetModal>(null);
-  const scrollRef = useRef<BottomSheetScrollViewMethods>(null);
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
-
-  // キーボードが出たら、フォーカス中の入力をキーボード上端の少し上まで
-  // 「必要な分だけ」スクロールして見せる（iOS 標準の最小限の移動）。
-  // interactive ではシートごと持ち上がるので大抵は不要だが無害、extend では
-  // これが無いとシート下方の入力がキーボードに隠れたままになる。
-  useEffect(() => {
-    const sub = Keyboard.addListener("keyboardDidShow", () => {
-      const focused = TextInput.State.currentlyFocusedInput();
-      // New Architecture の型（ReactNativeElement）が findNodeHandle の型定義に
-      // まだ入っていないためのキャスト（実行時は受け付ける）。
-      const node = focused
-        ? findNodeHandle(focused as unknown as Parameters<typeof findNodeHandle>[0])
-        : null;
-      const responder = scrollRef.current?.getScrollResponder();
-      if (node && responder?.scrollResponderScrollNativeHandleToKeyboard) {
-        responder.scrollResponderScrollNativeHandleToKeyboard(node, 24, true);
-      }
-    });
-    return () => sub.remove();
-  }, []);
 
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
@@ -168,7 +147,6 @@ export const FormSheet = forwardRef<
       handleIndicatorStyle={{ backgroundColor: t.fgAlpha(0.2) }}
     >
       <BottomSheetScrollView
-        ref={scrollRef}
         // キーボード表示時に下インセットを足し、フォーカス中の入力（とその直下の
         // サジェスト）がキーボードに隠れないようスクロール可能にする（iOS 標準挙動。
         // シートが持ち上がりきれない大きいシートでの保険）。
@@ -189,11 +167,49 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
+        {keyboardBehavior === "extend" && <KeyboardMinimalLift />}
+        {/* eslint-disable-next-line react-hooks/refs -- dismiss は押下時に
+            初めて ref を読む遅延コールバック（render 中に .current を読まない） */}
         {children(dismiss)}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
 });
+
+// keyboardBehavior="extend" のシート用の部分リフト。キーボードが出たら
+// フォーカス中の入力を実測（measureInWindow）し、キーボードに被っている分
+// 「だけ」シートを持ち上げる（iOS 標準の最小限の移動。全体持ち上げだと背景の
+// 地図が丸ごと隠れ、持ち上げ無しだと下方の入力が隠れる——その両立）。
+// gorhom の公開 API（animatedPosition = コンテナ上端からの距離、
+// snapToPosition = 下端からの高さ指定）だけで実装する。
+function KeyboardMinimalLift() {
+  const { animatedPosition, snapToPosition, snapToIndex } = useBottomSheet();
+  const { height: windowHeight } = useWindowDimensions();
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      const focused = TextInput.State.currentlyFocusedInput();
+      if (!focused) return;
+      focused.measureInWindow((_x, y, _w, h) => {
+        const keyboardTop = e.endCoordinates.screenY;
+        const overlap = y + h + 24 - keyboardTop;
+        if (overlap <= 0) return;
+        const currentHeight = windowHeight - animatedPosition.value;
+        snapToPosition(currentHeight + overlap);
+      });
+    });
+    // キーボードが引っ込んだら元の高さ（唯一のデテント）へ戻す。
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      snapToIndex(0);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [animatedPosition, snapToPosition, snapToIndex, windowHeight]);
+
+  return null;
+}
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
