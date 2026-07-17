@@ -88,6 +88,7 @@ export function EditTripSheet({
   const vMyName = myName ?? me.display_name;
 
   const members = data.members ?? [];
+  const hasExpenses = (data.expensesRaw ?? []).length > 0;
 
   // 旅行情報（タイトル・日程・通貨）に変更がある時だけ保存を有効に
   // （web の「変更がある時だけ保存ボタンを有効」規約）。
@@ -307,7 +308,9 @@ export function EditTripSheet({
           disabled={!isAdmin}
           onPress={() => setCurrencyPickerOpen(true)}
         />
-        {isAdmin && (
+        {/* レート再計算されない注意は「費用があり、かつ通貨を実際に変更した
+            時だけ」出す（web の edit-trip-form と同じ。常時表示はノイズ）。 */}
+        {hasExpenses && vCurrency !== trip.default_currency && (
           <Text style={styles.warn}>{t("tripDetail.rateChangeWarning")}</Text>
         )}
       </View>
@@ -440,9 +443,12 @@ export function EditTripSheet({
         </Pressable>
       </View>
 
-      {/* 旅行削除（admin のみ・最下部） */}
+      {/* 旅行削除（admin のみ・最下部）。破壊的操作の見分けが早くなるよう
+          ゴミ箱アイコンを文字の左に添える（アイコンのみは攻めすぎなので
+          テキスト併記のまま）。 */}
       {isAdmin && (
         <Pressable onPress={confirmDeleteTrip} style={styles.deleteTripButton}>
+          <TrashIcon size={16} color={theme.destructiveText} />
           <Text style={styles.deleteTripLabel}>
             {t("tripActions.deleteTrip")}
           </Text>
@@ -539,8 +545,10 @@ const makeStyles = (t: Theme) =>
     borderRadius: 6,
     borderWidth: 1,
     borderColor: t.destructiveBorder,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     marginTop: 24,
   },
   deleteTripLabel: { fontSize: 13, color: t.destructiveText, fontWeight: "500" },
