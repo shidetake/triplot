@@ -32,7 +32,6 @@ export function PlaceForm({
   editPlace,
   myMemberId,
   onDone,
-  onFocusBottomInput,
 }: {
   tripId: string;
   // 選べるピンアイコンのキー（trip_pin_options 由来）。
@@ -43,10 +42,6 @@ export function PlaceForm({
   editPlace?: PlaceRow;
   myMemberId: string;
   onDone: () => void;
-  // シート下方の入力（メモ）にフォーカスした時に呼ぶ。地図フォームのシートは
-  // キーボードで動かない（extend）ので、呼び出し元がシート内スクロールで
-  // 末尾（メモ＋フッター）を表示域に入れる。
-  onFocusBottomInput?: () => void;
 }) {
   const t = useTranslations("place");
   const theme = useTheme();
@@ -199,9 +194,7 @@ export function PlaceForm({
         <VisibilitySegment value={visibility} onChange={setVisibility} />
       </View>
 
-      {/* メモ。シート下方＝キーボードの表示域シュリンク後に隠れるので、
-          フォーカス時に末尾へスクロールして見せる（キーボード表示と表示域
-          シュリンクのアニメが落ち着いてから）。 */}
+      {/* メモ */}
       <BottomSheetTextInput
         value={note}
         onChangeText={setNote}
@@ -209,7 +202,6 @@ export function PlaceForm({
         accessibilityLabel={t("memo")}
         placeholderTextColor={theme.subtleForeground}
         style={styles.input}
-        onFocus={() => setTimeout(() => onFocusBottomInput?.(), 250)}
       />
 
       {/* フッター */}

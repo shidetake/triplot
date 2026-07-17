@@ -776,7 +776,7 @@ export default function PlacesTab() {
           setPinDraft(null);
         }}
       >
-        {(dismiss, scrollToEnd) => (
+        {(dismiss) => (
           <PlaceForm
             tripId={tripId}
             pinKeys={pinKeys}
@@ -784,7 +784,6 @@ export default function PlacesTab() {
             pinDraft={pinDraft ?? undefined}
             editPlace={editing ?? undefined}
             myMemberId={me.id}
-            onFocusBottomInput={scrollToEnd}
             onDone={() => {
               dismiss();
               setCandidates([]);

@@ -2,6 +2,7 @@ import {
   BottomSheetBackdrop,
   BottomSheetModal,
   BottomSheetScrollView,
+  useBottomSheet,
   type BottomSheetBackdropProps,
   type BottomSheetModalProps,
   type BottomSheetScrollViewMethods,
@@ -9,12 +10,19 @@ import {
 import {
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   type ReactElement,
   type ReactNode,
 } from "react";
-import { StyleSheet, type RefreshControlProps } from "react-native";
+import {
+  Keyboard,
+  StyleSheet,
+  TextInput,
+  useWindowDimensions,
+  type RefreshControlProps,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/lib/theme";
@@ -62,15 +70,10 @@ export const FormSheet = forwardRef<
     stackBehavior?: BottomSheetModalProps["stackBehavior"];
     // キーボード表示時のシートの動き。既定 "interactive" = シート全体を
     // キーボードの高さぶん持ち上げる（背景の文脈が要らない管理系シート向け。
-    // 全項目が見えるのが正義）。"extend" = シート位置は動かさず、キーボードに
-    // 重なる分だけ表示域を縮める（地図の場所フォームなど、背景を見せ続けたい
-    // シート向け。全体持ち上げだと背景が丸ごと隠れて本末転倒になる）。
-    // extend でシート下方の入力を使うフォームは、その入力の onFocus で
-    // 第2引数の scrollToEnd を呼んで表示域内に入れること。
-    // 注: 「被り分だけシートを持ち上げる」自前の部分リフトは過去に2度失敗
-    // （snapToPosition でシートが動く→キーボードフレーム再通知→再計測→
-    // さらに持ち上げのラチェットで全画面まで暴走）。再挑戦するなら再発火の
-    // 抑止（in-flight ガード＋座標の不変チェック）が必須。
+    // 全項目が見えるのが正義）。"extend" = KeyboardMinimalLift による部分
+    // リフト＝フォーカス入力がキーボードに被る分「だけ」シートを持ち上げ、
+    // 中身には触らない（地図の場所フォームなど、背景を見せ続けたいシート
+    // 向け。全体持ち上げだと背景が丸ごと隠れて本末転倒になる）。
     keyboardBehavior?: "interactive" | "extend";
     children: (
       dismiss: () => void,
@@ -175,11 +178,79 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
+        {keyboardBehavior === "extend" && (
+          <KeyboardMinimalLift
+            topFloor={insets.top + NAV_BAR_HEIGHT}
+            scrollToEnd={scrollToEnd}
+          />
+        )}
+        {/* eslint-disable-next-line react-hooks/refs -- dismiss/scrollToEnd は
+            押下時に初めて ref を読む遅延コールバック（render 中は読まない） */}
         {children(dismiss, scrollToEnd)}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
 });
+
+// keyboardBehavior="extend" のシート用の部分リフト。原則は「シートだけを
+// 動かし、中身には触らない」（シート移動と中身スクロールの二重適用が
+// 「中身がシートからはみ出して真っ黒」の原因だった）:
+//
+// 1. キーボードが出たらフォーカス中の入力を実測し、キーボードに被る分
+//    「だけ」シートを持ち上げる（中身はシートについてくる）
+// 2. 持ち上げは「必要量」と「上げられる残量（ヘッダー帯まで）」の小さい方。
+//    背の高いフォームでは物理的に持ち上げきれない（シート高＋キーボードが
+//    画面を超える）ので、その不足分だけ持ち上げ完了後に一度だけ末尾へ
+//    スクロールする
+// 3. 過去の暴走（全画面まで持ち上がる）対策として、キーボードが閉じるまで
+//    一度しか発火しないガードを持つ
+function KeyboardMinimalLift({
+  topFloor,
+  scrollToEnd,
+}: {
+  // これ以上シート上端を上げない床（ヘッダー帯の下端）。
+  topFloor: number;
+  scrollToEnd: (animated?: boolean) => void;
+}) {
+  const { animatedPosition, snapToPosition, snapToIndex } = useBottomSheet();
+  const { height: windowHeight } = useWindowDimensions();
+  // キーボード1回の表示につき1回だけ動く（再発火ラチェット防止）。
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", (e) => {
+      if (handledRef.current) return;
+      handledRef.current = true;
+      const focused = TextInput.State.currentlyFocusedInput();
+      if (!focused) return;
+      focused.measureInWindow((_x, y, _w, h) => {
+        const keyboardTop = e.endCoordinates.screenY;
+        const overlap = y + h + 24 - keyboardTop;
+        if (overlap <= 0) return;
+        const position = animatedPosition.value; // シート上端（コンテナ上端から）
+        const lift = Math.min(overlap, Math.max(0, position - topFloor));
+        if (lift > 0) {
+          snapToPosition(windowHeight - position + lift);
+        }
+        // 持ち上げきれない分（背の高いフォームのみ）はシート内スクロールで
+        // 補う。リフトのアニメが落ち着いてから一度だけ。
+        if (overlap - lift > 4) {
+          setTimeout(() => scrollToEnd(), 300);
+        }
+      });
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      handledRef.current = false;
+      snapToIndex(0); // 元の高さ（唯一のデテント）へ戻す
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [animatedPosition, snapToPosition, snapToIndex, windowHeight, topFloor, scrollToEnd]);
+
+  return null;
+}
 
 const styles = StyleSheet.create({
   content: { paddingBottom: 24 },
