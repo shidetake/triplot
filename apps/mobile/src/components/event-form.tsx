@@ -186,6 +186,41 @@ export function EventForm({
     }
   };
 
+  // 通常予定: 開始を動かすと長さ（日付込み）を保って終了が追従する（web の
+  // moveStart と同じ）。TZ の再解決は日付が実際に変わったときだけ — 時刻だけの
+  // 調整で毎回呼び直すと、乗継日で手動選択した側が黙って既定に巻き戻るため。
+  const moveStart = (d: Date) => {
+    const nd = fmtDate(d);
+    const nt = fmtTime(d);
+    const dur = Math.max(
+      Date.parse(`${endDate}T${endTime}:00`) -
+        Date.parse(`${startDate}T${startTime}:00`),
+      3_600_000,
+    );
+    if (nd !== startDate) {
+      onStartDateChange(nd);
+    }
+    setStartTime(nt);
+    const ne = new Date(Date.parse(`${nd}T${nt}:00`) + dur);
+    setEndDate(fmtDate(ne));
+    setEndTime(fmtTime(ne));
+  };
+
+  // 通常予定の終了ガード: 終了 ≤ 開始になったら開始+1時間に snap（web と同じ）。
+  const setEndGuarded = (d: Date) => {
+    const sMs = Date.parse(`${startDate}T${startTime}:00`);
+    const e = d.getTime() <= sMs ? new Date(sMs + 3_600_000) : d;
+    setEndDate(fmtDate(e));
+    setEndTime(fmtTime(e));
+  };
+
+  // 終日の開始ガード: 開始を終了より後にしたら単日扱いで終了も揃える（web と
+  // 同じ。終了側は minimumDate で開始以前を選べないため逆方向のみケア）。
+  const moveAlldayStart = (nd: string) => {
+    onStartDateChange(nd);
+    if (nd > endDate) setEndDate(nd);
+  };
+
   // 参加者（全員 / 一部）。
   const initCustom = isEdit && (editEvent?.participantMemberIds.length ?? 0) > 0;
   const [partMode, setPartMode] = useState<"all" | "custom">(
@@ -340,16 +375,15 @@ export function EventForm({
         style={styles.input}
       />
 
-      {/* 日時: 「ラベル左・チップ右」の2行＋タップで直下に inline ネイティブ
-          ピッカー（TripIt / Apple カレンダーと同方式）。通常/時差移動は
-          日時一体チップ（"2026/4/28 09:00"）で、終了側は短縮表記（同日なら
-          時刻のみ・日跨ぎは "+n日"）。終日は日付チップのみで、日付タップ＝
-          確定として自動で閉じる。 */}
+      {/* 日時: web と同じ「開始 – 終了」の1行（開始＝日付＋時刻、終了＝時刻
+          のみ・日跨ぎは "+n日"。終日は日付のみ）。チップタップで直下に inline
+          ネイティブピッカー（TripIt / Apple カレンダーと同方式）。終日は
+          日付タップ＝確定として自動で閉じる。 */}
       <View style={styles.dtGroup}>
-        <View style={styles.dtRow}>
-          <Text style={[styles.label, styles.dtRowLabel]}>
-            {isTransit ? t("depart") : t("start")}
-          </Text>
+        <Text style={styles.label}>
+          {kind === "allday" ? t("date") : t("dateTime")}
+        </Text>
+        <View style={styles.dtChipsRow}>
           <PickerChip
             text={
               kind === "allday"
@@ -361,25 +395,7 @@ export function EventForm({
               setOpenPicker((p) => (p === "start" ? null : "start"))
             }
           />
-        </View>
-        {openPicker === "start" && (
-          <InlineNativePicker
-            value={new Date(`${startDate}T${kind === "allday" ? "12:00" : startTime}:00`)}
-            mode={kind === "allday" ? "date" : "datetime"}
-            onChange={(d) => {
-              onStartDateChange(fmtDate(d));
-              if (kind === "allday") {
-                setOpenPicker(null); // 日付タップ＝確定で閉じる
-              } else {
-                setStartTime(fmtTime(d));
-              }
-            }}
-          />
-        )}
-        <View style={styles.dtRow}>
-          <Text style={[styles.label, styles.dtRowLabel]}>
-            {isTransit ? t("arrive") : t("end")}
-          </Text>
+          <Text style={styles.dtSep}>–</Text>
           <PickerChip
             text={
               kind === "allday"
@@ -390,16 +406,42 @@ export function EventForm({
             onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
           />
         </View>
+        {openPicker === "start" && (
+          <InlineNativePicker
+            value={new Date(`${startDate}T${kind === "allday" ? "12:00" : startTime}:00`)}
+            mode={kind === "allday" ? "date" : "datetime"}
+            onChange={(d) => {
+              if (kind === "allday") {
+                moveAlldayStart(fmtDate(d));
+                setOpenPicker(null); // 日付タップ＝確定で閉じる
+              } else if (kind === "transit") {
+                // 時差移動は出発/到着が別TZ＝長さの追従はしない（web と同じ）。
+                onStartDateChange(fmtDate(d));
+                setStartTime(fmtTime(d));
+              } else {
+                moveStart(d);
+              }
+            }}
+          />
+        )}
         {openPicker === "end" && (
           <InlineNativePicker
             value={new Date(`${endDate}T${kind === "allday" ? "12:00" : endTime}:00`)}
             mode={kind === "allday" ? "date" : "datetime"}
+            minimumDate={
+              kind === "allday"
+                ? new Date(`${startDate}T12:00:00`)
+                : undefined
+            }
             onChange={(d) => {
-              setEndDate(fmtDate(d));
               if (kind === "allday") {
+                setEndDate(fmtDate(d));
                 setOpenPicker(null);
-              } else {
+              } else if (kind === "transit") {
+                setEndDate(fmtDate(d));
                 setEndTime(fmtTime(d));
+              } else {
+                setEndGuarded(d);
               }
             }}
           />
@@ -602,18 +644,13 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
-    // 日時の「ラベル左・チップ右」行（iOS カレンダー方式）。
-    dtGroup: { gap: 10 },
+    // 日時ブロック（ラベル行＋「開始 – 終了」チップ1行。web と同形）。
+    dtGroup: {},
+    dtChipsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
     tzRow: { flexDirection: "row", gap: 8 },
     tzCol: { flex: 1, minWidth: 0 },
-    dtRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-    },
-    // label の marginBottom は上置き用なので、横並び行では打ち消す。
-    dtRowLabel: { marginBottom: 0 },
     // TZ曖昧解決のラジオは横並び（web と同じ。縦積みだと4行で場所を食う）。
     tzOptions: {
       marginTop: 6,

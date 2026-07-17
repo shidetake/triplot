@@ -215,7 +215,10 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
               const v = fmtDate(d);
               setStartDate(v);
               if (endDate < v) setEndDate(v);
-              setOpenPicker(null);
+              // 作成時は開始も終了も必ず選ぶので、開始を選んだらそのまま
+              // 終了の選択へ進める（Airbnb 等の範囲カレンダーの
+              // 「1タップ目=開始、2タップ目=終了」と同じ体験）。
+              setOpenPicker("end");
             }}
           />
         )}
