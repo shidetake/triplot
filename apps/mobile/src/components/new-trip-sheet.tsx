@@ -207,29 +207,33 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
             onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
           />
         </View>
-        {openPicker === "start" && (
+        {/* 開始/終了でピッカーを1つ共有（出し分けると切替時にちらつくため）。 */}
+        {openPicker != null && (
           <InlineNativePicker
-            value={new Date(`${startDate}T12:00:00`)}
+            value={
+              openPicker === "start"
+                ? new Date(`${startDate}T12:00:00`)
+                : new Date(`${endDate}T12:00:00`)
+            }
             mode="date"
+            minimumDate={
+              openPicker === "end"
+                ? new Date(`${startDate}T12:00:00`)
+                : undefined
+            }
             onChange={(d) => {
-              const v = fmtDate(d);
-              setStartDate(v);
-              if (endDate < v) setEndDate(v);
-              // 作成時は開始も終了も必ず選ぶので、開始を選んだらそのまま
-              // 終了の選択へ進める（Airbnb 等の範囲カレンダーの
-              // 「1タップ目=開始、2タップ目=終了」と同じ体験）。
-              setOpenPicker("end");
-            }}
-          />
-        )}
-        {openPicker === "end" && (
-          <InlineNativePicker
-            value={new Date(`${endDate}T12:00:00`)}
-            mode="date"
-            minimumDate={new Date(`${startDate}T12:00:00`)}
-            onChange={(d) => {
-              setEndDate(fmtDate(d));
-              setOpenPicker(null);
+              if (openPicker === "start") {
+                const v = fmtDate(d);
+                setStartDate(v);
+                if (endDate < v) setEndDate(v);
+                // 作成時は開始も終了も必ず選ぶので、開始を選んだらそのまま
+                // 終了の選択へ進める（Airbnb 等の範囲カレンダーの
+                // 「1タップ目=開始、2タップ目=終了」と同じ体験）。
+                setOpenPicker("end");
+              } else {
+                setEndDate(fmtDate(d));
+                setOpenPicker(null);
+              }
             }}
           />
         )}

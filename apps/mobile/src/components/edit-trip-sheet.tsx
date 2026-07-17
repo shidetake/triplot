@@ -275,23 +275,26 @@ export function EditTripSheet({
             onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
           />
         </View>
-        {openPicker === "start" && (
+        {/* 開始/終了でピッカーを1つ共有（出し分けると切替時にちらつくため）。 */}
+        {openPicker != null && (
           <InlineNativePicker
-            value={new Date(`${vStart}T12:00:00`)}
+            value={
+              openPicker === "start"
+                ? new Date(`${vStart}T12:00:00`)
+                : new Date(`${vEnd}T12:00:00`)
+            }
             mode="date"
+            minimumDate={
+              openPicker === "end"
+                ? new Date(`${vStart}T12:00:00`)
+                : undefined
+            }
             onChange={(d) => {
-              setStartDate(fmtDate(d));
-              setOpenPicker(null);
-            }}
-          />
-        )}
-        {openPicker === "end" && (
-          <InlineNativePicker
-            value={new Date(`${vEnd}T12:00:00`)}
-            mode="date"
-            minimumDate={new Date(`${vStart}T12:00:00`)}
-            onChange={(d) => {
-              setEndDate(fmtDate(d));
+              if (openPicker === "start") {
+                setStartDate(fmtDate(d));
+              } else {
+                setEndDate(fmtDate(d));
+              }
               setOpenPicker(null);
             }}
           />

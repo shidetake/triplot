@@ -406,42 +406,43 @@ export function EventForm({
             onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
           />
         </View>
-        {openPicker === "start" && (
+        {/* 開始/終了でピッカーを1つ共有（出し分けると切替時にネイティブ
+            ピッカーが作り直されて一瞬ちらつくため。datetime-field の注意書き）。 */}
+        {openPicker != null && (
           <InlineNativePicker
-            value={new Date(`${startDate}T${kind === "allday" ? "12:00" : startTime}:00`)}
-            mode={kind === "allday" ? "date" : "datetime"}
-            onChange={(d) => {
-              if (kind === "allday") {
-                moveAlldayStart(fmtDate(d));
-                setOpenPicker(null); // 日付タップ＝確定で閉じる
-              } else if (kind === "transit") {
-                // 時差移動は出発/到着が別TZ＝長さの追従はしない（web と同じ）。
-                onStartDateChange(fmtDate(d));
-                setStartTime(fmtTime(d));
-              } else {
-                moveStart(d);
-              }
-            }}
-          />
-        )}
-        {openPicker === "end" && (
-          <InlineNativePicker
-            value={new Date(`${endDate}T${kind === "allday" ? "12:00" : endTime}:00`)}
+            value={
+              openPicker === "start"
+                ? new Date(`${startDate}T${kind === "allday" ? "12:00" : startTime}:00`)
+                : new Date(`${endDate}T${kind === "allday" ? "12:00" : endTime}:00`)
+            }
             mode={kind === "allday" ? "date" : "datetime"}
             minimumDate={
-              kind === "allday"
+              openPicker === "end" && kind === "allday"
                 ? new Date(`${startDate}T12:00:00`)
                 : undefined
             }
             onChange={(d) => {
-              if (kind === "allday") {
-                setEndDate(fmtDate(d));
-                setOpenPicker(null);
-              } else if (kind === "transit") {
-                setEndDate(fmtDate(d));
-                setEndTime(fmtTime(d));
+              if (openPicker === "start") {
+                if (kind === "allday") {
+                  moveAlldayStart(fmtDate(d));
+                  setOpenPicker(null); // 日付タップ＝確定で閉じる
+                } else if (kind === "transit") {
+                  // 時差移動は出発/到着が別TZ＝長さの追従はしない（web と同じ）。
+                  onStartDateChange(fmtDate(d));
+                  setStartTime(fmtTime(d));
+                } else {
+                  moveStart(d);
+                }
               } else {
-                setEndGuarded(d);
+                if (kind === "allday") {
+                  setEndDate(fmtDate(d));
+                  setOpenPicker(null);
+                } else if (kind === "transit") {
+                  setEndDate(fmtDate(d));
+                  setEndTime(fmtTime(d));
+                } else {
+                  setEndGuarded(d);
+                }
               }
             }}
           />

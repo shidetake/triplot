@@ -45,6 +45,11 @@ export function PickerChip({
   );
 }
 
+// 注意: 開始/終了のような対で使うときは、2つを条件レンダーで出し分けず
+// 「1つだけ描画して value/onChange を切り替える」こと。出し分けると切替の
+// たびにネイティブピッカーが作り直されて一瞬ちらつく（実機フィードバック）。
+// 同じ位置の同じ要素なら React は props 更新だけで済み、ネイティブ側は
+// 日付の差し替えだけになる。
 export function InlineNativePicker({
   value,
   mode,
@@ -57,7 +62,9 @@ export function InlineNativePicker({
   minimumDate?: Date;
 }) {
   return (
-    <View>
+    // inline ピッカーは固有幅を持つので中央に寄せる（左寄りだとシート内で
+    // バランスが悪い、という実機フィードバック）。
+    <View style={{ alignItems: "center" }}>
       <DateTimePicker
         value={value}
         mode={mode}
