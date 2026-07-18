@@ -21,6 +21,7 @@ import { boundsOf, centroid, TOKYO } from "@triplot/shared/placeMap";
 import {
   getIconLabel,
   iconKeyForGoogleType,
+  type PinOption,
 } from "@triplot/shared/placeIcons";
 import {
   estimateLabelBox,
@@ -174,7 +175,7 @@ export default function PlacesTab() {
 
   if (!data?.trip || !me) return null;
 
-  const pinKeys = (data.pinOptionsRaw ?? []).map((p) => p.icon);
+  const pinOptions = (data.pinOptionsRaw ?? []) as PinOption[];
   // 未確定ピンの色 = 作成者のメンバー hue（web の place-map と同じ）。
   const memberHueById = new Map(
     (data.members ?? []).map((m) => [m.id, m.color]),
@@ -790,11 +791,12 @@ export default function PlacesTab() {
         {(dismiss) => (
           <PlaceForm
             tripId={tripId}
-            pinKeys={pinKeys}
+            pinOptions={pinOptions}
             candidate={selectedCandidate ?? undefined}
             pinDraft={pinDraft ?? undefined}
             editPlace={editing ?? undefined}
             myMemberId={me.id}
+            invalidate={invalidate}
             onDone={() => {
               dismiss();
               setCandidates([]);

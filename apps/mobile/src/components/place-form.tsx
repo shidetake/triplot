@@ -14,13 +14,14 @@ import {
   deletePlace,
   updatePlace,
 } from "@triplot/shared/data/places";
-import { getIconPath } from "@triplot/shared/placeIcons";
+import { getIconPath, type PinOption } from "@triplot/shared/placeIcons";
 import type { PlaceCandidate } from "@triplot/shared/placesSearch";
 import { candidateToCreatePlace } from "@triplot/shared/placesSearch";
 import type { PlaceRow } from "@triplot/shared/tripDerive";
 import type { Visibility } from "@triplot/shared/types/database";
 
 import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
+import { PlaceIconPicker } from "./place-icon-picker";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -32,21 +33,24 @@ import Svg, { Path } from "react-native-svg";
 // shared の createPlace/updatePlace/deletePlace を呼ぶ。
 export function PlaceForm({
   tripId,
-  pinKeys,
+  pinOptions,
   candidate,
   pinDraft,
   editPlace,
   myMemberId,
+  invalidate,
   onDone,
 }: {
   tripId: string;
-  // 選べるピンアイコンのキー（trip_pin_options 由来）。
-  pinKeys: string[];
+  // 選べるピン（trip_pin_options 由来。sort_order 昇順）。追加/削除は下の「＋」。
+  pinOptions: PinOption[];
   candidate?: PlaceCandidate;
   // 地図長押しで置いた仮ピンの座標（web の draft ピンと同じ）。
   pinDraft?: { lat: number; lng: number };
   editPlace?: PlaceRow;
   myMemberId: string;
+  // ピン追加/削除後に trip を再取得する（pinOptions を更新）。
+  invalidate: () => void | Promise<void>;
   onDone: () => void;
 }) {
   const t = useTranslations("place");
@@ -57,7 +61,13 @@ export function PlaceForm({
   // 仮ピンは名前を自由入力（web の「ピンを設定」と同じ）。
   const [pinName, setPinName] = useState("");
 
-  const [icon, setIcon] = useState(editPlace?.icon ?? pinKeys[0] ?? "pin");
+  const sortedPins = [...pinOptions].sort(
+    (a, b) => a.sort_order - b.sort_order,
+  );
+  const [icon, setIcon] = useState(
+    editPlace?.icon ?? sortedPins[0]?.icon ?? "pin",
+  );
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [tentative, setTentative] = useState(editPlace?.tentative ?? false);
   const [visibility, setVisibility] = useState<Visibility>(
     editPlace?.visibility ?? "shared",
@@ -161,26 +171,46 @@ export function PlaceForm({
         <Text style={styles.address}>{candidate.formattedAddress}</Text>
       ) : null}
 
-      {/* アイコン選択 */}
+      {/* アイコン選択（trip のピンセット＋「＋」でカタログから追加/削除） */}
       <View style={styles.iconRow}>
-        {pinKeys.map((key) => {
-          const on = key === icon;
+        {sortedPins.map((o) => {
+          const on = o.icon === icon;
           return (
             <Pressable
-              key={key}
-              onPress={() => setIcon(key)}
+              key={o.id}
+              onPress={() => setIcon(o.icon)}
               style={[styles.iconChip, on && styles.iconChipOn]}
             >
               <Svg viewBox="0 -960 960 960" width={20} height={20}>
                 <Path
-                  d={getIconPath(key)}
+                  d={getIconPath(o.icon)}
                   fill={on ? theme.primaryForeground : theme.mutedForeground}
                 />
               </Svg>
             </Pressable>
           );
         })}
+        {/* 破線＝「ここに追加できる」。カタログから旅行のピンセットに追加/削除。 */}
+        <Pressable
+          onPress={() => setPickerOpen(true)}
+          style={styles.iconAddChip}
+          accessibilityLabel={t("addIconAria")}
+        >
+          <PlusIcon size={16} color={theme.addAccent} />
+        </Pressable>
       </View>
+
+      <PlaceIconPicker
+        visible={pickerOpen}
+        tripId={tripId}
+        pinOptions={pinOptions}
+        onAdded={(key) => {
+          setPickerOpen(false);
+          setIcon(key);
+        }}
+        onChanged={() => void invalidate()}
+        onClose={() => setPickerOpen(false)}
+      />
 
       {/* ステータス（確定 / 候補）・公開範囲: iOS 標準の排他選択＝セグメント。 */}
       <View style={styles.inlineRow}>
@@ -261,6 +291,17 @@ const makeStyles = (t: Theme) =>
       justifyContent: "center",
     },
     iconChipOn: { backgroundColor: t.primary, borderColor: t.primary },
+    // 破線ボーダー＝「ここに追加できる」（ui-guidelines の定型）。
+    iconAddChip: {
+      width: 40,
+      height: 40,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.fgAlpha(0.2),
+      alignItems: "center",
+      justifyContent: "center",
+    },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     label: { fontSize: 13, fontWeight: "500", color: t.foreground },
     input: {

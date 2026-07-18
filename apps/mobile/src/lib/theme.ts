@@ -29,6 +29,12 @@ export const lightTheme = {
   warnText: "#78350f",
   warnAccent: "#b45309",
   warnChipBg: "#fef3c7",
+  // 追加候補/削除候補のプレビューペア（place-icon-picker。web: 追加=blue・削除=red）
+  addChipBg: "#dbeafe", // blue-100
+  addChipText: "#1e3a8a", // blue-900
+  addAccent: "#2563eb", // blue-600（「＋」追加ボタン）
+  removeChipBg: "#fee2e2", // red-100
+  removeChipText: "#7f1d1d", // red-900
 };
 
 export type Theme = typeof lightTheme;
@@ -52,6 +58,12 @@ export const darkTheme: Theme = {
   warnText: "#fcd34d", // amber-300
   warnAccent: "#fbbf24", // amber-400
   warnChipBg: "rgba(251,191,36,0.2)",
+  // 追加候補/削除候補のプレビューペア（ui-guidelines の同色相 α 重ね写像）
+  addChipBg: "rgba(96,165,250,0.2)", // blue-400/20
+  addChipText: "#bfdbfe", // blue-200
+  addAccent: "#60a5fa", // blue-400
+  removeChipBg: "rgba(248,113,113,0.2)", // red-400/20
+  removeChipText: "#fecaca", // red-200
 };
 
 export function useTheme(): Theme {
