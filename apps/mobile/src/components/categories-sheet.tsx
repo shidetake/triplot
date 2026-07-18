@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -48,6 +48,8 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
   const [isAdding, setIsAdding] = useState(false);
   const [addValue, setAddValue] = useState("");
   const [busy, setBusy] = useState(false);
+  // saveNew の二重発火（onSubmitEditing + onBlur）で重複 insert するのを防ぐ。
+  const savingNewRef = useRef(false);
 
   if (!data?.trip) return null;
   const categories = deriveCategories(data.categoriesRaw);
@@ -76,12 +78,20 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
   };
 
   const saveNew = () => {
+    // 追加の入力は onSubmitEditing（完了キー）と onBlur（フォーカスが外れる）の
+    // 両方で saveNew を呼ぶ。完了キーは送信と同時にフォーカスも外す（＝両方が
+    // 続けて発火する）ため、ガードしないと同じ名前を 2 回 insert してしまい、
+    // 2 回目が unique(trip_id, name) 違反で「保存に失敗しました」になる。
+    // 1 回の追加操作につき保存は 1 回だけにする。
+    if (savingNewRef.current) return;
     const name = addValue.trim();
     setIsAdding(false);
     setAddValue("");
     if (!name) return;
+    savingNewRef.current = true;
     setBusy(true);
     void createExpenseCategory(supabase, tripId, name).then((r) => {
+      savingNewRef.current = false;
       setBusy(false);
       if (!r.ok) {
         Alert.alert(t("saveFailed"));
