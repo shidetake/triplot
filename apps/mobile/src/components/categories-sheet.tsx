@@ -1,10 +1,10 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useState } from "react";
 import {
   Alert,
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -29,6 +29,8 @@ import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 // 費用カテゴリ管理（FormSheet の中身）。web の categories ページと同じ機能:
 // デフォルトカテゴリ（key あり）は名前固定、カスタム（key なし）は改名・削除可、
 // 追加はカスタム固定アイコン＋青。旅行の編集シートからドリルインで開く。
+// 入力は素の TextInput（BottomSheetTextInput ではない）。ホストの FormSheet が
+// keyboardBehavior="extend"（部分リフト）のため（form-sheet.tsx の使い分け参照）。
 export function CategoriesSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -141,7 +143,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
               />
             </View>
             {isEditing ? (
-              <BottomSheetTextInput
+              <TextInput
                 autoFocus
                 value={editValue}
                 onChangeText={setEditValue}
@@ -190,7 +192,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
               color="#fff"
             />
           </View>
-          <BottomSheetTextInput
+          <TextInput
             autoFocus
             value={addValue}
             onChangeText={setAddValue}

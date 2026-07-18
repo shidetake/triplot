@@ -87,7 +87,17 @@ export default function TripLayout() {
           />
         )}
       </FormSheet>
-      <FormSheet ref={categoriesRef} sizeToContent stackBehavior="push">
+      {/* カテゴリ管理は extend（部分リフト）。既定の interactive だと、入力行が
+          最下段＋シートが背が高い構成で「gorhom の全体持ち上げ」と「UIKit の
+          キーボードインセット自動スクロール」が二重に効き、入力欄が画面最上部
+          まで飛ぶ（実機・シミュレータで再現）。extend は被る分だけ持ち上げ＋
+          不足分だけ最小スクロールなので、入力欄がキーボード直上で止まる。 */}
+      <FormSheet
+        ref={categoriesRef}
+        sizeToContent
+        stackBehavior="push"
+        keyboardBehavior="extend"
+      >
         {() => <CategoriesSheet tripId={tripId} />}
       </FormSheet>
       <FormSheet ref={exportRef} sizeToContent stackBehavior="push">

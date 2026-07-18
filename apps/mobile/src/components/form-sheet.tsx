@@ -6,7 +6,11 @@ import {
   type BottomSheetModalProps,
   type BottomSheetScrollViewMethods,
 } from "@gorhom/bottom-sheet";
-import { useSharedValue } from "react-native-reanimated";
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import {
   forwardRef,
   useCallback,
@@ -118,6 +122,15 @@ export const FormSheet = forwardRef<
   const [contentH, setContentH] = useState(0);
   const [liftExtra, setLiftExtra] = useState(0);
   const kbHandledRef = useRef(false);
+  // 部分リフトで持ち上げきれない分（シートが上限に達した残り）は、中身を
+  // translateY で持ち上げて補う。ScrollView のスクロールは使わない — gorhom は
+  // シート状態と結びつけて contentOffset を管理しており、外からの scrollTo が
+  // 効かない（実測）。transform なら gorhom ともスクロール位置とも無関係で、
+  // はみ出た上端は ScrollView の clip に隠れて「スクロールした」ように見える。
+  const contentShift = useSharedValue(0);
+  const contentShiftStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: -contentShift.value }],
+  }));
   // 持ち手まわりの高さ（enableDynamicSizing が detent に足すのと同等の値）。
   const HANDLE_HEIGHT = 24;
   const extendSnapPoints = useMemo(() => {
@@ -138,21 +151,24 @@ export const FormSheet = forwardRef<
         const sheetTop = animatedPosition.value; // 画面上端からの実測位置
         const lift = Math.min(overlap, Math.max(0, sheetTop - topFloor));
         if (lift > 0) setLiftExtra(lift);
-        // 持ち上げきれない分（背の高いフォームのみ）はシート内スクロールで補う。
-        if (overlap - lift > 4) {
-          setTimeout(() => scrollToEnd(), 300);
+        // 持ち上げきれない分（シートが上限に達する背の高いフォームのみ）は
+        // 中身の translateY で補う（contentShift の宣言コメント参照）。
+        const leftover = overlap - lift;
+        if (leftover > 4) {
+          contentShift.value = withTiming(leftover, { duration: 250 });
         }
       });
     });
     const hide = Keyboard.addListener("keyboardDidHide", () => {
       kbHandledRef.current = false;
       setLiftExtra(0); // 元の高さへ戻す
+      contentShift.value = withTiming(0, { duration: 250 });
     });
     return () => {
       show.remove();
       hide.remove();
     };
-  }, [isExtend, scrollToEnd, topFloor, animatedPosition]);
+  }, [isExtend, topFloor, animatedPosition, contentShift]);
 
   // scrim（背景を半透明の黒で覆う）。モーダル的なシート（背後を操作させない）
   // には可視の scrim を使うのが業界標準（Material Design は「見えない scrim
@@ -243,8 +259,13 @@ export const FormSheet = forwardRef<
           sizeToContent && { paddingBottom: insets.bottom + 24 },
         ]}
       >
-        { }
-        {children(dismiss, scrollToEnd)}
+        {isExtend ? (
+          <Animated.View style={contentShiftStyle}>
+            {children(dismiss, scrollToEnd)}
+          </Animated.View>
+        ) : (
+          children(dismiss, scrollToEnd)
+        )}
       </BottomSheetScrollView>
     </BottomSheetModal>
   );
