@@ -301,17 +301,24 @@ export default function PlacesTab() {
   // 後ろに完全に隠れる＝シートの二枚重ねを見せない）。
   const collapseListSheet = () => listSheetRef.current?.snapToIndex(0);
 
-  // 座標を「フォームシートに隠れない画面上寄り（上から約25%）」に置くカメラ
-  // 移動。中央に置くと下から出るフォームシートとちょうど重なる。ピンタップ時は
-  // Google SDK 既定の「ピンを中央へ」アニメーションと競合するので、フォームを
-  // 開く各経路で必ずこれを呼び、最後に発行したこの移動で確定させる。
+  // ピン選択時のカメラ移動は本家 Google マップと同じ「ズームは一切変えず
+  // パンだけ」。狙い位置は「フォームシートに隠れない画面上寄り（上から約25%）」
+  // （中央に置くと下から出るフォームシートとちょうど重なる）。既にほぼ狙い
+  // 位置にあるピンは動かさない — 判定は本家同様厳しめ（画面の各軸10%以内）で、
+  // 少しでも端にあれば寄せる。ピンタップ時は Google SDK 既定の「ピンを中央へ」
+  // アニメーションと競合するので、フォームを開く各経路で必ずこれを呼び、
+  // 動かさない場合も現在中心への移動を発行して SDK 既定の移動を打ち消す。
   const focusCoord = (lat: number, lng: number) => {
-    const latDelta = 0.02;
-    mapRef.current?.animateToRegion({
-      latitude: lat - latDelta * 0.25,
-      longitude: lng,
-      latitudeDelta: latDelta,
-      longitudeDelta: latDelta,
+    const r = region ?? initialRegion;
+    // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
+    const center = { latitude: lat - r.latitudeDelta * 0.25, longitude: lng };
+    const dx = Math.abs(center.longitude - r.longitude) / r.longitudeDelta;
+    const dy = Math.abs(center.latitude - r.latitude) / r.latitudeDelta;
+    const nearTarget = dx < 0.1 && dy < 0.1;
+    mapRef.current?.animateCamera({
+      center: nearTarget
+        ? { latitude: r.latitude, longitude: r.longitude }
+        : center,
     });
   };
 
@@ -384,8 +391,8 @@ export default function PlacesTab() {
     }
   };
   // 保存済みの場所を開く（一覧行タップ・地図のピンタップの両方から同じ動き）:
-  // そのピンへ寄せ、本家と同じ赤ピンを立てて、編集シートを出す。場所名の
-  // 吹き出しは出さない（名前はボトムシートにある。本家も出さない）。
+  // そのピンへ寄せ、ピンを本家と同じ赤ピンに差し替えて編集シートを出す。
+  // 場所名の吹き出しは出さない（名前はボトムシートにある。本家も出さない）。
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
@@ -480,32 +487,36 @@ export default function PlacesTab() {
       >
         {places
           .filter((p) => p.lat != null && p.lng != null)
-          .map((p) => (
-            <Marker
-              key={p.id}
-              coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-              onPress={() => openEditPlace(p)}
-              // 丸マーカーは中心を座標に合わせる（雫ピンと違い先端が無い）。
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
-              <PlaceMarker
-                icon={p.icon}
-                tentative={p.tentative}
-                creatorHue={memberHueById.get(p.created_by_member_id) ?? null}
-              />
-            </Marker>
-          ))}
-        {/* 編集中の保存済み場所に立てる赤ピン（本家がタップした場所に立てるのと
-            同じ表示。どのピンの編集中かを示す）。シートを閉じると消える。 */}
-        {editing && editing.lat != null && editing.lng != null && (
-          <Marker
-            coordinate={{ latitude: editing.lat, longitude: editing.lng }}
-            anchor={{ x: 0.5, y: 0.9 }}
-            zIndex={200}
-          >
-            <RedPin />
-          </Marker>
-        )}
+          .map((p) => {
+            // 編集中（フォームを開いている）のピンは本家 Google マップと同じく
+            // 赤ピンに差し替えて表示する。シートを閉じると元のピンに戻る。
+            const isEditing = editing?.id === p.id;
+            return (
+              <Marker
+                // 差し替えで子とアンカーが変わるので key で再マウントさせる。
+                key={`${p.id}:${isEditing ? 1 : 0}`}
+                coordinate={{ latitude: p.lat!, longitude: p.lng! }}
+                onPress={() => openEditPlace(p)}
+                // 丸マーカーは中心、赤ピンは先端を座標に合わせる。
+                anchor={
+                  isEditing ? { x: 0.5, y: 0.9 } : { x: 0.5, y: 0.5 }
+                }
+                zIndex={isEditing ? 200 : undefined}
+              >
+                {isEditing ? (
+                  <RedPin />
+                ) : (
+                  <PlaceMarker
+                    icon={p.icon}
+                    tentative={p.tentative}
+                    creatorHue={
+                      memberHueById.get(p.created_by_member_id) ?? null
+                    }
+                  />
+                )}
+              </Marker>
+            );
+          })}
         {pinDraft && (
           <Marker
             coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
@@ -769,7 +780,7 @@ export default function PlacesTab() {
         // フォーカス中の入力だけ FormSheet の自前スクロールで見せる。
         keyboardBehavior="extend"
         // 閉じたら（保存・スワイプ閉じとも）地図上の一時表示を全部解除する:
-        // 候補ピンの選択ハイライト・編集中の赤ピン・長押しの仮ピン。
+        // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
         onDismiss={() => {
           setSelectedCandidate(null);
           setEditing(null);

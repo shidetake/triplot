@@ -155,8 +155,8 @@ function LongPressPin({
 // RedPin の translateY を動かしたら、その移動 px ぶん必ずここも同じだけ
 // 動かす（隙間ができないよう連動）。-13% は -46% から +33pt = 34px の
 // 約33% ≒ 11px ピンを下げたので、-47 から +11 して -36。
-const INFO_OFFSET_PIN = -36; // RedPin（赤い雫）
-const INFO_OFFSET_ICON = -27; // 保存済みピン / ベースマップ POI 既存アイコン
+const INFO_OFFSET_PIN = -36; // RedPin（赤い雫。候補・保存済みの選択中）
+const INFO_OFFSET_ICON = -27; // ベースマップ POI 既存アイコン
 
 // 本家 Google の赤い雫ピン（Material location_on）。translateY で先端を
 // マーカーのアンカー（＝クリック/座標点）に合わせる。値を大きく(負に)
@@ -226,8 +226,19 @@ function MapController({
   }, [map, key]);
 
   // ピン/一覧から選択されたらその位置へ寄せる（吹き出しが画面外に出ないように）。
+  // 本家 Google マップと同じく「ズームは一切変えずパンだけ」。既にほぼ中央に
+  // あるピンは動かさない — 判定は本家同様厳しめ（画面の各軸10%以内）で、
+  // 少しでも端にあれば中央へ寄せる。
   useEffect(() => {
     if (!map || !panTo) return;
+    const b = map.getBounds();
+    const c = map.getCenter();
+    if (b && c) {
+      const span = b.toSpan();
+      const dx = Math.abs(panTo.lng - c.lng()) / span.lng();
+      const dy = Math.abs(panTo.lat - c.lat()) / span.lat();
+      if (dx < 0.1 && dy < 0.1) return;
+    }
     map.panTo(panTo);
   }, [map, panTo]);
 
@@ -407,6 +418,11 @@ export function PlaceMap({
             if (poiId) {
               e.stop();
               if (!placesLib) return;
+              // 座標は Details の location でなく「タップした POI アイコンの
+              // 座標」を優先する。Details の座標は建物重心などベースマップの
+              // POI アイコン描画位置と数 m ずれることがあり、登録後の自前
+              // マーカーが POI と二重にずれて見える（iOS と同じ対策）。
+              const poiLatLng = e.detail.latLng;
               void (async () => {
                 try {
                   const place = new placesLib.Place({ id: poiId });
@@ -425,8 +441,8 @@ export function PlaceMap({
                     placeId: place.id,
                     name: place.displayName ?? t("unknownName"),
                     address: place.formattedAddress ?? "",
-                    lat: loc.lat(),
-                    lng: loc.lng(),
+                    lat: poiLatLng?.lat ?? loc.lat(),
+                    lng: poiLatLng?.lng ?? loc.lng(),
                     ...extractRegion(place.addressComponents),
                     rating: null,
                     userRatingCount: null,
@@ -468,6 +484,8 @@ export function PlaceMap({
             mappedPlaces.map((p) => {
               // 候補（tentative=true）は半透明 + 作成者のメンバー色で塗る。
               // 確定（tentative=false）は固定のグリーンで塗る。
+              // 選択中は本家 Google マップと同じく赤ピンに差し替えて表示する
+              // （選択を外すと元のピンに戻る。iOS と同じ挙動）。
               const creatorHue = memberHueById.get(p.created_by_member_id);
               const isDarkMap = colorScheme === "DARK";
               const bg = isDarkMap
@@ -475,6 +493,7 @@ export function PlaceMap({
                 : p.tentative
                   ? (vividColor(creatorHue) ?? "#6b7280")
                   : "#10b981";
+              const isSel = selected?.kind === "saved" && selected.id === p.id;
               return (
                 <AdvancedMarker
                   key={p.id}
@@ -482,14 +501,21 @@ export function PlaceMap({
                   title={p.name}
                   onClick={() => onSelectSaved(p.id)}
                 >
-                  <div
-                    className={`flex h-7 w-7 items-center justify-center rounded-full border-2 shadow ${
-                      isDarkMap ? "border-gray-500" : "border-white"
-                    } ${p.tentative ? "opacity-50" : ""}`}
-                    style={{ backgroundColor: bg, color: isDarkMap ? "#202124" : "white" }}
-                  >
-                    <PlaceIcon icon={p.icon} size={16} />
-                  </div>
+                  {isSel ? (
+                    <RedPin />
+                  ) : (
+                    <div
+                      className={`flex h-7 w-7 items-center justify-center rounded-full border-2 shadow ${
+                        isDarkMap ? "border-gray-500" : "border-white"
+                      } ${p.tentative ? "opacity-50" : ""}`}
+                      style={{
+                        backgroundColor: bg,
+                        color: isDarkMap ? "#202124" : "white",
+                      }}
+                    >
+                      <PlaceIcon icon={p.icon} size={16} />
+                    </div>
+                  )}
                 </AdvancedMarker>
               );
             })}
@@ -525,12 +551,11 @@ export function PlaceMap({
               // Google が中身より狭く頭打ちさせて端切れ・横スクロールの原因に
               // なるので使わない。
               headerDisabled
-              // 候補＝雫ピン（draft と同形）は深め、保存済み・POI は浅め。
+              // 候補・保存済みは選択中＝雫ピン表示なので深め、POI（Google の
+              // アイコンのまま）だけ浅め。
               pixelOffset={[
                 0,
-                selected.kind === "candidate"
-                  ? INFO_OFFSET_PIN
-                  : INFO_OFFSET_ICON,
+                selected.kind === "poi" ? INFO_OFFSET_ICON : INFO_OFFSET_PIN,
               ]}
             >
               {infoContent}
