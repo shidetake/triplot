@@ -491,31 +491,38 @@ export function TodoSection({
 
               {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
               {kind === "onsite" && (
-                <button
-                  type="button"
-                  onClick={() => toggleLike(todo)}
-                  aria-label={todo.iLiked ? t("likeRemove") : t("like")}
-                  aria-pressed={todo.iLiked}
-                  title={todo.iLiked ? t("likeRemove") : t("like")}
-                  className={`flex shrink-0 items-center gap-0.5 rounded p-1 text-xs transition ${
-                    todo.iLiked
-                      ? "text-rose-500 hover:bg-rose-500/10"
-                      : "text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
-                  }`}
-                >
-                  <HeartIcon size={16} filled={todo.iLiked} />
-                  {todo.likeCount > 0 && (
-                    <span className="tabular-nums">{todo.likeCount}</span>
-                  )}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => toggleLike(todo)}
+                    aria-label={todo.iLiked ? t("likeRemove") : t("like")}
+                    aria-pressed={todo.iLiked}
+                    title={todo.iLiked ? t("likeRemove") : t("like")}
+                    className={`shrink-0 rounded p-1 transition ${
+                      todo.iLiked
+                        ? "text-rose-500 hover:bg-rose-500/10"
+                        : "text-muted-foreground hover:bg-foreground/10 hover:text-foreground"
+                    }`}
+                  >
+                    <HeartIcon size={16} filled={todo.iLiked} />
+                  </button>
+                  {/* いいね数は ♥ と削除の間の固定幅スロットに常時確保する。
+                      数字の有無で ♥ の位置が動かず、空きスロットが誤タップ分離の
+                      余白（♥→削除のタップ領域間 約32px）を兼ねる。 */}
+                  <span
+                    aria-hidden
+                    className="w-4 shrink-0 text-left text-xs tabular-nums text-muted-foreground"
+                  >
+                    {todo.likeCount > 0 ? todo.likeCount : ""}
+                  </span>
+                </>
               )}
 
               <button
                 type="button"
                 onClick={() => remove(todo)}
                 aria-label={t("deleteAria")}
-                // ml-3: ♥ との間を広げる（いいねのつもりで削除を押す誤タップの分離）
-                className="ml-3 shrink-0 rounded p-1 text-red-600 transition hover:bg-red-600/10"
+                className="shrink-0 rounded p-1 text-red-600 transition hover:bg-red-600/10"
               >
                 <TrashIcon size={16} />
               </button>

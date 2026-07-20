@@ -1,7 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
-  ActionSheetIOS,
   Alert,
   Image,
   Pressable,
@@ -26,6 +25,8 @@ import { sortTodos } from "@triplot/shared/todoSort";
 import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
+import { SheetTitle } from "@/components/sheet-title";
 import {
   CheckIcon,
   ChevronIcon,
@@ -141,7 +142,6 @@ function TodoSection({
   userId: string;
 }) {
   const t = useTranslations("todo");
-  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
@@ -153,21 +153,20 @@ function TodoSection({
     low: t("priorityLow"),
   };
 
-  // 優先度は ActionSheet で「高/中/低」から選ぶ（web のドロップダウン相当。
-  // 以前のタップでサイクルは、ラベルが出ず何のアイコンか伝わらなかった）。
-  const pickPriority = (onPick: (p: TodoPriority) => void) => {
-    ActionSheetIOS.showActionSheetWithOptions(
-      {
-        title: t("priorityTitle"),
-        options: [...PRIORITY_ORDER.map((p) => priorityLabel[p]), tCommon("cancel")],
-        cancelButtonIndex: PRIORITY_ORDER.length,
-      },
-      (index) => {
-        if (index >= 0 && index < PRIORITY_ORDER.length) {
-          onPick(PRIORITY_ORDER[index]);
-        }
-      },
-    );
+  // 優先度はボトムシートで「高/中/低」から選ぶ（web のドロップダウンと同じ
+  // アイコン＋ラベル＋選択中チェックの行。ActionSheetIOS はテキストのみで
+  // アイコンを出せないため、他のモーダルと質感を揃えた FormSheet にする）。
+  const prioritySheetRef = useRef<FormSheetRef>(null);
+  const [priorityPick, setPriorityPick] = useState<{
+    current: TodoPriority;
+    onPick: (p: TodoPriority) => void;
+  } | null>(null);
+  const pickPriority = (
+    current: TodoPriority,
+    onPick: (p: TodoPriority) => void,
+  ) => {
+    setPriorityPick({ current, onPick });
+    prioritySheetRef.current?.present();
   };
 
   // 折りたたみ既定はフェーズ由来（旅行開始後は準備を畳む。web と同じ）。
@@ -305,7 +304,7 @@ function TodoSection({
               />
             </Pressable>
             <Pressable
-              onPress={() => pickPriority(setDraftPriority)}
+              onPress={() => pickPriority(draftPriority, setDraftPriority)}
               hitSlop={8}
               accessibilityLabel={t("priorityAriaLabel", {
                 label: priorityLabel[draftPriority],
@@ -349,7 +348,9 @@ function TodoSection({
 
                 <Pressable
                   onPress={() =>
-                    pickPriority((p) => void changePriority(todo, p))
+                    pickPriority(todo.priority, (p) =>
+                      void changePriority(todo, p),
+                    )
                   }
                   hitSlop={8}
                   accessibilityLabel={t("priorityAriaLabel", {
@@ -392,29 +393,33 @@ function TodoSection({
                 )}
 
                 {kind === "onsite" && (
-                  <Pressable
-                    onPress={() => likeMutation.mutate(todo.id)}
-                    hitSlop={8}
-                    accessibilityLabel={todo.iLiked ? t("likeRemove") : t("like")}
-                    style={styles.likeArea}
-                  >
-                    <HeartIcon
-                      size={15}
-                      color={todo.iLiked ? "#f43f5e" : theme.subtleForeground}
-                      filled={todo.iLiked}
-                    />
-                    {todo.likeCount > 0 && (
-                      <Text style={styles.likeCount}>{todo.likeCount}</Text>
-                    )}
-                  </Pressable>
+                  <>
+                    <Pressable
+                      onPress={() => likeMutation.mutate(todo.id)}
+                      hitSlop={8}
+                      accessibilityLabel={
+                        todo.iLiked ? t("likeRemove") : t("like")
+                      }
+                    >
+                      <HeartIcon
+                        size={15}
+                        color={todo.iLiked ? "#f43f5e" : theme.subtleForeground}
+                        filled={todo.iLiked}
+                      />
+                    </Pressable>
+                    {/* いいね数は ♥ と削除の間の固定幅スロットに常時確保する。
+                        数字の有無で ♥ の位置が動かず、空きスロットが誤タップ
+                        分離の余白を兼ねる（web と同じ）。 */}
+                    <Text style={styles.likeCount}>
+                      {todo.likeCount > 0 ? todo.likeCount : ""}
+                    </Text>
+                  </>
                 )}
 
                 <Pressable
                   onPress={() => confirmDelete(todo)}
                   hitSlop={8}
                   accessibilityLabel={t("deleteAria")}
-                  // ♥ との間を広げる（いいねのつもりで削除を押す誤タップの分離）
-                  style={styles.trashSpacing}
                 >
                   {/* 削除＝destructive 赤（web の TODO 行・カテゴリ管理と同じ） */}
                   <TrashIcon size={15} color={theme.destructiveText} />
@@ -424,6 +429,31 @@ function TodoSection({
           })}
         </>
       )}
+
+      <FormSheet ref={prioritySheetRef} sizeToContent>
+        {(dismiss) => (
+          <View>
+            <SheetTitle>{t("priorityTitle")}</SheetTitle>
+            {PRIORITY_ORDER.map((p) => (
+              <Pressable
+                key={p}
+                onPress={() => {
+                  priorityPick?.onPick(p);
+                  dismiss();
+                }}
+                accessibilityLabel={priorityLabel[p]}
+                style={styles.priorityRow}
+              >
+                <PriorityIcon priority={p} />
+                <Text style={styles.priorityRowLabel}>{priorityLabel[p]}</Text>
+                {priorityPick?.current === p && (
+                  <CheckIcon size={16} color={theme.mutedForeground} />
+                )}
+              </Pressable>
+            ))}
+          </View>
+        )}
+      </FormSheet>
     </View>
   );
 }
@@ -505,13 +535,23 @@ const makeStyles = (t: Theme) =>
   title: { fontSize: 14, color: t.foreground },
   // インライン編集中の入力。行の見た目を崩さないよう枠なし・タイトルと同じ字面
   titleInput: { fontSize: 14, color: t.foreground, padding: 0 },
-  trashSpacing: { marginLeft: 12 },
   titleDone: {
     textDecorationLine: "line-through",
     color: t.subtleForeground,
   },
-  likeArea: { flexDirection: "row", alignItems: "center", gap: 2 },
-  likeCount: { fontSize: 11, color: t.mutedForeground },
+  // いいね数の固定幅スロット（2桁まで）。空でも幅を保ち ♥ の位置を固定する
+  likeCount: { width: 16, fontSize: 11, color: t.mutedForeground },
+  // 優先度選択シートの行（copy-source-picker の行と同じ形）
+  priorityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.08),
+  },
+  priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
   avatar: {
     width: 18,
     height: 18,
