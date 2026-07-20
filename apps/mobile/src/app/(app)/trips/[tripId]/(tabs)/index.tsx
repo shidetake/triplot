@@ -1,13 +1,11 @@
+import { router } from "expo-router";
 import { useLocale, useTranslations } from "use-intl";
-import { useRef, useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 import {
   deriveEventDraftItems,
   draftIdFromEventId,
   draftToScheduleEvent,
-  type EventDraftItem,
 } from "@triplot/shared/import/drafts";
 import { buildSchedule, buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
@@ -15,21 +13,15 @@ import {
   type EventRow,
 } from "@triplot/shared/tripDerive";
 
-import { EventForm } from "@/components/event-form";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { PlusIcon } from "@/components/icons";
 import { WeekCalendar } from "@/components/week-calendar";
-import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
-import {
-  useInvalidateTrip,
-  useTripDetail,
-  useTripDrafts,
-} from "@/lib/useTripDetail";
+import { useTripDetail, useTripDrafts } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
 // 予定タブ（週カレンダー）。レイアウト計算は shared の buildSchedule、描画は
-// WeekCalendar（RN）。予定の追加/編集はボトムシートの EventForm。
+// WeekCalendar（RN）。予定の追加/編集は native formSheet ルート
+// （trips/[tripId]/event-form）へ router.push で開く。
 // メール取り込みの未確定予定は amber+破線の疑似ブロックとしてカレンダーに直接
 // 表示し、タップで事前入力済みの確定フォームを開く（web の狭い画面と同方式）。
 export default function ScheduleTab() {
@@ -40,19 +32,6 @@ export default function ScheduleTab() {
   const styles = useThemedStyles(makeStyles);
   const { data, me } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
-  const invalidate = useInvalidateTrip(tripId);
-
-  const formRef = useRef<FormSheetRef>(null);
-  const [editing, setEditing] = useState<EventRow | null>(null);
-  // 取り込み下書きの確定フローで開いた時だけ持つ。EventForm 成功時にこの
-  // 下書きを confirmed にする（resolveInboundDraft）。
-  const [confirmingDraft, setConfirmingDraft] = useState<EventDraftItem | null>(
-    null,
-  );
-  // 空き枠長押しからの事前入力（開始日時）。FAB・編集で開いた時は null。
-  const [slot, setSlot] = useState<{ date: string; time: string } | null>(
-    null,
-  );
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
   const events = data
@@ -87,52 +66,27 @@ export default function ScheduleTab() {
     : null;
 
   if (!data?.trip || !me || !schedule) return null;
-  const trip = data.trip;
 
   const memberHueById = new Map(
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
   const activeMemberCount = (data.members ?? []).length;
 
-  const openForm = (ev: EventRow | null) => {
-    setEditing(ev);
-    setConfirmingDraft(null);
-    setSlot(null);
-    formRef.current?.present();
-  };
-
   // 空き枠長押し→ゴーストをドラッグ→離した日時を開始時刻に事前入力して
   // 追加フォーム（web と同じ UX。ゴースト自体は WeekCalendar が持つ）。
   const onSlotPick = (date: string, minutes: number) => {
-    setEditing(null);
-    setConfirmingDraft(null);
     const h = String(Math.floor(minutes / 60)).padStart(2, "0");
     const m = String(minutes % 60).padStart(2, "0");
-    setSlot({ date, time: `${h}:${m}` });
-    formRef.current?.present();
+    router.push(`/trips/${tripId}/event-form?date=${date}&time=${h}:${m}`);
   };
 
   const onEventPress = (ev: EventRow) => {
     const draftId = draftIdFromEventId(ev.id);
     if (draftId) {
-      const d = eventDrafts.find((x) => x.id === draftId);
-      if (!d) return;
-      setEditing(null);
-      setConfirmingDraft(d);
-      formRef.current?.present();
+      router.push(`/trips/${tripId}/event-form?draftId=${draftId}`);
       return;
     }
-    openForm(ev);
-  };
-
-  // 取り込み下書きの確定。EventForm 成功時に呼ばれ、下書きを confirmed に
-  // する（web の ScheduleSection と同じ resolveInboundDraft）。
-  const confirmDraft = async (draftId: string, eventId?: string) => {
-    const r = await resolveInboundDraft(supabase, draftId, "confirmed", {
-      eventId,
-    });
-    if (!r.ok) Alert.alert(r.error);
-    void invalidate();
+    router.push(`/trips/${tripId}/event-form?eventId=${ev.id}`);
   };
 
   return (
@@ -158,49 +112,12 @@ export default function ScheduleTab() {
 
       {/* 追加 FAB */}
       <Pressable
-        onPress={() => openForm(null)}
+        onPress={() => router.push(`/trips/${tripId}/event-form`)}
         style={styles.fab}
         accessibilityLabel="予定を追加"
       >
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
-
-      {/* 種別（通常/終日/時差移動）で中身の量が変わるため、常に全開(100%)に
-          せず、一番中身が多いパターン（時差移動＋参加者複数選択）が収まる
-          高さに固定する（他の種別に切り替えてもシートの高さは変わらない）。
-          見積もり値。実機で高さが合わなければここを調整する。 */}
-      <FormSheet ref={formRef} snapPoints={["88%"]}>
-        {(dismiss) => (
-          <EventForm
-            tripId={tripId}
-            members={(data.members ?? []).map((m) => ({
-              id: m.id,
-              display_name: m.display_name,
-              color: m.color,
-            }))}
-            myMemberId={me.id}
-            places={(data.placesRaw ?? []).map((p) => ({
-              id: p.id,
-              name: p.name,
-            }))}
-            tripStart={trip.start_date}
-            defaultTimezone={trip.default_timezone}
-            events={events}
-            editEvent={editing ?? undefined}
-            draft={confirmingDraft ?? undefined}
-            slot={slot ?? undefined}
-            onDone={() => {
-              dismiss();
-              void invalidate();
-            }}
-            onSuccess={
-              confirmingDraft
-                ? (eventId) => void confirmDraft(confirmingDraft.id, eventId)
-                : undefined
-            }
-          />
-        )}
-      </FormSheet>
     </View>
   );
 }
@@ -217,7 +134,12 @@ const makeStyles = (t: Theme) =>
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 28,
+    // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
+    // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
+    // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
+    // 確認・タブバー上端は画面下端から実測 約83pt）。タブバーより確実に
+    // 上に出す値へ引き上げる。
+    bottom: 100,
     // カレンダーのネスト ScrollView にタッチを奪われないよう最前面に上げる。
     zIndex: 50,
     width: 56,

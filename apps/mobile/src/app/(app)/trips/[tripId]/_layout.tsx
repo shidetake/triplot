@@ -71,6 +71,13 @@ export default function TripLayout() {
         <Stack.Screen name="categories" options={sheetScreenOptions} />
         <Stack.Screen name="export" options={sheetScreenOptions} />
         <Stack.Screen name="calendar-export" options={sheetScreenOptions} />
+        {/* 予定/費用フォームは種別切替（通常/終日/時差移動・外貨/割り勘カスタム等）
+            で中身の量が変わるため、fitToContents だとフィールド追加のたびに
+            シートが伸縮して落ち着かない。@gorhom 版と同じ「一番中身が多い
+            パターンが収まる高さ」に固定する（1要素の detents 配列＝その高さ
+            だけで開閉、伸縮しない）。 */}
+        <Stack.Screen name="event-form" options={formSheetOptions} />
+        <Stack.Screen name="expense-form" options={formSheetOptions} />
       </Stack>
     </>
   );
@@ -80,6 +87,14 @@ const sheetScreenOptions = {
   headerShown: false,
   presentation: "formSheet" as const,
   sheetAllowedDetents: "fitToContents" as const,
+  sheetGrabberVisible: true,
+  sheetCornerRadius: 20,
+};
+
+const formSheetOptions = {
+  headerShown: false,
+  presentation: "formSheet" as const,
+  sheetAllowedDetents: [0.88],
   sheetGrabberVisible: true,
   sheetCornerRadius: 20,
 };

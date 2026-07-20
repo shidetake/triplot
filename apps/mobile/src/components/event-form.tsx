@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useMemo, useState } from "react";
 import {
   Alert,
@@ -6,6 +5,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -366,7 +366,7 @@ export function EventForm({
       {isTransit && <Text style={styles.hint}>{t("transitHint")}</Text>}
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <BottomSheetTextInput
+      <TextInput
         value={title}
         onChangeText={setTitle}
         placeholder={t("title")}
@@ -502,7 +502,7 @@ export function EventForm({
       />
 
       {/* メモ */}
-      <BottomSheetTextInput
+      <TextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}

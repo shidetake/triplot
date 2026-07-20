@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { router } from "expo-router";
 import {
   Alert,
   Pressable,
@@ -14,11 +14,7 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
-import { resolveInboundDraft } from "@triplot/shared/data/inbox";
-import {
-  deriveExpenseDraftItems,
-  type ExpenseDraftItem,
-} from "@triplot/shared/import/drafts";
+import { deriveExpenseDraftItems } from "@triplot/shared/import/drafts";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   deriveAverageRates,
@@ -28,13 +24,10 @@ import {
   deriveScheduleEvents,
   toSettlementExpenses,
   toSummaryExpenses,
-  type ExpenseRow,
 } from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
-import { ExpenseForm } from "@/components/expense-form";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { LockIcon, PlusIcon, XIcon } from "@/components/icons";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
@@ -47,11 +40,13 @@ import {
   useTripDrafts,
 } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
+import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
-// 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（ボトムシート）。
-// メール取り込みの未確定下書きは amber の「未確定の取り込み」ボックスに出し、
-// タップで事前入力済みの確定フォームを開く（× で破棄）。
+// 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（native formSheet ルート
+// trips/[tripId]/expense-form）。メール取り込みの未確定下書きは amber の
+// 「未確定の取り込み」ボックスに出し、タップで事前入力済みの確定フォームを
+// 開く（× で破棄）。
 export default function ExpensesTab() {
   const tripId = useTripId();
   const t = useTranslations();
@@ -63,13 +58,6 @@ export default function ExpensesTab() {
   const { refreshing, onRefresh } = usePullRefresh(refetch);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
-
-  const sheetRef = useRef<FormSheetRef>(null);
-  const [editing, setEditing] = useState<ExpenseRow | null>(null);
-  // 取り込み下書きの確定フローで開いた時だけ持つ。ExpenseForm 成功時にこの
-  // 下書きを confirmed にする（resolveInboundDraft）。
-  const [confirmingDraft, setConfirmingDraft] =
-    useState<ExpenseDraftItem | null>(null);
 
   if (!data?.trip || !me) return null;
 
@@ -122,28 +110,6 @@ export default function ExpensesTab() {
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
   });
 
-  const openForm = (row: ExpenseRow | null) => {
-    setEditing(row);
-    setConfirmingDraft(null);
-    sheetRef.current?.present();
-  };
-
-  const openDraftForm = (d: ExpenseDraftItem) => {
-    setEditing(null);
-    setConfirmingDraft(d);
-    sheetRef.current?.present();
-  };
-
-  // 取り込み下書きの確定。ExpenseForm 成功時に呼ばれ、下書きを confirmed に
-  // する（web の DraftConfirmButton と同じ resolveInboundDraft）。
-  const confirmDraft = async (draftId: string, expenseId?: string) => {
-    const r = await resolveInboundDraft(supabase, draftId, "confirmed", {
-      expenseId,
-    });
-    if (!r.ok) Alert.alert(r.error);
-    void invalidate();
-  };
-
   const dismissDraft = (draftId: string) => {
     Alert.alert(tImport("dismissDraftTitle"), undefined, [
       { text: "キャンセル", style: "cancel" },
@@ -184,7 +150,9 @@ export default function ExpensesTab() {
             {draftItems.map((d) => (
               <View key={d.id} style={styles.draftRow}>
                 <Pressable
-                  onPress={() => openDraftForm(d)}
+                  onPress={() =>
+                    router.push(`/trips/${tripId}/expense-form?draftId=${d.id}`)
+                  }
                   style={styles.draftButton}
                 >
                   <View style={styles.draftLabelParts}>
@@ -288,7 +256,9 @@ export default function ExpensesTab() {
           return (
             <Pressable
               key={e.id}
-              onPress={() => openForm(e)}
+              onPress={() =>
+                router.push(`/trips/${tripId}/expense-form?expenseId=${e.id}`)
+              }
               style={styles.expenseRow}
             >
               <View style={styles.expenseTop}>
@@ -361,48 +331,12 @@ export default function ExpensesTab() {
 
       {/* 追加 FAB */}
       <Pressable
-        onPress={() => openForm(null)}
+        onPress={() => router.push(`/trips/${tripId}/expense-form`)}
         style={styles.fab}
         accessibilityLabel={tExp("addAria")}
       >
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
-
-      {/* 外貨表示・割り勘カスタム・支払者展開・乗継TZ選択などで中身の量が
-          変わるため、常に全開(100%)にせず、一番多いパターンが収まる高さに
-          固定する。見積もり値。実機で高さが合わなければここを調整する。 */}
-      <FormSheet ref={sheetRef} snapPoints={["88%"]}>
-        {(dismiss) => (
-          <ExpenseForm
-            tripId={tripId}
-            members={members}
-            myMemberId={me.id}
-            defaultCurrency={defaultCurrency}
-            initialCurrency={defaults.initialCurrency}
-            categories={categories}
-            initialCategoryId={defaults.initialCategoryId}
-            averageRates={averageRates}
-            initialPaidAt={defaults.initialPaidAt}
-            places={(data.placesRaw ?? []).map((p) => ({
-              id: p.id,
-              name: p.name,
-            }))}
-            tzTimeline={tzTimeline}
-            editExpense={editing ?? undefined}
-            draft={confirmingDraft ?? undefined}
-            onDone={() => {
-              dismiss();
-              void invalidate();
-            }}
-            onSuccess={
-              confirmingDraft
-                ? (expenseId) =>
-                    void confirmDraft(confirmingDraft.id, expenseId)
-                : undefined
-            }
-          />
-        )}
-      </FormSheet>
     </View>
   );
 }
@@ -550,7 +484,12 @@ const makeStyles = (t: Theme) =>
   fab: {
     position: "absolute",
     right: 20,
-    bottom: 28,
+    // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
+    // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
+    // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
+    // 確認・タブバー上端は画面下端から実測 約83pt）。タブバーより確実に
+    // 上に出す値へ引き上げる。
+    bottom: 100,
     width: 56,
     height: 56,
     borderRadius: 28,

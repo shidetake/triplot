@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
@@ -8,11 +7,12 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 
-// フォーム本体はボトムシート側の BottomSheetScrollView がスクロールを持つので、
-// ルートは View（二重スクロール回避）。通貨モーダルの中だけ ScrollView を使う。
+// フォーム本体はホスト側の ScrollView がスクロールを持つので、ルートは View
+// （二重スクロール回避）。通貨モーダルの中だけ ScrollView を使う。
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
@@ -342,7 +342,7 @@ export function ExpenseForm({
           必須は * でなく「埋まるまで送信無効」。通貨は選択値（JPY 等）自体が説明。 */}
       <View style={styles.row2}>
         <View style={styles.grow}>
-          <BottomSheetTextInput
+          <TextInput
             value={price}
             onChangeText={setPrice}
             keyboardType="decimal-pad"
@@ -368,7 +368,7 @@ export function ExpenseForm({
           <Text style={styles.label}>
             {t("exchangeRate")} <Text style={styles.required}>*</Text>
           </Text>
-          <BottomSheetTextInput
+          <TextInput
             value={rateInput}
             onChangeText={setRateInput}
             keyboardType="decimal-pad"
@@ -534,7 +534,7 @@ export function ExpenseForm({
         ))}
 
       {/* メモ */}
-      <BottomSheetTextInput
+      <TextInput
         value={note}
         onChangeText={setNote}
         placeholder={t("memo")}
