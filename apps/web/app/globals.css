@@ -242,8 +242,12 @@ gmp-advanced-marker:focus-visible {
   --secondary: oklch(0.269 0 0);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --subtle-foreground: oklch(0.708 0 0);
+  /* ダークは白地の反転（0.708）だと非活性/非選択が前景(0.985)に近く見えすぎる
+     （暗い地では明るいグレーが実コントラスト比以上に「白に近く」見える知覚効果）。
+     ライトの 60%/38% 濃度をそのまま反転せず、前景との差を意図的に広げた値。
+     詳細は docs/ui-guidelines.md「テキスト色の階層」。 */
+  --muted-foreground: oklch(0.55 0 0);
+  --subtle-foreground: oklch(0.38 0 0);
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);

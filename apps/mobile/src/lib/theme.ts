@@ -43,8 +43,10 @@ export const darkTheme: Theme = {
   dark: true,
   background: "#0a0a0a", // .dark --background oklch(0.145)
   foreground: "#fafafa",
-  mutedForeground: "#a1a1a1", // oklch(0.708)
-  subtleForeground: "#a1a1a1", // dark は muted と同値（web と同じ）
+  // 白地の反転（oklch 0.708）だと非活性/非選択が前景(0.985)に近く見えすぎるため
+  // 前景との差を広げた値。詳細は docs/ui-guidelines.md「テキスト色の階層」。
+  mutedForeground: "#717171", // oklch(0.55)
+  subtleForeground: "#424242", // oklch(0.38)
   primary: "#e5e5e5", // .dark --primary oklch(0.922)
   primaryForeground: "#171717",
   secondary: "#262626", // oklch(0.269)
