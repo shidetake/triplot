@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -6,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -43,22 +43,10 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 
-// 旅行の編集・メンバー・招待・削除（FormSheet の中身）。web の TripActions ＋
-// members ページの機能を1画面に集約した RN 版。カテゴリ管理・エクスポートへの
-// ドリルインは、呼び出し元（trips/[tripId]/_layout.tsx）が兄弟の FormSheet
-// として持つ present() をコールバックで受け取って呼ぶだけにする（自身の
-// BottomSheetScrollView の中に子の BottomSheetModal をネストすると、子の
-// enableDynamicSizing の高さ測定が親のレイアウト計算と干渉し、開ききった
-// 瞬間に親ごと閉じる @gorhom の既知不具合を踏むため、兄弟構成にフラット化）。
-export function EditTripSheet({
-  tripId,
-  onOpenCategories,
-  onOpenExport,
-}: {
-  tripId: string;
-  onOpenCategories: () => void;
-  onOpenExport: () => void;
-}) {
+// 旅行の編集・メンバー・招待・削除（native formSheet ルートの中身）。web の
+// TripActions ＋ members ページの機能を1画面に集約した RN 版。カテゴリ管理・
+// エクスポートへは router.push で兄弟ルートへ素直にドリルインする。
+export function EditTripSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
@@ -245,7 +233,7 @@ export function EditTripSheet({
 
       {/* 旅行情報（admin 以外は読み取りのみ）。タイトルはラベル無し＋
           placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <BottomSheetTextInput
+      <TextInput
         value={vTitle}
         onChangeText={setTitle}
         editable={isAdmin}
@@ -373,7 +361,7 @@ export function EditTripSheet({
                 )}
               </View>
               {isMe ? (
-                <BottomSheetTextInput
+                <TextInput
                   value={vMyName}
                   onChangeText={setMyName}
                   onBlur={commitMyName}
@@ -434,12 +422,18 @@ export function EditTripSheet({
       {/* 管理・エクスポート（iOS 設定流のドリルイン/アクション行。
           web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
       <View style={styles.navList}>
-        <Pressable onPress={onOpenCategories} style={styles.navRow}>
+        <Pressable
+          onPress={() => router.push(`/trips/${tripId}/categories`)}
+          style={styles.navRow}
+        >
           <TagIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("categories.heading")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
-        <Pressable onPress={onOpenExport} style={styles.navRow}>
+        <Pressable
+          onPress={() => router.push(`/trips/${tripId}/export`)}
+          style={styles.navRow}
+        >
           <DownloadIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("tripActions.export")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />

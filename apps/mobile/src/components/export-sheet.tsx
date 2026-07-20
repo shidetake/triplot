@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -25,17 +26,11 @@ import { exportFileViaShareSheet, safeFilename } from "@/lib/exportFile";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 
-// エクスポート（FormSheet の中身）。出力先ごとの3行: 予定（Google カレンダー）
-// は兄弟の FormSheet（呼び出し元が持つ）の present() をコールバックで開く、
-// 地図（KML）・費用（CSV）はその場で生成して共有シートへ（web の ⋯ メニュー
-// > エクスポートのドリルインに対応）。旅行編集シートからドリルインで開く。
-export function ExportSheet({
-  tripId,
-  onOpenCalendarExport,
-}: {
-  tripId: string;
-  onOpenCalendarExport: () => void;
-}) {
+// エクスポート（native formSheet ルートの中身）。出力先ごとの3行: 予定
+// （Google カレンダー）は router.push で兄弟ルートへドリルイン、地図（KML）・
+// 費用（CSV）はその場で生成して共有シートへ（web の ⋯ メニュー > エクスポート
+// のドリルインに対応）。旅行編集からドリルインで開く。
+export function ExportSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
@@ -130,7 +125,10 @@ export function ExportSheet({
 
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
       {googleSignInAvailable && (
-        <Pressable onPress={onOpenCalendarExport} style={styles.navRow}>
+        <Pressable
+          onPress={() => router.push(`/trips/${tripId}/calendar-export`)}
+          style={styles.navRow}
+        >
           <CalendarDaysIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>
             {t("tripActions.exportCalendar")}
