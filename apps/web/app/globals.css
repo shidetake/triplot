@@ -17,7 +17,10 @@
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.510 0 0); /* Material Design medium-emphasis: 60% black */
+  /* Material Design medium-emphasis(60%黒=0.510)そのままだと前景とのコントラストが
+     弱く非活性/非選択の区別がつきにくいという実機フィードバックを受けて明るく調整。
+     詳細は docs/ui-guidelines.md「テキスト色の階層」。 */
+  --muted-foreground: oklch(0.60 0 0);
   --subtle-foreground: oklch(0.699 0 0); /* Material Design disabled/hint: 38% black */
   --accent: oklch(0.97 0 0);
   --accent-foreground: oklch(0.205 0 0);

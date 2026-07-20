@@ -10,7 +10,9 @@ export const lightTheme = {
   dark: false,
   background: "#ffffff", // --background
   foreground: "#212121", // --foreground oklch(0.248) = 白地87%黒
-  mutedForeground: "#666666", // --muted-foreground oklch(0.510) = 60%
+  // 非活性/非選択の区別が弱いという実機フィードバックを受けて Material Design の
+  // 60%黒(0.510)より明るく調整。docs/ui-guidelines.md「テキスト色の階層」参照。
+  mutedForeground: "#808080", // --muted-foreground oklch(0.60)
   subtleForeground: "#9e9e9e", // --subtle-foreground oklch(0.699) = 38%
   primary: "#171717", // --primary oklch(0.205)
   primaryForeground: "#fafafa", // --primary-foreground oklch(0.985)
