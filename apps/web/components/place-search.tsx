@@ -67,6 +67,7 @@ export function PlaceSearch({
   onClear,
   biasCenter,
   onResults,
+  onPickSaved,
 }: {
   query: string;
   onQueryChange: (value: string) => void;
@@ -78,6 +79,9 @@ export function PlaceSearch({
     results: CandidatePlace[],
     opts?: { selectFirst?: boolean },
   ) => void;
+  // autocomplete で確定した Google place が旅行に登録済みなら、呼び出し側が
+  // 既存の場所を開いて true を返す（追加フォームは出さない。iOS と同じ）。
+  onPickSaved: (googlePlaceId: string) => boolean;
 }) {
   const t = useTranslations("place");
   const placesLib = useMapsLibrary("places");
@@ -149,6 +153,13 @@ export function PlaceSearch({
   const pick = (sug: google.maps.places.AutocompleteSuggestion) => {
     const pred = sug.placePrediction;
     if (!pred) return;
+    // 登録済みの場所なら fetchFields を呼ばず（課金なし）既存を開く。
+    if (pred.placeId && onPickSaved(pred.placeId)) {
+      setSug([]);
+      tokenRef.current = null; // セッション終了
+      inputRef.current?.blur();
+      return;
+    }
     const place = pred.toPlace();
     setSug([]);
     setPending(true);

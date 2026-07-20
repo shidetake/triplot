@@ -232,11 +232,28 @@ export function PlacesSection({
     },
     [collapsePlacesSheet],
   );
-  const selectCandidate = useCallback((placeId: string) => {
-    setDraft(null);
-    setPoi(null);
-    setSelected({ kind: "candidate", placeId });
-  }, []);
+  // この Google place が旅行に登録済みなら、その保存済みの場所を返す
+  // （同じ店を POI タップ・検索・候補ピンから何度でも追加できてしまい、
+  // 重複登録される報告への対策。同じ場所なら追加ではなく既存を開く。iOS と同じ）。
+  const findSavedByGoogleId = useCallback(
+    (googlePlaceId: string) =>
+      places.find((p) => p.google_place_id === googlePlaceId) ?? null,
+    [places],
+  );
+
+  const selectCandidate = useCallback(
+    (placeId: string) => {
+      const saved = findSavedByGoogleId(placeId);
+      if (saved) {
+        selectSaved(saved.id);
+        return;
+      }
+      setDraft(null);
+      setPoi(null);
+      setSelected({ kind: "candidate", placeId });
+    },
+    [findSavedByGoogleId, selectSaved],
+  );
 
   // 空白タップ: 何も開いてなければ仮ピンを置く/移動（モード無し）。
   const onMapTap = useCallback((p: LatLng) => {
@@ -266,6 +283,20 @@ export function PlacesSection({
     setDraft(null);
     setPoi(null);
   }, []);
+
+  // autocomplete で確定した Google place が登録済みなら、検索を畳んで
+  // 既存の場所（吹き出し）を開く。true を返すと PlaceSearch 側は詳細取得
+  //（課金）に進まない。
+  const pickSaved = useCallback(
+    (googlePlaceId: string) => {
+      const saved = findSavedByGoogleId(googlePlaceId);
+      if (!saved) return false;
+      clearSearch();
+      selectSaved(saved.id);
+      return true;
+    },
+    [findSavedByGoogleId, clearSearch, selectSaved],
+  );
 
   // 未マップ place を一覧でクリック: 「位置を指定」スコープを開始する。
   // 他の選択状態は一旦クリアして、地図に集中させる（シートも畳む＝地図をタップする必要があるため）。
@@ -393,6 +424,7 @@ export function PlacesSection({
             onClear={clearSearch}
             biasCenter={biasCenter}
             onResults={onResults}
+            onPickSaved={pickSaved}
           />
         </div>
 

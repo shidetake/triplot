@@ -11,18 +11,12 @@ Apple ログイン自体（コード側・Apple Developer 側・Supabase Dashboa
 - [ ] private relay（メール非公開）での新規アカウント作成パスだけ未検証（実メールでログイン
       済みのため別 Apple ID が無いと再現できない。急ぎではない）
 
-### 12. iOS アプリ化
-Web アプリを iOS アプリとして出す。方式未定（PWA ラップ / Capacitor / React Native / ネイティブ）。
-Apple ログイン（#9）が前提になる。デザインルールやコピーもアプリ前提で見直す箇所が出るかも。
+### 12. iOS アプリ公開
+実装（Expo/React Native、`apps/mobile`）は完了済み。残っているのは
+App Store 公開（TestFlight から本番リリースへ）。
 
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。
-
-### 16. web: 登録済みの場所の重複登録防止
-同じ Google place（同 google_place_id）を POI タップ・検索・候補ピンから
-何度でも「追加」できてしまい重複登録される。iOS は対応済み（2026-07-17。
-登録済みなら追加フォームでなく既存の場所の編集を開く）。web の
-places-section にも同じ分岐を入れる。
 
 ### 15. OAuth 同意画面のロゴ設定（ブランド確認）
 カレンダーエクスポートの本番公開は完了（2026-07-14。スコープを非 sensitive の

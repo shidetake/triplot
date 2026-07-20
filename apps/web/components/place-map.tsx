@@ -417,6 +417,13 @@ export function PlaceMap({
             const poiId = e.detail.placeId;
             if (poiId) {
               e.stop();
+              // 登録済みの POI なら Details を引かず（課金なし）既存の場所を
+              // 開く（同じ店を何度でも追加できてしまう重複登録の防止。iOS と同じ）。
+              const saved = places.find((p) => p.google_place_id === poiId);
+              if (saved) {
+                onSelectSaved(saved.id);
+                return;
+              }
               if (!placesLib) return;
               // 座標は Details の location でなく「タップした POI アイコンの
               // 座標」を優先する。Details の座標は建物重心などベースマップの
