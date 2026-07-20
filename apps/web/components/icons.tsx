@@ -56,13 +56,25 @@ export function TrashIcon({
 export function LockIcon({
   size = 16,
   className,
+  filled = false,
 }: {
   size?: number;
   className?: string;
+  // トグルの ON 状態表現（いいねのハートと同じ「自分の前景色で塗る」方式）。
+  // 塗るのは錠前の箱だけ。ツルまで塗ると形が潰れる。
+  filled?: boolean;
 }) {
   return (
     <LucideIcon size={size} className={className}>
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <rect
+        width="18"
+        height="11"
+        x="3"
+        y="11"
+        rx="2"
+        ry="2"
+        fill={filled ? "currentColor" : "none"}
+      />
       <path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </LucideIcon>
   );

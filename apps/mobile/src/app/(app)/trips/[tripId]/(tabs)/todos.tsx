@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import {
+  ActionSheetIOS,
   Alert,
   Image,
   Pressable,
@@ -50,7 +51,7 @@ const PRIORITY_COLORS: Record<TodoPriority, string> = {
   medium: "#f59e0b",
   low: "#3b82f6",
 };
-const PRIORITY_CYCLE: TodoPriority[] = ["high", "medium", "low"];
+const PRIORITY_ORDER: TodoPriority[] = ["high", "medium", "low"];
 
 function PriorityIcon({ priority }: { priority: TodoPriority }) {
   const color = PRIORITY_COLORS[priority];
@@ -140,10 +141,34 @@ function TodoSection({
   userId: string;
 }) {
   const t = useTranslations("todo");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
   const memberById = new Map(members.map((m) => [m.id, m]));
+
+  const priorityLabel: Record<TodoPriority, string> = {
+    high: t("priorityHigh"),
+    medium: t("priorityMedium"),
+    low: t("priorityLow"),
+  };
+
+  // 優先度は ActionSheet で「高/中/低」から選ぶ（web のドロップダウン相当。
+  // 以前のタップでサイクルは、ラベルが出ず何のアイコンか伝わらなかった）。
+  const pickPriority = (onPick: (p: TodoPriority) => void) => {
+    ActionSheetIOS.showActionSheetWithOptions(
+      {
+        title: t("priorityTitle"),
+        options: [...PRIORITY_ORDER.map((p) => priorityLabel[p]), tCommon("cancel")],
+        cancelButtonIndex: PRIORITY_ORDER.length,
+      },
+      (index) => {
+        if (index >= 0 && index < PRIORITY_ORDER.length) {
+          onPick(PRIORITY_ORDER[index]);
+        }
+      },
+    );
+  };
 
   // 折りたたみ既定はフェーズ由来（旅行開始後は準備を畳む。web と同じ）。
   // web は localStorage に手動開閉を覚えるが、RN は M3 では画面内状態のみ。
@@ -193,27 +218,31 @@ function TodoSection({
     onError: (e) => fail(String(e)),
   });
 
-  const editTitle = (todo: TodoRow) => {
-    Alert.prompt(
-      todo.title,
-      undefined,
-      async (next) => {
-        const trimmed = (next ?? "").trim();
-        if (!trimmed || trimmed === todo.title) return;
-        const r = await updateTodo(supabase, todo.id, { title: trimmed });
-        if (!r.ok) fail(r.error);
-        void invalidate();
-      },
-      "plain-text",
-      todo.title,
-    );
+  // タイトルはその場で TextInput に差し替えて編集（web のインライン編集と
+  // 同じ。iOS リマインダーも同方式。以前の Alert.prompt はダイアログが挟まり
+  // web と操作感がずれていた）。blur / return で確定。
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+
+  const startEdit = (todo: TodoRow) => {
+    setEditingId(todo.id);
+    setEditingText(todo.title);
   };
 
-  const cyclePriority = async (todo: TodoRow) => {
-    const next =
-      PRIORITY_CYCLE[
-        (PRIORITY_CYCLE.indexOf(todo.priority) + 1) % PRIORITY_CYCLE.length
-      ];
+  const commitEdit = async () => {
+    if (!editingId) return;
+    const id = editingId;
+    const text = editingText.trim();
+    setEditingId(null);
+    const original = todos.find((x) => x.id === id);
+    if (!original || !text || text === original.title) return;
+    const r = await updateTodo(supabase, id, { title: text });
+    if (!r.ok) fail(r.error);
+    void invalidate();
+  };
+
+  const changePriority = async (todo: TodoRow, next: TodoPriority) => {
+    if (next === todo.priority) return;
     const r = await updateTodo(supabase, todo.id, { priority: next });
     if (!r.ok) fail(r.error);
     void invalidate();
@@ -271,19 +300,16 @@ function TodoSection({
             >
               <LockIcon
                 size={16}
+                filled={draftPrivate}
                 color={draftPrivate ? theme.foreground : theme.subtleForeground}
               />
             </Pressable>
             <Pressable
-              onPress={() =>
-                setDraftPriority(
-                  (p) =>
-                    PRIORITY_CYCLE[
-                      (PRIORITY_CYCLE.indexOf(p) + 1) % PRIORITY_CYCLE.length
-                    ],
-                )
-              }
+              onPress={() => pickPriority(setDraftPriority)}
               hitSlop={8}
+              accessibilityLabel={t("priorityAriaLabel", {
+                label: priorityLabel[draftPriority],
+              })}
               style={styles.iconButton}
             >
               <PriorityIcon priority={draftPriority} />
@@ -321,27 +347,49 @@ function TodoSection({
                   {todo.done && <CheckIcon size={13} color={theme.primaryForeground} />}
                 </Pressable>
 
-                <Pressable onPress={() => void cyclePriority(todo)} hitSlop={8}>
+                <Pressable
+                  onPress={() =>
+                    pickPriority((p) => void changePriority(todo, p))
+                  }
+                  hitSlop={8}
+                  accessibilityLabel={t("priorityAriaLabel", {
+                    label: priorityLabel[todo.priority],
+                  })}
+                >
                   <PriorityIcon priority={todo.priority} />
                 </Pressable>
 
-                <Pressable
-                  onPress={() => editTitle(todo)}
-                  style={styles.titleArea}
-                >
-                  <Text
-                    style={[styles.title, todo.done && styles.titleDone]}
-                    numberOfLines={2}
-                  >
-                    {todo.title}
-                  </Text>
-                </Pressable>
-
-                {todo.visibility === "private" && (
-                  <LockIcon size={14} color={theme.mutedForeground} />
+                {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・作成者）／
+                    右端=押すもの（♥・削除）」のグループ分け（web と同形）。 */}
+                {editingId === todo.id ? (
+                  <TextInput
+                    autoFocus
+                    value={editingText}
+                    onChangeText={setEditingText}
+                    onBlur={() => void commitEdit()}
+                    onSubmitEditing={() => void commitEdit()}
+                    returnKeyType="done"
+                    style={[styles.titleArea, styles.titleInput]}
+                  />
+                ) : (
+                  <View style={styles.titleGroup}>
+                    <Pressable
+                      onPress={() => startEdit(todo)}
+                      style={styles.titleShrink}
+                    >
+                      <Text
+                        style={[styles.title, todo.done && styles.titleDone]}
+                        numberOfLines={2}
+                      >
+                        {todo.title}
+                      </Text>
+                    </Pressable>
+                    {todo.visibility === "private" && (
+                      <LockIcon size={14} color={theme.mutedForeground} />
+                    )}
+                    {creator && <Avatar member={creator} />}
+                  </View>
                 )}
-
-                {creator && <Avatar member={creator} />}
 
                 {kind === "onsite" && (
                   <Pressable
@@ -365,8 +413,11 @@ function TodoSection({
                   onPress={() => confirmDelete(todo)}
                   hitSlop={8}
                   accessibilityLabel={t("deleteAria")}
+                  // ♥ との間を広げる（いいねのつもりで削除を押す誤タップの分離）
+                  style={styles.trashSpacing}
                 >
-                  <TrashIcon size={15} color={theme.subtleForeground} />
+                  {/* 削除＝destructive 赤（web の TODO 行・カテゴリ管理と同じ） */}
+                  <TrashIcon size={15} color={theme.destructiveText} />
                 </Pressable>
               </View>
             );
@@ -448,7 +499,13 @@ const makeStyles = (t: Theme) =>
   },
   checkboxDone: { backgroundColor: t.primary, borderColor: t.primary },
   titleArea: { flex: 1 },
+  // タイトル＋鍵＋作成者アバターを左寄せで束ねる（押せない情報はタイトル側）
+  titleGroup: { flex: 1, flexDirection: "row", alignItems: "center", gap: 6 },
+  titleShrink: { flexShrink: 1, minWidth: 0 },
   title: { fontSize: 14, color: t.foreground },
+  // インライン編集中の入力。行の見た目を崩さないよう枠なし・タイトルと同じ字面
+  titleInput: { fontSize: 14, color: t.foreground, padding: 0 },
+  trashSpacing: { marginLeft: 12 },
   titleDone: {
     textDecorationLine: "line-through",
     color: t.subtleForeground,

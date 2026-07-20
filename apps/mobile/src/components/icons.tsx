@@ -26,6 +26,8 @@ function LucideIcon({
       strokeWidth={2}
       strokeLinecap="round"
       strokeLinejoin="round"
+      // 子要素の fill="currentColor"（LockIcon の塗り等）をこの色に解決させる
+      color={color}
     >
       {children}
     </Svg>
@@ -222,10 +224,23 @@ export function HeartIcon({
 }
 
 // Lucide: lock（private 可視性）
-export function LockIcon(p: IconProps) {
+export function LockIcon({
+  filled = false,
+  ...p
+}: IconProps & { filled?: boolean }) {
   return (
     <LucideIcon {...p}>
-      <Rect width={18} height={11} x={3} y={11} rx={2} ry={2} />
+      {/* トグルの ON 状態表現（ハートと同じ「自分の前景色で塗る」方式。
+          塗るのは錠前の箱だけ＝web の LockIcon と同じ）。 */}
+      <Rect
+        width={18}
+        height={11}
+        x={3}
+        y={11}
+        rx={2}
+        ry={2}
+        fill={filled ? "currentColor" : "none"}
+      />
       <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </LucideIcon>
   );

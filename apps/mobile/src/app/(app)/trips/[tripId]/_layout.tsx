@@ -1,5 +1,5 @@
 import { Stack } from "expo-router";
-import { useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { View } from "react-native";
 
 import { CalendarExportSheet } from "@/components/calendar-export-sheet";
@@ -50,30 +50,43 @@ export default function TripLayout() {
   const exportRef = useRef<FormSheetRef>(null);
   const calendarExportRef = useRef<FormSheetRef>(null);
 
+  // options は identity が変わるたびに expo-router が navigation.setOptions を
+  // 呼ぶ。useTripDetail はいいね・優先度変更等の invalidate のたびに再レンダー
+  // するので、素のオブジェクトリテラルだと操作のたび native ヘッダーが更新され、
+  // まれに戻るボタンが消える（react-native-screens のヘッダー高頻度更新系の
+  // 既知不具合。再起動まで直らない実機報告あり）。タイトルが実際に変わった時
+  // だけ setOptions が走るようメモ化する。
+  const headerRight = useCallback(
+    () => (
+      <View style={{ flexDirection: "row", gap: 4 }}>
+        <HeaderIconButton
+          accessibilityLabel="共有"
+          onPress={() => void shareTripInvite(tripId)}
+        >
+          <ShareIcon size={20} color="#666666" />
+        </HeaderIconButton>
+        <HeaderIconButton
+          accessibilityLabel="旅行を編集"
+          onPress={() => editRef.current?.present()}
+        >
+          <SettingsIcon size={20} color="#666666" />
+        </HeaderIconButton>
+      </View>
+    ),
+    [tripId],
+  );
+  const screenOptions = useMemo(
+    () => ({
+      title: tripTitle,
+      headerBackButtonDisplayMode: "minimal" as const,
+      headerRight,
+    }),
+    [tripTitle, headerRight],
+  );
+
   return (
     <>
-      <Stack.Screen
-        options={{
-          title: tripTitle,
-          headerBackButtonDisplayMode: "minimal",
-          headerRight: () => (
-            <View style={{ flexDirection: "row", gap: 4 }}>
-              <HeaderIconButton
-                accessibilityLabel="共有"
-                onPress={() => void shareTripInvite(tripId)}
-              >
-                <ShareIcon size={20} color="#666666" />
-              </HeaderIconButton>
-              <HeaderIconButton
-                accessibilityLabel="旅行を編集"
-                onPress={() => editRef.current?.present()}
-              >
-                <SettingsIcon size={20} color="#666666" />
-              </HeaderIconButton>
-            </View>
-          ),
-        }}
-      />
+      <Stack.Screen options={screenOptions} />
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>

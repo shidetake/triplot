@@ -282,6 +282,7 @@
     "deleteTitle": "Delete this to-do?",
     "failed": "Failed: {error}",
     "priorityAriaLabel": "Priority: {label}",
+    "priorityTitle": "Priority",
     "priorityHigh": "High",
     "priorityMedium": "Medium",
     "priorityLow": "Low",

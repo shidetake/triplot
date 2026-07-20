@@ -282,6 +282,7 @@
     "deleteTitle": "このTODOを削除しますか？",
     "failed": "失敗しました: {error}",
     "priorityAriaLabel": "優先度: {label}",
+    "priorityTitle": "優先度",
     "priorityHigh": "高",
     "priorityMedium": "中",
     "priorityLow": "低",

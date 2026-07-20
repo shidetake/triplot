@@ -390,6 +390,7 @@ export function TodoSection({
         >
           <LockIcon
             size={16}
+            filled={draftVisibility === "private"}
             className={
               draftVisibility === "private"
                 ? "text-foreground"
@@ -424,6 +425,14 @@ export function TodoSection({
                 onChange={() => toggle(todo)}
                 aria-label={todo.done ? t("checkUndone") : t("checkDone")}
                 className="size-[18px] shrink-0 cursor-pointer"
+              />
+
+              {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・作成者）／
+                  右端=押すもの（♥・削除）」のグループ分け。優先度は押して
+                  変更できるが本質は状態表示なので左（Jira/Linear と同じ）。 */}
+              <PrioritySelect
+                value={todo.priority}
+                onChange={(p) => changePriority(todo, p)}
               />
 
               <div className="min-w-0 flex-1">
@@ -462,14 +471,23 @@ export function TodoSection({
                     {todo.visibility === "private" && (
                       <PrivateBadge className="shrink-0" />
                     )}
+                    {/* 作成者: 狭い画面は色アバター（イニシャル）、広い画面は名前の色チップ。
+                        押せない情報なのでタイトル側に寄せる。しきい値はボトムシートと同じ 640px（Tailwind sm）。 */}
+                    <MemberAvatar
+                      name={memberName(todo.created_by_member_id)}
+                      color={memberColor(todo.created_by_member_id)}
+                      imageUrl={memberAvatar(todo.created_by_member_id)}
+                      className="shrink-0 sm:hidden"
+                    />
+                    <span
+                      style={chipStyle(memberColor(todo.created_by_member_id))}
+                      className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+                    >
+                      {memberName(todo.created_by_member_id)}
+                    </span>
                   </div>
                 )}
               </div>
-
-              <PrioritySelect
-                value={todo.priority}
-                onChange={(p) => changePriority(todo, p)}
-              />
 
               {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
               {kind === "onsite" && (
@@ -492,27 +510,12 @@ export function TodoSection({
                 </button>
               )}
 
-              {/* 作成者: 狭い画面は色アバター（イニシャル）だけ、広い画面は名前の色チップだけ。
-                  どちらもメンバー色のバッジ風。しきい値はボトムシートと同じ 640px（Tailwind sm）。 */}
-              <MemberAvatar
-                name={memberName(todo.created_by_member_id)}
-                color={memberColor(todo.created_by_member_id)}
-                // 全メンバーの写真。無ければイニシャル色丸にフォールバック。
-                imageUrl={memberAvatar(todo.created_by_member_id)}
-                className="shrink-0 sm:hidden"
-              />
-              <span
-                style={chipStyle(memberColor(todo.created_by_member_id))}
-                className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-              >
-                {memberName(todo.created_by_member_id)}
-              </span>
-
               <button
                 type="button"
                 onClick={() => remove(todo)}
                 aria-label={t("deleteAria")}
-                className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
+                // ml-3: ♥ との間を広げる（いいねのつもりで削除を押す誤タップの分離）
+                className="ml-3 shrink-0 rounded p-1 text-red-600 transition hover:bg-red-600/10"
               >
                 <TrashIcon size={16} />
               </button>
