@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useState } from "react";
 import {
   Alert,
@@ -6,6 +5,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
@@ -89,7 +89,7 @@ export function FeedbackSheet({ onDone }: { onDone: () => void }) {
       />
 
       {/* 本文。placeholder が「何を書くか」の例文を兼ねる（web と同じ）。 */}
-      <BottomSheetTextInput
+      <TextInput
         value={body}
         onChangeText={setBody}
         multiline

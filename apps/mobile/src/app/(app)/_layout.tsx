@@ -24,12 +24,56 @@ export default function AppLayout() {
         name="trips/index"
         options={{ title: "triplot", headerLargeTitle: true }}
       />
-      {/* 取り込み・設定・旅行作成・旅行編集・カテゴリ管理・エクスポートは
-          すべて @gorhom ベースの FormSheet（各画面が自分でマウントする）に
-          統一済み。native の formSheet ルート（presentation: "formSheet"）は
-          もう使わない。旅行詳細はネストした Stack が自分でヘッダーを構成する
-          （旅行名+編集）。タイトル等は trips/[tripId]/_layout.tsx が
-          Stack.Screen で注入する。 */}
+      {/* 取り込み・設定・フィードバック・旅行作成は native の formSheet
+          ルート（react-native-screens の presentation: "formSheet"）。
+          以前は @gorhom ベースの FormSheet に統一していたが、OS 標準の
+          質感（キーボード対応込み）に寄せる方針転換によりこちらへ移行した
+          （docs/architecture.md 相当の設計判断はプランに記載）。
+          旅行詳細（旅行編集・カテゴリ管理・エクスポート・場所フォーム等）は
+          まだ @gorhom のまま＝移行はフェーズを分けて段階的に進めている。 */}
+      <Stack.Screen
+        name="trips/inbox"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 20,
+        }}
+      />
+      <Stack.Screen
+        name="trips/settings"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 20,
+        }}
+      />
+      {/* フィードバックは設定からのドリルイン（router.push）。native-stack の
+          push は @gorhom の stackBehavior="push" と同じ「前を裏に残して
+          上に重ねる」挙動を素で持つ。 */}
+      <Stack.Screen
+        name="trips/feedback"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 20,
+        }}
+      />
+      <Stack.Screen
+        name="trips/new"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+          sheetCornerRadius: 20,
+        }}
+      />
     </Stack>
   );
 }

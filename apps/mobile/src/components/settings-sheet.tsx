@@ -1,4 +1,3 @@
-import { BottomSheetTextInput } from "@gorhom/bottom-sheet";
 import { useQuery } from "@tanstack/react-query";
 import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
@@ -10,6 +9,7 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  TextInput,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
@@ -190,7 +190,7 @@ export function SettingsSheet({
           {/* ラベル無し＋placeholder＝フィールド名（表示名）。説明は下のヒントが担う。
               保存は入力の右のアイコンボタン（web の DisplayNameForm と同形）。 */}
           <View style={styles.nameRow}>
-            <BottomSheetTextInput
+            <TextInput
               value={vName}
               onChangeText={setName}
               placeholder={t("settings.namePlaceholder")}

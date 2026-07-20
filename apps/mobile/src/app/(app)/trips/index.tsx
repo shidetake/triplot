@@ -1,47 +1,33 @@
 import { useQuery } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
-import { useRef } from "react";
 import {
   FlatList,
   Image,
   Pressable,
-  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
-import {
-  fetchImportInboxRows,
-  fetchUnassignedInboundCount,
-} from "@triplot/shared/data/reads/inbox";
+import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 import {
   fetchMyTrips,
   fetchUserProfile,
 } from "@triplot/shared/data/reads/trips";
 
-import { FeedbackSheet } from "@/components/feedback-sheet";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { HeaderIconButton } from "@/components/header-icon-button";
 import { InboxIcon, PlusIcon } from "@/components/icons";
-import { InboxSheet } from "@/components/inbox-sheet";
-import { NewTripSheet } from "@/components/new-trip-sheet";
-import { SettingsSheet } from "@/components/settings-sheet";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
-import { usePullRefresh } from "@/lib/usePullRefresh";
 
 // 旅行一覧（アプリのホーム）。web の apps/web/app/trips/page.tsx 相当。
-// ヘッダー右に旅行作成（+）と設定（歯車）。取り込み・設定・旅行作成は
-// すべて @gorhom ベースの FormSheet（予定/費用/場所のフォームと同じ実装）
-// で開く。旅行編集・カテゴリ管理等の旅行詳細系シートと合わせてアプリ全体で
-// 1つのシート実装に統一している（native の formSheet とカスタムシートを
-// 画面ごとに使い分けると、ユーザーには理由の分からない質感の違いとして
-// 違和感になるため）。
+// ヘッダー右に受信箱と設定（アバター）、右下 FAB に旅行作成。取り込み・
+// 設定・旅行作成は native の formSheet ルート（trips/inbox・trips/settings・
+// trips/new）へ router.push で遷移する（(app)/_layout.tsx 参照）。
 export default function TripsScreen() {
   const t = useTranslations("trips");
   const theme = useTheme();
@@ -80,23 +66,6 @@ export default function TripsScreen() {
       .charAt(0)
       .toUpperCase() || "?";
 
-  // 受信箱シートの pull-to-refresh。InboxSheet 本体と同じ queryKey で
-  // 呼ぶことで TanStack Query のキャッシュ共有により二重取得にはならず、
-  // ここでの refetch が InboxSheet の data も更新する（RefreshControl は
-  // ScrollView 直下の prop としてしか機能しないため FormSheet 側に渡す）。
-  const { refetch: refetchInbox } = useQuery({
-    queryKey: ["inbox", userId],
-    queryFn: () => fetchImportInboxRows(supabase, userId!),
-    enabled: !!userId,
-  });
-  const { refreshing: inboxRefreshing, onRefresh: onInboxRefresh } =
-    usePullRefresh(refetchInbox);
-
-  const inboxRef = useRef<FormSheetRef>(null);
-  const settingsRef = useRef<FormSheetRef>(null);
-  const newTripRef = useRef<FormSheetRef>(null);
-  const feedbackRef = useRef<FormSheetRef>(null);
-
   return (
     <View style={styles.container}>
       {/* タイトル（triplot・ラージタイトル）は (app)/_layout.tsx で静的に宣言。
@@ -108,7 +77,7 @@ export default function TripsScreen() {
             <View style={styles.headerButtons}>
               <HeaderIconButton
                 accessibilityLabel="取り込み"
-                onPress={() => inboxRef.current?.present()}
+                onPress={() => router.push("/trips/inbox")}
               >
                 <View>
                   <InboxIcon size={20} color={theme.mutedForeground} />
@@ -125,7 +94,7 @@ export default function TripsScreen() {
                   自分のアバターは中立 zinc（メンバー色 hue とは別系統）。 */}
               <HeaderIconButton
                 accessibilityLabel="設定"
-                onPress={() => settingsRef.current?.present()}
+                onPress={() => router.push("/trips/settings")}
               >
                 {profile?.avatar_url ? (
                   <Image
@@ -186,40 +155,10 @@ export default function TripsScreen() {
       <Pressable
         style={styles.fab}
         accessibilityLabel={t("create")}
-        onPress={() => newTripRef.current?.present()}
+        onPress={() => router.push("/trips/new")}
       >
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>
-
-      <FormSheet
-        ref={inboxRef}
-        sizeToContent
-        refreshControl={
-          <RefreshControl
-            refreshing={inboxRefreshing}
-            onRefresh={onInboxRefresh}
-          />
-        }
-      >
-        {() => <InboxSheet />}
-      </FormSheet>
-      <FormSheet ref={settingsRef} sizeToContent>
-        {(dismiss) => (
-          <SettingsSheet
-            onDone={dismiss}
-            onOpenFeedback={() => feedbackRef.current?.present()}
-          />
-        )}
-      </FormSheet>
-      {/* フィードバックは設定からのドリルイン＝push で設定の上に重ねる
-          （旅行編集→カテゴリ管理と同じ）。送信成功でトースト代わりに
-          フィードバックシートだけ閉じ、設定に戻る。 */}
-      <FormSheet ref={feedbackRef} sizeToContent stackBehavior="push">
-        {(dismiss) => <FeedbackSheet onDone={dismiss} />}
-      </FormSheet>
-      <FormSheet ref={newTripRef} sizeToContent>
-        {(dismiss) => <NewTripSheet onDone={dismiss} />}
-      </FormSheet>
     </View>
   );
 }
