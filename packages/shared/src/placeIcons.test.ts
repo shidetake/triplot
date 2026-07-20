@@ -2,9 +2,18 @@ import { describe, expect, it } from "vitest";
 
 import {
   GOOGLE_TYPE_ICON,
+  ICON_CATALOG,
   getIcon,
   iconKeyForGoogleType,
 } from "./placeIcons";
+
+describe("ICON_CATALOG", () => {
+  it("全エントリが outlinePath（アイコンピッカーの未追加表示用）を持つ", () => {
+    for (const entry of ICON_CATALOG) {
+      expect(entry.outlinePath, entry.key).toBeTruthy();
+    }
+  });
+});
 
 describe("iconKeyForGoogleType", () => {
   it("対応表の値は全部カタログに存在する（不変条件）", () => {

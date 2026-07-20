@@ -15,6 +15,7 @@ import { addTripPinOption, removeTripPinOption } from "@triplot/shared/data/plac
 import {
   ICON_CATALOG,
   getIcon,
+  getIconOutlinePath,
   getIconPath,
   type PinOption,
 } from "@triplot/shared/placeIcons";
@@ -135,8 +136,9 @@ export function PlaceIconPicker({
                 ? { backgroundColor: theme.removeChipBg }
                 : { backgroundColor: theme.addChipBg }
               : null;
-            // 追加済みは「状態 dim」＝アイコンを opacity 0.5。
-            const iconColor = theme.foreground;
+            // 追加済み=塗り（ToggleChip の「選択中=色を塗る」と同じ考え方）、
+            // 未追加=アウトライン線画。opacity での dim はしない
+            // （色トークン差＋形状差自体で見分けられるようにする）。
             return (
               <Pressable
                 key={it.key}
@@ -146,13 +148,11 @@ export function PlaceIconPicker({
                 accessibilityLabel={t(`icon.${it.key}`)}
               >
                 <View style={[styles.chip, cellStyle]}>
-                  <Svg
-                    viewBox="0 -960 960 960"
-                    width={22}
-                    height={22}
-                    opacity={used ? 0.5 : 1}
-                  >
-                    <Path d={getIconPath(it.key)} fill={iconColor} />
+                  <Svg viewBox="0 -960 960 960" width={22} height={22}>
+                    <Path
+                      d={used ? getIconPath(it.key) : getIconOutlinePath(it.key)}
+                      fill={used ? theme.foreground : theme.mutedForeground}
+                    />
                   </Svg>
                 </View>
               </Pressable>

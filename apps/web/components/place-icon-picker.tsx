@@ -109,8 +109,9 @@ export function PlaceIconPicker({
               const selectedClass = used
                 ? "bg-red-100 text-red-900 dark:bg-red-400/20 dark:text-red-200"
                 : "bg-blue-100 text-blue-900 dark:bg-blue-400/20 dark:text-blue-200";
-              // 追加済みは「状態 dim」= アイコンを opacity-50（ui-guidelines
-              // 「薄くする手段」）。ホバーは未追加と同じ標準の bg-foreground/10。
+              // 追加済み=塗り（ToggleChip の「選択中=色を塗る」と同じ考え方）、
+              // 未追加=アウトライン線画。opacity での dim はしない
+              // （色トークン差＋形状差自体で見分けられるようにする）。
               const idleClass = used
                 ? "text-foreground hover:bg-foreground/10"
                 : "text-muted-foreground hover:bg-foreground/10";
@@ -126,11 +127,7 @@ export function PlaceIconPicker({
                     sel ? selectedClass : idleClass
                   } disabled:cursor-not-allowed`}
                 >
-                  <PlaceIcon
-                    icon={it.key}
-                    size={20}
-                    className={used ? "opacity-50" : ""}
-                  />
+                  <PlaceIcon icon={it.key} size={20} outline={!used} />
                 </button>
               );
             })}

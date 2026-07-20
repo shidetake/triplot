@@ -1,6 +1,6 @@
 "use client";
 
-import { getIconPath } from "@triplot/shared/placeIcons";
+import { getIconOutlinePath, getIconPath } from "@triplot/shared/placeIcons";
 import { useTranslations } from "next-intl";
 
 import { ColorBadge } from "./color-badge";
@@ -17,10 +17,14 @@ export function PlaceIcon({
   icon,
   size = 18,
   className,
+  outline = false,
 }: {
   icon: string;
   size?: number;
   className?: string;
+  // アイコンピッカーの「未追加」表示専用。Material Symbols の非塗りグリフ
+  // （塗りパスとは別データ。lib/placeIcons.ts のコメント参照）。
+  outline?: boolean;
 }) {
   return (
     <svg
@@ -31,7 +35,7 @@ export function PlaceIcon({
       className={className}
       aria-hidden
     >
-      <path d={getIconPath(icon)} />
+      <path d={outline ? getIconOutlinePath(icon) : getIconPath(icon)} />
     </svg>
   );
 }
