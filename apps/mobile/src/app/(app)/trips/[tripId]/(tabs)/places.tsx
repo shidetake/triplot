@@ -1,15 +1,17 @@
-import BottomSheet, { BottomSheetFlatList } from "@gorhom/bottom-sheet";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
+import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import MapView, {
   Marker,
   PROVIDER_GOOGLE,
@@ -41,7 +43,6 @@ import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
 
 import Svg, { Path } from "react-native-svg";
 
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceForm } from "@/components/place-form";
 import {
@@ -87,8 +88,10 @@ export default function PlacesTab() {
   const invalidate = useInvalidateTrip(tripId);
 
   const mapRef = useRef<MapView>(null);
-  const formRef = useRef<FormSheetRef>(null);
-  const listSheetRef = useRef<BottomSheet>(null);
+  // 追加/編集フォームの開閉（@gorhom の formRef.present/dismiss を state 化）。
+  // 常設リストシートは native の formSheet（preventNativeDismiss）で常時表示、
+  // フォームはその上に重ねる 3 枚目の formSheet として条件レンダーする。
+  const [formOpen, setFormOpen] = useState(false);
 
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([]);
@@ -284,9 +287,9 @@ export default function PlacesTab() {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         });
-        // 一覧シートを中段まで開いて検索結果のリストを見せる
-        // （searchText の応答に全候補の情報が揃っている＝追加 API 呼び出しなし）。
-        listSheetRef.current?.snapToIndex(1);
+        // 検索結果は listMode="search" への遷移でシートが中段（detent 1）に
+        // 再マウントされて見える（native シートは命令的 snap を持たないため、
+        // mode 毎の初期 detent ＋ key 再マウントで代替。下の listInitialDetent）。
       }
     } catch (e) {
       // 失敗は握りつぶさず見せる（原因の詳細付き。実機でのキー制限・
@@ -297,10 +300,6 @@ export default function PlacesTab() {
       setSearching(false);
     }
   };
-
-  // フォームシートを開く前の共通処理: 一覧シートを最小へ畳む（フォームの
-  // 後ろに完全に隠れる＝シートの二枚重ねを見せない）。
-  const collapseListSheet = () => listSheetRef.current?.snapToIndex(0);
 
   // ピン選択時のカメラ移動は本家 Google マップと同じ「ズームは一切変えず
   // パンだけ」。狙い位置は「フォームシートに隠れない画面上寄り（上から約25%）」
@@ -339,9 +338,8 @@ export default function PlacesTab() {
     setEditing(null);
     setPinDraft(null);
     closeSuggestions();
-    collapseListSheet();
     focusCoord(c.lat, c.lng);
-    formRef.current?.present();
+    setFormOpen(true);
   };
 
   // 地図長押し: その座標に仮ピンを置き、名前を入力して保存するフォームを開く
@@ -351,9 +349,8 @@ export default function PlacesTab() {
     setEditing(null);
     setSelectedCandidate(null);
     closeSuggestions();
-    collapseListSheet();
     focusCoord(lat, lng);
-    formRef.current?.present();
+    setFormOpen(true);
   };
 
   // ベースマップの POI（Google の店・施設アイコン）タップ: Place Details で
@@ -398,9 +395,8 @@ export default function PlacesTab() {
     setEditing(p);
     setSelectedCandidate(null);
     closeSuggestions();
-    collapseListSheet();
     if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng);
-    formRef.current?.present();
+    setFormOpen(true);
   };
 
   // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
@@ -412,7 +408,6 @@ export default function PlacesTab() {
     setLocating({ id: p.id, name: p.name });
     Keyboard.dismiss();
     closeSuggestions();
-    collapseListSheet();
   };
 
   // 「位置を指定」モード中の地図タップ/長押し: 赤ピンを立てて確定を確認し、
@@ -449,8 +444,34 @@ export default function PlacesTab() {
     );
   };
 
+  // 常設リストシートの表示モード。命令的 snap が無いので mode 毎に初期 detent を
+  // 変え、mode が変わったら key で再マウントして detent を切り替える:
+  //   browse=通常の場所一覧（最小 detent 0）
+  //   search=検索結果（中段 detent 1 で見せる。旧 snapToIndex(1) の代替）
+  //   locate=位置指定モード（最小 detent 0 に畳んで地図を広く見せる。旧 collapse）
+  const listMode =
+    candidates.length > 0 ? "search" : locating ? "locate" : "browse";
+  const listInitialDetent = listMode === "search" ? 1 : 0;
+
   return (
-    <View style={styles.screen}>
+    <ScreenStack style={StyleSheet.absoluteFill}>
+      {/* ベース画面: 地図＋検索バー＋位置指定バナー。常設リストと追加/編集
+          フォームはこの上に native の formSheet として重ねる。
+          sheetLargestUndimmedDetentIndex="last" で全 detent で背後の地図が
+          暗くならず操作できる（本家 Apple/Google マップの場所カードと同じ）。
+          @gorhom の BottomSheet/FormSheet を react-native-screens の
+          ScreenStack/ScreenStackItem に置換。単一コンポーネントのままなので
+          mapRef・state・ハンドラは従来どおり共有できる（共有ストア不要）。 */}
+      <ScreenStackItem
+        screenId="places-map"
+        activityState={2}
+        style={StyleSheet.absoluteFill}
+        // header を hidden にしないと iOS26 の ScreenStackItem が中身を
+        // SafeAreaView(top) で包み、地図の上に黒帯（上部インセット）が出る。
+        // 全画面地図なので上部インセットは不要＝hidden で opt-out する。
+        headerConfig={{ hidden: true }}
+      >
+        <View style={styles.screen}>
       <MapView
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
@@ -614,36 +635,55 @@ export default function PlacesTab() {
           )}
         </Pressable>
       </View>
+        </View>
+      </ScreenStackItem>
 
-      {/* 場所一覧（ドラッグ式ボトムシート） */}
-      <BottomSheet
-        ref={listSheetRef}
-        index={0}
-        snapPoints={["12%", "45%", "88%"]}
-        backgroundStyle={{ backgroundColor: theme.background }}
-        handleIndicatorStyle={{ backgroundColor: theme.fgAlpha(0.2) }}
+      {/* 場所一覧（常設ボトムシート＝native formSheet・閉じさせない）。
+          12%/45%/88% の 3 detent でドラッグ、背後の地図は操作可能。 */}
+      <ScreenStackItem
+        key={`places-list-${listMode}`}
+        screenId="places-list"
+        activityState={2}
+        stackPresentation="formSheet"
+        sheetAllowedDetents={[0.12, 0.45, 0.88]}
+        sheetLargestUndimmedDetentIndex="last"
+        sheetInitialDetentIndex={listInitialDetent}
+        // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
+        // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
+        sheetExpandsWhenScrolledToEdge={false}
+        sheetGrabberVisible
+        sheetCornerRadius={16}
+        preventNativeDismiss
+        headerConfig={{ hidden: true }}
+        contentStyle={{ backgroundColor: theme.background }}
       >
         {candidates.length > 0 ? (
           // 検索結果モード: searchText で取得済みの候補情報を一覧で見せる
           // （表示は取得済みデータの描画だけ＝追加の API 課金なし）。
-          <>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetCount}>
-                検索結果 {candidates.length}件
-              </Text>
-              <Pressable
-                onPress={() => setCandidates([])}
-                style={styles.sheetClose}
-                accessibilityLabel="検索結果を閉じる"
-              >
-                <XIcon size={16} color={theme.mutedForeground} />
-              </Pressable>
-            </View>
-            <BottomSheetFlatList
-              data={candidates}
-              keyExtractor={(item) => item.placeId}
-              contentContainerStyle={styles.list}
-              renderItem={({ item }) => (
+          // ヘッダーは ListHeaderComponent に入れる＝native formSheet の
+          // ScrollView 検出（最大2サブビュー）を壊さないよう、FlatList を
+          // ScreenStackItem 直下の単一の子にする（さもないと行タップが
+          // シートのスクロール/拡張ジェスチャに飲まれて発火しない）。
+          <FlatList
+            data={candidates}
+            keyExtractor={(item) => item.placeId}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetCount}>
+                  検索結果 {candidates.length}件
+                </Text>
+                <Pressable
+                  onPress={() => setCandidates([])}
+                  style={styles.sheetClose}
+                  accessibilityLabel="検索結果を閉じる"
+                >
+                  <XIcon size={16} color={theme.mutedForeground} />
+                </Pressable>
+              </View>
+            }
+            renderItem={({ item }) => (
                 <Pressable
                   onPress={() => openAddCandidate(item)}
                   style={styles.placeRow}
@@ -683,19 +723,20 @@ export default function PlacesTab() {
                     </View>
                   </View>
                 </Pressable>
-              )}
-            />
-          </>
+            )}
+          />
         ) : (
-          <>
-            <View style={styles.sheetHeader}>
-              <Text style={styles.sheetCount}>{places.length}件の場所</Text>
-            </View>
-            <BottomSheetFlatList
-              data={places}
-              keyExtractor={(item) => item.id}
-              contentContainerStyle={styles.list}
-              renderItem={({ item }) => {
+          <FlatList
+            data={places}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.list}
+            keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <View style={styles.sheetHeader}>
+                <Text style={styles.sheetCount}>{places.length}件の場所</Text>
+              </View>
+            }
+            renderItem={({ item }) => {
                 const unmapped = item.lat == null;
                 const isLocating = unmapped && item.id === locating?.id;
                 return (
@@ -757,58 +798,65 @@ export default function PlacesTab() {
                   </Pressable>
                 );
               }}
-              ListEmptyComponent={
-                <Text style={styles.empty}>まだ場所がありません。</Text>
-              }
-            />
-          </>
-        )}
-      </BottomSheet>
-
-      {/* 追加/編集フォーム。地図タブだけ中身の高さちょうどまで＝全開だと
-          どのピンの話か（地図の文脈）が見えなくなるため。予定・費用のフォームは
-          従来どおり全開（sizeToContent を渡していない）。
-          scrim も無し（backdropOpacity 0）: 他の管理系シートと違い、この
-          シートは背後の地図（どのピンの話かという文脈・仮ピンの位置）を見せる
-          ことこそが存在意義。本家 Google/Apple マップの場所カードも背景の
-          地図を暗くしない。 */}
-      <FormSheet
-        ref={formRef}
-        sizeToContent
-        backdropOpacity={0}
-        // キーボードでシート全体を持ち上げない（持ち上げると背景の地図＝
-        // どのピンの話かの文脈が丸ごと隠れて本末転倒）。シート位置は保ち、
-        // フォーカス中の入力だけ FormSheet の自前スクロールで見せる。
-        keyboardBehavior="extend"
-        // 閉じたら（保存・スワイプ閉じとも）地図上の一時表示を全部解除する:
-        // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
-        onDismiss={() => {
-          setSelectedCandidate(null);
-          setEditing(null);
-          setPinDraft(null);
-        }}
-      >
-        {(dismiss) => (
-          <PlaceForm
-            tripId={tripId}
-            pinOptions={pinOptions}
-            candidate={selectedCandidate ?? undefined}
-            pinDraft={pinDraft ?? undefined}
-            editPlace={editing ?? undefined}
-            myMemberId={me.id}
-            invalidate={invalidate}
-            onDone={() => {
-              dismiss();
-              setCandidates([]);
-              setQuery("");
-              setPredictions([]);
-              setPinDraft(null);
-              void invalidate();
-            }}
+            ListEmptyComponent={
+              <Text style={styles.empty}>まだ場所がありません。</Text>
+            }
           />
         )}
-      </FormSheet>
-    </View>
+      </ScreenStackItem>
+
+      {/* 追加/編集フォーム＝常設リストの上にさらに重ねる native formSheet。
+          sheetLargestUndimmedDetentIndex="last" で背後の地図（どのピンの話かの
+          文脈・仮ピン位置）を暗くせず見せる。本家 Google/Apple マップの場所
+          カードと同じ。キーボード回避は native の formSheet が自動で行う
+          （@gorhom 時代の keyboardBehavior="extend" 相当の手当ては不要）。 */}
+      {formOpen && (
+        <ScreenStackItem
+          screenId="places-form"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetLargestUndimmedDetentIndex="last"
+          sheetGrabberVisible
+          sheetCornerRadius={16}
+          headerConfig={{ hidden: true }}
+          contentStyle={{ backgroundColor: theme.background }}
+          // スワイプ閉じ・プログラム閉じ両方で地図の一時表示を解除する:
+          // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
+          onDismissed={() => {
+            setFormOpen(false);
+            setSelectedCandidate(null);
+            setEditing(null);
+            setPinDraft(null);
+          }}
+        >
+          <ScrollView
+            contentContainerStyle={styles.formScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            <PlaceForm
+              tripId={tripId}
+              pinOptions={pinOptions}
+              candidate={selectedCandidate ?? undefined}
+              pinDraft={pinDraft ?? undefined}
+              editPlace={editing ?? undefined}
+              myMemberId={me.id}
+              invalidate={invalidate}
+              onDone={() => {
+                setFormOpen(false);
+                setCandidates([]);
+                setQuery("");
+                setPredictions([]);
+                setPinDraft(null);
+                setSelectedCandidate(null);
+                setEditing(null);
+                void invalidate();
+              }}
+            />
+          </ScrollView>
+        </ScreenStackItem>
+      )}
+    </ScreenStack>
   );
 }
 
@@ -1024,6 +1072,7 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
+  formScroll: { paddingBottom: 24 },
   sheetHeader: { paddingHorizontal: 16, paddingBottom: 8, alignItems: "center" },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
   // 検索結果モードの × （ヘッダー右端に重ねる。専用行は作らない）。
