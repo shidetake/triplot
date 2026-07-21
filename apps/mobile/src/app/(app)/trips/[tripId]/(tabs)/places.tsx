@@ -51,7 +51,7 @@ import {
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
-import { LockIcon, SearchIcon, XIcon } from "@/components/icons";
+import { ChevronIcon, LockIcon, SearchIcon, XIcon } from "@/components/icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
@@ -88,9 +88,12 @@ export default function PlacesTab() {
   const invalidate = useInvalidateTrip(tripId);
 
   const mapRef = useRef<MapView>(null);
-  // 追加/編集フォームの開閉（@gorhom の formRef.present/dismiss を state 化）。
-  // 常設リストシートは native の formSheet（preventNativeDismiss）で常時表示、
-  // フォームはその上に重ねる 3 枚目の formSheet として条件レンダーする。
+  // シートの開閉。どちらも native の formSheet（モーダル）で、開いた時だけ
+  // 出す＝閉じている間は地図とタブバーが見える。常設にすると formSheet が
+  // タブバー（浮島）を覆ってタブ移動できなくなるため、ボタンで開く方式にする。
+  //   listOpen: 場所一覧（下の「一覧」ボタン / 検索実行で開く）
+  //   formOpen: 追加/編集フォーム（候補・ピン・保存済みピンから開く）
+  const [listOpen, setListOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
 
   const [query, setQuery] = useState("");
@@ -287,9 +290,8 @@ export default function PlacesTab() {
           latitudeDelta: 0.05,
           longitudeDelta: 0.05,
         });
-        // 検索結果は listMode="search" への遷移でシートが中段（detent 1）に
-        // 再マウントされて見える（native シートは命令的 snap を持たないため、
-        // mode 毎の初期 detent ＋ key 再マウントで代替。下の listInitialDetent）。
+        // 検索実行で一覧シートを開いて結果を見せる。
+        setListOpen(true);
       }
     } catch (e) {
       // 失敗は握りつぶさず見せる（原因の詳細付き。実機でのキー制限・
@@ -400,12 +402,14 @@ export default function PlacesTab() {
   };
 
   // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
-  // 他の選択状態をクリアして地図に集中させ、シートを畳む。
+  // 他の選択状態をクリアして地図に集中させ、一覧シートを閉じる（地図をタップ
+  // できるようにするため）。
   const startLocate = (p: PlaceRow) => {
     setEditing(null);
     setSelectedCandidate(null);
     setPinDraft(null);
     setLocating({ id: p.id, name: p.name });
+    setListOpen(false);
     Keyboard.dismiss();
     closeSuggestions();
   };
@@ -444,14 +448,9 @@ export default function PlacesTab() {
     );
   };
 
-  // 常設リストシートの表示モード。命令的 snap が無いので mode 毎に初期 detent を
-  // 変え、mode が変わったら key で再マウントして detent を切り替える:
-  //   browse=通常の場所一覧（最小 detent 0）
-  //   search=検索結果（中段 detent 1 で見せる。旧 snapToIndex(1) の代替）
-  //   locate=位置指定モード（最小 detent 0 に畳んで地図を広く見せる。旧 collapse）
-  const listMode =
-    candidates.length > 0 ? "search" : locating ? "locate" : "browse";
-  const listInitialDetent = listMode === "search" ? 1 : 0;
+  // 一覧シートの表示モード（検索結果 or 通常一覧）。ボタン/検索で開く方式なので
+  // 開いた時は中段（detent 1）から見せる。展開すると全画面一覧。
+  const listMode = candidates.length > 0 ? "search" : "browse";
 
   return (
     <ScreenStack style={StyleSheet.absoluteFill}>
@@ -635,27 +634,48 @@ export default function PlacesTab() {
           )}
         </Pressable>
       </View>
+
+          {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
+              押した時だけ native の formSheet で一覧を出す＝閉じている間は
+              タブバーが見える。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => setListOpen(true)}
+              style={styles.listButton}
+              accessibilityLabel="場所一覧を開く"
+            >
+              <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
+              <Text style={styles.listButtonText}>{places.length}件の場所</Text>
+            </Pressable>
+          )}
         </View>
       </ScreenStackItem>
 
-      {/* 場所一覧（常設ボトムシート＝native formSheet・閉じさせない）。
-          12%/45%/88% の 3 detent でドラッグ、背後の地図は操作可能。 */}
+      {/* 場所一覧（native formSheet・ボタン/検索で開く・×/スワイプで閉じる）。
+          常設にすると formSheet がタブバー（浮島）を覆ってタブ移動できなくなる
+          ため、開いた時だけ出すモーダルにする。開いている間は地図の上に重なる
+          （sheetLargestUndimmedDetentIndex="last" で地図は暗くならず操作可能）。
+          中段(0.45)〜全画面(0.88)の 2 detent でドラッグ。 */}
+      {listOpen && (
       <ScreenStackItem
         key={`places-list-${listMode}`}
         screenId="places-list"
         activityState={2}
         stackPresentation="formSheet"
-        sheetAllowedDetents={[0.12, 0.45, 0.88]}
+        sheetAllowedDetents={[0.45, 0.88]}
         sheetLargestUndimmedDetentIndex="last"
-        sheetInitialDetentIndex={listInitialDetent}
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
         sheetExpandsWhenScrolledToEdge={false}
         sheetGrabberVisible
         sheetCornerRadius={16}
-        preventNativeDismiss
         headerConfig={{ hidden: true }}
         contentStyle={{ backgroundColor: theme.background }}
+        // ×/スワイプ閉じで一覧を閉じる（検索結果は破棄して通常一覧に戻す）。
+        onDismissed={() => {
+          setListOpen(false);
+          setCandidates([]);
+        }}
       >
         {candidates.length > 0 ? (
           // 検索結果モード: searchText で取得済みの候補情報を一覧で見せる
@@ -675,9 +695,12 @@ export default function PlacesTab() {
                   検索結果 {candidates.length}件
                 </Text>
                 <Pressable
-                  onPress={() => setCandidates([])}
+                  onPress={() => {
+                    setListOpen(false);
+                    setCandidates([]);
+                  }}
                   style={styles.sheetClose}
-                  accessibilityLabel="検索結果を閉じる"
+                  accessibilityLabel="閉じる"
                 >
                   <XIcon size={16} color={theme.mutedForeground} />
                 </Pressable>
@@ -734,6 +757,13 @@ export default function PlacesTab() {
             ListHeaderComponent={
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetCount}>{places.length}件の場所</Text>
+                <Pressable
+                  onPress={() => setListOpen(false)}
+                  style={styles.sheetClose}
+                  accessibilityLabel="閉じる"
+                >
+                  <XIcon size={16} color={theme.mutedForeground} />
+                </Pressable>
               </View>
             }
             renderItem={({ item }) => {
@@ -804,8 +834,9 @@ export default function PlacesTab() {
           />
         )}
       </ScreenStackItem>
+      )}
 
-      {/* 追加/編集フォーム＝常設リストの上にさらに重ねる native formSheet。
+      {/* 追加/編集フォーム＝一覧の上にさらに重ねる native formSheet。
           sheetLargestUndimmedDetentIndex="last" で背後の地図（どのピンの話かの
           文脈・仮ピン位置）を暗くせず見せる。本家 Google/Apple マップの場所
           カードと同じ。キーボード回避は native の formSheet が自動で行う
@@ -1072,14 +1103,42 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
+  // 一覧を開く浮遊ボタン。タブバー（浮島）の上に出す＝bottom はタブバー高より
+  // 十分上に取る（予定/費用タブの FAB と同じ考え方）。
+  listButton: {
+    position: "absolute",
+    alignSelf: "center",
+    bottom: 100,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    backgroundColor: t.background,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.fgAlpha(0.1),
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  listButtonText: { fontSize: 14, fontWeight: "500", color: t.foreground },
   formScroll: { paddingBottom: 24 },
-  sheetHeader: { paddingHorizontal: 16, paddingBottom: 8, alignItems: "center" },
+  // 上に grabber（取っ手）があるので paddingTop で件数表記を下げて被りを防ぐ。
+  sheetHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    alignItems: "center",
+  },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
   // 検索結果モードの × （ヘッダー右端に重ねる。専用行は作らない）。
   sheetClose: {
     position: "absolute",
     right: 12,
-    top: -4,
+    top: 12,
     width: 28,
     height: 28,
     borderRadius: 14,
