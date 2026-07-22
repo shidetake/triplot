@@ -678,7 +678,10 @@ export default function PlacesTab() {
         screenId="places-list"
         activityState={2}
         stackPresentation="formSheet"
-        sheetAllowedDetents={[0.45, 0.88]}
+        // 中身の高さにフィット（本家 Apple マップと同じ）。固定 detent だと
+        // 場所が少ない時にリスト下に大きな空きが出るのを防ぐ。長い一覧は画面上限で
+        // 頭打ちになりスクロールする。
+        sheetAllowedDetents="fitToContents"
         sheetLargestUndimmedDetentIndex="last"
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
