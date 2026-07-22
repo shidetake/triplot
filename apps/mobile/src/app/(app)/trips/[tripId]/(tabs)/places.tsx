@@ -393,12 +393,28 @@ export default function PlacesTab() {
   // 保存済みの場所を開く（一覧行タップ・地図のピンタップの両方から同じ動き）:
   // そのピンへ寄せ、ピンを本家と同じ赤ピンに差し替えて編集シートを出す。
   // 場所名の吹き出しは出さない（名前はボトムシートにある。本家も出さない）。
+  // 地図のピンタップからはこれ（1タップで編集）。一覧の行からは
+  // previewOrEditPlace（1タップ目は寄せるだけ・2タップ目で編集）を使う。
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
     closeSuggestions();
     if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng);
     setFormOpen(true);
+  };
+
+  // 一覧の保存済み（地図あり）の行タップ: 1タップ目は地図をそのピンへ寄せて
+  // 赤ピンで選択表示するだけ（編集フォームは出さない）＝一覧を見ながら次々に
+  // プレビューできる。同じ行をもう1タップ（＝選択中）で編集フォームを開く。
+  const previewOrEditPlace = (p: PlaceRow) => {
+    if (editing?.id === p.id) {
+      setFormOpen(true); // 2タップ目: 編集
+      return;
+    }
+    setSelectedCandidate(null);
+    setEditing(p); // 選択（赤ピン）
+    closeSuggestions();
+    if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng); // 地図を寄せる
   };
 
   // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
@@ -671,10 +687,13 @@ export default function PlacesTab() {
         sheetCornerRadius={16}
         headerConfig={{ hidden: true }}
         contentStyle={{ backgroundColor: theme.background }}
-        // ×/スワイプ閉じで一覧を閉じる（検索結果は破棄して通常一覧に戻す）。
+        // スワイプ閉じで一覧を閉じる（× は付けない＝native シートはドラッグで
+        // 閉じる）。検索結果は破棄し、プレビュー選択（赤ピン）も解除する。
         onDismissed={() => {
           setListOpen(false);
           setCandidates([]);
+          setEditing(null);
+          setSelectedCandidate(null);
         }}
       >
         {candidates.length > 0 ? (
@@ -694,16 +713,6 @@ export default function PlacesTab() {
                 <Text style={styles.sheetCount}>
                   検索結果 {candidates.length}件
                 </Text>
-                <Pressable
-                  onPress={() => {
-                    setListOpen(false);
-                    setCandidates([]);
-                  }}
-                  style={styles.sheetClose}
-                  accessibilityLabel="閉じる"
-                >
-                  <XIcon size={16} color={theme.mutedForeground} />
-                </Pressable>
               </View>
             }
             renderItem={({ item }) => (
@@ -754,16 +763,13 @@ export default function PlacesTab() {
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            // editing / locating が変わったら行を再レンダー（選択ハイライトと、
+            // 行 onPress のクロージャを最新の editing で作り直すため。無いと
+            // 2タップ目の判定が古い editing=null のままになる）。
+            extraData={`${editing?.id ?? ""}:${locating?.id ?? ""}`}
             ListHeaderComponent={
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetCount}>{places.length}件の場所</Text>
-                <Pressable
-                  onPress={() => setListOpen(false)}
-                  style={styles.sheetClose}
-                  accessibilityLabel="閉じる"
-                >
-                  <XIcon size={16} color={theme.mutedForeground} />
-                </Pressable>
               </View>
             }
             renderItem={({ item }) => {
@@ -776,9 +782,14 @@ export default function PlacesTab() {
                         ? (setLocating(null), setPinDraft(null))
                         : unmapped
                           ? startLocate(item)
-                          : openEditPlace(item)
+                          : previewOrEditPlace(item)
                     }
-                    style={[styles.placeRow, isLocating && styles.locatingRow]}
+                    style={[
+                      styles.placeRow,
+                      isLocating && styles.locatingRow,
+                      // 選択中（プレビュー中）の行を薄くハイライト（bg-accent 相当）。
+                      editing?.id === item.id && styles.selectedRow,
+                    ]}
                   >
                     <PlaceCategoryIcon
                       icon={item.icon}
@@ -1134,17 +1145,6 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
   },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
-  // 検索結果モードの × （ヘッダー右端に重ねる。専用行は作らない）。
-  sheetClose: {
-    position: "absolute",
-    right: 12,
-    top: 12,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
   // 検索候補行の2行目: ★評価 + 住所（web の place-popups と同じ並び）。
   candidateMeta: {
     flexDirection: "row",
@@ -1186,6 +1186,8 @@ const makeStyles = (t: Theme) =>
     borderLeftWidth: 4,
     borderLeftColor: "#fbbf24",
   },
+  // プレビュー中（1タップ目で選択）の行のハイライト（選択状態＝bg-accent 相当）。
+  selectedRow: { backgroundColor: t.fgAlpha(0.06) },
   setPinLabel: { fontSize: 12, color: "#2563eb" },
   cancelLocateLabel: { fontSize: 12, color: t.warnAccent },
   // 位置指定モードのヒント帯（検索バーの下に重ねる）。
