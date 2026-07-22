@@ -686,7 +686,9 @@ export default function PlacesTab() {
         sheetGrabberVisible
         sheetCornerRadius={16}
         headerConfig={{ hidden: true }}
-        contentStyle={{ backgroundColor: theme.background }}
+        // 背景色は敷かず native 既定のシートマテリアル（摺りガラス）に任せる＝
+        // 他の formSheet と同じ質感。地図の上でも背後をぼかして読みやすい
+        // （本家 Apple マップの場所シートと同じ）。
         // スワイプ閉じで一覧を閉じる（× は付けない＝native シートはドラッグで
         // 閉じる）。検索結果は破棄し、プレビュー選択（赤ピン）も解除する。
         onDismissed={() => {
@@ -862,7 +864,8 @@ export default function PlacesTab() {
           sheetGrabberVisible
           sheetCornerRadius={16}
           headerConfig={{ hidden: true }}
-          contentStyle={{ backgroundColor: theme.background }}
+          // 背景色は敷かず native 既定のシートマテリアルに任せる（他の
+          // formSheet と同じ質感）。
           // スワイプ閉じ・プログラム閉じ両方で地図の一時表示を解除する:
           // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
           onDismissed={() => {
