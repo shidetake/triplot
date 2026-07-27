@@ -185,3 +185,47 @@ export function RedPin({ size = 34 }: { size?: number }) {
     </Svg>
   );
 }
+
+// 現在地の青丸（本家 Google マップと同じ配色: Google Blue #4285F4＋白縁＋薄い
+// 精度円）。showsUserLocation の native 描画は Google SDK 内部のレイヤーが
+// 独自の重なり順を持ち、確定ピンの zIndex を上げても後ろに隠れたままだった
+// （実機検証済み）ため、自前の Marker として描いて重なり順を制御する
+// （places.tsx 参照）。
+export function MyLocationDot({ size = 18 }: { size?: number }) {
+  const halo = size * 2.4;
+  return (
+    <View
+      style={{
+        width: halo,
+        height: halo,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <View
+        style={{
+          position: "absolute",
+          width: halo,
+          height: halo,
+          borderRadius: halo / 2,
+          backgroundColor: "rgba(66,133,244,0.25)",
+        }}
+      />
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: "#4285F4",
+          borderWidth: 2,
+          borderColor: "#ffffff",
+          shadowColor: "#000",
+          shadowOpacity: 0.3,
+          shadowRadius: 2,
+          shadowOffset: { width: 0, height: 1 },
+          elevation: 3,
+        }}
+      />
+    </View>
+  );
+}

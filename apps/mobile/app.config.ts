@@ -108,6 +108,16 @@ const config: ExpoConfig = {
         imageWidth: 76,
       },
     ],
+    // 場所タブの地図: 現在地の青丸＋「現在地に戻る」ボタン用。フォアグラウンド
+    // のみ（バックグラウンド常時追跡はしない）＝isAndroidBackgroundLocationEnabled
+    // 等は既定 false のまま。
+    [
+      "expo-location",
+      {
+        locationWhenInUsePermission:
+          "地図に現在地を表示するために使用します。",
+      },
+    ],
   ],
   experiments: {
     typedRoutes: true,

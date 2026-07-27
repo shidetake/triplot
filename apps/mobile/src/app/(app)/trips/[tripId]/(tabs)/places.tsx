@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
   FlatList,
   Keyboard,
   Pressable,
@@ -11,10 +12,13 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { GlassView } from "expo-glass-effect";
+import * as Location from "expo-location";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import MapView, {
   Marker,
   PROVIDER_GOOGLE,
+  type Details,
   type Region,
 } from "react-native-maps";
 import { useTranslations } from "use-intl";
@@ -31,6 +35,7 @@ import {
   markerGeometry,
   type LabelPlacement,
 } from "@triplot/shared/mapLabelLayout";
+import { computeScaleBar } from "@triplot/shared/mapScale";
 import {
   autocompletePlaces,
   fetchPlaceDetails,
@@ -48,22 +53,30 @@ import { PlaceForm } from "@/components/place-form";
 import {
   CandidatePin,
   candidatePinSize,
+  MyLocationDot,
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
 import { ChevronIcon, LockIcon, SearchIcon, XIcon } from "@/components/icons";
+import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
-const PLACES_API_KEY = process.env.EXPO_PUBLIC_GOOGLE_PLACES_API_KEY;
-const BUNDLE_ID = "app.triplot.mobile";
-
 // Google 評価の★（web の place-popups と同じ Material Symbols star 塗り・amber）。
 // 地図・Google 連携のビジュアルは Google に合わせる（ui-guidelines）。
 const STAR_PATH =
   "m233-120 65-281L80-590l288-25 112-265 112 265 288 25-218 189 65 281-247-149-247 149Z";
+
+// 「現在地に戻る」ボタンのグリフ（Material Symbols "navigation"）。本家
+// Google マップ・iOS マップと同じく現在地を指している間だけ塗り、それ以外は
+// アウトラインのみにする（塗り=fill1・アウトライン=既定/fill0 の2バリアント）。
+// 地図・Google 連携のビジュアルは Google に合わせる（ui-guidelines）。
+const NAVIGATION_ICON_FILLED_PATH =
+  "M480-240 222-130q-13 5-24.5 2.5T178-138q-8-8-10.5-20t2.5-25l273-615q5-12 15.5-18t21.5-6q11 0 21.5 6t15.5 18l273 615q5 13 2.5 25T782-138q-8 8-19.5 10.5T738-130L480-240Z";
+const NAVIGATION_ICON_OUTLINE_PATH =
+  "M480-240 222-130q-13 5-24.5 2.5T178-138q-8-8-10.5-20t2.5-25l273-615q5-12 15.5-18t21.5-6q11 0 21.5 6t15.5 18l273 615q5 13 2.5 25T782-138q-8 8-19.5 10.5T738-130L480-240Zm-196-4 196-84 196 84-196-440-196 440Zm196-84Z";
 
 // Places autocomplete のセッショントークン（課金束ね用）。render 中には
 // 呼ばない（イベントハンドラから使う）。
@@ -127,6 +140,78 @@ export default function PlacesTab() {
     height: number;
   } | null>(null);
 
+  // 現在地（青丸）。showsUserLocation の native 描画は Google の内部レイヤーが
+  // 独自の重なり順を持ち、確定ピンの zIndex をいじっても後ろに隠れたまま
+  // だった（実機検証済み）。自前の Marker として描くことで確定ピンより
+  // 手前に出せるようにする。userCoordRef は「現在地に戻る」ボタンのカメラ
+  // 移動先として使う値（state と同じ座標を都度反映）。
+  const [myLocation, setMyLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const userCoordRef = useRef<{ latitude: number; longitude: number } | null>(
+    null,
+  );
+  // 現在地に戻るボタンの塗り状態: 現在地を中心に据えた直後だけ青塗り、
+  // ユーザがジェスチャで地図を動かしたらアウトラインに戻す
+  // （本家 Google マップ・iOS マップと同じ）。
+  const [followingLocation, setFollowingLocation] = useState(false);
+
+  // 地図の向き（真北からの回転角）。react-native-maps の Region には heading
+  // が含まれないため、region が変わるたびに getCamera() で都度取得する。
+  // 真北を向いている（0度）時だけ方位磁針を隠す（本家 Google マップ・iOS
+  // マップと同じ）。
+  const [heading, setHeading] = useState(0);
+
+  // 縮尺バー（本家 Google マップと同じ: 拡大縮小を「始めた瞬間」から右下に出て
+  // 約5秒後にフェードアウト）。region（候補ラベル用・onRegionChangeComplete
+  // でのみ更新）とは別に、ジェスチャ中に連続発火する onRegionChange で
+  // scaleRegion を都度更新する＝バーの数値もズーム中ずっとライブ追従する。
+  const [scaleRegion, setScaleRegion] = useState<Region | null>(null);
+  const [scaleOpacity] = useState(() => new Animated.Value(0));
+  const scaleHideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prevLatDeltaRef = useRef<number | null>(null);
+  const flashScaleBar = () => {
+    if (scaleHideTimer.current) clearTimeout(scaleHideTimer.current);
+    Animated.timing(scaleOpacity, {
+      toValue: 1,
+      duration: 150,
+      useNativeDriver: true,
+    }).start();
+    scaleHideTimer.current = setTimeout(() => {
+      Animated.timing(scaleOpacity, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }).start();
+    }, 5000);
+  };
+
+  useEffect(() => {
+    let subscription: Location.LocationSubscription | null = null;
+    let cancelled = false;
+    void (async () => {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== "granted" || cancelled) return;
+      subscription = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, timeInterval: 3000, distanceInterval: 10 },
+        (loc) => {
+          const coord = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          };
+          userCoordRef.current = coord;
+          setMyLocation(coord);
+        },
+      );
+    })();
+    return () => {
+      cancelled = true;
+      subscription?.remove();
+      if (scaleHideTimer.current) clearTimeout(scaleHideTimer.current);
+    };
+  }, []);
+
   const places = useMemo(
     () => (data ? derivePlaces(data.placesRaw) : []),
     [data],
@@ -178,6 +263,15 @@ export default function PlacesTab() {
       CANDIDATE_LABEL_GAP,
     );
   }, [candidates, selectedCandidate, region, initialRegion, mapSize]);
+
+  // 縮尺バーの値（実距離とバー幅）。最大 100px 分の実距離を 1/2/5 刻みに丸める。
+  const scaleBar = useMemo(
+    () =>
+      mapSize
+        ? computeScaleBar(scaleRegion ?? region ?? initialRegion, mapSize, 100)
+        : null,
+    [scaleRegion, region, initialRegion, mapSize],
+  );
 
   if (!data?.trip || !me) return null;
 
@@ -311,7 +405,13 @@ export default function PlacesTab() {
   // アニメーションと競合するので、フォームを開く各経路で必ずこれを呼び、
   // 動かさない場合も現在中心への移動を発行して SDK 既定の移動を打ち消す。
   const focusCoord = (lat: number, lng: number) => {
-    const r = region ?? initialRegion;
+    // region は onRegionChangeComplete（ジェスチャ/アニメーション確定時）でしか
+    // 更新されないため、検索直後のように前のカメラアニメーションがまだ収まって
+    // いない間に呼ばれると古い region を基準にしてしまい、計算した中心が大きく
+    // ずれて地図が予期しない位置へ飛ぶ不具合があった（候補ピンの直タップで発覚）。
+    // ジェスチャ中も連続発火する onRegionChange 側の scaleRegion の方が新しいので
+    // 優先して使う。
+    const r = scaleRegion ?? region ?? initialRegion;
     // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
     const center = { latitude: lat - r.latitudeDelta * 0.25, longitude: lng };
     const dx = Math.abs(center.longitude - r.longitude) / r.longitudeDelta;
@@ -322,6 +422,69 @@ export default function PlacesTab() {
         ? { latitude: r.latitude, longitude: r.longitude }
         : center,
     });
+  };
+
+  // region 確定（パン/ズーム終了）ごとに: 候補ラベル配置の再計算に使う state
+  // を更新しつつ、縮尺バーは「ズーム量（緯度スパン）が変わった時だけ」出す
+  // （パンだけでは出さない。本家 Google マップと同じ）。
+  const onRegionChangeComplete = (r: Region) => {
+    setRegion(r);
+    setScaleRegion(r);
+  };
+
+  // ジェスチャ中に連続発火する方（候補ラベルの再配置には使わない・重いため）。
+  // 縮尺バーは本家 Google マップと同じく「拡大縮小を始めた瞬間」から見せたい
+  // ので、確定(onRegionChangeComplete)を待たずここでズーム量の変化を見て出す。
+  const onRegionChange = (r: Region, details?: Details) => {
+    setScaleRegion(r);
+    const prev = prevLatDeltaRef.current;
+    prevLatDeltaRef.current = r.latitudeDelta;
+    if (prev != null && Math.abs(r.latitudeDelta - prev) / prev > 0.001) {
+      flashScaleBar();
+    }
+    // ユーザ自身のジェスチャで地図を動かしたら「現在地に戻る」ボタンの
+    // 青塗り状態を解除する（本家 Google マップ・iOS マップと同じ）。
+    if (details?.isGesture) setFollowingLocation(false);
+    // Region に heading は含まれないため、変化のたびに現在のカメラ向きを
+    // 取得して方位磁針の表示判定に使う。
+    void mapRef.current
+      ?.getCamera()
+      .then((cam) => setHeading(cam.heading ?? 0))
+      .catch(() => {});
+  };
+
+  // 「現在地に戻る」ボタン: watchPositionAsync が拾った最新座標へズームは
+  // 変えずパンだけ（本家 Google マップの現在地ボタンと同じ）。まだ座標が
+  // 無ければ（起動直後等）権限確認の上その場で1回取得する。
+  const goToMyLocation = async () => {
+    let coord = userCoordRef.current;
+    if (!coord) {
+      const perm = await Location.requestForegroundPermissionsAsync();
+      if (perm.status !== "granted") {
+        Alert.alert(
+          "現在地を利用できません",
+          "設定アプリで位置情報の利用を許可してください。",
+        );
+        return;
+      }
+      try {
+        const pos = await Location.getCurrentPositionAsync({});
+        coord = {
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        };
+      } catch (e) {
+        Alert.alert("現在地を取得できませんでした", String(e));
+        return;
+      }
+    }
+    mapRef.current?.animateCamera({ center: coord });
+    setFollowingLocation(true);
+  };
+
+  // 方位磁針タップ: 真北を上に戻す（本家 Google マップ・iOS マップと同じ）。
+  const resetHeading = () => {
+    mapRef.current?.animateCamera({ heading: 0 });
   };
 
   // この Google place が旅行に登録済みなら、その保存済みの場所を返す
@@ -390,11 +553,11 @@ export default function PlacesTab() {
       Alert.alert(t("searchFailed"), String(e));
     }
   };
-  // 保存済みの場所を開く（一覧行タップ・地図のピンタップの両方から同じ動き）:
-  // そのピンへ寄せ、ピンを本家と同じ赤ピンに差し替えて編集シートを出す。
-  // 場所名の吹き出しは出さない（名前はボトムシートにある。本家も出さない）。
-  // 地図のピンタップからはこれ（1タップで編集）。一覧の行からは
-  // previewOrEditPlace（1タップ目は寄せるだけ・2タップ目で編集）を使う。
+  // 保存済みの場所を開く（検索サジェスト確定・POIタップから）: そのピンへ寄せ、
+  // ピンを本家と同じ赤ピンに差し替えて編集シートを出す。場所名の吹き出しは
+  // 出さない（名前はボトムシートにある。本家も出さない）。これらは「探して
+  // 選んだ」流れなので1タップで編集を開く。一覧の行・地図の自前ピンタップは
+  // previewOrEditPlace（1タップ目はプレビュー・2タップ目で編集）を使う。
   const openEditPlace = (p: PlaceRow) => {
     setEditing(p);
     setSelectedCandidate(null);
@@ -403,9 +566,11 @@ export default function PlacesTab() {
     setFormOpen(true);
   };
 
-  // 一覧の保存済み（地図あり）の行タップ: 1タップ目は地図をそのピンへ寄せて
-  // 赤ピンで選択表示するだけ（編集フォームは出さない）＝一覧を見ながら次々に
-  // プレビューできる。同じ行をもう1タップ（＝選択中）で編集フォームを開く。
+  // 一覧の保存済み（地図あり）の行タップ・地図上の確定済みピンタップの両方が
+  // ここを通る: 1タップ目は地図をそのピンへ寄せて赤ピンで選択表示し、一覧
+  // シートを開くだけ（編集フォームは出さない）＝一覧を見ながら／地図を眺め
+  // ながら次々にプレビューできる。同じ場所をもう1タップ（＝選択中）で編集
+  // フォームを開く。
   const previewOrEditPlace = (p: PlaceRow) => {
     if (editing?.id === p.id) {
       setFormOpen(true); // 2タップ目: 編集
@@ -415,6 +580,30 @@ export default function PlacesTab() {
     setEditing(p); // 選択（赤ピン）
     closeSuggestions();
     if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng); // 地図を寄せる
+    setListOpen(true); // 地図のピンタップからも一覧を見せる（一覧はすでに開いていれば変化なし）
+  };
+
+  // 検索結果一覧の行タップ・地図上の候補ピンタップの両方がここを通る:
+  // previewOrEditPlace と同じ2段階（1タップ目=選択のみ・2タップ目=フォーム）
+  // に揃える。検索候補は元々「探して選んだ」1タップ直行だったが、確定済み
+  // 一覧と操作感が食い違う（いきなり編集/追加シートが開く）という指摘を受けて
+  // 統一した。サジェスト確定（pickPrediction）・POIタップ（onPoiPress）は
+  // 別入口として従来どおり1タップ直行のまま（openAddCandidate/openEditPlace）。
+  const previewOrAddCandidate = (c: PlaceCandidate) => {
+    const saved = findSavedByGoogleId(c.placeId);
+    if (saved) {
+      previewOrEditPlace(saved);
+      return;
+    }
+    if (selectedCandidate?.placeId === c.placeId) {
+      setFormOpen(true); // 2タップ目: 追加
+      return;
+    }
+    setSelectedCandidate(c);
+    setEditing(null);
+    closeSuggestions();
+    focusCoord(c.lat, c.lng);
+    setListOpen(true);
   };
 
   // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
@@ -493,7 +682,22 @@ export default function PlacesTab() {
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
         customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
-        onRegionChangeComplete={setRegion}
+        // ダブルタップズームを切る代わりにシングルタップの認識遅延を大幅に
+        // 減らす（react-native-maps 公式ドキュメントの注記どおり）。地図タップで
+        // 場所一覧シートを閉じた直後、もう一度タップ/スワイプしても地図が
+        // 反応しない不具合の原因がこれだった＝iOS の Google Maps SDK は
+        // シングルタップをダブルタップの1打目と区別するため毎回のタップに
+        // 判定待ちを挟んでおり、閉じた直後の2回目の操作がその判定待ちに
+        // 飲まれていた。ピンチズームは影響を受けない。
+        zoomTapEnabled={false}
+        // 現在地の青丸は自前の Marker で描く（下の <Marker> 参照。native の
+        // showsUserLocation は重なり順を制御できないため使わない）。
+        // 縮尺バーは「拡大縮小を始めた瞬間」から出す（本家 Google マップと
+        // 同じ）ので、ジェスチャ中に連続発火する onRegionChange 側で判定する。
+        // 候補ラベルの再配置は重い計算なので従来どおり onRegionChangeComplete
+        // （ジェスチャ確定時）だけで行い、ここでは触らない。
+        onRegionChange={onRegionChange}
+        onRegionChangeComplete={onRegionChangeComplete}
         onLayout={(e) => {
           const { width, height } = e.nativeEvent.layout;
           setMapSize({ width, height });
@@ -502,12 +706,35 @@ export default function PlacesTab() {
         // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
         // 「位置を指定」モード中はタップ座標をその場所の位置として確定に回す
         // （web の locatingHint「クリック / 長押し」と同じく両ジェスチャ対応）。
+        // 何もない場所のタップ（ドラッグ/ピンチでは発火しない＝react-native-maps
+        // が move 系ジェスチャと区別済み）は選択解除＝本家マップの「キャンセル」
+        // と同じ動き。段階的に一段戻す:
+        //   - 編集/追加フォームを開いている（2タップ目まで進んだ・候補/長押し）→
+        //     フォームを閉じて選択も全部解除する。
+        //   - 一覧の1タップ目（プレビュー・赤ピン）だけの状態 → 選択だけ解除し、
+        //     一覧シートは開いたままにする（一覧を見ている続きの操作を
+        //     邪魔しないようにする）。
+        //   - 一覧シートを開いているだけ（選択なし）→ 一覧を閉じる
+        //     （スワイプ閉じの onDismissed と同じ後始末）。
         onPress={(e) => {
           Keyboard.dismiss();
           closeSuggestions();
           if (locating) {
             const c = e.nativeEvent.coordinate;
             pickLocation(c.latitude, c.longitude);
+            return;
+          }
+          if (formOpen) {
+            setFormOpen(false);
+            setSelectedCandidate(null);
+            setEditing(null);
+            setPinDraft(null);
+          } else if (editing) {
+            setEditing(null);
+          } else if (listOpen) {
+            setListOpen(false);
+            setCandidates([]);
+            setSelectedCandidate(null);
           }
         }}
         onLongPress={(e) => {
@@ -533,12 +760,23 @@ export default function PlacesTab() {
                 // 差し替えで子とアンカーが変わるので key で再マウントさせる。
                 key={`${p.id}:${isEditing ? 1 : 0}`}
                 coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-                onPress={() => openEditPlace(p)}
+                onPress={() => previewOrEditPlace(p)}
+                // stopPropagation の既定は false（react-native-maps）＝
+                // マーカーの onPress は親 MapView の onPress にもバブリング
+                // する。iOS はこれが有効で、放っておくと同じタップで直後に
+                // 地図側の onPress も発火し「選択した直後に選択解除される
+                // （editing/listOpen を戻す分岐）」不具合になる＝地図上の
+                // ピンを直タップした時だけ一覧の行タップと挙動が食い違って
+                // 見えていた原因。
+                stopPropagation
                 // 丸マーカーは中心、赤ピンは先端を座標に合わせる。
                 anchor={
                   isEditing ? { x: 0.5, y: 0.9 } : { x: 0.5, y: 0.5 }
                 }
-                zIndex={isEditing ? 200 : undefined}
+                // 現在地の青丸（下の MyLocationDot マーカー）より手前に確定
+                // ピンが乗って隠してしまわないよう、通常時は負の zIndex で
+                // 青丸の下に沈める（編集中の赤ピンは操作対象なので手前のまま）。
+                zIndex={isEditing ? 200 : -1}
               >
                 {isEditing ? (
                   <RedPin />
@@ -554,6 +792,18 @@ export default function PlacesTab() {
               </Marker>
             );
           })}
+        {/* 現在地の青丸。確定ピン(zIndex=-1)より手前・編集中の赤ピン(200)より
+            奥に固定し、常に確定ピンに隠れず見える位置にする。 */}
+        {myLocation && (
+          <Marker
+            coordinate={myLocation}
+            anchor={{ x: 0.5, y: 0.5 }}
+            zIndex={50}
+            tracksViewChanges={false}
+          >
+            <MyLocationDot />
+          </Marker>
+        )}
         {pinDraft && (
           <Marker
             coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
@@ -574,7 +824,7 @@ export default function PlacesTab() {
               placement={placement}
               selected={selected}
               dark={theme.dark}
-              onPress={() => openAddCandidate(c)}
+              onPress={() => previewOrAddCandidate(c)}
             />
           );
         })}
@@ -653,15 +903,93 @@ export default function PlacesTab() {
 
           {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
               押した時だけ native の formSheet で一覧を出す＝閉じている間は
-              タブバーが見える。 */}
+              タブバーが見える。中身は native の摺りガラス（UIVisualEffectView
+              ラップの GlassView。isInteractive でタップ時に native のガラスの
+              光り方をする）＝自前 backgroundColor で透明感を偽装しない。 */}
           {!locating && (
             <Pressable
               onPress={() => setListOpen(true)}
-              style={styles.listButton}
+              style={styles.listButtonWrap}
               accessibilityLabel="場所一覧を開く"
             >
-              <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
-              <Text style={styles.listButtonText}>{places.length}件の場所</Text>
+              <GlassView
+                glassEffectStyle="regular"
+                isInteractive
+                style={styles.listButton}
+              >
+                <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
+                <Text style={styles.listButtonText}>{places.length}件の場所</Text>
+              </GlassView>
+            </Pressable>
+          )}
+
+          {/* 縮尺バー（本家 Google マップの右下と同じ）。ズームした時だけ
+              フェードインし、約5秒後にフェードアウトする。地図キャンバスの
+              上に直接乗るので、候補ピンのラベルと同じ「地図の見た目に合わせた
+              色＋ハロー」で明暗どちらのベースマップでも読める（ui-guidelines
+              の地図・Google 連携の原則）。 */}
+          {scaleBar && (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.scaleBar, { opacity: scaleOpacity }]}
+            >
+              <Text style={styles.scaleBarText}>
+                {scaleBar.unit === "km"
+                  ? `${scaleBar.value} km`
+                  : `${scaleBar.value} m`}
+              </Text>
+              <View
+                style={[styles.scaleBarRuler, { width: scaleBar.widthPx }]}
+              />
+            </Animated.View>
+          )}
+
+          {/* 方位磁針（本家 Google マップ・iOS マップと同じ: 真北を向いている
+              間は隠れ、回転すると現れる）。針は地図の回転と逆に回して常に
+              真北を指し続ける。タップで真北へ戻す。現在地ボタンの真上に置く。 */}
+          {!locating && Math.abs(heading) > 0.5 && (
+            <Pressable
+              onPress={resetHeading}
+              style={styles.compassButton}
+              accessibilityLabel="地図の向きを北にリセット"
+            >
+              <Svg
+                viewBox="0 0 24 24"
+                width={20}
+                height={20}
+                style={{ transform: [{ rotate: `${-heading}deg` }] }}
+              >
+                <Path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
+                <Path d="M12,22 L15,12 L9,12 Z" fill={theme.mutedForeground} />
+              </Svg>
+            </Pressable>
+          )}
+
+          {/* 現在地に戻るボタン（本家 Google マップ・iOS マップと同じ位置・
+              見た目: 白丸＋右上向きのナビゲーション矢印）。現在地を中心に
+              据えている間だけ青塗り、それ以外はアウトラインのみ（本家と同じ）。
+              青丸自体は上の MyLocationDot マーカーが描く。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => void goToMyLocation()}
+              style={styles.myLocationButton}
+              accessibilityLabel="現在地に戻る"
+            >
+              <Svg
+                viewBox="0 -960 960 960"
+                width={20}
+                height={20}
+                style={{ transform: [{ rotate: "45deg" }] }}
+              >
+                <Path
+                  d={
+                    followingLocation
+                      ? NAVIGATION_ICON_FILLED_PATH
+                      : NAVIGATION_ICON_OUTLINE_PATH
+                  }
+                  fill={followingLocation ? "#4285F4" : theme.foreground}
+                />
+              </Svg>
             </Pressable>
           )}
         </View>
@@ -678,16 +1006,28 @@ export default function PlacesTab() {
         screenId="places-list"
         activityState={2}
         stackPresentation="formSheet"
-        // 中身の高さにフィット（本家 Apple マップと同じ）。固定 detent だと
-        // 場所が少ない時にリスト下に大きな空きが出るのを防ぐ。長い一覧は画面上限で
-        // 頭打ちになりスクロールする。
-        sheetAllowedDetents="fitToContents"
+        // 通常の一覧（browse）は中身の高さにフィット（本家 Apple マップと同じ）。
+        // 固定 detent だと場所が少ない時にリスト下に大きな空きが出るのを防ぐ。
+        // 検索結果（search）は件数が多くなりがちで fitToContents だと画面の
+        // 上限まで伸びて地図が見えなくなる（実機フィードバック）ので、
+        // 半分程度の高さを既定にし、地図と一覧を同時に見られるようにする
+        // （本家 Google マップの検索結果シートと同じ）。もう1段階小さい
+        // detent も足し、ドラッグで地図をさらに広く見せられるようにする
+        // （既定のサイズは変えない＝sheetInitialDetentIndex で明示）。
+        sheetAllowedDetents={
+          listMode === "search" ? [0.25, 0.5] : "fitToContents"
+        }
+        sheetInitialDetentIndex={listMode === "search" ? 1 : undefined}
         sheetLargestUndimmedDetentIndex="last"
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
         sheetExpandsWhenScrolledToEdge={false}
         sheetGrabberVisible
-        sheetCornerRadius={16}
+        // sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
+        // （旧16pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
+        // 半径が噛み合わず、カーブ部分だけ本家と違う小さい丸みに見えていた。
+        // automatic にすると OS がマージン幅とコーナー半径を一致させて計算し、
+        // 本家 Apple マップの場所シートと同じ「全周同じ幅の隙間」になる。
         headerConfig={{ hidden: true }}
         // 背景色は敷かず native 既定のシートマテリアル（摺りガラス）に任せる＝
         // 他の formSheet と同じ質感。地図の上でも背後をぼかして読みやすい
@@ -713,6 +1053,10 @@ export default function PlacesTab() {
             keyExtractor={(item) => item.placeId}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            // selectedCandidate が変わったら行を再レンダー（選択ハイライトと、
+            // 行 onPress のクロージャを最新の選択状態で作り直すため。保存済み
+            // 一覧の extraData と同じ理由＝無いと2タップ目の判定が古いままになる）。
+            extraData={selectedCandidate?.placeId ?? ""}
             ListHeaderComponent={
               <View style={styles.sheetHeader}>
                 <Text style={styles.sheetCount}>
@@ -722,8 +1066,13 @@ export default function PlacesTab() {
             }
             renderItem={({ item }) => (
                 <Pressable
-                  onPress={() => openAddCandidate(item)}
-                  style={styles.placeRow}
+                  onPress={() => previewOrAddCandidate(item)}
+                  style={[
+                    styles.placeRow,
+                    // 選択中（プレビュー中）の行を薄くハイライト（保存済み一覧と同じ）。
+                    selectedCandidate?.placeId === item.placeId &&
+                      styles.selectedRow,
+                  ]}
                 >
                   {/* 行の先頭グリフ＝地図の候補ピンと同じカテゴリアイコン（Google 赤） */}
                   <PlaceCategoryIcon
@@ -759,6 +1108,11 @@ export default function PlacesTab() {
                       </Text>
                     </View>
                   </View>
+                  {/* プレビュー中（1タップ目）の行だけ、もう1タップで追加に
+                      進むことを示す「＞」（保存済み一覧と同じ）。 */}
+                  {selectedCandidate?.placeId === item.placeId && (
+                    <ChevronIcon size={16} color={theme.mutedForeground} />
+                  )}
                 </Pressable>
             )}
           />
@@ -830,7 +1184,7 @@ export default function PlacesTab() {
                         </Text>
                       ) : null}
                     </View>
-                    {unmapped && (
+                    {unmapped ? (
                       <Text
                         style={
                           isLocating
@@ -840,6 +1194,13 @@ export default function PlacesTab() {
                       >
                         {isLocating ? t("cancelLocate") : t("setPin")}
                       </Text>
+                    ) : (
+                      // プレビュー中（1タップ目・赤ピン選択）の行だけ、iOS標準の
+                      // 「＞」ディスクロージャ表示を出す＝もう1タップで編集に進む
+                      // ことを示す（本家 iOS リストの慣例と同じ見た目で表現）。
+                      editing?.id === item.id && (
+                        <ChevronIcon size={16} color={theme.mutedForeground} />
+                      )
                     )}
                   </Pressable>
                 );
@@ -865,7 +1226,8 @@ export default function PlacesTab() {
           sheetAllowedDetents="fitToContents"
           sheetLargestUndimmedDetentIndex="last"
           sheetGrabberVisible
-          sheetCornerRadius={16}
+          // sheetCornerRadius は指定しない（native 既定 = automatic。理由は
+          // 一覧シートと同じ、下のコメント参照）。
           headerConfig={{ hidden: true }}
           // 背景色は敷かず native 既定のシートマテリアルに任せる（他の
           // formSheet と同じ質感）。
@@ -941,6 +1303,13 @@ function CandidateMarker({
       coordinate={{ latitude: c.lat, longitude: c.lng }}
       anchor={{ x: g.anchorX, y: g.anchorY }}
       onPress={onPress}
+      // stopPropagation の既定は false（react-native-maps）＝マーカーの
+      // onPress は親 MapView の onPress にもバブリングする。iOS はこれが
+      // 有効で、放っておくと同じタップで直後に地図側の onPress も発火し
+      // 「選択した直後に選択解除される（listOpen を戻す/candidates を
+      // 消す分岐）」という不具合になる＝直タップで一覧行と違って
+      // 1タップ目の選択が反映されないように見えていた原因。
+      stopPropagation
       zIndex={selected ? 100 : 10}
       tracksViewChanges={tracks}
     >
@@ -1121,27 +1490,88 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
   },
   // 一覧を開く浮遊ボタン。タブバー（浮島）の上に出す＝bottom はタブバー高より
-  // 十分上に取る（予定/費用タブの FAB と同じ考え方）。
-  listButton: {
+  // 十分上に取る（予定/費用タブの FAB と同じ考え方）。位置＋影は外側の
+  // Pressable（listButtonWrap）が持つ＝GlassView 側で角丸クリップすると影まで
+  // 切れるため分ける。
+  listButtonWrap: {
     position: "absolute",
     alignSelf: "center",
     bottom: 100,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    height: 40,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    backgroundColor: t.background,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.fgAlpha(0.1),
     shadowColor: "#000",
     shadowOpacity: 0.15,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
+  listButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    height: 40,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+  },
   listButtonText: { fontSize: 14, fontWeight: "500", color: t.foreground },
+  // 現在地に戻るボタン。位置は一覧ボタンと同じ高さで右端（本家 Google
+  // マップの右下コントロール群と同じ並び）。
+  myLocationButton: {
+    position: "absolute",
+    right: 12,
+    bottom: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  // 方位磁針。現在地ボタンの真上（本家 Google マップ・iOS マップと同じ並び）。
+  compassButton: {
+    position: "absolute",
+    right: 12,
+    bottom: 152,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  // 縮尺バー。右側は現在地ボタン・方位磁針の縦列なので、本家 Google マップと
+  // 同じく左下に置く。ダーク地図でも読めるよう、候補ピンのラベルと同じ
+  // 「ハロー付き文字」。
+  scaleBar: {
+    position: "absolute",
+    left: 12,
+    bottom: 100,
+    alignItems: "flex-start",
+  },
+  scaleBarText: {
+    fontSize: 11,
+    fontWeight: "500",
+    marginBottom: 2,
+    color: t.dark ? "#ffffff" : "#202124",
+    textShadowColor: t.dark ? "#242f3e" : "#ffffff",
+    textShadowRadius: 2,
+    textShadowOffset: { width: 0, height: 0 },
+  },
+  scaleBarRuler: {
+    height: 7,
+    borderBottomWidth: 1.5,
+    borderLeftWidth: 1.5,
+    borderRightWidth: 1.5,
+    borderColor: t.dark ? "#e8eaed" : "#3c4043",
+  },
   formScroll: { paddingBottom: 24 },
   // 上に grabber（取っ手）があるので paddingTop で件数表記を下げて被りを防ぐ。
   sheetHeader: {
