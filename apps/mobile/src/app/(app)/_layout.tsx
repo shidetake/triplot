@@ -30,7 +30,11 @@ export default function AppLayout() {
           質感（キーボード対応込み）に寄せる方針転換によりこちらへ移行した
           （docs/architecture.md 相当の設計判断はプランに記載）。
           旅行詳細（旅行編集・カテゴリ管理・エクスポート・場所フォーム等）は
-          まだ @gorhom のまま＝移行はフェーズを分けて段階的に進めている。 */}
+          まだ @gorhom のまま＝移行はフェーズを分けて段階的に進めている。
+          sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
+          （旧20pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
+          半径が噛み合わず本家と違う丸みに見えるため、OS のオート計算に任せる
+          （場所タブの地図シートと同じ理由。place.tsx 参照）。 */}
       <Stack.Screen
         name="trips/inbox"
         options={{
@@ -38,7 +42,6 @@ export default function AppLayout() {
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
           sheetGrabberVisible: true,
-          sheetCornerRadius: 20,
         }}
       />
       <Stack.Screen
@@ -48,7 +51,6 @@ export default function AppLayout() {
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
           sheetGrabberVisible: true,
-          sheetCornerRadius: 20,
         }}
       />
       {/* フィードバックは設定からのドリルイン（router.push）。native-stack の
@@ -61,7 +63,6 @@ export default function AppLayout() {
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
           sheetGrabberVisible: true,
-          sheetCornerRadius: 20,
         }}
       />
       <Stack.Screen
@@ -71,7 +72,6 @@ export default function AppLayout() {
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
           sheetGrabberVisible: true,
-          sheetCornerRadius: 20,
         }}
       />
     </Stack>

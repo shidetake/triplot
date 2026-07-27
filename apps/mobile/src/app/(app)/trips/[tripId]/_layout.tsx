@@ -71,30 +71,29 @@ export default function TripLayout() {
         <Stack.Screen name="categories" options={sheetScreenOptions} />
         <Stack.Screen name="export" options={sheetScreenOptions} />
         <Stack.Screen name="calendar-export" options={sheetScreenOptions} />
-        {/* 予定/費用フォームは種別切替（通常/終日/時差移動・外貨/割り勘カスタム等）
-            で中身の量が変わるため、fitToContents だとフィールド追加のたびに
-            シートが伸縮して落ち着かない。@gorhom 版と同じ「一番中身が多い
-            パターンが収まる高さ」に固定する（1要素の detents 配列＝その高さ
-            だけで開閉、伸縮しない）。 */}
-        <Stack.Screen name="event-form" options={formSheetOptions} />
-        <Stack.Screen name="expense-form" options={formSheetOptions} />
+        {/* 予定/費用フォームも他の formSheet と同じ fitToContents。日時チップを
+            開くと直下に inline カレンダーが伸びるので、シート自身が持ち上がって
+            それを見せる（旅行作成シートと同じ挙動＝ui-guidelines）。以前は
+            種別切替（通常/終日/時差移動）でシートが伸縮するジャンクを避けて
+            固定高 [0.68] にしていたが、固定高だとカレンダーがシートの外に
+            はみ出しても ScrollView.scrollTo で追従できない実機不具合が判明
+            （react-native-screens の FormSheet+ScrollView 統合がスクロール
+            所有権を native 側に持つらしく、scrollTo/scrollToEnd が効かない）。
+            持ち上がる体験を優先し fitToContents に戻す。 */}
+        <Stack.Screen name="event-form" options={sheetScreenOptions} />
+        <Stack.Screen name="expense-form" options={sheetScreenOptions} />
       </Stack>
     </>
   );
 }
 
+// sheetCornerRadius は指定しない（native 既定 = automatic）。固定値（旧20pt）
+// だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと半径が噛み合わず
+// 本家と違う丸みに見えるため、OS のオート計算に任せる
+// （場所タブの地図シートと同じ理由。places.tsx 参照）。
 const sheetScreenOptions = {
   headerShown: false,
   presentation: "formSheet" as const,
   sheetAllowedDetents: "fitToContents" as const,
   sheetGrabberVisible: true,
-  sheetCornerRadius: 20,
-};
-
-const formSheetOptions = {
-  headerShown: false,
-  presentation: "formSheet" as const,
-  sheetAllowedDetents: [0.88],
-  sheetGrabberVisible: true,
-  sheetCornerRadius: 20,
 };

@@ -202,6 +202,8 @@
     "manageCategories": "費用カテゴリ管理"
   },
   "event": {
+    "addAria": "予定を追加",
+    "editFormLabel": "予定を編集",
     "kindTimed": "通常",
     "kindAllday": "終日",
     "kindTransit": "時差移動",

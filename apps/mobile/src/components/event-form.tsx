@@ -36,6 +36,7 @@ import {
   PickerChip,
 } from "./datetime-field";
 import { PlacePicker } from "./place-picker";
+import { SheetTitle } from "./sheet-title";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
@@ -345,6 +346,10 @@ export function EventForm({
 
   return (
     <View style={styles.content}>
+      {/* シート先頭のタイトル。formSheet はナビヘッダーを出さないので、これで
+          グラバー/コーナーぶんの余白を確保する（無いと種別セグメントがコーナーの
+          丸みに食い込んでタップが拾われないことがある）。 */}
+      <SheetTitle>{isEdit ? t("editFormLabel") : t("addAria")}</SheetTitle>
       {/* 種別セグメント */}
       <View style={styles.segment}>
         {(["timed", "allday", "transit"] as const).map((k) => (
@@ -611,7 +616,8 @@ function fmtTime(d: Date): string {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    content: { padding: 16, gap: 14 },
+    // 上端は SheetTitle 側の paddingTop（グラバー/コーナー分の余白）に任せる。
+    content: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
     segment: {
       flexDirection: "row",
       gap: 4,

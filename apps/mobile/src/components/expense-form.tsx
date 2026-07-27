@@ -43,6 +43,7 @@ import {
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
+import { SheetTitle } from "./sheet-title";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
@@ -339,6 +340,10 @@ export function ExpenseForm({
 
   return (
     <View style={styles.content}>
+      {/* シート先頭のタイトル。formSheet はナビヘッダーを出さないので、これで
+          グラバー/コーナーぶんの余白を確保する（無いと価格/通貨の行がコーナーの
+          丸みに食い込んでタップが拾われないことがある）。 */}
+      <SheetTitle>{isEdit ? t("editFormLabel") : t("addAria")}</SheetTitle>
       {/* 価格 + 通貨: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           必須は * でなく「埋まるまで送信無効」。通貨は選択値（JPY 等）自体が説明。 */}
       <View style={styles.row2}>
@@ -733,7 +738,8 @@ function formatLocalTime(d: Date): string {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    content: { padding: 16, gap: 14, paddingBottom: 48 },
+    // 上端は SheetTitle 側の paddingTop（グラバー/コーナー分の余白）に任せる。
+    content: { paddingHorizontal: 16, gap: 14, paddingBottom: 48 },
     row2: { flexDirection: "row", gap: 8 },
     grow: { flex: 1 },
     label: {
