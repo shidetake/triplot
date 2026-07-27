@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import type { Visibility } from "@triplot/shared/types/database";
@@ -28,7 +28,10 @@ export function CompactSegment<T extends string>({
       {options.map((o) => (
         <Pressable
           key={o.key}
-          onPress={() => onChange(o.key)}
+          onPress={() => {
+            Keyboard.dismiss();
+            onChange(o.key);
+          }}
           accessibilityRole="radio"
           accessibilityState={{ selected: value === o.key }}
           style={[

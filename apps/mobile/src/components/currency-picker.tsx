@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import {
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -16,7 +17,7 @@ import {
 } from "@triplot/shared/currencies";
 import type { Currency } from "@triplot/shared/types/database";
 
-import { CheckIcon, ChevronIcon, SearchIcon, XIcon } from "./icons";
+import { CheckIcon, ChevronIcon, SearchIcon } from "./icons";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 主要通貨 → その他全通貨（web の CurrencySelect と同じ並び。COMMON_CURRENCIES
@@ -28,9 +29,18 @@ const CURRENCY_CHOICES: Currency[] = [
 
 // 通貨選択モーダル（pageSheet・全170通貨から選べる）。expense-form の通貨/
 // 精算通貨選択で共用する単一の真実（以前は旅行編集画面だけ6件に絞った独自
-// chip 実装になっていた＝仕様の揺れ）。ヘッダーに × を置いて「選ばずに
-// 閉じる」を明示（pageSheet の下スワイプでも閉じられるが分かりにくいため）。
-// 各行は web と同じ「コード + 通貨名」。
+// chip 実装になっていた＝仕様の揺れ）。
+//
+// RN の Modal(presentationStyle="pageSheet") は iOS の UIModalPresentation
+// PageSheet を使う実物の native シート（他の formSheet と同じ「本物」）だが、
+// react-native-screens の ScreenStackItem/sheetAllowedDetents のような
+// 新しい多段 detent API とは別物で、grabber や X 無しの見た目は自前で
+// 揃える必要がある。expense-form/new-trip-sheet 等、既に formSheet として
+// 開いている画面の中からさらに ScreenStack を入れ子にして開こうとしたところ、
+// 元の画面と二重露光のように重なって描画される不具合が実機検証で確認できた
+// （react-native-screens の formSheet の中にさらに別の ScreenStack を
+// 入れ子にする構成は非対応と判断）ため、この Modal 実装のまま「取っ手を
+// 足す・× を外す」という見た目だけ他の native シートに揃える対応にとどめている。
 export function CurrencyPickerModal({
   visible,
   value,
@@ -74,12 +84,12 @@ export function CurrencyPickerModal({
       onRequestClose={close}
     >
       <View style={styles.sheet}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <Pressable onPress={close} hitSlop={8} accessibilityLabel="閉じる">
-            <XIcon size={20} color={theme.mutedForeground} />
-          </Pressable>
+        {/* 取っ手（native formSheet の sheetGrabberVisible と同じ見た目）。
+            × は置かず、他の native シートと同じくスワイプで閉じる。 */}
+        <View style={styles.grabberRow}>
+          <View style={styles.grabber} />
         </View>
+        <Text style={styles.title}>{title}</Text>
         <View style={styles.searchWrap}>
           <SearchIcon size={16} color={theme.subtleForeground} />
           <TextInput
@@ -142,7 +152,10 @@ export function CurrencyPickerTrigger({
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
       disabled={disabled}
       style={[styles.trigger, disabled && styles.triggerDisabled]}
     >
@@ -155,22 +168,25 @@ export function CurrencyPickerTrigger({
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
     sheet: { flex: 1, backgroundColor: t.background },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.fgAlpha(0.1),
+    grabberRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
+    grabber: {
+      width: 36,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: t.fgAlpha(0.2),
     },
-    title: { fontSize: 15, fontWeight: "600", color: t.foreground },
+    title: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.foreground,
+      textAlign: "center",
+      paddingBottom: 14,
+    },
     searchWrap: {
       flexDirection: "row",
       alignItems: "center",
       gap: 8,
       marginHorizontal: 16,
-      marginTop: 12,
       paddingHorizontal: 10,
       height: 36,
       borderRadius: 8,
@@ -188,7 +204,7 @@ const makeStyles = (t: Theme) =>
       fontSize: 13,
       color: t.mutedForeground,
     },
-    list: { padding: 16, paddingTop: 8 },
+    list: { padding: 16, paddingTop: 12 },
     row: {
       flexDirection: "row",
       alignItems: "center",

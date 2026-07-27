@@ -20,6 +20,17 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // タイムゾーンピッカー（RN・時差移動の出発/到着TZ用）。web と同じ3段ドリルダウン
 // （大陸グループ → サブ地域 → ゾーン）。データは shared/timezones（単一の真実）。
+//
+// RN の Modal(presentationStyle="pageSheet") は iOS の UIModalPresentation
+// PageSheet を使う実物の native シート（他の formSheet と同じ「本物」）だが、
+// react-native-screens の ScreenStackItem/sheetAllowedDetents のような
+// 新しい多段 detent API とは別物。event-form 等、既に formSheet として
+// 開いている画面の中からさらに ScreenStack を入れ子にして開こうとしたところ、
+// 元の画面と二重露光のように重なって描画される不具合が実機検証で確認できた
+// （react-native-screens の formSheet の中にさらに別の ScreenStack を
+// 入れ子にする構成は非対応と判断）ため、この Modal 実装のまま「取っ手を
+// 足す・キャンセルボタンを外す」という見た目だけ他の native シートに
+// 揃える対応にとどめている。
 export function TimezonePicker({
   value,
   onChange,
@@ -58,11 +69,13 @@ export function TimezonePicker({
         onRequestClose={close}
       >
         <View style={styles.modalRoot}>
-          <View style={styles.modalHeader}>
-            <Pressable onPress={close} hitSlop={8}>
-              <Text style={styles.cancel}>キャンセル</Text>
-            </Pressable>
+          {/* 取っ手（native formSheet の sheetGrabberVisible と同じ見た目）。
+              キャンセルボタンは置かず、他の native シートと同じくスワイプで
+              閉じる。 */}
+          <View style={styles.grabberRow}>
+            <View style={styles.grabber} />
           </View>
+          <Text style={styles.modalTitle}>タイムゾーンを選択</Text>
           <ScrollView contentContainerStyle={styles.list}>
             {!group ? (
               TZ_GROUPS.map((g) => (
@@ -158,15 +171,22 @@ const makeStyles = (t: Theme) =>
     },
     triggerText: { fontSize: 14, flex: 1, color: t.foreground },
     modalRoot: { flex: 1, backgroundColor: t.background },
-    modalHeader: {
-      flexDirection: "row",
-      justifyContent: "flex-end",
-      padding: 12,
+    grabberRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
+    grabber: {
+      width: 36,
+      height: 5,
+      borderRadius: 3,
+      backgroundColor: t.fgAlpha(0.2),
+    },
+    modalTitle: {
+      fontSize: 17,
+      fontWeight: "600",
+      color: t.foreground,
+      textAlign: "center",
+      paddingBottom: 10,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.1),
     },
-    // リンク色（web の text-blue-600。dark は blue-400）
-    cancel: { fontSize: 15, color: t.dark ? "#60a5fa" : "#2563eb" },
     list: { paddingVertical: 8 },
     row: {
       flexDirection: "row",

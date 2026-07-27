@@ -2,6 +2,7 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useMemo, useState } from "react";
 import {
   Alert,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -353,7 +354,10 @@ export function ExpenseForm({
           />
         </View>
         <Pressable
-          onPress={() => setCurrencyOpen(true)}
+          onPress={() => {
+            Keyboard.dismiss();
+            setCurrencyOpen(true);
+          }}
           accessibilityLabel={t("currency")}
           style={[styles.input, styles.selectTrigger]}
         >
@@ -399,7 +403,10 @@ export function ExpenseForm({
       <View>
         <Text style={styles.label}>{t("category")}</Text>
         <Pressable
-          onPress={() => setCategoryOpen(true)}
+          onPress={() => {
+            Keyboard.dismiss();
+            setCategoryOpen(true);
+          }}
           accessibilityLabel={t("category")}
           style={[styles.input, styles.selectTrigger]}
         >

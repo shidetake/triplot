@@ -1,5 +1,5 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { type Theme, useThemedStyles } from "@/lib/theme";
 
@@ -33,7 +33,12 @@ export function PickerChip({
   const styles = useThemedStyles(makeStyles);
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        // 他のテキスト欄にフォーカスが残ったままだとソフトウェアキーボードが
+        // ピッカーの下側に覆いかぶさる（実機報告）。ピッカーを開く前に閉じる。
+        Keyboard.dismiss();
+        onPress();
+      }}
       disabled={disabled}
       accessibilityLabel={accessibilityLabel ?? text}
       style={[styles.chip, disabled && styles.disabled]}
