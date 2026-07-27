@@ -54,6 +54,7 @@ export function EventForm({
   members,
   myMemberId,
   places,
+  biasCenter,
   tripStart,
   defaultTimezone,
   events,
@@ -67,6 +68,8 @@ export function EventForm({
   members: Member[];
   myMemberId: string;
   places: { id: string; name: string }[];
+  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンの重心）。
+  biasCenter?: { lat: number; lng: number };
   tripStart: string | null;
   defaultTimezone: string | null;
   events: EventRow[];
@@ -501,6 +504,7 @@ export function EventForm({
       {/* 場所 */}
       <PlacePicker
         places={places}
+        biasCenter={biasCenter}
         value={place}
         onChange={setPlace}
         placeholder={t("place")}

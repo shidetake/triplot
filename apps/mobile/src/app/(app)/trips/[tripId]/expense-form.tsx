@@ -4,6 +4,7 @@ import { useTranslations } from "use-intl";
 
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 import { deriveExpenseDraftItems } from "@triplot/shared/import/drafts";
+import { centroid } from "@triplot/shared/placeMap";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   deriveAverageRates,
@@ -75,6 +76,15 @@ export default function ExpenseFormRoute() {
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
   });
 
+  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンの重心。無ければ
+  // 無バイアス＝地図タブと違い Tokyo にはフォールバックしない）。
+  const biasCenter =
+    centroid(
+      (data.placesRaw ?? [])
+        .filter((p) => p.lat != null && p.lng != null)
+        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
+    ) ?? undefined;
+
   const editExpense = expenseId
     ? expenses.find((e) => e.id === expenseId)
     : undefined;
@@ -111,6 +121,7 @@ export default function ExpenseFormRoute() {
           id: p.id,
           name: p.name,
         }))}
+        biasCenter={biasCenter}
         tzTimeline={tzTimeline}
         editExpense={editExpense}
         draft={confirmingDraft}

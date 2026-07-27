@@ -70,6 +70,7 @@ export function ExpenseForm({
   averageRates,
   initialPaidAt,
   places,
+  biasCenter,
   tzTimeline,
   editExpense,
   draft,
@@ -86,6 +87,8 @@ export function ExpenseForm({
   averageRates: Partial<Record<Currency, number>>;
   initialPaidAt: string;
   places: { id: string; name: string }[];
+  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンの重心）。
+  biasCenter?: { lat: number; lng: number };
   tzTimeline: TripTzTimeline;
   editExpense?: ExpenseRow;
   // メール取り込みの未確定下書きの確定フロー。create モードの事前入力として
@@ -434,6 +437,7 @@ export function ExpenseForm({
       {/* 場所 */}
       <PlacePicker
         places={places}
+        biasCenter={biasCenter}
         value={place}
         onChange={setPlace}
         placeholder={t("place")}

@@ -1,36 +1,44 @@
 import { useMemo, useState } from "react";
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from "react-native";
+import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
+import {
+  candidateToPlaceInput,
+  type PlacePrediction,
+} from "@triplot/shared/placesSearch";
 
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { usePlaceAutocomplete } from "@/lib/usePlaceAutocomplete";
 
-// 場所欄（RN 版・M4 スコープ）: 保存済み(saved) / 自由入力(free) の2モード。
-// Google サジェスト確定(google)は M5 の Places 検索実装後に追加する
-// （PlaceInput の3分岐契約は shared 済みなので後付けできる）。
-// 入力中は保存済み場所の前方一致候補を出し、タップで saved に確定。
-// 候補を選ばずテキストを残せば free（自由入力）として保存される。
+type Row =
+  | { type: "saved"; id: string; name: string }
+  | { type: "google"; prediction: PlacePrediction };
+
+// 場所欄（RN 版）: 保存済み(saved) / Google サジェスト確定(google) / 自由入力(free)
+// の3モード（web の place-picker と同じ契約・同じ並び：保存済み→Google の順）。
+// 入力中は保存済み場所の前方一致候補＋Google の入力中サジェスト（300ms debounce）を
+// 混ぜて出す。候補を選ばずテキストを残せば free（自由入力）として保存される。
 export function PlacePicker({
   places,
+  biasCenter,
   value,
   onChange,
   placeholder,
 }: {
   places: { id: string; name: string }[];
+  // Google サジェストの地理バイアス（旅行の既存ピンの重心）。無ければ無バイアス。
+  biasCenter?: { lat: number; lng: number };
   value: PlaceInput;
   onChange: (v: PlaceInput) => void;
   // ラベルは置かない規約なので placeholder＝フィールド名（場所）を呼び出し側が渡す。
   placeholder: string;
 }) {
   const t = useTheme();
+  const tPlace = useTranslations("place");
   const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
+  const { predictions, search, clear, resolve } = usePlaceAutocomplete(biasCenter);
 
   const text =
     value.kind === "saved"
@@ -39,24 +47,38 @@ export function PlacePicker({
         ? (value.label ?? "")
         : value.name;
 
-  const suggestions = useMemo(() => {
-    if (!focused) return [];
+  const savedMatches = useMemo(() => {
     const q = text.trim().toLowerCase();
     const hit = places.filter((p) => p.name.toLowerCase().includes(q));
     return (q ? hit : places).slice(0, 5);
-  }, [focused, text, places]);
+  }, [text, places]);
+
+  const rows: Row[] = focused
+    ? [
+        ...savedMatches.map(
+          (p): Row => ({ type: "saved", id: p.id, name: p.name }),
+        ),
+        ...predictions.map((p): Row => ({ type: "google", prediction: p })),
+      ]
+    : [];
+
+  const closeSuggestions = () => {
+    setFocused(false);
+    clear();
+  };
 
   return (
     <View>
       <TextInput
         value={text}
-        onChangeText={(next) =>
+        onChangeText={(next) => {
           onChange(
             next.trim() === ""
               ? { kind: "saved", placeId: null }
               : { kind: "free", label: next },
-          )
-        }
+          );
+          search(next);
+        }}
         onFocus={() => setFocused(true)}
         onBlur={() => setFocused(false)}
         placeholder={placeholder}
@@ -64,21 +86,48 @@ export function PlacePicker({
         placeholderTextColor={t.subtleForeground}
         style={styles.input}
       />
-      {suggestions.length > 0 && (
+      {rows.length > 0 && (
         <View style={styles.suggestions}>
-          {suggestions.map((p) => (
-            <Pressable
-              key={p.id}
-              // onBlur より先に発火させたいので onPressIn
-              onPressIn={() => {
-                onChange({ kind: "saved", placeId: p.id });
-                setFocused(false);
-              }}
-              style={styles.suggestionRow}
-            >
-              <Text style={styles.suggestionText}>{p.name}</Text>
-            </Pressable>
-          ))}
+          {rows.map((row) =>
+            row.type === "saved" ? (
+              <Pressable
+                key={`s-${row.id}`}
+                // onBlur より先に発火させたいので onPressIn
+                onPressIn={() => {
+                  onChange({ kind: "saved", placeId: row.id });
+                  closeSuggestions();
+                  Keyboard.dismiss();
+                }}
+                style={styles.suggestionRow}
+              >
+                <Text style={styles.suggestionText}>{row.name}</Text>
+                <Text style={styles.savedBadge}>{tPlace("savedBadge")}</Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                key={`g-${row.prediction.placeId}`}
+                onPressIn={() => {
+                  closeSuggestions();
+                  Keyboard.dismiss();
+                  void resolve(row.prediction).then((c) => {
+                    if (c) onChange(candidateToPlaceInput(c));
+                  });
+                }}
+                style={styles.suggestionRow}
+              >
+                <View style={styles.suggestionTextCol}>
+                  <Text style={styles.suggestionText} numberOfLines={1}>
+                    {row.prediction.primaryText}
+                  </Text>
+                  {row.prediction.secondaryText ? (
+                    <Text style={styles.suggestionSecondary} numberOfLines={1}>
+                      {row.prediction.secondaryText}
+                    </Text>
+                  ) : null}
+                </View>
+              </Pressable>
+            ),
+          )}
         </View>
       )}
     </View>
@@ -97,17 +146,30 @@ const makeStyles = (t: Theme) =>
       color: t.foreground,
     },
     suggestions: {
+      maxHeight: 256,
       borderWidth: 1,
       borderColor: t.fgAlpha(0.1),
       borderRadius: 6,
       marginTop: 4,
       backgroundColor: t.background,
+      overflow: "hidden",
     },
     suggestionRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
       paddingHorizontal: 10,
       paddingVertical: 8,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
-    suggestionText: { fontSize: 14, color: t.foreground },
+    suggestionTextCol: { flex: 1, minWidth: 0 },
+    suggestionText: { flexShrink: 1, fontSize: 14, color: t.foreground },
+    suggestionSecondary: {
+      flexShrink: 1,
+      fontSize: 12,
+      color: t.mutedForeground,
+    },
+    savedBadge: { fontSize: 11, color: t.subtleForeground },
   });
