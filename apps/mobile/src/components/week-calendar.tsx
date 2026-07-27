@@ -71,6 +71,7 @@ export function WeekCalendar({
   memberHueById,
   activeMemberCount,
   myMemberId,
+  placeName,
   onEventPress,
   onSlotPick,
 }: {
@@ -80,6 +81,8 @@ export function WeekCalendar({
   memberHueById: Map<string, number | null>;
   activeMemberCount: number;
   myMemberId: string;
+  // ブロックに場所名を出す解決関数（web の week-calendar と同じ契約）。
+  placeName: (placeId: string | null) => string | null;
   onEventPress: (event: EventRow) => void;
   // 空き枠の長押し→ゴースト→ドラッグ→離した位置で確定（web と同じ）。
   // date は確定した列の日付、minutes は 0時からの通算分（30分スナップ済み）。
@@ -512,6 +515,14 @@ export function WeekCalendar({
                       },
                     ]}
                   >
+                    {/* 開始時刻を先頭に（本家 Google カレンダーと同じ並び）。
+                        先頭でも強調はしない＝見た目は従来の eventTime のまま。 */}
+                    <Text
+                      style={[styles.eventTime, { color: col.text }]}
+                      numberOfLines={1}
+                    >
+                      {hhmm(p.topMin)}
+                    </Text>
                     <View style={styles.titleRow}>
                       <ReservationMark ev={ev} textColor={col.text} />
                       <Text
@@ -521,12 +532,17 @@ export function WeekCalendar({
                         {p.event.title}
                       </Text>
                     </View>
-                    {height > 34 && (
+                    {/* 場所（web の blockLabel と同じ優先度: 時刻→タイトル→場所）。
+                        1行に収まらなくても改行で収まりそうなら2行まで見せる
+                        （タイトルと同じ扱い）。それでも入らない/ブロックが低い
+                        時は eventBlock の overflow:hidden が下から自然に
+                        切り詰める（本家 Google マップの週表示と同じ「省略表示」）。 */}
+                    {placeName(ev.placeId) && (
                       <Text
-                        style={[styles.eventTime, { color: col.text }]}
-                        numberOfLines={1}
+                        style={[styles.eventPlace, { color: col.text }]}
+                        numberOfLines={2}
                       >
-                        {hhmm(p.topMin)}
+                        {placeName(ev.placeId)}
                       </Text>
                     )}
                   </Pressable>
@@ -546,6 +562,7 @@ export function WeekCalendar({
                   lane: number;
                   laneCount: number;
                   label: string;
+                  time: number;
                 }[] = [];
                 const depCi = colIndexByKey.get(t.departColumnKey);
                 const arrCi = colIndexByKey.get(t.arriveColumnKey);
@@ -566,6 +583,7 @@ export function WeekCalendar({
                     lane: depOv ? ov.lane : t.departLane,
                     laneCount: depOv ? ov.laneCount : t.departLaneCount,
                     label: `${t.event.title} 発`,
+                    time: t.departMin,
                   });
                 }
                 if (arrCi != null && t.arriveColumnKey !== t.departColumnKey) {
@@ -577,8 +595,10 @@ export function WeekCalendar({
                     lane: arrOv ? ov.lane : t.arriveLane,
                     laneCount: arrOv ? ov.laneCount : t.arriveLaneCount,
                     label: `${t.event.title} 着`,
+                    time: t.arriveMin,
                   });
                 }
+                const pn = placeName(ev.placeId);
                 return parts.map((part) => {
                   const laneW = COL / part.laneCount;
                   return (
@@ -598,6 +618,13 @@ export function WeekCalendar({
                         },
                       ]}
                     >
+                      {/* 時刻→タイトル→場所の優先度（timed ブロックと同じ）。 */}
+                      <Text
+                        style={[styles.eventTime, { color: col.text }]}
+                        numberOfLines={1}
+                      >
+                        {hhmm(part.time)}
+                      </Text>
                       <View style={styles.titleRow}>
                         <ReservationMark ev={ev} textColor={col.text} />
                         <Text
@@ -607,6 +634,14 @@ export function WeekCalendar({
                           {part.label}
                         </Text>
                       </View>
+                      {pn && (
+                        <Text
+                          style={[styles.eventPlace, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          {pn}
+                        </Text>
+                      )}
                     </Pressable>
                   );
                 });
@@ -720,6 +755,8 @@ const makeStyles = (t: Theme) =>
   eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
   // タイトル行（予約マーク＋タイトル。マークが無ければ Text のみと同じ見た目）。
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
+  // 場所（タイトルの次の優先度。web の blockLabel の場所行と同じ薄字）。
+  eventPlace: { fontSize: 9, opacity: 0.7 },
   eventTime: { fontSize: 9, opacity: 0.7 },
   // 長押しゴースト（web の border-slate-400 / bg-slate-100/50 / text-slate-800
   // と同値の焼き込み。web も両モード同色）。

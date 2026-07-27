@@ -71,6 +71,12 @@ export default function ScheduleTab() {
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
   const activeMemberCount = (data.members ?? []).length;
+  // ブロックに場所名を出す（web の schedule-section.placeName と同じ解決）。
+  const placeNameById = new Map(
+    (data.placesRaw ?? []).map((p) => [p.id, p.name]),
+  );
+  const placeName = (placeId: string | null) =>
+    placeId ? (placeNameById.get(placeId) ?? null) : null;
 
   // 空き枠長押し→ゴーストをドラッグ→離した日時を開始時刻に事前入力して
   // 追加フォーム（web と同じ UX。ゴースト自体は WeekCalendar が持つ）。
@@ -105,6 +111,7 @@ export default function ScheduleTab() {
           memberHueById={memberHueById}
           activeMemberCount={activeMemberCount}
           myMemberId={me.id}
+          placeName={placeName}
           onEventPress={onEventPress}
           onSlotPick={onSlotPick}
         />
