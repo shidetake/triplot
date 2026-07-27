@@ -977,8 +977,8 @@ export default function PlacesTab() {
             >
               <Svg
                 viewBox="0 -960 960 960"
-                width={20}
-                height={20}
+                width={26}
+                height={26}
                 style={{ transform: [{ rotate: "45deg" }] }}
               >
                 <Path

@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import {
+  Dimensions,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -40,10 +41,16 @@ const ALLDAY_ROW = 24; // 終日バー1行の高さ
 const HEADER_H = 34; // 日付ヘッダの高さ
 const MIN_BLOCK = 18; // ブロック最低高さ
 
-function colWidth(n: number): number {
-  if (n <= 3) return 120;
-  if (n <= 6) return 96;
-  return 80;
+// 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
+// 引いた残りに約4.5日分入る値（(393-44)/80 ≈ 4.4日）。狭い端末（iPhone mini
+// 等）で窮屈すぎるかは実機確認が要るが、まずはこの px 値で固定する。
+const MIN_COL = 80;
+
+// 表示日数が4日以下なら余白なく画面幅いっぱいに均等割り、5日以上なら
+// MIN_COL で横スクロールさせる（web と違い日数固定表示が主用途のため）。
+function colWidth(n: number, availableWidth: number): number {
+  if (n <= 4) return availableWidth / n;
+  return MIN_COL;
 }
 
 const hhmm = (min: number) => formatMinutes(min, false);
@@ -99,7 +106,12 @@ export function WeekCalendar({
   const bodyScroll = useRef<ScrollView>(null);
   const verticalScroll = useRef<ScrollView>(null);
 
-  const COL = colWidth(columns.length);
+  // 画面回転等で幅が変わるので state で持ち、onLayout で更新する。初回描画は
+  // Dimensions で概算し、実測後に差し替える。
+  const [containerWidth, setContainerWidth] = useState(
+    () => Dimensions.get("window").width,
+  );
+  const COL = colWidth(columns.length, containerWidth - GUTTER);
   const totalW = columns.length * COL;
   const bodyH = 24 * HOUR_PX;
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]));
@@ -350,7 +362,10 @@ export function WeekCalendar({
   };
 
   return (
-    <View style={styles.container}>
+    <View
+      style={styles.container}
+      onLayout={(e) => setContainerWidth(e.nativeEvent.layout.width)}
+    >
       {/* ── ヘッダ（日付 + 終日バー）。横スクロールは本体と同期 ── */}
       <View style={styles.headerRow}>
         <View style={[styles.corner, { width: GUTTER }]} />
