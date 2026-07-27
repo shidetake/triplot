@@ -21,6 +21,11 @@ import { useTheme } from "@/lib/theme";
 // 揃える規約を維持するため、SF Symbols 等の別アイコンには差し替えない）。
 // renderingMode 既定の "template" で iconColor によって選択/非選択の色が
 // 自動的に塗られる（元画像は単色シルエットで OK）。
+//
+// ラベルなし（アイコンのみ）表示: <Label> を描かない。iOS の UITabBar は
+// ラベル有無でバー自体の高さを変えない（アイコンが同じ高さの中で縦中央に
+// 来るだけ）ので、ラベルを消しても見た目のタブサイズは縮まない。可視ラベルが
+// 消える分、スクリーンリーダー用に accessibilityLabel を必須で付ける。
 export default function TripTabsLayout() {
   const t = useTranslations("tripTabs");
   const theme = useTheme();
@@ -33,26 +38,26 @@ export default function TripTabsLayout() {
         selected: theme.foreground,
       }}
     >
-      <NativeTabs.Trigger name="index">
-        <NativeTabs.Trigger.Label>{t("schedule")}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="index" accessibilityLabel={t("schedule")}>
+        <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require("../../../../../../assets/tab-icons/calendar-days.png")}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="places">
-        <NativeTabs.Trigger.Label>{t("places")}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="places" accessibilityLabel={t("places")}>
+        <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require("../../../../../../assets/tab-icons/map.png")}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="expenses">
-        <NativeTabs.Trigger.Label>{t("expenses")}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="expenses" accessibilityLabel={t("expenses")}>
+        <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
-          src={require("../../../../../../assets/tab-icons/wallet.png")}
+          src={require("../../../../../../assets/tab-icons/dollar-sign.png")}
         />
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="todos">
-        <NativeTabs.Trigger.Label>{t("todos")}</NativeTabs.Trigger.Label>
+      <NativeTabs.Trigger name="todos" accessibilityLabel={t("todos")}>
+        <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require("../../../../../../assets/tab-icons/list-todo.png")}
         />
