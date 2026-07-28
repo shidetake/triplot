@@ -17,12 +17,15 @@
     "test:watch": "npm -w @triplot/web run test:watch",
     "db:types": "bash scripts/gen-db-types.sh",
     "db:types:check": "bash scripts/check-db-types.sh",
+    "// postinstall": "patch-package は dependencies 側に置く。Vercel は NODE_ENV=production でインストールするため devDependencies だとこのフックが command not found (127) で落ちる",
     "postinstall": "patch-package",
     "prepare": "husky || true"
   },
+  "dependencies": {
+    "patch-package": "^8.0.1"
+  },
   "devDependencies": {
     "husky": "^9.1.7",
-    "patch-package": "^8.0.1",
     "supabase": "^2.95.5"
   },
   "overrides": {
