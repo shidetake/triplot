@@ -10,10 +10,12 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { GlassView } from "expo-glass-effect";
 import * as Location from "expo-location";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import MapView, {
   Marker,
@@ -44,6 +46,7 @@ import {
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
 import { setPlaceLocation } from "@triplot/shared/data/places";
+import { fitAndHalfDetents } from "@triplot/shared/sheetDetents";
 import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
 
 import Svg, { Path } from "react-native-svg";
@@ -89,6 +92,28 @@ const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
 // ピンとラベルの間隔（px）。
 const CANDIDATE_LABEL_GAP = 4;
 
+// 一覧シート（browse）の「中身の高さ」の概算。値は下の styles から導出:
+// 行 = placeRow の paddingVertical(10)×2 ＋ 名前1行(15pt→約18) ＋ メタ1行
+// (12pt→約14 ＋ marginTop 2)、ヘッダー = sheetHeader の paddingTop(16)/
+// paddingBottom(8) ＋ 1行(13pt→約16)。
+// これは実測（FlatList の contentSize）が届くまでの1フレームぶんの繋ぎで、
+// detent の最終的な高さは実測値で組み直す（下の browseSheet 参照）。
+const LIST_ROW_H = 10 + 10 + 18 + 16;
+const LIST_ROW_NOTE_H = 16; // note 付きの行の追加分（1行想定）
+const LIST_HEADER_H = 16 + 8 + 16;
+const LIST_BOTTOM_PADDING = 24; // styles.list の paddingBottom
+
+function estimateListContentH(places: PlaceRow[]): number {
+  return (
+    LIST_HEADER_H +
+    LIST_BOTTOM_PADDING +
+    places.reduce(
+      (h, p) => h + LIST_ROW_H + (p.note ? LIST_ROW_NOTE_H : 0),
+      0,
+    )
+  );
+}
+
 // 場所タブ（RN・M5）: Google 地図 + 保存済みピン + 検索 + ドラッグ式ボトムシート
 // 一覧 + 追加/編集。web の PlacesSection 相当。地図は PROVIDER_GOOGLE で世界観統一。
 export default function PlacesTab() {
@@ -99,6 +124,8 @@ export default function PlacesTab() {
   const styles = useThemedStyles(makeStyles);
   const { data, me } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const { height: windowHeight } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
 
   const mapRef = useRef<MapView>(null);
   // シートの開閉。どちらも native の formSheet（モーダル）で、開いた時だけ
@@ -108,6 +135,18 @@ export default function PlacesTab() {
   //   formOpen: 追加/編集フォーム（候補・ピン・保存済みピンから開く）
   const [listOpen, setListOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  // 一覧シート（browse）の中身の実測高さ（FlatList の contentSize）。detent を
+  // 「中身にフィット」と「その半分」の2段で組むのに使う（下の browseSheet）。
+  const [browseContentH, setBrowseContentH] = useState<number | null>(null);
+  // 一覧の FlatList。地図のピンから選んだ行を見える位置までスクロールする。
+  const placeListRef = useRef<FlatList<PlaceRow>>(null);
+  const candidateListRef = useRef<FlatList<PlaceCandidate>>(null);
+  // 「今の選択は地図側の操作で決まった」印。地図のピンをタップして選んだときは
+  // 一覧シート側でもその行を見える位置へ運ぶ（シートを小さい detent に下げると
+  // 見える範囲が狭く、選択中の行が画面外のままになって「どれを選んだのか」が
+  // 分からなくなるため）。一覧の行を自分でタップしたときは動かさない＝触った
+  // 位置でリストが飛ぶのを避ける。
+  const scrollToSelectionRef = useRef(false);
 
   const [query, setQuery] = useState("");
   const [candidates, setCandidates] = useState<PlaceCandidate[]>([]);
@@ -273,6 +312,27 @@ export default function PlacesTab() {
     [scaleRegion, region, initialRegion, mapSize],
   );
 
+  // 地図のピンから選んだ行を、一覧シート側でも見える位置まで運ぶ
+  // （scrollToSelectionRef の宣言コメント参照）。行の先頭を一覧の上端に
+  // 合わせる＝そのあとシートを小さい detent へ下げても隠れにくい。
+  useEffect(() => {
+    // 一覧が閉じている間は印を持ち越す＝地図のピンで選んでから一覧を開いた
+    // ときも、開いた時点でその行まで運ぶ。
+    if (!listOpen || !scrollToSelectionRef.current) return;
+    scrollToSelectionRef.current = false;
+    const index = selectedCandidate
+      ? candidates.findIndex((c) => c.placeId === selectedCandidate.placeId)
+      : editing
+        ? places.findIndex((p) => p.id === editing.id)
+        : -1;
+    if (index < 0) return;
+    if (selectedCandidate) {
+      candidateListRef.current?.scrollToIndex({ index, viewPosition: 0 });
+    } else {
+      placeListRef.current?.scrollToIndex({ index, viewPosition: 0 });
+    }
+  }, [listOpen, editing, selectedCandidate, candidates, places]);
+
   if (!data?.trip || !me) return null;
 
   const pinOptions = (data.pinOptionsRaw ?? []) as PinOption[];
@@ -355,6 +415,20 @@ export default function PlacesTab() {
       openAddCandidate(c);
     } catch (e) {
       Alert.alert(t("searchFailed"), String(e));
+    }
+  };
+
+  // 検索窓の × （本家 Google マップと同じ: 何か入力されている間だけ右端に出る）。
+  // web の clearSearch と同値＝入力・サジェスト・検索結果（候補ピン）をまとめて
+  // 捨てて検索前に戻す。候補から開いていた追加フォームも中身が無くなるので畳む
+  // （保存済みの場所の編集フォームは検索と無関係なのでそのまま）。
+  const clearSearch = () => {
+    setQuery("");
+    closeSuggestions();
+    setCandidates([]);
+    if (selectedCandidate) {
+      setSelectedCandidate(null);
+      setFormOpen(false);
     }
   };
 
@@ -499,6 +573,9 @@ export default function PlacesTab() {
       openEditPlace(saved);
       return;
     }
+    // 地図（POI タップ）・検索窓のサジェスト由来＝一覧の行タップではないので、
+    // 背後の一覧でもその行を見える位置へ運ぶ。
+    scrollToSelectionRef.current = true;
     setSelectedCandidate(c);
     setEditing(null);
     setPinDraft(null);
@@ -559,6 +636,9 @@ export default function PlacesTab() {
   // 選んだ」流れなので1タップで編集を開く。一覧の行・地図の自前ピンタップは
   // previewOrEditPlace（1タップ目はプレビュー・2タップ目で編集）を使う。
   const openEditPlace = (p: PlaceRow) => {
+    // 一覧の行タップ以外（地図の POI・検索サジェスト）からの選択なので、背後の
+    // 一覧でもその行を見える位置へ運ぶ。
+    scrollToSelectionRef.current = true;
     setEditing(p);
     setSelectedCandidate(null);
     closeSuggestions();
@@ -656,6 +736,20 @@ export default function PlacesTab() {
   // 一覧シートの表示モード（検索結果 or 通常一覧）。ボタン/検索で開く方式なので
   // 開いた時は中段（detent 1）から見せる。展開すると全画面一覧。
   const listMode = candidates.length > 0 ? "search" : "browse";
+
+  // 通常一覧（browse）の detent。既定の高さは従来どおり「中身にフィット」で、
+  // そこから下スワイプでもう一段、その半分の高さで止まれるようにする（地図を
+  // 広く見たいとき用。検索結果シートの [0.25, 0.5] と同じ2段構え）。
+  // 計算（比率への変換・昇順・(0,1] の保証）は shared の純粋関数側。分母は
+  // iOS の maximumDetentValue（シートが取れる最大高さ）＝画面高 − 上部インセット。
+  // 半分の段は「半分にしてもヘッダー＋1行は見える」大きさのときだけ足す。
+  const browseSheet = fitAndHalfDetents({
+    // 実測（FlatList の contentSize）が届くまでは概算で組む。実測が来たら
+    // そちらに差し替わる＝「中身にフィット」は実測が単一の真実。
+    contentHeight: browseContentH ?? estimateListContentH(places),
+    maxSheetHeight: windowHeight - insets.top,
+    minHalfHeight: LIST_HEADER_H + LIST_ROW_H,
+  });
 
   return (
     <ScreenStack style={StyleSheet.absoluteFill}>
@@ -760,7 +854,11 @@ export default function PlacesTab() {
                 // 差し替えで子とアンカーが変わるので key で再マウントさせる。
                 key={`${p.id}:${isEditing ? 1 : 0}`}
                 coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-                onPress={() => previewOrEditPlace(p)}
+                onPress={() => {
+                  // 地図から選んだ＝一覧側もその行までスクロールして見せる。
+                  scrollToSelectionRef.current = true;
+                  previewOrEditPlace(p);
+                }}
                 // stopPropagation の既定は false（react-native-maps）＝
                 // マーカーの onPress は親 MapView の onPress にもバブリング
                 // する。iOS はこれが有効で、放っておくと同じタップで直後に
@@ -824,7 +922,11 @@ export default function PlacesTab() {
               placement={placement}
               selected={selected}
               dark={theme.dark}
-              onPress={() => previewOrAddCandidate(c)}
+              onPress={() => {
+                // 地図から選んだ＝一覧側もその行までスクロールして見せる。
+                scrollToSelectionRef.current = true;
+                previewOrAddCandidate(c);
+              }}
             />
           );
         })}
@@ -864,6 +966,19 @@ export default function PlacesTab() {
             onSubmitEditing={() => void runSearch()}
             editable={!!PLACES_API_KEY}
           />
+          {/* 全消しの ×（本家 Google マップと同じく入力があるときだけ入力欄の
+              右端に出る）。入力欄は wrap の先頭なので絶対配置でその上に重ねる
+              （サジェストが下に伸びても位置は変わらない）。 */}
+          {query.length > 0 && (
+            <Pressable
+              onPress={clearSearch}
+              hitSlop={8}
+              style={styles.searchClear}
+              accessibilityLabel={t("searchClear")}
+            >
+              <XIcon size={18} color={theme.mutedForeground} />
+            </Pressable>
+          )}
           {predictions.length > 0 && (
             <View style={styles.suggestions}>
               {predictions.map((p) => (
@@ -1011,13 +1126,16 @@ export default function PlacesTab() {
         // 検索結果（search）は件数が多くなりがちで fitToContents だと画面の
         // 上限まで伸びて地図が見えなくなる（実機フィードバック）ので、
         // 半分程度の高さを既定にし、地図と一覧を同時に見られるようにする
-        // （本家 Google マップの検索結果シートと同じ）。もう1段階小さい
-        // detent も足し、ドラッグで地図をさらに広く見せられるようにする
-        // （既定のサイズは変えない＝sheetInitialDetentIndex で明示）。
+        // （本家 Google マップの検索結果シートと同じ）。
+        // どちらも「既定の高さ」＋「その半分」の2段で、ドラッグで地図を広く
+        // 見せられるようにする（既定のサイズは sheetInitialDetentIndex で明示＝
+        // 開いた瞬間は必ず大きい方）。browse 側の値は上の browseSheet 参照。
         sheetAllowedDetents={
-          listMode === "search" ? [0.25, 0.5] : "fitToContents"
+          listMode === "search" ? [0.25, 0.5] : browseSheet.detents
         }
-        sheetInitialDetentIndex={listMode === "search" ? 1 : undefined}
+        sheetInitialDetentIndex={
+          listMode === "search" ? 1 : browseSheet.initialIndex
+        }
         sheetLargestUndimmedDetentIndex="last"
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
@@ -1049,10 +1167,26 @@ export default function PlacesTab() {
           // ScreenStackItem 直下の単一の子にする（さもないと行タップが
           // シートのスクロール/拡張ジェスチャに飲まれて発火しない）。
           <FlatList
+            ref={candidateListRef}
             data={candidates}
             keyExtractor={(item) => item.placeId}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            // 行の高さを実測前に scrollToIndex した場合の保険（FlatList の
+            // 推奨手順）: 平均行高でおおよその位置へ飛ばし、実測が済む次の
+            // フレームで正確に合わせ直す。
+            onScrollToIndexFailed={({ index, averageItemLength }) => {
+              candidateListRef.current?.scrollToOffset({
+                offset: index * averageItemLength,
+                animated: false,
+              });
+              setTimeout(() => {
+                candidateListRef.current?.scrollToIndex({
+                  index,
+                  viewPosition: 0,
+                });
+              }, 50);
+            }}
             // selectedCandidate が変わったら行を再レンダー（選択ハイライトと、
             // 行 onPress のクロージャを最新の選択状態で作り直すため。保存済み
             // 一覧の extraData と同じ理由＝無いと2タップ目の判定が古いままになる）。
@@ -1118,10 +1252,27 @@ export default function PlacesTab() {
           />
         ) : (
           <FlatList
+            ref={placeListRef}
             data={places}
             keyExtractor={(item) => item.id}
             contentContainerStyle={styles.list}
             keyboardShouldPersistTaps="handled"
+            // 中身の高さ＝シートの「フィット」detent の元になる値（上の
+            // browseSheet 参照）。行の増減・note の折返しまで込みの実測値。
+            onContentSizeChange={(_w, h) => setBrowseContentH(h)}
+            // scrollToIndex の保険（検索結果側と同じ。理由はそちらのコメント）。
+            onScrollToIndexFailed={({ index, averageItemLength }) => {
+              placeListRef.current?.scrollToOffset({
+                offset: index * averageItemLength,
+                animated: false,
+              });
+              setTimeout(() => {
+                placeListRef.current?.scrollToIndex({
+                  index,
+                  viewPosition: 0,
+                });
+              }, 50);
+            }}
             // editing / locating が変わったら行を再レンダー（選択ハイライトと、
             // 行 onPress のクロージャを最新の editing で作り直すため。無いと
             // 2タップ目の判定が古い editing=null のままになる）。
@@ -1455,8 +1606,18 @@ const makeStyles = (t: Theme) =>
     borderRadius: 8,
     backgroundColor: t.background,
     paddingHorizontal: 14,
+    // 右端の × のぶんを空けて、入力文字が × の下に潜らないようにする。
+    paddingRight: 38,
     fontSize: 15,
     color: t.foreground,
+  },
+  // 入力欄（高さ 44・wrap の先頭）の右端に重ねる全消しボタン。
+  searchClear: {
+    position: "absolute",
+    right: 10,
+    top: 0,
+    height: 44,
+    justifyContent: "center",
   },
   // 入力直下のサジェスト（レイヤーとサイズは ui-guidelines のドロップダウン規約:
   // rounded-md 相当・max-h-64・shadow）。
