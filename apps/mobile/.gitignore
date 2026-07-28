@@ -41,3 +41,6 @@ example
 # generated native folders
 /ios
 /android
+
+# eas build --local の出力（ローカルビルドの成果物）
+build-*.ipa
