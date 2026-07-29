@@ -17,6 +17,7 @@
     "test:watch": "npm -w @triplot/web run test:watch",
     "db:types": "bash scripts/gen-db-types.sh",
     "db:types:check": "bash scripts/check-db-types.sh",
+    "db:push:staging": "bash scripts/db-push-staging.sh",
     "postinstall": "node scripts/apply-patches.mjs",
     "prepare": "husky || true"
   },

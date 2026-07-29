@@ -143,6 +143,38 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
 
+## web の動作確認は staging（Vercel Preview）で行う
+
+本番にデプロイして確かめる運用はリリースまで。**リリース後は `main` に入れた
+ものが即公開されるので、確認は staging で行う。**
+
+- `main` = 本番。Vercel の Production デプロイと本番 Supabase。
+- `staging` ブランチ = 確認用。Vercel の Preview デプロイと **staging Supabase**。
+  URL はブランチ固定（`triplot-git-staging-<team>.vercel.app`）なので、Google
+  OAuth のリダイレクト URI に登録できる。
+- Vercel の環境変数は Preview スコープだけ staging Supabase に向けてある
+  （`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`）。コード側に
+  環境の分岐は無い。
+
+```
+feature ブランチ → staging にマージ → プレビュー URL で確認 → main にマージ → 本番
+```
+
+### staging DB への migration
+
+```bash
+npm run db:push:staging   # scripts/db-push-staging.sh
+```
+
+接続文字列は gitignore された `apps/web/.env.staging.local` の
+`SUPABASE_STAGING_DB_URL` から読む。本番は `supabase link` 済みプロジェクトを
+見る従来どおりの経路で、**link を張り替えない**（どちらを触っているかが
+コマンドから自明であること優先）。スクリプトは接続文字列に本番の project ref が
+混ざっていたら止める。
+
+`database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
+本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。
+
 ## 設計方針
 
 **「簡易設計でいい／後で直す」は禁則。** AI で実装コストは小さい前提で、最初から要求にきちんと合う設計で書く。後追いの migration、二重実装、古い実装の残骸を抱えるコストの方が断然高い。
