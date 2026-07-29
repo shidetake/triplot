@@ -10,18 +10,29 @@ import type { ExpoConfig } from "expo/config";
 // （サインイン画面も Google ボタンを出さない）。
 const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
 
+// staging 用のビルド（APP_VARIANT=staging）は bundle identifier を分けて、
+// 本番アプリと**同じ端末に併存できる**ようにする。iOS は bundle identifier が
+// 同じアプリを共存させられず、同じままだと staging ビルドが App Store 版を
+// 置き換えてしまう（本番の自分のデータが見えなくなる）。web はブラウザの URL で
+// 分かれるので不要だが、iOS はこれが必須。
+// scheme も分ける。同じカスタム scheme を2つのアプリが宣言すると、ディープリンクを
+// どちらが受けるか OS 依存になるため。
+const isStaging = process.env.APP_VARIANT === "staging";
+
 const config: ExpoConfig = {
-  name: "triplot",
+  name: isStaging ? "triplot (staging)" : "triplot",
   slug: "triplot",
   version: "0.1.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
-  scheme: "triplot",
+  scheme: isStaging ? "triplot-staging" : "triplot",
   // OS のライト/ダークに追従（アプリ内にモード設定は置かない）。UI 側は
   // lib/theme.ts のトークンが useColorScheme で切り替わる。
   userInterfaceStyle: "automatic",
   ios: {
-    bundleIdentifier: "app.triplot.mobile",
+    bundleIdentifier: isStaging
+      ? "app.triplot.mobile.staging"
+      : "app.triplot.mobile",
     supportsTablet: false,
     usesAppleSignIn: true,
     // ローカルビルドの署名チーム（Apple Development 証明書の OU）。
