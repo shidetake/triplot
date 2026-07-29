@@ -28,6 +28,7 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
 } from "@triplot/shared/schedule";
+import { sortPlacesByItinerary } from "@triplot/shared/placeOrder";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
 import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
@@ -102,8 +103,6 @@ export default async function TripDetailPage({
     sort_order: p.sort_order,
   }));
 
-  const places: PlaceRow[] = derivePlaces(placesRaw);
-
   const scheduleEvents: EventRow[] = deriveScheduleEvents(eventsRaw, todosRaw);
 
   // 費用/予定の TZ 推定に使う旅程タイムライン（transit から日付→TZ を引く。
@@ -111,6 +110,15 @@ export default async function TripDetailPage({
   const tzTimeline = buildTripTzTimeline(scheduleEvents, trip.default_timezone);
 
   const expenses: ExpenseRow[] = deriveOrderedExpenses(expensesRaw, tzTimeline);
+
+  // 場所一覧は訪問順（紐づく予定/費用の最も早い日時）。群分けの規則は
+  // placeOrder.ts 参照。予定・費用に依存するのでそれらの導出後に置く。
+  const places: PlaceRow[] = sortPlacesByItinerary(
+    derivePlaces(placesRaw),
+    scheduleEvents,
+    expenses,
+    tzTimeline,
+  );
 
   const todos: TodoRow[] = deriveTodos(todosRaw, me.id);
   const prepTodos = todos.filter((t) => t.kind === "prep");

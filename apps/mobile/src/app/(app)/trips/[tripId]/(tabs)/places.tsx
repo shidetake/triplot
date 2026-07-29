@@ -46,8 +46,15 @@ import {
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
 import { setPlaceLocation } from "@triplot/shared/data/places";
+import { sortPlacesByItinerary } from "@triplot/shared/placeOrder";
+import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { fitAndHalfDetents } from "@triplot/shared/sheetDetents";
-import { derivePlaces, type PlaceRow } from "@triplot/shared/tripDerive";
+import {
+  deriveOrderedExpenses,
+  derivePlaces,
+  deriveScheduleEvents,
+  type PlaceRow,
+} from "@triplot/shared/tripDerive";
 
 import Svg, { Path } from "react-native-svg";
 
@@ -251,10 +258,23 @@ export default function PlacesTab() {
     };
   }, []);
 
-  const places = useMemo(
-    () => (data ? derivePlaces(data.placesRaw) : []),
-    [data],
-  );
+  // 一覧は訪問順（紐づく予定/費用の最も早い日時）。群分けの規則は
+  // placeOrder.ts 参照。TZ を跨ぐ旅程でも順序が狂わないよう、旅程タイムライン
+  // から実効TZを解決した絶対時刻で比べる。
+  const places = useMemo(() => {
+    if (!data) return [];
+    const scheduleEvents = deriveScheduleEvents(data.eventsRaw, data.todosRaw);
+    const tzTimeline = buildTripTzTimeline(
+      scheduleEvents,
+      data.trip?.default_timezone,
+    );
+    return sortPlacesByItinerary(
+      derivePlaces(data.placesRaw),
+      scheduleEvents,
+      deriveOrderedExpenses(data.expensesRaw, tzTimeline),
+      tzTimeline,
+    );
+  }, [data]);
 
   // 初期リージョン: 既存ピンの範囲/重心、無ければ東京。
   const initialRegion: Region = useMemo(() => {
