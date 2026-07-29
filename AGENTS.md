@@ -1,10 +1,51 @@
+# AGENTS.md
+
+このリポジトリで作業する AI エージェント向けのガイド（単一の真実）。
+`CLAUDE.md` はこのファイルを読み込むだけで、中身は持たない。
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 
 This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
 <!-- END:nextjs-agent-rules -->
 
-## Server Action は完了後に自動でページを再レンダリングする
+## 技術スタック
+
+- Next.js **16**（App Router）+ React 19 + TypeScript + Tailwind v4
+- Supabase（Auth + Postgres + RLS）— `@supabase/ssr` で cookie ベースのセッション管理
+- Vitest（node 環境）— `lib/**/*.test.ts` と `components/**/*.test.ts` を拾う設定（後者は DOM 描画を伴わない静的チェック用。実ブラウザ挙動の検証は対象外）
+- パスエイリアス: `@/*` → リポジトリルート（`tsconfig.json` と `vitest.config.ts` の両方で設定）
+
+## コマンド
+
+```bash
+npm run dev          # next dev
+npm run build        # next build
+npm run lint         # eslint
+npx tsc --noEmit     # 型チェック（pre-commit / pre-push でも実行される）
+npm test             # vitest run（一回だけ）
+npm run test:watch   # vitest watch
+npx vitest run lib/settlement.test.ts        # 単一ファイル
+npx vitest run -t "settles greedy"           # テスト名で絞り込み
+```
+
+Husky フック:
+- `pre-commit`: lint + tsc
+- `pre-push`: lint + tsc + test
+
+## アーキテクチャ
+
+全体構成（クライアント＝web＋Expo ネイティブの段構え／外部サービス）は **[docs/architecture.md](docs/architecture.md)** を参照。
+方針: web（Next.js）は残し、iOS+Android は Expo（RN）で統一、ロジックは `packages/shared` で共有（Discord 流＝DOM↔native は越えない）。以下はこのリポジトリ（web）内部の事情。
+
+### Next.js 16 固有の事情（Next 14/15 の常識を持ち込まない）
+
+- **`proxy.ts`** がリポジトリルートにあり、これが旧 `middleware.ts` の役割。`lib/supabase/proxy.ts` の `updateSession` を呼んで、静的アセット以外の全リクエストで Supabase 認証 cookie をリフレッシュする。export 名は `proxy`（`middleware` ではない）。
+- ルートハンドラの `params` は `Promise`。`app/trips/[tripId]/page.tsx` 参照: `params: Promise<{ tripId: string }>` を `await` する。
+- `next/headers` の `cookies()` は async。`await cookies()` する（`lib/supabase/server.ts` 参照）。
+- API の形が怪しいときは training data ではなく `node_modules/next/dist/docs/` を読むこと。
+
+### Server Action は完了後に自動でページを再レンダリングする
 
 Next.js App Router は Server Action 完了後、`revalidatePath` の有無に関わらず
 React が自動的にページを再レンダリングする。その際 `<html>` 等のサーバー側属性が
@@ -28,6 +69,49 @@ document.cookie = `NEXT_THEME=${value}; path=/; max-age=...`;
 
 Server Action が必要なのは、サーバー描画コンテンツ（翻訳テキスト等）が
 変わる場合だけ（例: `setLocaleAction` は `revalidatePath` が必要）。
+
+### Supabase クライアントは 3 種類 — 用途で使い分ける
+
+| ファイル | どこから使う | 理由 |
+|---|---|---|
+| `lib/supabase/client.ts` | クライアントコンポーネント（`"use client"`） | ブラウザの cookie を扱う |
+| `lib/supabase/server.ts` | Server Component / route handler / server action | `next/headers` で cookie 読み書き。RSC からの書き込み失敗は意図的に握りつぶす（セッション更新は proxy 任せ） |
+| `lib/supabase/proxy.ts` | `proxy.ts` からのみ | request と response の cookie を同時に更新する必要がある。`getUser()` を呼ばないとリフレッシュが走らない |
+
+### DB モデル（`supabase/migrations/`）
+
+- **`trips.id` は 10 文字 base62 の nanoid（text）で、uuid ではない。** URL に出るため。他のテーブルの主キーは uuid。生成は `public.nanoid(size)` SQL 関数。`create_trip` RPC が衝突時にリトライする。
+- **「trip のオーナー」カラムは存在しない。** 権限の根拠は `trip_members`（`trips` × `users` の M:N）への参加だけ。`left_at` でソフト退会。「アクティブメンバー」= `left_at IS NULL`。
+- **`visibility = 'shared' | 'private'`** が `places` / `events` / `expenses` のアクセス制御の軸。shared は trip のアクティブメンバー全員に見え、private は作成者のみ。アプリ層ではなく **RLS** で守られている。
+- **多通貨対応:** `expenses` は `(local_price, local_currency, rate_to_default)` を per-row で持つ。default_currency 換算値はアプリ側で `local_price × rate_to_default`。デフォルトのレートは「同 trip 内、同通貨の既存 expense の `rate_to_default` の単純平均」を UI 側で算出（履歴が無ければユーザ入力）。trip-level の為替レートテーブルは存在しない。
+- **カテゴリ:** `expense_categories` テーブルが trip ごとにカテゴリを持つ。trip 作成時に 11 個（渡航/現地移動/飲食/衣服/エンタメ/土産/宿泊/通信/医療/カジノ/その他）を `seed_default_expense_categories` で seed する。`expenses.category_id` は NOT NULL + `on delete restrict`。
+- `expenses` には CHECK 制約: `private` の費用は `splittable = false` でなければならない（private は割り勘不可）。
+
+### RLS のパターン
+
+- `SECURITY DEFINER` の SQL ヘルパーが 2 つ — `is_active_trip_member(trip_id)` と `is_own_member(member_id)` — をポリシーから呼んでいる。`SECURITY DEFINER` なのは意図的で、`trip_members` を参照するときに同じテーブルの RLS が再帰評価されるのを避けるため。
+- trip 紐づきテーブルに新しくポリシーを書くときは既存パターンに従うこと: `(visibility = 'shared' AND is_active_trip_member(trip_id)) OR (visibility = 'private' AND is_own_member(created_by_member_id))`。
+
+### 複数行書き込みは `SECURITY DEFINER` RPC で
+
+- `create_trip(...)` が `trip` + 作成者の `trip_member` + デフォルトカテゴリを 1 トランザクションで insert する。RLS をバイパスし、関数の入口で `auth.uid()` を自前チェック。
+- `create_expense(...)` が `expenses` + `expense_splits`（splittable のとき）を atomic に insert。category と payer が同 trip の有効値かも関数内で検証。
+- 1 つのユーザ操作で RLS 配下の複数テーブルに atomic に書く必要があるときはこのパターンを使う。クライアント側で insert を連鎖させようとしないこと — RLS の評価順や部分失敗のリカバリで詰む。
+
+### 純粋関数の lib（vitest でテスト）
+
+DB を触らないビジネスロジックは `lib/` に純粋関数として置き、隣に `.test.ts` を置く:
+- `settlement.ts` — Splitwise 風の greedy 最小トランザクション割り勘（amount は default_currency に換算済み前提）
+- `expenseSummary.ts` — shared/private と splittable を考慮した自己負担サマリ（`amountInDefault` 前提）
+
+新しいビジネスロジックも `(input) → output` で書ける限りはここに置く。ユニットテストが書けて壊れにくい。
+
+### DB 型定義
+
+- **`lib/types/database.generated.ts`** が単一の真実。`npm run db:types` で実 DB から自動生成する（`.env.local` の `SUPABASE_ACCESS_TOKEN` を使う）。**手で編集しない。**
+- `lib/types/database.ts` は生成物の re-export + 利便用の union 別名（`Currency` など）だけ。生成型は CHECK 制約を読めず通貨等が `string` になるので、DB 境界（fetch 結果の map、RPC 呼び出し）で `as Currency` 等に絞る。
+- gen-types は DEFAULT 無しの nullable 関数引数を `string` にしてしまう既知の癖がある（`create_trip` の `p_start_date` 等）。その箇所だけ呼び出し側でキャスト。
+- migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。pre-push の `db:types:check` が実 DB とのズレを検出して push を止める（トークンが無い環境ではスキップ）。
 
 ## iOS アプリの動作確認は TestFlight で行う
 
@@ -58,3 +142,26 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 ローカルビルドには Xcode 26.3 以上 / fastlane / login キーチェーンに Apple WWDR
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
+
+## 設計方針
+
+**「簡易設計でいい／後で直す」は禁則。** AI で実装コストは小さい前提で、最初から要求にきちんと合う設計で書く。後追いの migration、二重実装、古い実装の残骸を抱えるコストの方が断然高い。
+
+具体例:
+- 列挙的なもの（カテゴリ、タグ、種別）は最初からテーブルに分けて FK で参照する。`text + CHECK 制約` で済ます「あとで categories テーブルに昇格」は禁止。
+- 「あとで RPC に切り出す」「あとで RLS を厳しくする」のような計画があるなら最初からそれで書く。
+- 「ユーザが入力を省略できる」と「DB のカラムを NULL 許可」は別の話。UI で省略可・サーバ側で導出して埋める方が DB スキーマとしては固い（NOT NULL）。NULL 許可は本当にデータが存在しないケースだけ。
+
+## Migration ポリシー（開発期間中）
+
+- **既存データ向けの backfill / データ補修コードを migration に書かない。** 既存データはテスト用なので、邪魔なら `truncate ... cascade` か手動 SQL で消す。`DO $$ ... LOOP ... $$` のような後付け seed は書かないこと（増えてくと意図不明のごみコードが migration に溜まる）。
+- 必要なら migration の先頭で `truncate <table> cascade` を入れて「真っ新な状態から動く」設計にする。
+- 既存 migration ファイルの書き直し（破壊的変更）は OK。Git 履歴より最終的なスキーマの綺麗さ優先。
+- 「本番運用フェーズに入った」とユーザが明示的に言うまでこの方針。それ以降は backfill を真面目に書く。
+
+## UI 規約
+
+UI / アイコン / ボタン配色 / コピー / ナビ / インタラクションの規約は **[docs/ui-guidelines.md](docs/ui-guidelines.md)** に集約（単一の真実）。下記 `@` で取り込む。
+（"design" は設計＝[システム構成](docs/architecture.md)と紛れるので、見た目側はこの「UI ガイドライン」に名前を分けている。）
+
+@docs/ui-guidelines.md
