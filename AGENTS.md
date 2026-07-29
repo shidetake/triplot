@@ -146,22 +146,36 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
 ## web の動作確認は staging（Vercel Preview）で行う
 
 本番にデプロイして確かめる運用はリリースまで。**リリース後は `main` に入れた
-ものが即公開されるので、確認は staging で行う。**
+ものが即公開されるので、確認は staging で行う**（`main` への push ＝ 公開）。
 
-- `main` = 本番。Vercel の Production デプロイと本番 Supabase。
-- `staging` ブランチ = 確認用。Vercel の Preview デプロイと **staging Supabase**。
-  URL はブランチ固定（`triplot-git-staging-<team>.vercel.app`）なので、Google
-  OAuth のリダイレクト URI に登録できる。
-- Vercel の環境変数は Preview スコープだけ staging Supabase に向けてある
-  （`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY`）。コード側に
-  環境の分岐は無い。
+- **区切りのタイミングでは、指示を待たず Claude Code の判断で `staging` に
+  マージして push する。** 「区切り」＝ web の画面に見える変更が一段落し、
+  typecheck / lint / テストが通っている状態。iOS を TestFlight に上げるのと
+  同じ考え方で、確認できる場所まで自分で運ぶ。
+- **確認はプレビュー URL で行う。** `https://triplot-git-staging-hdtks-projects.vercel.app`
+  （Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが
+  開ける）。ブランチ固定 URL なので Google OAuth に登録できている。
+- **`main` へのマージは確認が済んでから。** これが本番公開そのものなので、
+  ユーザーの指示なしに `main` へは入れない。
+- **migration を入れたら staging にも当てる**（下の「staging DB への migration」）。
+  当て忘れるとプレビューだけ古いスキーマで動いて原因不明の不具合に見える。
 
 ```
 feature ブランチ → staging にマージ → プレビュー URL で確認 → main にマージ → 本番
 ```
 
-確認用 URL: `https://triplot-git-staging-hdtks-projects.vercel.app`
-（Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが開ける）
+環境の対応。**コード側に環境の分岐は無く**、Vercel の環境変数スコープだけで
+切り替わる（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` の
+Preview スコープが staging Supabase を向いている）:
+
+| | ブランチ | Vercel | Supabase |
+|---|---|---|---|
+| 本番 | `main` | Production（`triplot.app`） | `cjkiglocsrtnohoxcnfh` |
+| 確認 | `staging` | Preview | `xuytnpkvmiduffigimol` |
+
+staging を見ているかの判別は、ログイン後の旅行一覧で付く（staging はテスト
+データしか入っていない）。本番と同じ旅行が並んだら Preview スコープの環境変数が
+効いていない。
 
 ### Google OAuth まわりの制約 — 確認は staging ブランチに集約する
 
