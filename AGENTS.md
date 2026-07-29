@@ -160,6 +160,26 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
 feature ブランチ → staging にマージ → プレビュー URL で確認 → main にマージ → 本番
 ```
 
+確認用 URL: `https://triplot-git-staging-hdtks-projects.vercel.app`
+（Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが開ける）
+
+### Google OAuth まわりの制約 — 確認は staging ブランチに集約する
+
+Google Cloud Console の OAuth クライアント（「Web」）に、本番と並べて staging の
+設定を入れてある。**2つの欄は用途が違うので混同しないこと。**
+
+| 欄 | 何に使われるか | 登録済みの値 |
+|---|---|---|
+| 承認済みのリダイレクト URI | ログイン（Supabase 経由のリダイレクト） | 本番/staging それぞれの `https://<ref>.supabase.co/auth/v1/callback` |
+| 承認済みの JavaScript 生成元 | **カレンダーエクスポート**（`calendar-export-dialog.tsx` が GIS のポップアップ・トークンフローでブラウザから直接 Google を叩く） | `https://triplot.app` / `http://localhost:3000` / staging の Vercel URL |
+
+**JavaScript 生成元はワイルドカードを受け付けない。** そのため staging 以外の
+feature ブランチのプレビューでは、ログインや他の機能は動くが**カレンダー
+エクスポートだけ動かない**。エクスポートを確認したいときは staging にマージ
+してから見る（ブランチごとに生成元を登録して回らない）。
+
+`NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` も Preview スコープに要る（値は本番と同じ）。
+
 ### staging DB への migration
 
 ```bash
