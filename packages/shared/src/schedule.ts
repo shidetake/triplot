@@ -18,9 +18,11 @@ export type ScheduleEvent = {
   allDay: boolean;
   startAt: string; // "YYYY-MM-DDTHH:MM[:SS]" 壁時計（TZ無し）
   endAt: string | null; // 壁時計（TZ無し）
-  // IANA。transit は常に非null（唯一の真実源）。normal/allday は旅程に
-  // transit が1つも無い旅行だけ非null（導出元が無いので literal 保存）。
-  // transit がある旅行の normal は null＝毎回 tzDisambig* と旅程から導出。
+  // IANA。**transit だけが literal な TZ を持つ**（旅行のTZ境界の唯一の真実源）。
+  // normal/allday は常に null で、実効TZは旅程（transit の並び）と tzDisambig*
+  // から毎回導出する（resolveEventTz）。DB の CHECK 制約
+  // events_normal_no_literal_tz_chk / events_transit_endpoints_chk がこの不変条件を
+  // 強制している。
   startTz: string | null;
   endTz: string | null; // transit の到着TZ。normal は null
   // normal/allday のみ意味を持つ。乗継当日で候補が複数あるときの選択（どの
