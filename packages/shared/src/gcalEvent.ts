@@ -1,4 +1,5 @@
 import {
+  eventEndPlaceId,
   resolveEventTz,
   type ScheduleEvent,
   type TripTzTimeline,
@@ -69,11 +70,25 @@ export function buildCalendarExportEvents(
     opts.places.map((p) => [p.id, p.formatted_address]),
   );
   return scheduleEvents.map((e) => {
-    const placeName = e.placeId ? (placeNameById.get(e.placeId) ?? "") : "";
-    const placeAddr = e.placeId
-      ? (placeAddressById.get(e.placeId) ?? null)
-      : null;
-    const location = [placeName, placeAddr].filter(Boolean).join(" ") || null;
+    // 移動は「出発地 → 到着地」。単一地点の予定は従来どおり場所＋住所。
+    const endPlaceId = eventEndPlaceId(e);
+    const startName = e.startPlaceId
+      ? (placeNameById.get(e.startPlaceId) ?? "")
+      : "";
+    const endName =
+      endPlaceId && endPlaceId !== e.startPlaceId
+        ? (placeNameById.get(endPlaceId) ?? "")
+        : "";
+    const location = endName
+      ? `${startName} → ${endName}`
+      : [
+          startName,
+          e.startPlaceId
+            ? (placeAddressById.get(e.startPlaceId) ?? null)
+            : null,
+        ]
+          .filter(Boolean)
+          .join(" ") || null;
     // 参加者空配列 = 全員参加のシュガー。自分が当事者か全員予定なら mine。
     const mine =
       e.participantMemberIds.length === 0 ||

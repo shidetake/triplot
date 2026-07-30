@@ -113,7 +113,7 @@ export function EventForm({
     editEvent?.needsReservation ?? false,
   );
   const [place, setPlace] = useState<PlaceInput>(() => {
-    if (editEvent) return { kind: "saved", placeId: editEvent.placeId };
+    if (editEvent) return { kind: "saved", placeId: editEvent.startPlaceId };
     // 下書き: 保存済みマッチはそれを、無ければ抽出した場所名を自由入力テキスト
     // として事前入力（RN は Google 自動解決を持たないので web の低確信時と同じ
     // 自由入力フォールバック）。
@@ -296,7 +296,8 @@ export function EventForm({
       visibility,
       note: note.trim(),
       participantMemberIds: participantIds,
-      place,
+      startPlace: place,
+      endPlace: null,
     };
 
     if (isEdit) {

@@ -615,7 +615,7 @@ export function WeekCalendar({
     );
 
   const blockLabel = (ev: ScheduleEvent) => {
-    const pn = placeName(ev.placeId);
+    const pn = placeName(ev.startPlaceId);
     return (
       <>
         <span className="font-medium">

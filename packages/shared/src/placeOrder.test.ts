@@ -40,14 +40,22 @@ function place(
   };
 }
 
-function event(placeId: string | null, startAt: string): OrderableEvent {
+function event(
+  placeId: string | null,
+  startAt: string,
+  endPlaceId: string | null = null,
+  endAt: string | null = null,
+): OrderableEvent {
   return {
     kind: "normal",
     startAt,
+    endAt,
     startTz: null,
+    endTz: null,
     tzDisambigTransitId: null,
     tzDisambigSide: null,
-    placeId,
+    startPlaceId: placeId,
+    endPlaceId,
   };
 }
 
@@ -85,6 +93,39 @@ describe("earliestVisitByPlace", () => {
     expect(m.get("p")).toBe(Date.parse("2026-05-02T20:00+09:00"));
   });
 
+  it("移動は出発地に出発時刻、到着地に到着時刻を割り当てる", () => {
+    // 成田 18:00(JST) 発 → ホノルル 08:00(HST) 着。
+    const m = earliestVisitByPlace(
+      [
+        {
+          kind: "transit",
+          startAt: "2026-04-28T18:00",
+          endAt: "2026-04-28T08:00",
+          startTz: "Asia/Tokyo",
+          endTz: "Pacific/Honolulu",
+          tzDisambigTransitId: null,
+          tzDisambigSide: null,
+          startPlaceId: "nrt",
+          endPlaceId: "hnl",
+        },
+      ],
+      [],
+      TO_HAWAII,
+    );
+    expect(m.get("nrt")).toBe(Date.parse("2026-04-28T18:00+09:00"));
+    expect(m.get("hnl")).toBe(Date.parse("2026-04-28T08:00-10:00"));
+  });
+
+  it("到着地が null なら出発地と同じ扱い（二重に持たない）", () => {
+    const m = earliestVisitByPlace(
+      [event("store", "2026-04-28T10:00")],
+      [],
+      TOKYO,
+    );
+    expect(m.size).toBe(1);
+    expect(m.get("store")).toBe(Date.parse("2026-04-28T10:00+09:00"));
+  });
+
   it("場所に紐づかない予定・費用は無視する", () => {
     const m = earliestVisitByPlace(
       [event(null, "2026-04-28T09:00")],
@@ -110,10 +151,13 @@ describe("earliestVisitByPlace", () => {
     const transit: OrderableEvent = {
       kind: "transit",
       startAt: "2026-04-28T18:00",
+      endAt: "2026-04-28T08:00",
       startTz: "Asia/Tokyo",
+      endTz: "Pacific/Honolulu",
       tzDisambigTransitId: null,
       tzDisambigSide: null,
-      placeId: "hnd",
+      startPlaceId: "hnd",
+      endPlaceId: null,
     };
     const m = earliestVisitByPlace([transit], [], TO_HAWAII);
     expect(m.get("hnd")).toBe(Date.parse("2026-04-28T18:00+09:00"));

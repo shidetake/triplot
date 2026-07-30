@@ -18,6 +18,7 @@
 // 一覧の先頭を占めるべきではないため。候補群の内部でも地図未登録が先頭に来る。
 
 import {
+  eventEndPlaceId,
   resolveEventTz,
   wallClockToUtcMs,
   type ScheduleEvent,
@@ -38,10 +39,13 @@ export type OrderableEvent = Pick<
   ScheduleEvent,
   | "kind"
   | "startAt"
+  | "endAt"
+  | "endTz"
   | "startTz"
   | "tzDisambigTransitId"
   | "tzDisambigSide"
-  | "placeId"
+  | "startPlaceId"
+  | "endPlaceId"
 >;
 
 // ExpenseRow の部分集合。tz は deriveOrderedExpenses が解決済みで持っている
@@ -71,7 +75,9 @@ export function earliestVisitByPlace(
   };
 
   for (const e of events) {
-    if (!e.placeId) continue;
+    const startPlaceId = e.startPlaceId;
+    const endPlaceId = eventEndPlaceId(e);
+    if (!startPlaceId && !endPlaceId) continue;
     // transit は startTz が唯一の真実源。normal/allday は startTz を持たない
     // ことがあるので旅程から都度解決する（gcalEvent.ts と同じ作法）。
     const tz =
@@ -83,7 +89,18 @@ export function earliestVisitByPlace(
             e.tzDisambigSide,
             tzTimeline,
           );
-    keepEarliest(e.placeId, wallClockToUtcMs(e.startAt, tz));
+    // 出発地には出発時刻、到着地には到着時刻を当てる（移動の到着空港が
+    // 出発時刻で並ぶとおかしいため）。到着時刻が無ければ出発時刻で代用。
+    if (startPlaceId) {
+      keepEarliest(startPlaceId, wallClockToUtcMs(e.startAt, tz));
+    }
+    if (endPlaceId && endPlaceId !== startPlaceId) {
+      const arriveTz = e.kind === "transit" ? (e.endTz as string) : tz;
+      keepEarliest(
+        endPlaceId,
+        wallClockToUtcMs(e.endAt ?? e.startAt, arriveTz),
+      );
+    }
   }
 
   for (const x of expenses) {

@@ -153,11 +153,11 @@ export function EventForm({
 
   // 場所欄の初期値。編集時は既存の place_id から復元する（自由入力も
   // place_id に解決済みなので saved として戻る）。新規は取り込みの事前入力。
-  const placePickerInitial: PlacePickerInitial = ev?.placeId
+  const placePickerInitial: PlacePickerInitial = ev?.startPlaceId
     ? {
         kind: "saved",
-        id: ev.placeId,
-        name: places.find((p) => p.id === ev.placeId)?.name ?? "",
+        id: ev.startPlaceId,
+        name: places.find((p) => p.id === ev.startPlaceId)?.name ?? "",
       }
     : (prefill?.place ?? null);
 
