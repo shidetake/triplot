@@ -30,7 +30,7 @@ import {
   type TzCandidate,
 } from "@triplot/shared/schedule";
 import type { Visibility } from "@triplot/shared/types/database";
-import { parseYmd } from "@triplot/shared/ymd";
+import { parseYmd, formatYmd } from "@triplot/shared/ymd";
 
 import { DatePopover } from "./date-popover";
 import { DateTimePopover } from "./date-time-popover";
@@ -339,8 +339,10 @@ export function EventForm({
   const transitArriveInit = minToDt(initSMin + 60);
 
   // 時差移動は出発・到着をそれぞれ DateTimePopover（日付＋時刻チップ＝通常予定と同じ仕様）で
-  // 編集するので、日付・時刻とも controlled state を持つ。出発と到着は別TZ・別日が当たり前
-  // なので追従/ガードは入れない（独立。チップは両方とも日付＋時刻をフル表示する）。
+  // 編集するので、日付・時刻とも controlled state を持つ。
+  // 出発をずらすと到着も同じ差分だけ追従する（通常予定と同じ仕様。所要時間は
+  // 変わらないため）。出発と到着で TZ が違っても、壁時計に同じ差分を足せば実
+  // 所要時間は保たれる（TZ の差は両端で不変）。
   const [departDate, setDepartDate] = useDraft("departDate", startInit.date);
   const [departTime, setDepartTime] = useDraft(
     "departTime",
@@ -580,8 +582,22 @@ export function EventForm({
                 date={departDate}
                 time={departTime}
                 onChange={(d, td) => {
+                  const deltaMs =
+                    Date.parse(`${d}T${td}:00`) -
+                    Date.parse(`${departDate}T${departTime}:00`);
                   setDepartDate(d);
                   setDepartTime(td);
+                  if (deltaMs !== 0) {
+                    const ne = new Date(
+                      Date.parse(`${arriveDate}T${arriveTime}:00`) + deltaMs,
+                    );
+                    setArriveDate(formatYmd(ne));
+                    setArriveTime(
+                      `${String(ne.getHours()).padStart(2, "0")}:${String(
+                        ne.getMinutes(),
+                      ).padStart(2, "0")}`,
+                    );
+                  }
                 }}
                 tripStart={tripStart}
                 tripEnd={tripEnd}
@@ -664,6 +680,7 @@ export function EventForm({
           <span className="text-sm text-muted-foreground">{t("date")}</span>
           <div className="flex items-center gap-2">
             <DatePopover
+              closeOnSelect={false}
               name="start_date"
               value={alldayStart}
               onChange={setAlldayStartG}
@@ -674,6 +691,7 @@ export function EventForm({
             />
             <span className="shrink-0 text-muted-foreground">–</span>
             <DatePopover
+              closeOnSelect={false}
               name="end_date"
               value={alldayEnd}
               onChange={setAlldayEnd}
