@@ -419,15 +419,15 @@ export function EventForm({
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
           日時の行に置く。
-          **排他は「無効化」ではなく「消す」**。DB 制約で移動は終日になり得ず、
-          一時的に使えないのではなく最初から適用されない項目だから（Apple 純正
-          カレンダーも終日 ON で時刻欄を消す）。 */}
-      {!allDayOn && (
-        <View style={styles.optionPair}>
-          <Text style={styles.label}>{t("kindMove")}</Text>
-          <Switch value={moveOn} onValueChange={setMoveOn} />
-        </View>
-      )}
+          排他は非対称にする。**移動 ON → 終日を消す**（移動では終日があり得ない）。
+          **終日 ON → 移動は残して無効化**。移動は「どの欄が存在するか」を決める
+          上位の切り替えで、日時行の下位オプションである終日を触ったせいで画面から
+          消えるのは筋が悪い。加えて、終日スイッチより上の行が消えると再配置が走って
+          スイッチのアニメーションが潰れる（実機フィードバック）。 */}
+      <View style={styles.optionPair}>
+        <Text style={styles.label}>{t("kindMove")}</Text>
+        <Switch value={moveOn} disabled={allDayOn} onValueChange={setMoveOn} />
+      </View>
 
       <PlacePicker
         places={places}
@@ -756,7 +756,13 @@ const makeStyles = (t: Theme) =>
     flexWrap: "wrap",
     gap: 8,
   },
-  dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // 終日 ON では日時チップが短くなるので、marginLeft:auto で右端に固定する。
+  dtAllDay: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginLeft: "auto",
+  },
   chevronOpen: { transform: [{ rotate: "90deg" }] },
   tzSummaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tzSummary: { fontSize: 14, color: t.mutedForeground },
