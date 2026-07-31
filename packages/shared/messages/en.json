@@ -224,7 +224,7 @@
     "arrive": "Arrival",
     "departTz": "Departure timezone",
     "arriveTz": "Arrival timezone",
-    "timezone": "Timezone",
+    "timezone": "Time zone",
     "visibility": "Visibility",
     "visibilityShared": "Shared",
     "visibilitySelfOnly": "Just me",
@@ -233,7 +233,11 @@
     "participantsSome": "Some",
     "deleteTitle": "Delete this event?",
     "deleteFailed": "Delete failed: {error}",
-    "transitDay": "This is a transit day. Which timezone is this event in?"
+    "transitDay": "This is a transit day. Which timezone is this event in?",
+    "kindMove": "Trip leg",
+    "endPlace": "Arrival place",
+    "tzUnset": "Not set",
+    "tzChange": "Change"
   },
   "expense": {
     "price": "Amount",

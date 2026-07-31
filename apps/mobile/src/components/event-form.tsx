@@ -12,6 +12,10 @@ import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
+  crossesTimezone,
+  deriveTransitTimezones,
+} from "@triplot/shared/placeTimezone";
+import {
   createEvent,
   deleteEvent,
   updateEvent,
@@ -67,7 +71,8 @@ export function EventForm({
   tripId: string;
   members: Member[];
   myMemberId: string;
-  places: { id: string; name: string }[];
+  // lat/lng は移動の TZ を場所から導出するのに使う（placeTimezone.ts）。
+  places: { id: string; name: string; lat: number | null; lng: number | null }[];
   // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンの重心）。
   biasCenter?: { lat: number; lng: number };
   tripStart: string | null;
@@ -102,7 +107,12 @@ export function EventForm({
         ? "allday"
         : "timed"
     : (prefill?.kind3 ?? "timed");
-  const [kind, setKind] = useState<Kind3>(initKind);
+  // 種別は3択セグメントで宣言させず、独立した2トグル（終日／移動）から導出する。
+  // ユーザーは「これは移動か？」には答えられるが「これは時差移動か？」では
+  // 考え込む。DB 制約上 transit は all_day 不可なので UI でも排他にする。
+  const [allDayOn, setAllDayOn] = useState(initKind === "allday");
+  const [moveOn, setMoveOn] = useState(initKind === "transit");
+  const kind: Kind3 = allDayOn ? "allday" : moveOn ? "transit" : "timed";
 
   const [title, setTitle] = useState(editEvent?.title ?? prefill?.title ?? "");
   const [note, setNote] = useState(editEvent?.note ?? prefill?.note ?? "");
@@ -122,6 +132,12 @@ export function EventForm({
       return { kind: "free", label: prefill.autoResolvePlace.name };
     return { kind: "saved", placeId: null };
   });
+  // 到着地。空（placeId=null）なら DB 側で end_place_id は NULL＝出発地と同じ。
+  const [endPlace, setEndPlace] = useState<PlaceInput>(() =>
+    editEvent
+      ? { kind: "saved", placeId: editEvent.endPlaceId }
+      : { kind: "saved", placeId: null },
+  );
 
   // 日時。start/end は "YYYY-MM-DD" と "HH:MM"。
   const initDate =
@@ -144,17 +160,53 @@ export function EventForm({
   const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
 
   // 時差移動の出発/到着TZ。
-  const [departTz, setDepartTz] = useState(
-    editEvent?.startTz ??
-      prefill?.departTz ??
-      defaultTimezone ??
-      "Asia/Tokyo",
-  );
-  const [arriveTz, setArriveTz] = useState(
-    editEvent?.endTz ?? prefill?.arriveTz ?? defaultTimezone ?? "Asia/Tokyo",
-  );
+  // TZ は場所の座標から導出するのが既定（3段ネストのピッカーを触らせない）。
+  // 座標を持たない場所（自由入力＝地図未登録）では導出できないので、その時だけ
+  // 保存済みの値／旅行の既定に落として、ユーザーが明示的に選べるようにする。
+  const [tzOverride, setTzOverride] = useState<{
+    start: string | null;
+    end: string | null;
+  }>({ start: null, end: null });
+  const [tzExpanded, setTzExpanded] = useState(false);
 
-  // 通常/終日予定の乗継日TZ曖昧解決（web と同じ契約）。
+  const coordsOf = (p: PlaceInput): { lat: number | null; lng: number | null } => {
+    if (p.kind === "google") return { lat: p.lat, lng: p.lng };
+    if (p.kind === "saved" && p.placeId) {
+      const hit = places.find((x) => x.id === p.placeId);
+      return { lat: hit?.lat ?? null, lng: hit?.lng ?? null };
+    }
+    return { lat: null, lng: null };
+  };
+
+  const derivedTz = deriveTransitTimezones(
+    coordsOf(place),
+    endPlace.kind === "saved" && !endPlace.placeId ? null : coordsOf(endPlace),
+  );
+  const departTz =
+    tzOverride.start ??
+    derivedTz.startTz ??
+    editEvent?.startTz ??
+    prefill?.departTz ??
+    defaultTimezone ??
+    "Asia/Tokyo";
+  const arriveTz =
+    tzOverride.end ??
+    derivedTz.endTz ??
+    editEvent?.endTz ??
+    prefill?.arriveTz ??
+    departTz;
+  const setDepartTz = (tz: string) =>
+    setTzOverride((o) => ({ ...o, start: tz }));
+  const setArriveTz = (tz: string) => setTzOverride((o) => ({ ...o, end: tz }));
+  // 場所を入れたのに座標が無くて TZ が決まらない状態だけ、ピッカーを自動で開く。
+  // place 未入力（＝これから選ぶ）の段階で開くと、要約1行に畳んだ意味が無くなる。
+  const placeChosen = (p: PlaceInput) =>
+    p.kind === "google" || (p.kind === "free" && !!p.label) ||
+    (p.kind === "saved" && !!p.placeId);
+  const tzUndecided =
+    (placeChosen(place) && !derivedTz.startTz) ||
+    (placeChosen(endPlace) && !derivedTz.endTz);
+
   const initResolution = resolveExpenseTz(initDate, tzTimeline);
   const [tzDisambigTransitId, setTzDisambigTransitId] = useState<string | null>(
     editEvent?.tzDisambigTransitId ??
@@ -260,7 +312,11 @@ export function EventForm({
     setError(null);
 
     const allDay = kind === "allday";
-    const submitKind = kind === "transit" ? "transit" : "normal";
+    // 「移動」でも出発地と到着地で時差が無ければ通常予定として保存する。
+    // 旅程の TZ 境界（transit）は時差があるときだけ意味を持つので、東京→大阪で
+    // 無意味な境界を増やさない。ユーザーには種別の違いを見せない。
+    const isBoundary = kind === "transit" && crossesTimezone(departTz, arriveTz);
+    const submitKind = isBoundary ? "transit" : "normal";
     // 参加者: all は空配列（web と同じシュガー）、custom は選択分。
     const participantIds =
       partMode === "all" ? [] : Array.from(participants);
@@ -272,7 +328,7 @@ export function EventForm({
     if (kind === "allday") {
       startAt = `${startDate}T00:00`;
       endAt = `${endDate}T00:00`;
-    } else if (kind === "transit") {
+    } else if (isBoundary) {
       startAt = `${startDate}T${startTime}`;
       endAt = `${endDate}T${endTime}`;
       startTz = departTz;
@@ -291,13 +347,14 @@ export function EventForm({
       startTz,
       endTz,
       // 通常/終日の乗継日曖昧解決（transit は自身のTZを持つので null）。
-      tzDisambigTransitId: kind === "transit" ? null : tzDisambigTransitId,
-      tzDisambigSide: kind === "transit" ? null : tzDisambigSide,
+      tzDisambigTransitId: isBoundary ? null : tzDisambigTransitId,
+      tzDisambigSide: isBoundary ? null : tzDisambigSide,
       visibility,
       note: note.trim(),
       participantMemberIds: participantIds,
       startPlace: place,
-      endPlace: null,
+      // 移動でなければ到着地は持たない（＝出発地と同じ）。
+      endPlace: kind === "transit" ? endPlace : null,
     };
 
     if (isEdit) {
@@ -354,25 +411,7 @@ export function EventForm({
           グラバー/コーナーぶんの余白を確保する（無いと種別セグメントがコーナーの
           丸みに食い込んでタップが拾われないことがある）。 */}
       <SheetTitle>{isEdit ? t("editFormLabel") : t("addAria")}</SheetTitle>
-      {/* 種別セグメント */}
-      <View style={styles.segment}>
-        {(["timed", "allday", "transit"] as const).map((k) => (
-          <Pressable
-            key={k}
-            onPress={() => setKind(k)}
-            style={[styles.segItem, kind === k && styles.segItemOn]}
-          >
-            <Text style={[styles.segText, kind === k && styles.segTextOn]}>
-              {k === "timed"
-                ? t("kindTimed")
-                : k === "allday"
-                  ? t("kindAllday")
-                  : t("kindTransit")}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-      {isTransit && <Text style={styles.hint}>{t("transitHint")}</Text>}
+
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
       <TextInput
@@ -383,6 +422,26 @@ export function EventForm({
         placeholderTextColor={theme.subtleForeground}
         style={styles.input}
       />
+
+      {/* 種別は宣言させず、独立した2トグルから決まる（既定は両方 OFF＝通常予定）。
+          DB 制約で transit は終日にできないので、片方 ON の間はもう片方を
+          非活性にする（黙って倒すと何が起きたか分からないため）。 */}
+      <View style={styles.optionPair}>
+        <Text style={styles.label}>{t("kindAllday")}</Text>
+        <Switch
+          value={allDayOn}
+          disabled={moveOn}
+          onValueChange={setAllDayOn}
+        />
+      </View>
+      <View style={styles.optionPair}>
+        <Text style={styles.label}>{t("kindMove")}</Text>
+        <Switch
+          value={moveOn}
+          disabled={allDayOn}
+          onValueChange={setMoveOn}
+        />
+      </View>
 
       {/* 日時: web と同じ「開始 – 終了」の1行（開始＝日付＋時刻、終了＝時刻
           のみ・日跨ぎは "+n日"。終日は日付のみ）。チップタップで直下に inline
@@ -458,20 +517,6 @@ export function EventForm({
         )}
       </View>
 
-      {/* 時差移動: 出発/到着TZ（web と同じ1行2列） */}
-      {isTransit && (
-        <View style={styles.tzRow}>
-          <View style={styles.tzCol}>
-            <Text style={styles.label}>{t("departTz")}</Text>
-            <TimezonePicker value={departTz} onChange={setDepartTz} />
-          </View>
-          <View style={styles.tzCol}>
-            <Text style={styles.label}>{t("arriveTz")}</Text>
-            <TimezonePicker value={arriveTz} onChange={setArriveTz} />
-          </View>
-        </View>
-      )}
-
       {/* 通常/終日: 乗継日のTZ曖昧解決（セグメント）。同じ TZ の候補は
           dedupeTzCandidates で1つに畳み、キーも TZ で照合する（選択の実体は
           transitId/side だが、ユーザにとっての選択単位は TZ のため）。 */}
@@ -510,6 +555,44 @@ export function EventForm({
         onChange={setPlace}
         placeholder={t("place")}
       />
+
+      {/* 移動: 到着地とタイムゾーン。TZ は場所の座標から自動で決まるので、
+          既定では結果を1行見せるだけ（3段ネストのピッカーを触らせない）。
+          座標が無くて決められないときと、ユーザーが変えたいときだけ開く。 */}
+      {isTransit && (
+        <>
+          <PlacePicker
+            places={places}
+            biasCenter={biasCenter}
+            value={endPlace}
+            onChange={setEndPlace}
+            placeholder={t("endPlace")}
+          />
+          <Pressable
+            style={styles.optionPair}
+            onPress={() => setTzExpanded((v) => !v)}
+            accessibilityLabel={t("timezone")}
+          >
+            <Text style={styles.label}>{t("timezone")}</Text>
+            <Text style={styles.tzSummary}>
+              {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+            </Text>
+          </Pressable>
+          {(tzExpanded || tzUndecided) && (
+            <View style={styles.tzRow}>
+              <View style={styles.tzCol}>
+                <Text style={styles.label}>{t("departTz")}</Text>
+                <TimezonePicker value={departTz} onChange={setDepartTz} />
+              </View>
+              <View style={styles.tzCol}>
+                <Text style={styles.label}>{t("arriveTz")}</Text>
+                <TimezonePicker value={arriveTz} onChange={setArriveTz} />
+              </View>
+            </View>
+          )}
+        </>
+      )}
+
 
       {/* メモ */}
       <TextInput
@@ -661,7 +744,8 @@ const makeStyles = (t: Theme) =>
     dtChipsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
-    tzRow: { flexDirection: "row", gap: 8 },
+    tzSummary: { fontSize: 14, color: t.mutedForeground },
+  tzRow: { flexDirection: "row", gap: 8 },
     tzCol: { flex: 1, minWidth: 0 },
     // TZ曖昧解決のラジオは横並び（web と同じ。縦積みだと4行で場所を食う）。
     tzOptions: {
