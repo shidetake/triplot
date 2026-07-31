@@ -44,7 +44,7 @@ import { SheetTitle } from "./sheet-title";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
-import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
+import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -198,14 +198,7 @@ export function EventForm({
   const setDepartTz = (tz: string) =>
     setTzOverride((o) => ({ ...o, start: tz }));
   const setArriveTz = (tz: string) => setTzOverride((o) => ({ ...o, end: tz }));
-  // 場所を入れたのに座標が無くて TZ が決まらない状態だけ、ピッカーを自動で開く。
-  // place 未入力（＝これから選ぶ）の段階で開くと、要約1行に畳んだ意味が無くなる。
-  const placeChosen = (p: PlaceInput) =>
-    p.kind === "google" || (p.kind === "free" && !!p.label) ||
-    (p.kind === "saved" && !!p.placeId);
-  const tzUndecided =
-    (placeChosen(place) && !derivedTz.startTz) ||
-    (placeChosen(endPlace) && !derivedTz.endTz);
+
 
   const initResolution = resolveExpenseTz(initDate, tzTimeline);
   const [tzDisambigTransitId, setTzDisambigTransitId] = useState<string | null>(
@@ -451,20 +444,26 @@ export function EventForm({
             onChange={setEndPlace}
             placeholder={t("endPlace")}
           />
-          {/* 展開中はピッカー側にラベルが出るので、サマリ行は畳んでいる時だけ。 */}
-          {!(tzExpanded || tzUndecided) && (
+          {/* **自動では開かない。** 「決められないときだけ開く」にすると、
+              出発地が空の初期状態がまさにそれに当たり、入力していくと編集欄が
+              消えるという逆向きの挙動になる（実機フィードバック）。常に1行の
+              サマリを出し、押したときだけピッカーに切り替える。 */}
+          {!tzExpanded && (
             <Pressable
               style={styles.optionPair}
               onPress={() => setTzExpanded((v) => !v)}
               accessibilityLabel={t("timezone")}
             >
               <Text style={styles.label}>{t("timezone")}</Text>
-              <Text style={styles.tzSummary}>
-                {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
-              </Text>
+              <View style={styles.tzSummaryRow}>
+                <Text style={styles.tzSummary}>
+                  {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+                </Text>
+                <ChevronIcon size={16} color={theme.mutedForeground} />
+              </View>
             </Pressable>
           )}
-          {(tzExpanded || tzUndecided) && (
+          {tzExpanded && (
             <View style={styles.tzRow}>
               <View style={styles.tzCol}>
                 <Text style={styles.label}>{t("departTz")}</Text>
@@ -742,6 +741,7 @@ const makeStyles = (t: Theme) =>
     dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
     dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tzSummaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tzSummary: { fontSize: 14, color: t.mutedForeground },
   tzRow: { flexDirection: "row", gap: 8 },
     tzCol: { flex: 1, minWidth: 0 },

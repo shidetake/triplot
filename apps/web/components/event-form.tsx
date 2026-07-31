@@ -434,10 +434,6 @@ export function EventForm({
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
 
-  // 場所を選んだのに座標が無く TZ が決まらないときはピッカーを開いて聞く。
-  const tzUndecided =
-    kind3 === "transit" && (!derivedTz.startTz || !derivedTz.endTz);
-
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
   const onDelete = async () => {
@@ -600,8 +596,13 @@ export function EventForm({
               ユーザーが変えたいときだけ開く。値は常に hidden で送る。 */}
           <input type="hidden" name="depart_tz" value={departTz} />
           <input type="hidden" name="arrive_tz" value={arriveTz} />
-          {/* 展開中はピッカー側にラベルが出るので、サマリ行は畳んでいる時だけ。 */}
-          {!(tzExpanded || tzUndecided) && (
+          {/* **自動では開かない。** 「決められないときだけ開く」にすると、
+              出発地が空の初期状態がまさにそれに当たり、入力していくと編集欄が
+              消えるという逆向きの挙動になる（実機フィードバック）。常に1行の
+              サマリを出し、押したときだけピッカーに切り替える。場所から
+              決められないときはこの行に旅行の既定 TZ が入るので、触らなくても
+              破綻しない。 */}
+          {!tzExpanded && (
           <button
             type="button"
             onClick={() => setTzExpanded((v: boolean) => !v)}
@@ -611,9 +612,10 @@ export function EventForm({
             <span>
               {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
             </span>
+            <ChevronIcon size={16} className="text-muted-foreground" />
           </button>
           )}
-          {(tzExpanded || tzUndecided) && (
+          {tzExpanded && (
             <div className="grid grid-cols-2 gap-2">
               <label className={`${fieldCls} mt-1 block`}>
                 <span className="text-muted-foreground">{t("departTz")}</span>
