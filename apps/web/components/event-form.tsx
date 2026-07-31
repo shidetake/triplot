@@ -603,7 +603,6 @@ export function EventForm({
                 label={t("arriveDateTime")}
               />
             </div>
-            {allDayCheckbox}
           </div>
 
           <input type="hidden" name="depart_date" value={departDate} />
@@ -726,6 +725,7 @@ export function EventForm({
                 label={t("endDateTime")}
               />
             </div>
+            {allDayCheckbox}
           </div>
 
           <input type="hidden" name="start_date" value={sDate} />
