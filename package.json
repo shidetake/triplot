@@ -21,9 +21,10 @@
     "postinstall": "node scripts/apply-patches.mjs",
     "prepare": "husky || true"
   },
-  "// dependencies.expo-router": "ルートで直接は使わない。@expo/cli は root の node_modules に巻き上がるのに、その配下の @expo/router-server が peer で要求する expo-router を npm が apps/mobile/node_modules のコピーで満たしてしまい、root からは Node が解決できず `Cannot find module 'expo-router/_ctx-shared'` で expo start / expo run:ios が落ちる。ここで宣言して root へ引き上げる。**版は apps/mobile が実際に使っている版に固定する**（範囲指定にすると npm が範囲内の最新〔57.0.8〕を引き、expo-constants の peer と衝突して install ごと失敗する）。apps/mobile の expo-router を上げたらここも同時に上げること。",
+  "// dependencies.expo-router": "ルートで直接は使わない。@expo/cli は root の node_modules に巻き上がるのに、その配下の @expo/router-server が peer で要求する expo-router を npm が apps/mobile/node_modules のコピーで満たしてしまい、root からは Node が解決できず `Cannot find module 'expo-router/_ctx-shared'` で expo start / expo run:ios が落ちる。ここで宣言して root へ引き上げる。**expo 本体も同じ版で並べる**（expo-router だけ宣言すると npm がそれ用に別版の expo を丸ごと持ってきて、expo-modules-jsi が2コピーになり patches/ が iOS ビルドの使う方に当たらなくなる）。**版は apps/mobile が実際に使っている版に固定する**（範囲指定にすると npm が範囲内の最新〔57.0.8〕を引き、expo-constants の peer と衝突して install ごと失敗する）。apps/mobile の expo-router を上げたらここも同時に上げること。",
   "dependencies": {
-    "expo-router": "57.0.6",
+    "expo": "57.0.9",
+    "expo-router": "57.0.9",
     "patch-package": "^8.0.1"
   },
   "devDependencies": {
