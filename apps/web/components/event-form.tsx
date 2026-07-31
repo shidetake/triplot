@@ -500,16 +500,21 @@ export function EventForm({
 
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
-          日時の行に置く。DB 制約で transit は終日にできないので排他にする。 */}
-      <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
-          checked={kind3 === "transit"}
-          disabled={kind3 === "allday"}
-          onChange={(e) => setKind3(e.target.checked ? "transit" : "timed")}
-        />
-        {t("kindMove")}
-      </label>
+          日時の行に置く。
+          **排他は「無効化」ではなく「消す」**。DB 制約で移動は終日になり得ず、
+          一時的に使えないのではなく最初から適用されない項目だから（Apple 純正
+          カレンダーも終日 ON で時刻欄を消す）。終日側は日時行ごと切り替わるので
+          移動時には自然に出ない。 */}
+      {kind3 !== "allday" && (
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={kind3 === "transit"}
+            onChange={(e) => setKind3(e.target.checked ? "transit" : "timed")}
+          />
+          {t("kindMove")}
+        </label>
+      )}
 
       <div className="block text-sm">
         {mapsApiKey ? (
