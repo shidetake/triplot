@@ -86,6 +86,7 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 - **多通貨対応:** `expenses` は `(local_price, local_currency, rate_to_default)` を per-row で持つ。default_currency 換算値はアプリ側で `local_price × rate_to_default`。デフォルトのレートは「同 trip 内、同通貨の既存 expense の `rate_to_default` の単純平均」を UI 側で算出（履歴が無ければユーザ入力）。trip-level の為替レートテーブルは存在しない。
 - **カテゴリ:** `expense_categories` テーブルが trip ごとにカテゴリを持つ。trip 作成時に 11 個（渡航/現地移動/飲食/衣服/エンタメ/土産/宿泊/通信/医療/カジノ/その他）を `seed_default_expense_categories` で seed する。`expenses.category_id` は NOT NULL + `on delete restrict`。
 - `expenses` には CHECK 制約: `private` の費用は `splittable = false` でなければならない（private は割り勘不可）。
+- **地図の表示範囲は「ピンが集まっているところ」だけに合わせる。** 全ピンの外接矩形を使うと、離れた1点（帰りの空港など）に引っ張られて海の上が中心になる。`clusterPlaces` → `dominantCluster` で主役エリアを選ぶ。中心は必ず `centerOf()` を使い `(west+east)/2` を自前で書かない（日付変更線を跨ぐ bounds は `west > east` で返るため、自前計算だと地球の反対側が中心になる）。詳細は [docs/design/place-map.md](docs/design/place-map.md)。
 - **予定の TZ は保存しない。** 通常・終日の `events.start_tz` / `end_tz` は常に NULL で、literal な TZ を持つのは `kind='transit'` だけ（旅行の TZ 境界の唯一の真実源）。通常の予定の実効 TZ は旅程から毎回導出する（`resolveEventTz`）。`start_at` / `end_at` は壁時計（`timestamp without time zone`）。**「全予定に TZ を埋める」方式に変えないこと** — 理由と代償は [docs/design/timezone.md](docs/design/timezone.md) の 0 節。
 
 ### RLS のパターン
