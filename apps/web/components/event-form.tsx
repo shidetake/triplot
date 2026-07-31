@@ -434,6 +434,20 @@ export function EventForm({
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
 
+  // 終日は「日時の見せ方」を変えるコントロールなので日時と同じ行の右端に置く
+  // （行末の余白が使えて1行節約できる）。入り切らない幅では flex-wrap で
+  // 折り返し、その場合は従来どおり日時の下に落ちる。
+  const allDayCheckbox = (
+    <label className="ml-auto flex shrink-0 items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        checked={kind3 === "allday"}
+        onChange={(e) => setKind3(e.target.checked ? "allday" : "timed")}
+      />
+      {t("kindAllday")}
+    </label>
+  );
+
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
   const onDelete = async () => {
@@ -554,9 +568,9 @@ export function EventForm({
           到着エディタの日付制限もしない）。 */}
       {kind3 === "transit" && (
         <div className="space-y-3">
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <DateTimePopover
                 variant="start"
                 date={departDate}
@@ -584,6 +598,7 @@ export function EventForm({
                 label={t("arriveDateTime")}
               />
             </div>
+            {allDayCheckbox}
           </div>
 
           <input type="hidden" name="depart_date" value={departDate} />
@@ -639,24 +654,12 @@ export function EventForm({
         </div>
       )}
 
-      {/* 終日は日時の見た目だけを変えるので、日時のすぐ上に置く。 */}
-      {kind3 !== "transit" && (
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={kind3 === "allday"}
-            onChange={(e) => setKind3(e.target.checked ? "allday" : "timed")}
-          />
-          {t("kindAllday")}
-        </label>
-      )}
-
       {kind3 === "allday" && (
         // 開始日–終了日を横並び（通常予定の日時と同じ並び・時刻なし）。
         // 入力は従来どおりカレンダーのみ（DatePopover）。終日はTZ無関係（tz は送らない）。
-        <div>
+        <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">{t("date")}</span>
-          <div className="mt-1 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <DatePopover
               name="start_date"
               value={alldayStart}
@@ -682,6 +685,7 @@ export function EventForm({
               }
             />
           </div>
+          {allDayCheckbox}
         </div>
       )}
 
@@ -690,9 +694,9 @@ export function EventForm({
           {/* 開始＝日付＋時刻、終了＝時刻（＋別日なら「+N日」）の 2 つの要約チップ。
               どちらをタップしても同じ結合エディタ（カレンダー＋時刻）が開く＝iOS カレンダー方式。
               送信値は hidden で流す（チップは UI 専用の controlled 部品）。 */}
-          <div>
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
-            <div className="mt-1 flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <DateTimePopover
                 variant="start"
                 date={sDate}

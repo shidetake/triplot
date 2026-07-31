@@ -484,10 +484,36 @@ export function EventForm({
 
 
       <View style={styles.dtGroup}>
-        <View style={styles.optionPair}>
+        {/* ラベル・日時チップ・終日を1行に。終日は「日時の見せ方」を変える
+            コントロールなので日時の隣にあるのが自然。入り切らない端末/文字サイズ
+            では flexWrap で折り返し、その場合は従来どおりの2行になる。 */}
+        <View style={styles.dtRow}>
           <Text style={styles.label}>
             {kind === "allday" ? t("date") : t("dateTime")}
           </Text>
+          <View style={styles.dtChipsRow}>
+            <PickerChip
+              text={
+                kind === "allday"
+                  ? chipDateText(startDate)
+                  : chipDateTimeText(startDate, startTime)
+              }
+              active={openPicker === "start"}
+              onPress={() =>
+                setOpenPicker((p) => (p === "start" ? null : "start"))
+              }
+            />
+            <Text style={styles.dtSep}>–</Text>
+            <PickerChip
+              text={
+                kind === "allday"
+                  ? chipDateText(endDate)
+                  : chipEndTimeText(startDate, endDate, endTime)
+              }
+              active={openPicker === "end"}
+              onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
+            />
+          </View>
           <View style={styles.dtAllDay}>
             <Text style={styles.label}>{t("kindAllday")}</Text>
             <Switch
@@ -496,29 +522,6 @@ export function EventForm({
               onValueChange={setAllDayOn}
             />
           </View>
-        </View>
-        <View style={styles.dtChipsRow}>
-          <PickerChip
-            text={
-              kind === "allday"
-                ? chipDateText(startDate)
-                : chipDateTimeText(startDate, startTime)
-            }
-            active={openPicker === "start"}
-            onPress={() =>
-              setOpenPicker((p) => (p === "start" ? null : "start"))
-            }
-          />
-          <Text style={styles.dtSep}>–</Text>
-          <PickerChip
-            text={
-              kind === "allday"
-                ? chipDateText(endDate)
-                : chipEndTimeText(startDate, endDate, endTime)
-            }
-            active={openPicker === "end"}
-            onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
-          />
         </View>
         {/* 開始/終了でピッカーを1つ共有（出し分けると切替時にネイティブ
             ピッカーが作り直されて一瞬ちらつくため。datetime-field の注意書き）。 */}
@@ -744,7 +747,13 @@ const makeStyles = (t: Theme) =>
     dtChipsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
-    dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
+    dtRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 8,
+  },
+  dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
   chevronOpen: { transform: [{ rotate: "90deg" }] },
   tzSummaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tzSummary: { fontSize: 14, color: t.mutedForeground },
