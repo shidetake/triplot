@@ -358,8 +358,9 @@ export function EventForm({
       startTz,
       endTz,
       // 通常/終日の乗継日曖昧解決（transit は自身のTZを持つので null）。
-      tzDisambigTransitId: isBoundary ? null : tzDisambigTransitId,
-      tzDisambigSide: isBoundary ? null : tzDisambigSide,
+      // 移動（TZ境界）は自身の実TZを持つので不要。終日も TZ を使わないので持たない。
+      tzDisambigTransitId: isBoundary || allDay ? null : tzDisambigTransitId,
+      tzDisambigSide: isBoundary || allDay ? null : tzDisambigSide,
       visibility,
       note: note.trim(),
       participantMemberIds: participantIds,
@@ -592,7 +593,11 @@ export function EventForm({
       {/* 通常/終日: 乗継日のTZ曖昧解決（セグメント）。同じ TZ の候補は
           dedupeTzCandidates で1つに畳み、キーも TZ で照合する（選択の実体は
           transitId/side だが、ユーザにとっての選択単位は TZ のため）。 */}
-      {!isTransit &&
+      {/* 終日は出さない。終日は日付そのもので時刻を持たず、実効TZが要る場面が
+          無いため（週カレンダーの終日帯は日付だけで列を決め、Google カレンダー
+          出力も date のみで tz を使わない）。乗継日に TZ を選ばせても、
+          どこにも使われない入力になる。 */}
+      {kind === "timed" &&
         multiTz &&
         startTzRes.kind === "ambiguous" && (
           <View>
