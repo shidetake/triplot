@@ -123,6 +123,7 @@ type Row =
 
 export function PlacePicker({
   namePrefix = "",
+  onCoordsChange,
   places,
   biasCenter,
   initial,
@@ -132,6 +133,9 @@ export function PlacePicker({
   // hidden input の名前の接頭辞。1画面に場所欄が複数あるとき（予定の出発地/
   // 到着地）に衝突を避ける。既定は空＝従来の名前のまま。
   namePrefix?: string;
+  // 選択された場所の座標を親に知らせる。予定フォームが移動の TZ を場所から
+  // 導出するのに使う（この部品自体は非制御なので、必要な値だけ外へ出す）。
+  onCoordsChange?: (coords: { lat: number; lng: number } | null) => void;
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   initial: PlacePickerInitial;
@@ -178,6 +182,28 @@ export function PlacePicker({
   // 候補リストの開閉。Base UI に任せると（特に iOS のボトムシート内で）キーボードを
   // 閉じても候補が残るので、controlled にして「キーボードが閉じたら閉じる」を足す。
   const [open, setOpen] = useState(false);
+
+  // 解決済みの場所の座標を親へ。保存済みの場所は places から座標を引く
+  // （Google 由来は resolved 自身が持っている）。
+  useEffect(() => {
+    if (!onCoordsChange) return;
+    if (!resolved) {
+      onCoordsChange(null);
+      return;
+    }
+    if (resolved.kind === "google") {
+      onCoordsChange({ lat: resolved.lat, lng: resolved.lng });
+      return;
+    }
+    const hit = places.find((p) => p.id === resolved.id) as
+      | { lat?: number | null; lng?: number | null }
+      | undefined;
+    onCoordsChange(
+      hit && hit.lat != null && hit.lng != null
+        ? { lat: hit.lat, lng: hit.lng }
+        : null,
+    );
+  }, [resolved, places, onCoordsChange]);
 
   // 入力を編集したら確定済み選択は無効化（= 自由入力候補に戻る）。
   const invalidate = () => setResolved(null);
