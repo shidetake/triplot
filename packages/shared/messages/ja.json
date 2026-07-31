@@ -237,7 +237,8 @@
     "kindMove": "移動",
     "endPlace": "到着地",
     "tzUnset": "未設定",
-    "tzChange": "変更"
+    "tzChange": "変更",
+    "startPlace": "出発地"
   },
   "expense": {
     "price": "価格",

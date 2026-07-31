@@ -423,34 +423,77 @@ export function EventForm({
         style={styles.input}
       />
 
-      {/* 種別は宣言させず、独立した2トグルから決まる（既定は両方 OFF＝通常予定）。
-          DB 制約で transit は終日にできないので、片方 ON の間はもう片方を
-          非活性にする（黙って倒すと何が起きたか分からないため）。 */}
-      <View style={styles.optionPair}>
-        <Text style={styles.label}>{t("kindAllday")}</Text>
-        <Switch
-          value={allDayOn}
-          disabled={moveOn}
-          onValueChange={setAllDayOn}
-        />
-      </View>
+      {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
+          （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
+          日時の行に置く。DB 制約で transit は終日にできないので排他にする。 */}
       <View style={styles.optionPair}>
         <Text style={styles.label}>{t("kindMove")}</Text>
-        <Switch
-          value={moveOn}
-          disabled={allDayOn}
-          onValueChange={setMoveOn}
-        />
+        <Switch value={moveOn} disabled={allDayOn} onValueChange={setMoveOn} />
       </View>
 
-      {/* 日時: web と同じ「開始 – 終了」の1行（開始＝日付＋時刻、終了＝時刻
-          のみ・日跨ぎは "+n日"。終日は日付のみ）。チップタップで直下に inline
-          ネイティブピッカー（TripIt / Apple カレンダーと同方式）。終日は
-          日付タップ＝確定として自動で閉じる。 */}
+      <PlacePicker
+        places={places}
+        biasCenter={biasCenter}
+        value={place}
+        onChange={setPlace}
+        placeholder={isTransit ? t("startPlace") : t("place")}
+      />
+
+      {/* 移動: 到着地とタイムゾーン。TZ は場所の座標から自動で決まるので、
+          既定では結果を1行見せるだけ（3段ネストのピッカーを触らせない）。
+          座標が無くて決められないときと、ユーザーが変えたいときだけ開く。 */}
+      {isTransit && (
+        <>
+          <PlacePicker
+            places={places}
+            biasCenter={biasCenter}
+            value={endPlace}
+            onChange={setEndPlace}
+            placeholder={t("endPlace")}
+          />
+          {/* 展開中はピッカー側にラベルが出るので、サマリ行は畳んでいる時だけ。 */}
+          {!(tzExpanded || tzUndecided) && (
+            <Pressable
+              style={styles.optionPair}
+              onPress={() => setTzExpanded((v) => !v)}
+              accessibilityLabel={t("timezone")}
+            >
+              <Text style={styles.label}>{t("timezone")}</Text>
+              <Text style={styles.tzSummary}>
+                {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+              </Text>
+            </Pressable>
+          )}
+          {(tzExpanded || tzUndecided) && (
+            <View style={styles.tzRow}>
+              <View style={styles.tzCol}>
+                <Text style={styles.label}>{t("departTz")}</Text>
+                <TimezonePicker value={departTz} onChange={setDepartTz} />
+              </View>
+              <View style={styles.tzCol}>
+                <Text style={styles.label}>{t("arriveTz")}</Text>
+                <TimezonePicker value={arriveTz} onChange={setArriveTz} />
+              </View>
+            </View>
+          )}
+        </>
+      )}
+
+
       <View style={styles.dtGroup}>
-        <Text style={styles.label}>
-          {kind === "allday" ? t("date") : t("dateTime")}
-        </Text>
+        <View style={styles.optionPair}>
+          <Text style={styles.label}>
+            {kind === "allday" ? t("date") : t("dateTime")}
+          </Text>
+          <View style={styles.dtAllDay}>
+            <Text style={styles.label}>{t("kindAllday")}</Text>
+            <Switch
+              value={allDayOn}
+              disabled={moveOn}
+              onValueChange={setAllDayOn}
+            />
+          </View>
+        </View>
         <View style={styles.dtChipsRow}>
           <PickerChip
             text={
@@ -548,52 +591,6 @@ export function EventForm({
         )}
 
       {/* 場所 */}
-      <PlacePicker
-        places={places}
-        biasCenter={biasCenter}
-        value={place}
-        onChange={setPlace}
-        placeholder={t("place")}
-      />
-
-      {/* 移動: 到着地とタイムゾーン。TZ は場所の座標から自動で決まるので、
-          既定では結果を1行見せるだけ（3段ネストのピッカーを触らせない）。
-          座標が無くて決められないときと、ユーザーが変えたいときだけ開く。 */}
-      {isTransit && (
-        <>
-          <PlacePicker
-            places={places}
-            biasCenter={biasCenter}
-            value={endPlace}
-            onChange={setEndPlace}
-            placeholder={t("endPlace")}
-          />
-          <Pressable
-            style={styles.optionPair}
-            onPress={() => setTzExpanded((v) => !v)}
-            accessibilityLabel={t("timezone")}
-          >
-            <Text style={styles.label}>{t("timezone")}</Text>
-            <Text style={styles.tzSummary}>
-              {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
-            </Text>
-          </Pressable>
-          {(tzExpanded || tzUndecided) && (
-            <View style={styles.tzRow}>
-              <View style={styles.tzCol}>
-                <Text style={styles.label}>{t("departTz")}</Text>
-                <TimezonePicker value={departTz} onChange={setDepartTz} />
-              </View>
-              <View style={styles.tzCol}>
-                <Text style={styles.label}>{t("arriveTz")}</Text>
-                <TimezonePicker value={arriveTz} onChange={setArriveTz} />
-              </View>
-            </View>
-          )}
-        </>
-      )}
-
-
       {/* メモ */}
       <TextInput
         value={note}
@@ -744,7 +741,8 @@ const makeStyles = (t: Theme) =>
     dtChipsRow: { flexDirection: "row", alignItems: "center", gap: 8 },
     dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
-    tzSummary: { fontSize: 14, color: t.mutedForeground },
+    dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
+  tzSummary: { fontSize: 14, color: t.mutedForeground },
   tzRow: { flexDirection: "row", gap: 8 },
     tzCol: { flex: 1, minWidth: 0 },
     // TZ曖昧解決のラジオは横並び（web と同じ。縦積みだと4行で場所を食う）。

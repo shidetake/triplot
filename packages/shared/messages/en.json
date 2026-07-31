@@ -237,7 +237,8 @@
     "kindMove": "Trip leg",
     "endPlace": "Arrival place",
     "tzUnset": "Not set",
-    "tzChange": "Change"
+    "tzChange": "Change",
+    "startPlace": "Departure place"
   },
   "expense": {
     "price": "Amount",
