@@ -599,22 +599,27 @@ export function EventForm({
           {/* **自動では開かない。** 「決められないときだけ開く」にすると、
               出発地が空の初期状態がまさにそれに当たり、入力していくと編集欄が
               消えるという逆向きの挙動になる（実機フィードバック）。常に1行の
-              サマリを出し、押したときだけピッカーに切り替える。場所から
-              決められないときはこの行に旅行の既定 TZ が入るので、触らなくても
-              破綻しない。 */}
-          {!tzExpanded && (
+              行を出し、押したときだけピッカーを開く。場所から決められないときは
+              旅行の既定 TZ が入るので、触らなくても破綻しない。
+              **開いたら閉じられる**（開閉行は往復できるのが普通）。重複を避ける
+              ため、開いている間は値を出さない（値はピッカー側に見えている）。 */}
           <button
             type="button"
             onClick={() => setTzExpanded((v: boolean) => !v)}
+            aria-expanded={tzExpanded}
             className="mt-1 flex w-full items-center gap-2 text-sm"
           >
             <span className="text-muted-foreground">{t("timezone")}</span>
-            <span>
-              {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
-            </span>
-            <ChevronIcon size={16} className="text-muted-foreground" />
+            {!tzExpanded && (
+              <span>
+                {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+              </span>
+            )}
+            <ChevronIcon
+              size={16}
+              className={`text-muted-foreground ${tzExpanded ? "rotate-90" : ""}`}
+            />
           </button>
-          )}
           {tzExpanded && (
             <div className="grid grid-cols-2 gap-2">
               <label className={`${fieldCls} mt-1 block`}>

@@ -447,22 +447,26 @@ export function EventForm({
           {/* **自動では開かない。** 「決められないときだけ開く」にすると、
               出発地が空の初期状態がまさにそれに当たり、入力していくと編集欄が
               消えるという逆向きの挙動になる（実機フィードバック）。常に1行の
-              サマリを出し、押したときだけピッカーに切り替える。 */}
-          {!tzExpanded && (
-            <Pressable
-              style={styles.optionPair}
-              onPress={() => setTzExpanded((v) => !v)}
-              accessibilityLabel={t("timezone")}
-            >
-              <Text style={styles.label}>{t("timezone")}</Text>
-              <View style={styles.tzSummaryRow}>
+              行を出し、押したときだけピッカーを開く。
+              **開いたら閉じられる**（開閉行は往復できるのが普通）。重複を避ける
+              ため、開いている間は値を出さない（値はピッカー側に見えている）。 */}
+          <Pressable
+            style={styles.optionPair}
+            onPress={() => setTzExpanded((v) => !v)}
+            accessibilityLabel={t("timezone")}
+          >
+            <Text style={styles.label}>{t("timezone")}</Text>
+            <View style={styles.tzSummaryRow}>
+              {!tzExpanded && (
                 <Text style={styles.tzSummary}>
                   {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
                 </Text>
+              )}
+              <View style={tzExpanded ? styles.chevronOpen : undefined}>
                 <ChevronIcon size={16} color={theme.mutedForeground} />
               </View>
-            </Pressable>
-          )}
+            </View>
+          </Pressable>
           {tzExpanded && (
             <View style={styles.tzRow}>
               <View style={styles.tzCol}>
@@ -741,6 +745,7 @@ const makeStyles = (t: Theme) =>
     dtSep: { fontSize: 14, color: t.subtleForeground },
     // 時差移動の出発/到着TZ（1行2列。web と同じ）。
     dtAllDay: { flexDirection: "row", alignItems: "center", gap: 8 },
+  chevronOpen: { transform: [{ rotate: "90deg" }] },
   tzSummaryRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   tzSummary: { fontSize: 14, color: t.mutedForeground },
   tzRow: { flexDirection: "row", gap: 8 },
