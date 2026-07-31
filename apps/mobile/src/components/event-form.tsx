@@ -418,11 +418,16 @@ export function EventForm({
 
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
-          日時の行に置く。DB 制約で transit は終日にできないので排他にする。 */}
-      <View style={styles.optionPair}>
-        <Text style={styles.label}>{t("kindMove")}</Text>
-        <Switch value={moveOn} disabled={allDayOn} onValueChange={setMoveOn} />
-      </View>
+          日時の行に置く。
+          **排他は「無効化」ではなく「消す」**。DB 制約で移動は終日になり得ず、
+          一時的に使えないのではなく最初から適用されない項目だから（Apple 純正
+          カレンダーも終日 ON で時刻欄を消す）。 */}
+      {!allDayOn && (
+        <View style={styles.optionPair}>
+          <Text style={styles.label}>{t("kindMove")}</Text>
+          <Switch value={moveOn} onValueChange={setMoveOn} />
+        </View>
+      )}
 
       <PlacePicker
         places={places}
@@ -514,14 +519,12 @@ export function EventForm({
               onPress={() => setOpenPicker((p) => (p === "end" ? null : "end"))}
             />
           </View>
-          <View style={styles.dtAllDay}>
-            <Text style={styles.label}>{t("kindAllday")}</Text>
-            <Switch
-              value={allDayOn}
-              disabled={moveOn}
-              onValueChange={setAllDayOn}
-            />
-          </View>
+          {!moveOn && (
+            <View style={styles.dtAllDay}>
+              <Text style={styles.label}>{t("kindAllday")}</Text>
+              <Switch value={allDayOn} onValueChange={setAllDayOn} />
+            </View>
+          )}
         </View>
         {/* 開始/終了でピッカーを1つ共有（出し分けると切替時にネイティブ
             ピッカーが作り直されて一瞬ちらつくため。datetime-field の注意書き）。 */}
