@@ -88,7 +88,7 @@ export function ScheduleSection({
   // メール取り込みの未確定予定。カレンダー上に amber+破線の疑似ブロックとして
   // 描画し、タップで確定フォームを開く（フローティングバナーは廃止）。
   eventDrafts: EventDraftItem[];
-  places: { id: string; name: string }[];
+  places: { id: string; name: string; lat: number | null; lng: number | null }[];
   // color は予定ブロック色の決定（1人だけ参加 → その人の hue）に必要。
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）

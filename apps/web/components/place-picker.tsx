@@ -122,12 +122,16 @@ type Row =
   | { type: "google"; sug: google.maps.places.AutocompleteSuggestion };
 
 export function PlacePicker({
+  namePrefix = "",
   places,
   biasCenter,
   initial,
   placeholder,
   autoResolve,
 }: {
+  // hidden input の名前の接頭辞。1画面に場所欄が複数あるとき（予定の出発地/
+  // 到着地）に衝突を避ける。既定は空＝従来の名前のまま。
+  namePrefix?: string;
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   initial: PlacePickerInitial;
@@ -397,16 +401,16 @@ export function PlacePicker({
 
   return (
     <div className="relative mt-1">
-      <input type="hidden" name="place_mode" value={mode} />
-      <input type="hidden" name="place_id" value={placeId} />
-      <input type="hidden" name="place_label" value={placeLabel} />
-      <input type="hidden" name="g_place_id" value={g.id} />
-      <input type="hidden" name="g_name" value={g.name} />
-      <input type="hidden" name="g_address" value={g.address} />
-      <input type="hidden" name="g_lat" value={g.lat} />
-      <input type="hidden" name="g_lng" value={g.lng} />
-      <input type="hidden" name="g_region" value={g.region} />
-      <input type="hidden" name="g_locality" value={g.locality} />
+      <input type="hidden" name={`${namePrefix}place_mode`} value={mode} />
+      <input type="hidden" name={`${namePrefix}place_id`} value={placeId} />
+      <input type="hidden" name={`${namePrefix}place_label`} value={placeLabel} />
+      <input type="hidden" name={`${namePrefix}g_place_id`} value={g.id} />
+      <input type="hidden" name={`${namePrefix}g_name`} value={g.name} />
+      <input type="hidden" name={`${namePrefix}g_address`} value={g.address} />
+      <input type="hidden" name={`${namePrefix}g_lat`} value={g.lat} />
+      <input type="hidden" name={`${namePrefix}g_lng`} value={g.lng} />
+      <input type="hidden" name={`${namePrefix}g_region`} value={g.region} />
+      <input type="hidden" name={`${namePrefix}g_locality`} value={g.locality} />
 
       <Combobox.Root
         items={rows}

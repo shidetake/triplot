@@ -130,7 +130,13 @@ export default async function TripDetailPage({
     avatarUrl: m.users?.avatar_url ?? null,
   }));
 
-  const placesForPicker = places.map((p) => ({ id: p.id, name: p.name }));
+  // lat/lng は予定フォームが移動の TZ を場所から導出するのに使う。
+  const placesForPicker = places.map((p) => ({
+    id: p.id,
+    name: p.name,
+    lat: p.lat,
+    lng: p.lng,
+  }));
   // KML/KMZ エクスポート用: 座標を持つ place のみ。説明は住所＋メモを改行で連結。
   const kmlPlacemarks: KmlPlacemark[] = places
     .filter((p) => p.lat != null && p.lng != null)
