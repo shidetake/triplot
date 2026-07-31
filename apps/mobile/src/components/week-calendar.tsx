@@ -758,7 +758,11 @@ const makeStyles = (t: Theme) =>
     paddingVertical: 1,
     overflow: "hidden",
   },
-  transitBlock: { borderStyle: "dashed" },
+  // 破線はこのアプリでは「未確定の取り込み下書き」の意味に使う（draftBlock）。
+  // 移動は出発側/到着側の2ブロックと TZ 注記で既に区別できるので枠は実線のまま。
+  // （そもそも RN は borderRadius 付きの枠に破線を適用できず、指定しても
+  //  実線で描かれていた。web も移動を破線にしていない。）
+  transitBlock: {},
   // 取り込み下書きの疑似ブロック（amber 破線）。timed でも破線にする。
   draftBlock: { borderStyle: "dashed" },
   // 終日バーは通常枠なし → 下書きだけ amber 破線の枠を足す（web と同じ）。

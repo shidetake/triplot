@@ -256,6 +256,24 @@ export function EventForm({
   };
 
   // 通常予定の終了ガード: 終了 ≤ 開始になったら開始+1時間に snap（web と同じ）。
+  // 移動の出発をずらす。到着は同じ差分だけ動かして所要時間を保つ。
+  // 通常予定（moveStart）は「開始→終了の長さ」を保つが、移動は出発と到着で
+  // TZ が違うので長さを ms で測れない。壁時計に同じ差分を足す形にすると、
+  // 実所要時間が保たれる（TZ の差は両端で不変なため）。
+  const moveTransitStart = (d: Date) => {
+    const nd = fmtDate(d);
+    const nt = fmtTime(d);
+    const deltaMs =
+      Date.parse(`${nd}T${nt}:00`) - Date.parse(`${startDate}T${startTime}:00`);
+    onStartDateChange(nd);
+    setStartTime(nt);
+    if (deltaMs !== 0) {
+      const ne = new Date(Date.parse(`${endDate}T${endTime}:00`) + deltaMs);
+      setEndDate(fmtDate(ne));
+      setEndTime(fmtTime(ne));
+    }
+  };
+
   const setEndGuarded = (d: Date) => {
     const sMs = Date.parse(`${startDate}T${startTime}:00`);
     const e = d.getTime() <= sMs ? new Date(sMs + 3_600_000) : d;
@@ -544,19 +562,21 @@ export function EventForm({
             onChange={(d) => {
               if (openPicker === "start") {
                 if (kind === "allday") {
+                  // 他のピッカーと同じく、選んだだけでは閉じない（閉じるのは
+                  // もう一度チップを押したとき）。終日だけ自動で閉じると
+                  // 挙動が不揃いになる。
                   moveAlldayStart(fmtDate(d));
-                  setOpenPicker(null); // 日付タップ＝確定で閉じる
                 } else if (kind === "transit") {
-                  // 時差移動は出発/到着が別TZ＝長さの追従はしない（web と同じ）。
-                  onStartDateChange(fmtDate(d));
-                  setStartTime(fmtTime(d));
+                  // 移動も通常予定と同じく、出発をずらしたら到着が同じ幅だけ
+                  // 追従する（所要時間は変わらないため）。出発と到着でTZが
+                  // 違っても、壁時計に同じ差分を足せば所要時間は保たれる。
+                  moveTransitStart(d);
                 } else {
                   moveStart(d);
                 }
               } else {
                 if (kind === "allday") {
                   setEndDate(fmtDate(d));
-                  setOpenPicker(null);
                 } else if (kind === "transit") {
                   setEndDate(fmtDate(d));
                   setEndTime(fmtTime(d));
