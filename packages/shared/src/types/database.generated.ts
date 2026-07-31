@@ -959,53 +959,8 @@ export type Database = {
           p_note: string
           p_paid_at: string
           p_payer_member_id: string
-          p_place_id: string
+          p_place: Json
           p_rate_to_default: number
-          p_split_member_ids: string[]
-          p_splittable: boolean
-          p_trip_id: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: string
-      }
-      create_expense_with_freetext_place: {
-        Args: {
-          p_category_id: string
-          p_local_currency: string
-          p_local_price: number
-          p_note: string
-          p_paid_at: string
-          p_payer_member_id: string
-          p_place_name: string
-          p_rate_to_default: number
-          p_split_member_ids: string[]
-          p_splittable: boolean
-          p_trip_id: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: string
-      }
-      create_expense_with_place: {
-        Args: {
-          p_category_id: string
-          p_formatted_address: string
-          p_google_place_id: string
-          p_icon: string
-          p_lat: number
-          p_lng: number
-          p_local_currency: string
-          p_local_price: number
-          p_locality: string
-          p_note: string
-          p_paid_at: string
-          p_payer_member_id: string
-          p_place_name: string
-          p_rate_to_default: number
-          p_region: string
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
@@ -1174,53 +1129,8 @@ export type Database = {
           p_note: string
           p_paid_at: string
           p_payer_member_id: string
-          p_place_id: string
+          p_place: Json
           p_rate_to_default: number
-          p_split_member_ids: string[]
-          p_splittable: boolean
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: undefined
-      }
-      update_expense_with_freetext_place: {
-        Args: {
-          p_category_id: string
-          p_expense_id: string
-          p_local_currency: string
-          p_local_price: number
-          p_note: string
-          p_paid_at: string
-          p_payer_member_id: string
-          p_place_name: string
-          p_rate_to_default: number
-          p_split_member_ids: string[]
-          p_splittable: boolean
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: undefined
-      }
-      update_expense_with_place: {
-        Args: {
-          p_category_id: string
-          p_expense_id: string
-          p_formatted_address: string
-          p_google_place_id: string
-          p_icon: string
-          p_lat: number
-          p_lng: number
-          p_local_currency: string
-          p_local_price: number
-          p_locality: string
-          p_note: string
-          p_paid_at: string
-          p_payer_member_id: string
-          p_place_name: string
-          p_rate_to_default: number
-          p_region: string
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz_disambig_side: string

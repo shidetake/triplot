@@ -1,6 +1,6 @@
 import type { Currency, Visibility } from "../types/database";
 import type { DB } from "./client";
-import { type PlaceInput, placeRpcArgs } from "./place";
+import { type PlaceInput, placeSpec } from "./place";
 import { err, ok, type Result } from "./result";
 
 // 費用の共通フィールド（場所は PlaceInput で受け、サーバ側で place_id 解決）。
@@ -46,33 +46,13 @@ export async function createExpense(
   tripId: string,
   f: ExpenseFields,
 ): Promise<Result<string>> {
-  const base = { p_trip_id: tripId, ...expenseBase(f) };
-  const pr = placeRpcArgs(f.place);
-  let expenseId: string | null = null;
-  let error: { message: string } | null = null;
-  if (pr.variant === "google") {
-    const { data, error: e } = await sb.rpc("create_expense_with_place", {
-      ...base,
-      ...pr.args,
-    });
-    expenseId = data as string | null;
-    error = e;
-  } else if (pr.variant === "free") {
-    const { data, error: e } = await sb.rpc(
-      "create_expense_with_freetext_place",
-      { ...base, ...pr.args },
-    );
-    expenseId = data as string | null;
-    error = e;
-  } else {
-    const { data, error: e } = await sb.rpc("create_expense", {
-      ...base,
-      ...pr.args,
-    });
-    expenseId = data as string | null;
-    error = e;
-  }
+  const { data, error } = await sb.rpc("create_expense", {
+    p_trip_id: tripId,
+    ...expenseBase(f),
+    p_place: placeSpec(f.place),
+  });
   if (error) return err(error.message);
+  const expenseId = data as string | null;
   if (!expenseId) return err("create_expense returned no id");
   return ok(expenseId);
 }
@@ -82,23 +62,11 @@ export async function updateExpense(
   expenseId: string,
   f: ExpenseFields,
 ): Promise<Result<void>> {
-  const base = { p_expense_id: expenseId, ...expenseBase(f) };
-  const pr = placeRpcArgs(f.place);
-  let error: { message: string } | null = null;
-  if (pr.variant === "google") {
-    error = (
-      await sb.rpc("update_expense_with_place", { ...base, ...pr.args })
-    ).error;
-  } else if (pr.variant === "free") {
-    error = (
-      await sb.rpc("update_expense_with_freetext_place", {
-        ...base,
-        ...pr.args,
-      })
-    ).error;
-  } else {
-    error = (await sb.rpc("update_expense", { ...base, ...pr.args })).error;
-  }
+  const { error } = await sb.rpc("update_expense", {
+    p_expense_id: expenseId,
+    ...expenseBase(f),
+    p_place: placeSpec(f.place),
+  });
   if (error) return err(error.message);
   return ok(undefined);
 }

@@ -24,7 +24,8 @@ export type PlaceInput =
 //   { google: {...} }             Google 由来（DB 側で無ければ作る）
 //   { freetext: { name } }        自由入力（DB 側で無ければ作る）
 //
-// SQL 側の受け口は resolve_place_spec()。費用（場所は1つ）も同じ形を使う。
+// SQL 側の受け口は resolve_place_spec()。費用（場所は1つ）も同じ形を使う
+// ＝場所の渡し方はアプリ全体でこの1つ。
 export type PlaceSpec =
   | null
   | { place_id: string }
@@ -63,47 +64,4 @@ export function placeSpec(place: PlaceInput): PlaceSpec {
   }
   const placeId = place.kind === "saved" ? place.placeId : null;
   return placeId ? { place_id: placeId } : null;
-}
-
-// 費用（場所は1つ）はまだ RPC 変種方式のまま。予定のように端点が2つに
-// ならないので変種の組み合わせ爆発が起きず、移行の必要度が低い。
-// **ただし2方式が並ぶのは望ましくないので、費用側も spec に寄せるのが宿題。**
-export function placeRpcArgs(
-  place: PlaceInput,
-):
-  | {
-      variant: "google";
-      args: {
-        p_google_place_id: string;
-        p_place_name: string;
-        p_lat: number;
-        p_lng: number;
-        p_formatted_address: string;
-        p_icon: string;
-        p_region: string;
-        p_locality: string;
-      };
-    }
-  | { variant: "free"; args: { p_place_name: string } }
-  | { variant: "saved"; args: { p_place_id: string } } {
-  if (place.kind === "google") {
-    return {
-      variant: "google",
-      args: {
-        p_google_place_id: place.placeId,
-        p_place_name: place.name,
-        p_lat: place.lat,
-        p_lng: place.lng,
-        p_formatted_address: place.address,
-        p_icon: "",
-        p_region: place.region ?? "",
-        p_locality: place.locality ?? "",
-      },
-    };
-  }
-  if (place.kind === "free" && place.label) {
-    return { variant: "free", args: { p_place_name: place.label } };
-  }
-  const placeId = place.kind === "saved" ? place.placeId : null;
-  return { variant: "saved", args: { p_place_id: placeId as unknown as string } };
 }
