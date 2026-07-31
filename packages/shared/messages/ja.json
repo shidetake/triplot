@@ -233,7 +233,11 @@
     "participantsSome": "一部",
     "deleteTitle": "この予定を削除しますか？",
     "deleteFailed": "削除に失敗しました: {error}",
-    "transitDay": "移動日のため、どのタイムゾーンの予定か選んでください。"
+    "transitDay": "移動日のため、どのタイムゾーンの予定か選んでください。",
+    "kindMove": "移動",
+    "endPlace": "到着地",
+    "tzUnset": "未設定",
+    "tzChange": "変更"
   },
   "expense": {
     "price": "価格",

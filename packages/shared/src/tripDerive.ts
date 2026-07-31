@@ -131,7 +131,8 @@ export type RawEvent = {
   end_tz: string | null;
   tz_disambig_transit_id: string | null;
   tz_disambig_side: string | null;
-  place_id: string | null;
+  start_place_id: string | null;
+  end_place_id: string | null;
   visibility: string;
   note: string | null;
   created_by_member_id: string;
@@ -227,7 +228,8 @@ export function deriveScheduleEvents(
     endTz: e.end_tz,
     tzDisambigTransitId: e.tz_disambig_transit_id,
     tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
-    placeId: e.place_id,
+    startPlaceId: e.start_place_id,
+    endPlaceId: e.end_place_id,
     visibility: e.visibility as Visibility,
     note: e.note,
     createdByMemberId: e.created_by_member_id,

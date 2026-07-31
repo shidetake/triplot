@@ -96,6 +96,8 @@ export default function EventFormRoute() {
         places={(data.placesRaw ?? []).map((p) => ({
           id: p.id,
           name: p.name,
+          lat: p.lat,
+          lng: p.lng,
         }))}
         biasCenter={biasCenter}
         tripStart={trip.start_date}

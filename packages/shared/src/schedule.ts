@@ -18,16 +18,22 @@ export type ScheduleEvent = {
   allDay: boolean;
   startAt: string; // "YYYY-MM-DDTHH:MM[:SS]" 壁時計（TZ無し）
   endAt: string | null; // 壁時計（TZ無し）
-  // IANA。transit は常に非null（唯一の真実源）。normal/allday は旅程に
-  // transit が1つも無い旅行だけ非null（導出元が無いので literal 保存）。
-  // transit がある旅行の normal は null＝毎回 tzDisambig* と旅程から導出。
+  // IANA。**transit だけが literal な TZ を持つ**（旅行のTZ境界の唯一の真実源）。
+  // normal/allday は常に null で、実効TZは旅程（transit の並び）と tzDisambig*
+  // から毎回導出する（resolveEventTz）。DB の CHECK 制約
+  // events_normal_no_literal_tz_chk / events_transit_endpoints_chk がこの不変条件を
+  // 強制している。
   startTz: string | null;
   endTz: string | null; // transit の到着TZ。normal は null
   // normal/allday のみ意味を持つ。乗継当日で候補が複数あるときの選択（どの
   // 乗継の出発側/到着側か）。非曖昧な日は null のまま（旅程から自動導出）。
   tzDisambigTransitId: string | null;
   tzDisambigSide: "depart" | "arrive" | null;
-  placeId: string | null;
+  // 出発地。単一地点の予定ではその場所。
+  startPlaceId: string | null;
+  // 到着地。**null は「startPlaceId と同じ」**の意味（DB に二重に持たない）。
+  // 実効の到着地は eventEndPlaceId() で取ること。
+  endPlaceId: string | null;
   visibility: "shared" | "private";
   note: string | null;
   // 予約管理: 紐づく予約TODOから導出。needsReservation=要予約 or 予約済の予定、
@@ -832,4 +838,21 @@ export function resolveEventTz(
     if (match) return match.tz;
   }
   return r.options[0].tz;
+}
+
+/**
+ * 予定の実効的な到着地。
+ *
+ * `endPlaceId` の NULL は「出発地と同じ」の意味で、DB に同じ値を二重には持たない
+ * （通常予定でも東京→大阪のように出発地と到着地が違いうるので、「同じであること」を
+ * CHECK 制約では守れない。事実を1箇所に置いて読む側で畳む方式にしている）。
+ *
+ * **この畳み込みを呼び出し側に散らかさないこと。** 散ると片方だけ直し忘れる事故が
+ * 起き、二重管理と同じ問題に戻る。SQL 側も同じ理由で
+ * `coalesce(end_place_id, start_place_id)` に統一する。
+ */
+export function eventEndPlaceId(
+  e: Pick<ScheduleEvent, "startPlaceId" | "endPlaceId">,
+): string | null {
+  return e.endPlaceId ?? e.startPlaceId;
 }

@@ -544,8 +544,14 @@ type TFunc = Awaited<ReturnType<typeof getTranslations>>;
 
 // 場所欄（PlacePicker の hidden input）を PlaceInput（共有の場所解決契約）に解す。
 // 予定・費用で共有する（同じ PlacePicker・同じ wire 契約）。
-function parsePlace(formData: FormData, t: TFunc): PlaceInput | { error: string } {
-  const get = (k: string) => ((formData.get(k) as string | null) ?? "").trim();
+// prefix は場所欄が複数ある画面（予定の出発地/到着地）で使う。既定は従来の名前。
+function parsePlace(
+  formData: FormData,
+  t: TFunc,
+  prefix = "",
+): PlaceInput | { error: string } {
+  const get = (k: string) =>
+    ((formData.get(`${prefix}${k}`) as string | null) ?? "").trim();
   const placeMode = get("place_mode") || "saved";
   if (placeMode === "google") {
     const gPlaceId = get("g_place_id");
@@ -595,7 +601,9 @@ type ParsedEvent =
       // 乗継当日の選択。非曖昧な日・kind='transit'では null。
       tzDisambigTransitId: string | null;
       tzDisambigSide: "depart" | "arrive" | null;
-      place: PlaceInput;
+      // 出発地。到着地（endPlace）は移動の UI を入れるまで常に null＝出発地と同じ。
+      startPlace: PlaceInput;
+      endPlace: PlaceInput | null;
       visibility: Visibility;
       note: string;
       // shared 時のみ意味を持つ。空配列 = 全員参加（DB 側で行を作らない）。
@@ -633,6 +641,17 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
 
   const place = parsePlace(formData, t);
   if ("error" in place) return { error: place.error };
+  // 移動のときだけ到着地。到着地が空なら endPlace は null＝出発地と同じ。
+  const endPlaceParsed =
+    kind === "transit" ? parsePlace(formData, t, "end_") : null;
+  if (endPlaceParsed && "error" in endPlaceParsed) {
+    return { error: endPlaceParsed.error };
+  }
+  const endPlace =
+    endPlaceParsed &&
+    !(endPlaceParsed.kind === "saved" && !endPlaceParsed.placeId)
+      ? endPlaceParsed
+      : null;
 
   if (kind === "transit") {
     const departDate = get("depart_date");
@@ -657,7 +676,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endTz: arriveTz,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
-      place,
+      startPlace: place,
+      endPlace,
       visibility,
       note,
       participantMemberIds,
@@ -685,7 +705,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endTz: null,
       tzDisambigTransitId: null,
       tzDisambigSide: null,
-      place,
+      startPlace: place,
+      endPlace: null,
       visibility,
       note,
       participantMemberIds,
@@ -727,7 +748,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     endTz: null,
     tzDisambigTransitId,
     tzDisambigSide,
-    place,
+    startPlace: place,
+    endPlace: null,
     visibility,
     note,
     participantMemberIds,

@@ -75,12 +75,13 @@ export type Database = {
           created_at: string
           created_by_member_id: string
           end_at: string | null
+          end_place_id: string | null
           end_tz: string | null
           id: string
           kind: string
           note: string | null
-          place_id: string | null
           start_at: string
+          start_place_id: string | null
           start_tz: string | null
           title: string
           trip_id: string
@@ -93,12 +94,13 @@ export type Database = {
           created_at?: string
           created_by_member_id: string
           end_at?: string | null
+          end_place_id?: string | null
           end_tz?: string | null
           id?: string
           kind?: string
           note?: string | null
-          place_id?: string | null
           start_at: string
+          start_place_id?: string | null
           start_tz?: string | null
           title: string
           trip_id: string
@@ -111,12 +113,13 @@ export type Database = {
           created_at?: string
           created_by_member_id?: string
           end_at?: string | null
+          end_place_id?: string | null
           end_tz?: string | null
           id?: string
           kind?: string
           note?: string | null
-          place_id?: string | null
           start_at?: string
+          start_place_id?: string | null
           start_tz?: string | null
           title?: string
           trip_id?: string
@@ -133,8 +136,15 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "events_end_place_id_fkey"
+            columns: ["end_place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "events_place_id_fkey"
-            columns: ["place_id"]
+            columns: ["start_place_id"]
             isOneToOne: false
             referencedRelation: "places"
             referencedColumns: ["id"]
@@ -925,57 +935,13 @@ export type Database = {
         Args: {
           p_all_day: boolean
           p_end_at: string
+          p_end_place: Json
           p_end_tz: string
           p_kind: string
           p_note: string
           p_participant_member_ids: string[]
-          p_place_id: string
           p_start_at: string
-          p_start_tz: string
-          p_title: string
-          p_trip_id: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: string
-      }
-      create_event_with_freetext_place: {
-        Args: {
-          p_all_day: boolean
-          p_end_at: string
-          p_end_tz: string
-          p_kind: string
-          p_note: string
-          p_participant_member_ids: string[]
-          p_place_name: string
-          p_start_at: string
-          p_start_tz: string
-          p_title: string
-          p_trip_id: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: string
-      }
-      create_event_with_place: {
-        Args: {
-          p_all_day: boolean
-          p_end_at: string
-          p_end_tz: string
-          p_formatted_address: string
-          p_google_place_id: string
-          p_icon: string
-          p_kind: string
-          p_lat: number
-          p_lng: number
-          p_locality: string
-          p_note: string
-          p_participant_member_ids: string[]
-          p_place_name: string
-          p_region: string
-          p_start_at: string
+          p_start_place: Json
           p_start_tz: string
           p_title: string
           p_trip_id: string
@@ -1158,6 +1124,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      resolve_place_spec: {
+        Args: { p_member_id: string; p_spec: Json; p_trip_id: string }
+        Returns: string
+      }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
@@ -1179,58 +1149,14 @@ export type Database = {
         Args: {
           p_all_day: boolean
           p_end_at: string
+          p_end_place: Json
           p_end_tz: string
           p_event_id: string
           p_kind: string
           p_note: string
           p_participant_member_ids: string[]
-          p_place_id: string
           p_start_at: string
-          p_start_tz: string
-          p_title: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: undefined
-      }
-      update_event_with_freetext_place: {
-        Args: {
-          p_all_day: boolean
-          p_end_at: string
-          p_end_tz: string
-          p_event_id: string
-          p_kind: string
-          p_note: string
-          p_participant_member_ids: string[]
-          p_place_name: string
-          p_start_at: string
-          p_start_tz: string
-          p_title: string
-          p_tz_disambig_side: string
-          p_tz_disambig_transit_id: string
-          p_visibility: string
-        }
-        Returns: undefined
-      }
-      update_event_with_place: {
-        Args: {
-          p_all_day: boolean
-          p_end_at: string
-          p_end_tz: string
-          p_event_id: string
-          p_formatted_address: string
-          p_google_place_id: string
-          p_icon: string
-          p_kind: string
-          p_lat: number
-          p_lng: number
-          p_locality: string
-          p_note: string
-          p_participant_member_ids: string[]
-          p_place_name: string
-          p_region: string
-          p_start_at: string
+          p_start_place: Json
           p_start_tz: string
           p_title: string
           p_tz_disambig_side: string

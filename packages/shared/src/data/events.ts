@@ -1,6 +1,6 @@
 import type { Visibility } from "../types/database";
 import type { DB } from "./client";
-import { type PlaceInput, placeRpcArgs } from "./place";
+import { type PlaceInput, placeSpec } from "./place";
 import { err, ok, type Result } from "./result";
 
 // 予定の共通フィールド（parseEventForm の結果がそのまま入る）。場所は PlaceInput。
@@ -22,7 +22,11 @@ export type EventFields = {
   visibility: Visibility;
   note: string;
   participantMemberIds: string[];
-  place: PlaceInput;
+  // 出発地と到着地。単一地点の予定（レストランでの食事など）は endPlace を
+  // 省く＝DB 側で end_place_id が NULL になり「開始と同じ」を意味する。
+  // 二重に持たないので、読む側は eventEndPlaceId() を使うこと。
+  startPlace: PlaceInput;
+  endPlace: PlaceInput | null;
 };
 
 function eventBase(f: EventFields) {
@@ -43,6 +47,15 @@ function eventBase(f: EventFields) {
   };
 }
 
+// 場所は spec（jsonb）で渡す。gen-types は jsonb 引数を Json 型にするので
+// そのまま入る。到着地が無い＝null＝「開始と同じ」。
+function eventPlaceArgs(f: EventFields) {
+  return {
+    p_start_place: placeSpec(f.startPlace),
+    p_end_place: f.endPlace ? placeSpec(f.endPlace) : null,
+  };
+}
+
 // 成功時は作成した予定の id を返す（取り込み下書きの確定リンクに使う）。
 export async function createEvent(
   sb: DB,
@@ -50,32 +63,12 @@ export async function createEvent(
   f: EventFields,
   needsReservation: boolean,
 ): Promise<Result<string>> {
-  const base = { p_trip_id: tripId, ...eventBase(f) };
-  const pr = placeRpcArgs(f.place);
-  let eventId: string | null = null;
-  let error: { message: string } | null = null;
-  if (pr.variant === "google") {
-    const { data, error: e } = await sb.rpc("create_event_with_place", {
-      ...base,
-      ...pr.args,
-    });
-    eventId = data as string | null;
-    error = e;
-  } else if (pr.variant === "free") {
-    const { data, error: e } = await sb.rpc(
-      "create_event_with_freetext_place",
-      { ...base, ...pr.args },
-    );
-    eventId = data as string | null;
-    error = e;
-  } else {
-    const { data, error: e } = await sb.rpc("create_event", {
-      ...base,
-      ...pr.args,
-    });
-    eventId = data as string | null;
-    error = e;
-  }
+  const { data, error } = await sb.rpc("create_event", {
+    p_trip_id: tripId,
+    ...eventBase(f),
+    ...eventPlaceArgs(f),
+  });
+  const eventId = data as string | null;
   if (error) return err(error.message);
   if (!eventId) return err("create_event returned no id");
 
@@ -96,20 +89,11 @@ export async function updateEvent(
   f: EventFields,
   needsReservation: boolean,
 ): Promise<Result<void>> {
-  const base = { p_event_id: eventId, ...eventBase(f) };
-  const pr = placeRpcArgs(f.place);
-  let error: { message: string } | null = null;
-  if (pr.variant === "google") {
-    error = (
-      await sb.rpc("update_event_with_place", { ...base, ...pr.args })
-    ).error;
-  } else if (pr.variant === "free") {
-    error = (
-      await sb.rpc("update_event_with_freetext_place", { ...base, ...pr.args })
-    ).error;
-  } else {
-    error = (await sb.rpc("update_event", { ...base, ...pr.args })).error;
-  }
+  const { error } = await sb.rpc("update_event", {
+    p_event_id: eventId,
+    ...eventBase(f),
+    ...eventPlaceArgs(f),
+  });
   if (error) return err(error.message);
 
   // 予約TODOの同期（ON→作成 / OFF→解除。編集のたびに反映）。

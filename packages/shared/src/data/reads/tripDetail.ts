@@ -57,7 +57,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     sb
       .from("events")
       .select(
-        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, tz_disambig_transit_id, tz_disambig_side, place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
+        "id, title, kind, all_day, start_at, end_at, start_tz, end_tz, tz_disambig_transit_id, tz_disambig_side, start_place_id, end_place_id, visibility, note, created_by_member_id, created_at, event_participants(member_id)",
       )
       .eq("trip_id", tripId)
       .order("start_at", { ascending: true }),

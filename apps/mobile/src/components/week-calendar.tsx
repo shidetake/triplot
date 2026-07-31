@@ -552,12 +552,12 @@ export function WeekCalendar({
                         （タイトルと同じ扱い）。それでも入らない/ブロックが低い
                         時は eventBlock の overflow:hidden が下から自然に
                         切り詰める（本家 Google マップの週表示と同じ「省略表示」）。 */}
-                    {placeName(ev.placeId) && (
+                    {placeName(ev.startPlaceId) && (
                       <Text
                         style={[styles.eventPlace, { color: col.text }]}
                         numberOfLines={2}
                       >
-                        {placeName(ev.placeId)}
+                        {placeName(ev.startPlaceId)}
                       </Text>
                     )}
                   </Pressable>
@@ -613,7 +613,7 @@ export function WeekCalendar({
                     time: t.arriveMin,
                   });
                 }
-                const pn = placeName(ev.placeId);
+                const pn = placeName(ev.startPlaceId);
                 return parts.map((part) => {
                   const laneW = COL / part.laneCount;
                   return (

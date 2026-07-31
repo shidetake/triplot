@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useMemo,
+  useState,
+  useTransition,
+} from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
@@ -34,6 +40,7 @@ import { tzDisplayLabel } from "@triplot/shared/timezones";
 import { FieldLabel } from "./field-label";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
+import { timezoneOfPlace } from "@triplot/shared/placeTimezone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
@@ -46,8 +53,6 @@ const initialState: EventMutationState = { ok: false, error: null };
 
 // セグメントトラックの各ピル（sr-only native radio を内包）。ui-guidelines「セグメントトラック」。
 // sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
-const seg =
-  "flex flex-1 cursor-pointer items-center justify-center rounded px-2 py-1.5 text-xs font-medium transition has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-ring";
 
 // グリッド内のフィールド枠。min-w-0 が無いと date/time の実寸でセルが
 // 広がり、ポップオーバーから input がはみ出す。
@@ -137,7 +142,8 @@ export function EventForm({
   tripStart: string | null; // カレンダーの旅行期間ハイライト用
   tripEnd: string | null;
   state: EventFormMode;
-  places: { id: string; name: string }[];
+  // lat/lng は移動の TZ を場所から導出できるか判定するのに使う。
+  places: { id: string; name: string; lat: number | null; lng: number | null }[];
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   tzTimeline: TripTzTimeline;
@@ -153,11 +159,11 @@ export function EventForm({
 
   // 場所欄の初期値。編集時は既存の place_id から復元する（自由入力も
   // place_id に解決済みなので saved として戻る）。新規は取り込みの事前入力。
-  const placePickerInitial: PlacePickerInitial = ev?.placeId
+  const placePickerInitial: PlacePickerInitial = ev?.startPlaceId
     ? {
         kind: "saved",
-        id: ev.placeId,
-        name: places.find((p) => p.id === ev.placeId)?.name ?? "",
+        id: ev.startPlaceId,
+        name: places.find((p) => p.id === ev.startPlaceId)?.name ?? "",
       }
     : (prefill?.place ?? null);
 
@@ -170,6 +176,14 @@ export function EventForm({
   // （ポップオーバー時は draftKey が無いので素の useState 相当）。
   const inSheet = useInSheet();
   const clearDraft = useClearDraft();
+
+  const endPlacePickerInitial: PlacePickerInitial = ev?.endPlaceId
+    ? {
+        kind: "saved",
+        id: ev.endPlaceId,
+        name: places.find((p) => p.id === ev.endPlaceId)?.name ?? "",
+      }
+    : null;
 
   const [kind3, setKind3] = useDraft<Kind3>(
     "kind3",
@@ -344,6 +358,7 @@ export function EventForm({
   const departTzInit = isEdit
     ? (ev!.startTz ?? defaultTz)
     : (prefill?.departTz ?? formMode.tz);
+  const [tzExpanded, setTzExpanded] = useState(false);
   const [departTz, setDepartTz] = useDraft("departTz", departTzInit);
   const [arriveTz, setArriveTz] = useDraft(
     "arriveTz",
@@ -406,11 +421,19 @@ export function EventForm({
   const locale = useLocale();
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
-  const KIND3_LABEL: Record<Kind3, string> = {
-    timed: t("kindTimed"),
-    allday: t("kindAllday"),
-    transit: t("kindTransit"),
+  // 場所を入れたのに座標が無くて TZ が決まらないときだけピッカーを自動で開く。
+  // web は PlacePicker が非制御（hidden input 経由）なので、保存済みの場所の
+  // 座標だけで判定する（Google 選択直後は座標があるので開かない）。
+  const coordsOfSaved = (id: string | null | undefined) => {
+    const hit = id ? places.find((p) => p.id === id) : null;
+    return hit ? { lat: hit.lat, lng: hit.lng } : null;
   };
+  const tzUndecided =
+    kind3 === "transit" &&
+    ((ev?.startPlaceId != null &&
+      !timezoneOfPlace(coordsOfSaved(ev.startPlaceId))) ||
+      (ev?.endPlaceId != null &&
+        !timezoneOfPlace(coordsOfSaved(ev.endPlaceId))));
 
   const canChangeVis = isEdit ? formMode.canChangeVisibility : true;
 
@@ -449,38 +472,6 @@ export function EventForm({
       )}
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
-      {/* 種別の切り替え（通常／終日／タイムゾーン跨ぎ）。
-          sr-only の native radio group ＋装飾ラベル（新規/コピーと同じ 1b パターン）。
-          右クリアランス mr-7 は × がある時（PC ポップオーバー）だけ＝シートは × が無いので端まで。 */}
-      <div
-        className={`${inSheet ? "" : "mr-7"} flex gap-1 rounded-md border border-foreground/10 p-1`}
-      >
-        {(["timed", "allday", "transit"] as const).map((k) => (
-          <label
-            key={k}
-            className={`${seg} ${
-              kind3 === k
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-foreground/10"
-            }`}
-          >
-            <input
-              type="radio"
-              name="__kind3"
-              className="sr-only"
-              checked={kind3 === k}
-              onChange={() => setKind3(k)}
-            />
-            {KIND3_LABEL[k]}
-          </label>
-        ))}
-      </div>
-      {kind3 === "transit" && (
-        <p className="-mt-1 text-xs text-muted-foreground">
-          {t("transitHint")}
-        </p>
-      )}
-
       {/* ラベルは置かず placeholder＝フィールド名（iOS カレンダー方式）。
           可視ラベルが無いぶん aria-label で名前を担保する。 */}
       <Input
@@ -493,6 +484,31 @@ export function EventForm({
         aria-label={t("title")}
         className="block w-full min-w-0"
       />
+
+      {/* 種別は宣言させず、独立した2トグルから決まる（既定は両方 OFF＝通常予定）。
+          「これは移動か？」には答えられるが「これは時差移動か？」では考え込むため。
+          DB 制約で transit は終日不可なので、片方 ON の間はもう片方を無効にする
+          （黙って倒すと何が起きたか分からないので disabled にするだけ）。 */}
+      <div className="flex items-center gap-6 text-sm">
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={kind3 === "allday"}
+            disabled={kind3 === "transit"}
+            onChange={(e) => setKind3(e.target.checked ? "allday" : "timed")}
+          />
+          {t("kindAllday")}
+        </label>
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={kind3 === "transit"}
+            disabled={kind3 === "allday"}
+            onChange={(e) => setKind3(e.target.checked ? "transit" : "timed")}
+          />
+          {t("kindMove")}
+        </label>
+      </div>
 
       <div className="block text-sm">
         {mapsApiKey ? (
@@ -515,6 +531,32 @@ export function EventForm({
           />
         )}
       </div>
+
+      {/* 移動のときだけ到着地。時差の無い国内移動でも到着地を書けるように、
+          「時差移動」ではなく「移動」で出す（TZ が同じなら通常予定として保存）。 */}
+      {kind3 === "transit" && (
+        <div className="block text-sm">
+          {mapsApiKey ? (
+            <APIProvider apiKey={mapsApiKey} language={locale}>
+              <PlacePicker
+                namePrefix="end_"
+                places={places}
+                biasCenter={biasCenter}
+                initial={endPlacePickerInitial}
+                placeholder={t("endPlace")}
+              />
+            </APIProvider>
+          ) : (
+            <PlacePicker
+              namePrefix="end_"
+              places={places}
+              biasCenter={biasCenter}
+              initial={endPlacePickerInitial}
+              placeholder={t("endPlace")}
+            />
+          )}
+        </div>
+      )}
 
       {/* 出発＝日付＋時刻、到着＝時刻（別日なら ±N日）の横並び。通常予定の「開始 – 終了」と同じ表示。
           出発・到着は別TZが前提なので追従/ガードは入れず独立（到着は前日 -1日もあり得るので
@@ -558,29 +600,37 @@ export function EventForm({
           <input type="hidden" name="arrive_date" value={arriveDate} />
           <input type="hidden" name="arrive_time" value={arriveTime} />
 
-          {/* 出発地/到着地のタイムゾーンを1行2列に。検索式ピッカーで全ゾーンから選べる。 */}
-          <div className="grid grid-cols-2 gap-2">
-            <label className={`${fieldCls} mt-1 block`}>
-              <span className="text-muted-foreground">{t("departTz")}</span>
-              <div className="mt-1">
-                <TimezonePicker
-                  name="depart_tz"
-                  value={departTz}
-                  onChange={setDepartTz}
-                />
-              </div>
-            </label>
-            <label className={`${fieldCls} mt-1 block`}>
-              <span className="text-muted-foreground">{t("arriveTz")}</span>
-              <div className="mt-1">
-                <TimezonePicker
-                  name="arrive_tz"
-                  value={arriveTz}
-                  onChange={setArriveTz}
-                />
-              </div>
-            </label>
-          </div>
+          {/* TZ は場所の座標から自動で決まるので、既定は結果を1行見せるだけ
+              （3段ネストのピッカーを触らせない）。座標が無くて決められないときと、
+              ユーザーが変えたいときだけ開く。値は常に hidden で送る。 */}
+          <input type="hidden" name="depart_tz" value={departTz} />
+          <input type="hidden" name="arrive_tz" value={arriveTz} />
+          <button
+            type="button"
+            onClick={() => setTzExpanded((v: boolean) => !v)}
+            className="mt-1 flex w-full items-center gap-2 text-sm"
+          >
+            <span className="text-muted-foreground">{t("timezone")}</span>
+            <span>
+              {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+            </span>
+          </button>
+          {(tzExpanded || tzUndecided) && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className={`${fieldCls} mt-1 block`}>
+                <span className="text-muted-foreground">{t("departTz")}</span>
+                <div className="mt-1">
+                  <TimezonePicker value={departTz} onChange={setDepartTz} />
+                </div>
+              </label>
+              <label className={`${fieldCls} mt-1 block`}>
+                <span className="text-muted-foreground">{t("arriveTz")}</span>
+                <div className="mt-1">
+                  <TimezonePicker value={arriveTz} onChange={setArriveTz} />
+                </div>
+              </label>
+            </div>
+          )}
         </div>
       )}
 

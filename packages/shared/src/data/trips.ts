@@ -65,7 +65,7 @@ export async function createTrip(
   const { data: rawEvents } = await sb
     .from("events")
     .select(
-      "title, kind, all_day, start_at, end_at, start_tz, end_tz, place_id, visibility, note, event_participants(member_id)",
+      "title, kind, all_day, start_at, end_at, start_tz, end_tz, start_place_id, end_place_id, visibility, note, event_participants(member_id)",
     )
     .eq("trip_id", sourceTripId);
 
@@ -87,7 +87,8 @@ export async function createTrip(
     end_at: string | null;
     start_tz: string | null;
     end_tz: string | null;
-    place_id: string | null;
+    start_place_id: string | null;
+    end_place_id: string | null;
     note: string | null;
   }[] = [];
   for (const e of shared) {
@@ -107,7 +108,8 @@ export async function createTrip(
       end_at: r.endAt,
       start_tz: e.start_tz,
       end_tz: e.end_tz,
-      place_id: e.place_id,
+      start_place_id: e.start_place_id,
+      end_place_id: e.end_place_id,
       note: e.note,
     });
   }
