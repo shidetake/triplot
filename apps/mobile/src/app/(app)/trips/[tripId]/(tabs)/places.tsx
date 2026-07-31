@@ -25,7 +25,14 @@ import MapView, {
 } from "react-native-maps";
 import { useTranslations } from "use-intl";
 
-import { boundsOf, centroid, TOKYO } from "@triplot/shared/placeMap";
+import {
+  boundsOf,
+  centerOf,
+  centroid,
+  clusterPlaces,
+  dominantCluster,
+  TOKYO,
+} from "@triplot/shared/placeMap";
 import {
   getIconLabel,
   iconKeyForGoogleType,
@@ -98,6 +105,14 @@ function newSessionToken(): string {
 const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
 // ピンとラベルの間隔（px）。
 const CANDIDATE_LABEL_GAP = 4;
+
+// ピンが1つも無いときの初期表示（東京駅）。
+const TOKYO_REGION = {
+  latitude: TOKYO.lat,
+  longitude: TOKYO.lng,
+  latitudeDelta: 0.1,
+  longitudeDelta: 0.1,
+};
 
 // 一覧シート（browse）の「中身の高さ」の概算。値は下の styles から導出:
 // 行 = placeRow の paddingVertical(10)×2 ＋ 名前1行(15pt→約18) ＋ メタ1行
@@ -278,24 +293,40 @@ export default function PlacesTab() {
 
   // 初期リージョン: 既存ピンの範囲/重心、無ければ東京。
   const initialRegion: Region = useMemo(() => {
-    const coords = places
-      .filter((p) => p.lat != null && p.lng != null)
-      .map((p) => ({ lat: p.lat as number, lng: p.lng as number }));
-    const b = boundsOf(coords);
-    if (b) {
-      return {
-        latitude: (b.north + b.south) / 2,
-        longitude: (b.east + b.west) / 2,
-        latitudeDelta: Math.max(0.05, (b.north - b.south) * 1.5),
-        longitudeDelta: Math.max(0.05, (b.east - b.west) * 1.5),
-      };
+    // 「ピンが集まっているところ」を映す。全ピンの外接矩形だと、離れた1点
+    // （帰りの空港など）に引っ張られて誰も居ない海の上が中心になる。
+    // エリアでクラスタリングし、主役（最多ピンが単独で最大）があればそこだけ、
+    // 決まらなければ全ピンに合わせる — web の place-map と同じ規則。
+    const mapped = places.filter((p) => p.lat != null && p.lng != null);
+    const clusters = clusterPlaces(
+      mapped.map((p) => ({
+        lat: p.lat as number,
+        lng: p.lng as number,
+        region: p.region,
+        locality: p.locality,
+      })),
+    );
+    const main = dominantCluster(clusters);
+    const focus = (main ? main.points : mapped).map((p) => ({
+      lat: p.lat as number,
+      lng: p.lng as number,
+    }));
+
+    const b = boundsOf(focus);
+    if (!b) {
+      return { ...TOKYO_REGION };
     }
-    const c = centroid(coords) ?? TOKYO;
+    // 中心は centerOf に任せる。自前で (west+east)/2 とすると、日付変更線を
+    // 跨ぐ bounds（west>east）で地球の反対側が中心になる（成田＋ホノルルで
+    // モロッコが出た実バグ）。
+    const c = centerOf(b);
+    // 経度スパンも跨ぎを考慮して正の値にする。
+    const lngSpan = b.west <= b.east ? b.east - b.west : b.east + 360 - b.west;
     return {
       latitude: c.lat,
       longitude: c.lng,
-      latitudeDelta: 0.1,
-      longitudeDelta: 0.1,
+      latitudeDelta: Math.max(0.05, (b.north - b.south) * 1.5),
+      longitudeDelta: Math.max(0.05, lngSpan * 1.5),
     };
   }, [places]);
 
@@ -499,23 +530,42 @@ export default function PlacesTab() {
   // アニメーションと競合するので、フォームを開く各経路で必ずこれを呼び、
   // 動かさない場合も現在中心への移動を発行して SDK 既定の移動を打ち消す。
   const focusCoord = (lat: number, lng: number) => {
-    // region は onRegionChangeComplete（ジェスチャ/アニメーション確定時）でしか
-    // 更新されないため、検索直後のように前のカメラアニメーションがまだ収まって
-    // いない間に呼ばれると古い region を基準にしてしまい、計算した中心が大きく
-    // ずれて地図が予期しない位置へ飛ぶ不具合があった（候補ピンの直タップで発覚）。
-    // ジェスチャ中も連続発火する onRegionChange 側の scaleRegion の方が新しいので
-    // 優先して使う。
-    const r = scaleRegion ?? region ?? initialRegion;
-    // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
-    const center = { latitude: lat - r.latitudeDelta * 0.25, longitude: lng };
-    const dx = Math.abs(center.longitude - r.longitude) / r.longitudeDelta;
-    const dy = Math.abs(center.latitude - r.latitude) / r.latitudeDelta;
-    const nearTarget = dx < 0.1 && dy < 0.1;
-    mapRef.current?.animateCamera({
-      center: nearTarget
-        ? { latitude: r.latitude, longitude: r.longitude }
-        : center,
-    });
+    // 狙い位置のオフセットは表示範囲の高さ（latitudeDelta）に比例するので、
+    // **必ず呼び出し時点の実際の表示範囲を地図から取る**。React の state
+    // （region / scaleRegion）はスナップショットで、ジェスチャ中や直前の
+    // カメラアニメーションが収まっていない間は古い＝広い値を掴むことがあり、
+    // その場合オフセットが桁違いに大きくなって地図が全く違う場所へ飛ぶ
+    // （ピンチ中に指がマーカーに触れてタップ判定された時に実際に発生）。
+    // getMapBoundaries は現在の描画範囲を返すので、この経路には古い値が来ない。
+    void (async () => {
+      const map = mapRef.current;
+      if (!map) return;
+      let latDelta: number;
+      let center0: { latitude: number; longitude: number };
+      try {
+        const b = await map.getMapBoundaries();
+        latDelta = b.northEast.latitude - b.southWest.latitude;
+        center0 = {
+          latitude: (b.northEast.latitude + b.southWest.latitude) / 2,
+          longitude: (b.northEast.longitude + b.southWest.longitude) / 2,
+        };
+      } catch {
+        // 取得できない場合だけ state にフォールバックする。
+        const r = scaleRegion ?? region ?? initialRegion;
+        latDelta = r.latitudeDelta;
+        center0 = { latitude: r.latitude, longitude: r.longitude };
+      }
+      const lngDelta =
+        (scaleRegion ?? region ?? initialRegion).longitudeDelta || latDelta;
+      // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
+      const center = { latitude: lat - latDelta * 0.25, longitude: lng };
+      const dx = Math.abs(center.longitude - center0.longitude) / lngDelta;
+      const dy = Math.abs(center.latitude - center0.latitude) / latDelta;
+      const nearTarget = dx < 0.1 && dy < 0.1;
+      // ピンタップ時は Google SDK 既定の「ピンを中央へ」アニメーションと競合する
+      // ので、動かさない場合も現在中心への移動を発行して打ち消す。
+      map.animateCamera({ center: nearTarget ? center0 : center });
+    })();
   };
 
   // region 確定（パン/ズーム終了）ごとに: 候補ラベル配置の再計算に使う state
