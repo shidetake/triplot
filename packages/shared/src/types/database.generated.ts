@@ -1037,7 +1037,14 @@ export type Database = {
         Returns: undefined
       }
       find_or_create_trip_freetext_place: {
-        Args: { p_member_id: string; p_name: string; p_trip_id: string }
+        Args: {
+          p_icon?: string
+          p_lat?: number
+          p_lng?: number
+          p_member_id: string
+          p_name: string
+          p_trip_id: string
+        }
         Returns: string
       }
       find_or_create_trip_place: {
