@@ -581,7 +581,17 @@ function parsePlace(
   }
   if (placeMode === "free") {
     const label = get("place_label");
-    return { kind: "free", label: label === "" ? null : label };
+    // 自由入力でも座標が分かっていることがある（フライトから入れた空港）。
+    // 付いていれば地図にピンが立つ。
+    const lat = Number.parseFloat(get("place_lat"));
+    const lng = Number.parseFloat(get("place_lng"));
+    const hasCoords = Number.isFinite(lat) && Number.isFinite(lng);
+    return {
+      kind: "free",
+      label: label === "" ? null : label,
+      coords: hasCoords ? { lat, lng } : null,
+      icon: get("place_icon") || null,
+    };
   }
   const placeIdRaw = get("place_id");
   return { kind: "saved", placeId: placeIdRaw === "" ? null : placeIdRaw };
