@@ -392,6 +392,24 @@ export type Database = {
           },
         ]
       }
+      flight_api_cache: {
+        Row: {
+          cache_key: string
+          fetched_at: string
+          payload: Json
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string
+          payload: Json
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string
+          payload?: Json
+        }
+        Relationships: []
+      }
       inbound_drafts: {
         Row: {
           created_at: string
