@@ -114,7 +114,14 @@ async function tryResolvePlace(
 // Google 検索の対象にしない）。
 export type PlacePickerInitial =
   | { kind: "saved"; id: string; name: string }
-  | { kind: "free"; label: string }
+  // 自由入力でも座標が分かっていることがある（フライトから入れた空港）。
+  // 文字を編集したら別の場所になったとみなして座標は落とす。
+  | {
+      kind: "free";
+      label: string;
+      coords?: { lat: number; lng: number } | null;
+      icon?: string | null;
+    }
   | null;
 
 type Row =
@@ -171,6 +178,11 @@ export function PlacePicker({
   const [gSug, setGSug] = useState<
     google.maps.places.AutocompleteSuggestion[]
   >([]);
+  // 自由入力に付随する座標（フライトから入れた空港）。文字を編集したら
+  // 別の場所を指し始めたとみなして落とす。
+  const initialFree = initial?.kind === "free" ? initial : null;
+  const freeLat = initialFree?.coords?.lat ?? null;
+  const freeLng = initialFree?.coords?.lng ?? null;
 
   const tokenRef = useRef<google.maps.places.AutocompleteSessionToken | null>(
     null,
@@ -188,7 +200,12 @@ export function PlacePicker({
   useEffect(() => {
     if (!onCoordsChange) return;
     if (!resolved) {
-      onCoordsChange(null);
+      // 自由入力でも座標を持つことがある（フライトから入れた空港）。TZ の導出に
+      // 使えるので親へ渡す。依存はプリミティブで持つ（オブジェクトを依存に置くと
+      // 親が毎レンダー新しい initial を作る構造と噛み合って無限ループになる）。
+      onCoordsChange(
+        freeLat != null && freeLng != null ? { lat: freeLat, lng: freeLng } : null,
+      );
       return;
     }
     if (resolved.kind === "google") {
@@ -203,7 +220,7 @@ export function PlacePicker({
         ? { lat: hit.lat, lng: hit.lng }
         : null,
     );
-  }, [resolved, places, onCoordsChange]);
+  }, [resolved, places, onCoordsChange, freeLat, freeLng]);
 
   // 入力を編集したら確定済み選択は無効化（= 自由入力候補に戻る）。
   const invalidate = () => setResolved(null);
@@ -424,12 +441,32 @@ export function PlacePicker({
     mode = "free";
     placeLabel = query.trim();
   }
+  // 座標は「自由入力のまま・文字も変えていない」ときだけ通す。
+  const freeCoords =
+    mode === "free" && initialFree?.coords && query.trim() === initialFree.label
+      ? { coords: initialFree.coords, icon: initialFree.icon ?? null }
+      : null;
 
   return (
     <div className="relative mt-1">
       <input type="hidden" name={`${namePrefix}place_mode`} value={mode} />
       <input type="hidden" name={`${namePrefix}place_id`} value={placeId} />
       <input type="hidden" name={`${namePrefix}place_label`} value={placeLabel} />
+      <input
+        type="hidden"
+        name={`${namePrefix}place_lat`}
+        value={freeCoords ? String(freeCoords.coords.lat) : ""}
+      />
+      <input
+        type="hidden"
+        name={`${namePrefix}place_lng`}
+        value={freeCoords ? String(freeCoords.coords.lng) : ""}
+      />
+      <input
+        type="hidden"
+        name={`${namePrefix}place_icon`}
+        value={freeCoords?.icon ?? ""}
+      />
       <input type="hidden" name={`${namePrefix}g_place_id`} value={g.id} />
       <input type="hidden" name={`${namePrefix}g_name`} value={g.name} />
       <input type="hidden" name={`${namePrefix}g_address`} value={g.address} />

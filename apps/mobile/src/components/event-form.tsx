@@ -11,6 +11,7 @@ import {
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
+import { type Flight, flightTitle } from "@triplot/shared/flight";
 import {
   crossesTimezone,
   deriveTransitTimezones,
@@ -44,7 +45,8 @@ import { SheetTitle } from "./sheet-title";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
-import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon } from "./icons";
+import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon, PlaneIcon } from "./icons";
+import { FlightPicker } from "./flight-picker";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -169,8 +171,47 @@ export function EventForm({
   }>({ start: null, end: null });
   const [tzExpanded, setTzExpanded] = useState(false);
 
+  // タイトル欄をフライト番号入力に入れ替えているか。
+  const [flightMode, setFlightMode] = useState(false);
+
+  /**
+   * プレビューで確定したフライトをフォームに流し込む。
+   *
+   * 空港は**座標つきの自由入力**として渡す（Google 由来ではないので place spec の
+   * freetext 枝。座標があるので地図にピンが立つ）。TZ は提供元が IANA を返すので
+   * それを使い、返らなければ座標からの導出（derivedTz）に任せて上書きしない。
+   */
+  const applyFlight = (f: Flight) => {
+    setTitle(flightTitle(f));
+    setMoveOn(true);
+    setAllDayOn(false);
+
+    const asPlace = (e: Flight["departure"]): PlaceInput => ({
+      kind: "free",
+      label: e.name,
+      coords: e.lat !== null && e.lng !== null ? { lat: e.lat, lng: e.lng } : null,
+      icon: "airport",
+    });
+    setPlace(asPlace(f.departure));
+    setEndPlace(asPlace(f.arrival));
+
+    if (f.departure.scheduledLocal) {
+      setStartDate(f.departure.scheduledLocal.slice(0, 10));
+      setStartTime(f.departure.scheduledLocal.slice(11, 16));
+    }
+    if (f.arrival.scheduledLocal) {
+      setEndDate(f.arrival.scheduledLocal.slice(0, 10));
+      setEndTime(f.arrival.scheduledLocal.slice(11, 16));
+    }
+    setTzOverride({ start: f.departure.timeZone, end: f.arrival.timeZone });
+
+    setFlightMode(false);
+  };
+
   const coordsOf = (p: PlaceInput): { lat: number | null; lng: number | null } => {
     if (p.kind === "google") return { lat: p.lat, lng: p.lng };
+    // 自由入力でも座標を持つことがある（フライトから入れた空港）。
+    if (p.kind === "free" && p.coords) return p.coords;
     if (p.kind === "saved" && p.placeId) {
       const hit = places.find((x) => x.id === p.placeId);
       return { lat: hit?.lat ?? null, lng: hit?.lng ?? null };
@@ -425,15 +466,35 @@ export function EventForm({
       <SheetTitle>{isEdit ? t("editFormLabel") : t("addAria")}</SheetTitle>
 
 
-      {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <TextInput
-        value={title}
-        onChangeText={setTitle}
-        placeholder={t("title")}
-        accessibilityLabel={t("title")}
-        placeholderTextColor={theme.subtleForeground}
-        style={styles.input}
-      />
+      {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          右端の飛行機アイコンで**この行がフライト番号入力に入れ替わる**。
+          専用の行を足すとフォームが縦に伸びるので、入れ替えにしている。 */}
+      {flightMode ? (
+        <FlightPicker
+          date={startDate}
+          onCancel={() => setFlightMode(false)}
+          onApply={applyFlight}
+        />
+      ) : (
+        <View style={styles.titleRow}>
+          <TextInput
+            value={title}
+            onChangeText={setTitle}
+            placeholder={t("title")}
+            accessibilityLabel={t("title")}
+            placeholderTextColor={theme.subtleForeground}
+            style={[styles.input, styles.titleInput]}
+          />
+          <Pressable
+            onPress={() => setFlightMode(true)}
+            hitSlop={8}
+            style={styles.titleAction}
+            accessibilityLabel={t("flightAria")}
+          >
+            <PlaneIcon size={16} color={theme.mutedForeground} />
+          </Pressable>
+        </View>
+      )}
 
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
@@ -769,6 +830,17 @@ const makeStyles = (t: Theme) =>
       paddingHorizontal: 10,
       fontSize: 14,
       color: t.foreground,
+    },
+    // タイトル行。右端の飛行機アイコンは入力欄の中ではなく隣に置く（RN の
+    // TextInput に子要素を重ねるとカーソル位置の計算が狂うため）。
+    titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    titleInput: { flex: 1, minWidth: 0 },
+    titleAction: {
+      width: 28,
+      height: 28,
+      borderRadius: 14,
+      alignItems: "center",
+      justifyContent: "center",
     },
     // 日時ブロック（ラベル行＋「開始 – 終了」チップ1行。web と同形）。
     dtGroup: {},

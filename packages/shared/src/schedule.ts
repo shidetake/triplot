@@ -128,6 +128,29 @@ export function wallClockToUtcMs(wall: string, tz: string): number {
 }
 
 /**
+ * wallClockToUtcMs の逆。絶対時刻(UTC ms) を指定 TZ の壁時計
+ * "YYYY-MM-DDTHH:MM" にする。
+ *
+ * 「出発の壁時計＋所要時間」から到着の壁時計を出すのに要る（フライトの
+ * 取り込み）。到着地の現地時刻をそのまま写すと、参照した日と対象日で
+ * サマータイムの有無が違ったとき1時間ずれるので、所要時間で足してから
+ * 到着地の TZ で読み直す。
+ */
+export function utcMsToWallClock(ms: number, tz: string): string {
+  const fmt = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  const p = Object.fromEntries(fmt.formatToParts(ms).map((x) => [x.type, x.value]));
+  return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+}
+
+/**
  * 移動イベントを実際の出発順（TZを跨いだ絶対時刻順）に並べる。
  * kind='transit' の startTz は DB 制約で必ず非null（呼び出し側は transit で
  * フィルタ済みの配列を渡す前提）。

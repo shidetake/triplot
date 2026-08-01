@@ -20,6 +20,7 @@ import {
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
+import { type Flight, flightTitle } from "@triplot/shared/flight";
 import {
   dedupeTzCandidates,
   formatMinutes,
@@ -38,8 +39,10 @@ import { InlineDivider } from "./inline-divider";
 import { TimezonePicker } from "./timezone-picker";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
 import { FieldLabel } from "./field-label";
+import { PlaneIcon } from "./icons";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
+import { FlightPicker } from "./flight-picker";
 import { deriveTransitTimezones } from "@triplot/shared/placeTimezone";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -184,6 +187,53 @@ export function EventForm({
         name: places.find((p) => p.id === ev.endPlaceId)?.name ?? "",
       }
     : null;
+
+  // タイトル欄をフライト番号入力に入れ替えているか。
+  const [flightMode, setFlightMode] = useState(false);
+  // フライトから入れた場所。PlacePicker は非制御なので、値を差し替えるには
+  // initial を変えて remount する（key に世代番号を使う）。
+  const [flightPlaces, setFlightPlaces] = useState<{
+    gen: number;
+    start: PlacePickerInitial;
+    end: PlacePickerInitial;
+  } | null>(null);
+
+  /**
+   * プレビューで確定したフライトをフォームに流し込む。
+   *
+   * 空港は**座標つきの自由入力**として渡す（Google 由来ではないので place spec の
+   * freetext 枝。座標があるので地図にピンが立つ）。PlacePicker は非制御なので
+   * initial を差し替えて remount する。
+   */
+  const applyFlight = (f: Flight) => {
+    setTitle(flightTitle(f));
+    setKind3("transit");
+
+    const asInitial = (e: Flight["departure"]): PlacePickerInitial => ({
+      kind: "free",
+      label: e.name,
+      coords: e.lat !== null && e.lng !== null ? { lat: e.lat, lng: e.lng } : null,
+      icon: "airport",
+    });
+    setFlightPlaces((prev) => ({
+      gen: (prev?.gen ?? 0) + 1,
+      start: asInitial(f.departure),
+      end: asInitial(f.arrival),
+    }));
+
+    if (f.departure.scheduledLocal) {
+      setDepartDate(f.departure.scheduledLocal.slice(0, 10));
+      setDepartTime(f.departure.scheduledLocal.slice(11, 16));
+    }
+    if (f.arrival.scheduledLocal) {
+      setArriveDate(f.arrival.scheduledLocal.slice(0, 10));
+      setArriveTime(f.arrival.scheduledLocal.slice(11, 16));
+    }
+    if (f.departure.timeZone) setDepartTz(f.departure.timeZone);
+    if (f.arrival.timeZone) setArriveTz(f.arrival.timeZone);
+
+    setFlightMode(false);
+  };
 
   const [kind3, setKind3] = useDraft<Kind3>(
     "kind3",
@@ -488,17 +538,44 @@ export function EventForm({
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
       {/* ラベルは置かず placeholder＝フィールド名（iOS カレンダー方式）。
-          可視ラベルが無いぶん aria-label で名前を担保する。 */}
-      <Input
-        type="text"
-        name="title"
-        required
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        placeholder={t("title")}
-        aria-label={t("title")}
-        className="block w-full min-w-0"
-      />
+          可視ラベルが無いぶん aria-label で名前を担保する。
+          右端の飛行機アイコンで**この行がフライト番号入力に入れ替わる**。
+          専用の行を足すとフォームが縦に伸びるので入れ替えにしている。
+          入れ替え中も title は hidden で送る（required を満たすため）。 */}
+      {flightMode ? (
+        <>
+          <input type="hidden" name="title" value={title} />
+          <FlightPicker
+            date={kind3 === "allday" ? alldayStart : kind3 === "transit" ? departDate : sDate}
+            onCancel={() => setFlightMode(false)}
+            onApply={applyFlight}
+          />
+        </>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            name="title"
+            required
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={t("title")}
+            aria-label={t("title")}
+            className="block w-full min-w-0 flex-1"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="shrink-0 rounded-full"
+            onClick={() => setFlightMode(true)}
+            title={t("flightAria")}
+            aria-label={t("flightAria")}
+          >
+            <PlaneIcon size={18} />
+          </Button>
+        </div>
+      )}
 
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
@@ -523,7 +600,8 @@ export function EventForm({
             <PlacePicker
               places={places}
               biasCenter={biasCenter}
-              initial={placePickerInitial}
+              key={flightPlaces?.gen ?? 0}
+              initial={flightPlaces?.start ?? placePickerInitial}
               autoResolve={prefill?.autoResolvePlace}
               onCoordsChange={setStartCoords}
               placeholder={kind3 === "transit" ? t("startPlace") : t("place")}
@@ -533,7 +611,8 @@ export function EventForm({
           <PlacePicker
             places={places}
             biasCenter={biasCenter}
-            initial={placePickerInitial}
+            key={flightPlaces?.gen ?? 0}
+            initial={flightPlaces?.start ?? placePickerInitial}
             autoResolve={prefill?.autoResolvePlace}
             onCoordsChange={setStartCoords}
             placeholder={kind3 === "transit" ? t("startPlace") : t("place")}
@@ -551,7 +630,8 @@ export function EventForm({
                 namePrefix="end_"
                 places={places}
                 biasCenter={biasCenter}
-                initial={endPlacePickerInitial}
+                key={flightPlaces?.gen ?? 0}
+                initial={flightPlaces?.end ?? endPlacePickerInitial}
                 onCoordsChange={setEndCoords}
                 placeholder={t("endPlace")}
               />
@@ -561,7 +641,8 @@ export function EventForm({
               namePrefix="end_"
               places={places}
               biasCenter={biasCenter}
-              initial={endPlacePickerInitial}
+              key={flightPlaces?.gen ?? 0}
+              initial={flightPlaces?.end ?? endPlacePickerInitial}
               onCoordsChange={setEndCoords}
               placeholder={t("endPlace")}
             />
