@@ -146,9 +146,23 @@ for (const r of apRows) {
   }
 }
 
+/**
+ * 就航都市を見出し向けに整える。「東京都」→「東京」、「札幌市」→「札幌」。
+ * 予定のタイトルに載るので行政区画の接尾辞は落とす。
+ *
+ * **「道」は落とさない**（北海道 → 北海 になってしまう）。残り2文字未満になる
+ * ものも落とさない（「市川市」→「市川」は良いが、短い地名を壊さないため）。
+ * 外国の都市名は接尾辞を持たないのでそのまま通る。
+ */
+function cityForTitle(city) {
+  if (!city) return null;
+  const m = city.match(/^(.{2,})(都|府|県|市|区|町|村)$/u);
+  return m ? m[1] : city;
+}
+
 const apLines = [...airports.entries()]
   .sort((a, b) => (a[0] < b[0] ? -1 : 1))
-  .map(([iata, a]) => `  ${lit(iata)}: [${lit(a.name)}, ${lit(a.city)}],`);
+  .map(([iata, a]) => `  ${lit(iata)}: [${lit(a.name)}, ${lit(cityForTitle(a.city))}],`);
 
 writeFileSync(
   AIRPORT_OUT,
