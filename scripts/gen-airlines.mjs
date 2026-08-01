@@ -1,4 +1,5 @@
-// 航空会社リスト（packages/shared/src/airlines.generated.ts）を Wikidata から生成する。
+// 航空会社リストと日本語の空港名（packages/shared/src/*.generated.ts）を
+// Wikidata から生成する。
 //
 //   node scripts/gen-airlines.mjs
 //
@@ -29,15 +30,24 @@ SELECT ?iata ?icao ?enLabel ?jaLabel ?sitelinks WHERE {
 
 const OUT = new URL("../packages/shared/src/airlines.generated.ts", import.meta.url);
 
-const res = await fetch(
-  `https://query.wikidata.org/sparql?query=${encodeURIComponent(QUERY)}`,
-  {
+/**
+ * Wikidata の SPARQL エンドポイントを叩く。**POST で送る。**
+ * 長いクエリを GET のクエリ文字列で送ると、Blazegraph が結果に診断文字列
+ * （"SPARQL-QUERY: queryStr=..."）を混ぜて返すことがあり JSON が壊れる。
+ */
+function sparql(query) {
+  return fetch("https://query.wikidata.org/sparql", {
+    method: "POST",
     headers: {
       accept: "application/sparql-results+json",
+      "content-type": "application/sparql-query",
       "user-agent": "triplot/0.1 (https://triplot.app)",
     },
-  },
-);
+    body: query,
+  });
+}
+
+const res = await sparql(QUERY);
 if (!res.ok) {
   console.error(`gen-airlines: Wikidata が ${res.status} を返した`);
   process.exit(1);
@@ -86,3 +96,71 @@ ${lines.join("\n")}
 );
 
 console.log(`gen-airlines: ${sorted.length} 社を書き出した`);
+
+// ────────────────────────────────────────────────
+// 日本語の空港名。
+//
+// 提供元（AeroDataBox）は英語名しか返さない（"Tokyo Narita" / "Honolulu"）。
+// 日本語で使うアプリなので、空港名と就航都市だけ日本語に差し替える。
+//
+// 就航都市は **P931（place served by transport hub）** を使う。P131（行政区画）は
+// 用途に合わない — 羽田が「大田区」、CDG が「ロワシー＝アン＝フランス」になる。
+// P931 なら「東京都」「パリ」で、予定のタイトルに載せて自然な粒度になる。
+//
+// 300KB 近くあるので**呼び出し側は動的 import する**（初期バンドルに載せない）。
+// ────────────────────────────────────────────────
+
+const AIRPORT_QUERY = `
+SELECT ?iata ?jaLabel ?cityJa ?sitelinks WHERE {
+  ?airport wdt:P238 ?iata .
+  ?airport wikibase:sitelinks ?sitelinks .
+  ?airport rdfs:label ?jaLabel . FILTER(LANG(?jaLabel) = "ja")
+  OPTIONAL {
+    ?airport wdt:P931 ?city .
+    ?city rdfs:label ?cityJa . FILTER(LANG(?cityJa) = "ja")
+  }
+}`;
+
+const AIRPORT_OUT = new URL(
+  "../packages/shared/src/airportsJa.generated.ts",
+  import.meta.url,
+);
+
+const apRes = await sparql(AIRPORT_QUERY);
+if (!apRes.ok) {
+  console.error(`gen-airlines: 空港の取得に失敗 ${apRes.status}`);
+  process.exit(1);
+}
+
+const apRows = (await apRes.json()).results.bindings;
+const airports = new Map();
+for (const r of apRows) {
+  const iata = r.iata?.value?.trim().toUpperCase();
+  if (!iata || !/^[A-Z]{3}$/.test(iata)) continue;
+  const sitelinks = Number(r.sitelinks?.value ?? 0);
+  const city = r.cityJa?.value?.trim() ?? null;
+  const cur = airports.get(iata);
+  // 同じ IATA が複数の項目に付くことがある。知名度優先、同点なら都市が取れる方。
+  if (!cur || sitelinks > cur.sitelinks || (sitelinks === cur.sitelinks && !cur.city && city)) {
+    airports.set(iata, { name: r.jaLabel.value.trim(), city, sitelinks });
+  }
+}
+
+const apLines = [...airports.entries()]
+  .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+  .map(([iata, a]) => `  ${lit(iata)}: [${lit(a.name)}, ${lit(a.city)}],`);
+
+writeFileSync(
+  AIRPORT_OUT,
+  `// 自動生成。手で編集しない（scripts/gen-airlines.mjs で再生成）。
+// 出典: Wikidata（CC0）。IATA コードを持ち日本語名がある空港。
+// [空港名, 就航都市（P931。無ければ null）]
+//
+// **動的 import すること。** 300KB 近くあるので初期バンドルに載せない。
+export const AIRPORTS_JA: Record<string, readonly [string, string | null]> = {
+${apLines.join("\n")}
+};
+`,
+);
+
+console.log(`gen-airlines: ${airports.size} 空港の日本語名を書き出した`);

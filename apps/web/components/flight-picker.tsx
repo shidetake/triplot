@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { type Airline, searchAirlines } from "@triplot/shared/airlines";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
@@ -13,6 +13,7 @@ import {
   parseFlightNumber,
 } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
+import { loadAirportNames, localizeFlightJa } from "@triplot/shared/flightLocalize";
 
 import { createClient } from "@/lib/supabase/client";
 import { CloseButton } from "./close-button";
@@ -38,6 +39,7 @@ export function FlightPicker({
 }) {
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
+  const locale = useLocale();
 
   const [airline, setAirline] = useState<Airline | null>(null);
   const [text, setText] = useState("");
@@ -68,7 +70,10 @@ export function FlightPicker({
         );
         if (my !== seq.current) return;
         if (outcome.kind === "found") {
-          setResult(outcome.flight);
+          // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
+          const table = await loadAirportNames(locale);
+          if (my !== seq.current) return;
+          setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
         } else {
           setResult(null);
           setError(
@@ -83,7 +88,7 @@ export function FlightPicker({
         if (my === seq.current) setBusy(false);
       }
     })();
-  }, [normalized, date, t]);
+  }, [normalized, date, t, locale]);
 
   // 便名が崩れている間（消しかけ等）は前の結果を出さない。effect で state を
   // 消しに行かず、表示側で門番する。

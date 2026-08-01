@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { type Airline, searchAirlines } from "@triplot/shared/airlines";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
@@ -12,6 +12,7 @@ import {
   parseFlightNumber,
 } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
+import { loadAirportNames, localizeFlightJa } from "@triplot/shared/flightLocalize";
 
 import { XIcon } from "./icons";
 import { supabase } from "@/lib/supabase";
@@ -39,6 +40,7 @@ export function FlightPicker({
 }) {
   const t = useTranslations("event");
   const tc = useTranslations("common");
+  const locale = useLocale();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -72,7 +74,10 @@ export function FlightPicker({
         );
         if (my !== seq.current) return;
         if (outcome.kind === "found") {
-          setResult(outcome.flight);
+          // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
+          const table = await loadAirportNames(locale);
+          if (my !== seq.current) return;
+          setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
         } else {
           setResult(null);
           setError(
