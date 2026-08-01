@@ -203,7 +203,14 @@ export function EventForm({
       setEndDate(f.arrival.scheduledLocal.slice(0, 10));
       setEndTime(f.arrival.scheduledLocal.slice(11, 16));
     }
-    setTzOverride({ start: f.departure.timeZone, end: f.arrival.timeZone });
+    // TZ は**座標から導出できるなら上書きしない**。上書き（tzOverride）は
+    // 「ユーザーが明示的に選んだ」の意味で、ここで埋めると後から場所を直しても
+    // 古い TZ が残る。空港の座標があれば導出が同じ答えを出す（tz-lookup）ので、
+    // 座標が無い端点だけ提供元の IANA を明示値として入れる。
+    setTzOverride({
+      start: f.departure.lat === null ? f.departure.timeZone : null,
+      end: f.arrival.lat === null ? f.arrival.timeZone : null,
+    });
 
     setFlightMode(false);
   };
