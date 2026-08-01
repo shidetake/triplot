@@ -229,8 +229,12 @@ export function EventForm({
       setArriveDate(f.arrival.scheduledLocal.slice(0, 10));
       setArriveTime(f.arrival.scheduledLocal.slice(11, 16));
     }
-    if (f.departure.timeZone) setDepartTz(f.departure.timeZone);
-    if (f.arrival.timeZone) setArriveTz(f.arrival.timeZone);
+    // TZ は**座標から導出できるなら上書きしない**。上書き（*TzOverride）は
+    // 「ユーザーが明示的に選んだ」の意味で、ここで埋めると後から場所を直しても
+    // 古い TZ が残る。空港の座標があれば導出が同じ答えを出す（tz-lookup）ので、
+    // 座標が無い端点だけ提供元の IANA を明示値として入れる。
+    setDepartTz(f.departure.lat === null ? (f.departure.timeZone ?? "") : "");
+    setArriveTz(f.arrival.lat === null ? (f.arrival.timeZone ?? "") : "");
 
     setFlightMode(false);
   };
