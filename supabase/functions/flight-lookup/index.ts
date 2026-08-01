@@ -106,9 +106,7 @@ Deno.serve(async (httpReq) => {
     }
   }
 
-  const res = await fetch(`${UPSTREAM}${upstreamPath(req)}`, {
-    headers: { "x-rapidapi-host": UPSTREAM_HOST, "x-rapidapi-key": apiKey },
-  });
+  const res = await fetchUpstream(upstreamPath(req), apiKey);
 
   // 204 = その日は運航していない。エラーではないので空配列として扱う
   // （呼び出し側が「予測にまわす」判断をする）。
@@ -127,6 +125,22 @@ Deno.serve(async (httpReq) => {
   await store(sb, key, payload);
   return json({ payload, cached: false });
 });
+
+/**
+ * 上流は **1リクエスト/秒**（Basic）。1回の照会で最大3回叩くことがあり
+ * （対象日 → 運航日一覧 → 参照日）、往復を挟んでも詰まると 429 になる。
+ * 秒あたりの制限なので、1回だけ待って再送すれば必ず抜ける。
+ *
+ * 枠切れ（月次）も 429 で来るが、その場合は再送しても同じ 429 が返るだけで
+ * 呼び出しは消費されない（上流に届く前に弾かれる）ので、区別せず1回試す。
+ */
+async function fetchUpstream(path: string, apiKey: string): Promise<Response> {
+  const headers = { "x-rapidapi-host": UPSTREAM_HOST, "x-rapidapi-key": apiKey };
+  const res = await fetch(`${UPSTREAM}${path}`, { headers });
+  if (res.status !== 429) return res;
+  await new Promise((r) => setTimeout(r, 1100));
+  return fetch(`${UPSTREAM}${path}`, { headers });
+}
 
 async function store(
   sb: ReturnType<typeof createClient>,
