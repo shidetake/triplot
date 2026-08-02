@@ -74,7 +74,7 @@ import {
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
-import { ChevronIcon, LockIcon, SearchIcon, XIcon } from "@/components/icons";
+import { ChevronIcon, LockIcon, XIcon } from "@/components/icons";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -1023,7 +1023,11 @@ export default function PlacesTab() {
         </View>
       )}
 
-      {/* 検索バー（地図上に重ねる）＋入力中サジェスト */}
+      {/* 検索バー（地図上に重ねる）＋入力中サジェスト。
+          専用の検索ボタンは置かない（本家 Google マップと同じくソフトウェア
+          キーボードの確定キー＝ returnKeyType="search" だけで検索する。
+          web の Combobox と違い、候補は矢印キーでなくタップで選ぶので
+          「確定キー＝ハイライト中候補の確定」の曖昧さが無く、ボタンが要らない）。 */}
       <View style={styles.searchBar}>
         <View style={styles.searchInputWrap}>
           <TextInput
@@ -1036,18 +1040,25 @@ export default function PlacesTab() {
             onSubmitEditing={() => void runSearch()}
             editable={!!PLACES_API_KEY}
           />
-          {/* 全消しの ×（本家 Google マップと同じく入力があるときだけ入力欄の
-              右端に出る）。入力欄は wrap の先頭なので絶対配置でその上に重ねる
-              （サジェストが下に伸びても位置は変わらない）。 */}
-          {query.length > 0 && (
-            <Pressable
-              onPress={clearSearch}
-              hitSlop={8}
-              style={styles.searchClear}
-              accessibilityLabel={t("searchClear")}
-            >
-              <XIcon size={18} color={theme.mutedForeground} />
-            </Pressable>
+          {/* 右端は状態排他で1つだけ: 検索中はスピナー、そうでなく入力があれば
+              全消しの ×（本家 Google マップと同じく入力欄の右端に出る）。
+              入力欄は wrap の先頭なので絶対配置でその上に重ねる（サジェストが
+              下に伸びても位置は変わらない）。 */}
+          {searching ? (
+            <View style={styles.searchClear} pointerEvents="none">
+              <ActivityIndicator size="small" color={theme.mutedForeground} />
+            </View>
+          ) : (
+            query.length > 0 && (
+              <Pressable
+                onPress={clearSearch}
+                hitSlop={8}
+                style={styles.searchClear}
+                accessibilityLabel={t("searchClear")}
+              >
+                <XIcon size={18} color={theme.mutedForeground} />
+              </Pressable>
+            )
           )}
           {predictions.length > 0 && (
             <View style={styles.suggestions}>
@@ -1073,17 +1084,6 @@ export default function PlacesTab() {
             </View>
           )}
         </View>
-        <Pressable
-          onPress={() => void runSearch()}
-          style={styles.searchButton}
-          accessibilityLabel={t("searchAria")}
-        >
-          {searching ? (
-            <ActivityIndicator size="small" color={theme.primaryForeground} />
-          ) : (
-            <SearchIcon size={18} color={theme.primaryForeground} />
-          )}
-        </Pressable>
       </View>
 
           {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
@@ -1659,10 +1659,8 @@ const makeStyles = (t: Theme) =>
     top: 12,
     left: 12,
     right: 12,
-    flexDirection: "row",
-    gap: 8,
   },
-  // 入力欄とサジェストを縦に重ねる器（検索ボタンとは横並び）。
+  // 入力欄とサジェストを縦に重ねる器。
   searchInputWrap: {
     flex: 1,
     shadowColor: "#000",
@@ -1711,14 +1709,6 @@ const makeStyles = (t: Theme) =>
     fontSize: 12,
     color: t.mutedForeground,
     marginTop: 2,
-  },
-  searchButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 8,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
   },
   // 一覧を開く浮遊ボタン。タブバー（浮島）の上に出す＝bottom はタブバー高より
   // 十分上に取る（予定/費用タブの FAB と同じ考え方）。位置＋影は外側の
