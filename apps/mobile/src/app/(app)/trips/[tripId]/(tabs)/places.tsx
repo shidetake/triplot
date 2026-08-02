@@ -28,8 +28,8 @@ import { useTranslations } from "use-intl";
 import {
   boundsOf,
   centerOf,
-  centroid,
   clusterPlaces,
+  dominantCenter,
   dominantCluster,
   TOKYO,
 } from "@triplot/shared/placeMap";
@@ -393,7 +393,7 @@ export default function PlacesTab() {
   );
 
   const biasCenter = () =>
-    centroid(
+    dominantCenter(
       places
         .filter((p) => p.lat != null && p.lng != null)
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
@@ -491,7 +491,7 @@ export default function PlacesTab() {
     closeSuggestions();
     setSearching(true);
     try {
-      const bias = centroid(
+      const bias = dominantCenter(
         places
           .filter((p) => p.lat != null && p.lng != null)
           .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),

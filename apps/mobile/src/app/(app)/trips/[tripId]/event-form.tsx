@@ -6,7 +6,7 @@ import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 import {
   deriveEventDraftItems,
 } from "@triplot/shared/import/drafts";
-import { centroid } from "@triplot/shared/placeMap";
+import { dominantCenter } from "@triplot/shared/placeMap";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
@@ -53,10 +53,11 @@ export default function EventFormRoute() {
     reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
   });
 
-  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンの重心。無ければ
-  // 無バイアス＝地図タブと違い Tokyo にはフォールバックしない）。
+  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンが集まる主役
+  // エリアの中心。無ければ無バイアス＝地図タブと違い Tokyo にはフォールバック
+  // しない）。
   const biasCenter =
-    centroid(
+    dominantCenter(
       (data.placesRaw ?? [])
         .filter((p) => p.lat != null && p.lng != null)
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),

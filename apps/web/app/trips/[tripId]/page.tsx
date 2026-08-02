@@ -45,7 +45,7 @@ import {
 } from "@triplot/shared/tripDerive";
 import { type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
 import { type KmlPlacemark } from "@triplot/shared/placeKml";
-import { centroid, TOKYO } from "@triplot/shared/placeMap";
+import { dominantCenter, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import { monthDayLabel } from "@triplot/shared/import/draftLabel";
 import {
@@ -150,9 +150,10 @@ export default async function TripDetailPage({
       category: p.tentative ? t("place.statusCandidate") : t("place.statusConfirmed"),
       iconKey: p.icon,
     }));
-  // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
+  // スケジュールの Google 検索の地理バイアス（マップ済みピンが集まる主役
+  // エリアの中心 or 東京）
   const placesBiasCenter =
-    centroid(
+    dominantCenter(
       places
         .filter((p) => p.lat != null && p.lng != null)
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),

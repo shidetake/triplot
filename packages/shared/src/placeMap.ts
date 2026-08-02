@@ -13,15 +13,6 @@ export type Bounds = {
 // 東京駅。ピンが 1 つも無いときの初期中心。
 export const TOKYO: LatLng = { lat: 35.681236, lng: 139.767125 };
 
-export function centroid(points: LatLng[]): LatLng | null {
-  if (points.length === 0) return null;
-  const sum = points.reduce(
-    (acc, p) => ({ lat: acc.lat + p.lat, lng: acc.lng + p.lng }),
-    { lat: 0, lng: 0 },
-  );
-  return { lat: sum.lat / points.length, lng: sum.lng / points.length };
-}
-
 export function boundsOf(points: LatLng[]): Bounds | null {
   if (points.length === 0) return null;
 
@@ -200,4 +191,25 @@ export function dominantCluster(clusters: Cluster[]): Cluster | null {
   if (clusters.length === 1) return clusters[0];
   const [a, b] = clusters; // size 降順
   return a.size > b.size ? a : null;
+}
+
+// 検索の地理バイアスや初期表示に使う「代表点」。ピンが集まっている主役エリア
+// の中心を返す（離れた1点〔帰りの空港等〕に引っ張られない・日付変更線を
+// 正しく跨ぐ）。initialRegion（地図の初期表示）と同じ規則に統一する。
+//
+// 生の centroid（緯度経度の単純平均）は経度が円環であることを知らないため、
+// 成田(140°E)とホノルル(-158°)のような太平洋を挟む2点で中心が地球の反対側
+// （西アフリカ沖）に飛ぶ実バグがあった。地図の初期表示ではこの関数と同じ
+// clusterPlaces→dominantCluster→boundsOf→centerOf の並びで既に直していたが、
+// 検索バイアス側は centroid のまま残っており、越境する旅行（成田↔ホノルル等）
+// で候補が現在地寄りの的外れな結果になっていた。
+export function dominantCenter(points: LatLng[]): LatLng | null {
+  if (points.length === 0) return null;
+  const clusters = clusterPlaces(
+    points.map((p) => ({ ...p, region: null, locality: null })),
+  );
+  const main = dominantCluster(clusters);
+  const focus = main ? main.points : points;
+  const b = boundsOf(focus);
+  return b ? centerOf(b) : null;
 }

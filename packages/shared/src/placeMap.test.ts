@@ -3,31 +3,12 @@ import { describe, expect, it } from "vitest";
 import {
   boundsOf,
   centerOf,
-  centroid,
   type ClusterInput,
   clusterPlaces,
+  dominantCenter,
   dominantCluster,
   type LatLng,
 } from "./placeMap";
-
-describe("centroid", () => {
-  it("空配列は null", () => {
-    expect(centroid([])).toBeNull();
-  });
-
-  it("1点はその点", () => {
-    expect(centroid([{ lat: 35, lng: 139 }])).toEqual({ lat: 35, lng: 139 });
-  });
-
-  it("複数点は平均", () => {
-    const pts: LatLng[] = [
-      { lat: 0, lng: 0 },
-      { lat: 10, lng: 20 },
-      { lat: 20, lng: 40 },
-    ];
-    expect(centroid(pts)).toEqual({ lat: 10, lng: 20 });
-  });
-});
 
 describe("boundsOf", () => {
   it("空配列は null", () => {
@@ -193,5 +174,57 @@ describe("dominantCluster", () => {
   it("1クラスタならそれ", () => {
     const cs = clusterPlaces([p(21.31, -157.86), p(21.4, -157.74)]);
     expect(dominantCluster(cs)?.size).toBe(2);
+  });
+});
+
+describe("dominantCenter", () => {
+  it("空配列は null", () => {
+    expect(dominantCenter([])).toBeNull();
+  });
+
+  it("1点はその点", () => {
+    expect(dominantCenter([{ lat: 35, lng: 139 }])).toEqual({
+      lat: 35,
+      lng: 139,
+    });
+  });
+
+  it("太平洋を挟む2点(成田↔ホノルル)は太平洋側の中点を返す（西アフリカ沖に飛ばない）", () => {
+    // 実バグ: 生の緯度経度平均だと (140.39 + -157.92) / 2 ≈ -8.77°lng で
+    // 西アフリカ沖が中心になっていた。centerOf 経由なら太平洋側(≈+171°)になる。
+    const pts: LatLng[] = [
+      { lat: 35.77, lng: 140.39 }, // 成田
+      { lat: 21.32, lng: -157.92 }, // ホノルル
+    ];
+    const c = dominantCenter(pts)!;
+    expect(c.lat).toBeCloseTo(28.545, 3);
+    expect(c.lng).toBeCloseTo(171.235, 3);
+  });
+
+  it("離れた1点に引っ張られず主役クラスタの中心を返す（ハワイ3 vs 成田1）", () => {
+    const pts: LatLng[] = [
+      { lat: 21.31, lng: -157.86 }, // Honolulu
+      { lat: 21.4, lng: -157.74 }, // Kailua
+      { lat: 21.35, lng: -157.9 },
+      { lat: 35.77, lng: 140.39 }, // Narita（帰りの空港。主役から外れる）
+    ];
+    const c = dominantCenter(pts)!;
+    // ハワイ勢の緯度経度範囲(21.31〜21.4 / -157.9〜-157.74)に収まる＝成田に
+    // 引っ張られていない。
+    expect(c.lat).toBeGreaterThan(21.3);
+    expect(c.lat).toBeLessThan(21.41);
+    expect(c.lng).toBeGreaterThan(-157.91);
+    expect(c.lng).toBeLessThan(-157.73);
+  });
+
+  it("主役が決まらない(1+1)時は全体の中心", () => {
+    const pts: LatLng[] = [
+      { lat: 35.77, lng: 140.39 }, // 成田
+      { lat: 21.31, lng: -157.86 }, // ホノルル
+    ];
+    const c = dominantCenter(pts)!;
+    const expected = centerOf(boundsOf(pts)!);
+    expect(c.lat).toBeCloseTo(expected.lat, 6);
+    expect(c.lng).toBeCloseTo(expected.lng, 6);
   });
 });

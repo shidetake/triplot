@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { Drawer } from "vaul";
 
-import { centroid, type LatLng, TOKYO } from "@triplot/shared/placeMap";
+import { dominantCenter, type LatLng, TOKYO } from "@triplot/shared/placeMap";
 
 import { PlaceList, type PlaceRow } from "./place-list";
 // PlaceStatus は削除済み — place.tentative boolean に移行
@@ -193,7 +193,7 @@ export function PlacesSection({
 
   const biasCenter = useMemo(
     () =>
-      centroid(
+      dominantCenter(
         places
           .filter((p) => p.lat != null && p.lng != null)
           .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
