@@ -115,19 +115,59 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 - gen-types は DEFAULT 無しの nullable 関数引数を `string` にしてしまう既知の癖がある（`create_trip` の `p_start_date` 等）。その箇所だけ呼び出し側でキャスト。
 - migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。pre-push の `db:types:check` が実 DB とのズレを検出して push を止める（トークンが無い環境ではスキップ）。
 
-## iOS アプリの動作確認は TestFlight で行う
+## iOS の実機確認: シミュレータ → preview ビルド → TestFlight
 
 環境（本番/確認用で DB が分かれていること・bundle id・全体像）は
 [`docs/architecture.md`](docs/architecture.md) の「環境（本番／確認）」節を参照。
-ここには具体的なコマンドだけを書く。
+ここには具体的なコマンドと **どの段を使うかの判断**を書く。
 
-シミュレータでの確認は補助にすぎない（開発ビルド限定の要素が実機と違う挙動を
-する。例: expo-dev-client の Tools ボタンが画面右上のタップを吸い、検索窓の ×
-が効かないように見える）。**iOS の動作確認は TestFlight に上げて実機で行う。**
+3段階で確認レベルが上がる。**番号が小さいほど既定＝まずここを使う。**
+大きい段へ進めるのは、その必要が明確にある時だけ（下記）。
 
-- **区切りのタイミングでは、指示を待たず Claude Code の判断でビルドして submit
-  まで進める。** 「区切り」＝ iOS の画面に見える変更が一段落し、typecheck /
-  lint / テストが通っている状態。
+1. **シミュレータ＋maestro**（一番速い。実機固有の挙動は見れない — 開発ビルド
+   限定の要素が実機と違う挙動をする。例: expo-dev-client の Tools ボタンが
+   画面右上のタップを吸う）。まずここで動作を作り込む。
+2. **preview ビルド**（実機・staging DB・TestFlight/App Store Connect を
+   一切通らないので数十秒でインストールできる）。**「実機で見たい」の既定は
+   ここ。** 一段落する前の軽い確認・繰り返しの検証・出先でスマホだけの時に使う。
+   TestFlight を毎回のビルド先にしない（Apple の処理待ち5〜10分＋本番 DB を
+   見に行くので、小さな確認の往復には重すぎる）。
+3. **TestFlight**（本番 DB・Apple の処理待ちあり・市場公開に一番近い確認）。
+   **区切りのタイミングでだけ、指示を待たず Claude Code の判断でビルドして
+   submit まで進める。** 「区切り」＝ 2. の preview ビルドで一通り確認できて
+   いて、機能追加やバグ修正のまとまりが完成し typecheck / lint / テストが
+   通っている状態（＝ preview を経ずに TestFlight へ飛ばない）。
+
+### 2. preview ビルド
+
+- **`eas.json` の `preview` プロファイル**（`distribution: "internal"`,
+  `environment: "preview"`）を使う。**production プロファイルとは別物**:
+  bundle identifier が `app.triplot.mobile.staging`（本番アプリと同じ端末に
+  共存できる）、EAS の `preview` environment には **staging の Supabase**
+  （`xuytnpkvmiduffigimol`）の URL/anon key を登録済み（他の Google 系キーは
+  production と共通）。
+- 初回だけ要る準備（済んでいれば省略可）: 実機の UDID 登録
+  （`npx eas-cli device:create` → Website 方式 → 表示された URL を実機の
+  Safari で開いてプロファイルをインストール）と、実機の
+  設定 → プライバシーとセキュリティ → デベロッパモード を ON。
+- ビルド → アップロード → インストールリンク発行:
+
+  ```bash
+  cd apps/mobile
+  npx eas-cli build --platform ios --profile preview --local --non-interactive \
+    --output ./build/triplot-preview.ipa
+  cd ..
+  npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
+  ```
+
+  最後に出る `itms-services://...` リンクを実機の **Safari** で開く
+  （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
+  アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
+  access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
+  （`vercel blob create-store` 実行時に自動で書き込まれた値）。
+
+### 3. TestFlight
+
 - **TestFlight 用（動作確認用）のビルドはローカルビルドにする。** EAS のビルド枠
   が余っていてもローカルを使い、枠は本番用に温存する。
 
@@ -148,42 +188,6 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 ローカルビルドには Xcode 26.3 以上 / fastlane / login キーチェーンに Apple WWDR
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
-
-## iOS のもっと速い確認（TestFlight より手前）: preview ビルド
-
-TestFlight は Apple 側の処理待ち（5〜10分）が挟まるうえ、本番 DB を見に行く。
-**画面が一段落する前の軽い確認や、出先でスマホだけの時**は、審査を経ない
-ad-hoc（内部）配布のビルドを直接インストールできる。TestFlight/App Store
-Connect を一切通らないので、リンクを開いてから数十秒で入る。
-
-- **`eas.json` の `preview` プロファイル**（`distribution: "internal"`,
-  `environment: "preview"`）を使う。**production プロファイルとは別物**:
-  bundle identifier が `app.triplot.mobile.staging`（本番アプリと同じ端末に
-  共存できる）、EAS の `preview` environment には **staging の Supabase**
-  （`xuytnpkvmiduffigimol`）の URL/anon key を登録済み（他の Google 系キーは
-  production と共通）。**本番データに触らず確認したい時はこちら。**
-- 初回だけ要る準備（済んでいれば省略可）: 実機の UDID 登録
-  （`npx eas-cli device:create` → Website 方式 → 表示された URL を実機の
-  Safari で開いてプロファイルをインストール）と、実機の
-  設定 → プライバシーとセキュリティ → デベロッパモード を ON。
-- ビルド → アップロード → インストールリンク発行:
-
-  ```bash
-  cd apps/mobile
-  npx eas-cli build --platform ios --profile preview --local --non-interactive \
-    --output ./build/triplot-preview.ipa
-  cd ..
-  npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
-  ```
-
-  最後に出る `itms-services://...` リンクを実機の **Safari** で開く
-  （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
-  アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
-  access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
-  （`vercel blob create-store` 実行時に自動で書き込まれた値）。
-- 位置付け: シミュレータ＋maestro（一番速いが実機固有の挙動は見れない）→
-  **preview ビルド（実機・staging DB・審査待ちなし）** → TestFlight（本番 DB・
-  Apple の処理待ちあり・市場公開に一番近い確認）の3段階。用途に応じて選ぶ。
 
 ## web の動作確認は staging（Vercel Preview）で行う
 
