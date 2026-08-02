@@ -145,6 +145,42 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
 
+## iOS のもっと速い確認（TestFlight より手前）: preview ビルド
+
+TestFlight は Apple 側の処理待ち（5〜10分）が挟まるうえ、本番 DB を見に行く。
+**画面が一段落する前の軽い確認や、出先でスマホだけの時**は、審査を経ない
+ad-hoc（内部）配布のビルドを直接インストールできる。TestFlight/App Store
+Connect を一切通らないので、リンクを開いてから数十秒で入る。
+
+- **`eas.json` の `preview` プロファイル**（`distribution: "internal"`,
+  `environment: "preview"`）を使う。**production プロファイルとは別物**:
+  bundle identifier が `app.triplot.mobile.staging`（本番アプリと同じ端末に
+  共存できる）、EAS の `preview` environment には **staging の Supabase**
+  （`xuytnpkvmiduffigimol`）の URL/anon key を登録済み（他の Google 系キーは
+  production と共通）。**本番データに触らず確認したい時はこちら。**
+- 初回だけ要る準備（済んでいれば省略可）: 実機の UDID 登録
+  （`npx eas-cli device:create` → Website 方式 → 表示された URL を実機の
+  Safari で開いてプロファイルをインストール）と、実機の
+  設定 → プライバシーとセキュリティ → デベロッパモード を ON。
+- ビルド → アップロード → インストールリンク発行:
+
+  ```bash
+  cd apps/mobile
+  npx eas-cli build --platform ios --profile preview --local --non-interactive \
+    --output ./build/triplot-preview.ipa
+  cd ..
+  npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
+  ```
+
+  最後に出る `itms-services://...` リンクを実機の **Safari** で開く
+  （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
+  アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
+  access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
+  （`vercel blob create-store` 実行時に自動で書き込まれた値）。
+- 位置付け: シミュレータ＋maestro（一番速いが実機固有の挙動は見れない）→
+  **preview ビルド（実機・staging DB・審査待ちなし）** → TestFlight（本番 DB・
+  Apple の処理待ちあり・市場公開に一番近い確認）の3段階。用途に応じて選ぶ。
+
 ## web の動作確認は staging（Vercel Preview）で行う
 
 本番にデプロイして確かめる運用はリリースまで。**リリース後は `main` に入れた
