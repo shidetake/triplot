@@ -545,6 +545,8 @@ export function EventForm({
           可視ラベルが無いぶん aria-label で名前を担保する。
           右端の飛行機アイコンで**この行がフライト番号入力に入れ替わる**。
           専用の行を足すとフォームが縦に伸びるので入れ替えにしている。
+          アイコンは入力欄の内側右端に重ねる（iOS の検索欄のマイクと同じ形。
+          place-search.tsx の検索クリアボタンと同じ relative/pr-9 パターン）。
           入れ替え中も title は hidden で送る（required を満たすため）。 */}
       {flightMode ? (
         <>
@@ -556,7 +558,7 @@ export function EventForm({
           />
         </>
       ) : (
-        <div className="flex items-center gap-2">
+        <div className="relative">
           <Input
             type="text"
             name="title"
@@ -565,18 +567,18 @@ export function EventForm({
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t("title")}
             aria-label={t("title")}
-            className="block w-full min-w-0 flex-1"
+            className="block w-full pr-9"
           />
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="shrink-0 rounded-full"
+            size="iconDense"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full"
             onClick={() => setFlightMode(true)}
             title={t("flightAria")}
             aria-label={t("flightAria")}
           >
-            <PlaneIcon size={18} />
+            <PlaneIcon size={16} />
           </Button>
         </div>
       )}

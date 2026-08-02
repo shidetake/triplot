@@ -475,7 +475,9 @@ export function EventForm({
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           右端の飛行機アイコンで**この行がフライト番号入力に入れ替わる**。
-          専用の行を足すとフォームが縦に伸びるので、入れ替えにしている。 */}
+          専用の行を足すとフォームが縦に伸びるので、入れ替えにしている。
+          アイコンは入力欄の内側右端に重ねる（iOS 標準の検索欄のマイクと同じ形。
+          web の title 行と同じ見た目に揃える）。 */}
       {flightMode ? (
         <FlightPicker
           date={startDate}
@@ -494,7 +496,7 @@ export function EventForm({
           />
           <Pressable
             onPress={() => setFlightMode(true)}
-            hitSlop={8}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
             style={styles.titleAction}
             accessibilityLabel={t("flightAria")}
           >
@@ -838,11 +840,15 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
-    // タイトル行。右端の飛行機アイコンは入力欄の中ではなく隣に置く（RN の
-    // TextInput に子要素を重ねるとカーソル位置の計算が狂うため）。
-    titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    titleInput: { flex: 1, minWidth: 0 },
+    // タイトル行。右端の飛行機アイコンは入力欄の内側に重ねる（TextInput 自体の
+    // 子要素にはせず、position:absolute で兄弟要素として重ねる — カーソル計算は
+    // TextInput が自分のテキストだけで行うので影響を受けない）。
+    titleRow: { position: "relative" },
+    titleInput: { paddingRight: 40 },
     titleAction: {
+      position: "absolute",
+      right: 4,
+      top: 4,
       width: 28,
       height: 28,
       borderRadius: 14,
