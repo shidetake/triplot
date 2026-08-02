@@ -160,11 +160,15 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
   ```
 
-  最後に出る `itms-services://...` リンクを実機の **Safari** で開く
+  最後に出る `itms-services://...` リンクを**そのままテキストでユーザーに渡す**
+  （QR コードは作らない — チャットに URL を貼れば済み、QR は画像を送る一手間が
+  増えるだけなので不採用）。ユーザーは実機の **Safari** でこのリンクを開く
   （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
   アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
   access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
-  （`vercel blob create-store` 実行時に自動で書き込まれた値）。
+  （`vercel blob create-store` 実行時に自動で書き込まれた値。スクリプトが
+  `BLOB_READ_WRITE_TOKEN` 未設定ならこのファイルから自動で拾うので、都度
+  export しなくてよい）。
 
 ### 3. TestFlight
 

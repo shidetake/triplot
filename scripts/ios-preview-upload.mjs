@@ -1,6 +1,9 @@
 // ローカルビルドした .ipa（preview プロファイル）を Vercel Blob に上げ、
-// OTA インストール用の manifest.plist を添えて itms-services:// リンク（＋QR）を
-// 発行する。TestFlight を経由しない「出先からの簡易確認」用（AGENTS.md 参照）。
+// OTA インストール用の manifest.plist を添えて itms-services:// リンクを発行する。
+// TestFlight を経由しない「出先からの簡易確認」用（AGENTS.md 参照）。
+//
+// 出力は URL のテキストのみ（QR は作らない — チャットにそのまま貼れば良く、
+// QR だと画像を送る一手間が増えるだけなので採用しないと決めた）。
 //
 // 使い方:
 //   cd apps/mobile
@@ -9,13 +12,24 @@
 //   node ../../scripts/ios-preview-upload.mjs ./build/triplot-preview.ipa
 //
 // BLOB_READ_WRITE_TOKEN は .env.local（リポジトリルート）にある
-// （`vercel blob create-store` 実行時に自動で書き込まれた値）。
+// （`vercel blob create-store` 実行時に自動で書き込まれた値）。Next.js と違い
+// プレーンな Node スクリプトは .env.local を自動で読まないので、無ければここで拾う。
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { put } from "@vercel/blob";
-import QRCode from "qrcode";
+
+if (!process.env.BLOB_READ_WRITE_TOKEN) {
+  const envLocalPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env.local");
+  try {
+    const match = readFileSync(envLocalPath, "utf8").match(/^BLOB_READ_WRITE_TOKEN="?([^"\n]+)"?$/m);
+    if (match) process.env.BLOB_READ_WRITE_TOKEN = match[1];
+  } catch {
+    // .env.local が無ければ後段の @vercel/blob 側のエラーに任せる
+  }
+}
 
 const [, , ipaPath] = process.argv;
 if (!ipaPath) {
@@ -102,7 +116,3 @@ console.log(`manifest: ${manifestBlob.url}`);
 
 const installUrl = `itms-services://?action=download-manifest&url=${encodeURIComponent(manifestBlob.url)}`;
 console.log(`\ninstall link (open in iPhone Safari):\n${installUrl}`);
-
-const qrPath = path.join(path.dirname(ipaAbsPath), `qr-${stamp}.png`);
-await QRCode.toFile(qrPath, installUrl, { width: 640 });
-console.log(`\nQR saved to: ${qrPath}`);

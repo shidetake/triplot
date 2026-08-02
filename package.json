@@ -31,7 +31,6 @@
   "devDependencies": {
     "@vercel/blob": "^2.6.1",
     "husky": "^9.1.7",
-    "qrcode": "^1.5.4",
     "supabase": "^2.95.5"
   },
   "overrides": {
