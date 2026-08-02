@@ -456,6 +456,12 @@ export function WeekCalendar({
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
+        // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は画面下端に重なって
+        // 浮くだけでレイアウト上の余白を確保しない（index.tsx の FAB と同じ
+        // 事情。タブバー上端は画面下端から実測 約83pt）。末尾（21〜24時）が
+        // タブバーの下に隠れて最後までスクロールできなくなるので、本文の下に
+        // タブバーを確実にかわせる余白を足す。
+        contentContainerStyle={{ paddingBottom: 100 }}
       >
         <View style={styles.bodyRow}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
