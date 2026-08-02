@@ -460,8 +460,10 @@ export function WeekCalendar({
         // 浮くだけでレイアウト上の余白を確保しない（index.tsx の FAB と同じ
         // 事情。タブバー上端は画面下端から実測 約83pt）。末尾（21〜24時）が
         // タブバーの下に隠れて最後までスクロールできなくなるので、本文の下に
-        // タブバーを確実にかわせる余白を足す。
-        contentContainerStyle={{ paddingBottom: 100 }}
+        // タブバーの実測高さぶんだけ余白を足す（FAB の bottom:100 と違い、
+        // ここは「隙間なくギリギリ」が目的なので実測値そのまま。余分に足すと
+        // 24:00 の下に空白が見えてしまう＝実機フィードバックで判明）。
+        contentContainerStyle={{ paddingBottom: 83 }}
       >
         <View style={styles.bodyRow}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
