@@ -240,7 +240,7 @@
     "tzChange": "変更",
     "startPlace": "出発地",
     "flightAria": "フライト番号から入力",
-    "flightPlaceholder": "ZG002 / 航空会社",
+    "flightPlaceholder": "便名 / 航空会社",
     "flightNumberPlaceholder": "便名の数字",
     "flightDatePlaceholder": "出発日",
     "flightTripStart": "旅行の開始日",

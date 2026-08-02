@@ -112,17 +112,23 @@ export function FlightPicker({
             {airline.iata}
           </button>
         )}
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          autoFocus
-          autoComplete="off"
-          placeholder={airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")}
-          aria-label={t("flightAria")}
-          className={`${inputClass} min-w-0 flex-1 uppercase placeholder:normal-case`}
-        />
-        <CloseButton onClick={onCancel} label={tCommon("cancel")} />
+        <div className="relative min-w-0 flex-1">
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            autoFocus
+            autoComplete="off"
+            placeholder={airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")}
+            aria-label={t("flightAria")}
+            className={`${inputClass} block w-full pr-9 uppercase placeholder:normal-case`}
+          />
+          <CloseButton
+            onClick={onCancel}
+            label={tCommon("cancel")}
+            className="absolute right-1.5 top-1/2 -translate-y-1/2"
+          />
+        </div>
       </div>
 
       {suggestions.length > 0 && (

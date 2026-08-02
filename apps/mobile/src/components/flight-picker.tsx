@@ -118,28 +118,30 @@ export function FlightPicker({
             <Text style={styles.chipText}>{airline.iata}</Text>
           </Pressable>
         )}
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          autoFocus
-          autoCapitalize="characters"
-          autoCorrect={false}
-          keyboardType={airline ? "number-pad" : "default"}
-          placeholder={
-            airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
-          }
-          accessibilityLabel={t("flightAria")}
-          placeholderTextColor={theme.subtleForeground}
-          style={[styles.input, styles.grow]}
-        />
-        <Pressable
-          onPress={onCancel}
-          hitSlop={8}
-          style={styles.close}
-          accessibilityLabel={tc("cancel")}
-        >
-          <XIcon size={16} color={theme.mutedForeground} />
-        </Pressable>
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            autoCapitalize="characters"
+            autoCorrect={false}
+            keyboardType={airline ? "number-pad" : "default"}
+            placeholder={
+              airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
+            }
+            accessibilityLabel={t("flightAria")}
+            placeholderTextColor={theme.subtleForeground}
+            style={[styles.input, styles.inputPadded]}
+          />
+          <Pressable
+            onPress={onCancel}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+            style={styles.close}
+            accessibilityLabel={tc("cancel")}
+          >
+            <XIcon size={16} color={theme.mutedForeground} />
+          </Pressable>
+        </View>
       </View>
 
       {suggestions.length > 0 && (
@@ -251,7 +253,8 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     wrap: { gap: 8 },
     row: { flexDirection: "row", alignItems: "center", gap: 8 },
-    grow: { flex: 1, minWidth: 0 },
+    // × ボタンは入力欄の内側右端に重ねる（タイトル行の飛行機アイコンと同じ形）。
+    inputWrap: { flex: 1, minWidth: 0, position: "relative" },
     input: {
       height: 36,
       borderWidth: 1,
@@ -261,6 +264,7 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
+    inputPadded: { paddingRight: 40 },
     // 確定した航空会社コード。入力欄と同じ高さで、畳まれた入力に見せる。
     chip: {
       height: 36,
@@ -272,9 +276,12 @@ const makeStyles = (t: Theme) =>
     },
     chipText: { fontSize: 14, fontWeight: "500", color: t.foreground },
     close: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      position: "absolute",
+      right: 4,
+      top: 4,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
     },

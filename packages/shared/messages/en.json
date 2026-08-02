@@ -240,7 +240,7 @@
     "tzChange": "Change",
     "startPlace": "Departure place",
     "flightAria": "Add by flight number",
-    "flightPlaceholder": "ZG002 or airline",
+    "flightPlaceholder": "Flight number / airline",
     "flightNumberPlaceholder": "Flight number",
     "flightDatePlaceholder": "Departure date",
     "flightTripStart": "Trip start",
