@@ -160,9 +160,12 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
   ```
 
-  最後に出る `itms-services://...` リンクを**そのままテキストでユーザーに渡す**
-  （QR コードは作らない — チャットに URL を貼れば済み、QR は画像を送る一手間が
-  増えるだけなので不採用）。ユーザーは実機の **Safari** でこのリンクを開く
+  最後に出る `itms-services://...` リンクは**マークダウンのコードブロック
+  （```）で囲んでユーザーに渡す**（QR コードは作らない — チャットに URL を
+  貼れば済み、QR は画像を送る一手間が増えるだけなので不採用。コードブロックに
+  するのはリンクとして装飾されるとタップ/コピーしにくい・崩れることがある
+  ため、プレーンテキストとしてそのままコピーできる形にする）。ユーザーは
+  実機の **Safari** でこのリンクを開く
   （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
   アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
   access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
@@ -261,6 +264,12 @@ npm run db:push:staging   # scripts/db-push-staging.sh
 
 `database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
 本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。
+
+## バージョン表記
+
+web・iOS・（将来）Android のバージョン番号のルール（それぞれ独立運用・
+git tag は使わない・リリース手順）は **[docs/versioning.md](docs/versioning.md)**
+を参照。
 
 ## 設計方針
 
