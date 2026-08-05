@@ -18,6 +18,8 @@
     "db:types": "bash scripts/gen-db-types.sh",
     "db:types:check": "bash scripts/check-db-types.sh",
     "db:push:staging": "bash scripts/db-push-staging.sh",
+    "licenses:generate": "node scripts/gen-licenses.mjs",
+    "web:version:generate": "node scripts/gen-web-version.mjs",
     "ios:preview:upload": "node scripts/ios-preview-upload.mjs",
     "postinstall": "node scripts/apply-patches.mjs",
     "prepare": "husky || true"
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@vercel/blob": "^2.6.1",
     "husky": "^9.1.7",
+    "license-checker-rseidelsohn": "^5.0.1",
     "supabase": "^2.95.5"
   },
   "overrides": {
