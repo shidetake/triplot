@@ -22,6 +22,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 
 import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
 import { PlaceIconPicker } from "./place-icon-picker";
+import { SheetTitle } from "./sheet-title";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -151,6 +152,12 @@ export function PlaceForm({
 
   return (
     <View style={styles.content}>
+      {/* シート先頭のタイトル。formSheet はナビヘッダーを出さないので、これで
+          グラバー/コーナーぶんの余白を確保する（event-form/expense-form と
+          同じ形。無いと先頭の要素がコーナーの丸みに食い込んでタップが
+          拾われないことがある）。 */}
+      <SheetTitle>{isEdit ? t("editFormLabel") : t("addFormLabel")}</SheetTitle>
+
       {pinDraft ? (
         // 仮ピン: 名前を自由入力（ラベル無し・placeholder＝フィールド名）。
         // autoFocus は付けない — シートの出現とキーボードの持ち上げが同時に
@@ -276,7 +283,7 @@ export function PlaceForm({
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    content: { padding: 16, gap: 14 },
+    content: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
     name: { fontSize: 18, fontWeight: "600", color: t.foreground },
     nameInput: { fontSize: 16 },
     address: { fontSize: 13, color: t.mutedForeground, marginTop: -6 },

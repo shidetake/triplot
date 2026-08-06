@@ -338,6 +338,8 @@
     "noLocation": "Not on map (no coordinates)",
     "openGoogleMaps": "Open in Google Maps",
     "addIconAria": "Add icon",
+    "editFormLabel": "Edit place",
+    "addFormLabel": "Add place",
     "addPlaceAria": "Add this place",
     "addPinAria": "Add this pin",
     "deleteTitle": "Delete this place?",

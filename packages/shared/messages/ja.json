@@ -338,6 +338,8 @@
     "noLocation": "地図未登録（座標なし）",
     "openGoogleMaps": "Googleマップで開く",
     "addIconAria": "アイコンを追加",
+    "editFormLabel": "場所を編集",
+    "addFormLabel": "場所を追加",
     "addPlaceAria": "この場所を追加",
     "addPinAria": "この地点を追加",
     "deleteTitle": "この場所を削除しますか？",
