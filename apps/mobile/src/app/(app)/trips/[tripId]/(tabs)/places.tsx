@@ -1641,8 +1641,8 @@ export default function PlacesTab() {
             >
               <Svg
                 viewBox="0 0 24 24"
-                width={20}
-                height={20}
+                width={28}
+                height={28}
                 style={{ transform: [{ rotate: `${-heading}deg` }] }}
               >
                 <Path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
@@ -1665,7 +1665,19 @@ export default function PlacesTab() {
                 viewBox="0 -960 960 960"
                 width={26}
                 height={26}
-                style={{ transform: [{ rotate: "45deg" }] }}
+                style={{
+                  // Material Symbols "navigation" のグリフは viewBox 内で
+                  // 視覚重心が左下に寄っており、45°回転すると白丸内で
+                  // 左下ズレとして現れる。回転後のスクリーン座標系で補正する
+                  // ため translate は rotate より前（＝配列内で先）に置く。
+                  // シミュレータの実測(x-2.8pt/y+2.8pt)をそのまま当てると
+                  // 実機では右上に寄りすぎたため、半分の値にしている。
+                  transform: [
+                    { translateX: 1.5 },
+                    { translateY: -1.5 },
+                    { rotate: "45deg" },
+                  ],
+                }}
               >
                 <Path
                   d={
