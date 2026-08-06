@@ -431,7 +431,11 @@
     "filterAll": "すべて",
     "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。",
     "placeCountLabel": "{count}件の場所",
-    "placesListLabel": "場所一覧"
+    "placesListLabel": "場所一覧",
+    "filterTitle": "場所を絞り込む",
+    "filterSectionArea": "エリア",
+    "filterSectionDay": "日にち",
+    "filterAria": "絞り込み中: {label}"
   },
   "validation": {
     "loginRequired": "ログインが必要です",

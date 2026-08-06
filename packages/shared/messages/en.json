@@ -431,7 +431,11 @@
     "filterAll": "All",
     "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead).",
     "placeCountLabel": "{count} places",
-    "placesListLabel": "Places list"
+    "placesListLabel": "Places list",
+    "filterTitle": "Filter places",
+    "filterSectionArea": "Area",
+    "filterSectionDay": "Day",
+    "filterAria": "Filtering: {label}"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

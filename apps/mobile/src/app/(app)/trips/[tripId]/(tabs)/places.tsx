@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -94,7 +94,15 @@ import {
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
-import { ChevronIcon, LockIcon, XIcon } from "@/components/icons";
+import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
+import {
+  CheckIcon,
+  ChevronIcon,
+  FilterIcon,
+  LockIcon,
+  XIcon,
+} from "@/components/icons";
+import { SheetTitle } from "@/components/sheet-title";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -163,6 +171,13 @@ function estimateListContentH(places: PlaceRow[]): number {
     )
   );
 }
+
+// 地図・一覧を絞り込むフィルタの種類。エリアは labelByPlace の label
+// （null＝ラベル無しの「その他」も区別して絞り込めるようにする）、
+// 日にちは visitDayByPlace の dayIndex で揃える。
+type PlaceFilter =
+  | { kind: "area"; label: string | null }
+  | { kind: "day"; dayIndex: number };
 
 type SavedPlaceRowProps = {
   item: PlaceRow;
@@ -346,6 +361,13 @@ export default function PlacesTab() {
   //   formOpen: 追加/編集フォーム（候補・ピン・保存済みピンから開く）
   const [listOpen, setListOpen] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
+  // 地図・一覧の両方を絞り込む場所フィルタ（エリア or 日にちのどちらか一方）。
+  // null＝フィルタなし（全件表示）。下の filteredPlaces がこれを見て地図の
+  // ピン・一覧の両方に同じ結果を反映する（web のエリアチップはカメラを
+  // 寄せるだけで表示/非表示は変えないが、ここは「その場所だけ表示」という
+  // 明示の要望なので実際に絞り込む）。
+  const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
+  const filterSheetRef = useRef<FormSheetRef>(null);
   // 一覧シート（browse）の中身の実測高さ（FlatList の contentSize）。detent を
   // 「中身にフィット」と「その半分」の2段で組むのに使う（下の browseSheet）。
   const [browseContentH, setBrowseContentH] = useState<number | null>(null);
@@ -520,40 +542,6 @@ export default function PlacesTab() {
     );
   }, [data]);
 
-  // focusProgress 同期用に、選択中の場所が places 配列の何番目かを引く。
-  const editingIndex = useMemo(
-    () => (editing ? places.findIndex((p) => p.id === editing.id) : -1),
-    [editing, places],
-  );
-  // editing（タップ・スクロール確定どちらでも変わる）に
-  // focusProgress/focusActive を追従させる。スクロール中の直接書き込み
-  // （onViewableItemsChanged）はこの effect を経由しないので、ここは
-  // 「選択が変わった後の着地」だけを担当する。
-  useEffect(() => {
-    liveFocusIndexRef.current = editingIndex;
-    if (justCommittedRef.current) {
-      // 直前に onViewableItemsChanged 側で既に withSpring で同じ位置へ
-      // 動かし済み。二重にアニメーションを起こしてイーズを乱さないよう、
-      // この1回だけ何もしない。
-      justCommittedRef.current = false;
-      return;
-    }
-    if (editingIndex < 0) {
-      focusActive.value = withTiming(0, { duration: 200 });
-      return;
-    }
-    const wasActive = focusActive.value > 0.5;
-    focusActive.value = withTiming(1, { duration: 200 });
-    // 無選択からの初回選択はいきなり合わせる（無関係な行を横切る見た目の
-    // スイープを防ぐ）。選択中の切り替え（タップ確定）だけ滑らかに動かす。
-    focusProgress.value = wasActive
-      ? withTiming(editingIndex, { duration: 220 })
-      : editingIndex;
-    // focusActive/focusProgress は useSharedValue の戻り値＝ref と同じく参照が
-    // 安定しているので、依存配列に入れても effect の再発火条件は editingIndex
-    // だけのまま変わらない（exhaustive-deps を素直に満たすために追加）。
-  }, [editingIndex, focusActive, focusProgress]);
-
   // 展開した行に出す「◯日目・M/D(曜)」バッジ用。予定/費用のどちらにも
   // 紐づかない場所は日時不明なので Map に含まれず、バッジ無しになる。
   const dayByPlaceId = useMemo(() => {
@@ -585,6 +573,124 @@ export default function PlacesTab() {
       })),
     );
   }, [places]);
+
+  // フィルタメニューの選択肢。常に全件（places）から出す＝フィルタ中でも
+  // 他の選択肢が消えず切り替えられる。エリアは件数の多い順、日にちは
+  // 旅程順（dayIndex 昇順）。
+  const areaFilterOptions = useMemo(() => {
+    const counts = new Map<string | null, number>();
+    for (const label of areaByPlaceId.values()) {
+      counts.set(label, (counts.get(label) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [areaByPlaceId]);
+
+  const dayFilterOptions = useMemo(() => {
+    const byDay = new Map<
+      number,
+      { dayIndex: number; date: string; count: number }
+    >();
+    for (const day of dayByPlaceId.values()) {
+      const cur = byDay.get(day.dayIndex);
+      if (cur) cur.count += 1;
+      else byDay.set(day.dayIndex, { ...day, count: 1 });
+    }
+    return [...byDay.values()].sort((a, b) => a.dayIndex - b.dayIndex);
+  }, [dayByPlaceId]);
+
+  const matchesPlaceFilter = useCallback(
+    (placeId: string, f: PlaceFilter): boolean =>
+      f.kind === "area"
+        ? areaByPlaceId.get(placeId) === f.label
+        : dayByPlaceId.get(placeId)?.dayIndex === f.dayIndex,
+    [areaByPlaceId, dayByPlaceId],
+  );
+
+  // 地図のピン・一覧の両方がこれを見る（フィルタ無しは全件）。
+  const filteredPlaces = useMemo(
+    () =>
+      placeFilter
+        ? places.filter((p) => matchesPlaceFilter(p.id, placeFilter))
+        : places,
+    [places, placeFilter, matchesPlaceFilter],
+  );
+
+  const placeFilterLabel = (f: PlaceFilter): string =>
+    f.kind === "area"
+      ? (f.label ?? t("other"))
+      : `${f.dayIndex}日目・${formatDayLabel(
+          dayFilterOptions.find((d) => d.dayIndex === f.dayIndex)?.date ?? "",
+        )}`;
+
+  // フィルタ選択（解除＝null も含む）。選んだフィルタの範囲外に選択中の
+  // 場所（editing）があれば、地図上のピンと表示が食い違わないよう選択を
+  // 解除する。範囲が見えるよう地図もそこへ合わせる。
+  const applyPlaceFilter = (f: PlaceFilter | null) => {
+    setPlaceFilter(f);
+    filterSheetRef.current?.dismiss();
+    if (editing && f && !matchesPlaceFilter(editing.id, f)) {
+      setEditing(null);
+      setFormOpen(false);
+    }
+    const target = f ? places.filter((p) => matchesPlaceFilter(p.id, f)) : places;
+    const mapped = target.filter(
+      (p): p is PlaceRow & { lat: number; lng: number } =>
+        p.lat != null && p.lng != null,
+    );
+    if (mapped.length === 0) return;
+    // react-native-maps の fitToCoordinates は素朴な緯度経度の外接矩形なので、
+    // 日付変更線を跨ぐ範囲（成田↔ホノルル等）で地球の反対側が中心になる
+    // （initialRegion と同じ落とし穴、ui-guidelines「地図の表示範囲」参照）。
+    // 同じ dateline 対応の boundsOf/centerOf で組む。
+    const b = boundsOf(mapped.map((p) => ({ lat: p.lat, lng: p.lng })));
+    if (!b) return;
+    const c = centerOf(b);
+    const lngSpan = b.west <= b.east ? b.east - b.west : b.east + 360 - b.west;
+    mapRef.current?.animateToRegion(
+      {
+        latitude: c.lat,
+        longitude: c.lng,
+        latitudeDelta: Math.max(0.05, (b.north - b.south) * 1.5),
+        longitudeDelta: Math.max(0.05, lngSpan * 1.5),
+      },
+      300,
+    );
+  };
+
+  // focusProgress 同期用に、選択中の場所が filteredPlaces 配列の何番目かを
+  // 引く（一覧に実際に描画される配列＝フィルタ適用後のものと揃える）。
+  const editingIndex = useMemo(
+    () => (editing ? filteredPlaces.findIndex((p) => p.id === editing.id) : -1),
+    [editing, filteredPlaces],
+  );
+  // editing（タップ・スクロール確定どちらでも変わる）に
+  // focusProgress/focusActive を追従させる。スクロール中の直接書き込み
+  // （onViewableItemsChanged）はこの effect を経由しないので、ここは
+  // 「選択が変わった後の着地」だけを担当する。
+  useEffect(() => {
+    liveFocusIndexRef.current = editingIndex;
+    if (justCommittedRef.current) {
+      // 直前に onViewableItemsChanged 側で既に withSpring で同じ位置へ
+      // 動かし済み。二重にアニメーションを起こしてイーズを乱さないよう、
+      // この1回だけ何もしない。
+      justCommittedRef.current = false;
+      return;
+    }
+    if (editingIndex < 0) {
+      focusActive.value = withTiming(0, { duration: 200 });
+      return;
+    }
+    const wasActive = focusActive.value > 0.5;
+    focusActive.value = withTiming(1, { duration: 200 });
+    // 無選択からの初回選択はいきなり合わせる（無関係な行を横切る見た目の
+    // スイープを防ぐ）。選択中の切り替え（タップ確定）だけ滑らかに動かす。
+    focusProgress.value = wasActive
+      ? withTiming(editingIndex, { duration: 220 })
+      : editingIndex;
+    // focusActive/focusProgress は useSharedValue の戻り値＝ref と同じく参照が
+    // 安定しているので、依存配列に入れても effect の再発火条件は editingIndex
+    // だけのまま変わらない（exhaustive-deps を素直に満たすために追加）。
+  }, [editingIndex, focusActive, focusProgress]);
 
   // 初期リージョン: 既存ピンの範囲/重心、無ければ東京。
   const initialRegion: Region = useMemo(() => {
@@ -669,7 +775,7 @@ export default function PlacesTab() {
     const index = selectedCandidate
       ? candidates.findIndex((c) => c.placeId === selectedCandidate.placeId)
       : editing
-        ? places.findIndex((p) => p.id === editing.id)
+        ? filteredPlaces.findIndex((p) => p.id === editing.id)
         : -1;
     if (index < 0) return;
     if (selectedCandidate) {
@@ -677,7 +783,7 @@ export default function PlacesTab() {
     } else {
       placeListRef.current?.scrollToIndex({ index, viewPosition: 0 });
     }
-  }, [listOpen, editing, selectedCandidate, candidates, places]);
+  }, [listOpen, editing, selectedCandidate, candidates, filteredPlaces]);
 
   // ピン選択時のカメラ移動は本家 Google マップと同じ「ズームは一切変えず
   // パンだけ」。狙い位置は「フォームシートに隠れない画面上寄り（上から約25%）」
@@ -1051,7 +1157,7 @@ export default function PlacesTab() {
     // scrollToOffset を使う。同じ式の逆算なので、ここでスクロールした位置と
     // applyPickerFocus が「中央」と判定する行が常に一致する
     // （FlatList 自身の推定に頼らないので一覧の実測状態に左右されない）。
-    const index = places.findIndex((pl) => pl.id === p.id);
+    const index = filteredPlaces.findIndex((pl) => pl.id === p.id);
     if (index < 0) return;
     if (enteringPickerMode) {
       // シートが fit→半分へアニメーション遷移する間、sheetViewportHeight の
@@ -1135,14 +1241,16 @@ export default function PlacesTab() {
   /* eslint-disable react-hooks/immutability */
   const applyPickerFocus = (offsetY: number) => {
     if (editing == null) return;
-    if (sheetViewportHeight <= 0 || places.length === 0) return;
+    if (sheetViewportHeight <= 0 || filteredPlaces.length === 0) return;
     const centerY = offsetY + sheetViewportHeight / 2;
     const raw = (centerY - pickerTopPad - LIST_HEADER_H) / LIST_ROW_H - 0.5;
-    const index = Math.round(Math.min(Math.max(raw, 0), places.length - 1));
+    const index = Math.round(
+      Math.min(Math.max(raw, 0), filteredPlaces.length - 1),
+    );
     if (index === liveFocusIndexRef.current) return;
     const from = liveFocusIndexRef.current;
     liveFocusIndexRef.current = index;
-    const item = places[index];
+    const item = filteredPlaces[index];
     // 地図未登録の行はピッカーで選べない（タップ操作と同じ制約 —
     // previewOrEditPlace も未登録の行では呼ばれず startLocate に回る）。
     // 中央に来ても選択は直前のままにする＝地図の赤ピンと選択中の行が
@@ -1306,13 +1414,14 @@ export default function PlacesTab() {
   const browseSheet = fitAndHalfDetents({
     // 実測（FlatList の contentSize）が届くまでは概算で組む。実測が来たら
     // そちらに差し替わる＝「中身にフィット」は実測が単一の真実。
-    contentHeight: browseContentH ?? estimateListContentH(places),
+    contentHeight: browseContentH ?? estimateListContentH(filteredPlaces),
     capHeight: maxSheetHeight,
     referenceHeight,
     minHalfHeight: LIST_HEADER_H + LIST_ROW_H,
   });
 
   return (
+    <>
     <ScreenStack style={StyleSheet.absoluteFill}>
       {/* ベース画面: 地図＋検索バー＋位置指定バナー。常設リストと追加/編集
           フォームはこの上に native の formSheet として重ねる。
@@ -1404,7 +1513,7 @@ export default function PlacesTab() {
           void onPoiPress(e.nativeEvent.placeId, e.nativeEvent.coordinate)
         }
       >
-        {places
+        {filteredPlaces
           .filter((p) => p.lat != null && p.lng != null)
           .map((p) => {
             // 編集中（フォームを開いている）のピンは本家 Google マップと同じく
@@ -1604,7 +1713,9 @@ export default function PlacesTab() {
                 style={styles.listButton}
               >
                 <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
-                <Text style={styles.listButtonText}>{places.length}件の場所</Text>
+                <Text style={styles.listButtonText}>
+                  {filteredPlaces.length}件の場所
+                </Text>
               </GlassView>
             </Pressable>
           )}
@@ -1688,6 +1799,24 @@ export default function PlacesTab() {
                   fill={followingLocation ? "#4285F4" : theme.foreground}
                 />
               </Svg>
+            </Pressable>
+          )}
+
+          {/* 場所フィルタ（エリア/日にちで地図のピン・一覧を絞り込む）。
+              現在地ボタンの左隣に置く。フィルタ中はアイコンを塗り＋青地に
+              して常に一目で分かるようにする（フィルタしっぱなしで忘れる
+              のを防ぐ、との要望）。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => filterSheetRef.current?.present()}
+              style={[styles.filterButton, placeFilter && styles.filterButtonActive]}
+              accessibilityLabel={
+                placeFilter
+                  ? t("filterAria", { label: placeFilterLabel(placeFilter) })
+                  : t("filterTitle")
+              }
+            >
+              <FilterIcon size={18} color={placeFilter ? "#fff" : theme.foreground} />
             </Pressable>
           )}
         </View>
@@ -1850,7 +1979,7 @@ export default function PlacesTab() {
         ) : (
           <FlatList
             ref={placeListRef}
-            data={places}
+            data={filteredPlaces}
             keyExtractor={(item) => item.id}
             contentContainerStyle={[
               styles.list,
@@ -1893,7 +2022,9 @@ export default function PlacesTab() {
             ListHeaderComponent={
               <>
                 <View style={styles.sheetHeader}>
-                  <Text style={styles.sheetCount}>{places.length}件の場所</Text>
+                  <Text style={styles.sheetCount}>
+                    {filteredPlaces.length}件の場所
+                  </Text>
                 </View>
                 {/* ピッカー中の先頭/末尾の行を一覧の中央まで持ってこられる
                     ようにする余白。ヘッダーの後ろに置くことで、ヘッダー
@@ -1986,6 +2117,82 @@ export default function PlacesTab() {
         </ScreenStackItem>
       )}
     </ScreenStack>
+
+    {/* 場所フィルタの選択肢（エリア/日にち）。@gorhom の BottomSheetModal は
+        Portal で描画するため ScreenStack の外に置いても表示上は問題ない
+        （todos.tsx の優先度ピッカーと同じパターン）。 */}
+    <FormSheet ref={filterSheetRef} sizeToContent>
+      {() => (
+        <View>
+          <SheetTitle>{t("filterTitle")}</SheetTitle>
+          <Pressable
+            onPress={() => applyPlaceFilter(null)}
+            style={styles.priorityRow}
+          >
+            <Text style={styles.priorityRowLabel}>{t("filterAll")}</Text>
+            {!placeFilter && (
+              <CheckIcon size={16} color={theme.mutedForeground} />
+            )}
+          </Pressable>
+          {areaFilterOptions.length > 0 && (
+            <>
+              <Text style={styles.filterSectionLabel}>
+                {t("filterSectionArea")}
+              </Text>
+              {areaFilterOptions.map(([label, count]) => {
+                const selected =
+                  placeFilter?.kind === "area" && placeFilter.label === label;
+                return (
+                  <Pressable
+                    key={`area:${label ?? ""}`}
+                    onPress={() => applyPlaceFilter({ kind: "area", label })}
+                    style={styles.priorityRow}
+                  >
+                    <Text style={styles.priorityRowLabel}>
+                      {label ?? t("other")}
+                    </Text>
+                    <Text style={styles.filterCount}>{count}</Text>
+                    {selected && (
+                      <CheckIcon size={16} color={theme.mutedForeground} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
+          {dayFilterOptions.length > 0 && (
+            <>
+              <Text style={styles.filterSectionLabel}>
+                {t("filterSectionDay")}
+              </Text>
+              {dayFilterOptions.map((d) => {
+                const selected =
+                  placeFilter?.kind === "day" &&
+                  placeFilter.dayIndex === d.dayIndex;
+                return (
+                  <Pressable
+                    key={`day:${d.dayIndex}`}
+                    onPress={() =>
+                      applyPlaceFilter({ kind: "day", dayIndex: d.dayIndex })
+                    }
+                    style={styles.priorityRow}
+                  >
+                    <Text style={styles.priorityRowLabel}>
+                      {`${d.dayIndex}日目・${formatDayLabel(d.date)}`}
+                    </Text>
+                    <Text style={styles.filterCount}>{d.count}</Text>
+                    {selected && (
+                      <CheckIcon size={16} color={theme.mutedForeground} />
+                    )}
+                  </Pressable>
+                );
+              })}
+            </>
+          )}
+        </View>
+      )}
+    </FormSheet>
+    </>
   );
 }
 
@@ -2249,6 +2456,25 @@ const makeStyles = (t: Theme) =>
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
+  // 場所フィルタ。現在地ボタンと同じ高さで左隣（12 隙間 + 44 幅 + 12 隙間）。
+  filterButton: {
+    position: "absolute",
+    right: 68,
+    bottom: 100,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
+  },
+  // フィルタ中は塗り＝アクティブ表示（followingLocation の青と同じ配色）。
+  filterButtonActive: { backgroundColor: "#4285F4" },
   // 方位磁針。現在地ボタンの真上（本家 Google マップ・iOS マップと同じ並び）。
   compassButton: {
     position: "absolute",
@@ -2300,6 +2526,25 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
   },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
+  // 場所フィルタ（FormSheet）の選択行。todos.tsx の優先度ピッカーと同形。
+  priorityRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.08),
+  },
+  priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+  filterSectionLabel: {
+    fontSize: 12,
+    color: t.subtleForeground,
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 4,
+  },
+  filterCount: { fontSize: 13, color: t.subtleForeground },
   // 検索候補行の2行目: ★評価 + 住所（web の place-popups と同じ並び）。
   candidateMeta: {
     flexDirection: "row",
