@@ -5,6 +5,7 @@ import {
   Animated,
   FlatList,
   Keyboard,
+  LayoutAnimation,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,9 +13,23 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { GlassView } from "expo-glass-effect";
+import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
+import Reanimated, {
+  Extrapolation,
+  interpolate,
+  interpolateColor,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming,
+  type SharedValue,
+} from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import MapView, {
@@ -31,6 +46,7 @@ import {
   clusterPlaces,
   dominantCenter,
   dominantCluster,
+  labelByPlace,
   TOKYO,
 } from "@triplot/shared/placeMap";
 import {
@@ -53,8 +69,12 @@ import {
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
 import { setPlaceLocation } from "@triplot/shared/data/places";
-import { sortPlacesByItinerary } from "@triplot/shared/placeOrder";
-import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import {
+  sortPlacesByItinerary,
+  visitDayByPlace,
+  type VisitDay,
+} from "@triplot/shared/placeOrder";
+import { buildTripTzTimeline, formatDayLabel } from "@triplot/shared/schedule";
 import { fitAndHalfDetents } from "@triplot/shared/sheetDetents";
 import {
   deriveOrderedExpenses,
@@ -106,6 +126,14 @@ const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
 // ピンとラベルの間隔（px）。
 const CANDIDATE_LABEL_GAP = 4;
 
+// 選択中の行をその場で膨らませる（Phase 2）際の連続アニメーション用。
+const AnimatedPressable = Reanimated.createAnimatedComponent(Pressable);
+// スクロールで焦点行が変わるたびに focusProgress をそこへ寄せるスプリング
+// （iOS ピッカーの「コツン」という手応えに寄せた、短く硬めの設定）。
+const FOCUS_SPRING_CONFIG = { damping: 18, stiffness: 220, mass: 0.5 };
+// 他の行が選択中の間、この行を沈める強さ（opacity-50 相当。旧 dimmedRow と同値）。
+const FOCUS_DIM_OPACITY = 0.5;
+
 // ピンが1つも無いときの初期表示（東京駅）。
 const TOKYO_REGION = {
   latitude: TOKYO.lat,
@@ -136,6 +164,153 @@ function estimateListContentH(places: PlaceRow[]): number {
   );
 }
 
+type SavedPlaceRowProps = {
+  item: PlaceRow;
+  index: number;
+  isSelected: boolean;
+  isLocating: boolean;
+  day: VisitDay | undefined;
+  area: string | null | undefined;
+  focusProgress: SharedValue<number>;
+  focusActive: SharedValue<number>;
+  theme: Theme;
+  styles: ReturnType<typeof makeStyles>;
+  t: (key: string) => string;
+  onStartLocate: () => void;
+  onCancelLocate: () => void;
+  onPreviewOrEdit: () => void;
+};
+
+// 保存済み場所の一覧行。FlatList の renderItem から呼ぶ。useAnimatedStyle を
+// 安全に使うため、モジュールスコープの独立コンポーネントにする（renderItem に
+// 直接書くと親の再レンダーのたびに関数の参照自体が作り直され、全行が
+// アンマウント/再マウントされて reanimated の値が壊れる）。
+function SavedPlaceRow({
+  item,
+  index,
+  isSelected,
+  isLocating,
+  day,
+  area,
+  focusProgress,
+  focusActive,
+  theme,
+  styles,
+  t,
+  onStartLocate,
+  onCancelLocate,
+  onPreviewOrEdit,
+}: SavedPlaceRowProps) {
+  const unmapped = item.lat == null;
+
+  // theme.fgAlpha は普通の JS 関数（worklet ではない）。useAnimatedStyle の
+  // 中から UI スレッド越しに直接呼ぶと "Tried to synchronously call a Remote
+  // Function" で落ちる（実機/シミュレータで確認済み）。文字列に解決した
+  // 結果だけを render 時（JS スレッド）に作り、worklet にはその文字列を
+  // 渡す。
+  const transparentBg = theme.fgAlpha(0);
+  const highlightBg = theme.fgAlpha(0.06);
+
+  // 選択中の行との「近さ」で opacity・背景ハイライトを連続的に決める
+  // （Phase 2）。一覧のスクロール（PlacesTab 側の onViewableItemsChanged）が
+  // focusProgress を動かすたびに、ここは自動で追従する。静止時は isSelected
+  // の行が closeness=1（旧 selectedRow の背景と同値）、他は FOCUS_DIM_OPACITY
+  // まで薄くなる。
+  const rowFocusStyle = useAnimatedStyle(() => {
+    const distance = Math.abs(index - focusProgress.value);
+    const closeness = interpolate(distance, [0, 1], [1, 0], Extrapolation.CLAMP);
+    return {
+      opacity: 1 - focusActive.value * (1 - closeness) * (1 - FOCUS_DIM_OPACITY),
+      backgroundColor: interpolateColor(
+        focusActive.value * closeness,
+        [0, 1],
+        [transparentBg, highlightBg],
+      ),
+    };
+  });
+
+  return (
+    <AnimatedPressable
+      onPress={() =>
+        isLocating
+          ? onCancelLocate()
+          : unmapped
+            ? onStartLocate()
+            : onPreviewOrEdit()
+      }
+      style={[
+        styles.placeRow,
+        isLocating && styles.locatingRow,
+        // 選択中（プレビュー中）の行はその場で膨らませる（縦の余白を広げる。
+        // 背景ハイライトは上の rowFocusStyle が担当）。
+        isSelected && styles.selectedRow,
+        rowFocusStyle,
+      ]}
+    >
+      <PlaceCategoryIcon
+        icon={item.icon}
+        size={20}
+        color={item.tentative ? "#f59e0b" : "#10b981"}
+      />
+      <View style={styles.placeInfo}>
+        <View style={styles.placeNameRow}>
+          <Text
+            style={[styles.placeName, isSelected && styles.placeNameSelected]}
+            numberOfLines={1}
+          >
+            {item.name}
+          </Text>
+          {item.visibility === "private" && (
+            <LockIcon size={16} color={theme.mutedForeground} />
+          )}
+          {unmapped && (
+            <View style={styles.unmappedBadge}>
+              <Text style={styles.unmappedBadgeText}>{t("unmapped")}</Text>
+            </View>
+          )}
+        </View>
+        <Text style={styles.placeMeta}>
+          {item.tentative ? t("statusCandidate") : t("statusConfirmed")}
+          {" ・ "}
+          {getIconLabel(item.icon)}
+        </Text>
+        {isSelected && item.formatted_address && (
+          <Text style={styles.placeAddress} numberOfLines={2}>
+            {item.formatted_address}
+          </Text>
+        )}
+        {isSelected && (day || area) && (
+          <View style={styles.placeBadgeRow}>
+            {day && (
+              <View style={styles.dayBadge}>
+                <Text style={styles.dayBadgeText}>
+                  {`${day.dayIndex}日目・${formatDayLabel(day.date)}`}
+                </Text>
+              </View>
+            )}
+            {area && <Text style={styles.areaBadgeText}>{area}</Text>}
+          </View>
+        )}
+        {item.note ? (
+          <Text style={styles.placeMeta} numberOfLines={2}>
+            {item.note}
+          </Text>
+        ) : null}
+      </View>
+      {unmapped ? (
+        <Text style={isLocating ? styles.cancelLocateLabel : styles.setPinLabel}>
+          {isLocating ? t("cancelLocate") : t("setPin")}
+        </Text>
+      ) : (
+        // プレビュー中（1タップ目・赤ピン選択）の行だけ、iOS標準の「＞」
+        // ディスクロージャ表示を出す＝もう1タップで編集に進むことを示す
+        // （本家 iOS リストの慣例と同じ見た目で表現）。
+        isSelected && <ChevronIcon size={16} color={theme.mutedForeground} />
+      )}
+    </AnimatedPressable>
+  );
+}
+
 // 場所タブ（RN・M5）: Google 地図 + 保存済みピン + 検索 + ドラッグ式ボトムシート
 // 一覧 + 追加/編集。web の PlacesSection 相当。地図は PROVIDER_GOOGLE で世界観統一。
 export default function PlacesTab() {
@@ -162,11 +337,6 @@ export default function PlacesTab() {
   if (insets.top > 0 && insets.top !== stableInsetsTop) {
     setStableInsetsTop(insets.top);
   }
-  // 検索バーの下端の絶対位置（画面座標）。一覧シートの上限をこの下端に
-  // 揃える（実機フィードバック: 場所が多いと「中身にフィット」がどこまでも
-  // 伸びて検索バーまで隠してしまうため）ために実測する。
-  const searchBarRef = useRef<View>(null);
-  const [searchBarBottomY, setSearchBarBottomY] = useState(0);
 
   const mapRef = useRef<MapView>(null);
   // シートの開閉。どちらも native の formSheet（モーダル）で、開いた時だけ
@@ -202,6 +372,46 @@ export default function PlacesTab() {
   const [selectedCandidate, setSelectedCandidate] =
     useState<PlaceCandidate | null>(null);
   const [editing, setEditing] = useState<PlaceRow | null>(null);
+
+  // Phase 2: 一覧をスクロールするだけで選択行が次々切り替わる（iOS の
+  // ピッカー/ドラムロールと同じ操作感。長押し＋ドラッグ案は「誰も気づかない」
+  // というフィードバックで撤回した）。focusProgress は places 配列の
+  // インデックス単位の連続値で、行の opacity/背景ハイライト（rowFocusStyle）
+  // が常にこれを見て追従する。UIスレッドで直接書き込むので高頻度の更新でも
+  // React 再レンダーは発生しない。
+  const focusProgress = useSharedValue(0);
+  // 何か選択中か（0〜1）。選択の出入りで薄さの効き具合をフェードさせる。
+  const focusActive = useSharedValue(0);
+  // スクロールで「今どの行が主役か」が変わるたびに更新する参照値。
+  // onScroll は同じインデックスでも何度も呼ばれるので、ここと比較して本当に
+  // 変わった時だけハプティック/地図追従を起こす。
+  const liveFocusIndexRef = useRef(-1);
+  // 今ユーザーが指で一覧をスクロールしている最中か。行の展開（LayoutAnimation
+  // による高さの変化）だけでも FlatList は onScroll を発火させ得るため、本当に
+  // ユーザーがスクロールを始めた時だけピッカーとして反応させる。
+  const isUserScrollingRef = useRef(false);
+  // 一覧シート（FlatList）の実測される可視高さ。中央のデータを選択状態に
+  // する（iOS ピッカーと同じ）ための行位置計算と、端の行までスワイプで
+  // 中央に持ってこられるようにする上下パディングの両方に使う。
+  const [sheetViewportHeight, setSheetViewportHeight] = useState(0);
+  // 検索バーの下端の絶対位置（画面座標）。一覧シートの上限をこの下端に
+  // 揃える（実機フィードバック: 場所が多いと「中身にフィット」がどこまでも
+  // 伸びて検索バーまで隠してしまうため）ために実測する。
+  const searchBarRef = useRef<View>(null);
+  const [searchBarBottomY, setSearchBarBottomY] = useState(0);
+  // タップ確定・スクロール確定の直後1回だけ、下の同期 useEffect による
+  // focusProgress の再アニメーションを止めるためのラッチ（確定直前に既に
+  // その位置へ動かしてある時、withTiming で二重にアニメーションさせない）。
+  const justCommittedRef = useRef(false);
+  // 未選択→選択（タップ）時だけシートが fit→半分 detent へアニメーション
+  // 遷移する。その間 sheetViewportHeight の実測が古いままなので、遷移が
+  // 落ち着く（FlatList の onLayout が一定時間発火しなくなる）まで運ぶ先の
+  // インデックスをここに置いて待つ（下の onLayout 節参照）。
+  const pendingCenterIndexRef = useRef<number | null>(null);
+  const pendingCenterScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
+
   // 地図長押しで置いた仮ピン（web の draft ピンと同じ。保存/閉じで消す）。
   const [pinDraft, setPinDraft] = useState<{ lat: number; lng: number } | null>(
     null,
@@ -310,6 +520,72 @@ export default function PlacesTab() {
     );
   }, [data]);
 
+  // focusProgress 同期用に、選択中の場所が places 配列の何番目かを引く。
+  const editingIndex = useMemo(
+    () => (editing ? places.findIndex((p) => p.id === editing.id) : -1),
+    [editing, places],
+  );
+  // editing（タップ・スクロール確定どちらでも変わる）に
+  // focusProgress/focusActive を追従させる。スクロール中の直接書き込み
+  // （onViewableItemsChanged）はこの effect を経由しないので、ここは
+  // 「選択が変わった後の着地」だけを担当する。
+  useEffect(() => {
+    liveFocusIndexRef.current = editingIndex;
+    if (justCommittedRef.current) {
+      // 直前に onViewableItemsChanged 側で既に withSpring で同じ位置へ
+      // 動かし済み。二重にアニメーションを起こしてイーズを乱さないよう、
+      // この1回だけ何もしない。
+      justCommittedRef.current = false;
+      return;
+    }
+    if (editingIndex < 0) {
+      focusActive.value = withTiming(0, { duration: 200 });
+      return;
+    }
+    const wasActive = focusActive.value > 0.5;
+    focusActive.value = withTiming(1, { duration: 200 });
+    // 無選択からの初回選択はいきなり合わせる（無関係な行を横切る見た目の
+    // スイープを防ぐ）。選択中の切り替え（タップ確定）だけ滑らかに動かす。
+    focusProgress.value = wasActive
+      ? withTiming(editingIndex, { duration: 220 })
+      : editingIndex;
+    // focusActive/focusProgress は useSharedValue の戻り値＝ref と同じく参照が
+    // 安定しているので、依存配列に入れても effect の再発火条件は editingIndex
+    // だけのまま変わらない（exhaustive-deps を素直に満たすために追加）。
+  }, [editingIndex, focusActive, focusProgress]);
+
+  // 展開した行に出す「◯日目・M/D(曜)」バッジ用。予定/費用のどちらにも
+  // 紐づかない場所は日時不明なので Map に含まれず、バッジ無しになる。
+  const dayByPlaceId = useMemo(() => {
+    if (!data?.trip?.start_date) return new Map<string, VisitDay>();
+    const scheduleEvents = deriveScheduleEvents(data.eventsRaw, data.todosRaw);
+    const tzTimeline = buildTripTzTimeline(
+      scheduleEvents,
+      data.trip?.default_timezone,
+    );
+    return visitDayByPlace(
+      scheduleEvents,
+      deriveOrderedExpenses(data.expensesRaw, tzTimeline),
+      tzTimeline,
+      data.trip.start_date,
+    );
+  }, [data]);
+
+  // 展開した行に出すエリアバッジ用。地図の初期表示（initialRegion）と同じ
+  // クラスタリング規則で、場所ごとにどのエリアに属すかを引けるようにする。
+  const areaByPlaceId = useMemo(() => {
+    const mapped = places.filter((p) => p.lat != null && p.lng != null);
+    return labelByPlace(
+      mapped.map((p) => ({
+        id: p.id,
+        lat: p.lat as number,
+        lng: p.lng as number,
+        region: p.region,
+        locality: p.locality,
+      })),
+    );
+  }, [places]);
+
   // 初期リージョン: 既存ピンの範囲/重心、無ければ東京。
   const initialRegion: Region = useMemo(() => {
     // 「ピンが集まっているところ」を映す。全ピンの外接矩形だと、離れた1点
@@ -402,6 +678,52 @@ export default function PlacesTab() {
       placeListRef.current?.scrollToIndex({ index, viewPosition: 0 });
     }
   }, [listOpen, editing, selectedCandidate, candidates, places]);
+
+  // ピン選択時のカメラ移動は本家 Google マップと同じ「ズームは一切変えず
+  // パンだけ」。狙い位置は「フォームシートに隠れない画面上寄り（上から約25%）」
+  // （中央に置くと下から出るフォームシートとちょうど重なる）。既にほぼ狙い
+  // 位置にあるピンは動かさない — 判定は本家同様厳しめ（画面の各軸10%以内）で、
+  // 少しでも端にあれば寄せる。ピンタップ時は Google SDK 既定の「ピンを中央へ」
+  // アニメーションと競合するので、フォームを開く各経路で必ずこれを呼び、
+  // 動かさない場合も現在中心への移動を発行して SDK 既定の移動を打ち消す。
+  const focusCoord = (lat: number, lng: number) => {
+    // 狙い位置のオフセットは表示範囲の高さ（latitudeDelta）に比例するので、
+    // **必ず呼び出し時点の実際の表示範囲を地図から取る**。React の state
+    // （region / scaleRegion）はスナップショットで、ジェスチャ中や直前の
+    // カメラアニメーションが収まっていない間は古い＝広い値を掴むことがあり、
+    // その場合オフセットが桁違いに大きくなって地図が全く違う場所へ飛ぶ
+    // （ピンチ中に指がマーカーに触れてタップ判定された時に実際に発生）。
+    // getMapBoundaries は現在の描画範囲を返すので、この経路には古い値が来ない。
+    void (async () => {
+      const map = mapRef.current;
+      if (!map) return;
+      let latDelta: number;
+      let center0: { latitude: number; longitude: number };
+      try {
+        const b = await map.getMapBoundaries();
+        latDelta = b.northEast.latitude - b.southWest.latitude;
+        center0 = {
+          latitude: (b.northEast.latitude + b.southWest.latitude) / 2,
+          longitude: (b.northEast.longitude + b.southWest.longitude) / 2,
+        };
+      } catch {
+        // 取得できない場合だけ state にフォールバックする。
+        const r = scaleRegion ?? region ?? initialRegion;
+        latDelta = r.latitudeDelta;
+        center0 = { latitude: r.latitude, longitude: r.longitude };
+      }
+      const lngDelta =
+        (scaleRegion ?? region ?? initialRegion).longitudeDelta || latDelta;
+      // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
+      const center = { latitude: lat - latDelta * 0.25, longitude: lng };
+      const dx = Math.abs(center.longitude - center0.longitude) / lngDelta;
+      const dy = Math.abs(center.latitude - center0.latitude) / latDelta;
+      const nearTarget = dx < 0.1 && dy < 0.1;
+      // ピンタップ時は Google SDK 既定の「ピンを中央へ」アニメーションと競合する
+      // ので、動かさない場合も現在中心への移動を発行して打ち消す。
+      map.animateCamera({ center: nearTarget ? center0 : center });
+    })();
+  };
 
   if (!data?.trip || !me) return null;
 
@@ -539,52 +861,6 @@ export default function PlacesTab() {
     } finally {
       setSearching(false);
     }
-  };
-
-  // ピン選択時のカメラ移動は本家 Google マップと同じ「ズームは一切変えず
-  // パンだけ」。狙い位置は「フォームシートに隠れない画面上寄り（上から約25%）」
-  // （中央に置くと下から出るフォームシートとちょうど重なる）。既にほぼ狙い
-  // 位置にあるピンは動かさない — 判定は本家同様厳しめ（画面の各軸10%以内）で、
-  // 少しでも端にあれば寄せる。ピンタップ時は Google SDK 既定の「ピンを中央へ」
-  // アニメーションと競合するので、フォームを開く各経路で必ずこれを呼び、
-  // 動かさない場合も現在中心への移動を発行して SDK 既定の移動を打ち消す。
-  const focusCoord = (lat: number, lng: number) => {
-    // 狙い位置のオフセットは表示範囲の高さ（latitudeDelta）に比例するので、
-    // **必ず呼び出し時点の実際の表示範囲を地図から取る**。React の state
-    // （region / scaleRegion）はスナップショットで、ジェスチャ中や直前の
-    // カメラアニメーションが収まっていない間は古い＝広い値を掴むことがあり、
-    // その場合オフセットが桁違いに大きくなって地図が全く違う場所へ飛ぶ
-    // （ピンチ中に指がマーカーに触れてタップ判定された時に実際に発生）。
-    // getMapBoundaries は現在の描画範囲を返すので、この経路には古い値が来ない。
-    void (async () => {
-      const map = mapRef.current;
-      if (!map) return;
-      let latDelta: number;
-      let center0: { latitude: number; longitude: number };
-      try {
-        const b = await map.getMapBoundaries();
-        latDelta = b.northEast.latitude - b.southWest.latitude;
-        center0 = {
-          latitude: (b.northEast.latitude + b.southWest.latitude) / 2,
-          longitude: (b.northEast.longitude + b.southWest.longitude) / 2,
-        };
-      } catch {
-        // 取得できない場合だけ state にフォールバックする。
-        const r = scaleRegion ?? region ?? initialRegion;
-        latDelta = r.latitudeDelta;
-        center0 = { latitude: r.latitude, longitude: r.longitude };
-      }
-      const lngDelta =
-        (scaleRegion ?? region ?? initialRegion).longitudeDelta || latDelta;
-      // ピンを画面の上から25%に置く＝中心はピンより latDelta の 1/4 南。
-      const center = { latitude: lat - latDelta * 0.25, longitude: lng };
-      const dx = Math.abs(center.longitude - center0.longitude) / lngDelta;
-      const dy = Math.abs(center.latitude - center0.latitude) / latDelta;
-      const nearTarget = dx < 0.1 && dy < 0.1;
-      // ピンタップ時は Google SDK 既定の「ピンを中央へ」アニメーションと競合する
-      // ので、動かさない場合も現在中心への移動を発行して打ち消す。
-      map.animateCamera({ center: nearTarget ? center0 : center });
-    })();
   };
 
   // region 確定（パン/ズーム終了）ごとに: 候補ラベル配置の再計算に使う state
@@ -735,6 +1011,21 @@ export default function PlacesTab() {
     setFormOpen(true);
   };
 
+  // 「p を選択（プレビュー）状態にする」共通処理。タップ起点
+  // （previewOrEditPlace）とスクロール確定起点（handleScrollSettle、下の
+  // onMomentumScrollEnd 節）の両方から呼ぶ。選択行がその場で膨らむ（住所・
+  // 日付/エリアバッジが現れる）分の高さ変化は LayoutAnimation で自動
+  // 補間する（FlatList の唯一の子制約があるため、行の高さそのものを
+  // reanimated で追わない。連続的な見た目の変化は rowFocusStyle の
+  // opacity/背景色だけが担う。下の renderItem 節参照）。
+  const commitPreviewPlace = (p: PlaceRow) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSelectedCandidate(null);
+    setEditing(p); // 選択（赤ピン）
+    closeSuggestions();
+    if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng); // 地図を寄せる
+  };
+
   // 一覧の保存済み（地図あり）の行タップ・地図上の確定済みピンタップの両方が
   // ここを通る: 1タップ目は地図をそのピンへ寄せて赤ピンで選択表示し、一覧
   // シートを開くだけ（編集フォームは出さない）＝一覧を見ながら／地図を眺め
@@ -745,11 +1036,170 @@ export default function PlacesTab() {
       setFormOpen(true); // 2タップ目: 編集
       return;
     }
-    setSelectedCandidate(null);
-    setEditing(p); // 選択（赤ピン）
-    closeSuggestions();
-    if (p.lat != null && p.lng != null) focusCoord(p.lat, p.lng); // 地図を寄せる
+    // 今まさに未選択→選択になる（＝これからシートが fit→半分 detent へ
+    // アニメーション遷移する）かを、setEditing する前に判定しておく。
+    const enteringPickerMode = editing == null;
+    commitPreviewPlace(p);
     setListOpen(true); // 地図のピンタップからも一覧を見せる（一覧はすでに開いていれば変化なし）
+    // タップでの選択もスワイプ選択と同じく行を一覧の中央に置く（Phase 2）。
+    //
+    // scrollToIndex（viewPosition 指定）は使わない: FlatList 内部の
+    // 「まだ描画/計測していない行は averageItemLength で推定する」仕組みが、
+    // 場所数が多く一覧が下まで未計測な状態だと大きくズレる（実機フィード
+    // バックで確認: 一覧の下の方の行をタップすると全然違う行が中央に来る）。
+    // 代わりに applyPickerFocus（下）の中央判定式をそのまま逆算した
+    // scrollToOffset を使う。同じ式の逆算なので、ここでスクロールした位置と
+    // applyPickerFocus が「中央」と判定する行が常に一致する
+    // （FlatList 自身の推定に頼らないので一覧の実測状態に左右されない）。
+    const index = places.findIndex((pl) => pl.id === p.id);
+    if (index < 0) return;
+    if (enteringPickerMode) {
+      // シートが fit→半分へアニメーション遷移する間、sheetViewportHeight の
+      // 実測（FlatList の onLayout）は古い値のまま追いつかない。今すぐ運ぶと
+      // 遷移前の高さを基準に計算してズレる（実機フィードバックで確認: 選択
+      // した行が下の方に隠れて出た）。onLayout 側（下）で遷移が落ち着くのを
+      // 待ってから実際に運ぶ。
+      pendingCenterIndexRef.current = index;
+    } else {
+      // 既に半分 detent＝高さは変わらないのですぐ運んでよい。
+      requestAnimationFrame(() => {
+        const offset =
+          pickerTopPad +
+          LIST_HEADER_H +
+          (index + 0.5) * LIST_ROW_H -
+          sheetViewportHeight / 2;
+        placeListRef.current?.scrollToOffset({
+          offset: Math.max(0, offset),
+          animated: true,
+        });
+      });
+    }
+  };
+
+  // Phase 2: 選択中（editing !== null）は、一覧を普通にスクロールするだけで
+  // iOS のピッカー/ドラムロールのように選択が次々切り替わる（長押し＋ドラッグ
+  // 案は「誰も気づかない」というフィードバックで撤回した）。「今どの行が
+  // 主役か」は一覧の中央に来ている行（ドラムロールの中心と同じ。一覧の
+  // 一番上に来た行を主役にする案は「先頭固定は分かりにくい」というフィード
+  // バックで撤回した）。
+  //
+  // 中央判定だけだと、先頭/末尾に近い行は画面の中央まで持ってこられず
+  // スワイプで選べなくなる（実機フィードバックで確認）。上下にパディングを
+  // 足し、一覧の端までスクロールした時にその行の中央がちょうど一覧の中央に
+  // 来るようにする（iOS の日付ピッカーと同じ考え方）。ヘッダー
+  // （「◯件の場所」）は先頭側だけに乗るので、その分だけ上のパディングを
+  // 短くする。
+  const pickerCenterPad =
+    editing != null ? Math.max(0, sheetViewportHeight / 2 - LIST_ROW_H / 2) : 0;
+  const pickerTopPad = Math.max(0, pickerCenterPad - LIST_HEADER_H);
+
+  // FlatList の実測可視高さが変わるたびに呼ぶ。pendingCenterIndexRef が
+  // 立っている間（previewOrEditPlace 参照）は、fit→半分 detent の遷移
+  // アニメーションが落ち着く（onLayout がしばらく発火しなくなる）まで
+  // デバウンスしてから、その時点の実測高さで中央へ運ぶ。closure で古い
+  // pickerTopPad/sheetViewportHeight を掴まないよう、このイベントの
+  // height からその場で計算し直す。
+  const handleListLayout = (e: LayoutChangeEvent) => {
+    const height = e.nativeEvent.layout.height;
+    setSheetViewportHeight(height);
+    const index = pendingCenterIndexRef.current;
+    if (index == null) return;
+    if (pendingCenterScrollTimerRef.current) {
+      clearTimeout(pendingCenterScrollTimerRef.current);
+    }
+    pendingCenterScrollTimerRef.current = setTimeout(() => {
+      pendingCenterIndexRef.current = null;
+      const centerPad = Math.max(0, height / 2 - LIST_ROW_H / 2);
+      const topPad = Math.max(0, centerPad - LIST_HEADER_H);
+      const offset =
+        topPad + LIST_HEADER_H + (index + 0.5) * LIST_ROW_H - height / 2;
+      placeListRef.current?.scrollToOffset({
+        offset: Math.max(0, offset),
+        animated: true,
+      });
+    }, 150);
+  };
+
+  // 一覧スクロールの現在位置から「今中央にある行」を求め、その場で
+  // commitPreviewPlace を呼ぶ＝タップ選択と全く同じ状態（赤ピン・住所・
+  // 日付/エリアバッジ・地図追従）を毎回そのまま反映する。「指を離した時に
+  // 確定する」段階を別に設けない（スワイプ中に見えているものが最終結果、
+  // という実機フィードバックへの対応）。onScroll は onViewableItemsChanged と
+  // 違って FlatList 側の可視判定のバッチ処理を経ないので、レイアウト変化
+  // （行の展開）だけでは発火せず、実際のスクロールに対して高頻度で呼ばれる
+  // （scrollEventThrottle）。
+  // focusProgress は reanimated の SharedValue（ref と同じ可変コンテナ）で、
+  // react-hooks/immutability はまだ「別の effect の依存配列に載っている値を
+  // ここで書き換える」ことと区別できないため、この関数の中だけ無効化する
+  // （week-calendar.tsx の ghostPan と同じ対処）。
+  /* eslint-disable react-hooks/immutability */
+  const applyPickerFocus = (offsetY: number) => {
+    if (editing == null) return;
+    if (sheetViewportHeight <= 0 || places.length === 0) return;
+    const centerY = offsetY + sheetViewportHeight / 2;
+    const raw = (centerY - pickerTopPad - LIST_HEADER_H) / LIST_ROW_H - 0.5;
+    const index = Math.round(Math.min(Math.max(raw, 0), places.length - 1));
+    if (index === liveFocusIndexRef.current) return;
+    const from = liveFocusIndexRef.current;
+    liveFocusIndexRef.current = index;
+    const item = places[index];
+    // 地図未登録の行はピッカーで選べない（タップ操作と同じ制約 —
+    // previewOrEditPlace も未登録の行では呼ばれず startLocate に回る）。
+    // 中央に来ても選択は直前のままにする＝地図の赤ピンと選択中の行が
+    // 食い違わないようにする。
+    if (!item || item.lat == null || item.lng == null) return;
+    if (item.id === editing.id) return; // 変化なし
+    // 「ドラムロールのように全部の行を拾う」: 一度に複数またいだ時も通過した
+    // 行の数だけハプティックを鳴らす（1回だけだと速いフリックで間の行を
+    // 飛ばした感触になる、という実機フィードバックへの対応）。
+    const steps = from < 0 ? 1 : Math.min(Math.abs(index - from), 8);
+    for (let i = 0; i < steps; i++) void Haptics.selectionAsync();
+    justCommittedRef.current = true; // 下の同期 effect の二重アニメを止める
+    focusProgress.value = withSpring(index, FOCUS_SPRING_CONFIG);
+    commitPreviewPlace(item); // タップ選択と同じ処理（赤ピン・住所・バッジ・地図追従）
+  };
+  /* eslint-enable react-hooks/immutability */
+
+  const handlePickerScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!isUserScrollingRef.current) return;
+    applyPickerFocus(e.nativeEvent.contentOffset.y);
+  };
+
+  // 指を離した瞬間に慣性（惰性スクロール）が残っていれば、そのまま
+  // isUserScrollingRef を true に保って、惰性で流れている間も
+  // handlePickerScroll がライブ反映され続けるようにする（普通にドラッグ
+  // している間と同じ動きにしたい、という実機フィードバックへの対応。
+  // ここで false にしてしまうと惰性中の onScroll が全部無視され、
+  // 「指を離すと止まるまで固まって、止まった瞬間に切り替わる」動きになる）。
+  // 慣性が残らない（ゆっくり指を離してそのまま止まる）場合は
+  // onMomentumScrollBegin/End 自体が発火しないので、ここで確定してよい。
+  const handleDragEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (Math.abs(e.nativeEvent.velocity?.y ?? 0) < 0.05) {
+      isUserScrollingRef.current = false;
+    }
+    applyPickerFocus(e.nativeEvent.contentOffset.y);
+  };
+
+  // 惰性スクロールが実際に止まった瞬間の最終位置での取りこぼし防止
+  // （scrollEventThrottle の間隔ぶんだけ最後の onScroll が実際の停止位置
+  // より僅かに古いことがある）。同じ行への2回目の呼び出しは
+  // applyPickerFocus が素通しするだけで実害はない。
+  //
+  // onMomentumScrollEnd はユーザーの指によるスクロールだけでなく、
+  // scrollToIndex({animated:true}) のようなプログラム的な animated scroll の
+  // 完了時にも native 側から発火する（iOS の
+  // scrollViewDidEndScrollingAnimation 相当）。previewOrEditPlace が選択直後に
+  // その行を中央へ運ぶための scrollToIndex を呼んでおり、その完了でここが
+  // 発火すると、行の高さの近似値（LIST_ROW_H）と scrollToIndex 自身が使う
+  // 実測/推定レイアウトの微妙なズレにより、applyPickerFocus が「中央」を
+  // 隣の行と誤認して選択を上書きしてしまっていた（実機フィードバックで確認:
+  // タップした行と違う行が選択された状態になる）。isUserScrollingRef が
+  // true（＝実際に指でスクロールしていた）時だけ確定させる。
+  const handleMomentumScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const wasUserScroll = isUserScrollingRef.current;
+    isUserScrollingRef.current = false;
+    if (!wasUserScroll) return;
+    applyPickerFocus(e.nativeEvent.contentOffset.y);
   };
 
   // 検索結果一覧の行タップ・地図上の候補ピンタップの両方がここを通る:
@@ -1253,10 +1703,24 @@ export default function PlacesTab() {
         // （本家 Google マップの検索結果シートと同じ）。
         // どちらも「小さい方」＋「大きい方」の2段で、ドラッグで切り替え
         // られるようにする（browse 側の値は上の browseSheet 参照）。
+        // 行を選択している間（editing !== null）は半分の detent だけに絞る。
+        // 一覧より地図が主役という方針で、選択中は地図を隠しすぎないよう
+        // それ以上シートを引き上げられなくする（sheetAllowedDetents の動的
+        // 変更は remount 無しで反映される・実機/シミュレータで確認済み）。
         sheetAllowedDetents={
-          listMode === "search" ? [0.25, 0.5] : browseSheet.detents
+          listMode === "search"
+            ? [0.25, 0.5]
+            : editing
+              ? [browseSheet.detents[0]]
+              : browseSheet.detents
         }
-        sheetInitialDetentIndex={listMode === "search" ? 1 : 0}
+        sheetInitialDetentIndex={
+          listMode === "search"
+            ? 1
+            : editing
+              ? 0
+              : 0 // browse も開いた瞬間は小さい方（画面の半分程度）から見せる
+        }
         sheetLargestUndimmedDetentIndex="last"
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
@@ -1376,11 +1840,20 @@ export default function PlacesTab() {
             ref={placeListRef}
             data={places}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={styles.list}
+            contentContainerStyle={[
+              styles.list,
+              { paddingBottom: LIST_BOTTOM_PADDING + pickerCenterPad },
+            ]}
             keyboardShouldPersistTaps="handled"
             // 中身の高さ＝シートの「フィット」detent の元になる値（上の
             // browseSheet 参照）。行の増減・note の折返しまで込みの実測値。
             onContentSizeChange={(_w, h) => setBrowseContentH(h)}
+            // Phase 2: 選択中の一覧スクロールをピッカー操作にするための実測
+            // 可視高さ（handlePickerScroll・上のパディング計算で使う）。
+            // タップ選択直後は fit→半分 detent の遷移が落ち着くまで、この
+            // 実測を使って中央へのスクロールをデバウンスする（詳細は
+            // handleListLayout 参照）。
+            onLayout={handleListLayout}
             // scrollToIndex の保険（検索結果側と同じ。理由はそちらのコメント）。
             onScrollToIndexFailed={({ index, averageItemLength }) => {
               placeListRef.current?.scrollToOffset({
@@ -1398,85 +1871,47 @@ export default function PlacesTab() {
             // 行 onPress のクロージャを最新の editing で作り直すため。無いと
             // 2タップ目の判定が古い editing=null のままになる）。
             extraData={`${editing?.id ?? ""}:${locating?.id ?? ""}`}
+            onScroll={handlePickerScroll}
+            scrollEventThrottle={16}
+            onScrollBeginDrag={() => {
+              isUserScrollingRef.current = true;
+            }}
+            onScrollEndDrag={handleDragEnd}
+            onMomentumScrollEnd={handleMomentumScrollEnd}
             ListHeaderComponent={
-              <View style={styles.sheetHeader}>
-                <Text style={styles.sheetCount}>{places.length}件の場所</Text>
-              </View>
+              <>
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetCount}>{places.length}件の場所</Text>
+                </View>
+                {/* ピッカー中の先頭/末尾の行を一覧の中央まで持ってこられる
+                    ようにする余白。ヘッダーの後ろに置くことで、ヘッダー
+                    自体はスクロール位置に関わらず常に一覧の先頭に留まる
+                    （余白がヘッダーの上に付くと、選択中だけヘッダーが下に
+                    ずれて見えてしまうため）。 */}
+                {pickerTopPad > 0 && <View style={{ height: pickerTopPad }} />}
+              </>
             }
-            renderItem={({ item }) => {
-                const unmapped = item.lat == null;
-                const isLocating = unmapped && item.id === locating?.id;
-                return (
-                  <Pressable
-                    onPress={() =>
-                      isLocating
-                        ? (setLocating(null), setPinDraft(null))
-                        : unmapped
-                          ? startLocate(item)
-                          : previewOrEditPlace(item)
-                    }
-                    style={[
-                      styles.placeRow,
-                      isLocating && styles.locatingRow,
-                      // 選択中（プレビュー中）の行を薄くハイライト（bg-accent 相当）。
-                      editing?.id === item.id && styles.selectedRow,
-                    ]}
-                  >
-                    <PlaceCategoryIcon
-                      icon={item.icon}
-                      size={20}
-                      color={item.tentative ? "#f59e0b" : "#10b981"}
-                    />
-                    <View style={styles.placeInfo}>
-                      <View style={styles.placeNameRow}>
-                        <Text style={styles.placeName} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        {item.visibility === "private" && (
-                          <LockIcon size={16} color={theme.mutedForeground} />
-                        )}
-                        {unmapped && (
-                          <View style={styles.unmappedBadge}>
-                            <Text style={styles.unmappedBadgeText}>
-                              {t("unmapped")}
-                            </Text>
-                          </View>
-                        )}
-                      </View>
-                      <Text style={styles.placeMeta}>
-                        {item.tentative
-                          ? t("statusCandidate")
-                          : t("statusConfirmed")}
-                        {" ・ "}
-                        {getIconLabel(item.icon)}
-                      </Text>
-                      {item.note ? (
-                        <Text style={styles.placeMeta} numberOfLines={2}>
-                          {item.note}
-                        </Text>
-                      ) : null}
-                    </View>
-                    {unmapped ? (
-                      <Text
-                        style={
-                          isLocating
-                            ? styles.cancelLocateLabel
-                            : styles.setPinLabel
-                        }
-                      >
-                        {isLocating ? t("cancelLocate") : t("setPin")}
-                      </Text>
-                    ) : (
-                      // プレビュー中（1タップ目・赤ピン選択）の行だけ、iOS標準の
-                      // 「＞」ディスクロージャ表示を出す＝もう1タップで編集に進む
-                      // ことを示す（本家 iOS リストの慣例と同じ見た目で表現）。
-                      editing?.id === item.id && (
-                        <ChevronIcon size={16} color={theme.mutedForeground} />
-                      )
-                    )}
-                  </Pressable>
-                );
-              }}
+            renderItem={({ item, index }) => (
+              <SavedPlaceRow
+                item={item}
+                index={index}
+                isSelected={editing?.id === item.id}
+                isLocating={item.lat == null && item.id === locating?.id}
+                day={dayByPlaceId.get(item.id)}
+                area={areaByPlaceId.get(item.id)}
+                focusProgress={focusProgress}
+                focusActive={focusActive}
+                theme={theme}
+                styles={styles}
+                t={t}
+                onStartLocate={() => startLocate(item)}
+                onCancelLocate={() => {
+                  setLocating(null);
+                  setPinDraft(null);
+                }}
+                onPreviewOrEdit={() => previewOrEditPlace(item)}
+              />
+            )}
             ListEmptyComponent={
               <Text style={styles.empty}>まだ場所がありません。</Text>
             }
@@ -1894,8 +2329,24 @@ const makeStyles = (t: Theme) =>
     borderLeftWidth: 4,
     borderLeftColor: "#fbbf24",
   },
-  // プレビュー中（1タップ目で選択）の行のハイライト（選択状態＝bg-accent 相当）。
-  selectedRow: { backgroundColor: t.fgAlpha(0.06) },
+  // プレビュー中（1タップ目で選択）の行の縦の余白（住所/バッジが増える分も
+  // 含めて「その場で膨らんだカード」に見せる。LayoutAnimation で高さ変化を
+  // 自動補間）。背景ハイライト・他行の薄さは rowFocusStyle（連続値）が担当
+  // するのでここには置かない。
+  selectedRow: { paddingVertical: 14 },
+  placeNameSelected: { fontWeight: "600" },
+  placeAddress: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
+  placeBadgeRow: { flexDirection: "row", alignItems: "center", gap: 6, marginTop: 4 },
+  // 日付バッジ＝一番伝えたい情報なので強調（bg-secondary + foreground の塗り
+  // チップ）。エリアはその補足なのでチップにせず控えめなテキストのみ。
+  dayBadge: {
+    borderRadius: 4,
+    backgroundColor: t.secondary,
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+  },
+  dayBadgeText: { fontSize: 11, color: t.foreground, fontWeight: "600" },
+  areaBadgeText: { fontSize: 11, color: t.mutedForeground },
   setPinLabel: { fontSize: 12, color: "#2563eb" },
   cancelLocateLabel: { fontSize: 12, color: t.warnAccent },
   // 位置指定モードのヒント帯（検索バーの下に重ねる）。
