@@ -132,11 +132,16 @@ export function AccountMenu({
                   )}
                 </Menu.Item>
               )}
+              {/* ログアウトは元に戻せる操作だが、世の中一般のアプリの慣例に
+                  合わせて destructive の赤にする（実機フィードバックで方針
+                  転換。削除等の不可逆操作だけを赤にする、という以前の方針
+                  より世の中の慣例を優先）。旅行削除メニューと同じ配色
+                  （trip-actions.tsx 参照）。 */}
               <Menu.Item
                 onClick={handleSignOut}
-                className={`flex items-center gap-2 ${menuItemClass}`}
+                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10"
               >
-                <LogOutIcon size={16} className="text-muted-foreground" />
+                <LogOutIcon size={16} />
                 {t("account.signOut")}
               </Menu.Item>
               <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">

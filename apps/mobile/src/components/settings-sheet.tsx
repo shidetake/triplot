@@ -21,6 +21,7 @@ import {
   ChevronIcon,
   EditIcon,
   InfoIcon,
+  LogOutIcon,
   MessageSquareIcon,
   SaveIcon,
 } from "@/components/icons";
@@ -186,7 +187,7 @@ export function SettingsSheet({
           )}
           {/* 右上の鉛筆マーク（編集できる感。web と同形） */}
           <View style={styles.avatarEditBadge}>
-            <EditIcon size={12} color={theme.primaryForeground} />
+            <EditIcon size={10} color={theme.primaryForeground} />
           </View>
         </Pressable>
         <View style={styles.grow}>
@@ -233,6 +234,10 @@ export function SettingsSheet({
         </Pressable>
       </View>
 
+      {/* ログアウトは元に戻せる操作だが、世の中一般のアプリの慣例に合わせて
+          destructive の赤にする（実機フィードバックで方針転換。削除等の
+          不可逆操作だけを赤にする、という以前の方針より世の中の慣例を
+          優先）。旅行削除ボタンと同じ「赤枠＋アイコン＋文字」の形。 */}
       <Pressable
         onPress={() => {
           onDone();
@@ -240,6 +245,7 @@ export function SettingsSheet({
         }}
         style={styles.signOutButton}
       >
+        <LogOutIcon size={16} color={theme.destructiveText} />
         <Text style={styles.signOutLabel}>{t("account.signOut")}</Text>
       </Pressable>
     </View>
@@ -316,10 +322,12 @@ const makeStyles = (t: Theme) =>
     height: 40,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
+    borderColor: t.destructiveBorder,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     marginTop: 24,
   },
-  signOutLabel: { fontSize: 13, fontWeight: "500", color: t.mutedForeground },
+  signOutLabel: { fontSize: 13, fontWeight: "500", color: t.destructiveText },
 });
