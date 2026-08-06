@@ -53,15 +53,38 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
-      {/* フィードバックは設定からのドリルイン（router.push）。native-stack の
-          push は @gorhom の stackBehavior="push" と同じ「前を裏に残して
-          上に重ねる」挙動を素で持つ。 */}
+      {/* フィードバック・このアプリについて・OSSライセンスは設定からの
+          ドリルイン（router.push）。native-stack の push は @gorhom の
+          stackBehavior="push" と同じ「前を裏に残して上に重ねる」挙動を
+          素で持つ。ライセンス一覧はこのアプリについてからのさらに1段
+          ドリルイン。 */}
       <Stack.Screen
         name="trips/feedback"
         options={{
           headerShown: false,
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="trips/about"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      {/* ライセンス一覧（576件）は中身にフィットさせず、開いた瞬間から
+          ほぼ画面いっぱいの決め打ち detent にする（fitToContents だと
+          中身が長大でシート自体の初期計測が安定しない）。 */}
+      <Stack.Screen
+        name="trips/licenses"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.9],
           sheetGrabberVisible: true,
         }}
       />

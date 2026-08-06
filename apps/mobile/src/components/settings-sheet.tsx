@@ -20,6 +20,7 @@ import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import {
   ChevronIcon,
   EditIcon,
+  InfoIcon,
   MessageSquareIcon,
   SaveIcon,
 } from "@/components/icons";
@@ -36,9 +37,11 @@ import { useSession } from "@/lib/session";
 export function SettingsSheet({
   onDone,
   onOpenFeedback,
+  onOpenAbout,
 }: {
   onDone: () => void;
   onOpenFeedback: () => void;
+  onOpenAbout: () => void;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -214,12 +217,21 @@ export function SettingsSheet({
         </View>
       </View>
 
-      {/* フィードバック（iOS 設定流のドリルイン行。旅行編集のカテゴリ管理行と同形） */}
-      <Pressable onPress={onOpenFeedback} style={styles.navRow}>
-        <MessageSquareIcon size={18} color={theme.mutedForeground} />
-        <Text style={styles.navRowLabel}>{t("feedback.menuLink")}</Text>
-        <ChevronIcon size={16} color={theme.subtleForeground} />
-      </Pressable>
+      {/* フィードバック・このアプリについて（iOS 設定流のドリルイン行の並び。
+          旅行編集のカテゴリ管理/エクスポート行と同形＝navList が上端の枠を
+          持ち、行同士の区切りは各 navRow の下端だけにする）。 */}
+      <View style={styles.navList}>
+        <Pressable onPress={onOpenFeedback} style={styles.navRow}>
+          <MessageSquareIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>{t("feedback.menuLink")}</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+        <Pressable onPress={onOpenAbout} style={styles.navRow}>
+          <InfoIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>このアプリについて</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+      </View>
 
       <Pressable
         onPress={() => {
@@ -287,13 +299,15 @@ const makeStyles = (t: Theme) =>
   },
   disabled: { opacity: 0.5 },
   // iOS 設定流のドリルイン行（edit-trip-sheet の navRow と同形）。
+  navList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.08),
+  },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: t.fgAlpha(0.08),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.fgAlpha(0.08),
   },

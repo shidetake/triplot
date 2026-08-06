@@ -334,3 +334,15 @@ export function SettingsIcon(p: IconProps) {
     </LucideIcon>
   );
 }
+
+// Lucide: info（設定 → このアプリについて。web 側に同等画面が無いため
+// このアイコンは RN 側のみ）
+export function InfoIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Circle cx={12} cy={12} r={10} />
+      <Path d="M12 16v-4" />
+      <Path d="M12 8h.01" />
+    </LucideIcon>
+  );
+}
