@@ -31,16 +31,16 @@ export function PlaceMarker({
   const border = t.dark ? "#6b7280" : "#fff";
   const glyph = t.dark ? "#202124" : "#fff";
   return (
+    // 影と丸クリップを同じ View に同居させると、react-native-maps が
+    // Marker を画像化する際に縁のアンチエイリアスが崩れ、密集時に縁が
+    // 黒ずんで見える（実機フィードバックで発覚）。影専用の外側 View
+    // （角丸なし）と、クリップ専用の内側 View（overflow:hidden で丸く
+    // 切り抜くだけ・影なし）に分離して、それぞれをきれいにラスタライズ
+    // させる。
     <View
       style={{
         width: size,
         height: size,
-        borderRadius: size / 2,
-        borderWidth: 2,
-        borderColor: border,
-        backgroundColor: bg,
-        alignItems: "center",
-        justifyContent: "center",
         opacity: tentative ? 0.5 : 1,
         shadowColor: "#000",
         shadowOpacity: 0.25,
@@ -49,9 +49,23 @@ export function PlaceMarker({
         elevation: 2,
       }}
     >
-      <Svg viewBox="0 -960 960 960" width={16} height={16}>
-        <Path d={getIconPath(icon)} fill={glyph} />
-      </Svg>
+      <View
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          borderWidth: 2,
+          borderColor: border,
+          backgroundColor: bg,
+          alignItems: "center",
+          justifyContent: "center",
+          overflow: "hidden",
+        }}
+      >
+        <Svg viewBox="0 -960 960 960" width={16} height={16}>
+          <Path d={getIconPath(icon)} fill={glyph} />
+        </Svg>
+      </View>
     </View>
   );
 }
