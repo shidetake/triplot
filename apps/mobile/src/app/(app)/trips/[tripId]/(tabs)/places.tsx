@@ -1349,27 +1349,20 @@ export default function PlacesTab() {
     applyPickerFocus(e.nativeEvent.contentOffset.y);
   };
 
-  // 検索結果一覧の行タップ・地図上の候補ピンタップの両方がここを通る:
-  // previewOrEditPlace と同じ2段階（1タップ目=選択のみ・2タップ目=フォーム）
-  // に揃える。検索候補は元々「探して選んだ」1タップ直行だったが、確定済み
-  // 一覧と操作感が食い違う（いきなり編集/追加シートが開く）という指摘を受けて
-  // 統一した。サジェスト確定（pickPrediction）・POIタップ（onPoiPress）は
-  // 別入口として従来どおり1タップ直行のまま（openAddCandidate/openEditPlace）。
+  // 検索結果一覧の行タップ・地図上の候補ピンタップの両方がここを通る。
+  // 追加は検索に入っている時点で意図がほぼ確実なので、サジェスト確定
+  // （pickPrediction）・POIタップ（onPoiPress）と同じ1タップ直行にする
+  // （実機フィードバックで方針転換。以前は確定済み一覧の2段階プレビューに
+  // 揃えていたが、編集ほど頻度が高くない「追加」に2タップは冗長だった）。
+  // 既に登録済みの場所と分かった場合だけは確定済み一覧と同じ2段階
+  // （previewOrEditPlace）に回す＝そちらは「編集」で頻度が低いため。
   const previewOrAddCandidate = (c: PlaceCandidate) => {
     const saved = findSavedByGoogleId(c.placeId);
     if (saved) {
       previewOrEditPlace(saved);
       return;
     }
-    if (selectedCandidate?.placeId === c.placeId) {
-      setFormOpen(true); // 2タップ目: 追加
-      return;
-    }
-    setSelectedCandidate(c);
-    setEditing(null);
-    closeSuggestions();
-    focusCoord(c.lat, c.lng);
-    setListOpen(true);
+    openAddCandidate(c);
   };
 
   // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
