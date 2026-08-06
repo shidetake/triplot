@@ -148,6 +148,20 @@ export default function PlacesTab() {
   const invalidate = useInvalidateTrip(tripId);
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // react-native-screens の既知の挙動: この画面の裏に formSheet
+  // （場所一覧・追加/編集フォーム）を重ねている間だけ insets.top が実機で
+  // 0 に化ける（実測で確認済み）。sheet の detent 比率の分母
+  // （下の referenceHeight）にそのまま使うと、シートが開くたびに分母が
+  // ずれて上限が狙った位置より奥まで開いてしまう。0 以外の値が来た時だけ
+  // 更新する「直近の正常値」ラッチで吸収する（向き固定＝portrait 専用
+  // アプリなので、insets.top が正当な理由で 0 になるケースは無い前提）。
+  // レンダー中に ref を書き換えると react-hooks/refs に弾かれるため、
+  // React 公式の「レンダー中に state を調整する」パターン（useRef ではなく
+  // useState + 条件付き setState）で持つ。
+  const [stableInsetsTop, setStableInsetsTop] = useState(insets.top);
+  if (insets.top > 0 && insets.top !== stableInsetsTop) {
+    setStableInsetsTop(insets.top);
+  }
   // 検索バーの下端の絶対位置（画面座標）。一覧シートの上限をこの下端に
   // 揃える（実機フィードバック: 場所が多いと「中身にフィット」がどこまでも
   // 伸びて検索バーまで隠してしまうため）ために実測する。
@@ -824,7 +838,7 @@ export default function PlacesTab() {
   // capHeight にすり替えると比率1.0が「検索バー下端」でなく「画面いっぱい」
   // に解決されてしまい、上限が効かなくなる（実機で発生した実バグ）。
   const SHEET_TOP_GAP = 12; // 検索バーとシートの間に残す隙間
-  const referenceHeight = windowHeight - insets.top;
+  const referenceHeight = windowHeight - stableInsetsTop;
   const maxSheetHeight =
     searchBarBottomY > 0
       ? Math.min(
