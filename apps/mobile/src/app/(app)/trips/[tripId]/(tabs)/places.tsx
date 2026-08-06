@@ -70,6 +70,7 @@ import {
 } from "@triplot/shared/placesSearch";
 import { setPlaceLocation } from "@triplot/shared/data/places";
 import {
+  earliestVisitByPlace,
   sortPlacesByItinerary,
   visitDayByPlace,
   type VisitDay,
@@ -559,6 +560,23 @@ export default function PlacesTab() {
     );
   }, [data]);
 
+  // エリアフィルタの並び順（旅程順）に使う、場所ごとの最初の訪問絶対時刻。
+  // dayIndex（日単位）だと「成田発・ホノルル着」が同じ1日目に収まる旅程で
+  // タイになり成田→ハワイの順が出せないため、ms 精度の方を使う。
+  const earliestMsByPlaceId = useMemo(() => {
+    if (!data) return new Map<string, number>();
+    const scheduleEvents = deriveScheduleEvents(data.eventsRaw, data.todosRaw);
+    const tzTimeline = buildTripTzTimeline(
+      scheduleEvents,
+      data.trip?.default_timezone,
+    );
+    return earliestVisitByPlace(
+      scheduleEvents,
+      deriveOrderedExpenses(data.expensesRaw, tzTimeline),
+      tzTimeline,
+    );
+  }, [data]);
+
   // 展開した行に出すエリアバッジ用。地図の初期表示（initialRegion）と同じ
   // クラスタリング規則で、場所ごとにどのエリアに属すかを引けるようにする。
   const areaByPlaceId = useMemo(() => {
@@ -579,11 +597,26 @@ export default function PlacesTab() {
   // 旅程順（dayIndex 昇順）。
   const areaFilterOptions = useMemo(() => {
     const counts = new Map<string | null, number>();
-    for (const label of areaByPlaceId.values()) {
+    // エリアの並び順＝旅程順（そのエリアに最初に訪れる場所の絶対時刻が
+    // 早い順）。「成田→ハワイ」の旅程なら千葉県が先に来るようにする
+    // （件数順だと訪問先が多いエリアが先頭に来て旅程と噛み合わない、との
+    // 実機フィードバック）。
+    const earliestMs = new Map<string | null, number>();
+    for (const [placeId, label] of areaByPlaceId) {
       counts.set(label, (counts.get(label) ?? 0) + 1);
+      const ms = earliestMsByPlaceId.get(placeId);
+      if (ms != null) {
+        const cur = earliestMs.get(label);
+        if (cur == null || ms < cur) earliestMs.set(label, ms);
+      }
     }
-    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
-  }, [areaByPlaceId]);
+    return [...counts.entries()].sort((a, b) => {
+      const ma = earliestMs.get(a[0]) ?? Infinity;
+      const mb = earliestMs.get(b[0]) ?? Infinity;
+      // 旅程が分からない（日時未定）エリア同士は件数の多い順で並べる。
+      return ma !== mb ? ma - mb : b[1] - a[1];
+    });
+  }, [areaByPlaceId, earliestMsByPlaceId]);
 
   const dayFilterOptions = useMemo(() => {
     const byDay = new Map<
@@ -1696,6 +1729,29 @@ export default function PlacesTab() {
         </View>
       </View>
 
+          {/* 場所フィルタ（エリア/日にちで地図のピン・一覧を絞り込む）。検索
+              バーの右隣（右上）に置く＝多くのアプリでフィルタが右上にある
+              慣例に合わせる。検索バー側を右に少し詰めて隙間を作る
+              （styles.searchBar の right 参照）。フィルタ中はアイコンを
+              塗り＋青地にして常に一目で分かるようにする（フィルタしっぱなし
+              で忘れるのを防ぐ、との要望）。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => filterSheetRef.current?.present()}
+              style={[
+                styles.filterButtonTop,
+                placeFilter && styles.filterButtonActive,
+              ]}
+              accessibilityLabel={
+                placeFilter
+                  ? t("filterAria", { label: placeFilterLabel(placeFilter) })
+                  : t("filterTitle")
+              }
+            >
+              <FilterIcon size={18} color={placeFilter ? "#fff" : theme.foreground} />
+            </Pressable>
+          )}
+
           {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
               押した時だけ native の formSheet で一覧を出す＝閉じている間は
               タブバーが見える。中身は native の摺りガラス（UIVisualEffectView
@@ -1802,23 +1858,6 @@ export default function PlacesTab() {
             </Pressable>
           )}
 
-          {/* 場所フィルタ（エリア/日にちで地図のピン・一覧を絞り込む）。
-              現在地ボタンの左隣に置く。フィルタ中はアイコンを塗り＋青地に
-              して常に一目で分かるようにする（フィルタしっぱなしで忘れる
-              のを防ぐ、との要望）。 */}
-          {!locating && (
-            <Pressable
-              onPress={() => filterSheetRef.current?.present()}
-              style={[styles.filterButton, placeFilter && styles.filterButtonActive]}
-              accessibilityLabel={
-                placeFilter
-                  ? t("filterAria", { label: placeFilterLabel(placeFilter) })
-                  : t("filterTitle")
-              }
-            >
-              <FilterIcon size={18} color={placeFilter ? "#fff" : theme.foreground} />
-            </Pressable>
-          )}
         </View>
       </ScreenStackItem>
 
@@ -2363,7 +2402,8 @@ const makeStyles = (t: Theme) =>
     position: "absolute",
     top: 12,
     left: 12,
-    right: 12,
+    // 右はフィルタボタン（44幅 + 隙間12）ぶん詰める。
+    right: 68,
   },
   // 入力欄とサジェストを縦に重ねる器。
   searchInputWrap: {
@@ -2456,11 +2496,11 @@ const makeStyles = (t: Theme) =>
     shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  // 場所フィルタ。現在地ボタンと同じ高さで左隣（12 隙間 + 44 幅 + 12 隙間）。
-  filterButton: {
+  // 場所フィルタ。検索バーと同じ高さで右上（多くのアプリの慣例に合わせる）。
+  filterButtonTop: {
     position: "absolute",
-    right: 68,
-    bottom: 100,
+    top: 12,
+    right: 12,
     width: 44,
     height: 44,
     borderRadius: 22,

@@ -347,12 +347,16 @@ export function InfoIcon(p: IconProps) {
   );
 }
 
-// Lucide: filter（地図画面の場所フィルタ。web 側に同等 UI が無いため
-// このアイコンは RN 側のみ）
+// Lucide: list-filter（地図画面の場所フィルタ。3本線が段々短くなる形
+// ＝ iOS Messages の「フィルタ」・Google の filter_list と同じ見た目
+// （漏斗アイコンより「フィルタ感」が強い、との実機フィードバック）。
+// web 側に同等 UI が無いためこのアイコンは RN 側のみ）
 export function FilterIcon(p: IconProps) {
   return (
     <LucideIcon {...p}>
-      <Path d="M10 20a1 1 0 0 0 .553.895l2 1A1 1 0 0 0 14 21v-7a2 2 0 0 1 .517-1.341L21.74 4.67A1 1 0 0 0 21 3H3a1 1 0 0 0-.742 1.67l7.225 7.989A2 2 0 0 1 10 14z" />
+      <Path d="M2 5h20" />
+      <Path d="M6 12h12" />
+      <Path d="M9 19h6" />
     </LucideIcon>
   );
 }
