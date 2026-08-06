@@ -20,6 +20,7 @@
 import {
   eventEndPlaceId,
   resolveEventTz,
+  utcMsToWallClock,
   wallClockToUtcMs,
   type ScheduleEvent,
   type TripTzTimeline,
@@ -56,22 +57,22 @@ export type OrderableExpense = {
   tz: string;
 };
 
-/**
- * 場所ごとの「最初に訪れる絶対時刻(ms)」。予定にも費用にも紐づかない場所は
- * 含まない（＝日時不明）。
- *
- * 壁時計のまま比べると TZ を跨いだとき順序が狂う（費用の発生順が絶対時刻な
- * のと同じ理由）ので、TZ を解決してから UTC ミリ秒にして比べる。
- */
-export function earliestVisitByPlace(
+// 場所ごとの「最初に訪れる」絶対時刻(ms)と、その時刻を出した際に使った TZ。
+// TZ も保持するのは、同じ ms でも読み直す TZ が違えば現地の日付が変わるため
+// （visitDayByPlace が「実際に採用された TZ」で日付を出すのに要る）。
+type VisitDetail = { ms: number; tz: string };
+
+function earliestVisitDetailByPlace(
   events: OrderableEvent[],
   expenses: OrderableExpense[],
   tzTimeline: TripTzTimeline,
-): Map<string, number> {
-  const earliest = new Map<string, number>();
-  const keepEarliest = (placeId: string, ms: number) => {
+): Map<string, VisitDetail> {
+  const earliest = new Map<string, VisitDetail>();
+  const keepEarliest = (placeId: string, ms: number, tz: string) => {
     const current = earliest.get(placeId);
-    if (current === undefined || ms < current) earliest.set(placeId, ms);
+    if (current === undefined || ms < current.ms) {
+      earliest.set(placeId, { ms, tz });
+    }
   };
 
   for (const e of events) {
@@ -92,23 +93,78 @@ export function earliestVisitByPlace(
     // 出発地には出発時刻、到着地には到着時刻を当てる（移動の到着空港が
     // 出発時刻で並ぶとおかしいため）。到着時刻が無ければ出発時刻で代用。
     if (startPlaceId) {
-      keepEarliest(startPlaceId, wallClockToUtcMs(e.startAt, tz));
+      keepEarliest(startPlaceId, wallClockToUtcMs(e.startAt, tz), tz);
     }
     if (endPlaceId && endPlaceId !== startPlaceId) {
       const arriveTz = e.kind === "transit" ? (e.endTz as string) : tz;
       keepEarliest(
         endPlaceId,
         wallClockToUtcMs(e.endAt ?? e.startAt, arriveTz),
+        arriveTz,
       );
     }
   }
 
   for (const x of expenses) {
     if (!x.place_id) continue;
-    keepEarliest(x.place_id, wallClockToUtcMs(x.paid_at, x.tz));
+    keepEarliest(x.place_id, wallClockToUtcMs(x.paid_at, x.tz), x.tz);
   }
 
   return earliest;
+}
+
+/**
+ * 場所ごとの「最初に訪れる絶対時刻(ms)」。予定にも費用にも紐づかない場所は
+ * 含まない（＝日時不明）。
+ *
+ * 壁時計のまま比べると TZ を跨いだとき順序が狂う（費用の発生順が絶対時刻な
+ * のと同じ理由）ので、TZ を解決してから UTC ミリ秒にして比べる。
+ */
+export function earliestVisitByPlace(
+  events: OrderableEvent[],
+  expenses: OrderableExpense[],
+  tzTimeline: TripTzTimeline,
+): Map<string, number> {
+  const detail = earliestVisitDetailByPlace(events, expenses, tzTimeline);
+  return new Map([...detail].map(([id, d]) => [id, d.ms]));
+}
+
+export type VisitDay = {
+  /** 旅行開始日を1日目とした通算日数 */
+  dayIndex: number;
+  /** 現地の壁時計での訪問日 "YYYY-MM-DD" */
+  date: string;
+};
+
+/** "YYYY-MM-DD" 同士の通算日数の差（うるう秒等は無視できる粒度）。 */
+function daysBetween(from: string, to: string): number {
+  const parse = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    return Date.UTC(y, m - 1, day);
+  };
+  return Math.round((parse(to) - parse(from)) / 86400000);
+}
+
+/**
+ * 場所ごとの「最初に訪れる日」。予定/費用のどちらにも紐づかない場所は含まない
+ * （＝日時不明。一覧側は日付バッジを出さない）。
+ *
+ * dayIndex は tripStartDate を1日目とした通算日数。date は、その訪問時刻を
+ * 実際に読んだ TZ（earliestVisitDetailByPlace 参照）での現地の日付。
+ */
+export function visitDayByPlace(
+  events: OrderableEvent[],
+  expenses: OrderableExpense[],
+  tzTimeline: TripTzTimeline,
+  tripStartDate: string,
+): Map<string, VisitDay> {
+  const detail = earliestVisitDetailByPlace(events, expenses, tzTimeline);
+  const result = new Map<string, VisitDay>();
+  for (const [placeId, { ms, tz }] of detail) {
+    const date = utcMsToWallClock(ms, tz).slice(0, 10);
+    result.set(placeId, { dayIndex: daysBetween(tripStartDate, date) + 1, date });
+  }
+  return result;
 }
 
 // 群の番号（小さいほど上）。上のコメントの 1〜4 に対応（候補は地図未登録かで

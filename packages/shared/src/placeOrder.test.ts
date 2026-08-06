@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
+  visitDayByPlace,
   type OrderableEvent,
   type OrderableExpense,
   type OrderablePlace,
@@ -161,6 +162,63 @@ describe("earliestVisitByPlace", () => {
     };
     const m = earliestVisitByPlace([transit], [], TO_HAWAII);
     expect(m.get("hnd")).toBe(Date.parse("2026-04-28T18:00+09:00"));
+  });
+});
+
+describe("visitDayByPlace", () => {
+  it("旅行開始日を1日目とした通算日数を返す", () => {
+    const m = visitDayByPlace(
+      [event("p", "2026-04-30T09:00")],
+      [],
+      TOKYO,
+      "2026-04-28",
+    );
+    expect(m.get("p")).toEqual({ dayIndex: 3, date: "2026-04-30" });
+  });
+
+  it("開始日当日の訪問は1日目", () => {
+    const m = visitDayByPlace(
+      [event("p", "2026-04-28T09:00")],
+      [],
+      TOKYO,
+      "2026-04-28",
+    );
+    expect(m.get("p")?.dayIndex).toBe(1);
+  });
+
+  it("日付は絶対時刻を実際に読んだ現地TZで出す（乗継先はホノルル日付）", () => {
+    // 成田 4/28 18:00(JST) 発 → ホノルル 4/28 08:00(HST) 着。
+    // 東京から見た絶対時刻はホノルル 4/28 08:00 の方が後だが、現地日付は
+    // 出発と同じ「4/28」のまま（サマータイム跨ぎでずれない形の確認）。
+    const m = visitDayByPlace(
+      [
+        {
+          kind: "transit",
+          startAt: "2026-04-28T18:00",
+          endAt: "2026-04-28T08:00",
+          startTz: "Asia/Tokyo",
+          endTz: "Pacific/Honolulu",
+          tzDisambigTransitId: null,
+          tzDisambigSide: null,
+          startPlaceId: "nrt",
+          endPlaceId: "hnl",
+        },
+      ],
+      [],
+      TO_HAWAII,
+      "2026-04-28",
+    );
+    expect(m.get("hnl")).toEqual({ dayIndex: 1, date: "2026-04-28" });
+  });
+
+  it("場所に紐づかない予定・費用は含まない（日付バッジ無しの扱い）", () => {
+    const m = visitDayByPlace(
+      [event(null, "2026-04-28T09:00")],
+      [],
+      TOKYO,
+      "2026-04-28",
+    );
+    expect(m.size).toBe(0);
   });
 });
 

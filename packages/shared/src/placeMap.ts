@@ -213,3 +213,20 @@ export function dominantCenter(points: LatLng[]): LatLng | null {
   const b = boundsOf(focus);
   return b ? centerOf(b) : null;
 }
+
+// 場所一覧のエリアバッジ用。各場所がどのクラスタに属するかを引けるよう、
+// id → そのクラスタの label に写像する（クラスタ計算そのものは clusterPlaces
+// に任せ、ここでは1回走らせて結果を id で引けるようにするだけ）。
+export function labelByPlace<T extends ClusterInput & { id: string }>(
+  places: T[],
+  gapKm: number = CLUSTER_GAP_KM,
+): Map<string, string | null> {
+  const clusters = clusterPlaces(places, gapKm);
+  const byId = new Map<string, string | null>();
+  for (const cluster of clusters) {
+    for (const p of cluster.points as T[]) {
+      byId.set(p.id, cluster.label);
+    }
+  }
+  return byId;
+}

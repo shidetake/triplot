@@ -7,6 +7,7 @@ import {
   clusterPlaces,
   dominantCenter,
   dominantCluster,
+  labelByPlace,
   type LatLng,
 } from "./placeMap";
 
@@ -226,5 +227,42 @@ describe("dominantCenter", () => {
     const expected = centerOf(boundsOf(pts)!);
     expect(c.lat).toBeCloseTo(expected.lat, 6);
     expect(c.lng).toBeCloseTo(expected.lng, 6);
+  });
+});
+
+describe("labelByPlace", () => {
+  const p = (
+    id: string,
+    lat: number,
+    lng: number,
+    region: string | null = null,
+    locality: string | null = null,
+  ): ClusterInput & { id: string } => ({ id, lat, lng, region, locality });
+
+  it("同じクラスタの場所は同じラベルになる", () => {
+    const m = labelByPlace([
+      p("honolulu", 21.31, -157.86, "Hawaii", "Honolulu"),
+      p("kailua", 21.4, -157.74, "Hawaii", "Kailua"),
+    ]);
+    expect(m.get("honolulu")).toBe("Hawaii");
+    expect(m.get("kailua")).toBe("Hawaii");
+  });
+
+  it("離れた場所は別のクラスタ・別のラベルになる", () => {
+    const m = labelByPlace([
+      p("narita", 35.77, 140.39, "Chiba", "Narita"),
+      p("honolulu", 21.31, -157.86, "Hawaii", "Honolulu"),
+    ]);
+    expect(m.get("narita")).toBe("Chiba");
+    expect(m.get("honolulu")).toBe("Hawaii");
+  });
+
+  it("地域情報が無い場所は null（一覧側でフォールバック表示する）", () => {
+    const m = labelByPlace([p("mystery", 10, 10)]);
+    expect(m.get("mystery")).toBeNull();
+  });
+
+  it("空配列は空の Map", () => {
+    expect(labelByPlace([]).size).toBe(0);
   });
 });
