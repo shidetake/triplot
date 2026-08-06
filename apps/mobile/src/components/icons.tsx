@@ -7,11 +7,16 @@ import { useTheme } from "@/lib/theme";
 // 中立な線画。iOS でも SF Symbols に置き換えず同じ Lucide パスを RN 側で描き、
 // web/iOS で見た目を統一する」）。パスは web 側と同一値を保つこと。
 
-type IconProps = { size?: number; color?: import("react-native").ColorValue };
+type IconProps = {
+  size?: number;
+  color?: import("react-native").ColorValue;
+  strokeWidth?: number;
+};
 
 function LucideIcon({
   size = 18,
   color,
+  strokeWidth = 2,
   children,
 }: IconProps & { children: React.ReactNode }) {
   const t = useTheme();
@@ -23,7 +28,7 @@ function LucideIcon({
       height={size}
       fill="none"
       stroke={color}
-      strokeWidth={2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       // 子要素の fill="currentColor"（LockIcon の塗り等）をこの色に解決させる
@@ -352,8 +357,10 @@ export function InfoIcon(p: IconProps) {
 // （漏斗アイコンより「フィルタ感」が強い、との実機フィードバック）。
 // web 側に同等 UI が無いためこのアイコンは RN 側のみ）
 export function FilterIcon(p: IconProps) {
+  // 既定の strokeWidth(2) だと地図右上の現在地アイコンと並べた時に細く
+  // 見えたため、この用途だけ少し太くする（実機フィードバック）。
   return (
-    <LucideIcon {...p}>
+    <LucideIcon strokeWidth={2.4} {...p}>
       <Path d="M2 5h20" />
       <Path d="M6 12h12" />
       <Path d="M9 19h6" />

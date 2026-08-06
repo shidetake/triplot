@@ -95,7 +95,6 @@ import {
   PlaceMarker,
   RedPin,
 } from "@/components/place-marker";
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import {
   CheckIcon,
   ChevronIcon,
@@ -117,15 +116,15 @@ const STAR_PATH =
 
 // 「現在地に戻る」ボタンのグリフ（Material Symbols "navigation"）。本家
 // Google マップ・iOS マップと同じく現在地を指している間だけ塗り、それ以外は
-// アウトラインのみにする（塗り=fill1・アウトライン=既定/fill0 の2バリアント）。
-// 地図・Google 連携のビジュアルは Google に合わせる（ui-guidelines）。
-// アウトラインは既定ウェイト(400)だと他の操作アイコン（Lucide line、
-// strokeWidth 2/24viewBox）よりだいぶ太く見えたため、Material Symbols の
-// 可変ウェイト軸で最も細い wght100 に差し替えている（実機フィードバック）。
+// アウトラインのみにする。地図・Google 連携のビジュアルは Google に合わせる
+// （ui-guidelines）。
+// アウトラインは Material Symbols のウェイト違いパス（fill0 バリアント）を
+// 別に持たせず、塗りと同じこの1パスを stroke 描画するだけにする＝ウェイト
+// 違いのパスはシルエット自体のサイズ/比率が変わり、塗り⇄アウトライン切替で
+// 大きさが揃わず不自然だった（実機フィードバック）。太さは描画側の
+// strokeWidth だけで調整する。
 const NAVIGATION_ICON_FILLED_PATH =
   "M480-240 222-130q-13 5-24.5 2.5T178-138q-8-8-10.5-20t2.5-25l273-615q5-12 15.5-18t21.5-6q11 0 21.5 6t15.5 18l273 615q5 13 2.5 25T782-138q-8 8-19.5 10.5T738-130L480-240Z";
-const NAVIGATION_ICON_OUTLINE_PATH =
-  "m480-296-180 77q-10 4-18.5 1.5T267-226q-6-6-8.5-15t2.5-18l192-431q4-9 11.5-13.5T480-708q8 0 15.5 4.5T507-690l192 431q5 9 2.5 18t-8.5 15q-6 6-14.5 8.5T660-219l-180-77Zm-196 52 196-84 196 84-196-440-196 440Zm196-84Z";
 
 // Places autocomplete のセッショントークン（課金束ね用）。render 中には
 // 呼ばない（イベントハンドラから使う）。
@@ -371,7 +370,11 @@ export default function PlacesTab() {
   // 寄せるだけで表示/非表示は変えないが、ここは「その場所だけ表示」という
   // 明示の要望なので実際に絞り込む）。
   const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
-  const filterSheetRef = useRef<FormSheetRef>(null);
+  // フィルタの選択肢シート。@gorhom の FormSheet ではなく他の一覧/編集フォーム
+  // と同じ native formSheet（ScreenStackItem）にする＝native の摺りガラス
+  // 質感・グラバー位置がその2つと揃う（実機フィードバック: FormSheet だと
+  // 透明感が無く、ヘッダーの上余白も他と食い違って見えていた）。
+  const [filterOpen, setFilterOpen] = useState(false);
   // 一覧シート（browse）の中身の実測高さ（FlatList の contentSize）。detent を
   // 「中身にフィット」と「その半分」の2段で組むのに使う（下の browseSheet）。
   const [browseContentH, setBrowseContentH] = useState<number | null>(null);
@@ -663,7 +666,7 @@ export default function PlacesTab() {
   // 解除する。範囲が見えるよう地図もそこへ合わせる。
   const applyPlaceFilter = (f: PlaceFilter | null) => {
     setPlaceFilter(f);
-    filterSheetRef.current?.dismiss();
+    setFilterOpen(false);
     if (editing && f && !matchesPlaceFilter(editing.id, f)) {
       setEditing(null);
       setFormOpen(false);
@@ -1457,7 +1460,6 @@ export default function PlacesTab() {
   });
 
   return (
-    <>
     <ScreenStack style={StyleSheet.absoluteFill}>
       {/* ベース画面: 地図＋検索バー＋位置指定バナー。常設リストと追加/編集
           フォームはこの上に native の formSheet として重ねる。
@@ -1740,7 +1742,7 @@ export default function PlacesTab() {
               で忘れるのを防ぐ、との要望）。 */}
           {!locating && (
             <Pressable
-              onPress={() => filterSheetRef.current?.present()}
+              onPress={() => setFilterOpen(true)}
               style={[
                 styles.filterButtonTop,
                 placeFilter && styles.filterButtonActive,
@@ -1849,13 +1851,18 @@ export default function PlacesTab() {
                   ],
                 }}
               >
+                {/* アウトラインは専用の Material Symbols パス（ウェイト違い）
+                    ではなく、塗りと同じ NAVIGATION_ICON_FILLED_PATH を
+                    stroke 描画で縁取るだけにする。ウェイト違いのパスは
+                    シルエット自体のサイズ/比率が変わり、塗り⇄アウトライン
+                    切替時に大きさが揃わず不自然だった（実機フィードバック）。
+                    strokeWidth だけを太さの調整点にする。 */}
                 <Path
-                  d={
-                    followingLocation
-                      ? NAVIGATION_ICON_FILLED_PATH
-                      : NAVIGATION_ICON_OUTLINE_PATH
-                  }
-                  fill={followingLocation ? "#4285F4" : theme.foreground}
+                  d={NAVIGATION_ICON_FILLED_PATH}
+                  fill={followingLocation ? "#4285F4" : "none"}
+                  stroke={followingLocation ? undefined : theme.foreground}
+                  strokeWidth={followingLocation ? undefined : 66}
+                  strokeLinejoin="round"
                 />
               </Svg>
             </Pressable>
@@ -2158,83 +2165,107 @@ export default function PlacesTab() {
           </ScrollView>
         </ScreenStackItem>
       )}
-    </ScreenStack>
-
-    {/* 場所フィルタの選択肢（エリア/日にち）。@gorhom の BottomSheetModal は
-        Portal で描画するため ScreenStack の外に置いても表示上は問題ない
-        （todos.tsx の優先度ピッカーと同じパターン）。 */}
-    <FormSheet ref={filterSheetRef} sizeToContent>
-      {() => (
-        <View>
-          <SheetTitle>{t("filterTitle")}</SheetTitle>
-          <Pressable
-            onPress={() => applyPlaceFilter(null)}
-            style={styles.priorityRow}
-          >
-            <Text style={styles.priorityRowLabel}>{t("filterAll")}</Text>
-            {!placeFilter && (
-              <CheckIcon size={16} color={theme.mutedForeground} />
+      {/* 場所フィルタの選択肢（エリア/日にち）。一覧/編集フォームと同じ native
+          formSheet にする＝グラバー位置・摺りガラス質感がその2つと揃う
+          （実機フィードバック: 以前使っていた @gorhom の FormSheet は透明感が
+          無く、ヘッダー上余白も他と食い違って見えていた）。 */}
+      {filterOpen && (
+        <ScreenStackItem
+          screenId="places-filter"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setFilterOpen(false)}
+        >
+          <ScrollView contentContainerStyle={styles.formScroll}>
+            <SheetTitle>{t("filterTitle")}</SheetTitle>
+            <Pressable
+              onPress={() => applyPlaceFilter(null)}
+              style={[styles.priorityRow, !placeFilter && styles.priorityRowSelected]}
+            >
+              <Text
+                style={[
+                  styles.priorityRowLabel,
+                  !placeFilter && styles.priorityRowLabelSelected,
+                ]}
+              >
+                {t("filterAll")}
+              </Text>
+              {!placeFilter && (
+                <CheckIcon size={16} color={theme.mutedForeground} />
+              )}
+            </Pressable>
+            {areaFilterOptions.length > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionArea")}
+                </Text>
+                {areaFilterOptions.map(([label, count]) => {
+                  const selected =
+                    placeFilter?.kind === "area" && placeFilter.label === label;
+                  return (
+                    <Pressable
+                      key={`area:${label ?? ""}`}
+                      onPress={() => applyPlaceFilter({ kind: "area", label })}
+                      style={[styles.priorityRow, selected && styles.priorityRowSelected]}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityRowLabel,
+                          selected && styles.priorityRowLabelSelected,
+                        ]}
+                      >
+                        {label ?? t("other")}
+                      </Text>
+                      <Text style={styles.filterCount}>{count}</Text>
+                      {selected && (
+                        <CheckIcon size={16} color={theme.mutedForeground} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </>
             )}
-          </Pressable>
-          {areaFilterOptions.length > 0 && (
-            <>
-              <Text style={styles.filterSectionLabel}>
-                {t("filterSectionArea")}
-              </Text>
-              {areaFilterOptions.map(([label, count]) => {
-                const selected =
-                  placeFilter?.kind === "area" && placeFilter.label === label;
-                return (
-                  <Pressable
-                    key={`area:${label ?? ""}`}
-                    onPress={() => applyPlaceFilter({ kind: "area", label })}
-                    style={styles.priorityRow}
-                  >
-                    <Text style={styles.priorityRowLabel}>
-                      {label ?? t("other")}
-                    </Text>
-                    <Text style={styles.filterCount}>{count}</Text>
-                    {selected && (
-                      <CheckIcon size={16} color={theme.mutedForeground} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </>
-          )}
-          {dayFilterOptions.length > 0 && (
-            <>
-              <Text style={styles.filterSectionLabel}>
-                {t("filterSectionDay")}
-              </Text>
-              {dayFilterOptions.map((d) => {
-                const selected =
-                  placeFilter?.kind === "day" &&
-                  placeFilter.dayIndex === d.dayIndex;
-                return (
-                  <Pressable
-                    key={`day:${d.dayIndex}`}
-                    onPress={() =>
-                      applyPlaceFilter({ kind: "day", dayIndex: d.dayIndex })
-                    }
-                    style={styles.priorityRow}
-                  >
-                    <Text style={styles.priorityRowLabel}>
-                      {`${d.dayIndex}日目・${formatDayLabel(d.date)}`}
-                    </Text>
-                    <Text style={styles.filterCount}>{d.count}</Text>
-                    {selected && (
-                      <CheckIcon size={16} color={theme.mutedForeground} />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </>
-          )}
-        </View>
+            {dayFilterOptions.length > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionDay")}
+                </Text>
+                {dayFilterOptions.map((d) => {
+                  const selected =
+                    placeFilter?.kind === "day" &&
+                    placeFilter.dayIndex === d.dayIndex;
+                  return (
+                    <Pressable
+                      key={`day:${d.dayIndex}`}
+                      onPress={() =>
+                        applyPlaceFilter({ kind: "day", dayIndex: d.dayIndex })
+                      }
+                      style={[styles.priorityRow, selected && styles.priorityRowSelected]}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityRowLabel,
+                          selected && styles.priorityRowLabelSelected,
+                        ]}
+                      >
+                        {`${d.dayIndex}日目・${formatDayLabel(d.date)}`}
+                      </Text>
+                      <Text style={styles.filterCount}>{d.count}</Text>
+                      {selected && (
+                        <CheckIcon size={16} color={theme.mutedForeground} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </>
+            )}
+          </ScrollView>
+        </ScreenStackItem>
       )}
-    </FormSheet>
-    </>
+    </ScreenStack>
   );
 }
 
@@ -2569,7 +2600,7 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
   },
   sheetCount: { fontSize: 13, color: t.mutedForeground },
-  // 場所フィルタ（FormSheet）の選択行。todos.tsx の優先度ピッカーと同形。
+  // 場所フィルタの選択行。todos.tsx の優先度ピッカーと同形（行の骨格）。
   priorityRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -2579,7 +2610,14 @@ const makeStyles = (t: Theme) =>
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.fgAlpha(0.08),
   },
+  // 選択中はチェックマークだけだと目立たなかったため、web の
+  // メニュー/ドロップダウンの選択行と同じ bg-accent 相当（このアプリの
+  // secondary は web の --accent と同値）＋太字を行全体に効かせる
+  // （このアプリに native の「選択行」精度は無いので、web の既存の選択行
+  // 表現に合わせるのが「合わせる」の対象。ui-guidelines「定型部品」参照）。
+  priorityRowSelected: { backgroundColor: t.secondary },
   priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+  priorityRowLabelSelected: { fontWeight: "600" },
   filterSectionLabel: {
     fontSize: 12,
     color: t.subtleForeground,
