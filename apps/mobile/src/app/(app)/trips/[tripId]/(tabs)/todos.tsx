@@ -360,8 +360,14 @@ function TodoSection({
                   <PriorityIcon priority={todo.priority} />
                 </Pressable>
 
-                {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・作成者）／
-                    右端=押すもの（♥・削除）」のグループ分け（web と同形）。 */}
+                {/* 行の並びは「左=読む情報（優先度・タイトル・鍵）／
+                    右端=誰の投稿か＋押すもの（作成者アバター・♥・削除）」の
+                    グループ分け（web と同形）。作成者アバターはタイトルの
+                    長さに関係なく行の右側に揃える＝タイトル側（flex）に
+                    置くと文字の長さでアバターの位置がガタつくため、
+                    ここでは行トップレベルの子として右寄せ側に置く
+                    （gap は row 側の一定値に任せる＝ハート/削除の間隔と
+                    揃える。実機フィードバック）。 */}
                 {editingId === todo.id ? (
                   <TextInput
                     autoFocus
@@ -388,9 +394,10 @@ function TodoSection({
                     {todo.visibility === "private" && (
                       <LockIcon size={14} color={theme.mutedForeground} />
                     )}
-                    {creator && <Avatar member={creator} />}
                   </View>
                 )}
+
+                {editingId !== todo.id && creator && <Avatar member={creator} />}
 
                 {kind === "onsite" && (
                   <>
