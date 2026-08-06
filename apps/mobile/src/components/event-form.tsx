@@ -500,7 +500,7 @@ export function EventForm({
             style={styles.titleAction}
             accessibilityLabel={t("flightAria")}
           >
-            <PlaneIcon size={16} color={theme.mutedForeground} />
+            <PlaneIcon size={20} color={theme.foreground} />
           </Pressable>
         </View>
       )}
