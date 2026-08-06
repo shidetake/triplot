@@ -847,7 +847,11 @@ const makeStyles = (t: Theme) =>
     titleInput: { paddingRight: 40 },
     titleAction: {
       position: "absolute",
-      right: 4,
+      // アイコンを 16→20pt に拡大した際、箱(28)の中で占める割合が増えて
+      // 右の余白が視覚的に詰まって見えていた（実機フィードバック）。
+      // 入力欄の左パディング（input.paddingHorizontal 10）と揃うよう
+      // right を調整（箱の中央にアイコンがある前提の逆算: 10 - (28-20)/2）。
+      right: 6,
       top: 4,
       width: 28,
       height: 28,
