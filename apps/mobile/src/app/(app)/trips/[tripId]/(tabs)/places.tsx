@@ -148,6 +148,11 @@ export default function PlacesTab() {
   const invalidate = useInvalidateTrip(tripId);
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  // 検索バーの下端の絶対位置（画面座標）。一覧シートの上限をこの下端に
+  // 揃える（実機フィードバック: 場所が多いと「中身にフィット」がどこまでも
+  // 伸びて検索バーまで隠してしまうため）ために実測する。
+  const searchBarRef = useRef<View>(null);
+  const [searchBarBottomY, setSearchBarBottomY] = useState(0);
 
   const mapRef = useRef<MapView>(null);
   // シートの開閉。どちらも native の formSheet（モーダル）で、開いた時だけ
@@ -807,17 +812,39 @@ export default function PlacesTab() {
   // 開いた時は中段（detent 1）から見せる。展開すると全画面一覧。
   const listMode = candidates.length > 0 ? "search" : "browse";
 
-  // 通常一覧（browse）の detent。既定の高さは従来どおり「中身にフィット」で、
-  // そこから下スワイプでもう一段、その半分の高さで止まれるようにする（地図を
-  // 広く見たいとき用。検索結果シートの [0.25, 0.5] と同じ2段構え）。
-  // 計算（比率への変換・昇順・(0,1] の保証）は shared の純粋関数側。分母は
-  // iOS の maximumDetentValue（シートが取れる最大高さ）＝画面高 − 上部インセット。
+  // 一覧シートの上限＝検索バーの下端が隠れない高さまで（実機フィードバック:
+  // 場所が多いと「中身にフィット」がどこまでも伸びて検索バーを覆ってしまう
+  // ため、画面高からの一律計算ではなく検索バーの実測位置を上限にする）。
+  // 実測が届く前（初回フレーム）は従来どおり画面高−上部インセットに
+  // フォールバックする。
+  //
+  // **referenceHeight（iOS の maximumDetentValue 相当）と capHeight
+  // （見せたい上限）は別物として扱う。** RNS は比率 detent を
+  // `context.maximumDetentValue * fraction` で px に戻すため、分母を
+  // capHeight にすり替えると比率1.0が「検索バー下端」でなく「画面いっぱい」
+  // に解決されてしまい、上限が効かなくなる（実機で発生した実バグ）。
+  const SHEET_TOP_GAP = 12; // 検索バーとシートの間に残す隙間
+  const referenceHeight = windowHeight - insets.top;
+  const maxSheetHeight =
+    searchBarBottomY > 0
+      ? Math.min(
+          referenceHeight,
+          Math.max(100, windowHeight - searchBarBottomY - SHEET_TOP_GAP),
+        )
+      : referenceHeight;
+
+  // 通常一覧（browse）の detent。開いた瞬間は小さい方（画面の半分程度）で
+  // 見せ、下から引き上げると検索バーの下端までを上限に拡張できる
+  // （以前は逆＝既定が「中身にフィット」で、場所が多いとほぼ全画面になって
+  // しまっていた。実機フィードバックで撤回）。
+  // 計算（比率への変換・昇順・(0,1] の保証）は shared の純粋関数側。
   // 半分の段は「半分にしてもヘッダー＋1行は見える」大きさのときだけ足す。
   const browseSheet = fitAndHalfDetents({
     // 実測（FlatList の contentSize）が届くまでは概算で組む。実測が来たら
     // そちらに差し替わる＝「中身にフィット」は実測が単一の真実。
     contentHeight: browseContentH ?? estimateListContentH(places),
-    maxSheetHeight: windowHeight - insets.top,
+    capHeight: maxSheetHeight,
+    referenceHeight,
     minHalfHeight: LIST_HEADER_H + LIST_ROW_H,
   });
 
@@ -1028,7 +1055,17 @@ export default function PlacesTab() {
           キーボードの確定キー＝ returnKeyType="search" だけで検索する。
           web の Combobox と違い、候補は矢印キーでなくタップで選ぶので
           「確定キー＝ハイライト中候補の確定」の曖昧さが無く、ボタンが要らない）。 */}
-      <View style={styles.searchBar}>
+      <View
+        ref={searchBarRef}
+        style={styles.searchBar}
+        onLayout={() => {
+          // 検索バー自身の absolute 位置（top: 12 等）はこの View の親基準
+          // なので、画面座標での下端は measureInWindow で実測する。
+          searchBarRef.current?.measureInWindow((_x, y, _w, h) => {
+            setSearchBarBottomY(y + h);
+          });
+        }}
+      >
         <View style={styles.searchInputWrap}>
           <TextInput
             value={query}
@@ -1184,28 +1221,28 @@ export default function PlacesTab() {
           常設にすると formSheet がタブバー（浮島）を覆ってタブ移動できなくなる
           ため、開いた時だけ出すモーダルにする。開いている間は地図の上に重なる
           （sheetLargestUndimmedDetentIndex="last" で地図は暗くならず操作可能）。
-          中段(0.45)〜全画面(0.88)の 2 detent でドラッグ。 */}
+          開いた瞬間は小さい方（画面の半分程度）、引き上げると検索バーの下端
+          までの2 detent でドラッグ。 */}
       {listOpen && (
       <ScreenStackItem
         key={`places-list-${listMode}`}
         screenId="places-list"
         activityState={2}
         stackPresentation="formSheet"
-        // 通常の一覧（browse）は中身の高さにフィット（本家 Apple マップと同じ）。
-        // 固定 detent だと場所が少ない時にリスト下に大きな空きが出るのを防ぐ。
-        // 検索結果（search）は件数が多くなりがちで fitToContents だと画面の
-        // 上限まで伸びて地図が見えなくなる（実機フィードバック）ので、
-        // 半分程度の高さを既定にし、地図と一覧を同時に見られるようにする
+        // 通常の一覧（browse）は開いた瞬間は小さい方（画面の半分程度）で見せ、
+        // 引き上げると検索バーの下端を上限に拡張できる（本家 Apple マップと
+        // 同じ「まず控えめに、必要なら広げる」振る舞い。以前は逆に「中身に
+        // フィット」が既定で、場所が多いとほぼ全画面になり検索バーまで隠れて
+        // いた。実機フィードバックで撤回。上限の算出は上の maxSheetHeight
+        // 参照）。検索結果（search）は件数が多くなりがちで、同じ理由で半分
+        // 程度の高さを既定にし、地図と一覧を同時に見られるようにする
         // （本家 Google マップの検索結果シートと同じ）。
-        // どちらも「既定の高さ」＋「その半分」の2段で、ドラッグで地図を広く
-        // 見せられるようにする（既定のサイズは sheetInitialDetentIndex で明示＝
-        // 開いた瞬間は必ず大きい方）。browse 側の値は上の browseSheet 参照。
+        // どちらも「小さい方」＋「大きい方」の2段で、ドラッグで切り替え
+        // られるようにする（browse 側の値は上の browseSheet 参照）。
         sheetAllowedDetents={
           listMode === "search" ? [0.25, 0.5] : browseSheet.detents
         }
-        sheetInitialDetentIndex={
-          listMode === "search" ? 1 : browseSheet.initialIndex
-        }
+        sheetInitialDetentIndex={listMode === "search" ? 1 : 0}
         sheetLargestUndimmedDetentIndex="last"
         // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
         // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
