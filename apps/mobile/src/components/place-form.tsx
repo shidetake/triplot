@@ -21,7 +21,6 @@ import type { PlaceRow } from "@triplot/shared/tripDerive";
 import type { Visibility } from "@triplot/shared/types/database";
 
 import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
-import { PlaceIconPicker } from "./place-icon-picker";
 import { SheetTitle } from "./sheet-title";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
@@ -39,8 +38,8 @@ export function PlaceForm({
   pinDraft,
   editPlace,
   myMemberId,
-  invalidate,
   onDone,
+  onOpenIconPicker,
 }: {
   tripId: string;
   // 選べるピン（trip_pin_options 由来。sort_order 昇順）。追加/削除は下の「＋」。
@@ -50,9 +49,12 @@ export function PlaceForm({
   pinDraft?: { lat: number; lng: number };
   editPlace?: PlaceRow;
   myMemberId: string;
-  // ピン追加/削除後に trip を再取得する（pinOptions を更新）。
-  invalidate: () => void | Promise<void>;
   onDone: () => void;
+  // アイコンピッカーは native formSheet として親（PlacesTab）の
+  // ScreenStack 直下から開く必要がある（この場所編集シートの中に
+  // ネストすると native の formSheet として正しく積み上がらない）。
+  // 選んだアイコンをこのフォームの state に反映するコールバックだけ渡す。
+  onOpenIconPicker: (onPick: (key: string) => void) => void;
 }) {
   const t = useTranslations("place");
   const theme = useTheme();
@@ -68,7 +70,6 @@ export function PlaceForm({
   const [icon, setIcon] = useState(
     editPlace?.icon ?? sortedPins[0]?.icon ?? "pin",
   );
-  const [pickerOpen, setPickerOpen] = useState(false);
   const [tentative, setTentative] = useState(editPlace?.tentative ?? false);
   const [visibility, setVisibility] = useState<Visibility>(
     editPlace?.visibility ?? "shared",
@@ -199,25 +200,13 @@ export function PlaceForm({
         })}
         {/* 破線＝「ここに追加できる」。カタログから旅行のピンセットに追加/削除。 */}
         <Pressable
-          onPress={() => setPickerOpen(true)}
+          onPress={() => onOpenIconPicker(setIcon)}
           style={styles.iconAddChip}
           accessibilityLabel={t("addIconAria")}
         >
           <PlusIcon size={16} color={theme.addAccent} />
         </Pressable>
       </View>
-
-      <PlaceIconPicker
-        visible={pickerOpen}
-        tripId={tripId}
-        pinOptions={pinOptions}
-        onAdded={(key) => {
-          setPickerOpen(false);
-          setIcon(key);
-        }}
-        onChanged={() => void invalidate()}
-        onClose={() => setPickerOpen(false)}
-      />
 
       {/* ステータス（確定 / 候補）・公開範囲: iOS 標準の排他選択＝セグメント。 */}
       <View style={styles.inlineRow}>

@@ -87,6 +87,7 @@ import {
 import Svg, { Path } from "react-native-svg";
 
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
+import { PlaceIconPicker } from "@/components/place-icon-picker";
 import { PlaceForm } from "@/components/place-form";
 import {
   CandidatePin,
@@ -375,6 +376,13 @@ export default function PlacesTab() {
   // 質感・グラバー位置がその2つと揃う（実機フィードバック: FormSheet だと
   // 透明感が無く、ヘッダーの上余白も他と食い違って見えていた）。
   const [filterOpen, setFilterOpen] = useState(false);
+  // 場所ピンのアイコンピッカー（place-form.tsx の「＋」から開く）。編集
+  // フォームの中にネストせず ScreenStack 直下の兄弟 ScreenStackItem にする
+  // ＝native formSheet として正しく積み上がる（一覧/編集フォーム/フィルタと
+  // 同じ理由）。選んだアイコンをどこに反映するか（PlaceForm の setIcon）は
+  // 開いた時点の呼び出し元が ref 経由で渡す。
+  const [iconPickerOpen, setIconPickerOpen] = useState(false);
+  const iconPickerOnPickRef = useRef<((key: string) => void) | null>(null);
   // 一覧シート（browse）の中身の実測高さ（FlatList の contentSize）。detent を
   // 「中身にフィット」と「その半分」の2段で組むのに使う（下の browseSheet）。
   const [browseContentH, setBrowseContentH] = useState<number | null>(null);
@@ -2143,7 +2151,10 @@ export default function PlacesTab() {
               pinDraft={pinDraft ?? undefined}
               editPlace={editing ?? undefined}
               myMemberId={me.id}
-              invalidate={invalidate}
+              onOpenIconPicker={(onPick) => {
+                iconPickerOnPickRef.current = onPick;
+                setIconPickerOpen(true);
+              }}
               onDone={() => {
                 setFormOpen(false);
                 setCandidates([]);
@@ -2156,6 +2167,30 @@ export default function PlacesTab() {
               }}
             />
           </ScrollView>
+        </ScreenStackItem>
+      )}
+      {/* ピンのアイコンピッカー。編集フォームの中にネストせず兄弟
+          ScreenStackItem にする（コンポーネント構造の理由は
+          onOpenIconPicker のコメント参照）。 */}
+      {iconPickerOpen && (
+        <ScreenStackItem
+          screenId="places-icon-picker"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents={[0.9]}
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setIconPickerOpen(false)}
+        >
+          <PlaceIconPicker
+            tripId={tripId}
+            pinOptions={pinOptions}
+            onAdded={(key) => {
+              iconPickerOnPickRef.current?.(key);
+              setIconPickerOpen(false);
+            }}
+            onChanged={() => void invalidate()}
+          />
         </ScreenStackItem>
       )}
       {/* 場所フィルタの選択肢（エリア/日にち）。一覧/編集フォームと同じ native
