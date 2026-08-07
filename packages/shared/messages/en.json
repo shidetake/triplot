@@ -115,6 +115,7 @@
     "heading": "Trips",
     "empty": "You haven't joined any trips yet.",
     "loadError": "Failed to load trips: {message}",
+    "retry": "Retry",
     "create": "Create a trip",
     "dateRange": "{start} – {end}"
   },

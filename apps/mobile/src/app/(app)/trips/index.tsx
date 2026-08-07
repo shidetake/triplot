@@ -36,7 +36,13 @@ export default function TripsScreen() {
   const { session } = useSession();
   const userId = session?.user.id;
 
-  const { data, error, isLoading } = useQuery({
+  const {
+    data,
+    error,
+    isLoading,
+    refetch,
+    isRefetching,
+  } = useQuery({
     queryKey: ["trips", userId],
     queryFn: () => fetchMyTrips(supabase, userId!),
     enabled: !!userId,
@@ -140,11 +146,25 @@ export default function TripsScreen() {
         )}
         ListEmptyComponent={
           error || data?.error ? (
-            <Text style={styles.error}>
-              {t("loadError", {
-                message: String(data?.error?.message ?? error),
-              })}
-            </Text>
+            // 引っ張り更新は付けていない（下のコメント参照）ため、失敗時に
+            // フォアグラウンド復帰以外で再試行する手段が無かった（実機
+            // フィードバック: JWT の一時的なクロックスキュー等で失敗した時、
+            // アプリを強制終了するまで詰んで見えた）。ボタンで明示的に
+            // refetch できるようにする。
+            <View style={styles.errorBox}>
+              <Text style={styles.error}>
+                {t("loadError", {
+                  message: String(data?.error?.message ?? error),
+                })}
+              </Text>
+              <Pressable
+                onPress={() => void refetch()}
+                disabled={isRefetching}
+                style={[styles.retryButton, isRefetching && styles.disabled]}
+              >
+                <Text style={styles.retryButtonText}>{t("retry")}</Text>
+              </Pressable>
+            </View>
           ) : !isLoading ? (
             <Text style={styles.empty}>{t("empty")}</Text>
           ) : null
@@ -176,7 +196,19 @@ const makeStyles = (t: Theme) =>
   cardTitle: { fontSize: 15, fontWeight: "500", color: t.foreground },
   cardSub: { marginTop: 4, fontSize: 13, color: t.mutedForeground },
   empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
-  error: { padding: 24, fontSize: 14, color: t.destructiveText },
+  errorBox: { padding: 24, gap: 12, alignItems: "flex-start" },
+  error: { fontSize: 14, color: t.destructiveText },
+  retryButton: {
+    height: 36,
+    paddingHorizontal: 16,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: t.fgAlpha(0.2),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  retryButtonText: { fontSize: 14, fontWeight: "500", color: t.foreground },
+  disabled: { opacity: 0.5 },
   // グリフ間の見た目の間隔 = gap + 両ボタンの padding(10×2) ≒ 28 を維持。
   headerButtons: { flexDirection: "row", alignItems: "center", gap: 8 },
   // ヘッダーのアバター（24px 丸。ナビアイコンの 24 と同段）。
