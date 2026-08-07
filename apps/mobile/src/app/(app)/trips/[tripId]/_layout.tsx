@@ -66,7 +66,7 @@ export default function TripLayout() {
     <>
       <Stack.Screen options={screenOptions} />
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="(tabs)" options={tabsScreenOptions} />
         <Stack.Screen name="edit" options={sheetScreenOptions} />
         <Stack.Screen name="categories" options={sheetScreenOptions} />
         <Stack.Screen name="export" options={sheetScreenOptions} />
@@ -86,6 +86,11 @@ export default function TripLayout() {
     </>
   );
 }
+
+// インラインのオブジェクトリテラルで渡すと毎レンダー別 identity になり、
+// expo-router が都度 setOptions を呼ぶ（上の screenOptions をメモ化している
+// のと同じ理由。ヘッダーの高頻度更新は戻るボタンが消える不具合につながる）。
+const tabsScreenOptions = { headerShown: false };
 
 // sheetCornerRadius は指定しない（native 既定 = automatic）。固定値（旧20pt）
 // だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと半径が噛み合わず
