@@ -88,6 +88,7 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 - `expenses` には CHECK 制約: `private` の費用は `splittable = false` でなければならない（private は割り勘不可）。
 - **地図の表示範囲は「ピンが集まっているところ」だけに合わせる。** 全ピンの外接矩形を使うと、離れた1点（帰りの空港など）に引っ張られて海の上が中心になる。`clusterPlaces` → `dominantCluster` で主役エリアを選ぶ。中心は必ず `centerOf()` を使い `(west+east)/2` を自前で書かない（日付変更線を跨ぐ bounds は `west > east` で返るため、自前計算だと地球の反対側が中心になる）。詳細は [docs/design/place-map.md](docs/design/place-map.md)。
 - **予定の TZ は保存しない。** 通常・終日の `events.start_tz` / `end_tz` は常に NULL で、literal な TZ を持つのは `kind='transit'` だけ（旅行の TZ 境界の唯一の真実源）。通常の予定の実効 TZ は旅程から毎回導出する（`resolveEventTz`）。`start_at` / `end_at` は壁時計（`timestamp without time zone`）。**「全予定に TZ を埋める」方式に変えないこと** — 理由と代償は [docs/design/timezone.md](docs/design/timezone.md) の 0 節。
+- **利用枠（メール取り込みの月間上限）は残高ではなく計測。** 使用量は保存せず、その月の抽出済み件数を都度数えて上限と比べる（`monthlyExtractCount`）。**月初に枠を復活させるバッチは無いし、作らない**（全ユーザが枠を失う単一障害点になる・カウンタと実データがずれる）。プランと個別上書き・古参優遇の扱いは [docs/design/billing.md](docs/design/billing.md)。
 
 ### RLS のパターン
 
