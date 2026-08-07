@@ -31,7 +31,16 @@ export async function updateSession(request: NextRequest) {
   );
 
   // セッションのリフレッシュ。`getUser` を呼ぶことで cookie が更新される。
-  await supabase.auth.getUser();
+  const { error } = await supabase.auth.getUser();
+
+  // getUser の自動更新は「期限が近いか」の時間ベースだけで、サーバの時計補正等で
+  // トークンが期限内なのにサーバから拒否されるケース（401, 例:
+  // "JWT issued at future"）は救えない。失敗時は明示的に取り直す
+  // （apps/mobile/src/lib/supabase.ts の authAwareFetch と同じ考え方）。
+  // 未ログイン（セッション自体が無い）はリフレッシュしても無駄なので除く。
+  if (error && error.name !== "AuthSessionMissingError") {
+    await supabase.auth.refreshSession();
+  }
 
   return response;
 }
