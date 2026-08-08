@@ -116,7 +116,6 @@
   "trips": {
     "heading": "旅行",
     "empty": "まだ参加している旅行はありません。",
-    "loadError": "旅行一覧の取得に失敗しました: {message}",
     "create": "旅行を作成",
     "dateRange": "{start} – {end}"
   },
