@@ -89,6 +89,7 @@ import Svg, { Path } from "react-native-svg";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceIconPicker } from "@/components/place-icon-picker";
 import { PlaceForm } from "@/components/place-form";
+import { QueryErrorView } from "@/components/query-error-view";
 import {
   CandidatePin,
   candidatePinSize,
@@ -338,7 +339,8 @@ export default function PlacesTab() {
   const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me } = useTripDetail(tripId);
+  const { data, me, loadError, refetch, isRefetching } =
+    useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -878,6 +880,15 @@ export default function PlacesTab() {
     })();
   };
 
+  if (loadError) {
+    return (
+      <QueryErrorView
+        error={loadError}
+        onRetry={refetch}
+        isRetrying={isRefetching}
+      />
+    );
+  }
   if (!data?.trip || !me) return null;
 
   const pinOptions = (data.pinOptionsRaw ?? []) as PinOption[];

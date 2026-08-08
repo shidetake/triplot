@@ -37,7 +37,9 @@
     "adding": "Adding...",
     "saving": "Saving...",
     "copied": "Copied",
-    "untitledEvent": "(untitled)"
+    "untitledEvent": "(untitled)",
+    "loadError": "Failed to load: {message}",
+    "retry": "Retry"
   },
   "settings": {
     "heading": "Settings",
@@ -115,7 +117,6 @@
     "heading": "Trips",
     "empty": "You haven't joined any trips yet.",
     "loadError": "Failed to load trips: {message}",
-    "retry": "Retry",
     "create": "Create a trip",
     "dateRange": "{start} – {end}"
   },

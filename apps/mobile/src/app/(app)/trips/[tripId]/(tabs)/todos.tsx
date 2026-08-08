@@ -26,6 +26,7 @@ import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
 import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
+import { QueryErrorView } from "@/components/query-error-view";
 import { SheetTitle } from "@/components/sheet-title";
 import {
   CheckIcon,
@@ -73,9 +74,19 @@ export default function TodosTab() {
   const tripId = useTripId();
   const t = useTranslations();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, userId, refetch } = useTripDetail(tripId);
+  const { data, me, userId, loadError, refetch, isRefetching } =
+    useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
 
+  if (loadError) {
+    return (
+      <QueryErrorView
+        error={loadError}
+        onRetry={refetch}
+        isRetrying={isRefetching}
+      />
+    );
+  }
   if (!data?.trip || !me) return null;
 
   const todos = deriveTodos(data.todosRaw, me.id);

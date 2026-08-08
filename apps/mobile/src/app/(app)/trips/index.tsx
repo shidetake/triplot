@@ -30,6 +30,7 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 // trips/new）へ router.push で遷移する（(app)/_layout.tsx 参照）。
 export default function TripsScreen() {
   const t = useTranslations("trips");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const locale = useLocale();
@@ -153,7 +154,7 @@ export default function TripsScreen() {
             // refetch できるようにする。
             <View style={styles.errorBox}>
               <Text style={styles.error}>
-                {t("loadError", {
+                {tCommon("loadError", {
                   message: String(data?.error?.message ?? error),
                 })}
               </Text>
@@ -162,7 +163,7 @@ export default function TripsScreen() {
                 disabled={isRefetching}
                 style={[styles.retryButton, isRefetching && styles.disabled]}
               >
-                <Text style={styles.retryButtonText}>{t("retry")}</Text>
+                <Text style={styles.retryButtonText}>{tCommon("retry")}</Text>
               </Pressable>
             </View>
           ) : !isLoading ? (

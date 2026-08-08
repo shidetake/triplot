@@ -14,6 +14,7 @@ import {
 } from "@triplot/shared/tripDerive";
 
 import { PlusIcon } from "@/components/icons";
+import { QueryErrorView } from "@/components/query-error-view";
 import { WeekCalendar } from "@/components/week-calendar";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail, useTripDrafts } from "@/lib/useTripDetail";
@@ -30,7 +31,8 @@ export default function ScheduleTab() {
   const t = useTranslations();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me } = useTripDetail(tripId);
+  const { data, me, loadError, refetch, isRefetching } =
+    useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
@@ -65,6 +67,15 @@ export default function ScheduleTab() {
       })
     : null;
 
+  if (loadError) {
+    return (
+      <QueryErrorView
+        error={loadError}
+        onRetry={refetch}
+        isRetrying={isRefetching}
+      />
+    );
+  }
   if (!data?.trip || !me || !schedule) return null;
 
   const memberHueById = new Map(
