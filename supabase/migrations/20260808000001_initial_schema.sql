@@ -3349,39 +3349,39 @@ GRANT ALL ON FUNCTION "public"."validate_tz_disambig"("p_trip_id" "text", "p_tz_
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."event_participants" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."event_participants" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."event_participants" TO "service_role";
+GRANT ALL ON TABLE "public"."event_participants" TO "anon";
+GRANT ALL ON TABLE "public"."event_participants" TO "authenticated";
+GRANT ALL ON TABLE "public"."event_participants" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."events" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."events" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."events" TO "service_role";
+GRANT ALL ON TABLE "public"."events" TO "anon";
+GRANT ALL ON TABLE "public"."events" TO "authenticated";
+GRANT ALL ON TABLE "public"."events" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_categories" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_categories" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_categories" TO "service_role";
+GRANT ALL ON TABLE "public"."expense_categories" TO "anon";
+GRANT ALL ON TABLE "public"."expense_categories" TO "authenticated";
+GRANT ALL ON TABLE "public"."expense_categories" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_splits" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_splits" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expense_splits" TO "service_role";
+GRANT ALL ON TABLE "public"."expense_splits" TO "anon";
+GRANT ALL ON TABLE "public"."expense_splits" TO "authenticated";
+GRANT ALL ON TABLE "public"."expense_splits" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expenses" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expenses" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."expenses" TO "service_role";
+GRANT ALL ON TABLE "public"."expenses" TO "anon";
+GRANT ALL ON TABLE "public"."expenses" TO "authenticated";
+GRANT ALL ON TABLE "public"."expenses" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."feedback" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."feedback" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."feedback" TO "service_role";
+GRANT ALL ON TABLE "public"."feedback" TO "anon";
+GRANT ALL ON TABLE "public"."feedback" TO "authenticated";
+GRANT ALL ON TABLE "public"."feedback" TO "service_role";
 
 
 
@@ -3429,75 +3429,75 @@ GRANT INSERT("app_version") ON TABLE "public"."feedback" TO "authenticated";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."flight_api_cache" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."flight_api_cache" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."flight_api_cache" TO "service_role";
+GRANT ALL ON TABLE "public"."flight_api_cache" TO "anon";
+GRANT ALL ON TABLE "public"."flight_api_cache" TO "authenticated";
+GRANT ALL ON TABLE "public"."flight_api_cache" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_drafts" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_drafts" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_drafts" TO "service_role";
+GRANT ALL ON TABLE "public"."inbound_drafts" TO "anon";
+GRANT ALL ON TABLE "public"."inbound_drafts" TO "authenticated";
+GRANT ALL ON TABLE "public"."inbound_drafts" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_emails" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_emails" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."inbound_emails" TO "service_role";
+GRANT ALL ON TABLE "public"."inbound_emails" TO "anon";
+GRANT ALL ON TABLE "public"."inbound_emails" TO "authenticated";
+GRANT ALL ON TABLE "public"."inbound_emails" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."places" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."places" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."places" TO "service_role";
+GRANT ALL ON TABLE "public"."places" TO "anon";
+GRANT ALL ON TABLE "public"."places" TO "authenticated";
+GRANT ALL ON TABLE "public"."places" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."receipt_link_candidates" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."receipt_link_candidates" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."receipt_link_candidates" TO "service_role";
+GRANT ALL ON TABLE "public"."receipt_link_candidates" TO "anon";
+GRANT ALL ON TABLE "public"."receipt_link_candidates" TO "authenticated";
+GRANT ALL ON TABLE "public"."receipt_link_candidates" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todo_likes" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todo_likes" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todo_likes" TO "service_role";
+GRANT ALL ON TABLE "public"."todo_likes" TO "anon";
+GRANT ALL ON TABLE "public"."todo_likes" TO "authenticated";
+GRANT ALL ON TABLE "public"."todo_likes" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todos" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todos" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."todos" TO "service_role";
+GRANT ALL ON TABLE "public"."todos" TO "anon";
+GRANT ALL ON TABLE "public"."todos" TO "authenticated";
+GRANT ALL ON TABLE "public"."todos" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_invites" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_invites" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_invites" TO "service_role";
+GRANT ALL ON TABLE "public"."trip_invites" TO "anon";
+GRANT ALL ON TABLE "public"."trip_invites" TO "authenticated";
+GRANT ALL ON TABLE "public"."trip_invites" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_members" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_members" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_members" TO "service_role";
+GRANT ALL ON TABLE "public"."trip_members" TO "anon";
+GRANT ALL ON TABLE "public"."trip_members" TO "authenticated";
+GRANT ALL ON TABLE "public"."trip_members" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_pin_options" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_pin_options" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trip_pin_options" TO "service_role";
+GRANT ALL ON TABLE "public"."trip_pin_options" TO "anon";
+GRANT ALL ON TABLE "public"."trip_pin_options" TO "authenticated";
+GRANT ALL ON TABLE "public"."trip_pin_options" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trips" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trips" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."trips" TO "service_role";
+GRANT ALL ON TABLE "public"."trips" TO "anon";
+GRANT ALL ON TABLE "public"."trips" TO "authenticated";
+GRANT ALL ON TABLE "public"."trips" TO "service_role";
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."users" TO "anon";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."users" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."users" TO "service_role";
+GRANT ALL ON TABLE "public"."users" TO "anon";
+GRANT ALL ON TABLE "public"."users" TO "authenticated";
+GRANT ALL ON TABLE "public"."users" TO "service_role";
 
 
 
@@ -3533,9 +3533,9 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON FUN
 
 
 ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "postgres";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "anon";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "authenticated";
-ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLES TO "service_role";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "anon";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "authenticated";
+ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TABLES TO "service_role";
 
 
 
