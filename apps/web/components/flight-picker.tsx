@@ -12,7 +12,7 @@ import {
   looksLikeAirlineQuery,
   parseFlightNumber,
 } from "@triplot/shared/flight";
-import { lookupFlight } from "@triplot/shared/flightLookup";
+import { FLIGHT_SEARCH_DEBOUNCE_MS, lookupFlight } from "@triplot/shared/flightLookup";
 import { loadAirportNames, localizeFlightJa } from "@triplot/shared/flightLocalize";
 
 import { createClient } from "@/lib/supabase/client";
@@ -43,9 +43,12 @@ export function FlightPicker({
 
   const [airline, setAirline] = useState<Airline | null>(null);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Flight | null>(null);
+  // 直近で解決済み（検索中の状態を抜けた）の "便名|日付" キー。busy を専用の
+  // state にせず、これと今のキーの一致/不一致から導出する（effect 内で直接
+  // setState すると react-hooks/set-state-in-effect に触れるため、派生値にする）。
+  const [settledKey, setSettledKey] = useState<string | null>(null);
 
   // 打っている途中の古い応答が後から届いて上書きするのを防ぐ。
   const seq = useRef(0);
@@ -53,47 +56,54 @@ export function FlightPicker({
   const typed = airline ? `${airline.iata}${text.trim()}` : text.trim();
   const parsed = parseFlightNumber(typed);
   const normalized = parsed?.normalized ?? null;
+  const key = normalized !== null ? `${normalized}|${date}` : null;
   const suggestions =
     airline === null && looksLikeAirlineQuery(text) ? searchAirlines(text, 6) : [];
 
+  // 「検索中」は便名が揃った時点ですぐ出すが（showBusy の導出を参照）、実際の
+  // 呼び出しは入力が止まってから（1文字ごとに叩くと提供元 API のレートリミット
+  // に引っかかる）。
   useEffect(() => {
-    if (!normalized) return;
+    if (normalized === null) return;
+    const currentKey = `${normalized}|${date}`;
     const my = ++seq.current;
-    void (async () => {
-      setBusy(true);
-      setError(null);
-      try {
-        const outcome = await lookupFlight(
-          createFlightApi(createClient()),
-          normalized,
-          date,
-        );
-        if (my !== seq.current) return;
-        if (outcome.kind === "found") {
-          // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
-          const table = await loadAirportNames(locale);
-          if (my !== seq.current) return;
-          setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
-        } else {
-          setResult(null);
-          setError(
-            outcome.kind === "unknown-number" ? t("flightNotFound") : t("flightNoData"),
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const outcome = await lookupFlight(
+            createFlightApi(createClient()),
+            normalized,
+            date,
           );
+          if (my !== seq.current) return;
+          if (outcome.kind === "found") {
+            // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
+            const table = await loadAirportNames(locale);
+            if (my !== seq.current) return;
+            setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
+            setError(null);
+          } else {
+            setResult(null);
+            setError(
+              outcome.kind === "unknown-number" ? t("flightNotFound") : t("flightNoData"),
+            );
+          }
+        } catch {
+          if (my !== seq.current) return;
+          setResult(null);
+          setError(t("flightFailed"));
+        } finally {
+          if (my === seq.current) setSettledKey(currentKey);
         }
-      } catch {
-        if (my !== seq.current) return;
-        setResult(null);
-        setError(t("flightFailed"));
-      } finally {
-        if (my === seq.current) setBusy(false);
-      }
-    })();
+      })();
+    }, FLIGHT_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
   }, [normalized, date, t, locale]);
 
   // 便名が崩れている間（消しかけ等）は前の結果を出さない。effect で state を
   // 消しに行かず、表示側で門番する。
-  const showBusy = normalized !== null && busy;
-  const showError = normalized !== null && !busy ? error : null;
+  const showBusy = key !== null && settledKey !== key;
+  const showError = key !== null && settledKey === key ? error : null;
   const showResult = normalized !== null && result?.number === normalized ? result : null;
 
   return (

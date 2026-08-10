@@ -17,6 +17,12 @@ import {
   pickReferenceDate,
 } from "./flight";
 
+// 便名入力のたび（1文字ごと）に即 lookupFlight すると、揃うまでの中間状態
+// （DL1 → DL18 → DL181）でも毎回呼ばれ、1回最大3回叩く提供元 API を連打して
+// レートリミットに引っかかる（実機で確認）。UI 側は「検索中」表示はすぐ出しつつ、
+// 実際の呼び出しはこの時間だけ入力が止まってから行う。
+export const FLIGHT_SEARCH_DEBOUNCE_MS = 3000;
+
 export type FlightApi = {
   /** その日の便。運航日でなければ空配列（提供元は 204 を返す） */
   byNumberAndDate(number: string, date: string): Promise<Flight[]>;
