@@ -251,6 +251,16 @@ feature ブランチのプレビューでは、ログインや他の機能は動
 
 `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` も Preview スコープに要る（値は本番と同じ）。
 
+### Apple Sign In は staging Supabase で無効
+
+Supabase Auth の Apple プロバイダは**本番プロジェクトのみ有効化**されている
+（Dashboard の Authentication → Providers、`external_apple_enabled` は
+本番 `true` / staging `false`）。staging（Vercel Preview・iOS の preview
+ビルドとも staging Supabase を向く）で Apple ボタンを押すと
+`AuthApiError: Provider (issuer "https://appleid.apple.com") is not enabled`
+になる。**Google ログインで代替できるので確認は Google で行う**（Apple 固有の
+確認がどうしても要るときだけ TestFlight／本番相当の環境で見る）。
+
 ### staging DB への migration
 
 ```bash

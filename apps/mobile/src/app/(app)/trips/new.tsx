@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { ScrollView } from "react-native";
 
 import { NewTripSheet } from "@/components/new-trip-sheet";
@@ -11,7 +10,7 @@ export default function NewTripRoute() {
       contentContainerStyle={{ paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <NewTripSheet onDone={() => router.back()} />
+      <NewTripSheet />
     </ScrollView>
   );
 }

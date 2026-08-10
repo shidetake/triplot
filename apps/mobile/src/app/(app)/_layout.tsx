@@ -24,6 +24,13 @@ export default function AppLayout() {
         name="trips/index"
         options={{ title: "triplot", headerLargeTitle: true }}
       />
+      {/* trips/[tripId] は旅行名が動的なのでここでは静的な title だけ宣言
+          （中身は [tripId]/_layout.tsx が旅行データ到着後に動的注入する）。
+          ここで title: "" を明示しておかないと、旅行データが届くまでの
+          最初の1フレームは native-stack がこのルートのデフォルトタイトル
+          （ファイルパスそのもの "trips/[tripId]"）を出してしまう
+          （動的注入は子コンポーネントの effect 経由なので1テンポ遅れる）。 */}
+      <Stack.Screen name="trips/[tripId]" options={{ title: "" }} />
       {/* 取り込み・設定・フィードバック・旅行作成は native の formSheet
           ルート（react-native-screens の presentation: "formSheet"）。
           以前は @gorhom ベースの FormSheet に統一していたが、OS 標準の
