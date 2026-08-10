@@ -50,6 +50,13 @@ sequenceDiagram
   end
 ```
 
+**この経路は本番でしか確認できない。** Cloudflare Email Worker（`workers/inbound-email/index.js`）の
+転送先 URL は `https://triplot.app/api/inbound-email` に固定されており、Vercel Preview（staging
+ブランチ）や iOS の preview ビルドの URL には向いていない。staging の取り込みトークン宛にメールを
+転送しても、実際に叩かれるのは本番デプロイ（本番 Supabase）側になり、トークンが本番 DB に無いため
+取り込みが成立しない。web の staging・mobile の preview ビルドで動作確認できる他の機能（ログイン・
+旅行操作等）とは異なるので注意。
+
 ### 何を予定として抽出するか
 
 - 購入済み航空券などタイムゾーンを跨ぐ移動 = **transit**（往復は往路・復路で別の予定。
