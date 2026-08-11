@@ -5,6 +5,7 @@ import {
   durationMinutes,
   estimateForDate,
   type Flight,
+  flightTerminalNote,
   flightTitle,
   isComplete,
   looksLikeAirlineQuery,
@@ -207,5 +208,21 @@ describe("flightTitle", () => {
       departure: { ...NRT, municipality: null },
     };
     expect(flightTitle(noCity)).toBe("ZG002 Tokyo Narita → Honolulu");
+  });
+});
+
+describe("flightTerminalNote", () => {
+  it("両端のターミナルが揃っていれば矢印でつなぐ", () => {
+    const both: Flight = {
+      ...ZG002,
+      departure: { ...NRT, terminal: "1" },
+      arrival: { ...HNL, terminal: "B" },
+    };
+    expect(flightTerminalNote(both)).toBe("Terminal 1 → Terminal B");
+  });
+
+  it("片方でも欠けていれば null（メモを崩さない）", () => {
+    // ZG002 は実測値どおり到着（HNL）側のターミナルが不明。
+    expect(flightTerminalNote(ZG002)).toBeNull();
   });
 });

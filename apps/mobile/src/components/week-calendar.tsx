@@ -572,7 +572,7 @@ export function WeekCalendar({
                       <ReservationMark ev={ev} textColor={col.text} />
                       {p.event.title}
                     </Text>
-                    {/* 場所（web の blockLabel と同じ優先度: 時刻→タイトル→場所）。
+                    {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
                         1行に収まらなくても改行で収まりそうなら2行まで見せる
                         （タイトルと同じ扱い）。それでも入らない/ブロックが低い
                         時は eventBlock の overflow:hidden が下から自然に
@@ -583,6 +583,14 @@ export function WeekCalendar({
                         numberOfLines={2}
                       >
                         {placeName(ev.startPlaceId)}
+                      </Text>
+                    )}
+                    {ev.note && (
+                      <Text
+                        style={[styles.eventPlace, { color: col.text }]}
+                        numberOfLines={2}
+                      >
+                        {ev.note}
                       </Text>
                     )}
                   </Pressable>
@@ -655,7 +663,7 @@ export function WeekCalendar({
                         },
                       ]}
                     >
-                      {/* 時刻→タイトル→場所の優先度（timed ブロックと同じ）。 */}
+                      {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。 */}
                       <Text
                         style={[styles.eventTime, { color: col.text }]}
                         numberOfLines={1}
@@ -675,6 +683,14 @@ export function WeekCalendar({
                           numberOfLines={2}
                         >
                           {pn}
+                        </Text>
+                      )}
+                      {ev.note && (
+                        <Text
+                          style={[styles.eventPlace, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          {ev.note}
                         </Text>
                       )}
                     </Pressable>

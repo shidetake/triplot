@@ -11,7 +11,7 @@ import {
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
-import { type Flight, flightTitle } from "@triplot/shared/flight";
+import { type Flight, flightTerminalNote, flightTitle } from "@triplot/shared/flight";
 import {
   crossesTimezone,
   deriveTransitTimezones,
@@ -185,6 +185,10 @@ export function EventForm({
     setTitle(flightTitle(f));
     setMoveOn(true);
     setAllDayOn(false);
+    // 出発/到着ターミナルが両方わかるときだけメモに書く（片方欠けなら
+    // 意味のある差分を示せないのでメモは触らない）。
+    const terminalNote = flightTerminalNote(f);
+    if (terminalNote) setNote(terminalNote);
 
     const asPlace = (e: Flight["departure"]): PlaceInput => ({
       kind: "free",

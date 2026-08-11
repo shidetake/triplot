@@ -208,6 +208,19 @@ export function flightTitle(f: Flight): string {
 }
 
 /**
+ * 出発/到着ターミナルのメモ行 "Terminal 1 → Terminal B"。
+ * 提供元はターミナルをプレーンな文字列（"2" 等）で返すので "Terminal " を
+ * 前置く。片方でも欠けていたら意味のある差分を示せないので null（メモは
+ * 上書きしない）。
+ */
+export function flightTerminalNote(f: Flight): string | null {
+  const dep = f.departure.terminal;
+  const arr = f.arrival.terminal;
+  if (!dep || !arr) return null;
+  return `Terminal ${dep} → Terminal ${arr}`;
+}
+
+/**
  * 日をまたぐ便か（出発日と到着日が違う）。予定の終了日を出すのに使う。
  * 日付変更線を西向きに越えると到着が前日になることもあるので符号は見ない。
  */

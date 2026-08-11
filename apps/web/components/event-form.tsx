@@ -20,7 +20,7 @@ import {
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
-import { type Flight, flightTitle } from "@triplot/shared/flight";
+import { type Flight, flightTerminalNote, flightTitle } from "@triplot/shared/flight";
 import {
   dedupeTzCandidates,
   formatMinutes,
@@ -208,6 +208,10 @@ export function EventForm({
   const applyFlight = (f: Flight) => {
     setTitle(flightTitle(f));
     setKind3("transit");
+    // 出発/到着ターミナルが両方わかるときだけメモに書く（片方欠けなら
+    // 意味のある差分を示せないのでメモは触らない）。
+    const terminalNote = flightTerminalNote(f);
+    if (terminalNote) setNote(terminalNote);
 
     const asInitial = (e: Flight["departure"]): PlacePickerInitial => ({
       kind: "free",

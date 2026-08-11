@@ -624,6 +624,7 @@ export function WeekCalendar({
         </span>
         {draftBadge(ev)}
         {pn && <span className="block truncate opacity-70">{pn}</span>}
+        {ev.note && <span className="block truncate opacity-70">{ev.note}</span>}
       </>
     );
   };
@@ -1260,6 +1261,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                 );
               }
@@ -1303,6 +1307,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                   {/* 到着側 */}
                   <button
@@ -1333,6 +1340,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                 </div>
               );
