@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import {
   Dimensions,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,9 +28,10 @@ import {
 import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
-import { CheckIcon } from "@/components/icons";
-import { ReservationIcon } from "@/components/reservation-icon";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+
+const ticketMarkSource = require("../../assets/marks/reservation-ticket.png");
+const checkMarkSource = require("../../assets/marks/reservation-check.png");
 
 // 週カレンダーの描画（RN）。レイアウト計算は shared の buildSchedule に委ね、
 // ここはその出力（列・配置済みブロック・終日バー）を描くだけ（web の
@@ -57,6 +59,15 @@ const hhmm = (min: number) => formatMinutes(min, false);
 
 // 予約マーカー（タイトル先頭。web の ReservationMark と同じ意味）:
 // 要予約（未）= チケット黄 / 予約済 = 淡色チェック。ブロック地色はそのまま。
+//
+// タイトルの <Text> の**子として**返す（sibling の row に置かない）。RN の
+// Text は Image を子に持てて自然にインライン折り返しできるので、web の
+// inline-block アイコンと同じく2行目以降が字下げされずに折り返せる
+// （row 並びだと SVG を子にできず、折り返しのたび2行目以降もアイコン分だけ
+// 幅が狭まって不自然に字下げされる不具合があった）。色が固定のチケットは
+// PNG 自体は黒シルエットで焼いてあり、どちらも tintColor で塗り替える
+// （チケットは固定の黄、チェックはブロックごとに変わる textColor）。
+const TICKET_COLOR = "#facc15"; // web の text-yellow-400 と同値
 function ReservationMark({
   ev,
   textColor,
@@ -66,11 +77,19 @@ function ReservationMark({
 }) {
   if (!ev.needsReservation) return null;
   return ev.reservationDone ? (
-    <CheckIcon size={12} color={textColor} />
+    <Image
+      source={checkMarkSource}
+      style={[reservationMarkStyle, { tintColor: textColor }]}
+    />
   ) : (
-    <ReservationIcon size={12} />
+    <Image
+      source={ticketMarkSource}
+      style={[reservationMarkStyle, { tintColor: TICKET_COLOR }]}
+    />
   );
 }
+
+const reservationMarkStyle = { width: 12, height: 12, marginRight: 2 };
 
 export function WeekCalendar({
   schedule,
@@ -546,15 +565,13 @@ export function WeekCalendar({
                     >
                       {hhmm(p.topMin)}
                     </Text>
-                    <View style={styles.titleRow}>
+                    <Text
+                      style={[styles.eventTitle, { color: col.text }]}
+                      numberOfLines={2}
+                    >
                       <ReservationMark ev={ev} textColor={col.text} />
-                      <Text
-                        style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={ev.needsReservation ? 1 : 2}
-                      >
-                        {p.event.title}
-                      </Text>
-                    </View>
+                      {p.event.title}
+                    </Text>
                     {/* 場所（web の blockLabel と同じ優先度: 時刻→タイトル→場所）。
                         1行に収まらなくても改行で収まりそうなら2行まで見せる
                         （タイトルと同じ扱い）。それでも入らない/ブロックが低い
@@ -648,15 +665,13 @@ export function WeekCalendar({
                       >
                         {hhmm(part.time)}
                       </Text>
-                      <View style={styles.titleRow}>
+                      <Text
+                        style={[styles.eventTitle, { color: col.text }]}
+                        numberOfLines={2}
+                      >
                         <ReservationMark ev={ev} textColor={col.text} />
-                        <Text
-                          style={[styles.eventTitle, { color: col.text }]}
-                          numberOfLines={ev.needsReservation ? 1 : 2}
-                        >
-                          {part.label}
-                        </Text>
-                      </View>
+                        {part.label}
+                      </Text>
                       {pn && (
                         <Text
                           style={[styles.eventPlace, { color: col.text }]}
@@ -780,11 +795,9 @@ const makeStyles = (t: Theme) =>
     borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
   },
   eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
-  // タイトル行（予約マーク＋タイトル。マークが無ければ Text のみと同じ見た目）。
-  // マークがある行は numberOfLines を 1 に絞る（web は inline-block で
-  // マーク分だけ字下げして折り返せるが、RN の Text は SVG を子に持てず
-  // row で並べるしかないため、2行目以降もマーク分だけ幅が狭まって不自然に
-  // 字下げされてしまう。折り返させず1行に収めることで回避する）。
+  // 終日バー（常に1行）専用。時刻/タイトルブロックの予約マークは折り返しが
+  // 要るため row ではなく Text の子として Image を埋め込む（ReservationMark
+  // 参照）。1行しか無いここは row で並べても字下げ問題が起きないのでそのまま。
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
   // 場所（タイトルの次の優先度。web の blockLabel の場所行と同じ薄字）。
   eventPlace: { fontSize: 9, opacity: 0.7 },
