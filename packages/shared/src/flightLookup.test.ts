@@ -87,6 +87,36 @@ describe("lookupFlight", () => {
     expect(api.calls).toEqual(["byDate:2027-08-10", "dates", "byDate:2026-08-05"]);
   });
 
+  it("提供元が出発日/到着日どちらかが一致する複数便を返しても、出発が対象日の便を選ぶ", async () => {
+    // 実測: DL181 を date=2026-05-04 で引くと、5/3出発/5/4到着便と
+    // 5/4出発/5/5到着便の2件が返る（提供元は出発 or 到着どちらかの現地日付が
+    // 一致すれば緩く返す）。長押しした日＝出発日として引いているので、
+    // 5/4出発の便を選ばないと「1日前が登録される」不具合になる。
+    const depMay3: Flight = {
+      number: "DL181",
+      airlineName: "Delta Air Lines",
+      aircraftModel: "Boeing 767-300",
+      departure: { ...HNL, scheduledLocal: "2026-05-03T16:20" },
+      arrival: { ...NRT, scheduledLocal: "2026-05-04T20:00" },
+      source: { kind: "actual" },
+    };
+    const depMay4: Flight = {
+      number: "DL181",
+      airlineName: "Delta Air Lines",
+      aircraftModel: "Boeing 767-300",
+      departure: { ...HNL, scheduledLocal: "2026-05-04T16:20" },
+      arrival: { ...NRT, scheduledLocal: "2026-05-05T20:00" },
+      source: { kind: "actual" },
+    };
+    const api = fakeApi({ byDate: { "2026-05-04": [depMay3, depMay4] } });
+
+    const r = await lookupFlight(api, "DL181", "2026-05-04");
+
+    expect(r.kind).toBe("found");
+    if (r.kind !== "found") return;
+    expect(r.flight.departure.scheduledLocal).toBe("2026-05-04T16:20");
+  });
+
   it("運航日が1日も無ければ便名が存在しない扱い", async () => {
     const api = fakeApi({});
     expect(await lookupFlight(api, "XX999", "2026-08-05")).toEqual({

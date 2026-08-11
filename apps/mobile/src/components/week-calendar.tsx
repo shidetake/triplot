@@ -550,7 +550,7 @@ export function WeekCalendar({
                       <ReservationMark ev={ev} textColor={col.text} />
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={2}
+                        numberOfLines={ev.needsReservation ? 1 : 2}
                       >
                         {p.event.title}
                       </Text>
@@ -652,7 +652,7 @@ export function WeekCalendar({
                         <ReservationMark ev={ev} textColor={col.text} />
                         <Text
                           style={[styles.eventTitle, { color: col.text }]}
-                          numberOfLines={2}
+                          numberOfLines={ev.needsReservation ? 1 : 2}
                         >
                           {part.label}
                         </Text>
@@ -781,6 +781,10 @@ const makeStyles = (t: Theme) =>
   },
   eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
   // タイトル行（予約マーク＋タイトル。マークが無ければ Text のみと同じ見た目）。
+  // マークがある行は numberOfLines を 1 に絞る（web は inline-block で
+  // マーク分だけ字下げして折り返せるが、RN の Text は SVG を子に持てず
+  // row で並べるしかないため、2行目以降もマーク分だけ幅が狭まって不自然に
+  // 字下げされてしまう。折り返させず1行に収めることで回避する）。
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
   // 場所（タイトルの次の優先度。web の blockLabel の場所行と同じ薄字）。
   eventPlace: { fontSize: 9, opacity: 0.7 },

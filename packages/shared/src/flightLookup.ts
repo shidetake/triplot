@@ -54,7 +54,7 @@ export async function lookupFlight(
   number: string,
   date: string,
 ): Promise<LookupOutcome> {
-  const exact = best(await api.byNumberAndDate(number, date));
+  const exact = best(await api.byNumberAndDate(number, date), date);
   if (exact && isComplete(exact)) return { kind: "found", flight: exact };
 
   const dates = await api.operatingDates(number);
@@ -69,7 +69,7 @@ export async function lookupFlight(
     return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
   }
 
-  const ref = best(await api.byNumberAndDate(number, refDate));
+  const ref = best(await api.byNumberAndDate(number, refDate), refDate);
   if (!ref || !isComplete(ref)) {
     return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
   }
@@ -90,16 +90,29 @@ export async function peekCachedFlight(
 ): Promise<Flight | null> {
   const cached = await api.peekByNumberAndDate?.(number, date);
   if (!cached) return null;
-  const exact = best(cached);
+  const exact = best(cached, date);
   return exact && isComplete(exact) ? exact : null;
 }
 
-/** 複数区間が返ったら、時刻の揃っている区間を優先して1つ選ぶ */
-function best(flights: readonly Flight[]): Flight | null {
+/**
+ * 複数区間が返ったら1つ選ぶ。「複数区間」は2パターンある:
+ *  ① 同じ便名が経由地で複数区間に分かれる（乗継便）
+ *  ② 提供元が「出発日 or 到着日のどちらかが対象日」を緩く一致させて返す
+ *     （実測: DL181 を date=2026-05-04 で引くと、5/3出発/5/4到着便と
+ *     5/4出発/5/5到着便の2件が返る）
+ * triplot はカレンダーで長押しした日＝出発日として便を引くので、**出発の
+ * ローカル日付が対象日と一致する区間を優先する**（②の取り違えを防ぐ）。
+ * 一致が無ければ従来どおり（揃っている・出発が早い順）にフォールバックする。
+ */
+function best(flights: readonly Flight[], date: string): Flight | null {
   if (flights.length === 0) return null;
+  const departingOnDate = flights.filter((f) =>
+    f.departure.scheduledLocal?.startsWith(date),
+  );
+  const pool = departingOnDate.length > 0 ? departingOnDate : flights;
   return (
-    flights.find((f) => isComplete(f)) ??
-    flights.reduce((a, b) =>
+    pool.find((f) => isComplete(f)) ??
+    pool.reduce((a, b) =>
       (a.departure.scheduledLocal ?? "") <= (b.departure.scheduledLocal ?? "") ? a : b,
     )
   );
