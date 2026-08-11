@@ -28,6 +28,12 @@ export type FlightApi = {
   byNumberAndDate(number: string, date: string): Promise<Flight[]>;
   /** その便名が運航する日の一覧 */
   operatingDates(number: string): Promise<string[]>;
+  /**
+   * 全ユーザー横断のキャッシュだけを覗く（提供元は叩かない）。ヒットしなければ
+   * null。UI が debounce 待ちの間にこれで先当たりを試すためのもの
+   * （peekCachedFlight 参照）。実装が無くてもよい（テストの fake 等）。
+   */
+  peekByNumberAndDate?(number: string, date: string): Promise<Flight[] | null>;
 };
 
 export type LookupOutcome =
@@ -69,6 +75,23 @@ export async function lookupFlight(
   }
 
   return { kind: "found", flight: estimateForDate(ref, date) };
+}
+
+/**
+ * debounce を待たず、対象日ぶんのキャッシュだけを覗いて即答を試す
+ * （全ユーザー横断キャッシュなので、他の誰かが同じ便・同じ日を既に引いて
+ * いれば提供元を叩かず即表示できる）。揃った答えがキャッシュに無ければ
+ * null（呼び出し側は通常どおり debounce 後に lookupFlight を呼ぶ）。
+ */
+export async function peekCachedFlight(
+  api: FlightApi,
+  number: string,
+  date: string,
+): Promise<Flight | null> {
+  const cached = await api.peekByNumberAndDate?.(number, date);
+  if (!cached) return null;
+  const exact = best(cached);
+  return exact && isComplete(exact) ? exact : null;
 }
 
 /** 複数区間が返ったら、時刻の揃っている区間を優先して1つ選ぶ */

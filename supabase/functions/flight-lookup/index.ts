@@ -23,7 +23,7 @@ const NUMBER_RE = /^[A-Z0-9]{3,8}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Request_ =
-  | { kind: "flight"; number: string; date: string }
+  | { kind: "flight"; number: string; date: string; peek?: boolean }
   | { kind: "dates"; number: string };
 
 /**
@@ -57,7 +57,7 @@ function parseBody(body: unknown): Request_ | null {
   if (b.kind === "flight") {
     const date = typeof b.date === "string" ? b.date : "";
     if (!DATE_RE.test(date)) return null;
-    return { kind: "flight", number, date };
+    return { kind: "flight", number, date, peek: b.peek === true };
   }
   return null;
 }
@@ -104,6 +104,12 @@ Deno.serve(async (httpReq) => {
     if (ageSec < TTL_SECONDS[req.kind]) {
       return json({ payload: cached.payload, cached: true });
     }
+  }
+
+  // peek: キャッシュだけ見て提供元は叩かない。全ユーザー横断キャッシュなので、
+  // クライアントは待たずにこれを撃って、当たれば即表示できる（枠を消費しない）。
+  if (req.kind === "flight" && req.peek) {
+    return json({ cached: false });
   }
 
   const res = await fetchUpstream(upstreamPath(req), apiKey);

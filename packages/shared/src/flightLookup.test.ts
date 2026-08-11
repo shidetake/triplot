@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { Flight } from "./flight";
-import { type FlightApi, lookupFlight } from "./flightLookup";
+import { type FlightApi, lookupFlight, peekCachedFlight } from "./flightLookup";
 
 const NRT = {
   iata: "NRT",
@@ -41,6 +41,7 @@ function flightOn(date: string, complete = true): Flight {
 function fakeApi(opts: {
   byDate?: Record<string, Flight[]>;
   dates?: string[];
+  peekByDate?: Record<string, Flight[]>;
 }): FlightApi & { calls: string[] } {
   const calls: string[] = [];
   return {
@@ -52,6 +53,10 @@ function fakeApi(opts: {
     async operatingDates() {
       calls.push("dates");
       return opts.dates ?? [];
+    },
+    async peekByNumberAndDate(_n, date) {
+      calls.push(`peek:${date}`);
+      return opts.peekByDate?.[date] ?? null;
     },
   };
 }
@@ -124,5 +129,41 @@ describe("lookupFlight", () => {
       dates: ["2026-08-05"],
     });
     expect(await lookupFlight(api, "ZG002", "2027-08-10")).toEqual({ kind: "no-data" });
+  });
+});
+
+describe("peekCachedFlight", () => {
+  it("キャッシュに揃った答えがあれば提供元を叩かず返す", async () => {
+    const api = fakeApi({
+      peekByDate: { "2026-08-05": [flightOn("2026-08-05")] },
+    });
+    const flight = await peekCachedFlight(api, "ZG002", "2026-08-05");
+
+    expect(flight).toEqual(flightOn("2026-08-05"));
+    expect(api.calls).toEqual(["peek:2026-08-05"]);
+  });
+
+  it("キャッシュに無ければ null（呼び出し側が通常の lookupFlight へ進む）", async () => {
+    const api = fakeApi({});
+    expect(await peekCachedFlight(api, "ZG002", "2026-08-05")).toBeNull();
+  });
+
+  it("キャッシュはあるが片側欠けなら null 扱い（揃った答えだけ即答する）", async () => {
+    const api = fakeApi({
+      peekByDate: { "2026-08-05": [flightOn("2026-08-05", false)] },
+    });
+    expect(await peekCachedFlight(api, "ZG002", "2026-08-05")).toBeNull();
+  });
+
+  it("peekByNumberAndDate 未実装の FlightApi では null（テストの fake 等）", async () => {
+    const api: FlightApi = {
+      async byNumberAndDate() {
+        return [];
+      },
+      async operatingDates() {
+        return [];
+      },
+    };
+    expect(await peekCachedFlight(api, "ZG002", "2026-08-05")).toBeNull();
   });
 });

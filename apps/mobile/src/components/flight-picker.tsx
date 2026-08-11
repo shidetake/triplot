@@ -11,7 +11,11 @@ import {
   looksLikeAirlineQuery,
   parseFlightNumber,
 } from "@triplot/shared/flight";
-import { FLIGHT_SEARCH_DEBOUNCE_MS, lookupFlight } from "@triplot/shared/flightLookup";
+import {
+  FLIGHT_SEARCH_DEBOUNCE_MS,
+  lookupFlight,
+  peekCachedFlight,
+} from "@triplot/shared/flightLookup";
 import { loadAirportNames, localizeFlightJa } from "@triplot/shared/flightLocalize";
 
 import { XIcon } from "./icons";
@@ -56,6 +60,9 @@ export function FlightPicker({
 
   // 打っている途中の古い応答が後から届いて上書きするのを防ぐ。
   const seq = useRef(0);
+  // Enter/確定で debounce を待たず今すぐ引くための差し替え口（effect が
+  // 都度差し替える。対象が崩れている間は no-op）。
+  const runNowRef = useRef<() => void>(() => {});
 
   const typed = airline ? `${airline.iata}${text.trim()}` : text.trim();
   const parsed = parseFlightNumber(typed);
@@ -65,38 +72,69 @@ export function FlightPicker({
   const key = normalized !== null ? `${normalized}|${date}` : null;
 
   // 便名が揃ったら自動で引く（送信ボタンを押させない。Flighty と同じ）。
-  // 「検索中」は揃った時点ですぐ出すが（showBusy の導出を参照）、実際の呼び出しは
-  // 入力が止まってから（1文字ごとに叩くと提供元 API のレートリミットに引っかかる）。
+  // 「検索中」は揃った時点ですぐ出すが（showBusy の導出を参照）、実際に提供元を
+  // 叩くのは入力が止まってから（1文字ごとに叩くとレートリミットに引っかかる）。
+  // ただし全ユーザー横断のキャッシュだけは待たずに覗き、当たれば即表示する
+  // （キャッシュ照会は自前 DB を見るだけで提供元の枠を消費しないので安全）。
   useEffect(() => {
-    if (normalized === null) return;
+    if (normalized === null) {
+      runNowRef.current = () => {};
+      return;
+    }
     const currentKey = `${normalized}|${date}`;
     const my = ++seq.current;
-    const timer = setTimeout(() => {
+    let fired = false;
+
+    const applyFound = async (flight: Flight) => {
+      // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
+      let localized = flight;
+      try {
+        const table = await loadAirportNames(locale);
+        if (table) localized = localizeFlightJa(flight, table);
+      } catch {
+        // 日本語化に失敗しても便自体は出す。
+      }
+      if (my !== seq.current) return;
+      setResult(localized);
+      setError(null);
+      setSettledKey(currentKey);
+    };
+
+    const runLookup = () => {
+      if (fired) return;
+      fired = true;
+      clearTimeout(timer);
       void (async () => {
         try {
           const outcome = await lookupFlight(createFlightApi(supabase), normalized, date);
           if (my !== seq.current) return;
           if (outcome.kind === "found") {
-            // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
-            const table = await loadAirportNames(locale);
-            if (my !== seq.current) return;
-            setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
-            setError(null);
+            await applyFound(outcome.flight);
           } else {
             setResult(null);
             setError(
               outcome.kind === "unknown-number" ? t("flightNotFound") : t("flightNoData"),
             );
+            setSettledKey(currentKey);
           }
         } catch {
           if (my !== seq.current) return;
           setResult(null);
           setError(t("flightFailed"));
-        } finally {
-          if (my === seq.current) setSettledKey(currentKey);
+          setSettledKey(currentKey);
         }
       })();
-    }, FLIGHT_SEARCH_DEBOUNCE_MS);
+    };
+    runNowRef.current = runLookup;
+
+    void peekCachedFlight(createFlightApi(supabase), normalized, date).then((flight) => {
+      if (fired || my !== seq.current || !flight) return;
+      fired = true;
+      clearTimeout(timer);
+      void applyFound(flight);
+    });
+
+    const timer = setTimeout(runLookup, FLIGHT_SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
     // date が変わったら引き直す（フォームの日時を変えた場合）
   }, [normalized, date]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -131,6 +169,8 @@ export function FlightPicker({
             autoCapitalize="characters"
             autoCorrect={false}
             keyboardType={airline ? "number-pad" : "default"}
+            returnKeyType="search"
+            onSubmitEditing={() => runNowRef.current()}
             placeholder={
               airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
             }

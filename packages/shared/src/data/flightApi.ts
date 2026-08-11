@@ -8,16 +8,16 @@ import { parseAeroDataBoxFlights, parseOperatingDates } from "../flightAeroDataB
 import type { FlightApi } from "../flightLookup";
 import type { DB } from "./client";
 
-type FunctionResponse = { payload?: unknown; error?: string };
+type FunctionResponse = { payload?: unknown; cached?: boolean; error?: string };
 
-async function call(sb: DB, body: Record<string, unknown>): Promise<unknown> {
+async function call(sb: DB, body: Record<string, unknown>): Promise<FunctionResponse> {
   const { data, error } = await sb.functions.invoke<FunctionResponse>(
     "flight-lookup",
     { body },
   );
   if (error) throw new Error(error.message);
   if (data?.error) throw new Error(data.error);
-  return data?.payload ?? null;
+  return data ?? {};
 }
 
 /**
@@ -27,12 +27,16 @@ async function call(sb: DB, body: Record<string, unknown>): Promise<unknown> {
 export function createFlightApi(sb: DB): FlightApi {
   return {
     async byNumberAndDate(number, date) {
-      const payload = await call(sb, { kind: "flight", number, date });
+      const { payload } = await call(sb, { kind: "flight", number, date });
       return parseAeroDataBoxFlights(payload, number);
     },
     async operatingDates(number) {
-      const payload = await call(sb, { kind: "dates", number });
+      const { payload } = await call(sb, { kind: "dates", number });
       return parseOperatingDates(payload);
+    },
+    async peekByNumberAndDate(number, date) {
+      const res = await call(sb, { kind: "flight", number, date, peek: true });
+      return res.cached ? parseAeroDataBoxFlights(res.payload, number) : null;
     },
   };
 }
