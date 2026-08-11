@@ -601,7 +601,6 @@ export function WeekCalendar({
                   height: number;
                   lane: number;
                   laneCount: number;
-                  label: string;
                   time: number;
                 }[] = [];
                 const depCi = colIndexByKey.get(t.departColumnKey);
@@ -622,7 +621,6 @@ export function WeekCalendar({
                     height: Math.max(MIN_BLOCK, y(endMin) - y(t.departMin)),
                     lane: depOv ? ov.lane : t.departLane,
                     laneCount: depOv ? ov.laneCount : t.departLaneCount,
-                    label: `${t.event.title} 発`,
                     time: t.departMin,
                   });
                 }
@@ -634,7 +632,6 @@ export function WeekCalendar({
                     height: Math.max(MIN_BLOCK, y(t.arriveMin)),
                     lane: arrOv ? ov.lane : t.arriveLane,
                     laneCount: arrOv ? ov.laneCount : t.arriveLaneCount,
-                    label: `${t.event.title} 着`,
                     time: t.arriveMin,
                   });
                 }
@@ -670,7 +667,7 @@ export function WeekCalendar({
                         numberOfLines={2}
                       >
                         <ReservationMark ev={ev} textColor={col.text} />
-                        {part.label}
+                        {t.event.title}
                       </Text>
                       {pn && (
                         <Text
