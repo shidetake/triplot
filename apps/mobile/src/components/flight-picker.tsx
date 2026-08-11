@@ -169,7 +169,6 @@ export function FlightPicker({
             autoCapitalize="characters"
             autoCorrect={false}
             keyboardType={airline ? "number-pad" : "default"}
-            returnKeyType="search"
             onSubmitEditing={() => runNowRef.current()}
             placeholder={
               airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
