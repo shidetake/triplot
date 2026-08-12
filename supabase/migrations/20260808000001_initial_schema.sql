@@ -390,6 +390,23 @@ $$;
 ALTER FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participant_member_ids" "uuid"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  -- 費用カテゴリから「初めてその場所を登録するときだけ」の既定アイコンを出す。
+  -- 既存の場所のアイコンには一切影響しない（呼び出し側が新規作成時にだけ使う）。
+  -- 対応が明確な2カテゴリのみ（無理に全カテゴリを当てにいかない）。
+  select case p_category_key
+    when 'dining' then 'food'
+    when 'accommodation' then 'lodging'
+    else null
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -400,7 +417,8 @@ declare
   v_expense_id       uuid;
   v_split_member_id  uuid;
   v_payer_ok         boolean;
-  v_category_ok      boolean;
+  v_category_key     text;
+  v_suggest_icon     text;
   v_place_id         uuid;
   v_paid_at          timestamp := coalesce(p_paid_at, (now() at time zone 'utc'));
 begin
@@ -446,14 +464,25 @@ begin
     raise exception 'payer is not an active member of this trip';
   end if;
 
-  select exists (
-    select 1 from expense_categories
-    where id = p_category_id
-      and trip_id = p_trip_id
-  ) into v_category_ok;
+  select key into v_category_key
+  from expense_categories
+  where id = p_category_id
+    and trip_id = p_trip_id;
 
-  if not v_category_ok then
+  if not found then
     raise exception 'category does not belong to this trip';
+  end if;
+
+  -- 初めてその場所を登録するときだけ、費用カテゴリから既定アイコンを当てる
+  -- （resolve_place_spec 経由の find_or_create_* は新規 insert のときしか
+  -- icon を使わないので、既存の場所には影響しない）。
+  v_suggest_icon := public.default_place_icon_for_expense_category(v_category_key);
+  if v_suggest_icon is not null then
+    if p_place ? 'google' and coalesce(p_place -> 'google' ->> 'icon', '') = '' then
+      p_place := jsonb_set(p_place, '{google,icon}', to_jsonb(v_suggest_icon));
+    elsif p_place ? 'freetext' and coalesce(p_place -> 'freetext' ->> 'icon', '') = '' then
+      p_place := jsonb_set(p_place, '{freetext,icon}', to_jsonb(v_suggest_icon));
+    end if;
   end if;
 
   -- 既存 id の trip 所属チェックも resolve_place_spec の中で行う。
@@ -1846,7 +1875,8 @@ declare
   v_my_member_id     uuid;
   v_is_creator       boolean;
   v_payer_ok         boolean;
-  v_category_ok      boolean;
+  v_category_key     text;
+  v_suggest_icon     text;
   v_place_id         uuid;
   v_split_member_id  uuid;
 begin
@@ -1908,13 +1938,23 @@ begin
     raise exception 'payer is not an active member of this trip';
   end if;
 
-  select exists (
-    select 1 from expense_categories
-    where id = p_category_id
-      and trip_id = v_trip_id
-  ) into v_category_ok;
-  if not v_category_ok then
+  select key into v_category_key
+  from expense_categories
+  where id = p_category_id
+    and trip_id = v_trip_id;
+  if not found then
     raise exception 'category does not belong to this trip';
+  end if;
+
+  -- 初めてその場所を登録するときだけ、費用カテゴリから既定アイコンを当てる
+  -- （create_expense と同じ考え方。既存の場所には影響しない）。
+  v_suggest_icon := public.default_place_icon_for_expense_category(v_category_key);
+  if v_suggest_icon is not null then
+    if p_place ? 'google' and coalesce(p_place -> 'google' ->> 'icon', '') = '' then
+      p_place := jsonb_set(p_place, '{google,icon}', to_jsonb(v_suggest_icon));
+    elsif p_place ? 'freetext' and coalesce(p_place -> 'freetext' ->> 'icon', '') = '' then
+      p_place := jsonb_set(p_place, '{freetext,icon}', to_jsonb(v_suggest_icon));
+    end if;
   end if;
 
   v_place_id := public.resolve_place_spec(v_trip_id, v_my_member_id, p_place);
