@@ -477,7 +477,9 @@ export function WeekCalendar({
                           numberOfLines={1}
                         >
                           {b.event.title}
-                          {extra ? ` ${extra}` : ""}
+                          {extra ? (
+                            <Text style={styles.allDayExtra}> {extra}</Text>
+                          ) : null}
                         </Text>
                       </View>
                     </Pressable>
@@ -799,7 +801,11 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
     paddingHorizontal: 4,
   },
-  allDayText: { fontSize: 10, fontWeight: "500", flexShrink: 1 },
+  // 通常予定のタイトル(eventTitle)と揃える。以前は10pxで理由なく小さかった。
+  allDayText: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
+  // 場所・メモを同じ行に続けるときの控えめ表示。通常予定の eventPlace と
+  // 同じフォントサイズ・opacity（色は親の Text から継承）。
+  allDayExtra: { fontSize: 9, opacity: 0.7 },
   body: { flex: 1 },
   bodyRow: { flexDirection: "row" },
   gutterHour: { position: "absolute", right: 4 },

@@ -809,11 +809,17 @@ export function WeekCalendar({
                   {color.kind === "mixed" && participantDots(b.event)}
                   <ReservationMark ev={b.event} />
                   <span className="truncate">
-                    {b.event.title}
+                    {/* タイトルは通常予定の blockLabel と同じ font-medium、
+                        場所・メモは同じ opacity-70 で続ける（改行はしない）。 */}
+                    <span className="font-medium">{b.event.title}</span>
                     {[placeName(b.event.startPlaceId), b.event.note]
-                      .filter(Boolean)
-                      .map((s) => ` ${s}`)
-                      .join("")}
+                      .filter((s): s is string => !!s)
+                      .map((s, i) => (
+                        <span key={i} className="opacity-70">
+                          {" "}
+                          {s}
+                        </span>
+                      ))}
                   </span>
                 </button>
               );
