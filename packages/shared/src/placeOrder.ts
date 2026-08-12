@@ -20,6 +20,7 @@
 import {
   eventEndPlaceId,
   resolveEventTz,
+  resolveExpenseTz,
   utcMsToWallClock,
   wallClockToUtcMs,
   type ScheduleEvent,
@@ -39,6 +40,7 @@ export type OrderablePlace = {
 export type OrderableEvent = Pick<
   ScheduleEvent,
   | "kind"
+  | "allDay"
   | "startAt"
   | "endAt"
   | "endTz"
@@ -79,6 +81,28 @@ function earliestVisitDetailByPlace(
     const startPlaceId = e.startPlaceId;
     const endPlaceId = eventEndPlaceId(e);
     if (!startPlaceId && !endPlaceId) continue;
+
+    // 複数日にわたる終日予定（宿泊等）は「初日の最後の予定」として扱う。
+    // 開始 0 時をそのまま使うと、初日に移動が入っていてもその移動より前に
+    // 来てしまう（普通はそこへ移動してからチェックインするため）。初日が
+    // TZ境界の乗継当日（同日発着で曖昧）なら、その日の終わりに実効している
+    // 側＝到着側のTZを採る。単日の終日予定は対象外（今まで通り初日扱い）。
+    const startDate = e.startAt.slice(0, 10);
+    const endDate = e.endAt ? e.endAt.slice(0, 10) : startDate;
+    if (e.allDay && endDate > startDate) {
+      const resolution = resolveExpenseTz(startDate, tzTimeline);
+      const tz =
+        resolution.kind === "single"
+          ? resolution.tz
+          : resolution.options[resolution.options.length - 1].tz;
+      const endOfStartDayMs = wallClockToUtcMs(`${startDate}T23:59`, tz);
+      if (startPlaceId) keepEarliest(startPlaceId, endOfStartDayMs, tz);
+      if (endPlaceId && endPlaceId !== startPlaceId) {
+        keepEarliest(endPlaceId, endOfStartDayMs, tz);
+      }
+      continue;
+    }
+
     // transit は startTz が唯一の真実源。normal/allday は startTz を持たない
     // ことがあるので旅程から都度解決する（gcalEvent.ts と同じ作法）。
     const tz =

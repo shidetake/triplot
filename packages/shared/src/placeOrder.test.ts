@@ -49,6 +49,7 @@ function event(
 ): OrderableEvent {
   return {
     kind: "normal",
+    allDay: false,
     startAt,
     endAt,
     startTz: null,
@@ -57,6 +58,25 @@ function event(
     tzDisambigSide: null,
     startPlaceId: placeId,
     endPlaceId,
+  };
+}
+
+function allDayEvent(
+  placeId: string | null,
+  startAt: string,
+  endAt: string,
+): OrderableEvent {
+  return {
+    kind: "normal",
+    allDay: true,
+    startAt,
+    endAt,
+    startTz: null,
+    endTz: null,
+    tzDisambigTransitId: null,
+    tzDisambigSide: null,
+    startPlaceId: placeId,
+    endPlaceId: null,
   };
 }
 
@@ -100,6 +120,7 @@ describe("earliestVisitByPlace", () => {
       [
         {
           kind: "transit",
+          allDay: false,
           startAt: "2026-04-28T18:00",
           endAt: "2026-04-28T08:00",
           startTz: "Asia/Tokyo",
@@ -151,6 +172,7 @@ describe("earliestVisitByPlace", () => {
   it("transit は startTz をそのまま使う（旅程から引き直さない）", () => {
     const transit: OrderableEvent = {
       kind: "transit",
+      allDay: false,
       startAt: "2026-04-28T18:00",
       endAt: "2026-04-28T08:00",
       startTz: "Asia/Tokyo",
@@ -162,6 +184,37 @@ describe("earliestVisitByPlace", () => {
     };
     const m = earliestVisitByPlace([transit], [], TO_HAWAII);
     expect(m.get("hnd")).toBe(Date.parse("2026-04-28T18:00+09:00"));
+  });
+
+  it("複数日の終日予定（宿泊）は初日の最後の予定として扱う＝同日中の移動より後になる", () => {
+    // 実際のバグ再現: 4/28-5/4 の宿泊（終日・複数日）と、同じ4/28に同日発着
+    // する乗継（成田→ホノルル）。宿泊を 0 時のまま比べると乗継より前に来て
+    // しまう（成田空港・ホノルル空港より先にホテルが来る）。
+    const stay = allDayEvent("hotel", "2026-04-28T00:00", "2026-05-04T00:00");
+    const transit: OrderableEvent = {
+      kind: "transit",
+      allDay: false,
+      startAt: "2026-04-28T19:10",
+      endAt: "2026-04-28T07:25",
+      startTz: "Asia/Tokyo",
+      endTz: "Pacific/Honolulu",
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
+      startPlaceId: "nrt",
+      endPlaceId: "hnl",
+    };
+    const m = earliestVisitByPlace([stay, transit], [], TO_HAWAII);
+    expect(m.get("nrt")!).toBeLessThan(m.get("hnl")!);
+    expect(m.get("hnl")!).toBeLessThan(m.get("hotel")!);
+  });
+
+  it("単日の終日予定は今まで通り初日の最初（0時）として扱う", () => {
+    const m = earliestVisitByPlace(
+      [allDayEvent("hotel", "2026-04-28T00:00", "2026-04-28T00:00"), event("nrt", "2026-04-28T09:00")],
+      [],
+      TOKYO,
+    );
+    expect(m.get("hotel")!).toBeLessThan(m.get("nrt")!);
   });
 });
 
@@ -194,6 +247,7 @@ describe("visitDayByPlace", () => {
       [
         {
           kind: "transit",
+          allDay: false,
           startAt: "2026-04-28T18:00",
           endAt: "2026-04-28T08:00",
           startTz: "Asia/Tokyo",

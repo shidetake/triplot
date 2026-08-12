@@ -40,7 +40,8 @@ const checkMarkSource = require("../../assets/marks/reservation-check.png");
 const GUTTER = 44; // 時刻ガター幅
 const HOUR_PX = 30; // 1時間の高さ
 const ALLDAY_ROW = 24; // 終日バー1行の高さ
-const HEADER_H = 34; // 日付ヘッダの高さ
+const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
+const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
 const MIN_BLOCK = 18; // ブロック最低高さ
 
 // 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
@@ -133,6 +134,9 @@ export function WeekCalendar({
   const COL = colWidth(columns.length, containerWidth - GUTTER);
   const totalW = columns.length * COL;
   const bodyH = 24 * HOUR_PX;
+  // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
+  // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
+  const headerH = groups.some((g) => g.tzNote) ? HEADER_H : HEADER_H_COMPACT;
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]));
   const eventById = new Map(events.map((e) => [e.id, e]));
 
@@ -396,7 +400,7 @@ export function WeekCalendar({
         >
           <View style={{ width: totalW }}>
             {/* 日付ヘッダ行 */}
-            <View style={[styles.dayHeaderRow, { height: HEADER_H }]}>
+            <View style={[styles.dayHeaderRow, { height: headerH }]}>
               {groups.map((g) => {
                 const w = g.columns.length * COL;
                 return (
