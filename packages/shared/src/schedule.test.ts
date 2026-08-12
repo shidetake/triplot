@@ -721,6 +721,66 @@ describe("buildSchedule: 終日・連日バー", () => {
     expect(x.row).toBe(1); // 宿泊と重なるので別行
     expect(s.allDayRowCount).toBe(2);
   });
+
+  it("複数日の終日予定の初日が wraps 便の当日なら、到着側の列から始まる（出発側の列は飛ばす）", () => {
+    // 実データ再現: 成田(JST)19:10発→ホノルル(HST)07:25着（同日・巻き戻り＝2列）の
+    // 当日にチェックインする複数泊の宿泊。出発側の列（成田にいる時間帯）から
+    // 描き始めると「移動する前からチェックイン済み」に見えてしまうので、
+    // 到着側の列（ホノルル到着後）から始まってほしい。
+    const flight = ev({
+      id: "f1",
+      title: "NRT-HNL",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const stay = ev({
+      id: "stay",
+      title: "宿泊",
+      allDay: true,
+      startAt: "2026-04-28T00:00:00",
+      endAt: "2026-04-30T00:00:00",
+    });
+    const s = buildSchedule([flight, stay], {
+      tripStart: "2026-04-28",
+      tripEnd: "2026-04-30",
+    });
+    const depCol = s.columns.find((c) => c.key === "t-f1-dep")!;
+    const arrCol = s.columns.find((c) => c.key === "t-f1-arr")!;
+    const depIndex = s.columns.indexOf(depCol);
+    const arrIndex = s.columns.indexOf(arrCol);
+    const bar = s.allDayBars.find((b) => b.event.id === "stay")!;
+    expect(bar.startColIndex).toBe(arrIndex);
+    expect(bar.startColIndex).not.toBe(depIndex);
+  });
+
+  it("単日の終日予定は wraps 便の当日でも出発側の列から始まる（従来通り）", () => {
+    const flight = ev({
+      id: "f1",
+      title: "NRT-HNL",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const oneDay = ev({
+      id: "oneDay",
+      title: "休日予定",
+      allDay: true,
+      startAt: "2026-04-28T00:00:00",
+      endAt: "2026-04-28T00:00:00",
+    });
+    const s = buildSchedule([flight, oneDay], {
+      tripStart: "2026-04-28",
+      tripEnd: "2026-04-30",
+    });
+    const depIndex = s.columns.indexOf(s.columns.find((c) => c.key === "t-f1-dep")!);
+    const bar = s.allDayBars.find((b) => b.event.id === "oneDay")!;
+    expect(bar.startColIndex).toBe(depIndex);
+  });
 });
 
 describe("buildSchedule: 縦軸は常に0:00-24:00固定", () => {
