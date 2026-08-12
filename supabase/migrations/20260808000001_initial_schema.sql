@@ -395,10 +395,17 @@ CREATE OR REPLACE FUNCTION "public"."default_place_icon_for_expense_category"("p
     AS $$
   -- 費用カテゴリから「初めてその場所を登録するときだけ」の既定アイコンを出す。
   -- 既存の場所のアイコンには一切影響しない（呼び出し側が新規作成時にだけ使う）。
-  -- 対応が明確な2カテゴリのみ（無理に全カテゴリを当てにいかない）。
+  -- 対応が明確なカテゴリのみ（無理に全カテゴリを当てにいかない）。ここで使う
+  -- アイコンは全て trip_pin_options の既定12種の中（seed_default_trip_pin_options）
+  -- ＝場所編集画面のアイコン選択にも必ず表示されている状態にする。
   select case p_category_key
     when 'dining' then 'food'
     when 'accommodation' then 'lodging'
+    when 'flight' then 'airport'
+    when 'local_transit' then 'station'
+    when 'clothing' then 'local_grocery_store'
+    when 'leisure' then 'activity'
+    when 'souvenir' then 'local_grocery_store'
     else null
   end;
 $$;
