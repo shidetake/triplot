@@ -762,7 +762,13 @@ const makeStyles = (t: Theme) =>
   dayHeaderRow: { flexDirection: "row" },
   dayHeaderCell: {
     alignItems: "center",
-    justifyContent: "center",
+    // 縦は center ではなく上詰め。center だと「タイトル1行だけの列」と
+    // 「タイトル+TZ注記2行の列」で中身の高さが違うぶん、タイトルの縦位置が
+    // 列ごとにズレてしまう（前進する便の注記は隣の列に張り出すだけで、
+    // その列自体は注記を持たないため）。上詰めなら中身の行数に関わらず
+    // タイトルの位置は常に揃う。
+    justifyContent: "flex-start",
+    paddingTop: 4,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: t.fgAlpha(0.08),
     paddingHorizontal: 2,
