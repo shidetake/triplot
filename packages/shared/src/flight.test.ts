@@ -221,8 +221,26 @@ describe("flightTerminalNote", () => {
     expect(flightTerminalNote(both)).toBe("Terminal 1 → Terminal B");
   });
 
-  it("片方でも欠けていれば null（メモを崩さない）", () => {
+  it("片方だけ欠けていても、わかる方は書いて欠けた側は -- にする", () => {
     // ZG002 は実測値どおり到着（HNL）側のターミナルが不明。
-    expect(flightTerminalNote(ZG002)).toBeNull();
+    expect(flightTerminalNote(ZG002)).toBe("Terminal 1 → --");
+  });
+
+  it("到着側だけわかるときは出発側を -- にする", () => {
+    const arrOnly: Flight = {
+      ...ZG002,
+      departure: { ...NRT, terminal: null },
+      arrival: { ...HNL, terminal: "B" },
+    };
+    expect(flightTerminalNote(arrOnly)).toBe("-- → Terminal B");
+  });
+
+  it("両方とも欠けていれば null（書くことが無い）", () => {
+    const neither: Flight = {
+      ...ZG002,
+      departure: { ...NRT, terminal: null },
+      arrival: { ...HNL, terminal: null },
+    };
+    expect(flightTerminalNote(neither)).toBeNull();
   });
 });

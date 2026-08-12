@@ -208,8 +208,8 @@ export function EventForm({
   const applyFlight = (f: Flight) => {
     setTitle(flightTitle(f));
     setKind3("transit");
-    // 出発/到着ターミナルが両方わかるときだけメモに書く（片方欠けなら
-    // 意味のある差分を示せないのでメモは触らない）。
+    // 出発/到着どちらかのターミナルがわかればメモに書く（片方欠けは "--"）。
+    // 両方とも不明なときだけメモは触らない。
     const terminalNote = flightTerminalNote(f);
     if (terminalNote) setNote(terminalNote);
 
