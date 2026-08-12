@@ -808,7 +808,13 @@ export function WeekCalendar({
                 >
                   {color.kind === "mixed" && participantDots(b.event)}
                   <ReservationMark ev={b.event} />
-                  <span className="truncate">{b.event.title}</span>
+                  <span className="truncate">
+                    {b.event.title}
+                    {[placeName(b.event.startPlaceId), b.event.note]
+                      .filter(Boolean)
+                      .map((s) => ` ${s}`)
+                      .join("")}
+                  </span>
                 </button>
               );
             })}

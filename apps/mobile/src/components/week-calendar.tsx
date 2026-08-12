@@ -448,6 +448,13 @@ export function WeekCalendar({
                   const col = barColors(ev);
                   const left = b.startColIndex * COL;
                   const width = (b.endColIndex - b.startColIndex + 1) * COL;
+                  // 終日バーは複数列にまたがると横幅に余裕があるので、タイトルの
+                  // 続きとして場所・メモを半角スペース区切りで同じ行に足す（改行
+                  // はしない＝バーの高さは変えない）。1行に収まらない分は
+                  // numberOfLines={1} の省略記号に任せる。
+                  const extra = [placeName(ev.startPlaceId), ev.note]
+                    .filter(Boolean)
+                    .join(" ");
                   return (
                     <Pressable
                       key={b.event.id + b.row}
@@ -470,6 +477,7 @@ export function WeekCalendar({
                           numberOfLines={1}
                         >
                           {b.event.title}
+                          {extra ? ` ${extra}` : ""}
                         </Text>
                       </View>
                     </Pressable>
