@@ -16,6 +16,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 
 import { getIcon, type PinOption } from "@triplot/shared/placeIcons";
 
+import { useInSheet } from "./form-host";
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
@@ -25,11 +26,28 @@ import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { gmapsUrl, PlaceIcon, type PlaceRow } from "./place-list";
 import type { CandidatePlace } from "./place-search";
+import { cn } from "@/lib/utils";
 
 // 再 export（既存の `import { type PinOption } from "./place-popups"` を壊さない）。
 export type { PinOption };
 
 const initialState: PlaceMutationState = { ok: false, error: null };
+
+// 地図ピンのポップアップ（Google Maps の InfoWindow）とボトムシート（狭い画面）で
+// 中身を共用するための外枠クラス。InfoWindow 内は幅を絞る必要があるが（256px。
+// 「テキスト入力のラベルと placeholder」の 352px フォームより狭い）、ボトムシートは
+// vaul 側が幅・スクロールを持つのでここでは絞らない。
+function popupWrapClass(inSheet: boolean, hasOwnMaxHeight = true): string {
+  return cn(
+    "flex flex-col gap-2",
+    inSheet
+      ? "w-full"
+      : cn(
+          "w-[min(16rem,calc(100vw-3rem))] pr-1",
+          hasOwnMaxHeight && "max-h-[26rem] overflow-y-auto pb-2",
+        ),
+  );
+}
 
 function TentativeField({
   value,
@@ -177,14 +195,15 @@ export function CandidateInfo({
   tripId,
   candidate,
   pinOptions,
-  onAdded,
+  onDone,
 }: {
   tripId: string;
   candidate: CandidatePlace;
   pinOptions: PinOption[];
-  onAdded: () => void;
+  onDone: () => void;
 }) {
   const t = useTranslations("place");
+  const inSheet = useInSheet();
   const [state, formAction, isPending] = useActionState(
     createPlaceAction.bind(null, tripId),
     initialState,
@@ -196,11 +215,11 @@ export function CandidateInfo({
   const noteId = useId();
 
   useEffect(() => {
-    if (state.ok) onAdded();
-  }, [state.ok, onAdded]);
+    if (state.ok) onDone();
+  }, [state.ok, onDone]);
 
   return (
-    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pb-2 pr-1">
+    <div className={popupWrapClass(inSheet)}>
       {candidate.photoUri && (
         // 吹き出しを開いた時だけ <img> が読まれる → Photo 課金は開いた分のみ。
         // Google 写真 CDN は動的ドメインで next/image の最適化対象外なので素の img。
@@ -300,13 +319,14 @@ export function DraftInfo({
   tripId,
   draft,
   pinOptions,
-  onAdded,
+  onDone,
 }: {
   tripId: string;
   draft: { lat: number; lng: number };
   pinOptions: PinOption[];
-  onAdded: () => void;
+  onDone: () => void;
 }) {
+  const inSheet = useInSheet();
   const [state, formAction, isPending] = useActionState(
     createPlaceAction.bind(null, tripId),
     initialState,
@@ -321,11 +341,11 @@ export function DraftInfo({
   const noteId = useId();
 
   useEffect(() => {
-    if (state.ok) onAdded();
-  }, [state.ok, onAdded]);
+    if (state.ok) onDone();
+  }, [state.ok, onDone]);
 
   return (
-    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pb-2 pr-1">
+    <div className={popupWrapClass(inSheet)}>
       <div>
         <p className="text-sm font-semibold">{t("addPin")}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
@@ -486,6 +506,7 @@ export function SavedInfo({
 }) {
   const t = useTranslations("place");
   const tCommon = useTranslations("common");
+  const inSheet = useInSheet();
   const [editing, setEditing] = useState(false);
 
   const [state, formAction, isPending] = useActionState(
@@ -532,7 +553,7 @@ export function SavedInfo({
   ) : null;
 
   return (
-    <div className="flex max-h-[26rem] w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 overflow-y-auto pb-2 pr-1">
+    <div className={popupWrapClass(inSheet)}>
       <div>
         <div className="flex items-start justify-between gap-2">
           <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
@@ -541,7 +562,11 @@ export function SavedInfo({
               <PrivateBadge className="shrink-0" />
             )}
           </p>
-          <CloseButton onClick={onDone} className="-mr-0.5 -mt-0.5 shrink-0" />
+          {/* ボトムシートはドラッグダウン/dim タップで閉じる（× は出さない。
+              ui-guidelines「定型部品」の × 閉じるボタン節）。 */}
+          {!inSheet && (
+            <CloseButton onClick={onDone} className="-mr-0.5 -mt-0.5 shrink-0" />
+          )}
         </div>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-muted-foreground">

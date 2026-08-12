@@ -26,10 +26,8 @@ import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
+  NARROW_SCREEN_QUERY,
 } from "@/lib/mobileTabChrome";
-
-// タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
-const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
 // 場所一覧ボトムシートの3つの高さ。
 // - mini: ハンドル+件数の行だけがちょうど収まる高さ（48px）。地図を触った・
@@ -351,7 +349,7 @@ export function PlacesSection({
           tripId={tripId}
           candidate={c}
           pinOptions={pinOptions}
-          onAdded={clearSearch}
+          onDone={clearSearch}
         />
       );
     }
@@ -389,7 +387,7 @@ export function PlacesSection({
       tripId={tripId}
       draft={draft}
       pinOptions={pinOptions}
-      onAdded={clearSearch}
+      onDone={clearSearch}
     />
   );
 
@@ -452,6 +450,7 @@ export function PlacesSection({
             onPoiSelect={showPoi}
             infoContent={infoContent}
             draftContent={draftContent}
+            locating={!!pendingLocationFor}
             className="h-full w-full rounded-none border-0 md:h-[32rem] md:rounded-md md:border md:border-foreground/10"
           />
         </div>

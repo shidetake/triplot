@@ -62,7 +62,9 @@ const SHEET_MAX_PERCENT = 93;
 //  - Vaul のドラッグ↓は onOpenChange(false) 経由で内部クローズ。
 //  - 内部クローズ＝open を false に → Vaul がシートを下げ・dim が opacity でフェードアウト
 //    → アニメ分待ってから親へ通知（アンマウント）。
-function NarrowSheet({
+// 地図ピン等、FormPopover を経由しない場所でも同じボトムシートを使い回すため export する
+// （place-map.tsx が InfoWindow の代わりにこれを直接使う）。
+export function NarrowSheet({
   label,
   onClose,
   draftKey,

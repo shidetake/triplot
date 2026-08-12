@@ -47,9 +47,12 @@ import {
 import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
 import { useTranslations } from "next-intl";
 
+import { NarrowSheet } from "./form-popover";
 import { PlaceIcon, type PlaceRow } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
+import { useMediaQuery } from "./use-media-query";
 import { cn } from "@/lib/utils";
+import { NARROW_SCREEN_QUERY } from "@/lib/mobileTabChrome";
 
 // タッチの長押し検出で任意地点に仮ピンを置く（iOS Safari は長押し→
 // contextmenu が安定しないため自前実装）。<Map> の子として描画し、
@@ -261,6 +264,7 @@ export function PlaceMap({
   poi,
   infoContent,
   draftContent,
+  locating,
   className,
 }: {
   places: PlaceRow[];
@@ -279,10 +283,17 @@ export function PlaceMap({
   onPoiSelect: (c: CandidatePlace) => void;
   infoContent: ReactNode;
   draftContent: ReactNode;
+  // draftContent が LocateInfo（既存 place への位置設定。onDone が「保存成功」
+  // 専用の意味を持ち、ボトムシートの汎用クローズに置き換えられると困る）か
+  // どうか。true の間は draft を狭い画面でもポップアップのまま出す。
+  locating: boolean;
   // 呼び出し側で外枠（高さ・角丸・枠線）を上書きしたい時に渡す（モバイルタブの全画面化等）。
   className?: string;
 }) {
   const t = useTranslations("place");
+  // 狭い画面はピンのフォームをボトムシートで出す（NARROW_SCREEN_QUERY は
+  // places-section.tsx のレイアウト切替と同じ閾値。単一の真実は lib/mobileTabChrome.ts）。
+  const narrow = useMediaQuery(NARROW_SCREEN_QUERY);
   // AdvancedMarker は Map ID 必須（無料。Google Cloud で発行して env に入れる）。
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const colorScheme = useMapColorScheme();
@@ -549,7 +560,7 @@ export function PlaceMap({
               );
             })}
 
-          {selected && selectedPos && (
+          {selected && selectedPos && !narrow && (
             <InfoWindow
               position={selectedPos}
               onCloseClick={onCloseInfo}
@@ -587,7 +598,7 @@ export function PlaceMap({
             </AdvancedMarker>
           )}
 
-          {draft && (
+          {draft && (!narrow || locating) && (
             <InfoWindow
               position={draft}
               onCloseClick={onCloseDraft}
@@ -598,6 +609,27 @@ export function PlaceMap({
             </InfoWindow>
           )}
         </Map>
+        {/* 狭い画面: 地図ピンのフォームは InfoWindow でなくボトムシートで出す
+            （アイコン選択の横幅を確保するため。ui-guidelines「一定幅以上の
+            入力フォームは狭い画面ではボトムシート」）。LocateInfo（locating中）
+            は onDone が「保存成功」専用の意味を持ち、ボトムシートの汎用クローズ
+            （NarrowSheet が onDone を上書きする）と衝突するため対象外のまま
+            InfoWindow で出す。 */}
+        {narrow && selected && infoContent && (
+          <NarrowSheet
+            label={
+              selected.kind === "saved" ? t("editFormLabel") : t("addFormLabel")
+            }
+            onClose={onCloseInfo}
+          >
+            {infoContent}
+          </NarrowSheet>
+        )}
+        {narrow && draft && !locating && draftContent && (
+          <NarrowSheet label={t("addFormLabel")} onClose={onCloseDraft}>
+            {draftContent}
+          </NarrowSheet>
+        )}
       </div>
       {clusters.length > 1 && (
         <div className="flex flex-wrap gap-1">
