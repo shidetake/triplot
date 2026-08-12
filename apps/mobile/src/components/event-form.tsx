@@ -11,7 +11,7 @@ import {
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
-import { type Flight, flightTitle } from "@triplot/shared/flight";
+import { type Flight, flightTerminalNote, flightTitle } from "@triplot/shared/flight";
 import {
   crossesTimezone,
   deriveTransitTimezones,
@@ -185,6 +185,10 @@ export function EventForm({
     setTitle(flightTitle(f));
     setMoveOn(true);
     setAllDayOn(false);
+    // 出発/到着どちらかのターミナルがわかればメモに書く（片方欠けは "--"）。
+    // 両方とも不明なときだけメモは触らない。
+    const terminalNote = flightTerminalNote(f);
+    if (terminalNote) setNote(terminalNote);
 
     const asPlace = (e: Flight["departure"]): PlaceInput => ({
       kind: "free",
@@ -475,7 +479,9 @@ export function EventForm({
 
       {/* タイトル: ラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           右端の飛行機アイコンで**この行がフライト番号入力に入れ替わる**。
-          専用の行を足すとフォームが縦に伸びるので、入れ替えにしている。 */}
+          専用の行を足すとフォームが縦に伸びるので、入れ替えにしている。
+          アイコンは入力欄の内側右端に重ねる（iOS 標準の検索欄のマイクと同じ形。
+          web の title 行と同じ見た目に揃える）。 */}
       {flightMode ? (
         <FlightPicker
           date={startDate}
@@ -494,11 +500,11 @@ export function EventForm({
           />
           <Pressable
             onPress={() => setFlightMode(true)}
-            hitSlop={8}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
             style={styles.titleAction}
             accessibilityLabel={t("flightAria")}
           >
-            <PlaneIcon size={16} color={theme.mutedForeground} />
+            <PlaneIcon size={20} color={theme.foreground} />
           </Pressable>
         </View>
       )}
@@ -838,11 +844,19 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
-    // タイトル行。右端の飛行機アイコンは入力欄の中ではなく隣に置く（RN の
-    // TextInput に子要素を重ねるとカーソル位置の計算が狂うため）。
-    titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-    titleInput: { flex: 1, minWidth: 0 },
+    // タイトル行。右端の飛行機アイコンは入力欄の内側に重ねる（TextInput 自体の
+    // 子要素にはせず、position:absolute で兄弟要素として重ねる — カーソル計算は
+    // TextInput が自分のテキストだけで行うので影響を受けない）。
+    titleRow: { position: "relative" },
+    titleInput: { paddingRight: 40 },
     titleAction: {
+      position: "absolute",
+      // アイコンを 16→20pt に拡大した際、箱(28)の中で占める割合が増えて
+      // 右の余白が視覚的に詰まって見えていた（実機フィードバック）。
+      // 入力欄の左パディング（input.paddingHorizontal 10）と揃うよう
+      // right を調整（箱の中央にアイコンがある前提の逆算: 10 - (28-20)/2）。
+      right: 6,
+      top: 4,
       width: 28,
       height: 28,
       borderRadius: 14,

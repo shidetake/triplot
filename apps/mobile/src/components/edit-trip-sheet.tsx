@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import {
@@ -53,6 +54,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   const { session } = useSession();
   const { data, me, refetch } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const queryClient = useQueryClient();
 
   const trip = data?.trip;
   const [title, setTitle] = useState<string | null>(null);
@@ -121,7 +123,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
     void updateMyMemberName(supabase, tripId, session!.user.id, v).then(
       (r) => {
         if (!r.ok) {
-          Alert.alert(r.error);
+          Alert.alert(t(r.error));
           return;
         }
         void refetch();
@@ -191,11 +193,13 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
         onPress: () => {
           void removeTripMember(supabase, me!.id).then((r) => {
             if (!r.ok) {
-              Alert.alert(t("members.removeFailed", { error: r.error }));
+              Alert.alert(t("members.removeFailed", { error: t(r.error) }));
               return;
             }
-            router.dismissAll();
-            router.replace("/trips");
+            void queryClient.invalidateQueries({
+              queryKey: ["trips", session!.user.id],
+            });
+            leaveTripDetail();
           });
         },
       },
@@ -214,17 +218,28 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           onPress: () => {
             void deleteTrip(supabase, tripId, session!.user.id).then((r) => {
               if (!r.ok) {
-                Alert.alert(r.error);
+                Alert.alert(t(r.error));
                 return;
               }
-              // 旅行詳細画面全体から離脱＝画面遷移でシートごと消える。
-              router.dismissAll();
-              router.replace("/trips");
+              void queryClient.invalidateQueries({
+                queryKey: ["trips", session!.user.id],
+              });
+              leaveTripDetail();
             });
           },
         },
       ],
     );
+  };
+
+  // 旅行詳細画面全体から離脱して旅行一覧へ戻る（退出・削除で共通）。
+  // dismissAll() はこのシートを内包するネストした Stack だけを pop するので、
+  // 外側の Stack には旅行詳細画面がまだ残っており、続けて replace("/trips") すると
+  // 既存の一覧画面の上にもう1枚 trips/index が積まれて余分な戻るボタンが出る
+  // （実機で確認した不具合）。dismissTo は外側含めて既存の /trips まで一気に
+  // 戻ってくれるので、こちらを使う。
+  const leaveTripDetail = () => {
+    router.dismissTo("/trips");
   };
 
   return (
@@ -330,7 +345,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
         </Pressable>
       )}
 
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={styles.error}>{t(error)}</Text>}
 
       {/* メンバー */}
       <View>

@@ -13,3 +13,8 @@
 // 直接 fixed + top/bottom を当て、中間の h-full 継承段を作らない。
 export const MOBILE_TAB_TOP_OFFSET = "94px";
 export const MOBILE_TAB_BOTTOM_OFFSET = "calc(58px + env(safe-area-inset-bottom))";
+
+// タブ化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
+// places-section.tsx（検索/地図/一覧のレイアウト切替）と place-map.tsx（地図ピンの
+// フォームをポップアップ/ボトムシートどちらで出すか）で共有する単一の真実。
+export const NARROW_SCREEN_QUERY = "(max-width: 767px)";

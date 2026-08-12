@@ -174,7 +174,15 @@ export async function deleteTrip(
     .maybeSingle();
   if (!me?.is_admin) return err("errors.notAdmin");
 
-  const { error } = await sb.from("trips").delete().eq("id", tripId);
+  const { data, error } = await sb
+    .from("trips")
+    .delete()
+    .eq("id", tripId)
+    .select("id");
   if (error) return err(error.message);
+  // RLS で 0 行になった（事前チェック後に権限が変わった等）→ 権限エラーに変換。
+  if (!data || data.length === 0) {
+    return err("errors.notAdmin");
+  }
   return ok(undefined);
 }

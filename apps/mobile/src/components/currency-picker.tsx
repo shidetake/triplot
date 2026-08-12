@@ -110,26 +110,32 @@ export function CurrencyPickerModal({
           {filtered.length === 0 ? (
             <Text style={styles.empty}>該当する通貨がありません</Text>
           ) : (
-            filtered.map((c) => (
-              <Pressable
-                key={c}
-                onPress={() => {
-                  onSelect(c);
-                  close();
-                }}
-                style={styles.row}
-              >
-                <Text style={[styles.code, c === value && styles.textOn]}>
-                  {c}
-                </Text>
-                <Text style={styles.name} numberOfLines={1}>
-                  {CURRENCY_NAMES[c] ?? ""}
-                </Text>
-                {c === value && (
-                  <CheckIcon size={16} color={theme.foreground} />
-                )}
-              </Pressable>
-            ))
+            filtered.map((c) => {
+              const selected = c === value;
+              return (
+                <Pressable
+                  key={c}
+                  onPress={() => {
+                    onSelect(c);
+                    close();
+                  }}
+                  style={[styles.row, selected && styles.rowSelected]}
+                >
+                  <Text style={[styles.code, selected && styles.textOn]}>
+                    {c}
+                  </Text>
+                  <Text
+                    style={[styles.name, selected && styles.textOn]}
+                    numberOfLines={1}
+                  >
+                    {CURRENCY_NAMES[c] ?? ""}
+                  </Text>
+                  {selected && (
+                    <CheckIcon size={16} color={theme.foreground} />
+                  )}
+                </Pressable>
+              );
+            })
           )}
         </ScrollView>
       </View>
@@ -210,9 +216,15 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       gap: 10,
       paddingVertical: 10,
+      paddingHorizontal: 8,
+      borderRadius: 6,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
+    // 選択中は地図フィルタの選択行と同じ bg-accent 相当＋太字（ui-guidelines
+    // 「定型部品」の選択行表現に揃える）。以前はチェックマークだけで目立た
+    // なかった（実機フィードバック）。
+    rowSelected: { backgroundColor: t.secondary },
     code: {
       fontSize: 15,
       color: t.foreground,

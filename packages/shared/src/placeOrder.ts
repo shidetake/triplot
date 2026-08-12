@@ -20,6 +20,8 @@
 import {
   eventEndPlaceId,
   resolveEventTz,
+  resolveExpenseTz,
+  utcMsToWallClock,
   wallClockToUtcMs,
   type ScheduleEvent,
   type TripTzTimeline,
@@ -38,6 +40,7 @@ export type OrderablePlace = {
 export type OrderableEvent = Pick<
   ScheduleEvent,
   | "kind"
+  | "allDay"
   | "startAt"
   | "endAt"
   | "endTz"
@@ -56,28 +59,50 @@ export type OrderableExpense = {
   tz: string;
 };
 
-/**
- * 場所ごとの「最初に訪れる絶対時刻(ms)」。予定にも費用にも紐づかない場所は
- * 含まない（＝日時不明）。
- *
- * 壁時計のまま比べると TZ を跨いだとき順序が狂う（費用の発生順が絶対時刻な
- * のと同じ理由）ので、TZ を解決してから UTC ミリ秒にして比べる。
- */
-export function earliestVisitByPlace(
+// 場所ごとの「最初に訪れる」絶対時刻(ms)と、その時刻を出した際に使った TZ。
+// TZ も保持するのは、同じ ms でも読み直す TZ が違えば現地の日付が変わるため
+// （visitDayByPlace が「実際に採用された TZ」で日付を出すのに要る）。
+type VisitDetail = { ms: number; tz: string };
+
+function earliestVisitDetailByPlace(
   events: OrderableEvent[],
   expenses: OrderableExpense[],
   tzTimeline: TripTzTimeline,
-): Map<string, number> {
-  const earliest = new Map<string, number>();
-  const keepEarliest = (placeId: string, ms: number) => {
+): Map<string, VisitDetail> {
+  const earliest = new Map<string, VisitDetail>();
+  const keepEarliest = (placeId: string, ms: number, tz: string) => {
     const current = earliest.get(placeId);
-    if (current === undefined || ms < current) earliest.set(placeId, ms);
+    if (current === undefined || ms < current.ms) {
+      earliest.set(placeId, { ms, tz });
+    }
   };
 
   for (const e of events) {
     const startPlaceId = e.startPlaceId;
     const endPlaceId = eventEndPlaceId(e);
     if (!startPlaceId && !endPlaceId) continue;
+
+    // 複数日にわたる終日予定（宿泊等）は「初日の最後の予定」として扱う。
+    // 開始 0 時をそのまま使うと、初日に移動が入っていてもその移動より前に
+    // 来てしまう（普通はそこへ移動してからチェックインするため）。初日が
+    // TZ境界の乗継当日（同日発着で曖昧）なら、その日の終わりに実効している
+    // 側＝到着側のTZを採る。単日の終日予定は対象外（今まで通り初日扱い）。
+    const startDate = e.startAt.slice(0, 10);
+    const endDate = e.endAt ? e.endAt.slice(0, 10) : startDate;
+    if (e.allDay && endDate > startDate) {
+      const resolution = resolveExpenseTz(startDate, tzTimeline);
+      const tz =
+        resolution.kind === "single"
+          ? resolution.tz
+          : resolution.options[resolution.options.length - 1].tz;
+      const endOfStartDayMs = wallClockToUtcMs(`${startDate}T23:59`, tz);
+      if (startPlaceId) keepEarliest(startPlaceId, endOfStartDayMs, tz);
+      if (endPlaceId && endPlaceId !== startPlaceId) {
+        keepEarliest(endPlaceId, endOfStartDayMs, tz);
+      }
+      continue;
+    }
+
     // transit は startTz が唯一の真実源。normal/allday は startTz を持たない
     // ことがあるので旅程から都度解決する（gcalEvent.ts と同じ作法）。
     const tz =
@@ -92,23 +117,78 @@ export function earliestVisitByPlace(
     // 出発地には出発時刻、到着地には到着時刻を当てる（移動の到着空港が
     // 出発時刻で並ぶとおかしいため）。到着時刻が無ければ出発時刻で代用。
     if (startPlaceId) {
-      keepEarliest(startPlaceId, wallClockToUtcMs(e.startAt, tz));
+      keepEarliest(startPlaceId, wallClockToUtcMs(e.startAt, tz), tz);
     }
     if (endPlaceId && endPlaceId !== startPlaceId) {
       const arriveTz = e.kind === "transit" ? (e.endTz as string) : tz;
       keepEarliest(
         endPlaceId,
         wallClockToUtcMs(e.endAt ?? e.startAt, arriveTz),
+        arriveTz,
       );
     }
   }
 
   for (const x of expenses) {
     if (!x.place_id) continue;
-    keepEarliest(x.place_id, wallClockToUtcMs(x.paid_at, x.tz));
+    keepEarliest(x.place_id, wallClockToUtcMs(x.paid_at, x.tz), x.tz);
   }
 
   return earliest;
+}
+
+/**
+ * 場所ごとの「最初に訪れる絶対時刻(ms)」。予定にも費用にも紐づかない場所は
+ * 含まない（＝日時不明）。
+ *
+ * 壁時計のまま比べると TZ を跨いだとき順序が狂う（費用の発生順が絶対時刻な
+ * のと同じ理由）ので、TZ を解決してから UTC ミリ秒にして比べる。
+ */
+export function earliestVisitByPlace(
+  events: OrderableEvent[],
+  expenses: OrderableExpense[],
+  tzTimeline: TripTzTimeline,
+): Map<string, number> {
+  const detail = earliestVisitDetailByPlace(events, expenses, tzTimeline);
+  return new Map([...detail].map(([id, d]) => [id, d.ms]));
+}
+
+export type VisitDay = {
+  /** 旅行開始日を1日目とした通算日数 */
+  dayIndex: number;
+  /** 現地の壁時計での訪問日 "YYYY-MM-DD" */
+  date: string;
+};
+
+/** "YYYY-MM-DD" 同士の通算日数の差（うるう秒等は無視できる粒度）。 */
+function daysBetween(from: string, to: string): number {
+  const parse = (d: string) => {
+    const [y, m, day] = d.split("-").map(Number);
+    return Date.UTC(y, m - 1, day);
+  };
+  return Math.round((parse(to) - parse(from)) / 86400000);
+}
+
+/**
+ * 場所ごとの「最初に訪れる日」。予定/費用のどちらにも紐づかない場所は含まない
+ * （＝日時不明。一覧側は日付バッジを出さない）。
+ *
+ * dayIndex は tripStartDate を1日目とした通算日数。date は、その訪問時刻を
+ * 実際に読んだ TZ（earliestVisitDetailByPlace 参照）での現地の日付。
+ */
+export function visitDayByPlace(
+  events: OrderableEvent[],
+  expenses: OrderableExpense[],
+  tzTimeline: TripTzTimeline,
+  tripStartDate: string,
+): Map<string, VisitDay> {
+  const detail = earliestVisitDetailByPlace(events, expenses, tzTimeline);
+  const result = new Map<string, VisitDay>();
+  for (const [placeId, { ms, tz }] of detail) {
+    const date = utcMsToWallClock(ms, tz).slice(0, 10);
+    result.set(placeId, { dayIndex: daysBetween(tripStartDate, date) + 1, date });
+  }
+  return result;
 }
 
 // 群の番号（小さいほど上）。上のコメントの 1〜4 に対応（候補は地図未登録かで

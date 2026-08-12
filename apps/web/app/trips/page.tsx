@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateTripButton } from "@/components/create-trip-button";
+import { LoadError } from "@/components/load-error";
 import {
   fetchMyTrips,
   fetchUserProfile,
@@ -40,11 +41,7 @@ async function TripsSection({ userId }: { userId: string }) {
   ]);
 
   if (error) {
-    return (
-      <p className="text-sm text-red-600">
-        {t("loadError", { message: error.message })}
-      </p>
-    );
+    return <LoadError message={error.message} />;
   }
 
   return (

@@ -1,13 +1,5 @@
 import { useState } from "react";
-import {
-  Alert,
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useTranslations } from "use-intl";
 
@@ -20,7 +12,7 @@ import {
   type PinOption,
 } from "@triplot/shared/placeIcons";
 
-import { XIcon } from "./icons";
+import { SheetTitle } from "./sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -29,22 +21,21 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 // 候補）。1 つのアクションボタンで add/remove 両対応にして追加用バッジのノイズを避ける。
 // pinKeys/pinOptions の単一の真実は trip_pin_options（DB）で、add/remove 後は親が
 // invalidate して pinOptions を更新する。
+// 中身のみのコンポーネント（native の formSheet で開くのは呼び出し側
+// ＝ PlacesTab の役目。一覧/編集フォームと同じ ScreenStackItem に揃える
+// ため、Modal は持たない）。
 export function PlaceIconPicker({
-  visible,
   tripId,
   pinOptions,
   onAdded,
   onChanged,
-  onClose,
 }: {
-  visible: boolean;
   tripId: string;
   pinOptions: PinOption[];
   // 追加成功時（親: ピッカーを閉じてそのアイコンを選択＋invalidate）。
   onAdded: (iconKey: string) => void;
   // 追加/削除でセットが変わったとき（親: invalidate して pinOptions を更新）。
   onChanged: () => void;
-  onClose: () => void;
 }) {
   const t = useTranslations("place");
   const theme = useTheme();
@@ -108,25 +99,10 @@ export function PlaceIconPicker({
   const selectedEntry = selected ? getIcon(selected) : null;
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{t("iconPickerAria")}</Text>
-          <Pressable
-            onPress={onClose}
-            hitSlop={8}
-            accessibilityLabel="閉じる"
-          >
-            <XIcon size={20} color={theme.mutedForeground} />
-          </Pressable>
-        </View>
+    <View style={styles.sheet}>
+      <SheetTitle>{t("iconPickerAria")}</SheetTitle>
 
-        <ScrollView contentContainerStyle={styles.grid}>
+      <ScrollView contentContainerStyle={styles.grid}>
           {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
             const used = optionByIcon.has(it.key);
             const sel = selected === it.key;
@@ -195,24 +171,15 @@ export function PlaceIconPicker({
             </Text>
           </Pressable>
         </View>
-      </View>
-    </Modal>
+    </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    sheet: { flex: 1, backgroundColor: t.background },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.fgAlpha(0.1),
-    },
-    title: { fontSize: 15, fontWeight: "600", color: t.foreground },
+    // 背景色は敷かず native 既定のシートマテリアルに任せる（他の formSheet と
+    // 同じ質感）。
+    sheet: { flex: 1 },
     grid: {
       flexDirection: "row",
       flexWrap: "wrap",

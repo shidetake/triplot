@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { createClient } from "@/lib/supabase/server";
 import { ChevronIcon } from "@/components/icons";
 import { CategoryManagementList } from "@/components/category-management-list";
+import { LoadError } from "@/components/load-error";
 
 export default async function CategoriesPage({
   params,
@@ -18,23 +19,35 @@ export default async function CategoriesPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/");
 
-  const [{ data: trip }, { data: categoriesRaw }, { data: me }] =
-    await Promise.all([
-      supabase.from("trips").select("id, title").eq("id", tripId).single(),
-      supabase
-        .from("expense_categories")
-        .select("id, name, color, icon, sort_order, key")
-        .eq("trip_id", tripId)
-        .order("sort_order", { ascending: true }),
-      supabase
-        .from("trip_members")
-        .select("id")
-        .eq("trip_id", tripId)
-        .eq("user_id", user.id)
-        .is("left_at", null)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: trip, error: tripError },
+    { data: categoriesRaw },
+    { data: me },
+  ] = await Promise.all([
+    supabase.from("trips").select("id, title").eq("id", tripId).single(),
+    supabase
+      .from("expense_categories")
+      .select("id, name, color, icon, sort_order, key")
+      .eq("trip_id", tripId)
+      .order("sort_order", { ascending: true }),
+    supabase
+      .from("trip_members")
+      .select("id")
+      .eq("trip_id", tripId)
+      .eq("user_id", user.id)
+      .is("left_at", null)
+      .maybeSingle(),
+  ]);
 
+  // PGRST116 = 0件（本当に存在しない/権限が無い）。それ以外は取得自体の失敗
+  // （apps/trips/[tripId]/page.tsx と同じ切り分け）。
+  if (tripError && tripError.code !== "PGRST116") {
+    return (
+      <main className="mx-auto w-full max-w-2xl px-6 py-10">
+        <LoadError message={tripError.message} />
+      </main>
+    );
+  }
   if (!trip || !me) notFound();
 
   const t = await getTranslations("categories");

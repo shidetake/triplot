@@ -37,7 +37,9 @@
     "adding": "Adding...",
     "saving": "Saving...",
     "copied": "Copied",
-    "untitledEvent": "(untitled)"
+    "untitledEvent": "(untitled)",
+    "loadError": "Failed to load: {message}",
+    "retry": "Retry"
   },
   "settings": {
     "heading": "Settings",
@@ -114,7 +116,6 @@
   "trips": {
     "heading": "Trips",
     "empty": "You haven't joined any trips yet.",
-    "loadError": "Failed to load trips: {message}",
     "create": "Create a trip",
     "dateRange": "{start} – {end}"
   },
@@ -161,8 +162,6 @@
     "eventFormLabel": "Event",
     "noDates": "No dates set for this trip. Add an event and the calendar will appear from that day.",
     "allDayLabel": "All day",
-    "departs": "departs",
-    "arrives": "arrives",
     "draftBadge": "Draft"
   },
   "tripActions": {
@@ -240,7 +239,7 @@
     "tzChange": "Change",
     "startPlace": "Departure place",
     "flightAria": "Add by flight number",
-    "flightPlaceholder": "ZG002 or airline",
+    "flightPlaceholder": "Flight number / airline",
     "flightNumberPlaceholder": "Flight number",
     "flightDatePlaceholder": "Departure date",
     "flightTripStart": "Trip start",
@@ -338,6 +337,8 @@
     "noLocation": "Not on map (no coordinates)",
     "openGoogleMaps": "Open in Google Maps",
     "addIconAria": "Add icon",
+    "editFormLabel": "Edit place",
+    "addFormLabel": "Add place",
     "addPlaceAria": "Add this place",
     "addPinAria": "Add this pin",
     "deleteTitle": "Delete this place?",
@@ -429,7 +430,11 @@
     "filterAll": "All",
     "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead).",
     "placeCountLabel": "{count} places",
-    "placesListLabel": "Places list"
+    "placesListLabel": "Places list",
+    "filterTitle": "Filter places",
+    "filterSectionArea": "Area",
+    "filterSectionDay": "Day",
+    "filterAria": "Filtering: {label}"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

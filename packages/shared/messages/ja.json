@@ -37,7 +37,9 @@
     "adding": "追加中...",
     "saving": "保存中...",
     "copied": "コピーしました",
-    "untitledEvent": "(タイトル不明)"
+    "untitledEvent": "(タイトル不明)",
+    "loadError": "読み込みに失敗しました: {message}",
+    "retry": "再試行"
   },
   "settings": {
     "heading": "設定",
@@ -114,7 +116,6 @@
   "trips": {
     "heading": "旅行",
     "empty": "まだ参加している旅行はありません。",
-    "loadError": "旅行一覧の取得に失敗しました: {message}",
     "create": "旅行を作成",
     "dateRange": "{start} – {end}"
   },
@@ -161,8 +162,6 @@
     "eventFormLabel": "予定",
     "noDates": "この旅行の日付が未設定です。予定を追加すると、その日からカレンダーが出ます。",
     "allDayLabel": "終日",
-    "departs": "発",
-    "arrives": "着",
     "draftBadge": "未確定"
   },
   "tripActions": {
@@ -240,7 +239,7 @@
     "tzChange": "変更",
     "startPlace": "出発地",
     "flightAria": "フライト番号から入力",
-    "flightPlaceholder": "ZG002 / 航空会社",
+    "flightPlaceholder": "便名 / 航空会社",
     "flightNumberPlaceholder": "便名の数字",
     "flightDatePlaceholder": "出発日",
     "flightTripStart": "旅行の開始日",
@@ -338,6 +337,8 @@
     "noLocation": "地図未登録（座標なし）",
     "openGoogleMaps": "Googleマップで開く",
     "addIconAria": "アイコンを追加",
+    "editFormLabel": "場所を編集",
+    "addFormLabel": "場所を追加",
     "addPlaceAria": "この場所を追加",
     "addPinAria": "この地点を追加",
     "deleteTitle": "この場所を削除しますか？",
@@ -429,7 +430,11 @@
     "filterAll": "すべて",
     "noMapId": "Map ID 未設定のため地図上のピンは表示できません（一覧から操作してください）。",
     "placeCountLabel": "{count}件の場所",
-    "placesListLabel": "場所一覧"
+    "placesListLabel": "場所一覧",
+    "filterTitle": "場所を絞り込む",
+    "filterSectionArea": "エリア",
+    "filterSectionDay": "日にち",
+    "filterAria": "絞り込み中: {label}"
   },
   "validation": {
     "loginRequired": "ログインが必要です",

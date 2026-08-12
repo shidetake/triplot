@@ -11,7 +11,11 @@ import {
   looksLikeAirlineQuery,
   parseFlightNumber,
 } from "@triplot/shared/flight";
-import { lookupFlight } from "@triplot/shared/flightLookup";
+import {
+  FLIGHT_SEARCH_DEBOUNCE_MS,
+  lookupFlight,
+  peekCachedFlight,
+} from "@triplot/shared/flightLookup";
 import { loadAirportNames, localizeFlightJa } from "@triplot/shared/flightLocalize";
 
 import { XIcon } from "./icons";
@@ -47,59 +51,98 @@ export function FlightPicker({
   // 航空会社を選んで確定したコード。null なら1つの欄に何でも打てる状態。
   const [airline, setAirline] = useState<Airline | null>(null);
   const [text, setText] = useState("");
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Flight | null>(null);
+  // 直近で解決済み（検索中の状態を抜けた）の "便名|日付" キー。busy を専用の
+  // state にせず、これと今のキーの一致/不一致から導出する（effect 内で直接
+  // setState すると react-hooks/set-state-in-effect に触れるため、派生値にする）。
+  const [settledKey, setSettledKey] = useState<string | null>(null);
 
   // 打っている途中の古い応答が後から届いて上書きするのを防ぐ。
   const seq = useRef(0);
+  // Enter/確定で debounce を待たず今すぐ引くための差し替え口（effect が
+  // 都度差し替える。対象が崩れている間は no-op）。
+  const runNowRef = useRef<() => void>(() => {});
 
   const typed = airline ? `${airline.iata}${text.trim()}` : text.trim();
   const parsed = parseFlightNumber(typed);
   const suggestions =
     airline === null && looksLikeAirlineQuery(text) ? searchAirlines(text, 6) : [];
+  const normalized = parsed?.normalized ?? null;
+  const key = normalized !== null ? `${normalized}|${date}` : null;
 
   // 便名が揃ったら自動で引く（送信ボタンを押させない。Flighty と同じ）。
+  // 「検索中」は揃った時点ですぐ出すが（showBusy の導出を参照）、実際に提供元を
+  // 叩くのは入力が止まってから（1文字ごとに叩くとレートリミットに引っかかる）。
+  // ただし全ユーザー横断のキャッシュだけは待たずに覗き、当たれば即表示する
+  // （キャッシュ照会は自前 DB を見るだけで提供元の枠を消費しないので安全）。
   useEffect(() => {
-    if (!parsed) return;
+    if (normalized === null) {
+      runNowRef.current = () => {};
+      return;
+    }
+    const currentKey = `${normalized}|${date}`;
     const my = ++seq.current;
-    (async () => {
-      setBusy(true);
-      setError(null);
+    let fired = false;
+
+    const applyFound = async (flight: Flight) => {
+      // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
+      let localized = flight;
       try {
-        const outcome = await lookupFlight(
-          createFlightApi(supabase),
-          parsed.normalized,
-          date,
-        );
-        if (my !== seq.current) return;
-        if (outcome.kind === "found") {
-          // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
-          const table = await loadAirportNames(locale);
-          if (my !== seq.current) return;
-          setResult(table ? localizeFlightJa(outcome.flight, table) : outcome.flight);
-        } else {
-          setResult(null);
-          setError(
-            outcome.kind === "unknown-number" ? t("flightNotFound") : t("flightNoData"),
-          );
-        }
+        const table = await loadAirportNames(locale);
+        if (table) localized = localizeFlightJa(flight, table);
       } catch {
-        if (my !== seq.current) return;
-        setResult(null);
-        setError(t("flightFailed"));
-      } finally {
-        if (my === seq.current) setBusy(false);
+        // 日本語化に失敗しても便自体は出す。
       }
-    })();
+      if (my !== seq.current) return;
+      setResult(localized);
+      setError(null);
+      setSettledKey(currentKey);
+    };
+
+    const runLookup = () => {
+      if (fired) return;
+      fired = true;
+      clearTimeout(timer);
+      void (async () => {
+        try {
+          const outcome = await lookupFlight(createFlightApi(supabase), normalized, date);
+          if (my !== seq.current) return;
+          if (outcome.kind === "found") {
+            await applyFound(outcome.flight);
+          } else {
+            setResult(null);
+            setError(
+              outcome.kind === "unknown-number" ? t("flightNotFound") : t("flightNoData"),
+            );
+            setSettledKey(currentKey);
+          }
+        } catch {
+          if (my !== seq.current) return;
+          setResult(null);
+          setError(t("flightFailed"));
+          setSettledKey(currentKey);
+        }
+      })();
+    };
+    runNowRef.current = runLookup;
+
+    void peekCachedFlight(createFlightApi(supabase), normalized, date).then((flight) => {
+      if (fired || my !== seq.current || !flight) return;
+      fired = true;
+      clearTimeout(timer);
+      void applyFound(flight);
+    });
+
+    const timer = setTimeout(runLookup, FLIGHT_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
     // date が変わったら引き直す（フォームの日時を変えた場合）
-  }, [parsed?.normalized, date]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [normalized, date]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 便名が崩れている間（消しかけ等）は前の結果を出さない。effect で state を
   // 消しに行かず、表示側で門番する。
-  const normalized = parsed?.normalized ?? null;
-  const showBusy = normalized !== null && busy;
-  const showError = normalized !== null && !busy ? error : null;
+  const showBusy = key !== null && settledKey !== key;
+  const showError = key !== null && settledKey === key ? error : null;
   const showResult =
     normalized !== null && result?.number === normalized ? result : null;
 
@@ -118,28 +161,31 @@ export function FlightPicker({
             <Text style={styles.chipText}>{airline.iata}</Text>
           </Pressable>
         )}
-        <TextInput
-          value={text}
-          onChangeText={setText}
-          autoFocus
-          autoCapitalize="characters"
-          autoCorrect={false}
-          keyboardType={airline ? "number-pad" : "default"}
-          placeholder={
-            airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
-          }
-          accessibilityLabel={t("flightAria")}
-          placeholderTextColor={theme.subtleForeground}
-          style={[styles.input, styles.grow]}
-        />
-        <Pressable
-          onPress={onCancel}
-          hitSlop={8}
-          style={styles.close}
-          accessibilityLabel={tc("cancel")}
-        >
-          <XIcon size={16} color={theme.mutedForeground} />
-        </Pressable>
+        <View style={styles.inputWrap}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            autoFocus
+            autoCapitalize="characters"
+            autoCorrect={false}
+            keyboardType={airline ? "number-pad" : "default"}
+            onSubmitEditing={() => runNowRef.current()}
+            placeholder={
+              airline ? t("flightNumberPlaceholder") : t("flightPlaceholder")
+            }
+            accessibilityLabel={t("flightAria")}
+            placeholderTextColor={theme.subtleForeground}
+            style={[styles.input, styles.inputPadded]}
+          />
+          <Pressable
+            onPress={onCancel}
+            hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
+            style={styles.close}
+            accessibilityLabel={tc("cancel")}
+          >
+            <XIcon size={16} color={theme.mutedForeground} />
+          </Pressable>
+        </View>
       </View>
 
       {suggestions.length > 0 && (
@@ -251,7 +297,8 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     wrap: { gap: 8 },
     row: { flexDirection: "row", alignItems: "center", gap: 8 },
-    grow: { flex: 1, minWidth: 0 },
+    // × ボタンは入力欄の内側右端に重ねる（タイトル行の飛行機アイコンと同じ形）。
+    inputWrap: { flex: 1, minWidth: 0, position: "relative" },
     input: {
       height: 36,
       borderWidth: 1,
@@ -261,6 +308,7 @@ const makeStyles = (t: Theme) =>
       fontSize: 14,
       color: t.foreground,
     },
+    inputPadded: { paddingRight: 40 },
     // 確定した航空会社コード。入力欄と同じ高さで、畳まれた入力に見せる。
     chip: {
       height: 36,
@@ -272,9 +320,12 @@ const makeStyles = (t: Theme) =>
     },
     chipText: { fontSize: 14, fontWeight: "500", color: t.foreground },
     close: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
+      position: "absolute",
+      right: 4,
+      top: 4,
+      width: 28,
+      height: 28,
+      borderRadius: 14,
       alignItems: "center",
       justifyContent: "center",
     },

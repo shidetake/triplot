@@ -16,6 +16,7 @@ import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
 import { InlineDivider } from "@/components/inline-divider";
+import { LoadError } from "@/components/load-error";
 import { MembersSection } from "@/components/members-section";
 import type { PlaceRow } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
@@ -45,7 +46,7 @@ import {
 } from "@triplot/shared/tripDerive";
 import { type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
 import { type KmlPlacemark } from "@triplot/shared/placeKml";
-import { centroid, TOKYO } from "@triplot/shared/placeMap";
+import { dominantCenter, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import { monthDayLabel } from "@triplot/shared/import/draftLabel";
 import {
@@ -85,7 +86,17 @@ export default async function TripDetailPage({
     pinOptionsRaw,
   } = await fetchTripDetailRows(supabase, tripId);
 
-  if (tripError || !trip) notFound();
+  // PGRST116 = 0件（本当に存在しない/権限が無い。RLS はこの2つを区別させない）。
+  // それ以外のエラーは取得自体の失敗（クロックスキュー等）なので、存在しない
+  // 扱いにせず取得失敗として出す（apps/mobile の loadError と同じ切り分け）。
+  if (tripError && tripError.code !== "PGRST116") {
+    return (
+      <main className="mx-auto w-full max-w-2xl px-6 py-10">
+        <LoadError message={tripError.message} />
+      </main>
+    );
+  }
+  if (!trip) notFound();
 
   const activeMembers = members ?? [];
   const me = activeMembers.find((m) => m.user_id === user.id);
@@ -150,9 +161,10 @@ export default async function TripDetailPage({
       category: p.tentative ? t("place.statusCandidate") : t("place.statusConfirmed"),
       iconKey: p.icon,
     }));
-  // スケジュールの Google 検索の地理バイアス（マップ済みピンの重心 or 東京）
+  // スケジュールの Google 検索の地理バイアス（マップ済みピンが集まる主役
+  // エリアの中心 or 東京）
   const placesBiasCenter =
-    centroid(
+    dominantCenter(
       places
         .filter((p) => p.lat != null && p.lng != null)
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),

@@ -14,6 +14,7 @@ export default function SettingsRoute() {
       <SettingsSheet
         onDone={() => router.back()}
         onOpenFeedback={() => router.push("/trips/feedback")}
+        onOpenAbout={() => router.push("/trips/about")}
       />
     </ScrollView>
   );

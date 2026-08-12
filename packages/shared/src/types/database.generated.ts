@@ -1026,6 +1026,10 @@ export type Database = {
         }
         Returns: string
       }
+      default_place_icon_for_expense_category: {
+        Args: { p_category_key: string }
+        Returns: string
+      }
       dismiss_inbound_email: { Args: { p_id: string }; Returns: undefined }
       ensure_import_token: { Args: never; Returns: string }
       ensure_trip_invite: {

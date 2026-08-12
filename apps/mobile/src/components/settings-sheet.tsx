@@ -20,6 +20,8 @@ import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import {
   ChevronIcon,
   EditIcon,
+  InfoIcon,
+  LogOutIcon,
   MessageSquareIcon,
   SaveIcon,
 } from "@/components/icons";
@@ -36,9 +38,11 @@ import { useSession } from "@/lib/session";
 export function SettingsSheet({
   onDone,
   onOpenFeedback,
+  onOpenAbout,
 }: {
   onDone: () => void;
   onOpenFeedback: () => void;
+  onOpenAbout: () => void;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -183,7 +187,7 @@ export function SettingsSheet({
           )}
           {/* 右上の鉛筆マーク（編集できる感。web と同形） */}
           <View style={styles.avatarEditBadge}>
-            <EditIcon size={12} color={theme.primaryForeground} />
+            <EditIcon size={10} color={theme.primaryForeground} />
           </View>
         </Pressable>
         <View style={styles.grow}>
@@ -214,13 +218,26 @@ export function SettingsSheet({
         </View>
       </View>
 
-      {/* フィードバック（iOS 設定流のドリルイン行。旅行編集のカテゴリ管理行と同形） */}
-      <Pressable onPress={onOpenFeedback} style={styles.navRow}>
-        <MessageSquareIcon size={18} color={theme.mutedForeground} />
-        <Text style={styles.navRowLabel}>{t("feedback.menuLink")}</Text>
-        <ChevronIcon size={16} color={theme.subtleForeground} />
-      </Pressable>
+      {/* フィードバック・このアプリについて（iOS 設定流のドリルイン行の並び。
+          旅行編集のカテゴリ管理/エクスポート行と同形＝navList が上端の枠を
+          持ち、行同士の区切りは各 navRow の下端だけにする）。 */}
+      <View style={styles.navList}>
+        <Pressable onPress={onOpenFeedback} style={styles.navRow}>
+          <MessageSquareIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>{t("feedback.menuLink")}</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+        <Pressable onPress={onOpenAbout} style={styles.navRow}>
+          <InfoIcon size={18} color={theme.mutedForeground} />
+          <Text style={styles.navRowLabel}>このアプリについて</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+      </View>
 
+      {/* ログアウトは元に戻せる操作だが、世の中一般のアプリの慣例に合わせて
+          destructive の赤にする（実機フィードバックで方針転換。削除等の
+          不可逆操作だけを赤にする、という以前の方針より世の中の慣例を
+          優先）。旅行削除ボタンと同じ「赤枠＋アイコン＋文字」の形。 */}
       <Pressable
         onPress={() => {
           onDone();
@@ -228,6 +245,7 @@ export function SettingsSheet({
         }}
         style={styles.signOutButton}
       >
+        <LogOutIcon size={16} color={theme.destructiveText} />
         <Text style={styles.signOutLabel}>{t("account.signOut")}</Text>
       </Pressable>
     </View>
@@ -287,13 +305,15 @@ const makeStyles = (t: Theme) =>
   },
   disabled: { opacity: 0.5 },
   // iOS 設定流のドリルイン行（edit-trip-sheet の navRow と同形）。
+  navList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.08),
+  },
   navRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
     paddingVertical: 12,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: t.fgAlpha(0.08),
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.fgAlpha(0.08),
   },
@@ -302,10 +322,12 @@ const makeStyles = (t: Theme) =>
     height: 40,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
+    borderColor: t.destructiveBorder,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 6,
     marginTop: 24,
   },
-  signOutLabel: { fontSize: 13, fontWeight: "500", color: t.mutedForeground },
+  signOutLabel: { fontSize: 13, fontWeight: "500", color: t.destructiveText },
 });

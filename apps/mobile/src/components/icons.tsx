@@ -7,11 +7,16 @@ import { useTheme } from "@/lib/theme";
 // 中立な線画。iOS でも SF Symbols に置き換えず同じ Lucide パスを RN 側で描き、
 // web/iOS で見た目を統一する」）。パスは web 側と同一値を保つこと。
 
-type IconProps = { size?: number; color?: import("react-native").ColorValue };
+type IconProps = {
+  size?: number;
+  color?: import("react-native").ColorValue;
+  strokeWidth?: number;
+};
 
 function LucideIcon({
   size = 18,
   color,
+  strokeWidth = 2,
   children,
 }: IconProps & { children: React.ReactNode }) {
   const t = useTheme();
@@ -23,7 +28,7 @@ function LucideIcon({
       height={size}
       fill="none"
       stroke={color}
-      strokeWidth={2}
+      strokeWidth={strokeWidth}
       strokeLinecap="round"
       strokeLinejoin="round"
       // 子要素の fill="currentColor"（LockIcon の塗り等）をこの色に解決させる
@@ -331,6 +336,45 @@ export function SettingsIcon(p: IconProps) {
     <LucideIcon {...p}>
       <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
       <Circle cx={12} cy={12} r={3} />
+    </LucideIcon>
+  );
+}
+
+// Lucide: info（設定 → このアプリについて。web 側に同等画面が無いため
+// このアイコンは RN 側のみ）
+export function InfoIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Circle cx={12} cy={12} r={10} />
+      <Path d="M12 16v-4" />
+      <Path d="M12 8h.01" />
+    </LucideIcon>
+  );
+}
+
+// Lucide: list-filter（地図画面の場所フィルタ。3本線が段々短くなる形
+// ＝ iOS Messages の「フィルタ」・Google の filter_list と同じ見た目
+// （漏斗アイコンより「フィルタ感」が強い、との実機フィードバック）。
+// web 側に同等 UI が無いためこのアイコンは RN 側のみ）
+export function FilterIcon(p: IconProps) {
+  // 既定の strokeWidth(2) だと地図右上の現在地アイコンと並べた時に細く
+  // 見えたため、この用途だけ少し太くする（実機フィードバック）。
+  return (
+    <LucideIcon strokeWidth={2.4} {...p}>
+      <Path d="M2 5h20" />
+      <Path d="M6 12h12" />
+      <Path d="M9 19h6" />
+    </LucideIcon>
+  );
+}
+
+// Lucide: log-out（ログアウトボタン）
+export function LogOutIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="m16 17 5-5-5-5" />
+      <Path d="M21 12H9" />
+      <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
     </LucideIcon>
   );
 }

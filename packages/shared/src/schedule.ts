@@ -692,11 +692,20 @@ export function buildSchedule(
   for (const ev of allDayEvents) {
     const d1 = parseWall(ev.startAt).date;
     const d2 = ev.endAt ? parseWall(ev.endAt).date : d1;
+    // 複数日にわたる終日予定（宿泊等）の初日が、時差が戻る乗継の当日
+    // （出発TZ側／到着TZ側の等幅2列）なら、出発側の列は飛ばして到着側の
+    // 列から始める。移動してからチェックインする、という実際の順序を
+    // 見た目にも反映する（placeOrder.ts の「初日の最後」扱いと対の見た目）。
+    // 単日の終日予定・split の無い日は対象外（従来通り列の先頭から）。
+    const isMultiDay = d1 !== d2;
     let startColIndex = -1;
     let endColIndex = -1;
     for (let i = 0; i < columns.length; i++) {
-      const cd = columns[i].date;
-      if (cmpDate(cd, d1) >= 0 && cmpDate(cd, d2) <= 0) {
+      const c = columns[i];
+      if (cmpDate(c.date, d1) >= 0 && cmpDate(c.date, d2) <= 0) {
+        if (isMultiDay && c.date === d1 && c.role === "transit-depart") {
+          continue;
+        }
         if (startColIndex === -1) startColIndex = i;
         endColIndex = i;
       }

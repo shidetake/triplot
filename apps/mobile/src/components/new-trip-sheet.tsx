@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
@@ -28,13 +28,14 @@ import { useSession } from "@/lib/session";
 
 // 旅行作成（FormSheet の中身）。web の create-trip-form と同じ2モード
 // （新規/過去の旅行をコピー）。成功でシートを閉じ、作成した旅行の詳細へ遷移。
-export function NewTripSheet({ onDone }: { onDone: () => void }) {
+export function NewTripSheet() {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
   const tTrips = useTranslations("trips");
   const { session } = useSession();
   const userId = session?.user.id;
+  const queryClient = useQueryClient();
 
   const { data: profile } = useQuery({
     queryKey: ["profile", userId],
@@ -113,7 +114,12 @@ export function NewTripSheet({ onDone }: { onDone: () => void }) {
       setError(r.error);
       return;
     }
-    onDone();
+    void queryClient.invalidateQueries({ queryKey: ["trips", userId] });
+    // formSheet（trips/new）を router.back() で先に閉じてから replace すると、
+    // 閉じた直後の「trips/index だけ」の状態に対して replace が効いてしまい、
+    // trips/index ごと置き換わってスタックが1枚になる（戻るボタンが消える
+    // 実機不具合の原因だった）。back() は呼ばず replace だけで formSheet 自身
+    // （trips/new）を旅行詳細に置き換える＝ trips/index は下に残る。
     router.replace(`/trips/${r.data.tripId}`);
   };
 

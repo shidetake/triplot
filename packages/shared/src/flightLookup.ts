@@ -17,11 +17,23 @@ import {
   pickReferenceDate,
 } from "./flight";
 
+// 便名入力のたび（1文字ごと）に即 lookupFlight すると、揃うまでの中間状態
+// （DL1 → DL18 → DL181）でも毎回呼ばれ、1回最大3回叩く提供元 API を連打して
+// レートリミットに引っかかる（実機で確認）。UI 側は「検索中」表示はすぐ出しつつ、
+// 実際の呼び出しはこの時間だけ入力が止まってから行う。
+export const FLIGHT_SEARCH_DEBOUNCE_MS = 3000;
+
 export type FlightApi = {
   /** その日の便。運航日でなければ空配列（提供元は 204 を返す） */
   byNumberAndDate(number: string, date: string): Promise<Flight[]>;
   /** その便名が運航する日の一覧 */
   operatingDates(number: string): Promise<string[]>;
+  /**
+   * 全ユーザー横断のキャッシュだけを覗く（提供元は叩かない）。ヒットしなければ
+   * null。UI が debounce 待ちの間にこれで先当たりを試すためのもの
+   * （peekCachedFlight 参照）。実装が無くてもよい（テストの fake 等）。
+   */
+  peekByNumberAndDate?(number: string, date: string): Promise<Flight[] | null>;
 };
 
 export type LookupOutcome =
@@ -42,7 +54,7 @@ export async function lookupFlight(
   number: string,
   date: string,
 ): Promise<LookupOutcome> {
-  const exact = best(await api.byNumberAndDate(number, date));
+  const exact = best(await api.byNumberAndDate(number, date), date);
   if (exact && isComplete(exact)) return { kind: "found", flight: exact };
 
   const dates = await api.operatingDates(number);
@@ -57,7 +69,7 @@ export async function lookupFlight(
     return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
   }
 
-  const ref = best(await api.byNumberAndDate(number, refDate));
+  const ref = best(await api.byNumberAndDate(number, refDate), refDate);
   if (!ref || !isComplete(ref)) {
     return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
   }
@@ -65,12 +77,42 @@ export async function lookupFlight(
   return { kind: "found", flight: estimateForDate(ref, date) };
 }
 
-/** 複数区間が返ったら、時刻の揃っている区間を優先して1つ選ぶ */
-function best(flights: readonly Flight[]): Flight | null {
+/**
+ * debounce を待たず、対象日ぶんのキャッシュだけを覗いて即答を試す
+ * （全ユーザー横断キャッシュなので、他の誰かが同じ便・同じ日を既に引いて
+ * いれば提供元を叩かず即表示できる）。揃った答えがキャッシュに無ければ
+ * null（呼び出し側は通常どおり debounce 後に lookupFlight を呼ぶ）。
+ */
+export async function peekCachedFlight(
+  api: FlightApi,
+  number: string,
+  date: string,
+): Promise<Flight | null> {
+  const cached = await api.peekByNumberAndDate?.(number, date);
+  if (!cached) return null;
+  const exact = best(cached, date);
+  return exact && isComplete(exact) ? exact : null;
+}
+
+/**
+ * 複数区間が返ったら1つ選ぶ。「複数区間」は2パターンある:
+ *  ① 同じ便名が経由地で複数区間に分かれる（乗継便）
+ *  ② 提供元が「出発日 or 到着日のどちらかが対象日」を緩く一致させて返す
+ *     （実測: DL181 を date=2026-05-04 で引くと、5/3出発/5/4到着便と
+ *     5/4出発/5/5到着便の2件が返る）
+ * triplot はカレンダーで長押しした日＝出発日として便を引くので、**出発の
+ * ローカル日付が対象日と一致する区間を優先する**（②の取り違えを防ぐ）。
+ * 一致が無ければ従来どおり（揃っている・出発が早い順）にフォールバックする。
+ */
+function best(flights: readonly Flight[], date: string): Flight | null {
   if (flights.length === 0) return null;
+  const departingOnDate = flights.filter((f) =>
+    f.departure.scheduledLocal?.startsWith(date),
+  );
+  const pool = departingOnDate.length > 0 ? departingOnDate : flights;
   return (
-    flights.find((f) => isComplete(f)) ??
-    flights.reduce((a, b) =>
+    pool.find((f) => isComplete(f)) ??
+    pool.reduce((a, b) =>
       (a.departure.scheduledLocal ?? "") <= (b.departure.scheduledLocal ?? "") ? a : b,
     )
   );

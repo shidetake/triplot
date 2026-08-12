@@ -31,6 +31,7 @@ import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { LockIcon, PlusIcon, XIcon } from "@/components/icons";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
+import { QueryErrorView } from "@/components/query-error-view";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -54,11 +55,21 @@ export default function ExpensesTab() {
   const tImport = useTranslations("import");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, refetch } = useTripDetail(tripId);
+  const { data, me, loadError, refetch, isRefetching } =
+    useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
 
+  if (loadError) {
+    return (
+      <QueryErrorView
+        error={loadError}
+        onRetry={refetch}
+        isRetrying={isRefetching}
+      />
+    );
+  }
   if (!data?.trip || !me) return null;
 
   const defaultCurrency = data.trip.default_currency as Currency;

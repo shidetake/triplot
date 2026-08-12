@@ -6,7 +6,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { Drawer } from "vaul";
 
-import { centroid, type LatLng, TOKYO } from "@triplot/shared/placeMap";
+import { dominantCenter, type LatLng, TOKYO } from "@triplot/shared/placeMap";
 
 import { PlaceList, type PlaceRow } from "./place-list";
 // PlaceStatus は削除済み — place.tentative boolean に移行
@@ -26,10 +26,8 @@ import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
+  NARROW_SCREEN_QUERY,
 } from "@/lib/mobileTabChrome";
-
-// タブバー化される狭い画面の判定（trip-detail-tabs.tsx の md ブレークポイントと同じ）。
-const NARROW_SCREEN_QUERY = "(max-width: 767px)";
 
 // 場所一覧ボトムシートの3つの高さ。
 // - mini: ハンドル+件数の行だけがちょうど収まる高さ（48px）。地図を触った・
@@ -193,7 +191,7 @@ export function PlacesSection({
 
   const biasCenter = useMemo(
     () =>
-      centroid(
+      dominantCenter(
         places
           .filter((p) => p.lat != null && p.lng != null)
           .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
@@ -351,7 +349,7 @@ export function PlacesSection({
           tripId={tripId}
           candidate={c}
           pinOptions={pinOptions}
-          onAdded={clearSearch}
+          onDone={clearSearch}
         />
       );
     }
@@ -389,7 +387,7 @@ export function PlacesSection({
       tripId={tripId}
       draft={draft}
       pinOptions={pinOptions}
-      onAdded={clearSearch}
+      onDone={clearSearch}
     />
   );
 
@@ -452,6 +450,7 @@ export function PlacesSection({
             onPoiSelect={showPoi}
             infoContent={infoContent}
             draftContent={draftContent}
+            locating={!!pendingLocationFor}
             className="h-full w-full rounded-none border-0 md:h-[32rem] md:rounded-md md:border md:border-foreground/10"
           />
         </div>

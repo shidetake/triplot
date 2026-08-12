@@ -23,16 +23,22 @@ const NUMBER_RE = /^[A-Z0-9]{3,8}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 type Request_ =
-  | { kind: "flight"; number: string; date: string }
+  | { kind: "flight"; number: string; date: string; peek?: boolean }
   | { kind: "dates"; number: string };
 
 /**
  * キャッシュの寿命。
- * 便の時刻表は日単位でしか動かないので長めに取る。運航日一覧はさらに動かない。
+ *
+ * triplot は当日のリアルタイム運航状況（遅延・ゲート等）を見せるアプリではなく、
+ * 数週間〜数ヶ月前から予定を組む旅行計画アプリ。提供元は実運航データ（遅延等で
+ * 当日中に動く）も返すが、この用途では時刻表としての値だけが要る。実測でも
+ * 便名から時刻はほぼ不動（15ヶ月間 19:10 固定・1日だけ 19:05。
+ * docs/design/flight-lookup.md）なので、無料枠（月300照会）を無駄に消費しない
+ * よう長めに取る。運航日一覧は時刻よりさらに動かないのでもっと長く。
  */
 const TTL_SECONDS: Record<Request_["kind"], number> = {
-  flight: 24 * 60 * 60,
-  dates: 7 * 24 * 60 * 60,
+  flight: 30 * 24 * 60 * 60,
+  dates: 90 * 24 * 60 * 60,
 };
 
 function upstreamPath(req: Request_): string {
@@ -57,7 +63,7 @@ function parseBody(body: unknown): Request_ | null {
   if (b.kind === "flight") {
     const date = typeof b.date === "string" ? b.date : "";
     if (!DATE_RE.test(date)) return null;
-    return { kind: "flight", number, date };
+    return { kind: "flight", number, date, peek: b.peek === true };
   }
   return null;
 }
@@ -104,6 +110,12 @@ Deno.serve(async (httpReq) => {
     if (ageSec < TTL_SECONDS[req.kind]) {
       return json({ payload: cached.payload, cached: true });
     }
+  }
+
+  // peek: キャッシュだけ見て提供元は叩かない。全ユーザー横断キャッシュなので、
+  // クライアントは待たずにこれを撃って、当たれば即表示できる（枠を消費しない）。
+  if (req.kind === "flight" && req.peek) {
+    return json({ cached: false });
   }
 
   const res = await fetchUpstream(upstreamPath(req), apiKey);

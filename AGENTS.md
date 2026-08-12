@@ -88,6 +88,7 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 - `expenses` には CHECK 制約: `private` の費用は `splittable = false` でなければならない（private は割り勘不可）。
 - **地図の表示範囲は「ピンが集まっているところ」だけに合わせる。** 全ピンの外接矩形を使うと、離れた1点（帰りの空港など）に引っ張られて海の上が中心になる。`clusterPlaces` → `dominantCluster` で主役エリアを選ぶ。中心は必ず `centerOf()` を使い `(west+east)/2` を自前で書かない（日付変更線を跨ぐ bounds は `west > east` で返るため、自前計算だと地球の反対側が中心になる）。詳細は [docs/design/place-map.md](docs/design/place-map.md)。
 - **予定の TZ は保存しない。** 通常・終日の `events.start_tz` / `end_tz` は常に NULL で、literal な TZ を持つのは `kind='transit'` だけ（旅行の TZ 境界の唯一の真実源）。通常の予定の実効 TZ は旅程から毎回導出する（`resolveEventTz`）。`start_at` / `end_at` は壁時計（`timestamp without time zone`）。**「全予定に TZ を埋める」方式に変えないこと** — 理由と代償は [docs/design/timezone.md](docs/design/timezone.md) の 0 節。
+- **利用枠（メール取り込みの月間上限）は残高ではなく計測。** 使用量は保存せず、その月の抽出済み件数を都度数えて上限と比べる（`monthlyExtractCount`）。**月初に枠を復活させるバッチは無いし、作らない**（全ユーザが枠を失う単一障害点になる・カウンタと実データがずれる）。プランと個別上書き・古参優遇の扱いは [docs/design/billing.md](docs/design/billing.md)。
 
 ### RLS のパターン
 
@@ -115,15 +116,66 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 - gen-types は DEFAULT 無しの nullable 関数引数を `string` にしてしまう既知の癖がある（`create_trip` の `p_start_date` 等）。その箇所だけ呼び出し側でキャスト。
 - migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。pre-push の `db:types:check` が実 DB とのズレを検出して push を止める（トークンが無い環境ではスキップ）。
 
-## iOS アプリの動作確認は TestFlight で行う
+## iOS の実機確認: シミュレータ → preview ビルド → TestFlight
 
-シミュレータでの確認は補助にすぎない（開発ビルド限定の要素が実機と違う挙動を
-する。例: expo-dev-client の Tools ボタンが画面右上のタップを吸い、検索窓の ×
-が効かないように見える）。**iOS の動作確認は TestFlight に上げて実機で行う。**
+環境（本番/確認用で DB が分かれていること・bundle id・全体像）は
+[`docs/architecture.md`](docs/architecture.md) の「環境（本番／確認）」節を参照。
+ここには具体的なコマンドと **どの段を使うかの判断**を書く。
 
-- **区切りのタイミングでは、指示を待たず Claude Code の判断でビルドして submit
-  まで進める。** 「区切り」＝ iOS の画面に見える変更が一段落し、typecheck /
-  lint / テストが通っている状態。
+3段階で確認レベルが上がる。**番号が小さいほど既定＝まずここを使う。**
+大きい段へ進めるのは、その必要が明確にある時だけ（下記）。
+
+1. **シミュレータ＋maestro**（一番速い。実機固有の挙動は見れない — 開発ビルド
+   限定の要素が実機と違う挙動をする。例: expo-dev-client の Tools ボタンが
+   画面右上のタップを吸う）。まずここで動作を作り込む。
+2. **preview ビルド**（実機・staging DB・TestFlight/App Store Connect を
+   一切通らないので数十秒でインストールできる）。**「実機で見たい」の既定は
+   ここ。** 一段落する前の軽い確認・繰り返しの検証・出先でスマホだけの時に使う。
+   TestFlight を毎回のビルド先にしない（Apple の処理待ち5〜10分＋本番 DB を
+   見に行くので、小さな確認の往復には重すぎる）。
+3. **TestFlight**（本番 DB・Apple の処理待ちあり・市場公開に一番近い確認）。
+   **区切りのタイミングでだけ、指示を待たず Claude Code の判断でビルドして
+   submit まで進める。** 「区切り」＝ 2. の preview ビルドで一通り確認できて
+   いて、機能追加やバグ修正のまとまりが完成し typecheck / lint / テストが
+   通っている状態（＝ preview を経ずに TestFlight へ飛ばない）。
+
+### 2. preview ビルド
+
+- **`eas.json` の `preview` プロファイル**（`distribution: "internal"`,
+  `environment: "preview"`）を使う。**production プロファイルとは別物**:
+  bundle identifier が `app.triplot.mobile.staging`（本番アプリと同じ端末に
+  共存できる）、EAS の `preview` environment には **staging の Supabase**
+  （`xuytnpkvmiduffigimol`）の URL/anon key を登録済み（他の Google 系キーは
+  production と共通）。
+- 初回だけ要る準備（済んでいれば省略可）: 実機の UDID 登録
+  （`npx eas-cli device:create` → Website 方式 → 表示された URL を実機の
+  Safari で開いてプロファイルをインストール）と、実機の
+  設定 → プライバシーとセキュリティ → デベロッパモード を ON。
+- ビルド → アップロード → インストールリンク発行:
+
+  ```bash
+  cd apps/mobile
+  npx eas-cli build --platform ios --profile preview --local --non-interactive \
+    --output ./build/triplot-preview.ipa
+  cd ..
+  npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
+  ```
+
+  最後に出る `itms-services://...` リンクは**マークダウンのコードブロック
+  （```）で囲んでユーザーに渡す**（QR コードは作らない — チャットに URL を
+  貼れば済み、QR は画像を送る一手間が増えるだけなので不採用。コードブロックに
+  するのはリンクとして装飾されるとタップ/コピーしにくい・崩れることがある
+  ため、プレーンテキストとしてそのままコピーできる形にする）。ユーザーは
+  実機の **Safari** でこのリンクを開く
+  （他アプリ内ブラウザやカスタムスキーム非対応アプリからのタップは失敗する）。
+  アップロード先は Vercel Blob（`triplot-ios-preview` ストア、public
+  access）。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN`
+  （`vercel blob create-store` 実行時に自動で書き込まれた値。スクリプトが
+  `BLOB_READ_WRITE_TOKEN` 未設定ならこのファイルから自動で拾うので、都度
+  export しなくてよい）。
+
+### 3. TestFlight
+
 - **TestFlight 用（動作確認用）のビルドはローカルビルドにする。** EAS のビルド枠
   が余っていてもローカルを使い、枠は本番用に温存する。
 
@@ -146,6 +198,9 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
 
 ## web の動作確認は staging（Vercel Preview）で行う
+
+環境（本番/確認用で DB が分かれていること・全体像）は
+[`docs/architecture.md`](docs/architecture.md) の「環境（本番／確認）」節を参照。
 
 本番にデプロイして確かめる運用はリリースまで。**リリース後は `main` に入れた
 ものが即公開されるので、確認は staging で行う**（`main` への push ＝ 公開）。
@@ -196,6 +251,16 @@ feature ブランチのプレビューでは、ログインや他の機能は動
 
 `NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID` も Preview スコープに要る（値は本番と同じ）。
 
+### Apple Sign In は staging Supabase で無効
+
+Supabase Auth の Apple プロバイダは**本番プロジェクトのみ有効化**されている
+（Dashboard の Authentication → Providers、`external_apple_enabled` は
+本番 `true` / staging `false`）。staging（Vercel Preview・iOS の preview
+ビルドとも staging Supabase を向く）で Apple ボタンを押すと
+`AuthApiError: Provider (issuer "https://appleid.apple.com") is not enabled`
+になる。**Google ログインで代替できるので確認は Google で行う**（Apple 固有の
+確認がどうしても要るときだけ TestFlight／本番相当の環境で見る）。
+
 ### staging DB への migration
 
 ```bash
@@ -210,6 +275,12 @@ npm run db:push:staging   # scripts/db-push-staging.sh
 
 `database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
 本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。
+
+## バージョン表記
+
+web・iOS・（将来）Android のバージョン番号のルール（それぞれ独立運用・
+git tag は使わない・リリース手順）は **[docs/versioning.md](docs/versioning.md)**
+を参照。
 
 ## 設計方針
 

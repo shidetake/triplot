@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import {
   Dimensions,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -27,9 +28,10 @@ import {
 import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
-import { CheckIcon } from "@/components/icons";
-import { ReservationIcon } from "@/components/reservation-icon";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+
+const ticketMarkSource = require("../../assets/marks/reservation-ticket.png");
+const checkMarkSource = require("../../assets/marks/reservation-check.png");
 
 // 週カレンダーの描画（RN）。レイアウト計算は shared の buildSchedule に委ね、
 // ここはその出力（列・配置済みブロック・終日バー）を描くだけ（web の
@@ -38,7 +40,8 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 const GUTTER = 44; // 時刻ガター幅
 const HOUR_PX = 30; // 1時間の高さ
 const ALLDAY_ROW = 24; // 終日バー1行の高さ
-const HEADER_H = 34; // 日付ヘッダの高さ
+const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
+const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
 const MIN_BLOCK = 18; // ブロック最低高さ
 
 // 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
@@ -57,6 +60,15 @@ const hhmm = (min: number) => formatMinutes(min, false);
 
 // 予約マーカー（タイトル先頭。web の ReservationMark と同じ意味）:
 // 要予約（未）= チケット黄 / 予約済 = 淡色チェック。ブロック地色はそのまま。
+//
+// タイトルの <Text> の**子として**返す（sibling の row に置かない）。RN の
+// Text は Image を子に持てて自然にインライン折り返しできるので、web の
+// inline-block アイコンと同じく2行目以降が字下げされずに折り返せる
+// （row 並びだと SVG を子にできず、折り返しのたび2行目以降もアイコン分だけ
+// 幅が狭まって不自然に字下げされる不具合があった）。色が固定のチケットは
+// PNG 自体は黒シルエットで焼いてあり、どちらも tintColor で塗り替える
+// （チケットは固定の黄、チェックはブロックごとに変わる textColor）。
+const TICKET_COLOR = "#facc15"; // web の text-yellow-400 と同値
 function ReservationMark({
   ev,
   textColor,
@@ -66,11 +78,19 @@ function ReservationMark({
 }) {
   if (!ev.needsReservation) return null;
   return ev.reservationDone ? (
-    <CheckIcon size={12} color={textColor} />
+    <Image
+      source={checkMarkSource}
+      style={[reservationMarkStyle, { tintColor: textColor }]}
+    />
   ) : (
-    <ReservationIcon size={12} />
+    <Image
+      source={ticketMarkSource}
+      style={[reservationMarkStyle, { tintColor: TICKET_COLOR }]}
+    />
   );
 }
+
+const reservationMarkStyle = { width: 12, height: 12, marginRight: 2 };
 
 export function WeekCalendar({
   schedule,
@@ -114,6 +134,9 @@ export function WeekCalendar({
   const COL = colWidth(columns.length, containerWidth - GUTTER);
   const totalW = columns.length * COL;
   const bodyH = 24 * HOUR_PX;
+  // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
+  // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
+  const headerH = groups.some((g) => g.tzNote) ? HEADER_H : HEADER_H_COMPACT;
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]));
   const eventById = new Map(events.map((e) => [e.id, e]));
 
@@ -377,7 +400,7 @@ export function WeekCalendar({
         >
           <View style={{ width: totalW }}>
             {/* 日付ヘッダ行 */}
-            <View style={[styles.dayHeaderRow, { height: HEADER_H }]}>
+            <View style={[styles.dayHeaderRow, { height: headerH }]}>
               {groups.map((g) => {
                 const w = g.columns.length * COL;
                 return (
@@ -389,7 +412,21 @@ export function WeekCalendar({
                       {g.label}
                     </Text>
                     {g.tzNote ? (
-                      <Text style={styles.tzNote} numberOfLines={1}>
+                      // 前進する便（日付を結合しない）は注記だけ出発日＋到着日の
+                      // 2列ぶんの幅で見せる（web と同じ。列自体は結合しない）。
+                      // dayHeaderCell の alignItems:center を上書きして左端
+                      // （＝この列の開始位置）に固定しないと、幅を広げた分が
+                      // 左右均等にはみ出して前の日にも食い込んでしまう。
+                      <Text
+                        style={[
+                          styles.tzNote,
+                          {
+                            alignSelf: "flex-start",
+                            width: (g.tzNoteSpan ?? g.columns.length) * COL - 4,
+                          },
+                        ]}
+                        numberOfLines={2}
+                      >
                         {g.tzNote}
                       </Text>
                     ) : null}
@@ -456,6 +493,14 @@ export function WeekCalendar({
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
+        // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は画面下端に重なって
+        // 浮くだけでレイアウト上の余白を確保しない（index.tsx の FAB と同じ
+        // 事情。タブバー上端は画面下端から実測 約83pt）。末尾（21〜24時）が
+        // タブバーの下に隠れて最後までスクロールできなくなるので、本文の下に
+        // タブバーの実測高さぶんだけ余白を足す（FAB の bottom:100 と違い、
+        // ここは「隙間なくギリギリ」が目的なので実測値そのまま。余分に足すと
+        // 24:00 の下に空白が見えてしまう＝実機フィードバックで判明）。
+        contentContainerStyle={{ paddingBottom: 83 }}
       >
         <View style={styles.bodyRow}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
@@ -538,16 +583,14 @@ export function WeekCalendar({
                     >
                       {hhmm(p.topMin)}
                     </Text>
-                    <View style={styles.titleRow}>
+                    <Text
+                      style={[styles.eventTitle, { color: col.text }]}
+                      numberOfLines={2}
+                    >
                       <ReservationMark ev={ev} textColor={col.text} />
-                      <Text
-                        style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        {p.event.title}
-                      </Text>
-                    </View>
-                    {/* 場所（web の blockLabel と同じ優先度: 時刻→タイトル→場所）。
+                      {p.event.title}
+                    </Text>
+                    {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
                         1行に収まらなくても改行で収まりそうなら2行まで見せる
                         （タイトルと同じ扱い）。それでも入らない/ブロックが低い
                         時は eventBlock の overflow:hidden が下から自然に
@@ -558,6 +601,14 @@ export function WeekCalendar({
                         numberOfLines={2}
                       >
                         {placeName(ev.startPlaceId)}
+                      </Text>
+                    )}
+                    {ev.note && (
+                      <Text
+                        style={[styles.eventPlace, { color: col.text }]}
+                        numberOfLines={2}
+                      >
+                        {ev.note}
                       </Text>
                     )}
                   </Pressable>
@@ -576,7 +627,6 @@ export function WeekCalendar({
                   height: number;
                   lane: number;
                   laneCount: number;
-                  label: string;
                   time: number;
                 }[] = [];
                 const depCi = colIndexByKey.get(t.departColumnKey);
@@ -597,7 +647,6 @@ export function WeekCalendar({
                     height: Math.max(MIN_BLOCK, y(endMin) - y(t.departMin)),
                     lane: depOv ? ov.lane : t.departLane,
                     laneCount: depOv ? ov.laneCount : t.departLaneCount,
-                    label: `${t.event.title} 発`,
                     time: t.departMin,
                   });
                 }
@@ -609,7 +658,6 @@ export function WeekCalendar({
                     height: Math.max(MIN_BLOCK, y(t.arriveMin)),
                     lane: arrOv ? ov.lane : t.arriveLane,
                     laneCount: arrOv ? ov.laneCount : t.arriveLaneCount,
-                    label: `${t.event.title} 着`,
                     time: t.arriveMin,
                   });
                 }
@@ -633,28 +681,34 @@ export function WeekCalendar({
                         },
                       ]}
                     >
-                      {/* 時刻→タイトル→場所の優先度（timed ブロックと同じ）。 */}
+                      {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。 */}
                       <Text
                         style={[styles.eventTime, { color: col.text }]}
                         numberOfLines={1}
                       >
                         {hhmm(part.time)}
                       </Text>
-                      <View style={styles.titleRow}>
+                      <Text
+                        style={[styles.eventTitle, { color: col.text }]}
+                        numberOfLines={2}
+                      >
                         <ReservationMark ev={ev} textColor={col.text} />
-                        <Text
-                          style={[styles.eventTitle, { color: col.text }]}
-                          numberOfLines={2}
-                        >
-                          {part.label}
-                        </Text>
-                      </View>
+                        {t.event.title}
+                      </Text>
                       {pn && (
                         <Text
                           style={[styles.eventPlace, { color: col.text }]}
                           numberOfLines={2}
                         >
                           {pn}
+                        </Text>
+                      )}
+                      {ev.note && (
+                        <Text
+                          style={[styles.eventPlace, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          {ev.note}
                         </Text>
                       )}
                     </Pressable>
@@ -712,7 +766,13 @@ const makeStyles = (t: Theme) =>
   dayHeaderRow: { flexDirection: "row" },
   dayHeaderCell: {
     alignItems: "center",
-    justifyContent: "center",
+    // 縦は center ではなく上詰め。center だと「タイトル1行だけの列」と
+    // 「タイトル+TZ注記2行の列」で中身の高さが違うぶん、タイトルの縦位置が
+    // 列ごとにズレてしまう（前進する便の注記は隣の列に張り出すだけで、
+    // その列自体は注記を持たないため）。上詰めなら中身の行数に関わらず
+    // タイトルの位置は常に揃う。
+    justifyContent: "flex-start",
+    paddingTop: 4,
     borderLeftWidth: StyleSheet.hairlineWidth,
     borderLeftColor: t.fgAlpha(0.08),
     paddingHorizontal: 2,
@@ -772,7 +832,9 @@ const makeStyles = (t: Theme) =>
     borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
   },
   eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
-  // タイトル行（予約マーク＋タイトル。マークが無ければ Text のみと同じ見た目）。
+  // 終日バー（常に1行）専用。時刻/タイトルブロックの予約マークは折り返しが
+  // 要るため row ではなく Text の子として Image を埋め込む（ReservationMark
+  // 参照）。1行しか無いここは row で並べても字下げ問題が起きないのでそのまま。
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
   // 場所（タイトルの次の優先度。web の blockLabel の場所行と同じ薄字）。
   eventPlace: { fontSize: 9, opacity: 0.7 },

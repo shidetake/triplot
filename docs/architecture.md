@@ -116,6 +116,48 @@ flowchart LR
 > 状態を持たず `/api/cron/retry-extract` を叩くだけの独立ユニット（メール Worker とは別物）。
 > リトライの設計は [`import-flow.md`](./design/import-flow.md) のリトライ節を参照。
 
+## 環境（本番／確認）— web・mobile 共通
+
+triplot は web・mobile それぞれに「本番」と「確認用」の環境を持つ。**軸は共通**:
+確認用は本番と**別の Supabase プロジェクト**（別データベース。本番データに触れない）を見る。
+コードに環境分岐は無く、ビルド時に注入する環境変数だけで向き先が変わる。
+
+```mermaid
+flowchart LR
+  subgraph prodenv["本番"]
+    prodweb["web: main ブランチ<br/>→ triplot.app"]
+    prodmobile["mobile: production ビルド<br/>→ TestFlight / App Store"]
+  end
+  subgraph stagingenv["確認用"]
+    stagingweb["web: staging ブランチ<br/>→ Vercel Preview URL"]
+    previewmobile["mobile: preview ビルド<br/>→ 実機へ直接インストール"]
+  end
+  prodweb --> prodsupa[("Supabase 本番<br/>cjkiglocsrtnohoxcnfh")]
+  prodmobile --> prodsupa
+  stagingweb --> stagingsupa[("Supabase staging<br/>xuytnpkvmiduffigimol")]
+  previewmobile --> stagingsupa
+```
+
+| | 本番 | 確認用 |
+|---|---|---|
+| **web** | `main` ブランチ → `triplot.app`（push で自動公開） | `staging` ブランチ → Vercel Preview URL（Vercel にログイン済みのメンバーだけ閲覧可） |
+| **mobile** | `production` ビルドプロファイル → App Store Connect に submit → TestFlight（Apple の処理待ち 5〜10分） | `preview` ビルドプロファイル → ad-hoc 配布で実機へ直接インストール（Apple の審査を一切通らず数十秒） |
+| **DB** | `cjkiglocsrtnohoxcnfh`（東京） | `xuytnpkvmiduffigimol`（東京・本番と別プロジェクト） |
+| **mobile bundle id** | `app.triplot.mobile` | `app.triplot.mobile.staging`（本番アプリと同じ端末に共存できる） |
+
+**開発の流れ（web・mobile共通の考え方）**: 変更 → 確認用で見る → 問題なければ本番へ、の順を必ず踏む。
+本番へ直接デプロイして確かめる運用はしない（本番=公開そのものなので、確認用と分ける意味が消える）。
+
+- **mobile はさらに手前にシミュレータでの確認がある**（本番/確認用どちらのビルドも作らずローカルで動作確認。
+  一番速いが実機固有の挙動は見れない）。3段階の使い分けと具体的なビルドコマンドは `AGENTS.md` を参照。
+- **web の staging・mobile の preview は、実装は違えど役割は同じ**（本番データに触れずに実機/ブラウザで
+  確認する場所）。preview ビルドは TestFlight を経由しないぶん web の staging によく似ている
+  （どちらも「公開前に一度見る場所」であって、TestFlight のような Apple 側の審査プロセスは無い）。
+- migration を入れたときは、確認用の DB（staging）にも同じ migration を当てる。当て忘れると確認用だけ
+  古いスキーマのまま動き、原因不明の不具合に見える。
+- **例外: メール取り込みは確認用環境では確認できない。** 転送先の Cloudflare Email Worker が本番 URL
+  （`triplot.app`）に固定されているため（詳細は [`import-flow.md`](design/import-flow.md)）。
+
 ## 人手の定期メンテナンス
 
 上記はシステムが自動で回す定期実行。以下は外部プラットフォームの制約で**人手の対応が定期的に要るもの**（BACKLOG には置かない — 完了して消える残件ではなく恒久的に繰り返す運用作業のため）:

@@ -24,6 +24,13 @@ export default function AppLayout() {
         name="trips/index"
         options={{ title: "triplot", headerLargeTitle: true }}
       />
+      {/* trips/[tripId] は旅行名が動的なのでここでは静的な title だけ宣言
+          （中身は [tripId]/_layout.tsx が旅行データ到着後に動的注入する）。
+          ここで title: "" を明示しておかないと、旅行データが届くまでの
+          最初の1フレームは native-stack がこのルートのデフォルトタイトル
+          （ファイルパスそのもの "trips/[tripId]"）を出してしまう
+          （動的注入は子コンポーネントの effect 経由なので1テンポ遅れる）。 */}
+      <Stack.Screen name="trips/[tripId]" options={{ title: "" }} />
       {/* 取り込み・設定・フィードバック・旅行作成は native の formSheet
           ルート（react-native-screens の presentation: "formSheet"）。
           以前は @gorhom ベースの FormSheet に統一していたが、OS 標準の
@@ -53,15 +60,38 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
-      {/* フィードバックは設定からのドリルイン（router.push）。native-stack の
-          push は @gorhom の stackBehavior="push" と同じ「前を裏に残して
-          上に重ねる」挙動を素で持つ。 */}
+      {/* フィードバック・このアプリについて・OSSライセンスは設定からの
+          ドリルイン（router.push）。native-stack の push は @gorhom の
+          stackBehavior="push" と同じ「前を裏に残して上に重ねる」挙動を
+          素で持つ。ライセンス一覧はこのアプリについてからのさらに1段
+          ドリルイン。 */}
       <Stack.Screen
         name="trips/feedback"
         options={{
           headerShown: false,
           presentation: "formSheet",
           sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="trips/about"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      {/* ライセンス一覧（576件）は中身にフィットさせず、開いた瞬間から
+          ほぼ画面いっぱいの決め打ち detent にする（fitToContents だと
+          中身が長大でシート自体の初期計測が安定しない）。 */}
+      <Stack.Screen
+        name="trips/licenses"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.9],
           sheetGrabberVisible: true,
         }}
       />

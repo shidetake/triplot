@@ -624,6 +624,7 @@ export function WeekCalendar({
         </span>
         {draftBadge(ev)}
         {pn && <span className="block truncate opacity-70">{pn}</span>}
+        {ev.note && <span className="block truncate opacity-70">{ev.note}</span>}
       </>
     );
   };
@@ -1260,6 +1261,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                 );
               }
@@ -1294,7 +1298,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} {tSched("departs")}
+                        {hhmm(t.departMin)}
                       </span>
                       {dots}
                     </span>
@@ -1303,6 +1307,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                   {/* 到着側 */}
                   <button
@@ -1324,7 +1331,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.arriveMin)} {tSched("arrives")}
+                        {hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>
@@ -1333,6 +1340,9 @@ export function WeekCalendar({
                       {t.event.title}
                     </span>
                     {draftBadge(t.event)}
+                    {t.event.note && (
+                      <span className="block truncate opacity-70">{t.event.note}</span>
+                    )}
                   </button>
                 </div>
               );
