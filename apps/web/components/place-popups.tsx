@@ -41,7 +41,10 @@ function popupWrapClass(inSheet: boolean, hasOwnMaxHeight = true): string {
   return cn(
     "flex flex-col gap-2",
     inSheet
-      ? "w-full"
+      // ボトムシート内の左右余白。event-form/expense-form 等の FormPopover 経由
+      // フォームと同じ `p-4`（このリポジトリの de facto パターンだが
+      // ui-guidelines.md に書かれていなかったので追記した）。
+      ? "w-full p-4"
       : cn(
           "w-[min(16rem,calc(100vw-3rem))] pr-1",
           hasOwnMaxHeight && "max-h-[26rem] overflow-y-auto pb-2",
