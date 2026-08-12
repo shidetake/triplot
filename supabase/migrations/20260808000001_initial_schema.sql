@@ -396,16 +396,17 @@ CREATE OR REPLACE FUNCTION "public"."default_place_icon_for_expense_category"("p
   -- 費用カテゴリから「初めてその場所を登録するときだけ」の既定アイコンを出す。
   -- 既存の場所のアイコンには一切影響しない（呼び出し側が新規作成時にだけ使う）。
   -- 対応が明確なカテゴリのみ（無理に全カテゴリを当てにいかない）。ここで使う
-  -- アイコンは全て trip_pin_options の既定12種の中（seed_default_trip_pin_options）
+  -- アイコンは全て trip_pin_options の既定14種の中（seed_default_trip_pin_options）
   -- ＝場所編集画面のアイコン選択にも必ず表示されている状態にする。
   select case p_category_key
     when 'dining' then 'food'
     when 'accommodation' then 'lodging'
     when 'flight' then 'airport'
     when 'local_transit' then 'station'
-    when 'clothing' then 'local_grocery_store'
+    when 'clothing' then 'shopping'
     when 'leisure' then 'activity'
-    when 'souvenir' then 'local_grocery_store'
+    when 'souvenir' then 'shopping'
+    when 'casino' then 'casino'
     else null
   end;
 $$;
@@ -1535,13 +1536,15 @@ begin
     (_trip_id, 'cafe',                'カフェ',     2),
     (_trip_id, 'bar',                 'バー',       3),
     (_trip_id, 'local_grocery_store', 'スーパー',   4),
-    (_trip_id, 'activity',            'レジャー',   5),
-    (_trip_id, 'nature',              '自然・公園', 6),
-    (_trip_id, 'sightseeing',         '観光・名所', 7),
-    (_trip_id, 'lodging',             '宿',         8),
-    (_trip_id, 'onsen',               '温泉',       9),
-    (_trip_id, 'airport',             '空港',       10),
-    (_trip_id, 'station',             '駅',         11);
+    (_trip_id, 'shopping',            '買い物',     5),
+    (_trip_id, 'activity',            'レジャー',   6),
+    (_trip_id, 'casino',              'カジノ',     7),
+    (_trip_id, 'nature',              '自然・公園', 8),
+    (_trip_id, 'sightseeing',         '観光・名所', 9),
+    (_trip_id, 'lodging',             '宿',         10),
+    (_trip_id, 'onsen',               '温泉',       11),
+    (_trip_id, 'airport',             '空港',       12),
+    (_trip_id, 'station',             '駅',         13);
 end;
 $$;
 
