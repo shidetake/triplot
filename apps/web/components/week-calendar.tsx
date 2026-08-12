@@ -1298,7 +1298,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} {tSched("departs")}
+                        {hhmm(t.departMin)}
                       </span>
                       {dots}
                     </span>
@@ -1331,7 +1331,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.arriveMin)} {tSched("arrives")}
+                        {hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>

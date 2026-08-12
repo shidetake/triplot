@@ -162,8 +162,6 @@
     "eventFormLabel": "Event",
     "noDates": "No dates set for this trip. Add an event and the calendar will appear from that day.",
     "allDayLabel": "All day",
-    "departs": "departs",
-    "arrives": "arrives",
     "draftBadge": "Draft"
   },
   "tripActions": {

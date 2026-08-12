@@ -408,7 +408,21 @@ export function WeekCalendar({
                       {g.label}
                     </Text>
                     {g.tzNote ? (
-                      <Text style={styles.tzNote} numberOfLines={1}>
+                      // 前進する便（日付を結合しない）は注記だけ出発日＋到着日の
+                      // 2列ぶんの幅で見せる（web と同じ。列自体は結合しない）。
+                      // dayHeaderCell の alignItems:center を上書きして左端
+                      // （＝この列の開始位置）に固定しないと、幅を広げた分が
+                      // 左右均等にはみ出して前の日にも食い込んでしまう。
+                      <Text
+                        style={[
+                          styles.tzNote,
+                          {
+                            alignSelf: "flex-start",
+                            width: (g.tzNoteSpan ?? g.columns.length) * COL - 4,
+                          },
+                        ]}
+                        numberOfLines={2}
+                      >
                         {g.tzNote}
                       </Text>
                     ) : null}
