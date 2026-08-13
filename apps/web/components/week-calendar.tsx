@@ -13,6 +13,7 @@ import {
 } from "@triplot/shared/eventColor";
 import {
   formatMinutes,
+  parseWall,
   type Schedule,
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
@@ -67,6 +68,18 @@ function colWidth(n: number): number {
 // 高密度な週ビューは時の先頭ゼロを落として横幅を詰める（"9:00"）。
 // 整形ロジックは lib の formatMinutes 一本（ここは padHour=false の部分適用だけ）。
 const hhmm = (min: number) => formatMinutes(min, false);
+
+// 複数日にまたがる予定は日ごとに複数ブロックへ分割されるが、ブロックごとの
+// topMin/endMin（その日の中で見える範囲だけ）をそのまま出すとブロックごとに
+// 違う時刻が出て統一感がない。日をまたぐ予定だけ、どのブロックにも同じ
+// 「開始 - 終了」（元の startAt/endAt）を出す。単日の予定は今まで通り。
+function spanLabel(ev: { startAt: string; endAt: string | null }): string | null {
+  if (!ev.endAt) return null;
+  const s = parseWall(ev.startAt);
+  const e = parseWall(ev.endAt);
+  if (e.date === s.date) return null;
+  return `${hhmm(s.minutes)} - ${hhmm(e.minutes)}`;
+}
 
 export function WeekCalendar({
   schedule,
@@ -1161,7 +1174,7 @@ export function WeekCalendar({
                 >
                   <span className="flex items-center justify-between gap-1">
                     <span className="text-[10px] tabular-nums opacity-70">
-                      {hhmm(p.topMin)}
+                      {spanLabel(p.event) ?? hhmm(p.topMin)}
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
@@ -1223,7 +1236,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)}–{hhmm(t.arriveMin)}
+                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>
@@ -1269,7 +1282,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)}
+                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>
@@ -1302,7 +1315,7 @@ export function WeekCalendar({
                   >
                     <span className="flex items-center justify-between gap-1">
                       <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.arriveMin)}
+                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                       </span>
                       {dots}
                     </span>

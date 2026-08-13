@@ -22,7 +22,11 @@ import {
   computeGhostLaneOverrides,
   GHOST_LANE_KEY,
 } from "@triplot/shared/ghostLanes";
-import { formatMinutes, type Schedule } from "@triplot/shared/schedule";
+import {
+  formatMinutes,
+  parseWall,
+  type Schedule,
+} from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -54,6 +58,18 @@ function colWidth(n: number, availableWidth: number): number {
 }
 
 const hhmm = (min: number) => formatMinutes(min, false);
+
+// 複数日にまたがる予定は日ごとに複数ブロックへ分割されるが、ブロックごとの
+// topMin/endMin（その日の中で見える範囲だけ）をそのまま出すとブロックごとに
+// 違う時刻が出て統一感がない。日をまたぐ予定だけ、どのブロックにも同じ
+// 「開始 - 終了」（元の startAt/endAt）を出す。単日の予定は今まで通り。
+function spanLabel(ev: { startAt: string; endAt: string | null }): string | null {
+  if (!ev.endAt) return null;
+  const s = parseWall(ev.startAt);
+  const e = parseWall(ev.endAt);
+  if (e.date === s.date) return null;
+  return `${hhmm(s.minutes)} - ${hhmm(e.minutes)}`;
+}
 
 // 予約マーカー（タイトル先頭。web の ReservationMark と同じ意味）:
 // 要予約（未）= チケット黄 / 予約済 = 淡色チェック。ブロック地色はそのまま。
@@ -570,7 +586,7 @@ export function WeekCalendar({
                       style={[styles.eventTime, { color: col.text }]}
                       numberOfLines={1}
                     >
-                      {hhmm(p.topMin)}
+                      {spanLabel(p.event) ?? hhmm(p.topMin)}
                     </Text>
                     <Text
                       style={[styles.eventTitle, { color: col.text }]}
@@ -651,6 +667,13 @@ export function WeekCalendar({
                   });
                 }
                 const pn = placeName(ev.startPlaceId);
+                // 2列（出発側/到着側）に分かれる便は、どちらのブロックにも
+                // 同じ「出発 - 到着」を出す（片方だけの時刻だとブロックごとに
+                // 違う数字が出て統一感がない）。1列で収まる便は今まで通り。
+                const timeLabel =
+                  parts.length > 1
+                    ? `${hhmm(t.departMin)} - ${hhmm(t.arriveMin)}`
+                    : null;
                 return parts.map((part) => {
                   const laneW = COL / part.laneCount;
                   return (
@@ -674,7 +697,7 @@ export function WeekCalendar({
                         style={[styles.eventTime, { color: col.text }]}
                         numberOfLines={1}
                       >
-                        {hhmm(part.time)}
+                        {timeLabel ?? hhmm(part.time)}
                       </Text>
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
