@@ -785,7 +785,13 @@ export function ExpenseForm({
         <Button
           type="submit"
           // 必須（価格）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={isPending || price.trim() === ""}
+          // 換算通貨が違う時だけ為替レートも必須（履歴が無いと空文字始まり
+          // ＝ input の required だけに頼らず埋まるまで無効にする）。
+          disabled={
+            isPending ||
+            price.trim() === "" ||
+            (localCurrency !== defaultCurrency && rateInput.trim() === "")
+          }
           aria-label={isEdit ? tCommon("save") : tCommon("add")}
           title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"

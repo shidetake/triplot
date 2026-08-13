@@ -119,7 +119,9 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
 
       <Button
         type="submit"
-        disabled={isPending}
+        // 必須（本文）は * でなく「埋まるまで送信無効」で表現（iOS 方式。
+        // 以前は textarea の required だけに頼っていて、他フォームと表現が揺れていた）。
+        disabled={isPending || !body.trim()}
         aria-label={t("submit")}
         title={t("submit")}
         className="w-full"

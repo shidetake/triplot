@@ -656,11 +656,20 @@ export function ExpenseForm({
         )}
         <Pressable
           onPress={() => void submit()}
-          // 必須（価格）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={busy || price.trim() === ""}
+          // 必須（価格、通貨が違う時は為替レートも）は * でなく
+          // 「埋まるまで送信無効」で表現（iOS 方式）。
+          disabled={
+            busy ||
+            price.trim() === "" ||
+            (localCurrency !== defaultCurrency && rateInput.trim() === "")
+          }
           style={[
             styles.submitButton,
-            (busy || price.trim() === "") && styles.disabled,
+            (busy ||
+              price.trim() === "" ||
+              (localCurrency !== defaultCurrency &&
+                rateInput.trim() === "")) &&
+              styles.disabled,
           ]}
           accessibilityLabel={isEdit ? "保存" : t("addAria")}
         >
