@@ -94,10 +94,6 @@ export function NewTripSheet() {
     mode === "copy" && sourceDays !== null && newDays < sourceDays;
 
   const submit = async () => {
-    if (!title.trim() || !effectiveName.trim()) {
-      setError(t("fillAll"));
-      return;
-    }
     setBusy(true);
     setError(null);
     const r = await createTrip(supabase, {
@@ -270,12 +266,12 @@ export function NewTripSheet() {
 
       <Pressable
         onPress={() => void submit()}
-        // 必須（タイトル）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
-        disabled={busy || !title.trim()}
+        // 必須（タイトル・表示名）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
+        disabled={busy || !title.trim() || !effectiveName.trim()}
         accessibilityLabel="旅行を作成"
         style={[
           styles.submitButton,
-          (busy || !title.trim()) && styles.disabled,
+          (busy || !title.trim() || !effectiveName.trim()) && styles.disabled,
         ]}
       >
         <PlusIcon size={20} color={theme.primaryForeground} />

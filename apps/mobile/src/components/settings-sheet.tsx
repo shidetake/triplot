@@ -204,11 +204,13 @@ export function SettingsSheet({
             />
             <Pressable
               onPress={() => void save()}
-              disabled={busy || !dirty}
+              // 必須（表示名）は空にすると変更あり(dirty)でも無効のまま
+              // （埋まるまで無効、の規約は編集フォームでも変わらない）。
+              disabled={busy || !dirty || !vName.trim()}
               accessibilityLabel="保存"
               style={[
                 styles.saveButton,
-                (busy || !dirty) && styles.disabled,
+                (busy || !dirty || !vName.trim()) && styles.disabled,
               ]}
             >
               <SaveIcon size={18} color={theme.primaryForeground} />

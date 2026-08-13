@@ -330,15 +330,17 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
       />
 
       {/* 旅行情報の保存（対象＝上のタイトル・日程・通貨のみ。入力の直下に置き、
-          変更がある時だけ有効にする。メンバーの表示名はメンバー行でその場保存）。 */}
+          変更がある時だけ有効にする。メンバーの表示名はメンバー行でその場保存）。
+          必須（タイトル）が空の間は、変更ありでも無効のまま（埋まるまで無効、の
+          規約は編集フォームでも変わらない）。 */}
       {isAdmin && (
         <Pressable
           onPress={() => void saveTrip()}
-          disabled={busy || !tripDirty}
+          disabled={busy || !tripDirty || !vTitle.trim()}
           accessibilityLabel={t("common.save")}
           style={[
             styles.submitButton,
-            (busy || !tripDirty) && styles.disabled,
+            (busy || !tripDirty || !vTitle.trim()) && styles.disabled,
           ]}
         >
           <SaveIcon size={20} color={theme.primaryForeground} />

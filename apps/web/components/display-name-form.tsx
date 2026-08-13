@@ -46,7 +46,9 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
       <Button
         type="submit"
         size="icon"
-        disabled={pending || !dirty}
+        // 必須（表示名）は空にすると変更あり(dirty)でも無効のまま
+        // （埋まるまで無効、の規約は編集フォームでも変わらない）。
+        disabled={pending || !dirty || !value.trim()}
         aria-label={tc("save")}
         title={tc("save")}
         className="shrink-0"

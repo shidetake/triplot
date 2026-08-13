@@ -210,7 +210,7 @@ export function CreateTripForm({
       <input type="hidden" name="client_tz" value={browserTz()} />
 
       {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
-          必須は * でなく「埋まるまで作成ボタン無効」（既存の fillAll 検証）で表現。 */}
+          必須は * でなく「埋まるまで作成ボタン無効」で表現。 */}
       <Input
         name="title"
         required
@@ -261,9 +261,12 @@ export function CreateTripForm({
 
       <Button
         type="submit"
-        // 必須（タイトル）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
-        // 他の必須（日程・表示名）はラベルが残るので従来どおり fillAll 検証。
-        disabled={isPending || !title.trim()}
+        // 必須（タイトル・表示名・日程）は * でなく「埋まるまで作成無効」で
+        // 統一する（iOS 方式。以前は日程・表示名だけ fillAll のサーバエラー
+        // 頼みで、モバイル版と表現が揺れていた）。
+        disabled={
+          isPending || !title.trim() || !displayName.trim() || !range.start || !range.end
+        }
         aria-label={tCommon("create")}
         title={tCommon("create")}
         className="w-full"
