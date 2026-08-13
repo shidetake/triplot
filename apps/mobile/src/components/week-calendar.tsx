@@ -13,11 +13,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import {
-  eventBarHueBg,
-  eventBarHueText,
-  eventBlockHueBg,
-  eventBlockHueBorder,
-  eventBlockHueText,
+  eventHueBg,
+  eventHueText,
   GREEN_HUE,
   pickEventColor,
 } from "@triplot/shared/eventColor";
@@ -331,13 +328,14 @@ export function WeekCalendar({
   // 「未確定」を示す（web の draftAppearance と同じ。ui-guidelines のセマンティック色）。
   const DRAFT_COLORS = {
     bg: t.warnBg,
-    border: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400（darkは/50）
     text: t.warnText,
     dim: false,
   };
 
-  // 予定ブロックの色（web の pickEventColor + hsl ヘルパーと同じ）。
-  const blockColors = (ev: EventRow) => {
+  // 予定ブロックの色。終日バーも通常/移動ブロックも同じ枠線なし・濃いめの
+  // 塗り（旧 barColors の式）に統一する（枠線あり/なしの2系統を分けていたが、
+  // 分ける意味が無い＝実機で見比べて統一を決めた）。
+  const eventColors = (ev: EventRow) => {
     if (ev.isDraft) return DRAFT_COLORS;
     const c = pickEventColor({
       visibility: ev.visibility,
@@ -353,35 +351,16 @@ export function WeekCalendar({
     if (hue == null) {
       // private / 自分不参加の mixed = 中立グレー。
       return {
-        bg: t.fgAlpha(0.06),
-        border: t.fgAlpha(0.15),
+        bg: t.fgAlpha(0.08),
         text: t.mutedForeground,
         dim: c.kind === "mixed",
       };
     }
     return {
-      bg: eventBlockHueBg(hue, false),
-      border: eventBlockHueBorder(hue),
-      text: eventBlockHueText(hue),
+      bg: eventHueBg(hue, false),
+      text: eventHueText(hue),
       dim: false,
     };
-  };
-  const barColors = (ev: EventRow) => {
-    if (ev.isDraft) return { bg: DRAFT_COLORS.bg, text: DRAFT_COLORS.text };
-    const c = pickEventColor({
-      visibility: ev.visibility,
-      participantMemberIds: ev.participantMemberIds,
-      activeMemberCount,
-      memberHueById,
-      myMemberId,
-    });
-    let hue: number | null = null;
-    if (c.kind === "green") hue = GREEN_HUE;
-    else if (c.kind === "hue") hue = c.hue;
-    else if (c.kind === "mixed") hue = c.selfHue;
-    if (hue == null)
-      return { bg: t.fgAlpha(0.08), text: t.mutedForeground };
-    return { bg: eventBarHueBg(hue, false), text: eventBarHueText(hue) };
   };
 
   return (
@@ -445,7 +424,7 @@ export function WeekCalendar({
                 {allDayBars.map((b) => {
                   const ev = eventById.get(b.event.id);
                   if (!ev) return null;
-                  const col = barColors(ev);
+                  const col = eventColors(ev);
                   const left = b.startColIndex * COL;
                   const width = (b.endColIndex - b.startColIndex + 1) * COL;
                   // 終日バーは複数列にまたがると横幅に余裕があるので、タイトルの
@@ -467,6 +446,7 @@ export function WeekCalendar({
                           width: width - 4,
                           top: b.row * ALLDAY_ROW + 1,
                           backgroundColor: col.bg,
+                          opacity: col.dim ? 0.5 : 1,
                         },
                       ]}
                     >
@@ -557,7 +537,7 @@ export function WeekCalendar({
                 if (!ev) return null;
                 const ci = colIndexByKey.get(p.columnKey);
                 if (ci == null) return null;
-                const col = blockColors(ev);
+                const col = eventColors(ev);
                 const top = y(p.topMin);
                 const height = Math.max(
                   MIN_BLOCK,
@@ -580,7 +560,6 @@ export function WeekCalendar({
                         top,
                         height: height - 1,
                         backgroundColor: col.bg,
-                        borderColor: col.border,
                         opacity: col.dim ? 0.5 : 1,
                       },
                     ]}
@@ -629,7 +608,7 @@ export function WeekCalendar({
               {transits.map((t) => {
                 const ev = eventById.get(t.event.id);
                 if (!ev) return null;
-                const col = blockColors(ev);
+                const col = eventColors(ev);
                 const parts: {
                   key: string;
                   ci: number;
@@ -687,7 +666,6 @@ export function WeekCalendar({
                           top: part.top,
                           height: part.height - 1,
                           backgroundColor: col.bg,
-                          borderColor: col.border,
                         },
                       ]}
                     >
@@ -827,19 +805,21 @@ const makeStyles = (t: Theme) =>
   eventBlock: {
     position: "absolute",
     borderRadius: 4,
-    borderWidth: 1,
     paddingHorizontal: 3,
     paddingVertical: 1,
     overflow: "hidden",
   },
-  // 破線はこのアプリでは「未確定の取り込み下書き」の意味に使う（draftBlock）。
-  // 移動は出発側/到着側の2ブロックと TZ 注記で既に区別できるので枠は実線のまま。
-  // （そもそも RN は borderRadius 付きの枠に破線を適用できず、指定しても
-  //  実線で描かれていた。web も移動を破線にしていない。）
+  // 移動は出発側/到着側の2ブロックと TZ 注記で既に区別できるので枠は無し。
   transitBlock: {},
-  // 取り込み下書きの疑似ブロック（amber 破線）。timed でも破線にする。
-  draftBlock: { borderStyle: "dashed" },
-  // 終日バーは通常枠なし → 下書きだけ amber 破線の枠を足す（web と同じ）。
+  // 取り込み下書きの疑似ブロック（amber 破線）だけ、参加者色の枠線なし統一とは
+  // 別の意味（未確定の警告）として独自に枠線を持つ。timed/終日バー共通の値
+  // （そもそも RN は borderRadius 付きの枠に破線を適用できず、指定しても
+  //  実線で描かれる。web も移動を破線にしていない）。
+  draftBlock: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
+  },
   draftBar: {
     borderWidth: 1,
     borderStyle: "dashed",

@@ -55,32 +55,18 @@ export function pickEventColor(input: {
 
 // ─────────────────────────────────────────────────────────
 // hue → CSS。トーンはメンバーチップ (chipStyle) と統一。
-// 枠線ありブロック（timed / transit）と、枠線なしバー（終日帯）の2系統。
+// 終日／timed／transit 全ブロック共通（枠線なし・地色濃いめに統一済み。
+// 旧 eventBlockHue*（枠線あり・薄め）は実機で見比べて廃止した）。
 // ─────────────────────────────────────────────────────────
 
-export function eventBlockHueBg(hue: number, hovered: boolean): string {
-  // 通常時は chip と同じ s=90 l=92。hover はワントーン濃く。
-  return hovered
-    ? `hsl(${hue}, 85%, 86%)`
-    : `hsl(${hue}, 90%, 92%)`;
-}
-
-export function eventBlockHueBorder(hue: number): string {
-  return `hsl(${hue}, 80%, 80%)`;
-}
-
-export function eventBlockHueText(hue: number): string {
-  return `hsl(${hue}, 50%, 25%)`;
-}
-
-export function eventBarHueBg(hue: number, hovered: boolean): string {
-  // 終日帯は枠なしなので背景をやや濃く（slate-200/300 相当のコントラスト）。
+export function eventHueBg(hue: number, hovered: boolean): string {
+  // 枠なしなので背景をやや濃く（slate-200/300 相当のコントラスト）。
   return hovered
     ? `hsl(${hue}, 80%, 78%)`
     : `hsl(${hue}, 85%, 85%)`;
 }
 
-export function eventBarHueText(hue: number): string {
+export function eventHueText(hue: number): string {
   return `hsl(${hue}, 45%, 25%)`;
 }
 

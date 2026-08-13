@@ -4,11 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
-  eventBarHueBg,
-  eventBarHueText,
-  eventBlockHueBg,
-  eventBlockHueBorder,
-  eventBlockHueText,
+  eventHueBg,
+  eventHueText,
   eventHueSelectedBorder,
   GREEN_HUE,
   pickEventColor,
@@ -153,34 +150,38 @@ export function WeekCalendar({
   // 取り込み下書き（未確定）の見た目。メール取り込みの draft はまだ実データが
   // 無く参加者/公開範囲が未定なので、参加者構成に基づく色分けより優先して
   // warning(amber)＋破線で「未確定」を示す（ui-guidelines のセマンティック色）。
+  // border 自体もここで持つ（呼び出し側の器は枠線なし統一で border class を
+  // 持たないため、下書きの枠だけは自前で足す＝終日バーの下書きと同じ形）。
   const draftAppearance = (
     sel: boolean,
     hov: boolean,
   ): { className: string; style?: React.CSSProperties } => ({
-    className: `border-dashed border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 ${sel ? "z-10 ring-1 ring-amber-500" : ""} ${hov ? "bg-amber-100 dark:bg-amber-400/20" : ""}`,
+    className: `border border-dashed border-amber-400 bg-amber-50 text-amber-900 dark:border-amber-400/50 dark:bg-amber-400/10 dark:text-amber-300 ${sel ? "z-10 ring-1 ring-amber-500" : ""} ${hov ? "bg-amber-100 dark:bg-amber-400/20" : ""}`,
   });
 
-  // timed / transit ブロック（枠線あり）のクラス + style を返す。
-  // selected / private / mixed は従来の Tailwind class、green と hue は inline style。
-  const blockAppearance = (
+  // 予定ブロックの見た目（枠線なし・地色濃いめ）。終日バー／timed／transit の
+  // 3箇所で共通。以前は「終日バー＝枠線なし」「それ以外＝枠線あり」の2系統
+  // だったが、分ける意味が無い＝実機で見比べて枠線なしに統一した
+  // （旧 blockAppearance は削除。selected/private/mixed は Tailwind class、
+  // green と hue は inline style）。
+  const eventAppearance = (
     color: EventColor,
     sel: boolean,
     hov: boolean,
     isDraft: boolean,
   ): { className: string; style?: React.CSSProperties } => {
     if (isDraft) return draftAppearance(sel, hov);
-    // 選択中は地色（メンバー色）を保ったまま、同系色の濃い枠を太く
-    // （border 1px + ring 1px = 実質 2px。layout shift なし）。塗り替えると
-    // 選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
+    // 選択は地色を保ったまま同系色の濃い枠（inset なので隣接ブロックに被らない）。
+    // 塗り替えると選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
     if (color.kind === "private") {
       return {
-        className: `${sel ? "z-10 border-foreground/40 ring-1 ring-foreground/40" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-foreground/15" : "bg-foreground/8"}`,
+        className: `${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {
       // 自分不参加: private と同系の neutral を opacity-50 で dim（ガイドライン「不参加=opacity-50」）。
       return {
-        className: `opacity-50 ${sel ? "z-10 border-foreground/40 ring-1 ring-foreground/40" : "border-foreground/20"} text-muted-foreground ${hov ? "bg-foreground/15" : "bg-foreground/8"}`,
+        className: `opacity-50 ${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
       };
     }
     // mixed（自分参加）は自分の hue を地色に（各自の画面で違って見える）。
@@ -190,53 +191,11 @@ export function WeekCalendar({
         : color.kind === "green"
           ? GREEN_HUE
           : color.hue;
-    const strong = eventHueSelectedBorder(hue);
     return {
       className: sel ? "z-10" : "",
       style: {
-        backgroundColor: eventBlockHueBg(hue, hov),
-        borderColor: sel ? strong : eventBlockHueBorder(hue),
-        color: eventBlockHueText(hue),
-        ...(sel ? { boxShadow: `0 0 0 1px ${strong}` } : null),
-      },
-    };
-  };
-
-  // 終日帯バー（枠線なし、地色濃いめ）用。selected/private/mixed は Tailwind class。
-  const barAppearance = (
-    color: EventColor,
-    sel: boolean,
-    hov: boolean,
-    isDraft: boolean,
-  ): { className: string; style?: React.CSSProperties } => {
-    if (isDraft) {
-      return {
-        className: `border border-dashed border-amber-400 text-amber-900 dark:border-amber-400/50 dark:text-amber-300 ${hov ? "bg-amber-100 dark:bg-amber-400/20" : "bg-amber-50 dark:bg-amber-400/10"}${sel ? " z-10 ring-1 ring-amber-500" : ""}`,
-      };
-    }
-    // blockAppearance と同じく、選択は地色を保ったまま同系色の濃い枠。帯は
-    // 薄く隣と密接するので ring-inset で内側に描く（隣の帯に被らない）。
-    if (color.kind === "private") {
-      return {
-        className: `${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
-      };
-    }
-    if (color.kind === "mixed" && color.selfHue == null) {
-      return {
-        className: `opacity-50 ${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
-      };
-    }
-    const hue =
-      color.kind === "mixed"
-        ? color.selfHue!
-        : color.kind === "green"
-          ? GREEN_HUE
-          : color.hue;
-    return {
-      className: sel ? "z-10" : "",
-      style: {
-        backgroundColor: eventBarHueBg(hue, hov),
-        color: eventBarHueText(hue),
+        backgroundColor: eventHueBg(hue, hov),
+        color: eventHueText(hue),
         ...(sel
           ? { boxShadow: `inset 0 0 0 2px ${eventHueSelectedBorder(hue)}` }
           : null),
@@ -786,7 +745,7 @@ export function WeekCalendar({
               const sel = selectedEventId === b.event.id;
               const hov = hoveredEventId === b.event.id;
               const color = colorOf(b.event);
-              const app = barAppearance(color, sel, hov, !!b.event.isDraft);
+              const app = eventAppearance(color, sel, hov, !!b.event.isDraft);
               return (
                 <button
                   key={b.event.id}
@@ -1180,7 +1139,7 @@ export function WeekCalendar({
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
               const color = colorOf(p.event);
-              const app = blockAppearance(color, sel, hov, !!p.event.isDraft);
+              const app = eventAppearance(color, sel, hov, !!p.event.isDraft);
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -1191,7 +1150,7 @@ export function WeekCalendar({
                   }}
                   onMouseEnter={() => setHoveredEventId(p.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
+                  className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
@@ -1230,7 +1189,7 @@ export function WeekCalendar({
               const hov = hoveredEventId === t.event.id;
               const fade = isMyEvent(t.event) ? "" : " opacity-50";
               const color = colorOf(t.event);
-              const app = blockAppearance(color, sel, hov, !!t.event.isDraft);
+              const app = eventAppearance(color, sel, hov, !!t.event.isDraft);
               const baseClass = `${app.className}${fade}`;
               const baseStyle = app.style;
               const dots =
@@ -1253,7 +1212,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + lane * w + 1,
                       width: w - 2,
@@ -1299,7 +1258,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: di * COL + departLane * wd + 1,
                       width: wd - 2,
@@ -1332,7 +1291,7 @@ export function WeekCalendar({
                     }}
                     onMouseEnter={() => setHoveredEventId(t.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded border px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
                     style={{
                       left: ai * COL + arriveLane * wa + 1,
                       width: wa - 2,
