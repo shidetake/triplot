@@ -784,6 +784,7 @@ export function WeekCalendar({
                     {/* タイトルは通常予定の blockLabel と同じ font-medium、
                         場所・メモは同じ opacity-70 で続ける（改行はしない）。 */}
                     <span className="font-medium">{b.event.title}</span>
+                    {draftBadge(b.event)}
                     {[placeName(b.event.startPlaceId), b.event.note]
                       .filter((s): s is string => !!s)
                       .map((s, i) => (

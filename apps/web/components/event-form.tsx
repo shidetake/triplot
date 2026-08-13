@@ -102,6 +102,9 @@ export type EventFormPrefill = {
     location?: string | null;
     searchQuery?: string;
   } | null;
+  // vehicleNumber が便名として解釈できた時だけ入る正規形（例: "ZG002"）。
+  // 入っていればフォームが最初からフライト番号機能で開く。
+  flightNumber: string | null;
 };
 
 export type EventFormMode =
@@ -188,8 +191,10 @@ export function EventForm({
       }
     : null;
 
-  // タイトル欄をフライト番号入力に入れ替えているか。
-  const [flightMode, setFlightMode] = useState(false);
+  // タイトル欄をフライト番号入力に入れ替えているか。メール取り込み下書きの
+  // 確定で便名がフライトとして解釈できていれば最初からこのモードで開く
+  // （打ち直させない。手入力と同じ経路を通るので確定後の結果は区別が付かない）。
+  const [flightMode, setFlightMode] = useState(() => !!prefill?.flightNumber);
   // フライトから入れた場所。PlacePicker は非制御なので、値を差し替えるには
   // initial を変えて remount する（key に世代番号を使う）。
   const [flightPlaces, setFlightPlaces] = useState<{
@@ -209,9 +214,15 @@ export function EventForm({
     setTitle(flightTitle(f));
     setKind3("transit");
     // 出発/到着どちらかのターミナルがわかればメモに書く（片方欠けは "--"）。
-    // 両方とも不明なときだけメモは触らない。
+    // 両方とも不明なときだけメモは触らない。既存のメモ（下書き確定時の
+    // 予約番号など）は上書きせず残す（区切りは deriveEventDraftItems と
+    // 同じ " ・ "）。
     const terminalNote = flightTerminalNote(f);
-    if (terminalNote) setNote(terminalNote);
+    if (terminalNote) {
+      setNote((prev) =>
+        prev.trim() ? `${prev} ・ ${terminalNote}` : terminalNote,
+      );
+    }
 
     const asInitial = (e: Flight["departure"]): PlacePickerInitial => ({
       kind: "free",
@@ -557,6 +568,7 @@ export function EventForm({
           <input type="hidden" name="title" value={title} />
           <FlightPicker
             date={kind3 === "allday" ? alldayStart : kind3 === "transit" ? departDate : sDate}
+            initialNumber={prefill?.flightNumber ?? undefined}
             onCancel={() => setFlightMode(false)}
             onApply={applyFlight}
           />

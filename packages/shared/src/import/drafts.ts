@@ -4,6 +4,7 @@
 // 文言（フォールバック見出し等）は i18n 済みの文字列を呼び出し側から注入する
 // （このモジュールは翻訳カタログを知らない）。
 
+import { parseFlightNumber } from "../flight";
 import { resolveExpenseTz, type TripTzTimeline } from "../schedule";
 import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
@@ -53,6 +54,10 @@ export type EventDraftPrefill = {
   arriveTz: string | null;
   place: DraftPlacePrefill;
   autoResolvePlace: DraftAutoResolvePlace;
+  // vehicleNumber が実際の便名（IATA形式）として解釈できた時だけ入る（正規形。
+  // 例: "ZG002"）。列車・バス等は null のまま note 側にのみ残る。確定フォームが
+  // これを見てフライト番号機能を最初から起動し、便名を打ち直させない。
+  flightNumber: string | null;
 };
 
 // 予定下書き1件 → 予定フォーム（create モード）の事前入力一式。
@@ -167,6 +172,12 @@ export function deriveEventDraftItems(
         ev.vehicleNumber,
         ev.referenceId ? ctx.reservationRefLabel(ev.referenceId) : null,
       ].filter((p): p is string => !!p);
+      // vehicleNumber が実際の便名として解釈できる時だけフライト番号機能を
+      // 使えるようにする（列車・バス等は対象外。parseFlightNumber が判定）。
+      const flightNumber =
+        ev.kind === "transit" && ev.vehicleNumber
+          ? (parseFlightNumber(ev.vehicleNumber)?.normalized ?? null)
+          : null;
       return [
         {
           id: d.id,
@@ -183,6 +194,7 @@ export function deriveEventDraftItems(
             departTz: ev.departTz,
             arriveTz: ev.arriveTz,
             place,
+            flightNumber,
             autoResolvePlace:
               place || !placeName
                 ? null

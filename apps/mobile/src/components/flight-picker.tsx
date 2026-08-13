@@ -34,11 +34,15 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 export function FlightPicker({
   date,
+  initialNumber,
   onCancel,
   onApply,
 }: {
   /** 検索に使う出発日 "YYYY-MM-DD"（フォームの日時から渡る） */
   date: string;
+  /** 打った状態から始める便名（メール取り込み下書きの確定など、便名が既に
+      分かっている時に自動で検索まで走らせる。手打ちと同じ経路を通るだけ）。 */
+  initialNumber?: string;
   onCancel: () => void;
   onApply: (flight: Flight) => void;
 }) {
@@ -50,7 +54,7 @@ export function FlightPicker({
 
   // 航空会社を選んで確定したコード。null なら1つの欄に何でも打てる状態。
   const [airline, setAirline] = useState<Airline | null>(null);
-  const [text, setText] = useState("");
+  const [text, setText] = useState(initialNumber ?? "");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<Flight | null>(null);
   // 直近で解決済み（検索中の状態を抜けた）の "便名|日付" キー。busy を専用の

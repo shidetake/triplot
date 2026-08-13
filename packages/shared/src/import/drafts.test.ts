@@ -180,6 +180,28 @@ describe("deriveEventDraftItems", () => {
       location: null,
       searchQuery: "成田国際空港 Terminal 1",
     });
+    // 便名として解釈できる vehicleNumber は正規形で flightNumber にも入る
+    // （確定フォームがフライト番号機能を自動起動するのに使う）。
+    expect(it1.prefill.flightNumber).toBe("NH184");
+  });
+
+  it("vehicleNumber が便名として解釈できない（列車等）ときは flightNumber は null", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "event",
+          payload: eventDraft({
+            kind: "transit",
+            title: "東京-新大阪",
+            vehicleNumber: "のぞみ23号",
+          }),
+        },
+      ],
+      eventCtx,
+    );
+    expect(items[0].prefill.note).toBe("のぞみ23号");
+    expect(items[0].prefill.flightNumber).toBeNull();
   });
 
   it("timed はタイトルを場所の手がかりにし、保存済みマッチを事前入力する", () => {
@@ -229,6 +251,7 @@ describe("draftToScheduleEvent", () => {
       arriveTz: "Pacific/Honolulu",
       place: null,
       autoResolvePlace: null,
+      flightNumber: null,
     },
   };
 

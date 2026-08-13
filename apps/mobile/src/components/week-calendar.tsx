@@ -11,6 +11,7 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { useTranslations } from "use-intl";
 
 import {
   eventHueBg,
@@ -130,6 +131,7 @@ export function WeekCalendar({
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
+  const tSched = useTranslations("schedule");
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =
     schedule;
 
@@ -379,6 +381,14 @@ export function WeekCalendar({
     };
   };
 
+  // 取り込み下書き（未確定）だけに付ける小バッジ。色のヒントだけでは
+  // 分かりにくいという実機フィードバックを受けて追加（web の draftBadge
+  // と同じ役割）。タイトルと同じ行の続きに入れ子 Text で置く（改行しない）。
+  const draftBadge = (ev: EventRow) =>
+    ev.isDraft ? (
+      <Text style={styles.draftBadge}> {tSched("draftBadge")}</Text>
+    ) : null;
+
   return (
     <View
       style={styles.container}
@@ -473,6 +483,7 @@ export function WeekCalendar({
                           numberOfLines={1}
                         >
                           {b.event.title}
+                          {draftBadge(ev)}
                           {extra ? (
                             <Text style={styles.allDayExtra}> {extra}</Text>
                           ) : null}
@@ -594,6 +605,7 @@ export function WeekCalendar({
                     >
                       <ReservationMark ev={ev} textColor={col.text} />
                       {p.event.title}
+                      {draftBadge(ev)}
                     </Text>
                     {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
                         1行に収まらなくても改行で収まりそうなら2行まで見せる
@@ -705,6 +717,7 @@ export function WeekCalendar({
                       >
                         <ReservationMark ev={ev} textColor={col.text} />
                         {t.event.title}
+                        {draftBadge(ev)}
                       </Text>
                       {pn && (
                         <Text
@@ -807,6 +820,15 @@ const makeStyles = (t: Theme) =>
   // 場所・メモを同じ行に続けるときの控えめ表示。通常予定の eventPlace と
   // 同じフォントサイズ・opacity（色は親の Text から継承）。
   allDayExtra: { fontSize: 9, opacity: 0.7 },
+  // 取り込み下書きの「未確定」チップ（web と同じ塗りチップ/面上の文字トークン）。
+  draftBadge: {
+    fontSize: 9,
+    fontWeight: "600",
+    color: t.warnText,
+    backgroundColor: t.warnChipBg,
+    borderRadius: 3,
+    paddingHorizontal: 3,
+  },
   body: { flex: 1 },
   bodyRow: { flexDirection: "row" },
   gutterHour: { position: "absolute", right: 4 },

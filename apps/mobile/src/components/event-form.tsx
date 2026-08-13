@@ -172,7 +172,10 @@ export function EventForm({
   const [tzExpanded, setTzExpanded] = useState(false);
 
   // タイトル欄をフライト番号入力に入れ替えているか。
-  const [flightMode, setFlightMode] = useState(false);
+  // メール取り込み下書きの確定で、便名がフライトとして解釈できていれば
+  // 最初からフライト番号機能で開く（打ち直させない。手入力と同じ経路を
+  // 通るので、確定後の結果は手動でフライト番号を打った時と区別が付かない）。
+  const [flightMode, setFlightMode] = useState(() => !!prefill?.flightNumber);
 
   /**
    * プレビューで確定したフライトをフォームに流し込む。
@@ -186,9 +189,15 @@ export function EventForm({
     setMoveOn(true);
     setAllDayOn(false);
     // 出発/到着どちらかのターミナルがわかればメモに書く（片方欠けは "--"）。
-    // 両方とも不明なときだけメモは触らない。
+    // 両方とも不明なときだけメモは触らない。既存のメモ（下書き確定時の
+    // 予約番号など）は上書きせず残す（メモ内の区切りは deriveEventDraftItems
+    // と同じ " ・ "。メモ欄は1行入力なので改行では繋がない）。
     const terminalNote = flightTerminalNote(f);
-    if (terminalNote) setNote(terminalNote);
+    if (terminalNote) {
+      setNote((prev) =>
+        prev.trim() ? `${prev} ・ ${terminalNote}` : terminalNote,
+      );
+    }
 
     const asPlace = (e: Flight["departure"]): PlaceInput => ({
       kind: "free",
@@ -485,6 +494,7 @@ export function EventForm({
       {flightMode ? (
         <FlightPicker
           date={startDate}
+          initialNumber={prefill?.flightNumber ?? undefined}
           onCancel={() => setFlightMode(false)}
           onApply={applyFlight}
         />
