@@ -707,6 +707,7 @@ export function WeekCalendar({
                       style={[
                         styles.eventBlock,
                         styles.transitBlock,
+                        ev.isDraft && styles.draftBlock,
                         {
                           left: part.ci * COL + part.lane * laneW + 1,
                           width: laneW - 2,
