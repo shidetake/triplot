@@ -34,6 +34,7 @@ import { menuItemClass } from "./menu-item";
 export function FlightPicker({
   date,
   initialNumber,
+  autoApply,
   onCancel,
   onApply,
 }: {
@@ -42,6 +43,11 @@ export function FlightPicker({
   /** 打った状態から始める便名（メール取り込み下書きの確定など、便名が既に
       分かっている時に自動で検索まで走らせる。手打ちと同じ経路を通るだけ）。 */
   initialNumber?: string;
+  /** 見つかった瞬間にタップ無しで確定する（メール取り込み下書き専用）。
+      便名は抽出元の予約メールに書かれていた実在の便なので、手打ちのような
+      打ち間違いのリスクが無い＝プレビューでの最終確認は不要という判断。
+      見つからなければ何もしない（今まで通り手動に回る）。 */
+  autoApply?: boolean;
   onCancel: () => void;
   onApply: (flight: Flight) => void;
 }) {
@@ -146,6 +152,17 @@ export function FlightPicker({
   const showBusy = key !== null && settledKey !== key;
   const showError = key !== null && settledKey === key ? error : null;
   const showResult = normalized !== null && result?.number === normalized ? result : null;
+
+  // autoApply: 見つかった瞬間に1回だけタップ無しで確定する。ユーザー操作を
+  // 挟まないので、この effect の外（呼び出し側）で autoApply を再度 true に
+  // しない限り2回目以降は普通のプレビュー（タップして確定）に戻る。
+  const autoAppliedRef = useRef(false);
+  useEffect(() => {
+    if (autoApply && showResult && !autoAppliedRef.current) {
+      autoAppliedRef.current = true;
+      onApply(showResult);
+    }
+  }, [autoApply, showResult, onApply]);
 
   return (
     <div className="space-y-2">

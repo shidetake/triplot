@@ -383,13 +383,18 @@ export function WeekCalendar({
 
   // 取り込み下書き（未確定）だけに付ける小バッジ。色のヒントだけでは
   // 分かりにくいという実機フィードバックを受けて追加（web の draftBadge
-  // と同じ役割）。時刻の直後に続ける版（先頭にスペースを含む）と、
-  // タイトルの直前に置く版（末尾にスペースを含む）の2つ。入れ子 Text の
-  // margin は効かない（native text layout なので flexbox が効かない）ため、
-  // 区切りは文字としてのスペースをチップの塗りTextに含めて表現する。
+  // と同じ役割）。時刻とタイトルの間に**独立した行**として置く版
+  // （時刻テキストと同じ numberOfLines={1} に同居させると、狭い列で
+  // 「時刻+チップ」が収まらず未確定の文字が切れる実機フィードバックが
+  // あったため、時刻の Text から追い出し、Pressable の直下に単独の
+  // block として置く。alignSelf: flex-start で幅いっぱいに伸びるのを防ぐ）と、
+  // 終日バーのようにタイトルの直前・同じ行に置く版（末尾にスペースを含む。
+  // 入れ子 Text の margin は効かないため文字としてのスペースで区切る）の2つ。
   const draftBadge = (ev: EventRow) =>
     ev.isDraft ? (
-      <Text style={styles.draftBadge}> {tSched("draftBadge")}</Text>
+      <Text style={[styles.draftBadge, styles.draftBadgeOwnLine]}>
+        {tSched("draftBadge")}
+      </Text>
     ) : null;
   const draftBadgeLead = (ev: EventRow) =>
     ev.isDraft ? (
@@ -605,8 +610,8 @@ export function WeekCalendar({
                       numberOfLines={1}
                     >
                       {spanLabel(p.event) ?? hhmm(p.topMin)}
-                      {draftBadge(ev)}
                     </Text>
+                    {draftBadge(ev)}
                     <Text
                       style={[styles.eventTitle, { color: col.text }]}
                       numberOfLines={2}
@@ -717,8 +722,8 @@ export function WeekCalendar({
                         numberOfLines={1}
                       >
                         {timeLabel ?? hhmm(part.time)}
-                        {draftBadge(ev)}
                       </Text>
+                      {draftBadge(ev)}
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
                         numberOfLines={2}
@@ -836,6 +841,10 @@ const makeStyles = (t: Theme) =>
     borderRadius: 3,
     paddingHorizontal: 3,
   },
+  // 独立行として置く時だけ要る（Pressable の直下では既定 alignItems:
+  // stretch で幅いっぱいに伸びてしまうので、チップの見た目を保つために
+  // 内容幅に戻す）。入れ子 Text（draftBadgeLead 側）では効かないが無害。
+  draftBadgeOwnLine: { alignSelf: "flex-start", marginBottom: 1 },
   body: { flex: 1 },
   bodyRow: { flexDirection: "row" },
   gutterHour: { position: "absolute", right: 4 },

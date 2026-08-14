@@ -165,6 +165,14 @@ const LIST_ROW_H = 10 + 10 + 18 + 16;
 const LIST_ROW_NOTE_H = 16; // note 付きの行の追加分（1行想定）
 const LIST_HEADER_H = 16 + 8 + 16;
 const LIST_BOTTOM_PADDING = 24; // styles.list の paddingBottom
+// 中央寄せスクロール（ドラムロール演出）を有効にする最小件数。上下の
+// パディングで「どの行も画面中央まで運べる」ようにしている都合上、件数が
+// 少ないと余白に対して実コンテンツが短すぎ、animated scrollToOffset が
+// 実質ゼロに近い距離をラバーバンド気味に動いて見た目がばたつく
+// （実機フィードバック: 1件だけの時にタップすると地図がガクガク動く）。
+// 1〜2件は選ぶ対象がほぼ自明でドラムロールの恩恵も無いので、この件数
+// 以下では中央寄せ自体を発火させない。
+const PICKER_CENTERING_MIN_ITEMS = 3;
 
 function estimateListContentH(places: PlaceRow[]): number {
   return (
@@ -1217,6 +1225,8 @@ export default function PlacesTab() {
     // （FlatList 自身の推定に頼らないので一覧の実測状態に左右されない）。
     const index = filteredPlaces.findIndex((pl) => pl.id === p.id);
     if (index < 0) return;
+    // 件数が少ない時は中央寄せさせない（PICKER_CENTERING_MIN_ITEMS 参照）。
+    if (filteredPlaces.length < PICKER_CENTERING_MIN_ITEMS) return;
     if (enteringPickerMode) {
       // シートが fit→半分へアニメーション遷移する間、sheetViewportHeight の
       // 実測（FlatList の onLayout）は古い値のまま追いつかない。今すぐ運ぶと

@@ -195,6 +195,13 @@ export function EventForm({
   // 確定で便名がフライトとして解釈できていれば最初からこのモードで開く
   // （打ち直させない。手入力と同じ経路を通るので確定後の結果は区別が付かない）。
   const [flightMode, setFlightMode] = useState(() => !!prefill?.flightNumber);
+  // 下書き由来で自動起動した最初の1回だけ、見つかった便をタップ無しで
+  // 即確定する（便名は予約メールに書かれていた実在の値なので手打ちの
+  // ような打ち間違いのリスクが無い）。ユーザーが飛行機アイコンから
+  // 手動で開き直した場合は false のまま＝通常どおりタップして確定する。
+  const [autoApplyFlight, setAutoApplyFlight] = useState(
+    () => !!prefill?.flightNumber,
+  );
   // フライトから入れた場所。PlacePicker は非制御なので、値を差し替えるには
   // initial を変えて remount する（key に世代番号を使う）。
   const [flightPlaces, setFlightPlaces] = useState<{
@@ -211,6 +218,7 @@ export function EventForm({
    * initial を差し替えて remount する。
    */
   const applyFlight = (f: Flight) => {
+    setAutoApplyFlight(false);
     setTitle(flightTitle(f));
     setKind3("transit");
     // 出発/到着どちらかのターミナルがわかればメモに書く（片方欠けは "--"）。
@@ -569,7 +577,11 @@ export function EventForm({
           <FlightPicker
             date={kind3 === "allday" ? alldayStart : kind3 === "transit" ? departDate : sDate}
             initialNumber={prefill?.flightNumber ?? undefined}
-            onCancel={() => setFlightMode(false)}
+            autoApply={autoApplyFlight}
+            onCancel={() => {
+              setAutoApplyFlight(false);
+              setFlightMode(false);
+            }}
             onApply={applyFlight}
           />
         </>
@@ -590,7 +602,10 @@ export function EventForm({
             variant="ghost"
             size="iconDense"
             className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full"
-            onClick={() => setFlightMode(true)}
+            onClick={() => {
+              setAutoApplyFlight(false);
+              setFlightMode(true);
+            }}
             title={t("flightAria")}
             aria-label={t("flightAria")}
           >

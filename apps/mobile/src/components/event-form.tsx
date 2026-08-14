@@ -176,6 +176,13 @@ export function EventForm({
   // 最初からフライト番号機能で開く（打ち直させない。手入力と同じ経路を
   // 通るので、確定後の結果は手動でフライト番号を打った時と区別が付かない）。
   const [flightMode, setFlightMode] = useState(() => !!prefill?.flightNumber);
+  // 下書き由来で自動起動した最初の1回だけ、見つかった便をタップ無しで
+  // 即確定する（便名は予約メールに書かれていた実在の値なので手打ちの
+  // ような打ち間違いのリスクが無い）。ユーザーが飛行機アイコンから
+  // 手動で開き直した場合は false のまま＝通常どおりタップして確定する。
+  const [autoApplyFlight, setAutoApplyFlight] = useState(
+    () => !!prefill?.flightNumber,
+  );
 
   /**
    * プレビューで確定したフライトをフォームに流し込む。
@@ -185,6 +192,7 @@ export function EventForm({
    * それを使い、返らなければ座標からの導出（derivedTz）に任せて上書きしない。
    */
   const applyFlight = (f: Flight) => {
+    setAutoApplyFlight(false);
     setTitle(flightTitle(f));
     setMoveOn(true);
     setAllDayOn(false);
@@ -495,7 +503,11 @@ export function EventForm({
         <FlightPicker
           date={startDate}
           initialNumber={prefill?.flightNumber ?? undefined}
-          onCancel={() => setFlightMode(false)}
+          autoApply={autoApplyFlight}
+          onCancel={() => {
+            setAutoApplyFlight(false);
+            setFlightMode(false);
+          }}
           onApply={applyFlight}
         />
       ) : (
@@ -509,7 +521,10 @@ export function EventForm({
             style={[styles.input, styles.titleInput]}
           />
           <Pressable
-            onPress={() => setFlightMode(true)}
+            onPress={() => {
+              setAutoApplyFlight(false);
+              setFlightMode(true);
+            }}
             hitSlop={{ top: 8, bottom: 8, left: 4, right: 8 }}
             style={styles.titleAction}
             accessibilityLabel={t("flightAria")}
