@@ -18,6 +18,7 @@ import type { Currency } from "@triplot/shared/types/database";
 import { ExpenseForm } from "@/components/expense-form";
 import { supabase } from "@/lib/supabase";
 import {
+  useInvalidateInbox,
   useInvalidateTrip,
   useTripDetail,
   useTripDrafts,
@@ -36,6 +37,7 @@ export default function ExpenseFormRoute() {
   const { data, me } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const invalidateInbox = useInvalidateInbox();
 
   if (!data?.trip || !me) return null;
   const trip = data.trip;
@@ -94,13 +96,16 @@ export default function ExpenseFormRoute() {
     : undefined;
 
   // 取り込み下書きの確定。ExpenseForm 成功時に呼ばれ、下書きを confirmed に
-  // する（web の DraftConfirmButton と同じ resolveInboundDraft）。
+  // する（web の DraftConfirmButton と同じ resolveInboundDraft）。この旅行の
+  // 未確定が全部片付くと親メールも DB 側で自動的に確定扱いになるので、受信箱の
+  // キャッシュも合わせて無効化する（useInvalidateInbox 参照）。
   const confirmDraft = async (id: string, newExpenseId?: string) => {
     const r = await resolveInboundDraft(supabase, id, "confirmed", {
       expenseId: newExpenseId,
     });
     if (!r.ok) Alert.alert(r.error);
     void invalidate();
+    void invalidateInbox();
   };
 
   return (

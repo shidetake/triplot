@@ -13,6 +13,7 @@ import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 import { EventForm } from "@/components/event-form";
 import { supabase } from "@/lib/supabase";
 import {
+  useInvalidateInbox,
   useInvalidateTrip,
   useTripDetail,
   useTripDrafts,
@@ -35,6 +36,7 @@ export default function EventFormRoute() {
   const { data, me } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const invalidateInbox = useInvalidateInbox();
 
   if (!data?.trip || !me) return null;
   const trip = data.trip;
@@ -72,13 +74,16 @@ export default function EventFormRoute() {
   const slot = date && time ? { date, time } : undefined;
 
   // 取り込み下書きの確定。EventForm 成功時に呼ばれ、下書きを confirmed に
-  // する（web の ScheduleSection と同じ resolveInboundDraft）。
+  // する（web の ScheduleSection と同じ resolveInboundDraft）。この旅行の
+  // 未確定が全部片付くと親メールも DB 側で自動的に確定扱いになるので、受信箱の
+  // キャッシュも合わせて無効化する（useInvalidateInbox 参照）。
   const confirmDraft = async (id: string, newEventId?: string) => {
     const r = await resolveInboundDraft(supabase, id, "confirmed", {
       eventId: newEventId,
     });
     if (!r.ok) Alert.alert(r.error);
     void invalidate();
+    void invalidateInbox();
   };
 
   return (

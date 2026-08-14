@@ -671,6 +671,15 @@ export default function PlacesTab() {
         : places,
     [places, placeFilter, matchesPlaceFilter],
   );
+  // 中央寄せスクロール演出（ドラムロール）を有効にするか（PICKER_CENTERING_MIN_ITEMS
+  // 参照）。タップ時の scrollToOffset だけでなく、中央寄せ用の上下パディング
+  // （pickerCenterPad/pickerTopPad、下）自体もこれで止める。件数が少ない時に
+  // パディングだけ生きていると、シートが fit→半分 detent へアニメーション遷移する
+  // 間 sheetViewportHeight が数フレーム変わり続け、そのたびパディング（＝一覧の
+  // 実コンテンツ量）も変わって一覧がガクガク動く（実機フィードバック: 一瞬何かを
+  // 頑張ろうとして途中で諦めるように見える）。件数がそもそも少なければ中央寄せの
+  // 恩恵が無いので、パディングごと最初から作らない。
+  const pickerCenteringEnabled = filteredPlaces.length >= PICKER_CENTERING_MIN_ITEMS;
 
   const placeFilterLabel = (f: PlaceFilter): string =>
     f.kind === "area"
@@ -1225,8 +1234,8 @@ export default function PlacesTab() {
     // （FlatList 自身の推定に頼らないので一覧の実測状態に左右されない）。
     const index = filteredPlaces.findIndex((pl) => pl.id === p.id);
     if (index < 0) return;
-    // 件数が少ない時は中央寄せさせない（PICKER_CENTERING_MIN_ITEMS 参照）。
-    if (filteredPlaces.length < PICKER_CENTERING_MIN_ITEMS) return;
+    // 件数が少ない時は中央寄せさせない（pickerCenteringEnabled 参照）。
+    if (!pickerCenteringEnabled) return;
     if (enteringPickerMode) {
       // シートが fit→半分へアニメーション遷移する間、sheetViewportHeight の
       // 実測（FlatList の onLayout）は古い値のまま追いつかない。今すぐ運ぶと
@@ -1264,7 +1273,9 @@ export default function PlacesTab() {
   // （「◯件の場所」）は先頭側だけに乗るので、その分だけ上のパディングを
   // 短くする。
   const pickerCenterPad =
-    editing != null ? Math.max(0, sheetViewportHeight / 2 - LIST_ROW_H / 2) : 0;
+    editing != null && pickerCenteringEnabled
+      ? Math.max(0, sheetViewportHeight / 2 - LIST_ROW_H / 2)
+      : 0;
   const pickerTopPad = Math.max(0, pickerCenterPad - LIST_HEADER_H);
 
   // FlatList の実測可視高さが変わるたびに呼ぶ。pendingCenterIndexRef が

@@ -36,6 +36,7 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 import {
+  useInvalidateInbox,
   useInvalidateTrip,
   useTripDetail,
   useTripDrafts,
@@ -60,6 +61,7 @@ export default function ExpensesTab() {
   const { refreshing, onRefresh } = usePullRefresh(refetch);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const invalidateInbox = useInvalidateInbox();
 
   if (loadError) {
     return (
@@ -134,6 +136,7 @@ export default function ExpensesTab() {
               return;
             }
             void invalidate();
+            void invalidateInbox();
           });
         },
       },

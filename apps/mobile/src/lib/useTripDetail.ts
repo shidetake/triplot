@@ -49,3 +49,15 @@ export function useInvalidateTrip(tripId: string) {
     [qc, tripId],
   );
 }
+
+// 取り込み下書き（予定/費用）を確定・破棄した後に呼ぶ。DB 側は最後の1件が
+// 解決されると親メール（inbound_emails）の status も confirmed/dismissed に
+// 進める（finalize_inbound_email_if_resolved）が、受信箱画面は別キャッシュ
+// （["inbox", userId]）を持つ独立クエリなので、trip 側の invalidate だけでは
+// 反映されない。旅行側で全ての下書きが片付いた後も受信箱にその親メールが
+// 残り続けていた実機フィードバックへの対応。userId は問わずプレフィックス
+// 一致で全部無効化する（TanStack Query の invalidateQueries は既定で部分一致）。
+export function useInvalidateInbox() {
+  const qc = useQueryClient();
+  return useCallback(() => qc.invalidateQueries({ queryKey: ["inbox"] }), [qc]);
+}
