@@ -292,9 +292,8 @@ async function resolveFlightPlaces(flight: {
 // 店名検索すると無関係な同名店に化ける恐れが大きいため）。
 async function fetchTripBiasCenter(
   supabase: ServiceClient,
-  tripId: string | null,
+  tripId: string,
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!tripId) return null;
   const { data } = await supabase
     .from("places")
     .select("lat, lng")
@@ -305,6 +304,45 @@ async function fetchTripBiasCenter(
     .filter((p): p is { lat: number; lng: number } => p.lat != null && p.lng != null)
     .map((p) => ({ lat: p.lat, lng: p.lng }));
   return dominantCenter(points);
+}
+
+// dominantCenter（旅行全体のピンの重心）は、東京↔ホノルルのような長距離
+// フライトを挟む旅行だと「今どちらの拠点にいるか」を無視して逆側に引っ張ら
+// れることがある（実機フィードバック: ホノルルのレストランの検索がなぜか
+// 成田を中心に行われて見つからなかった。東京側・ホノルル側の空港ピンが
+// それぞれ単独クラスタで、全体の重心/優勢クラスタ選定がどちらに転ぶかは
+// 点の並びに依存し、対象日と無関係に決まってしまう）。対象日付以前に到着
+// した直近の移動（transit）があれば、その到着地（＝対象日にいるはずの場所）
+// を優先してバイアスにする。無ければ dominantCenter にフォールバックする。
+async function fetchBiasCenterForDate(
+  supabase: ServiceClient,
+  tripId: string | null,
+  targetDate: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!tripId) return null;
+  if (targetDate) {
+    const { data: transits } = await supabase
+      .from("events")
+      .select("end_place_id, start_place_id")
+      .eq("trip_id", tripId)
+      .eq("kind", "transit")
+      .lte("end_at", `${targetDate}T23:59:59`)
+      .order("end_at", { ascending: false })
+      .limit(1);
+    // end_place_id が null は「到着地は出発地と同じ」の意味（NULL = 開始と同じ）。
+    const placeId = transits?.[0]?.end_place_id ?? transits?.[0]?.start_place_id;
+    if (placeId) {
+      const { data: place } = await supabase
+        .from("places")
+        .select("lat, lng")
+        .eq("id", placeId)
+        .maybeSingle();
+      if (place?.lat != null && place.lng != null) {
+        return { lat: place.lat, lng: place.lng };
+      }
+    }
+  }
+  return fetchTripBiasCenter(supabase, tripId);
 }
 
 // 時差移動のうち便名（parseFlightNumber が読める形）を持つものだけ、その日の
@@ -319,11 +357,12 @@ async function fetchTripBiasCenter(
 //
 // transit 以外（レストラン・買い物等）は、タイトルを店名の手がかりに Google
 // の場所への解決を試みる（resolvedNamedPlace）。空港と違い座標を知らないので
-// biasCenter（この旅行の既存ピンの重心）が無ければ試さない。
+// biasCenter（fetchBiasCenterForDate — その予定の日付にいるはずの場所）が
+// 無ければ試さない。
 async function prefetchFlights(
   supabase: ServiceClient,
   events: EventDraft[],
-  biasCenter: { lat: number; lng: number } | null,
+  tripId: string | null,
 ): Promise<StoredEventDraft[]> {
   const api = createFlightApi(supabase);
   const placesApiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
@@ -351,15 +390,18 @@ async function prefetchFlights(
       result.push(ev);
       continue;
     }
-    if (placesApiKey && biasCenter && ev.title) {
+    if (placesApiKey && ev.title) {
       try {
-        const resolved = await resolveNamedPlace(ev.title, ev.location, {
-          apiKey: placesApiKey,
-          biasCenter,
-        });
-        if (resolved) {
-          result.push({ ...ev, resolvedNamedPlace: resolved });
-          continue;
+        const biasCenter = await fetchBiasCenterForDate(supabase, tripId, ev.startDate);
+        if (biasCenter) {
+          const resolved = await resolveNamedPlace(ev.title, ev.location, {
+            apiKey: placesApiKey,
+            biasCenter,
+          });
+          if (resolved) {
+            result.push({ ...ev, resolvedNamedPlace: resolved });
+            continue;
+          }
         }
       } catch {
         // best-effort。確定時は自由入力/自動解決（web のみ）へフォールバックする。
@@ -370,16 +412,23 @@ async function prefetchFlights(
   return result;
 }
 
-// 費用の店名を Google の場所に解決する（events と同じ biasCenter・
+// 費用の店名を Google の場所に解決する（events と同じ日付ベースの biasCenter・
 // best-effort。見つからなければ receipt をそのまま返す）。
 async function resolveReceiptPlace(
+  supabase: ServiceClient,
   receipt: Receipt | null,
-  biasCenter: { lat: number; lng: number } | null,
+  tripId: string | null,
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
-  if (!apiKey || !biasCenter || !receipt.merchant) return receipt;
+  if (!apiKey || !receipt.merchant) return receipt;
   try {
+    const biasCenter = await fetchBiasCenterForDate(
+      supabase,
+      tripId,
+      receipt.serviceDate ?? receipt.date,
+    );
+    if (!biasCenter) return receipt;
     const resolved = await resolveNamedPlace(receipt.merchant, receipt.location, {
       apiKey,
       biasCenter,
@@ -477,11 +526,6 @@ async function runExtraction(
   // 座標等）を混ぜるとマージ判定に無関係なトークンで膨らむだけになる。
   const merge = await tryMerge(supabase, userId, emailId, extraction, text);
 
-  // 場所名（店・空港）の Google 解決に使う地理バイアス。この email 自身の
-  // tripId 割当てで決める（マージ先の trip と食い違うことは無い前提。合体は
-  // 同じ取引・予約の重複メールが対象なので通常は同じ旅行に属する）。
-  const biasCenter = await fetchTripBiasCenter(supabase, tripId);
-
   if (merge) {
     // ターゲットの「自分の」extracted は残し、作業状態（pending draft 行）を合体結果で
     // 置き換える（確定済みは触らない）。便名が読めた時差移動は、保存の直前
@@ -495,8 +539,8 @@ async function runExtraction(
     // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
     const merged = {
-      receipt: await resolveReceiptPlace(merge.merged.receipt, biasCenter),
-      events: await prefetchFlights(supabase, merge.merged.events, biasCenter),
+      receipt: await resolveReceiptPlace(supabase, merge.merged.receipt, tripId),
+      events: await prefetchFlights(supabase, merge.merged.events, tripId),
     };
     await replacePendingDrafts(supabase, merge.targetId, merged);
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
@@ -531,8 +575,8 @@ async function runExtraction(
     // resolvedFlight/resolvedNamedPlace/resolvedPlace の埋め込みは merge 分岐と
     // 同じ理由（上のコメント参照）で保存直前に行う。
     const enriched = {
-      receipt: await resolveReceiptPlace(receipt, biasCenter),
-      events: await prefetchFlights(supabase, events, biasCenter),
+      receipt: await resolveReceiptPlace(supabase, receipt, tripId),
+      events: await prefetchFlights(supabase, events, tripId),
     };
     await replacePendingDrafts(supabase, emailId, enriched);
   }
