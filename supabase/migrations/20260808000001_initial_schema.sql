@@ -855,6 +855,28 @@ begin
   order by (lat is not null) desc, created_at
   limit 1;
 
+  -- 空港だけ、名前が一致しなくても座標がほぼ同じ既存の空港ピンがあれば
+  -- 同一の場所として丸める（先勝ち＝既存の名前・座標をそのまま使う）。
+  -- メール取り込みで事前解決した空港名は英語（"Tokyo Narita"）で入るが、
+  -- 手動でフライト番号確定すると日本語ロケールでは日本語名（"成田国際空港"）
+  -- になり、表記違いだけで同じ空港が2件の別の場所として登録されてしまう
+  -- （実機フィードバック）。他の自由入力（レストラン等）は表記揺れでの
+  -- 誤爆を避けるため対象外にする。閾値 0.02 度（緯度で約2.2km）は「同じ
+  -- 空港を別の提供元が返す中心点のズレ」を吸収できる程度に広く、別の POI
+  -- との衝突は考えにくい範囲。
+  if v_place_id is null and v_has_geo and p_icon = 'airport' then
+    select id into v_place_id
+    from places
+    where trip_id = p_trip_id
+      and visibility = 'shared'
+      and icon = 'airport'
+      and lat is not null and lng is not null
+      and abs(lat - p_lat) < 0.02
+      and abs(lng - p_lng) < 0.02
+    order by created_at
+    limit 1;
+  end if;
+
   if v_place_id is not null then
     -- 座標を持たない既存に、分かった座標を後から与える。
     if v_has_geo then
