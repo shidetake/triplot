@@ -58,6 +58,7 @@ export type EventDraftPlacePrefill =
       lng: number;
       region: string | null;
       locality: string | null;
+      icon: string | null;
     }
   | null;
 
@@ -202,6 +203,7 @@ function draftPlaceFromFlightEndpoint(
       lng: candidate.lng,
       region: candidate.region,
       locality: candidate.locality,
+      icon: "airport",
     };
   }
   return { kind: "free", name: e.name, lat: e.lat, lng: e.lng };

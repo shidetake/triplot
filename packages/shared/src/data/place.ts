@@ -22,6 +22,10 @@ export type PlaceInput =
       lng: number;
       region: string | null;
       locality: string | null;
+      /** places.icon（placeIcons のキー）。省略時は DB 側の既定 "pin"
+       *  （空港解決〔resolveAirportPlace〕など、呼び出し側が種別を知っている
+       *  時だけ明示する。Google の検索結果から選んだ通常のケースでは省略）。 */
+      icon?: string | null;
     };
 
 // PlaceInput を DB の「場所指定（place spec）」に変換する。
@@ -71,8 +75,8 @@ export function placeSpec(place: PlaceInput): PlaceSpec {
         lat: place.lat,
         lng: place.lng,
         formatted_address: place.address,
-        icon: "",
-        // 空文字は DB 側 nullif で NULL になる。
+        icon: place.icon ?? "",
+        // 空文字は DB 側 nullif で NULL になり、既定の "pin" にフォールバックする。
         region: place.region ?? "",
         locality: place.locality ?? "",
       },

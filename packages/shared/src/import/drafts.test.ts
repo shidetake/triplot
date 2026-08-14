@@ -329,6 +329,7 @@ describe("deriveEventDraftItems", () => {
       lng: 140.3864,
       region: "千葉県",
       locality: "成田市",
+      icon: "airport",
     });
     // 到着地は解決できなかったので座標つき自由入力にフォールバック。
     expect(it1.prefill.endPlace).toEqual({

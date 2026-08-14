@@ -577,6 +577,7 @@ function parsePlace(
       lng: gLng,
       region: get("g_region") || null,
       locality: get("g_locality") || null,
+      icon: get("g_icon") || null,
     };
   }
   if (placeMode === "free") {

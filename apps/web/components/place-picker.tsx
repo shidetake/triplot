@@ -30,6 +30,7 @@ type Resolved =
       lng: number;
       region: string | null;
       locality: string | null;
+      icon: string | null;
     };
 
 // Google Autocomplete で 1 回だけ検索→スコアリング→高確信なら Place Details まで取得する。
@@ -87,6 +88,7 @@ async function tryResolvePlace(
       address: place.formattedAddress ?? "",
       lat: loc.lat(),
       lng: loc.lng(),
+      icon: null,
       ...extractRegion(place.addressComponents),
     },
     name: candName,
@@ -134,6 +136,7 @@ export type PlacePickerInitial =
       lng: number;
       region: string | null;
       locality: string | null;
+      icon: string | null;
     }
   | null;
 
@@ -198,6 +201,7 @@ export function PlacePicker({
             lng: initial.lng,
             region: initial.region,
             locality: initial.locality,
+            icon: initial.icon,
           }
         : null,
   );
@@ -414,6 +418,7 @@ export function PlacePicker({
           address: place.formattedAddress ?? "",
           lat: loc.lat(),
           lng: loc.lng(),
+          icon: null,
           ...extractRegion(place.addressComponents),
         });
         setQuery(place.displayName ?? pred.text.text);
@@ -445,6 +450,7 @@ export function PlacePicker({
     lng: "",
     region: "",
     locality: "",
+    icon: "",
   };
   if (resolved?.kind === "saved") {
     mode = "saved";
@@ -459,6 +465,7 @@ export function PlacePicker({
       lng: String(resolved.lng),
       region: resolved.region ?? "",
       locality: resolved.locality ?? "",
+      icon: resolved.icon ?? "",
     };
   } else if (!resolved && exactSaved && query.trim()) {
     mode = "saved";
@@ -500,6 +507,7 @@ export function PlacePicker({
       <input type="hidden" name={`${namePrefix}g_lng`} value={g.lng} />
       <input type="hidden" name={`${namePrefix}g_region`} value={g.region} />
       <input type="hidden" name={`${namePrefix}g_locality`} value={g.locality} />
+      <input type="hidden" name={`${namePrefix}g_icon`} value={g.icon} />
 
       <Combobox.Root
         items={rows}

@@ -278,6 +278,7 @@ export function EventForm({
       lng: c.lng,
       region: c.region,
       locality: c.locality,
+      icon: "airport",
     });
     setFlightPlaces((prev) => ({
       gen: (prev?.gen ?? 0) + 1,

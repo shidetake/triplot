@@ -141,6 +141,7 @@ export function EventForm({
         lng: p.lng,
         region: p.region,
         locality: p.locality,
+        icon: p.icon,
       };
     }
     return {
@@ -258,6 +259,7 @@ export function EventForm({
         lng: c.lng,
         region: c.region,
         locality: c.locality,
+        icon: "airport",
       });
       void (async () => {
         const [dep, arr] = await Promise.all([

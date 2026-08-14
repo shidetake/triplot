@@ -43,10 +43,14 @@ export type SearchPlacesOptions = {
   apiKey: string;
   // iOS アプリ制限つき API キーは X-Ios-Bundle-Identifier ヘッダが要る。
   iosBundleId?: string;
-  // 地理バイアス（既存ピンの重心 or 東京）。半径は 50km 固定。
+  // 地理バイアス（既存ピンの重心 or 東京）。
   biasCenter?: { lat: number; lng: number };
+  // biasCenter の半径。既定 50km（トリップ全体を見渡す通常検索向け）。
+  biasRadiusMeters?: number;
   languageCode?: string;
   regionCode?: string;
+  // 結果をこの Place Type だけに絞る（例: "airport"）。指定しなければ絞らない。
+  includedType?: string;
 };
 
 // Places API (New): places:searchText。FieldMask は最小限（住所成分まで）。
@@ -87,10 +91,11 @@ export async function searchPlaces(
           latitude: opts.biasCenter.lat,
           longitude: opts.biasCenter.lng,
         },
-        radius: 50000,
+        radius: opts.biasRadiusMeters ?? 50000,
       },
     };
   }
+  if (opts.includedType) body.includedType = opts.includedType;
 
   const res = await fetch(
     "https://places.googleapis.com/v1/places:searchText",
@@ -359,9 +364,16 @@ export async function resolveAirportPlace(
   if (endpoint.lat === null || endpoint.lng === null) return null;
   const coords = { lat: endpoint.lat, lng: endpoint.lng };
   try {
+    // includedType="airport" で絞る: 提供元の空港名がその都市名だけ（例:
+    // "Honolulu"）のことがあり、テキストの一致度だけでは同名の市街地が
+    // 先に返って空港自体が見つからないことがある（実機フィードバック）。
+    // 種別を空港に絞れば、多少あいまいな名前でも地理バイアス内の実際の
+    // 空港を確実に拾える。半径も 20km に絞り、無関係な空港との誤マッチを防ぐ。
     const candidates = await searchPlaces(endpoint.name, {
       ...opts,
       biasCenter: coords,
+      biasRadiusMeters: 20000,
+      includedType: "airport",
     });
     return nearestCandidate(candidates, coords);
   } catch {
