@@ -35,6 +35,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { toast } from "@/components/toast";
 import * as Clipboard from "expo-clipboard";
 
 import { generateInviteToken } from "@/lib/inviteToken";
@@ -155,7 +156,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
               await Clipboard.setStringAsync(
                 `${JOIN_BASE_URL}/join/${r.data.token}`,
               );
-              Alert.alert(t("tripActions.regenerateCopied"));
+              toast(t("tripActions.regenerateCopied"));
             });
           },
         },

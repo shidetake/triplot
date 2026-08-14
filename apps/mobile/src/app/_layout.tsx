@@ -7,6 +7,7 @@ import { IntlProvider } from "use-intl";
 import { deviceLocale, messagesFor } from "@/lib/i18n";
 import { AppQueryProvider } from "@/lib/query";
 import { SessionProvider } from "@/lib/session";
+import { Toaster } from "@/components/toast";
 
 export default function RootLayout() {
   const locale = deviceLocale();
@@ -37,6 +38,7 @@ export default function RootLayout() {
                   options={{ title: "M0 チェック" }}
                 />
               </Stack>
+              <Toaster />
               </ThemeProvider>
             </BottomSheetModalProvider>
           </AppQueryProvider>

@@ -16,6 +16,7 @@ import {
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { SheetTitle } from "@/components/sheet-title";
+import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -58,7 +59,7 @@ export function InboxSheet() {
   const copyAddress = async () => {
     if (!address) return;
     await Clipboard.setStringAsync(address);
-    Alert.alert("コピーしました");
+    toast("コピーしました");
   };
 
   const assign = async (emailId: string, tripId: string | null) => {

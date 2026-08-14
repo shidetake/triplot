@@ -409,7 +409,13 @@ export async function resolveNamedPlace(
   const trimmed = name.trim();
   if (!trimmed || !opts.biasCenter) return null;
   try {
-    const candidates = await searchPlaces(trimmed, opts);
+    // searchPlaces の既定 languageCode は "ja"（RN の場所検索 UI 向け）だが、
+    // merchant/location はメール本文からそのままの言語（英語のレシートが
+    // 多い）で抽出される。日本語名で返ってくると matchPlace のテキスト
+    // 一致度が実質ゼロになり、実在の正しい候補でも閾値未満で弾いてしまう
+    // （実機フィードバック: "Yard House" ⇔ "ヤード ハウス" で不一致）。
+    // 英語で応答させ、抽出元の表記に揃える。
+    const candidates = await searchPlaces(trimmed, { ...opts, languageCode: "en" });
     let best: PlaceCandidate | null = null;
     let bestScore = -1;
     for (const c of candidates.slice(0, 5)) {
