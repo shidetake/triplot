@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Modal, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/lib/theme";
@@ -56,19 +56,29 @@ export function Toaster() {
   if (!displayText) return null;
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[styles.wrap, { bottom: insets.bottom + 24, opacity }]}
-    >
-      <View style={[styles.toast, { backgroundColor: theme.primary }]}>
-        <Text
-          style={[styles.text, { color: theme.primaryForeground }]}
-          numberOfLines={2}
+    // ボトムシート（@gorhom/bottom-sheet）は独自のポータル層に乗るため、通常の
+    // 兄弟 View では JSX の並び順に関わらずシートの裏に隠れる（実機フィード
+    // バック: 受信箱シートを開いた状態でコピーすると、トーストがシートの下に
+    // 出て読めない）。ネイティブの Modal は新しい UIWindow に乗るので、開いて
+    // いるシートより後に出せば確実に最前面になる。タップは全て下へ通す
+    // （pointerEvents="none" をカスケードさせ、通知はブロッキングしない）。
+    <Modal transparent visible animationType="none" statusBarTranslucent>
+      <View style={StyleSheet.absoluteFill} pointerEvents="none">
+        <Animated.View
+          pointerEvents="none"
+          style={[styles.wrap, { bottom: insets.bottom + 24, opacity }]}
         >
-          {displayText}
-        </Text>
+          <View style={[styles.toast, { backgroundColor: theme.primary }]}>
+            <Text
+              style={[styles.text, { color: theme.primaryForeground }]}
+              numberOfLines={2}
+            >
+              {displayText}
+            </Text>
+          </View>
+        </Animated.View>
       </View>
-    </Animated.View>
+    </Modal>
   );
 }
 
