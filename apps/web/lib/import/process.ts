@@ -414,6 +414,12 @@ async function prefetchFlights(
 
 // 費用の店名を Google の場所に解決する（events と同じ日付ベースの biasCenter・
 // best-effort。見つからなければ receipt をそのまま返す）。
+//
+// カテゴリ「渡航」は対象外にする: 航空券等の店名（航空会社名）は「その日
+// いた場所」ではなく取引の相手企業なので、位置バイアスでの解決が原理的に
+// 成立しない（実機フィードバック: ZIPAIR の受取企業は成田近郊にあり、対象日
+// バイアス〔到着地＝ホノルル〕で検索すると見つからない）。移動そのものの
+// 場所（空港）は resolveAirportPlace が別途 resolvedFlight 経由で解決する。
 async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
@@ -421,7 +427,7 @@ async function resolveReceiptPlace(
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
-  if (!apiKey || !receipt.merchant) return receipt;
+  if (!apiKey || !receipt.merchant || receipt.category === "渡航") return receipt;
   try {
     const biasCenter = await fetchBiasCenterForDate(
       supabase,
