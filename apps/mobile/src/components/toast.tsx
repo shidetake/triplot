@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Animated, Modal, StyleSheet, Text, View } from "react-native";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useTheme } from "@/lib/theme";
@@ -11,19 +11,30 @@ import { useTheme } from "@/lib/theme";
 // RN には Base UI Toast 相当が無いので最小限を自前で持つ）。
 // アクションは不要＝スワイプ/ボタンでの明示クローズは持たず、一定時間で
 // 自動的に消える（ブロッキングしない Alert.alert の代替）。
-
-const DISPLAY_MS = 2500;
-const FADE_MS = 200;
+//
+// @gorhom/bottom-sheet の BottomSheetModal は自前のポータル層（rootHostName）
+// に乗り、ルートの通常の兄弟 View より上に描画される。ネイティブの Modal で
+// 上から被せる案も試したが、formSheet で開いている画面自体がネイティブ
+// モーダルのため、二重にネイティブモーダルを重ねると描画されない（実機で
+// 確認）。そのため「一番手前の Toaster が処理する」スタック方式にし、
+// FormSheet（components/form-sheet.tsx）自身もローカルな <Toaster /> を
+// 持つ＝シートが開いている間はシート自身の中で描画されるので、シートの
+// ポータル層を出る必要が無くなる。
 
 type Listener = (text: string | null) => void;
-let listener: Listener | null = null;
+const listeners: Listener[] = [];
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function toast(text: string): void {
+  const top = listeners[listeners.length - 1];
+  if (!top) return;
   if (hideTimer) clearTimeout(hideTimer);
-  listener?.(text);
-  hideTimer = setTimeout(() => listener?.(null), DISPLAY_MS);
+  top(text);
+  hideTimer = setTimeout(() => top(null), DISPLAY_MS);
 }
+
+const DISPLAY_MS = 2500;
+const FADE_MS = 200;
 
 export function Toaster() {
   const [displayText, setDisplayText] = useState<string | null>(null);
@@ -32,7 +43,7 @@ export function Toaster() {
   const theme = useTheme();
 
   useEffect(() => {
-    listener = (text) => {
+    const fn: Listener = (text) => {
       if (text) {
         setDisplayText(text);
         Animated.timing(opacity, {
@@ -48,37 +59,29 @@ export function Toaster() {
         }).start(() => setDisplayText(null));
       }
     };
+    listeners.push(fn);
     return () => {
-      listener = null;
+      const i = listeners.indexOf(fn);
+      if (i !== -1) listeners.splice(i, 1);
     };
   }, [opacity]);
 
   if (!displayText) return null;
 
   return (
-    // ボトムシート（@gorhom/bottom-sheet）は独自のポータル層に乗るため、通常の
-    // 兄弟 View では JSX の並び順に関わらずシートの裏に隠れる（実機フィード
-    // バック: 受信箱シートを開いた状態でコピーすると、トーストがシートの下に
-    // 出て読めない）。ネイティブの Modal は新しい UIWindow に乗るので、開いて
-    // いるシートより後に出せば確実に最前面になる。タップは全て下へ通す
-    // （pointerEvents="none" をカスケードさせ、通知はブロッキングしない）。
-    <Modal transparent visible animationType="none" statusBarTranslucent>
-      <View style={StyleSheet.absoluteFill} pointerEvents="none">
-        <Animated.View
-          pointerEvents="none"
-          style={[styles.wrap, { bottom: insets.bottom + 24, opacity }]}
+    <Animated.View
+      pointerEvents="none"
+      style={[styles.wrap, { bottom: insets.bottom + 24, opacity }]}
+    >
+      <View style={[styles.toast, { backgroundColor: theme.primary }]}>
+        <Text
+          style={[styles.text, { color: theme.primaryForeground }]}
+          numberOfLines={2}
         >
-          <View style={[styles.toast, { backgroundColor: theme.primary }]}>
-            <Text
-              style={[styles.text, { color: theme.primaryForeground }]}
-              numberOfLines={2}
-            >
-              {displayText}
-            </Text>
-          </View>
-        </Animated.View>
+          {displayText}
+        </Text>
       </View>
-    </Modal>
+    </Animated.View>
   );
 }
 
@@ -88,6 +91,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     alignItems: "center",
+    zIndex: 999,
   },
   toast: {
     maxWidth: "90%",
