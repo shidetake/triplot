@@ -4,7 +4,13 @@
 // 文言（フォールバック見出し等）は i18n 済みの文字列を呼び出し側から注入する
 // （このモジュールは翻訳カタログを知らない）。
 
-import { parseFlightNumber } from "../flight";
+import {
+  type Flight,
+  type FlightEndpoint,
+  flightTerminalNote,
+  flightTitle,
+  parseFlightNumber,
+} from "../flight";
 import { resolveExpenseTz, type TripTzTimeline } from "../schedule";
 import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
@@ -16,9 +22,23 @@ import type { EventDraft, Receipt } from "./schema";
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
 export type PendingDraft = { id: string; kind: string; payload: unknown };
 
+// prefetchFlights（apps/web/lib/import/process.ts）が LLM 抽出後に仕込む
+// 後付けデータ。LLM の出力ではないので EventDraft 本体（zod スキーマ）には
+// 持たせず、保存/読み出しの境界だけこの拡張型を使う。
+export type StoredEventDraft = EventDraft & { resolvedFlight?: Flight | null };
+
 // 保存済み場所への事前入力（matchPlace で当たった時だけ）。web の
-// PlacePickerInitial の saved 分岐と同形。
+// PlacePickerInitial の saved 分岐と同形。費用下書き（ExpenseDraftItem）は
+// 常にこの形（保存済みマッチのみ）。
 export type DraftPlacePrefill = { kind: "saved"; id: string; name: string } | null;
+
+// 予定下書きの place/endPlace 専用（費用下書きにはこの分岐は無い）。
+// "free" は座標つきの自由入力（フライト確定と同じ asPlace 相当。事前解決
+// できた空港をそのまま流し込む時に使う。座標が無ければ lat/lng は null）。
+export type EventDraftPlacePrefill =
+  | { kind: "saved"; id: string; name: string }
+  | { kind: "free"; name: string; lat: number | null; lng: number | null }
+  | null;
 
 // 保存済みに当たらなかった時の Google 自動解決の手がかり（web の PlacePicker
 // autoResolve 契約）。RN は Google 自動解決を持たないので name を自由入力
@@ -52,11 +72,16 @@ export type EventDraftPrefill = {
   endTime: string | null;
   departTz: string | null;
   arriveTz: string | null;
-  place: DraftPlacePrefill;
+  place: EventDraftPlacePrefill;
+  // 到着地（時差移動のみ意味を持つ）。事前解決できたフライトがある時だけ
+  // 埋まる。通常予定・未解決の移動は null（出発地と同じ扱い）。
+  endPlace: EventDraftPlacePrefill;
   autoResolvePlace: DraftAutoResolvePlace;
-  // vehicleNumber が実際の便名（IATA形式）として解釈できた時だけ入る（正規形。
-  // 例: "ZG002"）。列車・バス等は null のまま note 側にのみ残る。確定フォームが
-  // これを見てフライト番号機能を最初から起動し、便名を打ち直させない。
+  // vehicleNumber が実際の便名（IATA形式）として解釈でき、かつ **事前解決が
+  // 見つからなかった** 時だけ入る（正規形。例: "ZG002"）。確定フォームが
+  // これを見てフライト番号機能を起動し、便名を打ち直させないためのフォール
+  // バック。事前解決できていれば下の他フィールドが既に確定後の状態を
+  // 埋めているのでフライト番号機能は使わせない（null のまま）。
   flightNumber: string | null;
 };
 
@@ -136,6 +161,13 @@ export function deriveExpenseDraftItems(
     });
 }
 
+// 事前解決できたフライトの空港を自由入力の場所として渡す（フライト番号機能の
+// applyFlight が作る asPlace と同じ形。座標が無くても空港名だけで自由入力に
+// する＝手動確定時と同じフォールバック）。
+function asDraftFreePlace(e: FlightEndpoint): EventDraftPlacePrefill {
+  return { kind: "free", name: e.name, lat: e.lat, lng: e.lng };
+}
+
 // 予定下書き（kind="event"）→ 事前入力。
 export function deriveEventDraftItems(
   drafts: PendingDraft[] | null,
@@ -151,11 +183,51 @@ export function deriveEventDraftItems(
   return (drafts ?? [])
     .filter((d) => d.kind === "event")
     .flatMap((d) => {
-      const ev = d.payload as unknown as EventDraft | null;
+      const ev = d.payload as unknown as StoredEventDraft | null;
       if (!ev) return [];
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
       const tz = res.kind === "single" ? res.tz : res.options[0].tz;
+
+      // 事前解決済みのフライト（apps/web/lib/import/process.ts の
+      // prefetchFlights が抽出直後に仕込む）があれば、フライト番号機能で
+      // 確定した時（event-form.tsx の applyFlight）と全フィールドを1対1で
+      // 対応させて組み立てる。ユーザーがこの下書きを開いた時点で既に
+      // 「あとは保存するだけ」の状態にするのが目的で、手動確定との違いを
+      // 残さない（メモに便名/予約番号を混ぜない・出発地/到着地とも座標つき
+      // 自由入力にする、等）。見つからなければ下のフォールバック（vehicleNumber
+      // をヒントに flightNumber を渡し、確定フォーム側でフライト番号機能を
+      // 起動させる）に回る。
+      if (ev.kind === "transit" && ev.resolvedFlight) {
+        const f = ev.resolvedFlight;
+        const depDate = f.departure.scheduledLocal?.slice(0, 10);
+        const depTime = f.departure.scheduledLocal?.slice(11, 16);
+        const arrDate = f.arrival.scheduledLocal?.slice(0, 10);
+        const arrTime = f.arrival.scheduledLocal?.slice(11, 16);
+        const flightHeadline = flightTitle(f);
+        const item: EventDraftItem = {
+          id: d.id,
+          labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
+          date: depDate ?? ev.startDate,
+          time: depTime ?? (ev.startTime ?? "09:00"),
+          tz,
+          prefill: {
+            kind3: "transit",
+            title: flightHeadline,
+            note: flightTerminalNote(f),
+            endDate: arrDate ?? null,
+            endTime: arrTime ?? null,
+            departTz: f.departure.lat === null ? f.departure.timeZone : null,
+            arriveTz: f.arrival.lat === null ? f.arrival.timeZone : null,
+            place: asDraftFreePlace(f.departure),
+            endPlace: asDraftFreePlace(f.arrival),
+            autoResolvePlace: null,
+            flightNumber: null,
+          },
+        };
+        return [item];
+      }
+
       // 場所欄: 出発地（transit は departLocation、それ以外はタイトル）を手がかりにする。
       // transit で出発地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
       // 試し、高確信ならターミナル単位の場所に丸まる。低確信/不明なら素の空港名のまま
@@ -194,6 +266,7 @@ export function deriveEventDraftItems(
             departTz: ev.departTz,
             arriveTz: ev.arriveTz,
             place,
+            endPlace: null,
             flightNumber,
             autoResolvePlace:
               place || !placeName

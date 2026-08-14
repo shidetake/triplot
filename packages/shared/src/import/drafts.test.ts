@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { Flight } from "../flight";
 import { buildTripTzTimeline } from "../schedule";
 
 import {
@@ -32,6 +33,38 @@ function receipt(p: Partial<Receipt>): Receipt {
     location: null,
     referenceId: null,
     isUpdate: false,
+    ...p,
+  };
+}
+
+function flightFixture(p: Partial<Flight> = {}): Flight {
+  return {
+    number: "ZG002",
+    airlineName: "ZIPAIR Tokyo",
+    aircraftModel: null,
+    departure: {
+      iata: "NRT",
+      icao: "RJAA",
+      name: "Tokyo Narita",
+      municipality: "Tokyo",
+      lat: 35.76,
+      lng: 140.39,
+      timeZone: "Asia/Tokyo",
+      terminal: "1",
+      scheduledLocal: "2026-08-01T19:10",
+    },
+    arrival: {
+      iata: "HNL",
+      icao: "PHNL",
+      name: "Honolulu",
+      municipality: "Honolulu",
+      lat: 21.32,
+      lng: -157.92,
+      timeZone: "Pacific/Honolulu",
+      terminal: null,
+      scheduledLocal: "2026-08-01T07:25",
+    },
+    source: { kind: "actual" },
     ...p,
   };
 }
@@ -204,6 +237,55 @@ describe("deriveEventDraftItems", () => {
     expect(items[0].prefill.flightNumber).toBeNull();
   });
 
+  it("事前解決済みフライトがあれば applyFlight と同じ組み立てになる（予約番号を混ぜない・便名ピッカーを再起動しない）", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({
+              kind: "transit",
+              title: "NRT-HNL",
+              vehicleNumber: "ZG002",
+              referenceId: "ABC123",
+              departLocation: "成田国際空港",
+            }),
+            resolvedFlight: flightFixture(),
+          },
+        },
+      ],
+      eventCtx,
+    );
+    expect(items).toHaveLength(1);
+    const it1 = items[0];
+    expect(it1.date).toBe("2026-08-01");
+    expect(it1.time).toBe("19:10");
+    expect(it1.prefill.title).toBe("ZG002 Tokyo → Honolulu");
+    // 予約番号・便名の生テキストは混ぜない（手動でフライト番号機能を使った
+    // 時と同じくターミナルのメモだけ）。
+    expect(it1.prefill.note).toBe("Terminal 1 → --");
+    expect(it1.prefill.endDate).toBe("2026-08-01");
+    expect(it1.prefill.endTime).toBe("07:25");
+    // 座標があるので TZ は座標から導出させる（上書きしない）。
+    expect(it1.prefill.departTz).toBeNull();
+    expect(it1.prefill.arriveTz).toBeNull();
+    expect(it1.prefill.place).toEqual({
+      kind: "free",
+      name: "Tokyo Narita",
+      lat: 35.76,
+      lng: 140.39,
+    });
+    expect(it1.prefill.endPlace).toEqual({
+      kind: "free",
+      name: "Honolulu",
+      lat: 21.32,
+      lng: -157.92,
+    });
+    // 確定済み相当なのでフライト番号機能を再起動させない。
+    expect(it1.prefill.flightNumber).toBeNull();
+  });
+
   it("timed はタイトルを場所の手がかりにし、保存済みマッチを事前入力する", () => {
     const items = deriveEventDraftItems(
       [
@@ -250,6 +332,7 @@ describe("draftToScheduleEvent", () => {
       departTz: "Asia/Tokyo",
       arriveTz: "Pacific/Honolulu",
       place: null,
+      endPlace: null,
       autoResolvePlace: null,
       flightNumber: null,
     },

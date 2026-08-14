@@ -26,7 +26,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
-import { EventForm, type EventFormMode } from "./event-form";
+import { EventForm, type EventFormMode, toEventFormPrefill } from "./event-form";
 import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
@@ -55,7 +55,7 @@ function draftFormState(d: EventDraftItem): EventFormMode {
     date: d.date,
     time: d.time,
     tz: d.tz,
-    prefill: d.prefill,
+    prefill: toEventFormPrefill(d.prefill),
   };
 }
 

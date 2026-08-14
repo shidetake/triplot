@@ -8,6 +8,7 @@ import { ChevronIcon } from "@/components/icons";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
+import { toEventFormPrefill } from "@/components/event-form";
 import {
   buildCalendarExportEvents,
   type CalendarExportEvent,
@@ -386,7 +387,7 @@ export default async function TripDetailPage({
                             date: d.date,
                             time: d.time,
                             tz: d.tz,
-                            prefill: d.prefill,
+                            prefill: toEventFormPrefill(d.prefill),
                           }}
                           places={placesForPicker}
                           members={activeMembers.map((m) => ({

@@ -7,6 +7,7 @@ import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
+import type { StoredEventDraft } from "@triplot/shared/import/drafts";
 import {
   isAllowedReceiptHost,
   isLikelyUnsubscribeUrl,
@@ -260,24 +261,40 @@ async function recordCandidateLink(
 }
 
 // 時差移動のうち便名（parseFlightNumber が読める形）を持つものだけ、その日の
-// 便を1回引いておく（結果は使わず、flight_api_cache を温めるのが目的）。
+// 便をここで1回引き、見つかった便を各イベントに resolvedFlight として
+// 埋め込んで返す（drafts.ts の deriveEventDraftItems がこれを見て、確定
+// フォームで使う値を手打ちフライト番号確定〔applyFlight〕と同じ形に組み立てる。
+// つまりユーザーがこの下書きを開く前に確定を終わらせておく）。見つからなけれ
+// ば元のまま返す＝今まで通り確定時に手動検索（フライト番号機能）に回る。
 // 1件ごとに提供元は最大3回叩く可能性があり秒間1リクエストの制限があるので
 // 並行させず順番に引く。1件の失敗（枠切れ・提供元エラー等）で他を止めない。
 async function prefetchFlights(
   supabase: ServiceClient,
   events: EventDraft[],
-): Promise<void> {
+): Promise<StoredEventDraft[]> {
   const api = createFlightApi(supabase);
+  const result: StoredEventDraft[] = [];
   for (const ev of events) {
-    if (ev.kind !== "transit" || !ev.vehicleNumber) continue;
+    if (ev.kind !== "transit" || !ev.vehicleNumber) {
+      result.push(ev);
+      continue;
+    }
     const parsed = parseFlightNumber(ev.vehicleNumber);
-    if (!parsed) continue;
+    if (!parsed) {
+      result.push(ev);
+      continue;
+    }
     try {
-      await lookupFlight(api, parsed.normalized, ev.startDate);
+      const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
+      result.push(
+        outcome.kind === "found" ? { ...ev, resolvedFlight: outcome.flight } : ev,
+      );
     } catch {
       // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
+      result.push(ev);
     }
   }
+  return result;
 }
 
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
@@ -361,20 +378,27 @@ async function runExtraction(
     return;
   }
 
-  // 便名が読めた時差移動は、確定 UI を開く前にここで1回引いて全ユーザー横断
-  // キャッシュ（flight_api_cache）を温めておく。ユーザーが確認画面を開いた時には
-  // FlightPicker の peek がこの結果に即当たり、フライト番号機能で手打ちして
-  // 確定したのと同じ「あとは確定するだけ」の状態になる。見つからなければ何も
-  // しない＝今まで通り確定時に手動検索に回る（best-effort、失敗しても抽出自体は続行）。
-  await prefetchFlights(supabase, events);
-
-  // 後からマージ: 同じ取引・予約の未確定下書きがあれば合体する。
+  // 後からマージ: 同じ取引・予約の未確定下書きがあれば合体する。マージ判定は
+  // 素の extraction（resolvedFlight を混ぜる前）で行う — findMerge は events を
+  // まるごと LLM プロンプトに埋め込むので、確定済み相当のフライト詳細（空港
+  // 座標等）を混ぜるとマージ判定に無関係なトークンで膨らむだけになる。
   const merge = await tryMerge(supabase, userId, emailId, extraction, text);
 
   if (merge) {
     // ターゲットの「自分の」extracted は残し、作業状態（pending draft 行）を合体結果で
-    // 置き換える（確定済みは触らない）。
-    await replacePendingDrafts(supabase, merge.targetId, merge.merged);
+    // 置き換える（確定済みは触らない）。便名が読めた時差移動は、保存の直前
+    // （＝実際に下書きとして残る最終形が固まってから）にここで1回引き、見つかった
+    // 便を events に resolvedFlight として埋め込む。deriveEventDraftItems（shared）
+    // がこれを見て、確定フォームの値を手打ちフライト番号確定と同じ形に組み立てる
+    // ので、ユーザーがこの下書きを開いた時点で既に「あとは保存するだけ」の状態に
+    // なる（開いた瞬間にカードが一瞬出て確定する、というような見た目のばたつきが
+    // 起きない）。見つからなければ元のまま＝今まで通り確定時に手動検索に回る
+    // （best-effort、失敗しても抽出自体は続行）。
+    const merged = {
+      ...merge.merged,
+      events: await prefetchFlights(supabase, merge.merged.events),
+    };
+    await replacePendingDrafts(supabase, merge.targetId, merged);
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
     await supabase
       .from("inbound_emails")
@@ -404,7 +428,10 @@ async function runExtraction(
       })
       .eq("id", emailId);
     // 作業状態（draft 行）を抽出結果で作る（エラーからの再抽出では作り直し）。
-    await replacePendingDrafts(supabase, emailId, extraction);
+    // 便名が読めた時差移動の resolvedFlight 埋め込みは merge 分岐と同じ理由
+    // （上のコメント参照）で保存直前に行う。
+    const enriched = { ...extraction, events: await prefetchFlights(supabase, events) };
+    await replacePendingDrafts(supabase, emailId, enriched);
   }
 }
 

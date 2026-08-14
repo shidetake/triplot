@@ -21,6 +21,10 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
 import { type Flight, flightTerminalNote, flightTitle } from "@triplot/shared/flight";
+import type {
+  EventDraftPlacePrefill,
+  EventDraftPrefill,
+} from "@triplot/shared/import/drafts";
 import {
   dedupeTzCandidates,
   formatMinutes,
@@ -97,15 +101,40 @@ export type EventFormPrefill = {
   departTz: string | null; // transit のみ（null ならフォーム既定にフォールバック）
   arriveTz: string | null;
   place: PlacePickerInitial;
+  // 到着地（時差移動のみ意味を持つ）。事前解決できたフライトがある時だけ埋まる。
+  endPlace: PlacePickerInitial;
   autoResolvePlace: {
     name: string;
     location?: string | null;
     searchQuery?: string;
   } | null;
-  // vehicleNumber が便名として解釈できた時だけ入る正規形（例: "ZG002"）。
-  // 入っていればフォームが最初からフライト番号機能で開く。
+  // vehicleNumber が便名として解釈でき、かつ事前解決が見つからなかった時だけ
+  // 入る正規形（例: "ZG002"）。入っていればフォームが最初からフライト番号
+  // 機能で開く。事前解決できていれば他フィールドが既に確定後の状態を埋めて
+  // いるので null のまま（フライト番号機能は起動しない）。
   flightNumber: string | null;
 };
+
+// 共有の下書き事前入力（EventDraftPrefill）→ web のフォーム用事前入力。
+// place/endPlace だけ形が違う（shared は座標を name/lat/lng で持つ、web の
+// PlacePickerInitial は label/coords）ので変換する。
+function draftPlaceToInitial(p: EventDraftPlacePrefill): PlacePickerInitial {
+  if (!p) return null;
+  if (p.kind === "saved") return p;
+  return {
+    kind: "free",
+    label: p.name,
+    coords: p.lat !== null && p.lng !== null ? { lat: p.lat, lng: p.lng } : null,
+    icon: "airport",
+  };
+}
+export function toEventFormPrefill(p: EventDraftPrefill): EventFormPrefill {
+  return {
+    ...p,
+    place: draftPlaceToInitial(p.place),
+    endPlace: draftPlaceToInitial(p.endPlace),
+  };
+}
 
 export type EventFormMode =
   | {
@@ -189,7 +218,7 @@ export function EventForm({
         id: ev.endPlaceId,
         name: places.find((p) => p.id === ev.endPlaceId)?.name ?? "",
       }
-    : null;
+    : (prefill?.endPlace ?? null);
 
   // タイトル欄をフライト番号入力に入れ替えているか。メール取り込み下書きの
   // 確定で便名がフライトとして解釈できていれば最初からこのモードで開く

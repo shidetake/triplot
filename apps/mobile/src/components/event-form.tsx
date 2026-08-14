@@ -124,22 +124,35 @@ export function EventForm({
   const [needsReservation, setNeedsReservation] = useState(
     editEvent?.needsReservation ?? false,
   );
+  // 下書きの place/endPlace（保存済みマッチ or 事前解決済みフライトの
+  // 座標つき自由入力）を PlaceInput に変換する。両方の場所欄で共通。
+  const draftPlaceToInput = (p: NonNullable<typeof prefill>["place"]): PlaceInput | null => {
+    if (!p) return null;
+    if (p.kind === "saved") return { kind: "saved", placeId: p.id };
+    return {
+      kind: "free",
+      label: p.name,
+      coords: p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : null,
+      icon: "airport",
+    };
+  };
   const [place, setPlace] = useState<PlaceInput>(() => {
     if (editEvent) return { kind: "saved", placeId: editEvent.startPlaceId };
-    // 下書き: 保存済みマッチはそれを、無ければ抽出した場所名を自由入力テキスト
-    // として事前入力（RN は Google 自動解決を持たないので web の低確信時と同じ
-    // 自由入力フォールバック）。
-    if (prefill?.place) return { kind: "saved", placeId: prefill.place.id };
+    // 下書き: 保存済みマッチ／事前解決済みフライトの空港はそれを、無ければ
+    // 抽出した場所名を自由入力テキストとして事前入力（RN は Google 自動解決を
+    // 持たないので web の低確信時と同じ自由入力フォールバック）。
+    const fromPrefill = draftPlaceToInput(prefill?.place ?? null);
+    if (fromPrefill) return fromPrefill;
     if (prefill?.autoResolvePlace)
       return { kind: "free", label: prefill.autoResolvePlace.name };
     return { kind: "saved", placeId: null };
   });
   // 到着地。空（placeId=null）なら DB 側で end_place_id は NULL＝出発地と同じ。
-  const [endPlace, setEndPlace] = useState<PlaceInput>(() =>
-    editEvent
-      ? { kind: "saved", placeId: editEvent.endPlaceId }
-      : { kind: "saved", placeId: null },
-  );
+  // 事前解決済みフライトがあれば到着空港を事前入力する。
+  const [endPlace, setEndPlace] = useState<PlaceInput>(() => {
+    if (editEvent) return { kind: "saved", placeId: editEvent.endPlaceId };
+    return draftPlaceToInput(prefill?.endPlace ?? null) ?? { kind: "saved", placeId: null };
+  });
 
   // 日時。start/end は "YYYY-MM-DD" と "HH:MM"。
   const initDate =
