@@ -154,6 +154,46 @@ describe("deriveExpenseDraftItems", () => {
     });
   });
 
+  it("店名が保存済みに当たらなくても事前解決済みの Google の場所があればそれを使う", () => {
+    const items = deriveExpenseDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "expense",
+          payload: {
+            ...receipt({ merchant: "Yard House", location: "Lewers St" }),
+            resolvedPlace: {
+              placeId: "g-yard-house",
+              name: "Yard House",
+              formattedAddress: "2301 Kalakaua Ave, Honolulu",
+              lat: 21.28,
+              lng: -157.83,
+              region: "Hawaii",
+              locality: "Honolulu",
+              rating: null,
+              userRatingCount: null,
+              primaryType: "restaurant",
+            },
+          },
+        },
+      ],
+      expenseCtx,
+    );
+    expect(items[0].initialPlace).toEqual({
+      kind: "google",
+      placeId: "g-yard-house",
+      name: "Yard House",
+      address: "2301 Kalakaua Ave, Honolulu",
+      lat: 21.28,
+      lng: -157.83,
+      region: "Hawaii",
+      locality: "Honolulu",
+      icon: null,
+    });
+    // Google 解決済みなので web のクライアント側自動解決は不要。
+    expect(items[0].autoResolvePlace).toBeNull();
+  });
+
   it("event 下書きは無視し、merchant 空はフォールバック見出しにする", () => {
     const items = deriveExpenseDraftItems(
       [
@@ -358,6 +398,84 @@ describe("deriveEventDraftItems", () => {
       name: "Kai Coffee",
     });
     expect(items[0].prefill.autoResolvePlace).toBeNull();
+  });
+
+  it("timed で保存済みに当たらなくても事前解決済みの Google の場所があればそれを使う", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({ title: "Yard House", location: "Lewers St" }),
+            resolvedNamedPlace: {
+              placeId: "g-yard-house",
+              name: "Yard House",
+              formattedAddress: "2301 Kalakaua Ave, Honolulu",
+              lat: 21.28,
+              lng: -157.83,
+              region: "Hawaii",
+              locality: "Honolulu",
+              rating: null,
+              userRatingCount: null,
+              primaryType: "restaurant",
+            },
+          },
+        },
+      ],
+      eventCtx,
+    );
+    expect(items[0].prefill.place).toEqual({
+      kind: "google",
+      placeId: "g-yard-house",
+      name: "Yard House",
+      address: "2301 Kalakaua Ave, Honolulu",
+      lat: 21.28,
+      lng: -157.83,
+      region: "Hawaii",
+      locality: "Honolulu",
+      icon: null,
+    });
+    expect(items[0].prefill.autoResolvePlace).toBeNull();
+  });
+
+  it("transit（未解決フライト）は resolvedNamedPlace を無視する", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({
+              kind: "transit",
+              title: "NRT-HNL",
+              departLocation: "成田国際空港",
+            }),
+            // transit 用ではないので無視されるべき（誤って event.kind !== "transit"
+            // のガードが外れていないかの回帰チェック）。
+            resolvedNamedPlace: {
+              placeId: "g-wrong",
+              name: "誤った候補",
+              formattedAddress: "",
+              lat: 0,
+              lng: 0,
+              region: null,
+              locality: null,
+              rating: null,
+              userRatingCount: null,
+              primaryType: null,
+            },
+          },
+        },
+      ],
+      eventCtx,
+    );
+    expect(items[0].prefill.place).toBeNull();
+    expect(items[0].prefill.autoResolvePlace).toEqual({
+      name: "成田国際空港",
+      location: null,
+      searchQuery: undefined,
+    });
   });
 
   it("タイトル空はフォールバック見出し（prefill.title は空のまま）", () => {

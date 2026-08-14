@@ -28,27 +28,26 @@ export type PendingDraft = { id: string; kind: string; payload: unknown };
 // 持たせず、保存/読み出しの境界だけこの拡張型を使う。resolvedDeparture/
 // ArrivalPlace は resolvedFlight の空港を Google の場所に解決できていれば
 // 入る（resolveAirportPlace 参照。見つからなければ null＝座標つき自由入力に
-// フォールバック）。
+// フォールバック）。resolvedNamedPlace は transit 以外（レストラン・買い物等）
+// の場所名を Google の場所に解決できていれば入る（resolveNamedPlace 参照。
+// 座標が既知の空港と違い店名はテキスト一致度で判定する）。
 export type StoredEventDraft = EventDraft & {
   resolvedFlight?: Flight | null;
   resolvedDeparturePlace?: PlaceCandidate | null;
   resolvedArrivalPlace?: PlaceCandidate | null;
+  resolvedNamedPlace?: PlaceCandidate | null;
 };
 
-// 保存済み場所への事前入力（matchPlace で当たった時だけ）。web の
-// PlacePickerInitial の saved 分岐と同形。費用下書き（ExpenseDraftItem）は
-// 常にこの形（保存済みマッチのみ）。
-export type DraftPlacePrefill = { kind: "saved"; id: string; name: string } | null;
+// prefetchFlights と同じ後付けデータ。費用の店名を Google の場所に解決
+// できていれば入る（resolveNamedPlace 参照）。
+export type StoredReceipt = Receipt & { resolvedPlace?: PlaceCandidate | null };
 
-// 予定下書きの place/endPlace 専用（費用下書きにはこの分岐は無い）。
-// "google" は事前解決できたフライトの空港が Google の場所と紐づいた時
-// （resolveAirportPlace が見つけた候補。手動でフライト番号確定した時と
-// 同じ google_place_id になるので、表記違いでの重複登録が起きない）。
-// "free" は Google 解決できなかった時のフォールバック（座標つき自由入力。
-// 座標が無ければ lat/lng は null）。
-export type EventDraftPlacePrefill =
+// 場所の事前入力。web の PlacePickerInitial と同形（saved/google 分岐）。
+// "google" は事前解決できた場所が Google の場所と紐づいた時（resolveAirportPlace/
+// resolveNamedPlace が見つけた候補。手動確定時も同じ経路で解決を試みるので、
+// 同じ google_place_id になり表記違いでの重複登録が起きない）。
+export type DraftPlacePrefill =
   | { kind: "saved"; id: string; name: string }
-  | { kind: "free"; name: string; lat: number | null; lng: number | null }
   | {
       kind: "google";
       placeId: string;
@@ -61,6 +60,13 @@ export type EventDraftPlacePrefill =
       icon: string | null;
     }
   | null;
+
+// 予定下書きの place/endPlace 専用（費用下書きにはこの分岐は無い）。
+// "free" は Google 解決できなかった時のフォールバック（座標つき自由入力。
+// 座標が無ければ lat/lng は null）。
+export type EventDraftPlacePrefill =
+  | DraftPlacePrefill
+  | { kind: "free"; name: string; lat: number | null; lng: number | null };
 
 // 保存済みに当たらなかった時の Google 自動解決の手がかり（web の PlacePicker
 // autoResolve 契約）。RN は Google 自動解決を持たないので name を自由入力
@@ -118,7 +124,8 @@ export type EventDraftItem = {
 };
 
 // 名前・場所ヒントを保存済みの場所に照合。マッチすればそれを事前入力し、
-// 無ければ null（呼び出し側が autoResolvePlace / 自由入力にフォールバック）。
+// 無ければ null（呼び出し側が resolvedPlace / autoResolvePlace / 自由入力に
+// フォールバック）。
 function matchSavedPlace(
   name: string,
   location: string | null,
@@ -132,6 +139,26 @@ function matchSavedPlace(
         name: places.find((p) => p.id === matched.placeId)?.name ?? "",
       }
     : null;
+}
+
+// 事前解決できた Google の場所候補を場所の事前入力にする。空港のように
+// 種別が分かっている時だけ icon を明示する（それ以外は null＝DB 側の既定
+// "pin"）。
+function candidateToDraftPlace(
+  c: PlaceCandidate,
+  icon: string | null,
+): DraftPlacePrefill {
+  return {
+    kind: "google",
+    placeId: c.placeId,
+    name: c.name,
+    address: c.formattedAddress,
+    lat: c.lat,
+    lng: c.lng,
+    region: c.region,
+    locality: c.locality,
+    icon,
+  };
 }
 
 // 費用下書き（kind="expense"）→ 事前入力。カテゴリは抽出済みのカテゴリ名を
@@ -150,7 +177,7 @@ export function deriveExpenseDraftItems(
   return (drafts ?? [])
     .filter((d) => d.kind === "expense")
     .flatMap((d) => {
-      const r = d.payload as unknown as Receipt | null;
+      const r = d.payload as unknown as StoredReceipt | null;
       if (!r) return [];
       const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
         ? (r.currency as Currency)
@@ -158,7 +185,14 @@ export function deriveExpenseDraftItems(
       const categoryId =
         ctx.categories.find((c) => c.name === r.category)?.id ??
         ctx.fallbackCategoryId;
-      const place = matchSavedPlace(r.merchant, r.location, ctx.places);
+      // 保存済みマッチ（ライブ判定）を最優先、無ければ事前解決済みの Google の
+      // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
+      // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
+      // autoResolvePlace で再度自動解決を試みる）。
+      const savedPlace = matchSavedPlace(r.merchant, r.location, ctx.places);
+      const place =
+        savedPlace ??
+        (r.resolvedPlace ? candidateToDraftPlace(r.resolvedPlace, null) : null);
       return [
         {
           id: d.id,
@@ -193,19 +227,7 @@ function draftPlaceFromFlightEndpoint(
   e: FlightEndpoint,
   candidate: PlaceCandidate | null | undefined,
 ): EventDraftPlacePrefill {
-  if (candidate) {
-    return {
-      kind: "google",
-      placeId: candidate.placeId,
-      name: candidate.name,
-      address: candidate.formattedAddress,
-      lat: candidate.lat,
-      lng: candidate.lng,
-      region: candidate.region,
-      locality: candidate.locality,
-      icon: "airport",
-    };
-  }
+  if (candidate) return candidateToDraftPlace(candidate, "airport");
   return { kind: "free", name: e.name, lat: e.lat, lng: e.lng };
 }
 
@@ -275,9 +297,17 @@ export function deriveEventDraftItems(
       // （autoResolvePlace.searchQuery は表示・フォールバックには影響しない）。
       const placeName = ev.kind === "transit" ? ev.departLocation : ev.title;
       const placeHint = ev.kind === "transit" ? null : ev.location;
-      const place = placeName
+      const savedPlace = placeName
         ? matchSavedPlace(placeName, placeHint, ctx.places)
         : null;
+      // 保存済みマッチ（ライブ判定）を最優先、無ければ通常予定（transit 以外）で
+      // 事前解決済みの Google の場所（resolveNamedPlace 参照。
+      // apps/web/lib/import/process.ts が抽出直後に仕込む）。
+      const place =
+        savedPlace ??
+        (ev.kind !== "transit" && ev.resolvedNamedPlace
+          ? candidateToDraftPlace(ev.resolvedNamedPlace, null)
+          : null);
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);
       // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。

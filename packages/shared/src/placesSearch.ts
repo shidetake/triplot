@@ -1,6 +1,7 @@
 import type { FlightEndpoint } from "./flight";
 import type { CreatePlaceInput } from "./data/places";
 import type { PlaceInput } from "./data/place";
+import { matchPlace } from "./import/placeMatch";
 
 // Places API (New) を素の fetch で叩く（RN 用。web は JS SDK の
 // Place.searchByText を使うが、抽出後の形はこの PlaceCandidate に揃える）。
@@ -376,6 +377,54 @@ export async function resolveAirportPlace(
       includedType: "airport",
     });
     return nearestCandidate(candidates, coords);
+  } catch {
+    return null;
+  }
+}
+
+// ────────────────────────────────────────────────
+// 店名・場所名（座標未知）の Google 解決
+// ────────────────────────────────────────────────
+//
+// レストラン・ショップ等はフライトの空港と違い座標を最初から知らないので、
+// resolveAirportPlace のような座標距離での確信度判定ができない。代わりに
+// web の PlacePicker autoResolve（tryResolvePlace）と同じ「店名のテキスト
+// 一致度」（matchPlace）で判定する。matchPlace は保存済み場所とのマッチにも
+// 使う純関数で、Google 候補を仮の TripPlace として渡せば同じスコアリングが
+// 使える。
+
+const NAMED_PLACE_MATCH_THRESHOLD = 0.6;
+
+/**
+ * 店名・場所名を Google の場所に解決する。ある程度広い地理バイアス
+ * （旅行のピンの重心等、呼び出し側が用意する）の中から上位候補をスコアし、
+ * 閾値未満/候補無しは null（呼び出し側は自由入力のままにする＝機能の前提
+ * ではなく表示上の改善）。
+ */
+export async function resolveNamedPlace(
+  name: string,
+  location: string | null,
+  opts: SearchPlacesOptions,
+): Promise<PlaceCandidate | null> {
+  const trimmed = name.trim();
+  if (!trimmed || !opts.biasCenter) return null;
+  try {
+    const candidates = await searchPlaces(trimmed, opts);
+    let best: PlaceCandidate | null = null;
+    let bestScore = -1;
+    for (const c of candidates.slice(0, 5)) {
+      const r = matchPlace(
+        { merchant: trimmed, location },
+        [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
+        0,
+      );
+      const score = r?.score ?? 0;
+      if (score > bestScore) {
+        bestScore = score;
+        best = c;
+      }
+    }
+    return best && bestScore >= NAMED_PLACE_MATCH_THRESHOLD ? best : null;
   } catch {
     return null;
   }

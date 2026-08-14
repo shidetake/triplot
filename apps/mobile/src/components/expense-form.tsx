@@ -131,11 +131,27 @@ export function ExpenseForm({
   );
   const [place, setPlace] = useState<PlaceInput>(() => {
     if (isEdit) return { kind: "saved", placeId: editExpense.place_id };
-    // 下書き: 保存済みマッチはそれを、無ければ抽出した店名を自由入力テキスト
-    // として事前入力（RN は Google 自動解決を持たないので web の低確信時と同じ
-    // 自由入力フォールバック）。
-    if (draft?.initialPlace)
+    // 下書き: 保存済みマッチ／事前解決済みの Google の場所（resolveNamedPlace
+    // 参照）はそれを、無ければ抽出した店名を自由入力テキストとして事前入力
+    // （RN は Google 自動解決を持たないので web の低確信時と同じ自由入力
+    // フォールバック）。
+    if (draft?.initialPlace?.kind === "saved") {
       return { kind: "saved", placeId: draft.initialPlace.id };
+    }
+    if (draft?.initialPlace?.kind === "google") {
+      const p = draft.initialPlace;
+      return {
+        kind: "google",
+        placeId: p.placeId,
+        name: p.name,
+        address: p.address,
+        lat: p.lat,
+        lng: p.lng,
+        region: p.region,
+        locality: p.locality,
+        icon: p.icon,
+      };
+    }
     if (draft?.autoResolvePlace)
       return { kind: "free", label: draft.autoResolvePlace.name };
     return { kind: "saved", placeId: null };

@@ -7,8 +7,13 @@ import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
-import type { StoredEventDraft } from "@triplot/shared/import/drafts";
-import { resolveAirportPlace, type PlaceCandidate } from "@triplot/shared/placesSearch";
+import type { StoredEventDraft, StoredReceipt } from "@triplot/shared/import/drafts";
+import { dominantCenter } from "@triplot/shared/placeMap";
+import {
+  resolveAirportPlace,
+  resolveNamedPlace,
+  type PlaceCandidate,
+} from "@triplot/shared/placesSearch";
 import {
   isAllowedReceiptHost,
   isLikelyUnsubscribeUrl,
@@ -282,6 +287,26 @@ async function resolveFlightPlaces(flight: {
   return { departure, arrival };
 }
 
+// この旅行の既存ピンの重心（地理バイアス用）。tripId が未割当/ピンが無ければ
+// null（呼び出し側は場所名の Google 解決自体をスキップする — バイアス無しで
+// 店名検索すると無関係な同名店に化ける恐れが大きいため）。
+async function fetchTripBiasCenter(
+  supabase: ServiceClient,
+  tripId: string | null,
+): Promise<{ lat: number; lng: number } | null> {
+  if (!tripId) return null;
+  const { data } = await supabase
+    .from("places")
+    .select("lat, lng")
+    .eq("trip_id", tripId)
+    .not("lat", "is", null)
+    .not("lng", "is", null);
+  const points = (data ?? [])
+    .filter((p): p is { lat: number; lng: number } => p.lat != null && p.lng != null)
+    .map((p) => ({ lat: p.lat, lng: p.lng }));
+  return dominantCenter(points);
+}
+
 // 時差移動のうち便名（parseFlightNumber が読める形）を持つものだけ、その日の
 // 便をここで1回引き、見つかった便（＋出発/到着空港の Google 解決）を各
 // イベントに resolvedFlight/resolvedDeparturePlace/resolvedArrivalPlace として
@@ -291,41 +316,78 @@ async function resolveFlightPlaces(flight: {
 // ば元のまま返す＝今まで通り確定時に手動検索（フライト番号機能）に回る。
 // 1件ごとに提供元は最大3回叩く可能性があり秒間1リクエストの制限があるので
 // 並行させず順番に引く。1件の失敗（枠切れ・提供元エラー等）で他を止めない。
+//
+// transit 以外（レストラン・買い物等）は、タイトルを店名の手がかりに Google
+// の場所への解決を試みる（resolvedNamedPlace）。空港と違い座標を知らないので
+// biasCenter（この旅行の既存ピンの重心）が無ければ試さない。
 async function prefetchFlights(
   supabase: ServiceClient,
   events: EventDraft[],
+  biasCenter: { lat: number; lng: number } | null,
 ): Promise<StoredEventDraft[]> {
   const api = createFlightApi(supabase);
+  const placesApiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
   const result: StoredEventDraft[] = [];
   for (const ev of events) {
-    if (ev.kind !== "transit" || !ev.vehicleNumber) {
-      result.push(ev);
-      continue;
-    }
-    const parsed = parseFlightNumber(ev.vehicleNumber);
-    if (!parsed) {
-      result.push(ev);
-      continue;
-    }
-    try {
-      const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
-      if (outcome.kind !== "found") {
-        result.push(ev);
-        continue;
+    if (ev.kind === "transit" && ev.vehicleNumber) {
+      const parsed = parseFlightNumber(ev.vehicleNumber);
+      if (parsed) {
+        try {
+          const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
+          if (outcome.kind === "found") {
+            const places = await resolveFlightPlaces(outcome.flight);
+            result.push({
+              ...ev,
+              resolvedFlight: outcome.flight,
+              resolvedDeparturePlace: places.departure,
+              resolvedArrivalPlace: places.arrival,
+            });
+            continue;
+          }
+        } catch {
+          // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
+        }
       }
-      const places = await resolveFlightPlaces(outcome.flight);
-      result.push({
-        ...ev,
-        resolvedFlight: outcome.flight,
-        resolvedDeparturePlace: places.departure,
-        resolvedArrivalPlace: places.arrival,
-      });
-    } catch {
-      // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
       result.push(ev);
+      continue;
     }
+    if (placesApiKey && biasCenter && ev.title) {
+      try {
+        const resolved = await resolveNamedPlace(ev.title, ev.location, {
+          apiKey: placesApiKey,
+          biasCenter,
+        });
+        if (resolved) {
+          result.push({ ...ev, resolvedNamedPlace: resolved });
+          continue;
+        }
+      } catch {
+        // best-effort。確定時は自由入力/自動解決（web のみ）へフォールバックする。
+      }
+    }
+    result.push(ev);
   }
   return result;
+}
+
+// 費用の店名を Google の場所に解決する（events と同じ biasCenter・
+// best-effort。見つからなければ receipt をそのまま返す）。
+async function resolveReceiptPlace(
+  receipt: Receipt | null,
+  biasCenter: { lat: number; lng: number } | null,
+): Promise<StoredReceipt | null> {
+  if (!receipt) return null;
+  const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
+  if (!apiKey || !biasCenter || !receipt.merchant) return receipt;
+  try {
+    const resolved = await resolveNamedPlace(receipt.merchant, receipt.location, {
+      apiKey,
+      biasCenter,
+    });
+    return resolved ? { ...receipt, resolvedPlace: resolved } : receipt;
+  } catch {
+    return receipt;
+  }
 }
 
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
@@ -415,6 +477,11 @@ async function runExtraction(
   // 座標等）を混ぜるとマージ判定に無関係なトークンで膨らむだけになる。
   const merge = await tryMerge(supabase, userId, emailId, extraction, text);
 
+  // 場所名（店・空港）の Google 解決に使う地理バイアス。この email 自身の
+  // tripId 割当てで決める（マージ先の trip と食い違うことは無い前提。合体は
+  // 同じ取引・予約の重複メールが対象なので通常は同じ旅行に属する）。
+  const biasCenter = await fetchTripBiasCenter(supabase, tripId);
+
   if (merge) {
     // ターゲットの「自分の」extracted は残し、作業状態（pending draft 行）を合体結果で
     // 置き換える（確定済みは触らない）。便名が読めた時差移動は、保存の直前
@@ -423,11 +490,13 @@ async function runExtraction(
     // がこれを見て、確定フォームの値を手打ちフライト番号確定と同じ形に組み立てる
     // ので、ユーザーがこの下書きを開いた時点で既に「あとは保存するだけ」の状態に
     // なる（開いた瞬間にカードが一瞬出て確定する、というような見た目のばたつきが
-    // 起きない）。見つからなければ元のまま＝今まで通り確定時に手動検索に回る
+    // 起きない）。時差移動以外（レストラン・買い物等）は店名を Google 解決し
+    // resolvedNamedPlace に、費用は resolveReceiptPlace で同様に埋め込む。
+    // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
     const merged = {
-      ...merge.merged,
-      events: await prefetchFlights(supabase, merge.merged.events),
+      receipt: await resolveReceiptPlace(merge.merged.receipt, biasCenter),
+      events: await prefetchFlights(supabase, merge.merged.events, biasCenter),
     };
     await replacePendingDrafts(supabase, merge.targetId, merged);
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
@@ -459,9 +528,12 @@ async function runExtraction(
       })
       .eq("id", emailId);
     // 作業状態（draft 行）を抽出結果で作る（エラーからの再抽出では作り直し）。
-    // 便名が読めた時差移動の resolvedFlight 埋め込みは merge 分岐と同じ理由
-    // （上のコメント参照）で保存直前に行う。
-    const enriched = { ...extraction, events: await prefetchFlights(supabase, events) };
+    // resolvedFlight/resolvedNamedPlace/resolvedPlace の埋め込みは merge 分岐と
+    // 同じ理由（上のコメント参照）で保存直前に行う。
+    const enriched = {
+      receipt: await resolveReceiptPlace(receipt, biasCenter),
+      events: await prefetchFlights(supabase, events, biasCenter),
+    };
     await replacePendingDrafts(supabase, emailId, enriched);
   }
 }
