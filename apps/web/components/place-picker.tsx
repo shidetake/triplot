@@ -111,7 +111,10 @@ async function tryResolvePlace(
 // 常に保存済み（saved）か無し。"free" は取り込み確定など、確定前から
 // 自由入力テキストを事前入力したい（かつ Google 自動解決はしたくない）
 // 場合だけに使う特殊な初期値（例: transit の便名は実在の場所ではないので
-// Google 検索の対象にしない）。
+// Google 検索の対象にしない）。"google" は呼び出し側が既に Google の
+// place_id を解決済み（メール取り込みの空港解決・フライト番号確定）の時の
+// 初期値。ドロップダウンから Google 行を選んだのと同じ確定済み状態で開始する
+// （再検索はしない。文字を編集したら "free" 相当に戻って落ちる）。
 export type PlacePickerInitial =
   | { kind: "saved"; id: string; name: string }
   // 自由入力でも座標が分かっていることがある（フライトから入れた空港）。
@@ -121,6 +124,16 @@ export type PlacePickerInitial =
       label: string;
       coords?: { lat: number; lng: number } | null;
       icon?: string | null;
+    }
+  | {
+      kind: "google";
+      placeId: string;
+      name: string;
+      address: string;
+      lat: number;
+      lng: number;
+      region: string | null;
+      locality: string | null;
     }
   | null;
 
@@ -166,14 +179,27 @@ export function PlacePicker({
   const [query, setQuery] = useState(
     initial?.kind === "saved"
       ? initial.name
-      : initial?.kind === "free"
-        ? initial.label
-        : (autoResolve?.name ?? ""),
+      : initial?.kind === "google"
+        ? initial.name
+        : initial?.kind === "free"
+          ? initial.label
+          : (autoResolve?.name ?? ""),
   );
   const [resolved, setResolved] = useState<Resolved | null>(
     initial?.kind === "saved"
       ? { kind: "saved", id: initial.id, name: initial.name }
-      : null,
+      : initial?.kind === "google"
+        ? {
+            kind: "google",
+            placeId: initial.placeId,
+            name: initial.name,
+            address: initial.address,
+            lat: initial.lat,
+            lng: initial.lng,
+            region: initial.region,
+            locality: initial.locality,
+          }
+        : null,
   );
   const [gSug, setGSug] = useState<
     google.maps.places.AutocompleteSuggestion[]

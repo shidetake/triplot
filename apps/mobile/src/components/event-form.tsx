@@ -32,6 +32,7 @@ import type { EventDraftItem } from "@triplot/shared/import/drafts";
 import type { EventRow } from "@triplot/shared/tripDerive";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
 import type { Visibility } from "@triplot/shared/types/database";
+import { resolveAirportPlace, type PlaceCandidate } from "@triplot/shared/placesSearch";
 
 import {
   chipDateText,
@@ -47,6 +48,7 @@ import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon, PlaneIcon } from "./icons";
 import { FlightPicker } from "./flight-picker";
+import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -129,6 +131,18 @@ export function EventForm({
   const draftPlaceToInput = (p: NonNullable<typeof prefill>["place"]): PlaceInput | null => {
     if (!p) return null;
     if (p.kind === "saved") return { kind: "saved", placeId: p.id };
+    if (p.kind === "google") {
+      return {
+        kind: "google",
+        placeId: p.placeId,
+        name: p.name,
+        address: p.address,
+        lat: p.lat,
+        lng: p.lng,
+        region: p.region,
+        locality: p.locality,
+      };
+    }
     return {
       kind: "free",
       label: p.name,
@@ -228,6 +242,38 @@ export function EventForm({
     });
     setPlace(asPlace(f.departure));
     setEndPlace(asPlace(f.arrival));
+
+    // 裏で Google の場所として解決を試みる（メール取り込みの事前解決
+    // 〔prefetchFlights〕と同じ考え方）。見つかれば座標つき自由入力から
+    // Google の場所に差し替え、表記違い（"Tokyo Narita" / "成田国際空港"）
+    // での重複登録を避ける。見つからなければ何もしない（座標つき自由入力の
+    // まま＝機能の前提ではなく表示上の改善）。
+    if (PLACES_API_KEY) {
+      const asGooglePlace = (c: PlaceCandidate): PlaceInput => ({
+        kind: "google",
+        placeId: c.placeId,
+        name: c.name,
+        address: c.formattedAddress,
+        lat: c.lat,
+        lng: c.lng,
+        region: c.region,
+        locality: c.locality,
+      });
+      void (async () => {
+        const [dep, arr] = await Promise.all([
+          resolveAirportPlace(f.departure, {
+            apiKey: PLACES_API_KEY,
+            iosBundleId: BUNDLE_ID,
+          }),
+          resolveAirportPlace(f.arrival, {
+            apiKey: PLACES_API_KEY,
+            iosBundleId: BUNDLE_ID,
+          }),
+        ]);
+        if (dep) setPlace(asGooglePlace(dep));
+        if (arr) setEndPlace(asGooglePlace(arr));
+      })();
+    }
 
     if (f.departure.scheduledLocal) {
       setStartDate(f.departure.scheduledLocal.slice(0, 10));

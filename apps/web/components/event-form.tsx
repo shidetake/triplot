@@ -25,6 +25,7 @@ import type {
   EventDraftPlacePrefill,
   EventDraftPrefill,
 } from "@triplot/shared/import/drafts";
+import { resolveAirportPlace, type PlaceCandidate } from "@triplot/shared/placesSearch";
 import {
   dedupeTzCandidates,
   formatMinutes,
@@ -121,6 +122,7 @@ export type EventFormPrefill = {
 function draftPlaceToInitial(p: EventDraftPlacePrefill): PlacePickerInitial {
   if (!p) return null;
   if (p.kind === "saved") return p;
+  if (p.kind === "google") return p;
   return {
     kind: "free",
     label: p.name,
@@ -267,11 +269,41 @@ export function EventForm({
       coords: e.lat !== null && e.lng !== null ? { lat: e.lat, lng: e.lng } : null,
       icon: "airport",
     });
+    const asGoogleInitial = (c: PlaceCandidate): PlacePickerInitial => ({
+      kind: "google",
+      placeId: c.placeId,
+      name: c.name,
+      address: c.formattedAddress,
+      lat: c.lat,
+      lng: c.lng,
+      region: c.region,
+      locality: c.locality,
+    });
     setFlightPlaces((prev) => ({
       gen: (prev?.gen ?? 0) + 1,
       start: asInitial(f.departure),
       end: asInitial(f.arrival),
     }));
+
+    // 裏で Google の場所として解決を試みる（メール取り込みの事前解決
+    // 〔prefetchFlights〕と同じ考え方）。見つかれば座標つき自由入力から
+    // Google の場所に差し替え、表記違い（"Tokyo Narita" / "成田国際空港"）
+    // での重複登録を避ける。見つからなければ何もしない（座標つき自由入力の
+    // まま＝機能の前提ではなく表示上の改善）。
+    if (mapsApiKey) {
+      void (async () => {
+        const [dep, arr] = await Promise.all([
+          resolveAirportPlace(f.departure, { apiKey: mapsApiKey }),
+          resolveAirportPlace(f.arrival, { apiKey: mapsApiKey }),
+        ]);
+        if (!dep && !arr) return;
+        setFlightPlaces((prev) => ({
+          gen: (prev?.gen ?? 0) + 1,
+          start: dep ? asGoogleInitial(dep) : (prev?.start ?? asInitial(f.departure)),
+          end: arr ? asGoogleInitial(arr) : (prev?.end ?? asInitial(f.arrival)),
+        }));
+      })();
+    }
 
     if (f.departure.scheduledLocal) {
       setDepartDate(f.departure.scheduledLocal.slice(0, 10));

@@ -1,3 +1,4 @@
+import type { FlightEndpoint } from "./flight";
 import type { CreatePlaceInput } from "./data/places";
 import type { PlaceInput } from "./data/place";
 
@@ -303,4 +304,67 @@ export function candidateToCreatePlace(
     region: c.region ?? "",
     locality: c.locality ?? "",
   };
+}
+
+// ────────────────────────────────────────────────
+// 空港（座標が既に分かっている場所）の Google 解決
+// ────────────────────────────────────────────────
+//
+// フライト提供元（AeroDataBox）は空港名・座標を返すが Google の place_id は
+// 知らない。メール取り込みの事前解決と手動のフライト番号確定の両方で、同じ
+// 空港が表記違い（"Tokyo Narita" / "成田国際空港"）で別々の場所として登録
+// されてしまう問題への対応。座標を既に知っているので、レシート店名の自動
+// 解決（matchPlace のテキスト類似度）とは違い、**候補が座標的に十分近いか**
+// で確信度を判定する。
+
+const AIRPORT_MATCH_MAX_METERS = 5000;
+
+function haversineMeters(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(s));
+}
+
+/**
+ * 検索結果の先頭候補が、既知の座標から AIRPORT_MATCH_MAX_METERS 以内なら
+ * 採用する。離れていれば別物とみなし null（提供元が違う空港の中心点を返す
+ * ズレは吸収しつつ、無関係な場所との誤マッチは避ける閾値）。
+ */
+export function nearestCandidate(
+  candidates: readonly PlaceCandidate[],
+  coords: { lat: number; lng: number },
+): PlaceCandidate | null {
+  const top = candidates[0];
+  if (!top) return null;
+  return haversineMeters(top, coords) <= AIRPORT_MATCH_MAX_METERS ? top : null;
+}
+
+/**
+ * フライトの空港エンドポイントを Google の場所に解決する。座標が無い・
+ * 検索失敗・十分近い候補が無いときは null（呼び出し側は座標つき自由入力に
+ * フォールバックする＝機能の前提ではなく表示上の改善）。
+ */
+export async function resolveAirportPlace(
+  endpoint: FlightEndpoint,
+  opts: SearchPlacesOptions,
+): Promise<PlaceCandidate | null> {
+  if (endpoint.lat === null || endpoint.lng === null) return null;
+  const coords = { lat: endpoint.lat, lng: endpoint.lng };
+  try {
+    const candidates = await searchPlaces(endpoint.name, {
+      ...opts,
+      biasCenter: coords,
+    });
+    return nearestCandidate(candidates, coords);
+  } catch {
+    return null;
+  }
 }

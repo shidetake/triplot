@@ -286,6 +286,59 @@ describe("deriveEventDraftItems", () => {
     expect(it1.prefill.flightNumber).toBeNull();
   });
 
+  it("空港が Google の場所に解決できていれば座標つき自由入力より優先する", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({
+              kind: "transit",
+              title: "NRT-HNL",
+              vehicleNumber: "ZG002",
+            }),
+            resolvedFlight: flightFixture(),
+            resolvedDeparturePlace: {
+              placeId: "g-narita",
+              name: "成田国際空港",
+              formattedAddress: "千葉県成田市",
+              lat: 35.7647,
+              lng: 140.3864,
+              region: "千葉県",
+              locality: "成田市",
+              rating: null,
+              userRatingCount: null,
+              primaryType: "airport",
+            },
+            resolvedArrivalPlace: null,
+          },
+        },
+      ],
+      eventCtx,
+    );
+    const it1 = items[0];
+    // 出発地は Google 解決できたので google kind（手動確定と同じ google_place_id
+    // になり、表記違いでの重複登録を DB 側のデデュープに頼らず避けられる）。
+    expect(it1.prefill.place).toEqual({
+      kind: "google",
+      placeId: "g-narita",
+      name: "成田国際空港",
+      address: "千葉県成田市",
+      lat: 35.7647,
+      lng: 140.3864,
+      region: "千葉県",
+      locality: "成田市",
+    });
+    // 到着地は解決できなかったので座標つき自由入力にフォールバック。
+    expect(it1.prefill.endPlace).toEqual({
+      kind: "free",
+      name: "Honolulu",
+      lat: 21.32,
+      lng: -157.92,
+    });
+  });
+
   it("timed はタイトルを場所の手がかりにし、保存済みマッチを事前入力する", () => {
     const items = deriveEventDraftItems(
       [

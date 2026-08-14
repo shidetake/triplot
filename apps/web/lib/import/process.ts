@@ -4,10 +4,11 @@ import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
-import { parseFlightNumber } from "@triplot/shared/flight";
+import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import type { StoredEventDraft } from "@triplot/shared/import/drafts";
+import { resolveAirportPlace, type PlaceCandidate } from "@triplot/shared/placesSearch";
 import {
   isAllowedReceiptHost,
   isLikelyUnsubscribeUrl,
@@ -260,8 +261,30 @@ async function recordCandidateLink(
   });
 }
 
+// 出発/到着の空港を Google の場所に解決する（見つかった時だけ両方
+// 並行で引く）。GOOGLE_PLACES_SERVER_API_KEY が未設定なら何もしない
+// （座標つき自由入力のまま — 機能の前提ではなく表示上の改善のため）。
+// このキーはブラウザ/アプリ用キーと違い application 制限を付けない
+// サーバー専用の秘密（Places API (New) だけに API 制限）。
+async function resolveFlightPlaces(flight: {
+  departure: FlightEndpoint;
+  arrival: FlightEndpoint;
+}): Promise<{
+  departure: PlaceCandidate | null;
+  arrival: PlaceCandidate | null;
+}> {
+  const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
+  if (!apiKey) return { departure: null, arrival: null };
+  const [departure, arrival] = await Promise.all([
+    resolveAirportPlace(flight.departure, { apiKey }),
+    resolveAirportPlace(flight.arrival, { apiKey }),
+  ]);
+  return { departure, arrival };
+}
+
 // 時差移動のうち便名（parseFlightNumber が読める形）を持つものだけ、その日の
-// 便をここで1回引き、見つかった便を各イベントに resolvedFlight として
+// 便をここで1回引き、見つかった便（＋出発/到着空港の Google 解決）を各
+// イベントに resolvedFlight/resolvedDeparturePlace/resolvedArrivalPlace として
 // 埋め込んで返す（drafts.ts の deriveEventDraftItems がこれを見て、確定
 // フォームで使う値を手打ちフライト番号確定〔applyFlight〕と同じ形に組み立てる。
 // つまりユーザーがこの下書きを開く前に確定を終わらせておく）。見つからなけれ
@@ -286,9 +309,17 @@ async function prefetchFlights(
     }
     try {
       const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
-      result.push(
-        outcome.kind === "found" ? { ...ev, resolvedFlight: outcome.flight } : ev,
-      );
+      if (outcome.kind !== "found") {
+        result.push(ev);
+        continue;
+      }
+      const places = await resolveFlightPlaces(outcome.flight);
+      result.push({
+        ...ev,
+        resolvedFlight: outcome.flight,
+        resolvedDeparturePlace: places.departure,
+        resolvedArrivalPlace: places.arrival,
+      });
     } catch {
       // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
       result.push(ev);

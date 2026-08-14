@@ -11,6 +11,7 @@ import {
   flightTitle,
   parseFlightNumber,
 } from "../flight";
+import type { PlaceCandidate } from "../placesSearch";
 import { resolveExpenseTz, type TripTzTimeline } from "../schedule";
 import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
@@ -24,8 +25,15 @@ export type PendingDraft = { id: string; kind: string; payload: unknown };
 
 // prefetchFlights（apps/web/lib/import/process.ts）が LLM 抽出後に仕込む
 // 後付けデータ。LLM の出力ではないので EventDraft 本体（zod スキーマ）には
-// 持たせず、保存/読み出しの境界だけこの拡張型を使う。
-export type StoredEventDraft = EventDraft & { resolvedFlight?: Flight | null };
+// 持たせず、保存/読み出しの境界だけこの拡張型を使う。resolvedDeparture/
+// ArrivalPlace は resolvedFlight の空港を Google の場所に解決できていれば
+// 入る（resolveAirportPlace 参照。見つからなければ null＝座標つき自由入力に
+// フォールバック）。
+export type StoredEventDraft = EventDraft & {
+  resolvedFlight?: Flight | null;
+  resolvedDeparturePlace?: PlaceCandidate | null;
+  resolvedArrivalPlace?: PlaceCandidate | null;
+};
 
 // 保存済み場所への事前入力（matchPlace で当たった時だけ）。web の
 // PlacePickerInitial の saved 分岐と同形。費用下書き（ExpenseDraftItem）は
@@ -33,11 +41,24 @@ export type StoredEventDraft = EventDraft & { resolvedFlight?: Flight | null };
 export type DraftPlacePrefill = { kind: "saved"; id: string; name: string } | null;
 
 // 予定下書きの place/endPlace 専用（費用下書きにはこの分岐は無い）。
-// "free" は座標つきの自由入力（フライト確定と同じ asPlace 相当。事前解決
-// できた空港をそのまま流し込む時に使う。座標が無ければ lat/lng は null）。
+// "google" は事前解決できたフライトの空港が Google の場所と紐づいた時
+// （resolveAirportPlace が見つけた候補。手動でフライト番号確定した時と
+// 同じ google_place_id になるので、表記違いでの重複登録が起きない）。
+// "free" は Google 解決できなかった時のフォールバック（座標つき自由入力。
+// 座標が無ければ lat/lng は null）。
 export type EventDraftPlacePrefill =
   | { kind: "saved"; id: string; name: string }
   | { kind: "free"; name: string; lat: number | null; lng: number | null }
+  | {
+      kind: "google";
+      placeId: string;
+      name: string;
+      address: string;
+      lat: number;
+      lng: number;
+      region: string | null;
+      locality: string | null;
+    }
   | null;
 
 // 保存済みに当たらなかった時の Google 自動解決の手がかり（web の PlacePicker
@@ -161,10 +182,28 @@ export function deriveExpenseDraftItems(
     });
 }
 
-// 事前解決できたフライトの空港を自由入力の場所として渡す（フライト番号機能の
-// applyFlight が作る asPlace と同じ形。座標が無くても空港名だけで自由入力に
-// する＝手動確定時と同じフォールバック）。
-function asDraftFreePlace(e: FlightEndpoint): EventDraftPlacePrefill {
+// 事前解決できたフライトの空港を場所の事前入力にする。Google の場所として
+// 解決できていれば（resolveAirportPlace が見つけた候補）それを最優先で使う
+// （手動でフライト番号確定した時も同じ経路で Google 解決を試みるので、同じ
+// google_place_id になり重複登録が起きない）。解決できていなければ座標つき
+// 自由入力にフォールバックする（フライト番号機能の applyFlight が作る
+// asPlace と同じ形。座標が無くても空港名だけで自由入力にする）。
+function draftPlaceFromFlightEndpoint(
+  e: FlightEndpoint,
+  candidate: PlaceCandidate | null | undefined,
+): EventDraftPlacePrefill {
+  if (candidate) {
+    return {
+      kind: "google",
+      placeId: candidate.placeId,
+      name: candidate.name,
+      address: candidate.formattedAddress,
+      lat: candidate.lat,
+      lng: candidate.lng,
+      region: candidate.region,
+      locality: candidate.locality,
+    };
+  }
   return { kind: "free", name: e.name, lat: e.lat, lng: e.lng };
 }
 
@@ -219,8 +258,8 @@ export function deriveEventDraftItems(
             endTime: arrTime ?? null,
             departTz: f.departure.lat === null ? f.departure.timeZone : null,
             arriveTz: f.arrival.lat === null ? f.arrival.timeZone : null,
-            place: asDraftFreePlace(f.departure),
-            endPlace: asDraftFreePlace(f.arrival),
+            place: draftPlaceFromFlightEndpoint(f.departure, ev.resolvedDeparturePlace),
+            endPlace: draftPlaceFromFlightEndpoint(f.arrival, ev.resolvedArrivalPlace),
             autoResolvePlace: null,
             flightNumber: null,
           },
