@@ -383,10 +383,17 @@ export function WeekCalendar({
 
   // 取り込み下書き（未確定）だけに付ける小バッジ。色のヒントだけでは
   // 分かりにくいという実機フィードバックを受けて追加（web の draftBadge
-  // と同じ役割）。タイトルと同じ行の続きに入れ子 Text で置く（改行しない）。
+  // と同じ役割）。時刻の直後に続ける版（先頭にスペースを含む）と、
+  // タイトルの直前に置く版（末尾にスペースを含む）の2つ。入れ子 Text の
+  // margin は効かない（native text layout なので flexbox が効かない）ため、
+  // 区切りは文字としてのスペースをチップの塗りTextに含めて表現する。
   const draftBadge = (ev: EventRow) =>
     ev.isDraft ? (
       <Text style={styles.draftBadge}> {tSched("draftBadge")}</Text>
+    ) : null;
+  const draftBadgeLead = (ev: EventRow) =>
+    ev.isDraft ? (
+      <Text style={styles.draftBadge}>{tSched("draftBadge")} </Text>
     ) : null;
 
   return (
@@ -482,8 +489,8 @@ export function WeekCalendar({
                           style={[styles.allDayText, { color: col.text }]}
                           numberOfLines={1}
                         >
+                          {draftBadgeLead(ev)}
                           {b.event.title}
-                          {draftBadge(ev)}
                           {extra ? (
                             <Text style={styles.allDayExtra}> {extra}</Text>
                           ) : null}
@@ -598,6 +605,7 @@ export function WeekCalendar({
                       numberOfLines={1}
                     >
                       {spanLabel(p.event) ?? hhmm(p.topMin)}
+                      {draftBadge(ev)}
                     </Text>
                     <Text
                       style={[styles.eventTitle, { color: col.text }]}
@@ -605,7 +613,6 @@ export function WeekCalendar({
                     >
                       <ReservationMark ev={ev} textColor={col.text} />
                       {p.event.title}
-                      {draftBadge(ev)}
                     </Text>
                     {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
                         1行に収まらなくても改行で収まりそうなら2行まで見せる
@@ -710,6 +717,7 @@ export function WeekCalendar({
                         numberOfLines={1}
                       >
                         {timeLabel ?? hhmm(part.time)}
+                        {draftBadge(ev)}
                       </Text>
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
@@ -717,7 +725,6 @@ export function WeekCalendar({
                       >
                         <ReservationMark ev={ev} textColor={col.text} />
                         {t.event.title}
-                        {draftBadge(ev)}
                       </Text>
                       {pn && (
                         <Text

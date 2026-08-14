@@ -3,6 +3,9 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
+import { createFlightApi } from "@triplot/shared/data/flightApi";
+import { parseFlightNumber } from "@triplot/shared/flight";
+import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
   isAllowedReceiptHost,
@@ -256,6 +259,27 @@ async function recordCandidateLink(
   });
 }
 
+// 時差移動のうち便名（parseFlightNumber が読める形）を持つものだけ、その日の
+// 便を1回引いておく（結果は使わず、flight_api_cache を温めるのが目的）。
+// 1件ごとに提供元は最大3回叩く可能性があり秒間1リクエストの制限があるので
+// 並行させず順番に引く。1件の失敗（枠切れ・提供元エラー等）で他を止めない。
+async function prefetchFlights(
+  supabase: ServiceClient,
+  events: EventDraft[],
+): Promise<void> {
+  const api = createFlightApi(supabase);
+  for (const ev of events) {
+    if (ev.kind !== "transit" || !ev.vehicleNumber) continue;
+    const parsed = parseFlightNumber(ev.vehicleNumber);
+    if (!parsed) continue;
+    try {
+      await lookupFlight(api, parsed.normalized, ev.startDate);
+    } catch {
+      // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
+    }
+  }
+}
+
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
 // （リトライ可否の判定は呼び出し側）。
 async function runExtraction(
@@ -336,6 +360,13 @@ async function runExtraction(
       .eq("id", emailId);
     return;
   }
+
+  // 便名が読めた時差移動は、確定 UI を開く前にここで1回引いて全ユーザー横断
+  // キャッシュ（flight_api_cache）を温めておく。ユーザーが確認画面を開いた時には
+  // FlightPicker の peek がこの結果に即当たり、フライト番号機能で手打ちして
+  // 確定したのと同じ「あとは確定するだけ」の状態になる。見つからなければ何も
+  // しない＝今まで通り確定時に手動検索に回る（best-effort、失敗しても抽出自体は続行）。
+  await prefetchFlights(supabase, events);
 
   // 後からマージ: 同じ取引・予約の未確定下書きがあれば合体する。
   const merge = await tryMerge(supabase, userId, emailId, extraction, text);

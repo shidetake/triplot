@@ -578,10 +578,11 @@ export function WeekCalendar({
   const allDayBandH = Math.max(effectiveAllDayRows, 1) * ALLDAY_ROW + 4;
 
   // 取り込み下書き（未確定）の疑似ブロックだけに付ける小バッジ。timed の
-  // blockLabel と transit の3箇所（同一列・出発側・到着側）で共通して使う。
+  // 時刻行と transit の3箇所（同一列・出発側・到着側）の時刻行で共通して使う。
+  // タイトルより前・時刻の直後に置く（時刻→チップ→改行→タイトルの順）。
   const draftBadge = (ev: ScheduleEvent) =>
     ev.isDraft && (
-      <span className="ml-1 rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
+      <span className="mr-1 whitespace-nowrap rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
         {tSched("draftBadge")}
       </span>
     );
@@ -594,7 +595,6 @@ export function WeekCalendar({
           <ReservationMark ev={ev} />
           {ev.title}
         </span>
-        {draftBadge(ev)}
         {pn && <span className="block truncate opacity-70">{pn}</span>}
         {ev.note && <span className="block truncate opacity-70">{ev.note}</span>}
       </>
@@ -782,9 +782,10 @@ export function WeekCalendar({
                   <ReservationMark ev={b.event} />
                   <span className="truncate">
                     {/* タイトルは通常予定の blockLabel と同じ font-medium、
-                        場所・メモは同じ opacity-70 で続ける（改行はしない）。 */}
-                    <span className="font-medium">{b.event.title}</span>
+                        場所・メモは同じ opacity-70 で続ける（改行はしない）。
+                        未確定チップはタイトルの前（終日は時刻が無いので改行せず同じ行）。 */}
                     {draftBadge(b.event)}
+                    <span className="font-medium">{b.event.title}</span>
                     {[placeName(b.event.startPlaceId), b.event.note]
                       .filter((s): s is string => !!s)
                       .map((s, i) => (
@@ -1174,8 +1175,11 @@ export function WeekCalendar({
                   }}
                 >
                   <span className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] tabular-nums opacity-70">
-                      {spanLabel(p.event) ?? hhmm(p.topMin)}
+                    <span className="flex items-center gap-1">
+                      <span className="text-[10px] tabular-nums opacity-70">
+                        {spanLabel(p.event) ?? hhmm(p.topMin)}
+                      </span>
+                      {draftBadge(p.event)}
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
@@ -1236,8 +1240,11 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                      <span className="flex items-center gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                        </span>
+                        {draftBadge(t.event)}
                       </span>
                       {dots}
                     </span>
@@ -1245,7 +1252,6 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {draftBadge(t.event)}
                     {t.event.note && (
                       <span className="block truncate opacity-70">{t.event.note}</span>
                     )}
@@ -1282,8 +1288,11 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                      <span className="flex items-center gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                        </span>
+                        {draftBadge(t.event)}
                       </span>
                       {dots}
                     </span>
@@ -1291,7 +1300,6 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {draftBadge(t.event)}
                     {t.event.note && (
                       <span className="block truncate opacity-70">{t.event.note}</span>
                     )}
@@ -1315,8 +1323,11 @@ export function WeekCalendar({
                     }}
                   >
                     <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                      <span className="flex items-center gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                        </span>
+                        {draftBadge(t.event)}
                       </span>
                       {dots}
                     </span>
@@ -1324,7 +1335,6 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {draftBadge(t.event)}
                     {t.event.note && (
                       <span className="block truncate opacity-70">{t.event.note}</span>
                     )}
