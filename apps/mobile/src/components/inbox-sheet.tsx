@@ -15,10 +15,11 @@ import {
 } from "@triplot/shared/import/config";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
+import { CopyIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
-import { type Theme, useThemedStyles } from "@/lib/theme";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
 // 受信箱（メール取り込み、FormSheet の中身）。web の /import 相当
@@ -30,6 +31,7 @@ import { useSession } from "@/lib/session";
 // にはならず、呼び出し元の refetch がこのコンポーネントの data も更新する。
 export function InboxSheet() {
   const t = useTranslations("import");
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { session } = useSession();
   const userId = session?.user.id;
@@ -101,12 +103,19 @@ export function InboxSheet() {
       {address && (
         <View style={styles.addressBox}>
           <Text style={styles.addressLabel}>{t("forwardLabel")}</Text>
-          <Text style={styles.address} selectable>
-            {address}
-          </Text>
-          <Pressable onPress={() => void copyAddress()} style={styles.copyButton}>
-            <Text style={styles.copyLabel}>{t("copyAddress")}</Text>
-          </Pressable>
+          <View style={styles.addressRow}>
+            <Text style={styles.address} selectable numberOfLines={1}>
+              {address}
+            </Text>
+            <Pressable
+              onPress={() => void copyAddress()}
+              style={styles.copyButton}
+              accessibilityLabel={t("copyAddress")}
+              hitSlop={8}
+            >
+              <CopyIcon size={16} color={theme.mutedForeground} />
+            </Pressable>
+          </View>
         </View>
       )}
 
@@ -251,17 +260,20 @@ const makeStyles = (t: Theme) =>
     gap: 6,
   },
   addressLabel: { fontSize: 12, color: t.mutedForeground },
-  address: { fontSize: 13, fontVariant: ["tabular-nums"], color: t.foreground },
+  addressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  address: {
+    flex: 1,
+    fontSize: 13,
+    fontVariant: ["tabular-nums"],
+    color: t.foreground,
+  },
   copyButton: {
-    height: 32,
+    height: 28,
+    width: 28,
     borderRadius: 6,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 4,
   },
-  copyLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
   empty: { fontSize: 13, color: t.mutedForeground, paddingVertical: 16 },
   // 上限超過の警告（amber。web の MessageBox kind="warning" と同段）。
   warnBox: {

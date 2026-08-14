@@ -378,3 +378,13 @@ export function LogOutIcon(p: IconProps) {
     </LucideIcon>
   );
 }
+
+// Lucide: copy（クリップボードへのコピー操作）
+export function CopyIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Rect width={14} height={14} x={8} y={8} rx={2} ry={2} />
+      <Path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+    </LucideIcon>
+  );
+}
