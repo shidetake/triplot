@@ -6,20 +6,24 @@ import { useTheme } from "@/lib/theme";
 
 // グローバルなトースト。ui-guidelines「フィードバック」節の方針:
 // 結果が見えない成功（コピー等）を画面下に短く出す。どこからでも
-// toast("コピーしました") で呼べる。<Toaster /> をルートに1つだけ置く
-// （web の components/toast.tsx と同じ standalone manager パターン。
-// RN には Base UI Toast 相当が無いので最小限を自前で持つ）。
-// アクションは不要＝スワイプ/ボタンでの明示クローズは持たず、一定時間で
-// 自動的に消える（ブロッキングしない Alert.alert の代替）。
+// toast("コピーしました") で呼べる。RN には Base UI Toast 相当が無いので
+// 最小限を自前で持つ（listener のスタック方式。web の standalone manager
+// パターンと同じだが、後述の理由で「今アクティブな画面のどれか」に届ける
+// 必要があるためスタックにしている）。アクションは不要＝スワイプ/ボタンでの
+// 明示クローズは持たず、一定時間で自動的に消える（ブロッキングしない
+// Alert.alert の代替）。
 //
-// @gorhom/bottom-sheet の BottomSheetModal は自前のポータル層（rootHostName）
-// に乗り、ルートの通常の兄弟 View より上に描画される。ネイティブの Modal で
-// 上から被せる案も試したが、formSheet で開いている画面自体がネイティブ
-// モーダルのため、二重にネイティブモーダルを重ねると描画されない（実機で
-// 確認）。そのため「一番手前の Toaster が処理する」スタック方式にし、
-// FormSheet（components/form-sheet.tsx）自身もローカルな <Toaster /> を
-// 持つ＝シートが開いている間はシート自身の中で描画されるので、シートの
-// ポータル層を出る必要が無くなる。
+// <Toaster /> はルート（app/_layout.tsx）に1つ常設するが、それだけでは
+// 足りない: 受信箱・旅行編集等は react-native-screens の native-stack
+// presentation:"formSheet" で開く別の view controller であり、ルート直下の
+// 兄弟 View はその中には実機で描画されない（シミュレータでは偶然表に出る
+// ことがあるが、実機 TestFlight では出ない＝実機フィードバックで判明。
+// @gorhom/bottom-sheet ベースの独自シートとは別の仕組みなので、そちらの
+// 対策は効かない）。そのため toast() を使う formSheet 画面は、その画面
+// 自身の return 内にも直接 <Toaster /> を置く（apps/mobile/src/app/(app)/
+// trips/inbox.tsx, .../[tripId]/edit.tsx 参照）。画面が有効な間だけそちらの
+// listener がスタックの最後尾に積まれ、toast() はスタックの末尾（＝一番
+// 手前で今アクティブな Toaster）だけに届ける。
 
 type Listener = (text: string | null) => void;
 const listeners: Listener[] = [];

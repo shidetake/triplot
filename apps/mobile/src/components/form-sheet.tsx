@@ -31,7 +31,6 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Toaster } from "@/components/toast";
 import { useTheme } from "@/lib/theme";
 
 // iOS 標準のコンパクトナビバー高（pt）。ヘッダー帯の実高 = safe area 上端 + これ。
@@ -105,12 +104,6 @@ export const FormSheet = forwardRef<
   const insets = useSafeAreaInsets();
   const t = useTheme();
   const dismiss = useCallback(() => modalRef.current?.dismiss(), []);
-  // このシートが開いている間だけローカルな <Toaster /> をマウントする
-  // （toast.tsx の「一番手前に登録された Toaster が処理する」スタックに、
-  // 開いている間だけ参加する）。BottomSheetModal は閉じても children を
-  // マウントしたままにする実装のため、常時マウントだと「開いてないシートが
-  // 手前を名乗り続ける」ことになり topmost の判定が壊れる。
-  const [isOpen, setIsOpen] = useState(false);
   const scrollToEnd = useCallback((animated = true) => {
     scrollRef.current?.scrollToEnd({ animated });
   }, []);
@@ -217,7 +210,6 @@ export const FormSheet = forwardRef<
       }
       stackBehavior={stackBehavior}
       animatedPosition={animatedPosition}
-      onChange={(index) => setIsOpen(index >= 0)}
       onDismiss={onDismiss}
       // 100% はこの topInset を引いた残り＝シート上端がヘッダー帯の下端に揃う。
       topInset={insets.top + NAV_BAR_HEIGHT}
@@ -275,7 +267,6 @@ export const FormSheet = forwardRef<
           children(dismiss, scrollToEnd)
         )}
       </BottomSheetScrollView>
-      {isOpen && <Toaster />}
     </BottomSheetModal>
   );
 });
