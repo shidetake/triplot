@@ -253,90 +253,105 @@ export default function ExpensesTab() {
 
         {/* 一覧（発生順）。行の情報は web の ExpenseRowItem と同じ:
             カテゴリ色ピル・金額・外貨・private 鍵・日時・支払・割勘メンバー・
-            場所（pin アイコン付き）・メモ。 */}
-        {expenses.map((e) => {
-          const category = categoryById.get(e.category_id);
-          const payer = memberById.get(e.payer_member_id);
-          const splitMembers = e.splittable
-            ? e.split_member_ids
-                .map((id) => memberById.get(id))
-                .filter((m): m is MemberLite => !!m)
-            : null;
-          const isForeign = e.local_currency !== defaultCurrency;
-          const amountInDefault = e.local_price * e.rate_to_default;
-          const placeName = e.place_id
-            ? (placeNameById.get(e.place_id) ?? null)
-            : null;
-          return (
-            <Pressable
-              key={e.id}
-              onPress={() =>
-                router.push(`/trips/${tripId}/expense-form?expenseId=${e.id}`)
-              }
-              style={styles.expenseRow}
-            >
-              <View style={styles.expenseTop}>
-                {category && (
-                  <View
-                    style={[
-                      styles.categoryBadge,
-                      { backgroundColor: category.color },
-                    ]}
-                  >
-                    <ExpenseCategoryIcon
-                      icon={category.icon}
-                      size={13}
-                      color="#fff"
-                    />
-                    <Text style={styles.categoryName}>{category.name}</Text>
+            場所（pin アイコン付き）・メモ。旅行によっては件数が多く並ぶため、
+            web の ExpenseList と同じ「1つの枠＋行間は区切り線だけ」（divide-y
+            border 相当）にして各行の隙間・二重の枠を無くす（実機フィードバック）。
+            バッジ〜割り勘メンバーまでを1つの折り返し行にまとめ、幅が足りる
+            端末では自然に2行、狭い端末では3行以上に収まる（明示的な breakpoint
+            を置かず、コンテンツ量と幅だけで決まる）。 */}
+        {expenses.length > 0 && (
+          <View style={styles.expenseListCard}>
+            {expenses.map((e, i) => {
+              const category = categoryById.get(e.category_id);
+              const payer = memberById.get(e.payer_member_id);
+              const splitMembers = e.splittable
+                ? e.split_member_ids
+                    .map((id) => memberById.get(id))
+                    .filter((m): m is MemberLite => !!m)
+                : null;
+              const isForeign = e.local_currency !== defaultCurrency;
+              const amountInDefault = e.local_price * e.rate_to_default;
+              const placeName = e.place_id
+                ? (placeNameById.get(e.place_id) ?? null)
+                : null;
+              return (
+                <Pressable
+                  key={e.id}
+                  onPress={() =>
+                    router.push(
+                      `/trips/${tripId}/expense-form?expenseId=${e.id}`,
+                    )
+                  }
+                  style={[styles.expenseRow, i > 0 && styles.expenseRowDivider]}
+                >
+                  <View style={styles.expenseInfoRow}>
+                    {category && (
+                      <View
+                        style={[
+                          styles.categoryBadge,
+                          { backgroundColor: category.color },
+                        ]}
+                      >
+                        <ExpenseCategoryIcon
+                          icon={category.icon}
+                          size={13}
+                          color="#fff"
+                        />
+                        <Text style={styles.categoryName}>
+                          {category.name}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={styles.amount}>
+                      {formatAmount(amountInDefault, defaultCurrency)}
+                    </Text>
+                    {isForeign && (
+                      <Text style={styles.foreign}>
+                        ({formatAmount(e.local_price, e.local_currency)} @{" "}
+                        {formatRate(e.rate_to_default)})
+                      </Text>
+                    )}
+                    {e.visibility === "private" && (
+                      <LockIcon size={16} color={theme.mutedForeground} />
+                    )}
+                    <Text style={styles.metaText}>
+                      {formatDateTime(e.paid_at)}
+                    </Text>
+                    <View style={styles.metaGroup}>
+                      <Text style={styles.metaText}>{tExp("paidLabel")}</Text>
+                      {payer && <MemberAvatar member={payer} size={16} />}
+                    </View>
+                    {splitMembers && splitMembers.length > 0 && (
+                      <View style={styles.metaGroup}>
+                        <Text style={styles.metaText}>
+                          {tExp("splitLabel")}
+                        </Text>
+                        {splitMembers.map((m) => (
+                          <MemberAvatar key={m.id} member={m} size={16} />
+                        ))}
+                      </View>
+                    )}
                   </View>
-                )}
-                <Text style={styles.amount}>
-                  {formatAmount(amountInDefault, defaultCurrency)}
-                </Text>
-                {isForeign && (
-                  <Text style={styles.foreign}>
-                    ({formatAmount(e.local_price, e.local_currency)} @{" "}
-                    {formatRate(e.rate_to_default)})
-                  </Text>
-                )}
-                {e.visibility === "private" && (
-                  <LockIcon size={16} color={theme.mutedForeground} />
-                )}
-              </View>
-              <View style={styles.expenseMeta}>
-                <Text style={styles.metaText}>{formatDateTime(e.paid_at)}</Text>
-                <View style={styles.metaGroup}>
-                  <Text style={styles.metaText}>{tExp("paidLabel")}</Text>
-                  {payer && <MemberAvatar member={payer} size={16} />}
-                </View>
-                {splitMembers && splitMembers.length > 0 && (
-                  <View style={styles.metaGroup}>
-                    <Text style={styles.metaText}>{tExp("splitLabel")}</Text>
-                    {splitMembers.map((m) => (
-                      <MemberAvatar key={m.id} member={m} size={16} />
-                    ))}
-                  </View>
-                )}
-              </View>
-              {placeName && (
-                <View style={styles.placeRow}>
-                  <PlaceCategoryIcon
-                    icon="pin"
-                    size={12}
-                    color={theme.mutedForeground}
-                  />
-                  <Text style={styles.metaText} numberOfLines={1}>
-                    {placeName}
-                  </Text>
-                </View>
-              )}
-              {e.note ? (
-                <Text style={styles.metaText}>{e.note}</Text>
-              ) : null}
-            </Pressable>
-          );
-        })}
+                  {placeName && (
+                    <View style={styles.placeRow}>
+                      <PlaceCategoryIcon
+                        icon="pin"
+                        size={12}
+                        color={theme.mutedForeground}
+                      />
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {placeName}
+                      </Text>
+                    </View>
+                  )}
+                  {e.note ? (
+                    <Text style={styles.metaText}>{e.note}</Text>
+                  ) : null}
+                </Pressable>
+              );
+            })}
+          </View>
+        )}
 
         {expenses.length === 0 && (
           <Text style={styles.empty}>まだ費用がありません。</Text>
@@ -460,14 +475,27 @@ const makeStyles = (t: Theme) =>
   settlementRow: { fontSize: 14, color: t.mutedForeground },
   settlementName: { fontWeight: "500", color: t.foreground },
   rateHint: { marginTop: 6, fontSize: 12, color: t.mutedForeground },
-  expenseRow: {
+  // 一覧全体を1つの枠にし（web の ExpenseList の <ul> と同じ）、行同士は
+  // 区切り線（expenseRowDivider）だけで分ける。行ごとに枠＋隙間を持たせると
+  // 件数が多い旅行で無駄に縦長になっていた（実機フィードバック）。
+  expenseListCard: {
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: t.fgAlpha(0.12),
     borderRadius: 6,
+    overflow: "hidden",
+  },
+  expenseRow: {
     padding: 12,
     gap: 4,
   },
-  expenseTop: {
+  expenseRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.1),
+  },
+  // カテゴリ〜割り勘メンバーまでを1つの折り返し行にまとめる（web の
+  // ExpenseRowItem 同様、幅が足りれば自然に1〜2行、足りなければ折り返して
+  // 増える。狭い/広いを明示的に分岐させず幅任せにする）。
+  expenseInfoRow: {
     flexDirection: "row",
     alignItems: "center",
     flexWrap: "wrap",
@@ -487,12 +515,6 @@ const makeStyles = (t: Theme) =>
   placeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   amount: { fontSize: 14, fontWeight: "500", color: t.foreground },
   foreign: { fontSize: 12, color: t.mutedForeground },
-  expenseMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
-    gap: 8,
-  },
   metaText: { fontSize: 12, color: t.mutedForeground },
   empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
   fab: {
