@@ -547,6 +547,7 @@
     "unknownMerchant": "(unknown store)",
     "noContent": "(no content extracted)",
     "selectTrip": "(select a trip)",
+    "selectTripPrompt": "Select a trip",
     "confirmAtTrip": "→ Confirm in {title}",
     "tripFallback": "trip",
     "needsAssignment": "Needs assignment",

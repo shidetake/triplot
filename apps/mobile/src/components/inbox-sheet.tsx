@@ -1,7 +1,15 @@
 import * as Clipboard from "expo-clipboard";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 import { useTranslations } from "use-intl";
 
 import {
@@ -15,7 +23,7 @@ import {
 } from "@triplot/shared/import/config";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
-import { CopyIcon } from "@/components/icons";
+import { CheckIcon, ChevronIcon, CopyIcon, XIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
@@ -41,8 +49,6 @@ export function InboxSheet() {
     queryFn: () => fetchImportInboxRows(supabase, userId!),
     enabled: !!userId,
   });
-
-  const [assigning, setAssigning] = useState<string | null>(null);
 
   const address = data?.importToken
     ? buildImportAddress(data.importToken)
@@ -70,9 +76,13 @@ export function InboxSheet() {
       Alert.alert(r.error);
       return;
     }
-    setAssigning(null);
     void refetch();
   };
+
+  // 旅行の割り当て/変更。native の pageSheet モーダル＋チェックマーク行の
+  // リストで選ばせる（create-trip のコピー元選択＝CopySourceModal と同形）。
+  const [pickingTripFor, setPickingTripFor] = useState<string | null>(null);
+  const pickingEmail = emails.find((e) => e.id === pickingTripFor);
 
   const dismiss = (emailId: string) => {
     Alert.alert(t("dismissEmailTitle"), undefined, [
@@ -192,44 +202,37 @@ export function InboxSheet() {
                 )}
               </View>
 
-              {/* 旅行割当 */}
-              {assigning === e.id ? (
-                <View style={styles.tripChoices}>
-                  {trips.map((tr) => (
-                    <Pressable
-                      key={tr.id}
-                      onPress={() => void assign(e.id, tr.id)}
-                      style={styles.tripChoice}
-                    >
-                      <Text style={styles.tripChoiceLabel}>{tr.title}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              ) : (
-                <View style={styles.actionsRow}>
-                  <Pressable
-                    onPress={() => setAssigning(e.id)}
+              {/* 旅行割当。タップでモーダルを開いて選び直せる（値＋シェブロンの
+                  ドロップダウン相当。「確定」の文言は使わない — ここでは割当先を
+                  変えるだけで、実際の確定は各旅行の画面で行うため）。 */}
+              <View style={styles.actionsRow}>
+                <Pressable
+                  onPress={() => setPickingTripFor(e.id)}
+                  style={[
+                    styles.assignButton,
+                    !assigned && styles.assignButtonWarn,
+                  ]}
+                >
+                  <Text
                     style={[
-                      styles.assignButton,
-                      !assigned && styles.assignButtonWarn,
+                      styles.assignLabel,
+                      !assigned && styles.assignLabelWarn,
                     ]}
                   >
-                    <Text
-                      style={[
-                        styles.assignLabel,
-                        !assigned && styles.assignLabelWarn,
-                      ]}
-                    >
-                      {assigned
-                        ? t("confirmAtTrip", { title: assigned.title })
-                        : t("needsAssignment")}
-                    </Text>
-                  </Pressable>
-                  <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
-                    <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
-                  </Pressable>
-                </View>
-              )}
+                    {assigned ? assigned.title : t("selectTripPrompt")}
+                  </Text>
+                  <ChevronIcon
+                    size={14}
+                    rotate={90}
+                    color={
+                      assigned ? theme.foreground : theme.warnAccent
+                    }
+                  />
+                </Pressable>
+                <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
+                  <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
+                </Pressable>
+              </View>
             </View>
           );
         })
@@ -244,6 +247,49 @@ export function InboxSheet() {
           })}
         </Text>
       )}
+
+      {/* 旅行選択（create-trip のコピー元選択＝CopySourceModal と同形）。 */}
+      <Modal
+        visible={pickingTripFor != null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setPickingTripFor(null)}
+      >
+        <View style={styles.pickerSheet}>
+          <View style={styles.pickerHeader}>
+            <Text style={styles.pickerTitle}>{t("selectTripPrompt")}</Text>
+            <Pressable
+              onPress={() => setPickingTripFor(null)}
+              hitSlop={8}
+              accessibilityLabel={t("dismiss")}
+            >
+              <XIcon size={20} color={theme.mutedForeground} />
+            </Pressable>
+          </View>
+          <ScrollView contentContainerStyle={styles.pickerList}>
+            {trips.map((tr) => {
+              const selected = tr.id === pickingEmail?.trip_id;
+              return (
+                <Pressable
+                  key={tr.id}
+                  onPress={() => {
+                    if (pickingTripFor) void assign(pickingTripFor, tr.id);
+                    setPickingTripFor(null);
+                  }}
+                  style={styles.pickerRow}
+                >
+                  <Text style={styles.pickerRowLabel} numberOfLines={1}>
+                    {tr.title}
+                  </Text>
+                  {selected && (
+                    <CheckIcon size={16} color={theme.foreground} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -313,6 +359,9 @@ const makeStyles = (t: Theme) =>
     justifyContent: "space-between",
   },
   assignButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
     borderRadius: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -322,13 +371,28 @@ const makeStyles = (t: Theme) =>
   assignLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
   assignLabelWarn: { color: t.warnAccent },
   dismissLabel: { fontSize: 12, color: t.mutedForeground },
-  tripChoices: { gap: 6 },
-  tripChoice: {
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.15),
-    borderRadius: 6,
-    padding: 10,
-  },
-  tripChoiceLabel: { fontSize: 13, color: t.foreground },
   usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
+  // 旅行選択モーダル（copy-source-picker.tsx の CopySourceModal と同じ見た目）。
+  pickerSheet: { flex: 1, backgroundColor: t.background },
+  pickerHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.1),
+  },
+  pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
+  pickerList: { padding: 16, paddingTop: 4 },
+  pickerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: t.fgAlpha(0.08),
+  },
+  pickerRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
 });

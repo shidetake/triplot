@@ -547,6 +547,7 @@
     "unknownMerchant": "(店名不明)",
     "noContent": "(読み取り内容なし)",
     "selectTrip": "（旅行を選択）",
+    "selectTripPrompt": "旅行を選択",
     "confirmAtTrip": "→ {title}で確定",
     "tripFallback": "旅行",
     "needsAssignment": "要割当",
