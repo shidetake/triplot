@@ -34,11 +34,20 @@ export function useTripDetail(tripId: string) {
 // この旅行に割り当て済み・未確定の取り込み下書き（予定タブの疑似ブロックと
 // 費用タブの未確定ボックスが使う）。["trip", tripId] のプレフィックス配下に
 // 置くので useInvalidateTrip がまとめて再取得する（確定/破棄後も1本で済む）。
+//
+// メール取り込みの抽出はサーバー側の非同期処理（webhook/queue）で完了するため、
+// クライアントの mutation に紐づく invalidate では拾えない。受信箱画面
+// （["inbox", userId]）に新着が出ても、旅行詳細を開いたままだと既定の
+// staleTime（30秒, apps/mobile/src/lib/query.tsx）が切れて再フォーカス等が
+// 起きるまで反映されず、体感のタイムラグがあった（実機フィードバック）。
+// このクエリだけ軽量ポーリングで追従させる（refetchInterval は既定で
+// バックグラウンド中は止まる＝focusManager 経由でバッテリー消費を抑える）。
 export function useTripDrafts(tripId: string) {
   return useQuery({
     queryKey: ["trip", tripId, "drafts"],
     queryFn: () => fetchTripPendingDrafts(supabase, tripId),
     enabled: !!tripId,
+    refetchInterval: 15_000,
   });
 }
 
