@@ -29,6 +29,18 @@ type Listener = (text: string | null) => void;
 const listeners: Listener[] = [];
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
+// トーストは常に画面（＝formSheet 内では Toaster を置いた View）の下端から
+// 絶対配置で浮く。中身が短い画面（取り込み・旅行編集の formSheet は
+// fitToContents で中身の高さぴったりに縮む）だと、下端からの浮き量が
+// 中身の残り余白より大きく、直前の行にトーストが重なって隠す（実機
+// フィードバック: 取り込みシートで「コピーしました」が「まだ下書きは
+// ありません」の行に重なった）。トーストを出しうる画面は、この分だけ
+// ScrollView の contentContainerStyle に paddingBottom を足して余白を
+// 確保する（useToastBottomClearance 参照）。
+const TOAST_BOTTOM_GAP = 24;
+// 2行に折り返した時の概算（paddingVertical 20 + 14px 文字2行ぶん）。
+const TOAST_HEIGHT_ESTIMATE = 60;
+
 export function toast(text: string): void {
   const top = listeners[listeners.length - 1];
   if (!top) return;
@@ -39,6 +51,13 @@ export function toast(text: string): void {
 
 const DISPLAY_MS = 2500;
 const FADE_MS = 200;
+
+// トーストを出しうる formSheet 画面の ScrollView contentContainerStyle に
+// 足す paddingBottom（TOAST_BOTTOM_GAP コメント参照）。
+export function useToastBottomClearance(): number {
+  const insets = useSafeAreaInsets();
+  return insets.bottom + TOAST_BOTTOM_GAP + TOAST_HEIGHT_ESTIMATE;
+}
 
 export function Toaster() {
   const [displayText, setDisplayText] = useState<string | null>(null);

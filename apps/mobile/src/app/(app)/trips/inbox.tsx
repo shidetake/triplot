@@ -2,7 +2,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { RefreshControl, ScrollView, View } from "react-native";
 
 import { InboxSheet } from "@/components/inbox-sheet";
-import { Toaster } from "@/components/toast";
+import { Toaster, useToastBottomClearance } from "@/components/toast";
 import { useSession } from "@/lib/session";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 
@@ -24,11 +24,12 @@ export default function InboxRoute() {
   const { refreshing, onRefresh } = usePullRefresh(() =>
     queryClient.refetchQueries({ queryKey: ["inbox", userId] }),
   );
+  const toastClearance = useToastBottomClearance();
 
   return (
-    <View style={{ flex: 1 }}>
+    <View>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 24 }}
+        contentContainerStyle={{ paddingBottom: toastClearance }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
