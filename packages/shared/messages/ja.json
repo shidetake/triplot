@@ -352,7 +352,7 @@
     "resolveToBody": "「{from}」として登録していた予定・費用もすべて「{to}」になります。",
     "dismissLocationAria": "地図未登録の通知を消す",
     "dismissLocationTitle": "この場所を地図に登録せず、このまま使いますか？",
-    "dismissLocationBody": "「地図未登録」の表示を消します。あとで場所を編集すれば、いつでも地図に登録し直せます。",
+    "dismissLocationBody": "一覧・地図から一旦隠します。フィルタで「地図未登録を破棄した場所も表示」をオンにすれば、いつでも見つけて地図に登録し直せます。",
     "searchPlaceholder": "場所を検索",
     "searchClear": "検索をクリア",
     "searchAria": "検索",
@@ -439,6 +439,10 @@
     "filterTitle": "場所を絞り込む",
     "filterSectionArea": "エリア",
     "filterSectionDay": "日にち",
+    "filterSectionOther": "その他",
+    "filterShowDismissed": "地図未登録を破棄した場所も表示",
+    "showDismissed": "地図未登録を破棄した場所を表示（{count}件）",
+    "hideDismissed": "破棄した場所を隠す",
     "filterAria": "絞り込み中: {label}"
   },
   "validation": {

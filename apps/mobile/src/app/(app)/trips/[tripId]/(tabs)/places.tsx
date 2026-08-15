@@ -400,6 +400,9 @@ export default function PlacesTab() {
   // 寄せるだけで表示/非表示は変えないが、ここは「その場所だけ表示」という
   // 明示の要望なので実際に絞り込む）。
   const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
+  // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
+  // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
+  const [showDismissed, setShowDismissed] = useState(false);
   // フィルタの選択肢シート。@gorhom の FormSheet ではなく他の一覧/編集フォーム
   // と同じ native formSheet（ScreenStackItem）にする＝native の摺りガラス
   // 質感・グラバー位置がその2つと揃う（実機フィードバック: FormSheet だと
@@ -682,14 +685,16 @@ export default function PlacesTab() {
     [areaByPlaceId, dayByPlaceId],
   );
 
-  // 地図のピン・一覧の両方がこれを見る（フィルタ無しは全件）。
-  const filteredPlaces = useMemo(
-    () =>
-      placeFilter
-        ? places.filter((p) => matchesPlaceFilter(p.id, placeFilter))
-        : places,
-    [places, placeFilter, matchesPlaceFilter],
-  );
+  // 地図のピン・一覧の両方がこれを見る（フィルタ無しは全件）。「地図未登録」を
+  // 破棄した場所は showDismissed が true の時だけ含める。
+  const filteredPlaces = useMemo(() => {
+    const base = placeFilter
+      ? places.filter((p) => matchesPlaceFilter(p.id, placeFilter))
+      : places;
+    return showDismissed
+      ? base
+      : base.filter((p) => !(p.lat == null && p.location_dismissed));
+  }, [places, placeFilter, matchesPlaceFilter, showDismissed]);
   // 中央寄せスクロール演出（ドラムロール）を有効にするか（PICKER_CENTERING_MIN_ITEMS
   // 参照）。タップ時の scrollToOffset だけでなく、中央寄せ用の上下パディング
   // （pickerCenterPad/pickerTopPad、下）自体もこれで止める。件数が少ない時に
@@ -1978,7 +1983,7 @@ export default function PlacesTab() {
               onPress={() => setFilterOpen(true)}
               style={[
                 styles.filterButtonTop,
-                placeFilter && styles.filterButtonActive,
+                (placeFilter || showDismissed) && styles.filterButtonActive,
               ]}
               accessibilityLabel={
                 placeFilter
@@ -1986,7 +1991,10 @@ export default function PlacesTab() {
                   : t("filterTitle")
               }
             >
-              <FilterIcon size={18} color={placeFilter ? "#fff" : theme.foreground} />
+              <FilterIcon
+                size={18}
+                color={placeFilter || showDismissed ? "#fff" : theme.foreground}
+              />
             </Pressable>
           )}
 
@@ -2523,6 +2531,28 @@ export default function PlacesTab() {
                 })}
               </>
             )}
+            <Text style={styles.filterSectionLabel}>
+              {t("filterSectionOther")}
+            </Text>
+            <Pressable
+              onPress={() => setShowDismissed((v) => !v)}
+              style={[
+                styles.priorityRow,
+                showDismissed && styles.priorityRowSelected,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.priorityRowLabel,
+                  showDismissed && styles.priorityRowLabelSelected,
+                ]}
+              >
+                {t("filterShowDismissed")}
+              </Text>
+              {showDismissed && (
+                <CheckIcon size={16} color={theme.mutedForeground} />
+              )}
+            </Pressable>
           </ScrollView>
         </ScreenStackItem>
       )}

@@ -184,6 +184,17 @@ export function PlacesSection({
     };
   }, [showPlacesSheet]);
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
+  // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
+  // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
+  const [showDismissed, setShowDismissed] = useState(false);
+  const visiblePlaces = useMemo(
+    () =>
+      showDismissed
+        ? places
+        : places.filter((p) => !(p.lat == null && p.location_dismissed)),
+    [places, showDismissed],
+  );
+  const dismissedCount = places.length - visiblePlaces.length;
   const [selected, setSelected] = useState<Selection | null>(null);
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
   const [draft, setDraft] = useState<LatLng | null>(null);
@@ -461,7 +472,7 @@ export function PlacesSection({
           {t("noApiKey")}
         </MessageBox>
         <PlaceList
-          places={places}
+          places={visiblePlaces}
           selectedId={null}
           locatingId={null}
           onSelect={() => {}}
@@ -571,7 +582,7 @@ export function PlacesSection({
           onPointerDown={collapsePlacesSheet}
         >
           <PlaceMap
-            places={places}
+            places={visiblePlaces}
             memberHueById={memberHueById}
             candidates={candidates}
             selected={selected}
@@ -639,12 +650,12 @@ export function PlacesSection({
                 >
                   <Drawer.Handle className="!h-1.5 !w-9" />
                   <span className="text-xs font-medium text-muted-foreground">
-                    {t("placeCountLabel", { count: places.length })}
+                    {t("placeCountLabel", { count: visiblePlaces.length })}
                   </span>
                 </button>
                 <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
                   <PlaceList
-                    places={places}
+                    places={visiblePlaces}
                     selectedId={
                       selected?.kind === "saved" ? selected.id : null
                     }
@@ -654,6 +665,17 @@ export function PlacesSection({
                     onCancelLocate={cancelLocate}
                     onDismissLocation={dismissLocation}
                   />
+                  {dismissedCount > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShowDismissed((v) => !v)}
+                      className="mt-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
+                    >
+                      {showDismissed
+                        ? t("hideDismissed")
+                        : t("showDismissed", { count: dismissedCount })}
+                    </button>
+                  )}
                 </div>
               </Drawer.Content>
             </Drawer.Portal>
@@ -662,7 +684,7 @@ export function PlacesSection({
 
         <div className="hidden md:block">
           <PlaceList
-            places={places}
+            places={visiblePlaces}
             selectedId={selected?.kind === "saved" ? selected.id : null}
             locatingId={pendingLocationFor?.id ?? null}
             onSelect={selectSaved}
@@ -670,6 +692,17 @@ export function PlacesSection({
             onCancelLocate={cancelLocate}
             onDismissLocation={dismissLocation}
           />
+          {dismissedCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setShowDismissed((v) => !v)}
+              className="mt-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
+            >
+              {showDismissed
+                ? t("hideDismissed")
+                : t("showDismissed", { count: dismissedCount })}
+            </button>
+          )}
         </div>
       </div>
     </APIProvider>

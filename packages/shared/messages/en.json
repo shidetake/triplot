@@ -352,7 +352,7 @@
     "resolveToBody": "Every event and expense currently using \"{from}\" will switch to \"{to}\".",
     "dismissLocationAria": "Dismiss the not-on-map reminder",
     "dismissLocationTitle": "Keep this place without adding it to the map?",
-    "dismissLocationBody": "This hides the \"Not on map\" badge. You can still add it to the map anytime by editing the place.",
+    "dismissLocationBody": "This hides it from the list and map. Turn on \"Show places dismissed from map registration\" in the filter anytime to find it and add it to the map.",
     "searchPlaceholder": "Search places",
     "searchClear": "Clear search",
     "searchAria": "Search",
@@ -439,6 +439,10 @@
     "filterTitle": "Filter places",
     "filterSectionArea": "Area",
     "filterSectionDay": "Day",
+    "filterSectionOther": "Other",
+    "filterShowDismissed": "Show places dismissed from map registration",
+    "showDismissed": "Show {count} dismissed places",
+    "hideDismissed": "Hide dismissed places",
     "filterAria": "Filtering: {label}"
   },
   "validation": {
