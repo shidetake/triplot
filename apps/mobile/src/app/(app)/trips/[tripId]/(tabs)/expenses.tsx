@@ -316,10 +316,26 @@ export default function ExpensesTab() {
                         <LockIcon size={16} color={theme.mutedForeground} />
                       )}
                     </View>
-                    <View style={styles.expenseRightGroup}>
-                      <Text style={styles.metaText}>
-                        {formatDateTime(e.paid_at)}
-                      </Text>
+                    <Text style={styles.metaText}>
+                      {formatDateTime(e.paid_at)}
+                    </Text>
+                  </View>
+                  <View style={styles.expenseMetaRow}>
+                    <View style={styles.expensePlaceGroup}>
+                      {placeName && (
+                        <View style={styles.placeRow}>
+                          <PlaceCategoryIcon
+                            icon="pin"
+                            size={12}
+                            color={theme.mutedForeground}
+                          />
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {placeName}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
+                    <View style={styles.expensePayerGroup}>
                       <View style={styles.metaGroup}>
                         <Text style={styles.metaText}>
                           {tExp("paidLabel")}
@@ -338,18 +354,6 @@ export default function ExpensesTab() {
                       )}
                     </View>
                   </View>
-                  {placeName && (
-                    <View style={styles.placeRow}>
-                      <PlaceCategoryIcon
-                        icon="pin"
-                        size={12}
-                        color={theme.mutedForeground}
-                      />
-                      <Text style={styles.metaText} numberOfLines={1}>
-                        {placeName}
-                      </Text>
-                    </View>
-                  )}
                   {e.note ? (
                     <Text style={styles.metaText}>{e.note}</Text>
                   ) : null}
@@ -498,11 +502,10 @@ const makeStyles = (t: Theme) =>
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.fgAlpha(0.1),
   },
-  // 左＝カテゴリ/金額、右＝日時・支払・割り勘の2カラム（web の
-  // ExpenseRowItem と同じ情報を左右に分けて詰める）。左右それぞれが独立に
-  // 折り返すので、幅が足りれば1行、足りなければ左右別々に増える
-  // （1本の折り返し行で混在させると左寄せ/右寄せが同じ行内でぶつかるため
-  // 分離。実機フィードバック）。
+  // 1行目＝カテゴリ/金額（左）＋日時（右）、2行目＝場所（左）＋支払/割り勘
+  // （右）の2行構成（web の ExpenseRowItem と同じ情報を意味のまとまりで
+  // 左右に分けて詰める）。場所と支払は「行き先と誰が払ったか」で同じ行に
+  // まとめるのが自然という実機フィードバックを受けて2行目に統合。
   expenseInfoRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -516,9 +519,23 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     gap: 8,
   },
-  expenseRightGroup: {
-    alignItems: "flex-end",
-    gap: 2,
+  expenseMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  expensePlaceGroup: {
+    flex: 1,
+    minWidth: 0,
+  },
+  expensePayerGroup: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 8,
+    flexShrink: 0,
   },
   // カテゴリの色付きピル（web の ColorBadge と同形: 色地・白文字・rounded-full）。
   categoryBadge: {
