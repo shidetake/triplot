@@ -285,52 +285,58 @@ export default function ExpensesTab() {
                   style={[styles.expenseRow, i > 0 && styles.expenseRowDivider]}
                 >
                   <View style={styles.expenseInfoRow}>
-                    {category && (
-                      <View
-                        style={[
-                          styles.categoryBadge,
-                          { backgroundColor: category.color },
-                        ]}
-                      >
-                        <ExpenseCategoryIcon
-                          icon={category.icon}
-                          size={13}
-                          color="#fff"
-                        />
-                        <Text style={styles.categoryName}>
-                          {category.name}
-                        </Text>
-                      </View>
-                    )}
-                    <Text style={styles.amount}>
-                      {formatAmount(amountInDefault, defaultCurrency)}
-                    </Text>
-                    {isForeign && (
-                      <Text style={styles.foreign}>
-                        ({formatAmount(e.local_price, e.local_currency)} @{" "}
-                        {formatRate(e.rate_to_default)})
+                    <View style={styles.expenseLeftGroup}>
+                      {category && (
+                        <View
+                          style={[
+                            styles.categoryBadge,
+                            { backgroundColor: category.color },
+                          ]}
+                        >
+                          <ExpenseCategoryIcon
+                            icon={category.icon}
+                            size={13}
+                            color="#fff"
+                          />
+                          <Text style={styles.categoryName}>
+                            {category.name}
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={styles.amount}>
+                        {formatAmount(amountInDefault, defaultCurrency)}
                       </Text>
-                    )}
-                    {e.visibility === "private" && (
-                      <LockIcon size={16} color={theme.mutedForeground} />
-                    )}
-                    <Text style={styles.metaText}>
-                      {formatDateTime(e.paid_at)}
-                    </Text>
-                    <View style={styles.metaGroup}>
-                      <Text style={styles.metaText}>{tExp("paidLabel")}</Text>
-                      {payer && <MemberAvatar member={payer} size={16} />}
+                      {isForeign && (
+                        <Text style={styles.foreign}>
+                          ({formatAmount(e.local_price, e.local_currency)} @{" "}
+                          {formatRate(e.rate_to_default)})
+                        </Text>
+                      )}
+                      {e.visibility === "private" && (
+                        <LockIcon size={16} color={theme.mutedForeground} />
+                      )}
                     </View>
-                    {splitMembers && splitMembers.length > 0 && (
+                    <View style={styles.expenseRightGroup}>
+                      <Text style={styles.metaText}>
+                        {formatDateTime(e.paid_at)}
+                      </Text>
                       <View style={styles.metaGroup}>
                         <Text style={styles.metaText}>
-                          {tExp("splitLabel")}
+                          {tExp("paidLabel")}
                         </Text>
-                        {splitMembers.map((m) => (
-                          <MemberAvatar key={m.id} member={m} size={16} />
-                        ))}
+                        {payer && <MemberAvatar member={payer} size={16} />}
                       </View>
-                    )}
+                      {splitMembers && splitMembers.length > 0 && (
+                        <View style={styles.metaGroup}>
+                          <Text style={styles.metaText}>
+                            {tExp("splitLabel")}
+                          </Text>
+                          {splitMembers.map((m) => (
+                            <MemberAvatar key={m.id} member={m} size={16} />
+                          ))}
+                        </View>
+                      )}
+                    </View>
                   </View>
                   {placeName && (
                     <View style={styles.placeRow}>
@@ -492,14 +498,27 @@ const makeStyles = (t: Theme) =>
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.fgAlpha(0.1),
   },
-  // カテゴリ〜割り勘メンバーまでを1つの折り返し行にまとめる（web の
-  // ExpenseRowItem 同様、幅が足りれば自然に1〜2行、足りなければ折り返して
-  // 増える。狭い/広いを明示的に分岐させず幅任せにする）。
+  // 左＝カテゴリ/金額、右＝日時・支払・割り勘の2カラム（web の
+  // ExpenseRowItem と同じ情報を左右に分けて詰める）。左右それぞれが独立に
+  // 折り返すので、幅が足りれば1行、足りなければ左右別々に増える
+  // （1本の折り返し行で混在させると左寄せ/右寄せが同じ行内でぶつかるため
+  // 分離。実機フィードバック）。
   expenseInfoRow: {
     flexDirection: "row",
-    alignItems: "center",
-    flexWrap: "wrap",
+    alignItems: "flex-start",
+    justifyContent: "space-between",
     gap: 8,
+  },
+  expenseLeftGroup: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
+  expenseRightGroup: {
+    alignItems: "flex-end",
+    gap: 2,
   },
   // カテゴリの色付きピル（web の ColorBadge と同形: 色地・白文字・rounded-full）。
   categoryBadge: {
