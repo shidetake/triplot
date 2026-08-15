@@ -56,6 +56,17 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
+      {/* 取り込み下書きの旅行割当は受信箱からの router.push ドリルイン
+          （旅行編集→カテゴリ管理と同じ兄弟ルートパターン）。 */}
+      <Stack.Screen
+        name="trips/inbox-pick-trip"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
       <Stack.Screen
         name="trips/settings"
         options={{
