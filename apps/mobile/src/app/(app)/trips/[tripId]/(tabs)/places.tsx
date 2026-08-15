@@ -403,10 +403,8 @@ export default function PlacesTab() {
   // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
   // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
   const [showDismissed, setShowDismissed] = useState(false);
-  // フィルタの選択肢シート。@gorhom の FormSheet ではなく他の一覧/編集フォーム
-  // と同じ native formSheet（ScreenStackItem）にする＝native の摺りガラス
-  // 質感・グラバー位置がその2つと揃う（実機フィードバック: FormSheet だと
-  // 透明感が無く、ヘッダーの上余白も他と食い違って見えていた）。
+  // フィルタの選択肢シート。他の一覧/編集フォームと同じ native formSheet
+  // （ScreenStackItem）＝native の摺りガラス質感・グラバー位置がその2つと揃う。
   const [filterOpen, setFilterOpen] = useState(false);
   // 場所ピンのアイコンピッカー（place-form.tsx の「＋」から開く）。編集
   // フォームの中にネストせず ScreenStack 直下の兄弟 ScreenStackItem にする
@@ -1687,9 +1685,9 @@ export default function PlacesTab() {
           フォームはこの上に native の formSheet として重ねる。
           sheetLargestUndimmedDetentIndex="last" で全 detent で背後の地図が
           暗くならず操作できる（本家 Apple/Google マップの場所カードと同じ）。
-          @gorhom の BottomSheet/FormSheet を react-native-screens の
-          ScreenStack/ScreenStackItem に置換。単一コンポーネントのままなので
-          mapRef・state・ハンドラは従来どおり共有できる（共有ストア不要）。 */}
+          シートは react-native-screens の ScreenStack/ScreenStackItem。
+          単一コンポーネントのままなので mapRef・state・ハンドラは
+          そのまま共有できる（共有ストア不要）。 */}
       <ScreenStackItem
         screenId="places-map"
         activityState={2}
@@ -2361,8 +2359,7 @@ export default function PlacesTab() {
       {/* 追加/編集フォーム＝一覧の上にさらに重ねる native formSheet。
           sheetLargestUndimmedDetentIndex="last" で背後の地図（どのピンの話かの
           文脈・仮ピン位置）を暗くせず見せる。本家 Google/Apple マップの場所
-          カードと同じ。キーボード回避は native の formSheet が自動で行う
-          （@gorhom 時代の keyboardBehavior="extend" 相当の手当ては不要）。 */}
+          カードと同じ。キーボード回避は native の formSheet が自動で行う。 */}
       {formOpen && (
         <ScreenStackItem
           screenId="places-form"
@@ -2439,9 +2436,7 @@ export default function PlacesTab() {
         </ScreenStackItem>
       )}
       {/* 場所フィルタの選択肢（エリア/日にち）。一覧/編集フォームと同じ native
-          formSheet にする＝グラバー位置・摺りガラス質感がその2つと揃う
-          （実機フィードバック: 以前使っていた @gorhom の FormSheet は透明感が
-          無く、ヘッダー上余白も他と食い違って見えていた）。 */}
+          formSheet ＝グラバー位置・摺りガラス質感がその2つと揃う。 */}
       {filterOpen && (
         <ScreenStackItem
           screenId="places-filter"

@@ -33,16 +33,10 @@ export default function AppLayout() {
       <Stack.Screen name="trips/[tripId]" options={{ title: "" }} />
       {/* 取り込み・設定・フィードバック・旅行作成は native の formSheet
           ルート（react-native-screens の presentation: "formSheet"）。
-          以前は @gorhom ベースの FormSheet に統一していたが、OS 標準の
-          質感（キーボード対応込み）に寄せる方針転換によりこちらへ移行した
-          （docs/architecture.md 相当の設計判断はプランに記載）。
-          旅行詳細（旅行編集・カテゴリ管理・エクスポート・場所フォーム等）も
-          既にこちらへ移行済み（[tripId]/_layout.tsx 参照）。@gorhom ベースの
-          FormSheet コンポーネント（components/form-sheet.tsx）が残るのは
-          TODO タブの優先度ピッカー1箇所だけ（ActionSheetIOS がアイコン付き
-          行を出せないための例外。タブ画面に native の ScreenStack を
-          入れ子にする移行はタブバー/戻るジェスチャーへの影響を実機で
-          検証してからにしたい、という理由でまだ残している）。
+          アプリ内のシートは全てこの native formSheet に統一されている
+          （OS 標準の質感＝キーボード対応込みに寄せる方針。旅行詳細は
+          [tripId]/_layout.tsx、タブ画面内のシートは places.tsx / todos.tsx の
+          ScreenStack + ScreenStackItem 参照）。
           sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
           （旧20pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
           半径が噛み合わず本家と違う丸みに見えるため、OS のオート計算に任せる
@@ -77,10 +71,9 @@ export default function AppLayout() {
         }}
       />
       {/* フィードバック・このアプリについて・OSSライセンスは設定からの
-          ドリルイン（router.push）。native-stack の push は @gorhom の
-          stackBehavior="push" と同じ「前を裏に残して上に重ねる」挙動を
-          素で持つ。ライセンス一覧はこのアプリについてからのさらに1段
-          ドリルイン。 */}
+          ドリルイン（router.push）。native-stack の push は「前を裏に残して
+          上に重ねる」挙動を素で持つ。ライセンス一覧はこのアプリについてからの
+          さらに1段ドリルイン。 */}
       <Stack.Screen
         name="trips/feedback"
         options={{

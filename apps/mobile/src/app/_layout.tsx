@@ -1,4 +1,3 @@
-import { BottomSheetModalProvider } from "@gorhom/bottom-sheet";
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
@@ -25,8 +24,7 @@ export default function RootLayout() {
       >
         <SessionProvider>
           <AppQueryProvider>
-            <BottomSheetModalProvider>
-              <ThemeProvider value={navTheme}>
+            <ThemeProvider value={navTheme}>
               <Stack>
                 <Stack.Screen
                   name="sign-in"
@@ -39,8 +37,7 @@ export default function RootLayout() {
                 />
               </Stack>
               <Toaster />
-              </ThemeProvider>
-            </BottomSheetModalProvider>
+            </ThemeProvider>
           </AppQueryProvider>
         </SessionProvider>
       </IntlProvider>

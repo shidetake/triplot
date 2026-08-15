@@ -17,9 +17,8 @@ import { useTheme } from "@/lib/theme";
 // 足りない: 受信箱・旅行編集等は react-native-screens の native-stack
 // presentation:"formSheet" で開く別の view controller であり、ルート直下の
 // 兄弟 View はその中には実機で描画されない（シミュレータでは偶然表に出る
-// ことがあるが、実機 TestFlight では出ない＝実機フィードバックで判明。
-// @gorhom/bottom-sheet ベースの独自シートとは別の仕組みなので、そちらの
-// 対策は効かない）。そのため toast() を使う formSheet 画面は、その画面
+// ことがあるが、実機 TestFlight では出ない＝実機フィードバックで判明）。
+// そのため toast() を使う formSheet 画面は、その画面
 // 自身の return 内にも直接 <Toaster /> を置く（apps/mobile/src/app/(app)/
 // trips/inbox.tsx, .../[tripId]/edit.tsx 参照）。画面が有効な間だけそちらの
 // listener がスタックの最後尾に積まれ、toast() はスタックの末尾（＝一番

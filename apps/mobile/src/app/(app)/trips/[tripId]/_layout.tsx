@@ -19,12 +19,11 @@ import { useTripId } from "@/lib/useTripId";
 // フォームは native の formSheet ルート（presentation: "formSheet"）。論理的
 // にはドリルイン（編集→カテゴリ/エクスポート、エクスポート→カレンダー）だが、
 // 実装上は互いに兄弟ルートとして並べ、router.push で潜る（native-stack の
-// push が @gorhom の stackBehavior="push" と同じ「前を裏に残して上に重ねる」
-// 挙動を素で持つ）。場所フォーム（地図の文脈を残す必要がある）は同じ
-// (tabs)/places.tsx 内で react-native-screens の ScreenStack/ScreenStackItem
-// を直接使う別パターン（ルート遷移せずその場で出す。地図の状態を保つため）。
-// @gorhom ベースの FormSheet が残るのは (tabs)/todos.tsx の優先度ピッカー
-// 1箇所だけ（理由は (app)/_layout.tsx 参照）。
+// push が「前を裏に残して上に重ねる」挙動を素で持つ）。タブ画面内から出す
+// シート（場所フォーム・TODO の優先度ピッカー）は同じ (tabs)/places.tsx /
+// (tabs)/todos.tsx 内で react-native-screens の ScreenStack/ScreenStackItem を
+// 直接使う別パターン（ルート遷移せずその場で出す。地図やスクロール位置等の
+// 画面状態を保つため）。
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);

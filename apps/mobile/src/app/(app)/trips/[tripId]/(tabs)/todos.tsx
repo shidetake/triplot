@@ -1,5 +1,5 @@
 import { useMutation } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   Alert,
   Image,
@@ -11,6 +11,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import { useTranslations } from "use-intl";
 
 import { avatarStyle, firstChar } from "@triplot/shared/memberColors";
@@ -25,7 +26,6 @@ import { sortTodos } from "@triplot/shared/todoSort";
 import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
-import { FormSheet, type FormSheetRef } from "@/components/form-sheet";
 import { QueryErrorView } from "@/components/query-error-view";
 import { SheetTitle } from "@/components/sheet-title";
 import {
@@ -73,10 +73,23 @@ type MemberLite = {
 export default function TodosTab() {
   const tripId = useTripId();
   const t = useTranslations();
+  const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { data, me, userId, loadError, refetch, isRefetching } =
     useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
+
+  // 優先度ピッカーは「高/中/低」から選ぶシート（web のドロップダウンと同じ
+  // アイコン＋ラベル＋選択中チェックの行。ActionSheetIOS はテキストのみで
+  // アイコンを出せないため独自のシートにする）。実装はアプリ内の他のシートと
+  // 同じ native formSheet（ScreenStackItem）＝場所タブと同じく、タブ画面の
+  // 中に ScreenStack を入れ子にするパターン（places.tsx が先例）。
+  // 2つの TodoSection から共通で開くので、状態はここで持って
+  // ScreenStack 直下の兄弟 ScreenStackItem として1つだけ描画する。
+  const [priorityPick, setPriorityPick] = useState<{
+    current: TodoPriority;
+    onPick: (p: TodoPriority) => void;
+  } | null>(null);
 
   if (loadError) {
     return (
@@ -89,6 +102,12 @@ export default function TodosTab() {
   }
   if (!data?.trip || !me) return null;
 
+  const priorityLabel: Record<TodoPriority, string> = {
+    high: t("todo.priorityHigh"),
+    medium: t("todo.priorityMedium"),
+    low: t("todo.priorityLow"),
+  };
+
   const todos = deriveTodos(data.todosRaw, me.id);
   const members: MemberLite[] = (data.members ?? []).map((m) => ({
     id: m.id,
@@ -97,39 +116,100 @@ export default function TodosTab() {
     avatarUrl: m.users?.avatar_url ?? null,
   }));
   return (
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      // 現地セクションの追加行など画面下方の入力がソフトウェアキーボードに
-      // 隠れないよう、キーボード表示時に下インセットを足す（iOS 標準挙動）。
-      automaticallyAdjustKeyboardInsets
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-      }
-    >
-      {/* タブ自体が「TODO」なので画面内見出しは重複＝出さない。準備TODOも
-          タブ表示では常に開いて出す（旅行開始後に畳むのは web の広い画面だけ）。 */}
-      <TodoSection
-        tripId={tripId}
-        kind="prep"
-        title={t("tripDetail.todoPrep")}
-        defaultCollapsed={false}
-        todos={todos.filter((x) => x.kind === "prep")}
-        members={members}
-        myMemberId={me.id}
-        userId={userId!}
-      />
-      <TodoSection
-        tripId={tripId}
-        kind="onsite"
-        title={t("tripDetail.todoOnsite")}
-        defaultCollapsed={false}
-        todos={todos.filter((x) => x.kind === "onsite")}
-        members={members}
-        myMemberId={me.id}
-        userId={userId!}
-      />
-    </ScrollView>
+    <ScreenStack style={StyleSheet.absoluteFill}>
+      <ScreenStackItem
+        screenId="todos-list"
+        activityState={2}
+        style={StyleSheet.absoluteFill}
+        headerConfig={{ hidden: true }}
+      >
+        <ScrollView
+          style={styles.screen}
+          contentContainerStyle={styles.content}
+          // 現地セクションの追加行など画面下方の入力がソフトウェアキーボードに
+          // 隠れないよう、キーボード表示時に下インセットを足す（iOS 標準挙動）。
+          automaticallyAdjustKeyboardInsets
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {/* タブ自体が「TODO」なので画面内見出しは重複＝出さない。準備TODOも
+              タブ表示では常に開いて出す（旅行開始後に畳むのは web の広い画面だけ）。 */}
+          <TodoSection
+            tripId={tripId}
+            kind="prep"
+            title={t("tripDetail.todoPrep")}
+            defaultCollapsed={false}
+            todos={todos.filter((x) => x.kind === "prep")}
+            members={members}
+            myMemberId={me.id}
+            userId={userId!}
+            onPickPriority={(current, onPick) =>
+              setPriorityPick({ current, onPick })
+            }
+          />
+          <TodoSection
+            tripId={tripId}
+            kind="onsite"
+            title={t("tripDetail.todoOnsite")}
+            defaultCollapsed={false}
+            todos={todos.filter((x) => x.kind === "onsite")}
+            members={members}
+            myMemberId={me.id}
+            userId={userId!}
+            onPickPriority={(current, onPick) =>
+              setPriorityPick({ current, onPick })
+            }
+          />
+        </ScrollView>
+      </ScreenStackItem>
+
+      {priorityPick && (
+        <ScreenStackItem
+          screenId="todos-priority"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setPriorityPick(null)}
+        >
+          <ScrollView contentContainerStyle={styles.sheetScroll}>
+            <SheetTitle>{t("todo.priorityTitle")}</SheetTitle>
+            {PRIORITY_ORDER.map((p) => {
+              const selected = priorityPick.current === p;
+              return (
+                <Pressable
+                  key={p}
+                  onPress={() => {
+                    priorityPick.onPick(p);
+                    setPriorityPick(null);
+                  }}
+                  accessibilityLabel={priorityLabel[p]}
+                  style={[
+                    styles.priorityRow,
+                    selected && styles.priorityRowSelected,
+                  ]}
+                >
+                  <PriorityIcon priority={p} />
+                  <Text
+                    style={[
+                      styles.priorityRowLabel,
+                      selected && styles.priorityRowLabelSelected,
+                    ]}
+                  >
+                    {priorityLabel[p]}
+                  </Text>
+                  {selected && (
+                    <CheckIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </ScreenStackItem>
+      )}
+    </ScreenStack>
   );
 }
 
@@ -142,6 +222,7 @@ function TodoSection({
   members,
   myMemberId,
   userId,
+  onPickPriority,
 }: {
   tripId: string;
   kind: TodoKind;
@@ -151,6 +232,11 @@ function TodoSection({
   members: MemberLite[];
   myMemberId: string;
   userId: string;
+  // 優先度シートは親（TodosTab）が ScreenStack 直下に1つだけ持つ。
+  onPickPriority: (
+    current: TodoPriority,
+    onPick: (p: TodoPriority) => void,
+  ) => void;
 }) {
   const t = useTranslations("todo");
   const theme = useTheme();
@@ -164,21 +250,7 @@ function TodoSection({
     low: t("priorityLow"),
   };
 
-  // 優先度はボトムシートで「高/中/低」から選ぶ（web のドロップダウンと同じ
-  // アイコン＋ラベル＋選択中チェックの行。ActionSheetIOS はテキストのみで
-  // アイコンを出せないため、他のモーダルと質感を揃えた FormSheet にする）。
-  const prioritySheetRef = useRef<FormSheetRef>(null);
-  const [priorityPick, setPriorityPick] = useState<{
-    current: TodoPriority;
-    onPick: (p: TodoPriority) => void;
-  } | null>(null);
-  const pickPriority = (
-    current: TodoPriority,
-    onPick: (p: TodoPriority) => void,
-  ) => {
-    setPriorityPick({ current, onPick });
-    prioritySheetRef.current?.present();
-  };
+  const pickPriority = onPickPriority;
 
   // 折りたたみ既定はフェーズ由来（旅行開始後は準備を畳む。web と同じ）。
   // web は localStorage に手動開閉を覚えるが、RN は M3 では画面内状態のみ。
@@ -448,30 +520,6 @@ function TodoSection({
         </>
       )}
 
-      <FormSheet ref={prioritySheetRef} sizeToContent>
-        {(dismiss) => (
-          <View>
-            <SheetTitle>{t("priorityTitle")}</SheetTitle>
-            {PRIORITY_ORDER.map((p) => (
-              <Pressable
-                key={p}
-                onPress={() => {
-                  priorityPick?.onPick(p);
-                  dismiss();
-                }}
-                accessibilityLabel={priorityLabel[p]}
-                style={styles.priorityRow}
-              >
-                <PriorityIcon priority={p} />
-                <Text style={styles.priorityRowLabel}>{priorityLabel[p]}</Text>
-                {priorityPick?.current === p && (
-                  <CheckIcon size={16} color={theme.mutedForeground} />
-                )}
-              </Pressable>
-            ))}
-          </View>
-        )}
-      </FormSheet>
     </View>
   );
 }
@@ -559,7 +607,8 @@ const makeStyles = (t: Theme) =>
   },
   // いいね数の固定幅スロット（2桁まで）。空でも幅を保ち ♥ の位置を固定する
   likeCount: { width: 16, fontSize: 11, color: t.mutedForeground },
-  // 優先度選択シートの行（copy-source-picker の行と同じ形）
+  sheetScroll: { paddingBottom: 24 },
+  // 優先度選択シートの行（場所タブのフィルタシートの行と同じ形）
   priorityRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -569,7 +618,9 @@ const makeStyles = (t: Theme) =>
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.fgAlpha(0.08),
   },
+  priorityRowSelected: { backgroundColor: t.secondary },
   priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+  priorityRowLabelSelected: { fontWeight: "600" },
   avatar: {
     width: 18,
     height: 18,
