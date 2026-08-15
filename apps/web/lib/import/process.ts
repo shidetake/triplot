@@ -394,10 +394,13 @@ async function prefetchFlights(
       try {
         const biasCenter = await fetchBiasCenterForDate(supabase, tripId, ev.startDate);
         if (biasCenter) {
-          const resolved = await resolveNamedPlace(ev.title, ev.location, {
-            apiKey: placesApiKey,
-            biasCenter,
-          });
+          const opts = { apiKey: placesApiKey, biasCenter };
+          // レシート由来の仮予定は title が店名でなく「夕食」等の汎用語（プロンプト
+          // 参照）なので、title 検索で見つからなければ location（店名/住所が入る）
+          // でも試す。通常予定は title=店名で1回目に決まるので無駄打ちは失敗時のみ。
+          const resolved =
+            (await resolveNamedPlace(ev.title, ev.location, opts)) ??
+            (ev.location ? await resolveNamedPlace(ev.location, ev.title, opts) : null);
           if (resolved) {
             result.push({ ...ev, resolvedNamedPlace: resolved });
             continue;
