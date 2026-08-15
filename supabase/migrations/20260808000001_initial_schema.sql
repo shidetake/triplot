@@ -2310,6 +2310,15 @@ CREATE TABLE IF NOT EXISTS "public"."inbound_emails" (
 ALTER TABLE "public"."inbound_emails" OWNER TO "postgres";
 
 
+-- 旅行詳細画面がメール取り込みの新着を即座に反映するための Realtime 配信。
+-- trip_id を直接持つのはこのテーブルだけ（inbound_drafts は email_id 経由の
+-- JOIN が要り、postgres_changes の filter では絞れない）ので、ここへの
+-- INSERT/UPDATE（新規到着・旅行への割り当て）をトリガーにクライアント側で
+-- 下書き一覧を再取得する。RLS の SELECT ポリシー（inbound_emails_select_own）
+-- がそのまま Realtime にも効くので、他ユーザーの行は流れない。
+ALTER PUBLICATION "supabase_realtime" ADD TABLE "public"."inbound_emails";
+
+
 CREATE TABLE IF NOT EXISTS "public"."places" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "trip_id" "text" NOT NULL,

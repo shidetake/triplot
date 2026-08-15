@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
 import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
@@ -36,13 +36,35 @@ export function useTripDetail(tripId: string) {
 // 置くので useInvalidateTrip がまとめて再取得する（確定/破棄後も1本で済む）。
 //
 // メール取り込みの抽出はサーバー側の非同期処理（webhook/queue）で完了するため、
-// クライアントの mutation に紐づく invalidate では拾えない。受信箱画面
-// （["inbox", userId]）に新着が出ても、旅行詳細を開いたままだと既定の
-// staleTime（30秒, apps/mobile/src/lib/query.tsx）が切れて再フォーカス等が
-// 起きるまで反映されず、体感のタイムラグがあった（実機フィードバック）。
-// このクエリだけ軽量ポーリングで追従させる（refetchInterval は既定で
-// バックグラウンド中は止まる＝focusManager 経由でバッテリー消費を抑える）。
+// クライアントの mutation に紐づく invalidate では拾えない。Supabase Realtime
+// で inbound_emails（trip_id を直接持つテーブル。inbound_drafts は email_id
+// 経由の JOIN が要り filter で絞れないため代わりにこちらを使う）の
+// INSERT/UPDATE を購読し、この旅行宛の行が動くたび即座に再取得する
+// （supabase/migrations の ALTER PUBLICATION 参照。RLS が効くので他ユーザーの
+// 行は流れない）。refetchInterval は Realtime の接続が切れた時の保険として
+// 残す（既定でバックグラウンド中は止まる＝focusManager 経由）。
 export function useTripDrafts(tripId: string) {
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!tripId) return;
+    const channel = supabase
+      .channel(`inbound_emails:trip:${tripId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "inbound_emails",
+          filter: `trip_id=eq.${tripId}`,
+        },
+        () => void qc.invalidateQueries({ queryKey: ["trip", tripId, "drafts"] }),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [tripId, qc]);
+
   return useQuery({
     queryKey: ["trip", tripId, "drafts"],
     queryFn: () => fetchTripPendingDrafts(supabase, tripId),
