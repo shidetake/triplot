@@ -46,6 +46,25 @@ const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
 const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
 const MIN_BLOCK = 18; // ブロック最低高さ
 
+// ブロックの高さから、時刻＋（下書きバッジ）＋タイトル1行を確保した「残り」で
+// 場所/メモに回せる行数を返す。既定の HOUR_PX=30 だと1時間の予定でも
+// 時刻(fontSize9)+タイトル(fontSize11)だけで既に高さの大半を使い切り、
+// 場所（fontSize9）を無条件で描くと場所がタイトルを押しのけて主役に見えて
+// しまっていた（実機フィードバック: 短い予定でタイトルがほぼ見えず、場所の
+// 店名だけが目立って見えた）。タイトルは1行ぶん必ず確保し、それでも余りが
+// 無ければ場所・メモは一切出さない（タイトルを削ってまで場所を見せない）。
+// 値は各 style のフォントサイズからの概算。
+const TIME_LINE_H = 12; // eventTime（fontSize 9）
+const TITLE_LINE_H = 14; // eventTitle（fontSize 11）
+const EXTRA_LINE_H = 12; // eventPlace/note（fontSize 9）
+const DRAFT_BADGE_LINE_H = 13; // draftBadge（独立行、fontSize 9 + 余白）
+function maxExtraLines(height: number, isDraft: boolean): number {
+  const reserved =
+    2 + TIME_LINE_H + (isDraft ? DRAFT_BADGE_LINE_H : 0) + TITLE_LINE_H; // 2 = eventBlock の paddingVertical(1)×2
+  const remaining = height - reserved;
+  return remaining < EXTRA_LINE_H ? 0 : Math.floor(remaining / EXTRA_LINE_H);
+}
+
 // 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
 // 引いた残りに約4.5日分入る値（(393-44)/80 ≈ 4.4日）。狭い端末（iPhone mini
 // 等）で窮屈すぎるかは実機確認が要るが、まずはこの px 値で固定する。
@@ -620,26 +639,24 @@ export function WeekCalendar({
                       {p.event.title}
                     </Text>
                     {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
-                        1行に収まらなくても改行で収まりそうなら2行まで見せる
-                        （タイトルと同じ扱い）。それでも入らない/ブロックが低い
-                        時は eventBlock の overflow:hidden が下から自然に
-                        切り詰める（本家 Google マップの週表示と同じ「省略表示」）。 */}
-                    {placeName(ev.startPlaceId) && (
-                      <Text
-                        style={[styles.eventPlace, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        {placeName(ev.startPlaceId)}
-                      </Text>
-                    )}
-                    {ev.note && (
-                      <Text
-                        style={[styles.eventPlace, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        {ev.note}
-                      </Text>
-                    )}
+                        タイトルの表示分を確保してなお余りがある時だけ出す
+                        （maxExtraLines 参照。タイトルを押しのけて場所が
+                        主役に見えることを防ぐ）。 */}
+                    {(() => {
+                      const extra = maxExtraLines(height, Boolean(ev.isDraft));
+                      const extras = [placeName(ev.startPlaceId), ev.note]
+                        .filter((x): x is string => Boolean(x))
+                        .slice(0, extra);
+                      return extras.map((text, i) => (
+                        <Text
+                          key={i}
+                          style={[styles.eventPlace, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          {text}
+                        </Text>
+                      ));
+                    })()}
                   </Pressable>
                 );
               })}
@@ -732,22 +749,26 @@ export function WeekCalendar({
                         <ReservationMark ev={ev} textColor={col.text} />
                         {t.event.title}
                       </Text>
-                      {pn && (
-                        <Text
-                          style={[styles.eventPlace, { color: col.text }]}
-                          numberOfLines={2}
-                        >
-                          {pn}
-                        </Text>
-                      )}
-                      {ev.note && (
-                        <Text
-                          style={[styles.eventPlace, { color: col.text }]}
-                          numberOfLines={2}
-                        >
-                          {ev.note}
-                        </Text>
-                      )}
+                      {/* タイトルを押しのけないよう、余りがある時だけ場所/メモを出す
+                          （timed ブロックと同じ maxExtraLines）。 */}
+                      {(() => {
+                        const extra = maxExtraLines(
+                          part.height,
+                          Boolean(ev.isDraft),
+                        );
+                        const extras = [pn, ev.note]
+                          .filter((x): x is string => Boolean(x))
+                          .slice(0, extra);
+                        return extras.map((text, i) => (
+                          <Text
+                            key={i}
+                            style={[styles.eventPlace, { color: col.text }]}
+                            numberOfLines={2}
+                          >
+                            {text}
+                          </Text>
+                        ));
+                      })()}
                     </Pressable>
                   );
                 });
