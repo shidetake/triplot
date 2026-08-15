@@ -1,7 +1,7 @@
 import { ScrollView, View } from "react-native";
 
 import { EditTripSheet } from "@/components/edit-trip-sheet";
-import { Toaster, useToastBottomClearance } from "@/components/toast";
+import { Toaster } from "@/components/toast";
 import { useTripId } from "@/lib/useTripId";
 
 // 旅行編集（native formSheet ルート）。カテゴリ管理・エクスポートへは
@@ -11,11 +11,10 @@ import { useTripId } from "@/lib/useTripId";
 // （ルートの Toaster は native-stack の formSheet 画面には実機で届かない）。
 export default function EditTripRoute() {
   const tripId = useTripId();
-  const toastClearance = useToastBottomClearance();
   return (
     <View>
       <ScrollView
-        contentContainerStyle={{ paddingBottom: toastClearance }}
+        contentContainerStyle={{ paddingBottom: 24 }}
         keyboardShouldPersistTaps="handled"
       >
         <EditTripSheet tripId={tripId} />
