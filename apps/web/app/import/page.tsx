@@ -8,6 +8,7 @@ import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
+import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
 import { buildImportAddress } from "@/lib/import/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/import/importConfig";
@@ -59,7 +60,10 @@ export default async function ImportPage() {
 
   // 転送先アドレス（per-user・固定。無ければ発行済み）。
   const importAddress = importToken ? buildImportAddress(importToken) : null;
-  const tripTitle = new Map(trips.map((trip) => [trip.id, trip.title]));
+  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする
+  // （create-trip のコピー元選択と同じ関数。実機フィードバック: 同名の旅行が
+  // 複数あると割当先の選択でどちらか分からなくなっていた）。
+  const tripTitle = buildCopySourceLabels(trips);
 
   // 各メールの未確定の下書き（作業状態）をメール単位にまとめる。
   const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
@@ -220,7 +224,7 @@ export default async function ImportPage() {
                         <option value="">{t("selectTrip")}</option>
                         {trips.map((trip) => (
                           <option key={trip.id} value={trip.id}>
-                            {trip.title}
+                            {tripTitle.get(trip.id) ?? trip.title}
                           </option>
                         ))}
                       </select>

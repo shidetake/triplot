@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { assignInboundEmailTrip } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 
@@ -32,6 +33,9 @@ export default function InboxPickTripRoute() {
   });
   const trips = data?.trips ?? [];
   const currentTripId = data?.emails?.find((e) => e.id === emailId)?.trip_id;
+  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする
+  // （create-trip のコピー元選択と同じ関数）。
+  const tripLabels = buildCopySourceLabels(trips);
 
   const pick = async (tripId: string) => {
     const r = await assignInboundEmailTrip(supabase, emailId, tripId);
@@ -57,7 +61,7 @@ export default function InboxPickTripRoute() {
             <Text
               style={[styles.rowLabel, selected && styles.rowLabelSelected]}
             >
-              {tr.title}
+              {tripLabels.get(tr.id) ?? tr.title}
             </Text>
             {selected && (
               <CheckIcon size={16} color={theme.mutedForeground} />

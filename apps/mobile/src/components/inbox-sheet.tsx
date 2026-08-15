@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { dismissInboundEmail } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import {
@@ -44,6 +45,10 @@ export function InboxSheet() {
     : null;
   const trips = data?.trips ?? [];
   const emails = data?.emails ?? [];
+  // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする
+  // （create-trip のコピー元選択と同じ関数。実機フィードバック: 同名の旅行が
+  // 複数あると割当先の選択でどちらか分からなくなっていた）。
+  const tripLabels = buildCopySourceLabels(trips);
 
   // メール単位に下書きをまとめて要約（web の rows 組み立ての簡略版）。
   const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
@@ -197,8 +202,11 @@ export function InboxSheet() {
                       styles.assignLabel,
                       !assigned && styles.assignLabelWarn,
                     ]}
+                    numberOfLines={1}
                   >
-                    {assigned ? assigned.title : t("selectTripPrompt")}
+                    {assigned
+                      ? (tripLabels.get(assigned.id) ?? assigned.title)
+                      : t("selectTripPrompt")}
                   </Text>
                   <ChevronIcon
                     size={14}
@@ -297,6 +305,7 @@ const makeStyles = (t: Theme) =>
   assignButton: {
     flexDirection: "row",
     alignItems: "center",
+    flexShrink: 1,
     gap: 4,
     borderRadius: 6,
     paddingHorizontal: 10,
@@ -304,7 +313,12 @@ const makeStyles = (t: Theme) =>
     backgroundColor: t.fgAlpha(0.05),
   },
   assignButtonWarn: { backgroundColor: t.warnChipBg },
-  assignLabel: { fontSize: 12, fontWeight: "500", color: t.foreground },
+  assignLabel: {
+    flexShrink: 1,
+    fontSize: 12,
+    fontWeight: "500",
+    color: t.foreground,
+  },
   assignLabelWarn: { color: t.warnAccent },
   dismissLabel: { fontSize: 12, color: t.mutedForeground },
   usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
