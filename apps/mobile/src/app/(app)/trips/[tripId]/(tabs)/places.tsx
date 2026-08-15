@@ -68,7 +68,11 @@ import {
   type PlaceCandidate,
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
-import { setPlaceLocation } from "@triplot/shared/data/places";
+import {
+  dismissPlaceLocation,
+  resolvePlaceToGoogle,
+  setPlaceLocation,
+} from "@triplot/shared/data/places";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
@@ -207,6 +211,7 @@ type SavedPlaceRowProps = {
   onStartLocate: () => void;
   onCancelLocate: () => void;
   onPreviewOrEdit: () => void;
+  onDismissLocation: () => void;
 };
 
 // 保存済み場所の一覧行。FlatList の renderItem から呼ぶ。useAnimatedStyle を
@@ -228,8 +233,13 @@ function SavedPlaceRow({
   onStartLocate,
   onCancelLocate,
   onPreviewOrEdit,
+  onDismissLocation,
 }: SavedPlaceRowProps) {
+  // タップ時に「位置を指定」モードへ入れるかどうかは座標の有無だけで決める
+  // （破棄済みでも地図に登録し直せるように、行タップ自体は従来どおり）。
+  // バッジの表示・非表示だけ location_dismissed で分ける。
   const unmapped = item.lat == null;
+  const showUnmappedBadge = unmapped && !item.location_dismissed;
 
   // theme.fgAlpha は普通の JS 関数（worklet ではない）。useAnimatedStyle の
   // 中から UI スレッド越しに直接呼ぶと "Tried to synchronously call a Remote
@@ -291,10 +301,19 @@ function SavedPlaceRow({
           {item.visibility === "private" && (
             <LockIcon size={16} color={theme.mutedForeground} />
           )}
-          {unmapped && (
-            <View style={styles.unmappedBadge}>
+          {showUnmappedBadge && (
+            <Pressable
+              onPress={(e) => {
+                e.stopPropagation();
+                onDismissLocation();
+              }}
+              hitSlop={8}
+              style={styles.unmappedBadge}
+              accessibilityLabel={t("dismissLocationAria")}
+            >
               <Text style={styles.unmappedBadgeText}>{t("unmapped")}</Text>
-            </View>
+              <XIcon size={12} color={theme.warnAccent} />
+            </Pressable>
           )}
         </View>
         <Text style={styles.placeMeta}>
@@ -972,6 +991,24 @@ export default function PlacesTab() {
     // 登録済みの場所なら details を引かず（課金なし）既存を開く。
     const saved = findSavedByGoogleId(p.placeId);
     if (saved) {
+      if (
+        saved.google_place_id &&
+        saved.lat != null &&
+        saved.lng != null &&
+        resolveLocatingTo({
+          googlePlaceId: saved.google_place_id,
+          name: saved.name,
+          lat: saved.lat,
+          lng: saved.lng,
+          formattedAddress: saved.formatted_address,
+          region: saved.region,
+          locality: saved.locality,
+          icon: saved.icon,
+        })
+      ) {
+        setQuery("");
+        return;
+      }
       setQuery("");
       openEditPlace(saved);
       return;
@@ -984,6 +1021,21 @@ export default function PlacesTab() {
       });
       sessionTokenRef.current = null; // セッション終了
       if (!c) return;
+      if (
+        resolveLocatingTo({
+          googlePlaceId: c.placeId,
+          name: c.name,
+          lat: c.lat,
+          lng: c.lng,
+          formattedAddress: c.formattedAddress,
+          region: c.region,
+          locality: c.locality,
+          icon: null,
+        })
+      ) {
+        setQuery("");
+        return;
+      }
       setCandidates([c]);
       openAddCandidate(c);
     } catch (e) {
@@ -1157,6 +1209,23 @@ export default function PlacesTab() {
     // 登録済みの POI なら details を引かず（課金なし）既存を開く。
     const saved = findSavedByGoogleId(placeId);
     if (saved) {
+      if (
+        saved.google_place_id &&
+        saved.lat != null &&
+        saved.lng != null &&
+        resolveLocatingTo({
+          googlePlaceId: saved.google_place_id,
+          name: saved.name,
+          lat: saved.lat,
+          lng: saved.lng,
+          formattedAddress: saved.formatted_address,
+          region: saved.region,
+          locality: saved.locality,
+          icon: saved.icon,
+        })
+      ) {
+        return;
+      }
       openEditPlace(saved);
       return;
     }
@@ -1166,11 +1235,22 @@ export default function PlacesTab() {
         iosBundleId: BUNDLE_ID,
       });
       if (c) {
-        openAddCandidate({
-          ...c,
-          lat: coord.latitude,
-          lng: coord.longitude,
-        });
+        const withCoord = { ...c, lat: coord.latitude, lng: coord.longitude };
+        if (
+          resolveLocatingTo({
+            googlePlaceId: withCoord.placeId,
+            name: withCoord.name,
+            lat: withCoord.lat,
+            lng: withCoord.lng,
+            formattedAddress: withCoord.formattedAddress,
+            region: withCoord.region,
+            locality: withCoord.locality,
+            icon: null,
+          })
+        ) {
+          return;
+        }
+        openAddCandidate(withCoord);
       }
     } catch (e) {
       Alert.alert(t("searchFailed"), String(e));
@@ -1399,7 +1479,38 @@ export default function PlacesTab() {
   const previewOrAddCandidate = (c: PlaceCandidate) => {
     const saved = findSavedByGoogleId(c.placeId);
     if (saved) {
+      if (
+        saved.google_place_id &&
+        saved.lat != null &&
+        saved.lng != null &&
+        resolveLocatingTo({
+          googlePlaceId: saved.google_place_id,
+          name: saved.name,
+          lat: saved.lat,
+          lng: saved.lng,
+          formattedAddress: saved.formatted_address,
+          region: saved.region,
+          locality: saved.locality,
+          icon: saved.icon,
+        })
+      ) {
+        return;
+      }
       previewOrEditPlace(saved);
+      return;
+    }
+    if (
+      resolveLocatingTo({
+        googlePlaceId: c.placeId,
+        name: c.name,
+        lat: c.lat,
+        lng: c.lng,
+        formattedAddress: c.formattedAddress,
+        region: c.region,
+        locality: c.locality,
+        icon: null,
+      })
+    ) {
       return;
     }
     openAddCandidate(c);
@@ -1450,6 +1561,75 @@ export default function PlacesTab() {
         },
       ],
     );
+  };
+
+  // 「位置を指定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
+  // 共通処理: 未確定の場所をタップ/検索で選んだ実在の Google の場所へ寄せる
+  // （タップした座標に新しいピンを作るのではなく、既にある場所を優先する）。
+  // 店名が自由入力と大きく変わっても、ユーザーが地図上/検索で明示的に選んだ
+  // 場所を採用する（予定/費用は place_id で参照しているので自動的に追従する。
+  // 既に旅行に登録済みの場所を選んだ場合は resolve_place_to_google 側で
+  // マージされる）。呼び出し元は true が返れば通常の遷移（プレビュー/追加
+  // フォームを開く等）をスキップする。
+  const resolveLocatingTo = (target: {
+    googlePlaceId: string;
+    name: string;
+    lat: number;
+    lng: number;
+    formattedAddress: string | null;
+    region: string | null;
+    locality: string | null;
+    icon: string | null;
+  }): boolean => {
+    if (!locating) return false;
+    const fromName = locating.name;
+    Alert.alert(t("resolveToTitle", { to: target.name }), fromName, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: tCommon("confirm"),
+        onPress: () => {
+          void resolvePlaceToGoogle(supabase, locating.id, {
+            googlePlaceId: target.googlePlaceId,
+            name: target.name,
+            lat: target.lat,
+            lng: target.lng,
+            formattedAddress: target.formattedAddress ?? "",
+            icon: target.icon,
+            region: target.region,
+            locality: target.locality,
+          }).then((r) => {
+            if (!r.ok) {
+              Alert.alert(r.error);
+              return;
+            }
+            setLocating(null);
+            void invalidate();
+          });
+        },
+      },
+    ]);
+    return true;
+  };
+
+  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う（実機フィードバック
+  // 参照）。座標は付けない＝あとで編集フォームの「位置を設定」からいつでも
+  // 地図に登録し直せる（一方的な通知の抑制に過ぎない）。
+  const dismissLocation = (p: PlaceRow) => {
+    Alert.alert(t("dismissLocationTitle"), t("dismissLocationBody"), [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: tCommon("confirm"),
+        onPress: () => {
+          void dismissPlaceLocation(supabase, p.id).then((r) => {
+            if (!r.ok) {
+              Alert.alert(r.error);
+              return;
+            }
+            void invalidate();
+          });
+        },
+      },
+    ]);
   };
 
   // 一覧シートの表示モード（検索結果 or 通常一覧）。ボタン/検索で開く方式なので
@@ -1596,6 +1776,26 @@ export default function PlacesTab() {
                 key={`${p.id}:${isEditing ? 1 : 0}`}
                 coordinate={{ latitude: p.lat!, longitude: p.lng! }}
                 onPress={() => {
+                  // 「位置を指定」モード中は、既存ピンを直タップしても
+                  // そのピンへ寄せる（新しいピンを別に作らない）。
+                  if (
+                    locating &&
+                    p.google_place_id &&
+                    p.lat != null &&
+                    p.lng != null &&
+                    resolveLocatingTo({
+                      googlePlaceId: p.google_place_id,
+                      name: p.name,
+                      lat: p.lat,
+                      lng: p.lng,
+                      formattedAddress: p.formatted_address,
+                      region: p.region,
+                      locality: p.locality,
+                      icon: p.icon,
+                    })
+                  ) {
+                    return;
+                  }
                   // 地図から選んだ＝一覧側もその行までスクロールして見せる。
                   scrollToSelectionRef.current = true;
                   previewOrEditPlace(p);
@@ -2135,6 +2335,7 @@ export default function PlacesTab() {
                   setPinDraft(null);
                 }}
                 onPreviewOrEdit={() => previewOrEditPlace(item)}
+                onDismissLocation={() => dismissLocation(item)}
               />
             )}
             ListEmptyComponent={
@@ -2715,6 +2916,9 @@ const makeStyles = (t: Theme) =>
   placeName: { fontSize: 15, color: t.foreground, flexShrink: 1 },
   // 「地図未登録」バッジ（amber 塗りチップ。web の bg-amber-100 text-amber-700 相当）。
   unmappedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
     borderRadius: 4,
     backgroundColor: t.warnChipBg,
     paddingHorizontal: 6,
