@@ -4,13 +4,6 @@
 
 ## 残件
 
-### 9. Apple ログイン: private relay 経由の新規アカウント作成が未検証
-Apple ログイン自体（コード側・Apple Developer 側・Supabase Dashboard 設定、実 Apple ID での
-ログイン確認）は完了済み（同一メールの既存 Google アカウントに自動で identity が統合される
-＝Supabase Auth の標準挙動。表示名・頭文字アバターは既存アカウントの値がそのまま出る）。
-- [ ] private relay（メール非公開）での新規アカウント作成パスだけ未検証（実メールでログイン
-      済みのため別 Apple ID が無いと再現できない。急ぎではない）
-
 ### 12. iOS アプリ公開
 実装（Expo/React Native、`apps/mobile`）は完了済み。残っているのは
 App Store 公開（TestFlight から本番リリースへ）。
