@@ -2,14 +2,26 @@ import { Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { getIconPath } from "@triplot/shared/placeIcons";
-import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
+import { pastelBgColor } from "@triplot/shared/memberColors";
 
 import { useTheme } from "@/lib/theme";
 
+// 未確定マーカー（ライトモード）の地色。vividColor と同じ hue で明度だけ
+// 上げた不透明色（透明度は使わない＝PlaceMarker 本体のコメント参照）。
+// hue が無い時は vividColor のフォールバック（#6b7280）を明るくした中立
+// グレーにする。
+function tentativeFillColor(hue: number | null): string {
+  if (hue == null || !Number.isFinite(hue) || hue < 0 || hue >= 360) {
+    return "#a8adb8";
+  }
+  return `hsl(${Math.round(hue)}, 55%, 68%)`;
+}
+
 // 保存済み場所のマーカー（web の place-map と同形＝色付き丸＋白縁＋白カテゴリ
-// アイコン）。確定=green(#10b981)、未確定(tentative)=作成者のメンバー色
-// （vivid）＋半透明。hue が無い未確定は中立グレー（ドット/マーカーのフォール
-// バック規約）。ダーク地図では web と同じく「パステル面＋グレー縁＋濃色アイコン」
+// アイコン）。確定=green(#10b981)、未確定(tentative)=作成者のメンバー色を
+// 明るくした不透明色（tentativeFillColor。web は同じ見た目を opacity-50 で
+// 表すが、RN は下のコメントの理由で opacity を使わない）。hue が無い未確定は
+// 中立グレー。ダーク地図では web と同じく「パステル面＋グレー縁＋濃色アイコン」
 // に反転して地図に馴染ませる。
 export function PlaceMarker({
   icon,
@@ -26,53 +38,37 @@ export function PlaceMarker({
   const bg = t.dark
     ? pastelBgColor(tentative ? creatorHue : 140)
     : tentative
-      ? (vividColor(creatorHue) ?? "#6b7280")
+      ? tentativeFillColor(creatorHue)
       : "#10b981";
   const border = t.dark ? "#6b7280" : "#fff";
   const glyph = t.dark ? "#202124" : "#fff";
   return (
-    // 影と丸クリップを同じ View に同居させると、react-native-maps が
-    // Marker を画像化する際に縁のアンチエイリアスが崩れ、密集時に縁が
-    // 黒ずんで見える（実機フィードバックで発覚）。影専用の外側 View
-    // （角丸なし）と、クリップ専用の内側 View（overflow:hidden で丸く
-    // 切り抜くだけ・影なし）に分離して、それぞれをきれいにラスタライズ
-    // させる。
+    // 影を付けない・opacity で薄めない: react-native-maps は Marker を
+    // 画像化（ビットマップ化）して地図に置くため、CSS の box-shadow や
+    // opacity と違って「重なった分だけ正しく合成される」仕組みが効かない。
+    // 影はどれだけ円の形に合わせても外側にわずかにはみ出し（実機
+    // フィードバック）、opacity は縁のアンチエイリアス部分がこのビットマップ化
+    // の過程で二重に減光合成されて縁が黒ずむ（react-native-maps の既知の
+    // 半透明ビュー合成バグ）。どちらも1個では気付かない程度でも、ピンが
+    // 密集すると重なった分だけ積み重なって黒ずんで見える。影は無くし、
+    // 未確定の「薄い」見た目は opacity ではなく最初から明るい不透明色
+    // （tentativeFillColor）で表す＝合成バグ自体を起こさせない。
     <View
       style={{
         width: size,
         height: size,
-        // 影の View にも同じ borderRadius を付ける: 付けないと影は
-        // このView自体の形＝四角の角丸ブラーで落ち、中の丸クリップより
-        // 外側にわずかに四角い影のにじみが残る。1個では気付かない程度でも、
-        // ピンが密集すると重なった分だけそのにじみが積み重なって黒ずんで
-        // 見えていた（実機フィードバック）。円と同じ丸みにして影の形自体を
-        // 円に一致させ、はみ出しをなくす。
         borderRadius: size / 2,
-        opacity: tentative ? 0.5 : 1,
-        shadowColor: "#000",
-        shadowOpacity: 0.25,
-        shadowRadius: 2,
-        shadowOffset: { width: 0, height: 1 },
-        elevation: 2,
+        borderWidth: 2,
+        borderColor: border,
+        backgroundColor: bg,
+        alignItems: "center",
+        justifyContent: "center",
+        overflow: "hidden",
       }}
     >
-      <View
-        style={{
-          width: size,
-          height: size,
-          borderRadius: size / 2,
-          borderWidth: 2,
-          borderColor: border,
-          backgroundColor: bg,
-          alignItems: "center",
-          justifyContent: "center",
-          overflow: "hidden",
-        }}
-      >
-        <Svg viewBox="0 -960 960 960" width={16} height={16}>
-          <Path d={getIconPath(icon)} fill={glyph} />
-        </Svg>
-      </View>
+      <Svg viewBox="0 -960 960 960" width={16} height={16}>
+        <Path d={getIconPath(icon)} fill={glyph} />
+      </Svg>
     </View>
   );
 }
