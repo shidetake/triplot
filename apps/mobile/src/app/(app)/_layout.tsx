@@ -36,8 +36,13 @@ export default function AppLayout() {
           以前は @gorhom ベースの FormSheet に統一していたが、OS 標準の
           質感（キーボード対応込み）に寄せる方針転換によりこちらへ移行した
           （docs/architecture.md 相当の設計判断はプランに記載）。
-          旅行詳細（旅行編集・カテゴリ管理・エクスポート・場所フォーム等）は
-          まだ @gorhom のまま＝移行はフェーズを分けて段階的に進めている。
+          旅行詳細（旅行編集・カテゴリ管理・エクスポート・場所フォーム等）も
+          既にこちらへ移行済み（[tripId]/_layout.tsx 参照）。@gorhom ベースの
+          FormSheet コンポーネント（components/form-sheet.tsx）が残るのは
+          TODO タブの優先度ピッカー1箇所だけ（ActionSheetIOS がアイコン付き
+          行を出せないための例外。タブ画面に native の ScreenStack を
+          入れ子にする移行はタブバー/戻るジェスチャーへの影響を実機で
+          検証してからにしたい、という理由でまだ残している）。
           sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
           （旧20pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
           半径が噛み合わず本家と違う丸みに見えるため、OS のオート計算に任せる

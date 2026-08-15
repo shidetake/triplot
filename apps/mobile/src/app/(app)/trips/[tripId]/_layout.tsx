@@ -15,14 +15,16 @@ import { useTripId } from "@/lib/useTripId";
 // この route のオプションを注入する（旅行名が動的なので layout 側に書けない）。
 // ネストした Stack 自身はヘッダーを出さない（二重ヘッダー防止）。
 //
-// 旅行編集・カテゴリ管理・エクスポート・カレンダーエクスポートの4枚は
-// native の formSheet ルート（presentation: "formSheet"）。論理的には
-// ドリルイン（編集→カテゴリ/エクスポート、エクスポート→カレンダー）だが、
+// 旅行編集・カテゴリ管理・エクスポート・カレンダーエクスポート・予定/費用
+// フォームは native の formSheet ルート（presentation: "formSheet"）。論理的
+// にはドリルイン（編集→カテゴリ/エクスポート、エクスポート→カレンダー）だが、
 // 実装上は互いに兄弟ルートとして並べ、router.push で潜る（native-stack の
 // push が @gorhom の stackBehavior="push" と同じ「前を裏に残して上に重ねる」
-// 挙動を素で持つ）。場所フォーム（地図の文脈を残す必要がある）だけは
-// まだ @gorhom ベースの FormSheet のまま（段階移行の途中。ui-guidelines
-// 参照）。
+// 挙動を素で持つ）。場所フォーム（地図の文脈を残す必要がある）は同じ
+// (tabs)/places.tsx 内で react-native-screens の ScreenStack/ScreenStackItem
+// を直接使う別パターン（ルート遷移せずその場で出す。地図の状態を保つため）。
+// @gorhom ベースの FormSheet が残るのは (tabs)/todos.tsx の優先度ピッカー
+// 1箇所だけ（理由は (app)/_layout.tsx 参照）。
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
