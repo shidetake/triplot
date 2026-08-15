@@ -390,17 +390,19 @@ async function prefetchFlights(
       result.push(ev);
       continue;
     }
-    if (placesApiKey && ev.title) {
+    // 場所の検索は location で行う（title は表示用の見出しでしかない。
+    // レシート由来の仮予定は title が「夕食」等の汎用語になるため、なおさら
+    // 検索語には使えない）。location が無ければ地図で探す手がかりが無いので
+    // 試さない＝自由入力のまま（title で代用検索はしない。生半可な一致で
+    // 誤った店に解決するより、素直に「解決できない」方が安全）。
+    if (placesApiKey && ev.location) {
       try {
         const biasCenter = await fetchBiasCenterForDate(supabase, tripId, ev.startDate);
         if (biasCenter) {
-          const opts = { apiKey: placesApiKey, biasCenter };
-          // レシート由来の仮予定は title が店名でなく「夕食」等の汎用語（プロンプト
-          // 参照）なので、title 検索で見つからなければ location（店名/住所が入る）
-          // でも試す。通常予定は title=店名で1回目に決まるので無駄打ちは失敗時のみ。
-          const resolved =
-            (await resolveNamedPlace(ev.title, ev.location, opts)) ??
-            (ev.location ? await resolveNamedPlace(ev.location, ev.title, opts) : null);
+          const resolved = await resolveNamedPlace(ev.location, null, {
+            apiKey: placesApiKey,
+            biasCenter,
+          });
           if (resolved) {
             result.push({ ...ev, resolvedNamedPlace: resolved });
             continue;

@@ -291,12 +291,18 @@ export function deriveEventDraftItems(
         return [item];
       }
 
-      // 場所欄: 出発地（transit は departLocation、それ以外はタイトル）を手がかりにする。
+      // 場所欄: 出発地（transit は departLocation、それ以外は location）を
+      // 手がかりにする。title は表示用の見出しでしかなく、レシート由来の
+      // 仮予定では「夕食」等の汎用語になるため検索語には使えない
+      // （apps/web/lib/import/process.ts の resolveNamedPlace も同じ理由で
+      // location だけを検索語にする）。location が無い時だけ title で代用する
+      // （何も無いよりは手がかりになる、というクライアント側の最終フォールバック）。
       // transit で出発地のターミナルが分かっていれば検索語だけ「空港名 ターミナル」を
       // 試し、高確信ならターミナル単位の場所に丸まる。低確信/不明なら素の空港名のまま
       // （autoResolvePlace.searchQuery は表示・フォールバックには影響しない）。
-      const placeName = ev.kind === "transit" ? ev.departLocation : ev.title;
-      const placeHint = ev.kind === "transit" ? null : ev.location;
+      const placeName =
+        ev.kind === "transit" ? ev.departLocation : (ev.location ?? ev.title);
+      const placeHint = ev.kind === "transit" ? null : ev.title;
       const savedPlace = placeName
         ? matchSavedPlace(placeName, placeHint, ctx.places)
         : null;
