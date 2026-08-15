@@ -561,6 +561,7 @@ export type Database = {
           lat: number | null
           lng: number | null
           locality: string | null
+          location_dismissed: boolean
           name: string
           note: string | null
           region: string | null
@@ -578,6 +579,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           locality?: string | null
+          location_dismissed?: boolean
           name: string
           note?: string | null
           region?: string | null
@@ -595,6 +597,7 @@ export type Database = {
           lat?: number | null
           lng?: number | null
           locality?: string | null
+          location_dismissed?: boolean
           name?: string
           note?: string | null
           region?: string | null
@@ -1031,6 +1034,10 @@ export type Database = {
         Returns: string
       }
       dismiss_inbound_email: { Args: { p_id: string }; Returns: undefined }
+      dismiss_place_location: {
+        Args: { p_place_id: string }
+        Returns: undefined
+      }
       ensure_import_token: { Args: never; Returns: string }
       ensure_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
@@ -1110,6 +1117,20 @@ export type Database = {
       }
       resolve_place_spec: {
         Args: { p_member_id: string; p_spec: Json; p_trip_id: string }
+        Returns: string
+      }
+      resolve_place_to_google: {
+        Args: {
+          p_formatted_address: string
+          p_google_place_id: string
+          p_icon: string
+          p_lat: number
+          p_lng: number
+          p_locality: string
+          p_name: string
+          p_place_id: string
+          p_region: string
+        }
         Returns: string
       }
       seed_default_expense_categories: {

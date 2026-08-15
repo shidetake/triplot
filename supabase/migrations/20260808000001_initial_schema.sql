@@ -1695,7 +1695,8 @@ begin
 
   update places
   set lat = p_lat,
-      lng = p_lng
+      lng = p_lng,
+      location_dismissed = false
   where id = p_place_id;
 
   update trips set last_activity_at = now() where id = v_trip_id;
@@ -1704,6 +1705,115 @@ $$;
 
 
 ALTER FUNCTION "public"."set_place_location"("p_place_id" "uuid", "p_lat" double precision, "p_lng" double precision) OWNER TO "postgres";
+
+
+-- 未確定（自由入力）の場所を、地図上でタップ/検索して選んだ実在の Google の
+-- 場所へ寄せる。選んだ場所が同じ旅行内で既に登録済み（google_place_id が一致）
+-- なら、この place_id を参照している予定/費用をその既存の場所へ付け替えて
+-- from 側を削除する（マージ）。まだ未登録なら、この行自体を Google の場所に
+-- 昇格させる（id はそのまま＝参照している予定/費用は自動的に追従する）。
+-- 店名がレシート由来の自由入力と大きく変わっても、ユーザーが地図上で明示的に
+-- 選んだ場所を優先する（実装判断はプランに記載）。
+CREATE OR REPLACE FUNCTION "public"."resolve_place_to_google"(
+  "p_place_id" "uuid",
+  "p_google_place_id" "text",
+  "p_name" "text",
+  "p_lat" double precision,
+  "p_lng" double precision,
+  "p_formatted_address" "text",
+  "p_icon" "text",
+  "p_region" "text",
+  "p_locality" "text"
+) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_trip_id      text;
+  v_gpid         text := nullif(trim(coalesce(p_google_place_id, '')), '');
+  v_existing_id  uuid;
+begin
+  if v_gpid is null then
+    raise exception 'google_place_id required';
+  end if;
+  if coalesce(trim(p_name), '') = '' then
+    raise exception 'name required';
+  end if;
+  if p_lat is null or p_lng is null then
+    raise exception 'coordinates required';
+  end if;
+
+  select trip_id into v_trip_id from places where id = p_place_id;
+  if v_trip_id is null then
+    raise exception 'place not found';
+  end if;
+  if not is_active_trip_member(v_trip_id) then
+    raise exception 'not an active member of this trip' using errcode = '42501';
+  end if;
+
+  select id into v_existing_id
+  from places
+  where trip_id = v_trip_id
+    and google_place_id = v_gpid
+    and visibility = 'shared'
+    and id <> p_place_id
+  order by created_at
+  limit 1;
+
+  if v_existing_id is not null then
+    update events set start_place_id = v_existing_id where start_place_id = p_place_id;
+    update events set end_place_id = v_existing_id where end_place_id = p_place_id;
+    update expenses set place_id = v_existing_id where place_id = p_place_id;
+    delete from places where id = p_place_id;
+    update trips set last_activity_at = now() where id = v_trip_id;
+    return v_existing_id;
+  end if;
+
+  update places
+  set google_place_id   = v_gpid,
+      name              = trim(p_name),
+      lat               = p_lat,
+      lng               = p_lng,
+      formatted_address = trim(p_formatted_address),
+      icon              = coalesce(nullif(trim(coalesce(p_icon, '')), ''), icon),
+      region            = coalesce(nullif(trim(coalesce(p_region, '')), ''), region),
+      locality          = coalesce(nullif(trim(coalesce(p_locality, '')), ''), locality),
+      location_dismissed = false
+  where id = p_place_id;
+
+  update trips set last_activity_at = now() where id = v_trip_id;
+  return p_place_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") OWNER TO "postgres";
+
+
+-- 「地図未登録」バッジを今後出さないようにする（未確定のまま置いておきたい
+-- 場所向け）。座標は付けない＝後から地図タブの編集フォームで改めて
+-- 位置を設定することもできる（このフラグは一方的な通知の抑制に過ぎない）。
+CREATE OR REPLACE FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_trip_id text;
+begin
+  select trip_id into v_trip_id from places where id = p_place_id;
+  if v_trip_id is null then
+    raise exception 'place not found';
+  end if;
+  if not is_active_trip_member(v_trip_id) then
+    raise exception 'not an active member of this trip' using errcode = '42501';
+  end if;
+
+  update places set location_dismissed = true where id = p_place_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."unmerge_inbound_email"("p_id" "uuid") RETURNS "void"
@@ -2335,6 +2445,7 @@ CREATE TABLE IF NOT EXISTS "public"."places" (
     "region" "text",
     "locality" "text",
     "tentative" boolean DEFAULT true NOT NULL,
+    "location_dismissed" boolean DEFAULT false NOT NULL,
     CONSTRAINT "places_coords_pair_chk" CHECK ((("lat" IS NULL) = ("lng" IS NULL))),
     CONSTRAINT "places_google_complete_chk" CHECK ((("google_place_id" IS NULL) OR (("lat" IS NOT NULL) AND ("formatted_address" IS NOT NULL)))),
     CONSTRAINT "places_visibility_check" CHECK (("visibility" = ANY (ARRAY['shared'::"text", 'private'::"text"])))
@@ -3392,6 +3503,16 @@ GRANT ALL ON FUNCTION "public"."set_event_reservation"("p_event_id" "uuid", "p_n
 
 REVOKE ALL ON FUNCTION "public"."set_place_location"("p_place_id" "uuid", "p_lat" double precision, "p_lng" double precision) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_place_location"("p_place_id" "uuid", "p_lat" double precision, "p_lng" double precision) TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") TO "authenticated";
 
 
 

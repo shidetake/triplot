@@ -150,3 +150,52 @@ export async function setPlaceLocation(
   if (error) return err(error.message);
   return ok(undefined);
 }
+
+// 自由入力（未マップ）の場所を、地図上でタップ/検索して選んだ実在の Google の
+// 場所へ寄せる。同じ旅行に既に登録済み（google_place_id 一致）ならその既存の
+// 場所へ予定/費用を付け替えてマージし、そちらの id を返す。未登録ならこの
+// place_id 自体を Google の場所に昇格させる（そのまま同じ id を返す）。
+export type ResolvePlaceToGoogleInput = {
+  googlePlaceId: string;
+  name: string;
+  lat: number;
+  lng: number;
+  formattedAddress: string;
+  icon: string | null;
+  region: string | null;
+  locality: string | null;
+};
+
+export async function resolvePlaceToGoogle(
+  sb: DB,
+  placeId: string,
+  f: ResolvePlaceToGoogleInput,
+): Promise<Result<string>> {
+  const { data, error } = await sb.rpc("resolve_place_to_google", {
+    p_place_id: placeId,
+    p_google_place_id: f.googlePlaceId,
+    p_name: f.name,
+    p_lat: f.lat,
+    p_lng: f.lng,
+    p_formatted_address: f.formattedAddress,
+    // gen-types の既知の癖: DEFAULT 無しの nullable 引数が string 型になる
+    // （docs 参照）。呼び出し側でキャスト。
+    p_icon: f.icon as string,
+    p_region: f.region as string,
+    p_locality: f.locality as string,
+  });
+  if (error) return err(error.message);
+  return ok(data as string);
+}
+
+// 「地図未登録」バッジを今後出さないようにする（未確定のまま置いておく）。
+export async function dismissPlaceLocation(
+  sb: DB,
+  placeId: string,
+): Promise<Result<void>> {
+  const { error } = await sb.rpc("dismiss_place_location", {
+    p_place_id: placeId,
+  });
+  if (error) return err(error.message);
+  return ok(undefined);
+}

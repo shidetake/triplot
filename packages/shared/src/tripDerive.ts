@@ -48,6 +48,8 @@ export type PlaceRow = {
   icon: string;
   created_by_member_id: string;
   created_at: string;
+  // 「地図未登録」バッジをこの場所では出さない（dismiss_place_location）。
+  location_dismissed: boolean;
 };
 
 // 週カレンダー・予定フォームが使う行 = 共有の ScheduleEvent + 作成者。
@@ -118,6 +120,7 @@ export type RawPlace = {
   icon: string;
   created_by_member_id: string;
   created_at: string;
+  location_dismissed: boolean;
 };
 
 export type RawEvent = {
@@ -203,6 +206,7 @@ export function derivePlaces(placesRaw: RawPlace[] | null): PlaceRow[] {
     icon: p.icon,
     created_by_member_id: p.created_by_member_id,
     created_at: p.created_at,
+    location_dismissed: p.location_dismissed,
   }));
 }
 

@@ -50,7 +50,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     sb
       .from("places")
       .select(
-        "id, name, lat, lng, google_place_id, formatted_address, region, locality, tentative, visibility, note, icon, created_by_member_id, created_at",
+        "id, name, lat, lng, google_place_id, formatted_address, region, locality, tentative, visibility, note, icon, created_by_member_id, created_at, location_dismissed",
       )
       .eq("trip_id", tripId)
       .order("created_at", { ascending: false }),
