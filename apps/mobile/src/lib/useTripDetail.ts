@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useId } from "react";
 
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
 import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
@@ -43,12 +43,19 @@ export function useTripDetail(tripId: string) {
 // （supabase/migrations の ALTER PUBLICATION 参照。RLS が効くので他ユーザーの
 // 行は流れない）。refetchInterval は Realtime の接続が切れた時の保険として
 // 残す（既定でバックグラウンド中は止まる＝focusManager 経由）。
+//
+// チャンネル名は useId() で呼び出しごとに一意にする（tripId だけだと、この
+// フックはカレンダー/費用タブ・予定/費用フォームの複数箇所から同時に呼ばれる
+// ため、同名チャンネルを2つ目が subscribe() 後に .on() しようとして
+// 「cannot add postgres_changes callbacks... after subscribe()」で即クラッシュ
+// した＝実機 TestFlight で確認済みの実際の障害）。
 export function useTripDrafts(tripId: string) {
   const qc = useQueryClient();
+  const instanceId = useId();
   useEffect(() => {
     if (!tripId) return;
     const channel = supabase
-      .channel(`inbound_emails:trip:${tripId}`)
+      .channel(`inbound_emails:trip:${tripId}:${instanceId}`)
       .on(
         "postgres_changes",
         {
@@ -63,7 +70,7 @@ export function useTripDrafts(tripId: string) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [tripId, qc]);
+  }, [tripId, instanceId, qc]);
 
   return useQuery({
     queryKey: ["trip", tripId, "drafts"],
