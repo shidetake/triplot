@@ -2924,7 +2924,11 @@ const makeStyles = (t: Theme) =>
     paddingTop: 14,
     paddingBottom: 4,
   },
-  filterCount: { fontSize: 13, color: t.subtleForeground },
+  filterCount: {
+    fontSize: 13,
+    color: t.subtleForeground,
+    fontVariant: ["tabular-nums"],
+  },
   // 検索候補行の2行目: ★評価 + 住所（web の place-popups と同じ並び）。
   candidateMeta: {
     flexDirection: "row",

@@ -36,7 +36,7 @@ describe("fitAndHalfDetents", () => {
     expect(detents[initialIndex] * REFERENCE).toBeCloseTo(400);
   });
 
-  it("下の段はちょうど既定の半分", () => {
+  it("下の段は画面の半分程度（中身の半分ではない）", () => {
     const { detents, initialIndex } = fitAndHalfDetents({
       contentHeight: 400,
       capHeight: CAP,
@@ -45,7 +45,7 @@ describe("fitAndHalfDetents", () => {
     });
     expect(detents).toHaveLength(2);
     expect(initialIndex).toBe(1);
-    expect(detents[0] * REFERENCE).toBeCloseTo(200);
+    expect(detents[0] * REFERENCE).toBeCloseTo(REFERENCE / 2);
   });
 
   it("中身が上限より高いときは capHeight で頭打ち（一覧が長い旅行）", () => {
@@ -77,8 +77,9 @@ describe("fitAndHalfDetents", () => {
     expect(detents[initialIndex]).toBeLessThan(1);
   });
 
-  it("半分が小さすぎる（場所が数件）ときは1段のまま", () => {
-    // 中身 180 → 半分 90 は下限 94 未満。
+  it("中身が画面の半分より短い（場所が数件）ときは1段のまま", () => {
+    // 中身 180 は画面の半分（REFERENCE/2 ≈ 396.5）より短いので、それ以上
+    // 縮めても意味が無く detent は中身の高さそのもの1段だけになる。
     const { detents, initialIndex } = fitAndHalfDetents({
       contentHeight: 180,
       capHeight: CAP,
@@ -91,11 +92,15 @@ describe("fitAndHalfDetents", () => {
     expect(detents[0] * REFERENCE).toBeCloseTo(180);
   });
 
-  it("下限ちょうどでは2段になる", () => {
+  it("画面の半分がちょうど下限のときは2段になる", () => {
+    // referenceHeight を MIN_HALF*2 にすると画面の半分＝MIN_HALF ちょうど。
+    // 中身がそれより長ければ「画面の半分」の段を作る条件（>= minHalfHeight）
+    // をぎりぎり満たす。
+    const ref = MIN_HALF * 2;
     const { detents } = fitAndHalfDetents({
-      contentHeight: MIN_HALF * 2,
-      capHeight: CAP,
-      referenceHeight: REFERENCE,
+      contentHeight: ref, // capHeight で頭打ちさせ、半分の段より確実に長くする
+      capHeight: ref,
+      referenceHeight: ref,
       minHalfHeight: MIN_HALF,
     });
     expect(detents).toHaveLength(2);

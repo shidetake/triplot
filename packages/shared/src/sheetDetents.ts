@@ -22,7 +22,7 @@ export type SheetDetents = {
   initialIndex: number;
 };
 
-// 「中身にフィット」＋「その半分」の2段を作る。
+// 「画面の半分程度」＋「中身にフィット（capHeight まで）」の2段を作る。
 // - contentHeight: 中身の高さ（実測。px）
 // - capHeight: シートに見せたい最大高さ（px）。検索バーの下端など、
 //   アプリ側の都合で決める上限。中身がこれを超えるぶんは頭打ちにする。
@@ -49,9 +49,16 @@ export function fitAndHalfDetents({
   // 中身が上限を超えるぶんは capHeight で頭打ち（fitToContents と同じ発想だが
   // 上限は画面高でなくこちらが指定した値）。
   const fit = Math.min(Math.max(contentHeight, 1), capHeight);
+  // 小さい方の段は「中身の半分」ではなく「画面の半分程度」を目標にする
+  // （本家 Apple マップと同じ「まず控えめに」の見た目。以前は fit/2 で
+  // 中身自体を基準にしていたため、場所が数件しか無い旅行だと中身がもとから
+  // 小さく、その半分がヘッダーと数行しか見えない極端に小さいシートになって
+  // いた＝実機フィードバックで修正）。中身がその半分より短ければ、それ以上
+  // 縮めても中身の下に空白が伸びるだけなので中身の高さそのものを使う。
+  const half = Math.min(fit, referenceHeight / 2);
   const detents =
-    fit / 2 >= minHalfHeight
-      ? [fit / 2 / referenceHeight, fit / referenceHeight]
+    half < fit && half >= minHalfHeight
+      ? [half / referenceHeight, fit / referenceHeight]
       : [fit / referenceHeight];
   return { detents, initialIndex: detents.length - 1 };
 }
