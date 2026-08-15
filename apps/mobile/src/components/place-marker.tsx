@@ -41,6 +41,13 @@ export function PlaceMarker({
       style={{
         width: size,
         height: size,
+        // 影の View にも同じ borderRadius を付ける: 付けないと影は
+        // このView自体の形＝四角の角丸ブラーで落ち、中の丸クリップより
+        // 外側にわずかに四角い影のにじみが残る。1個では気付かない程度でも、
+        // ピンが密集すると重なった分だけそのにじみが積み重なって黒ずんで
+        // 見えていた（実機フィードバック）。円と同じ丸みにして影の形自体を
+        // 円に一致させ、はみ出しをなくす。
+        borderRadius: size / 2,
         opacity: tentative ? 0.5 : 1,
         shadowColor: "#000",
         shadowOpacity: 0.25,
