@@ -8,6 +8,7 @@ import { Drawer } from "vaul";
 
 import { dominantCenter, type LatLng, TOKYO } from "@triplot/shared/placeMap";
 
+import { confirmDialog } from "./confirm-dialog";
 import { PlaceList, type PlaceRow } from "./place-list";
 // PlaceStatus は削除済み — place.tentative boolean に移行
 import { PlaceMap, type Selection } from "./place-map";
@@ -20,9 +21,14 @@ import {
 } from "./place-popups";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
+import { toast } from "./toast";
 import { useMediaQuery } from "./use-media-query";
 import { useMobileChromeMargins } from "./use-mobile-chrome-margins";
 import { useActiveTripTab } from "@/lib/activeTripTab";
+import {
+  dismissPlaceLocationAction,
+  resolvePlaceToGoogleAction,
+} from "@/app/trips/[tripId]/actions";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
@@ -61,6 +67,7 @@ export function PlacesSection({
   myMemberId: string;
 }) {
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
@@ -219,16 +226,89 @@ export function PlacesSection({
     setPoi(null);
   }, []);
 
+  // 「位置を指定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
+  // 共通処理: 未確定の場所をタップ/検索で選んだ実在の Google の場所へ寄せる
+  // （新しいピンを作るのではなく、既にある場所を優先する）。店名が自由入力と
+  // 大きく変わっても、ユーザーが地図上/検索で明示的に選んだ場所を採用する
+  // （予定/費用は place_id で参照しているので自動的に追従する。既に旅行に
+  // 登録済みの場所を選んだ場合は resolve_place_to_google 側でマージされる）。
+  // 戻り値 true なら呼び出し元は通常の遷移（プレビュー/追加フォームを開く等）
+  // をスキップする。
+  const resolveLocatingTo = useCallback(
+    (target: {
+      googlePlaceId: string;
+      name: string;
+      lat: number;
+      lng: number;
+      formattedAddress: string | null;
+      region: string | null;
+      locality: string | null;
+      icon: string | null;
+    }): boolean => {
+      if (!pendingLocationFor) return false;
+      const placeId = pendingLocationFor.id;
+      const fromName = pendingLocationFor.name;
+      void (async () => {
+        const ok = await confirmDialog({
+          title: t("resolveToTitle", { to: target.name }),
+          body: fromName,
+          confirmLabel: tCommon("confirm"),
+          destructive: false,
+        });
+        if (!ok) return;
+        const { error } = await resolvePlaceToGoogleAction(tripId, placeId, {
+          googlePlaceId: target.googlePlaceId,
+          name: target.name,
+          lat: target.lat,
+          lng: target.lng,
+          formattedAddress: target.formattedAddress ?? "",
+          icon: target.icon,
+          region: target.region,
+          locality: target.locality,
+        });
+        if (error) {
+          toast(error);
+          return;
+        }
+        setPendingLocationFor(null);
+        setDraft(null);
+      })();
+      return true;
+    },
+    [pendingLocationFor, tripId, t, tCommon],
+  );
+
   // 保存済み/候補を選んだら仮ピン・POI は引っ込める（同時に2つ開かない）。
   // 一覧（ボトムシート）からのタップは地図を見る操作なので、シートも畳む。
+  // 「位置を指定」モード中は、既存の場所を選んでもそのピンを新規に開かず、
+  // その場所へ未確定の場所を寄せる（resolveLocatingTo 参照）。
   const selectSaved = useCallback(
     (id: string) => {
+      const saved = places.find((p) => p.id === id);
+      if (
+        pendingLocationFor &&
+        saved?.google_place_id &&
+        saved.lat != null &&
+        saved.lng != null &&
+        resolveLocatingTo({
+          googlePlaceId: saved.google_place_id,
+          name: saved.name,
+          lat: saved.lat,
+          lng: saved.lng,
+          formattedAddress: saved.formatted_address,
+          region: saved.region,
+          locality: saved.locality,
+          icon: saved.icon,
+        })
+      ) {
+        return;
+      }
       setDraft(null);
       setPoi(null);
       setSelected({ kind: "saved", id });
       collapsePlacesSheet();
     },
-    [collapsePlacesSheet],
+    [collapsePlacesSheet, places, pendingLocationFor, resolveLocatingTo],
   );
   // この Google place が旅行に登録済みなら、その保存済みの場所を返す
   // （同じ店を POI タップ・検索・候補ピンから何度でも追加できてしまい、
@@ -246,11 +326,27 @@ export function PlacesSection({
         selectSaved(saved.id);
         return;
       }
+      const c = candidates.find((x) => x.placeId === placeId);
+      if (
+        c &&
+        resolveLocatingTo({
+          googlePlaceId: c.placeId,
+          name: c.name,
+          lat: c.lat,
+          lng: c.lng,
+          formattedAddress: c.address,
+          region: c.region,
+          locality: c.locality,
+          icon: null,
+        })
+      ) {
+        return;
+      }
       setDraft(null);
       setPoi(null);
       setSelected({ kind: "candidate", placeId });
     },
-    [findSavedByGoogleId, selectSaved],
+    [findSavedByGoogleId, selectSaved, candidates, resolveLocatingTo],
   );
 
   // 空白タップ: 何も開いてなければ仮ピンを置く/移動（モード無し）。
@@ -264,13 +360,30 @@ export function PlacesSection({
 
   // 地図上の Google POI をタップ: 既存の POI アイコンはそのまま見せ、
   // マーカーは足さず吹き出し（CandidateInfo）だけ出す。
-  const showPoi = useCallback((c: CandidatePlace) => {
-    setDraft(null);
-    setQuery("");
-    setCandidates([]);
-    setPoi(c);
-    setSelected({ kind: "poi", placeId: c.placeId });
-  }, []);
+  const showPoi = useCallback(
+    (c: CandidatePlace) => {
+      if (
+        resolveLocatingTo({
+          googlePlaceId: c.placeId,
+          name: c.name,
+          lat: c.lat,
+          lng: c.lng,
+          formattedAddress: c.address,
+          region: c.region,
+          locality: c.locality,
+          icon: null,
+        })
+      ) {
+        return;
+      }
+      setDraft(null);
+      setQuery("");
+      setCandidates([]);
+      setPoi(c);
+      setSelected({ kind: "poi", placeId: c.placeId });
+    },
+    [resolveLocatingTo],
+  );
 
   // 場所を追加した時／× を押した時、どちらも「検索は用無し」なので
   // 検索文字列・候補ピン・選択中の吹き出し・仮ピン・POI をまとめて消す。
@@ -314,6 +427,28 @@ export function PlacesSection({
     setPendingLocationFor(null);
     setDraft(null);
   }, []);
+
+  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う。座標は付けない
+  // ＝あとで一覧の行からいつでも地図に登録し直せる（一方的な通知の抑制）。
+  const dismissLocation = useCallback(
+    (id: string) => {
+      void (async () => {
+        const ok = await confirmDialog({
+          title: t("dismissLocationTitle"),
+          body: t("dismissLocationBody"),
+          confirmLabel: tCommon("confirm"),
+          destructive: false,
+        });
+        if (!ok) return;
+        const { error } = await dismissPlaceLocationAction(tripId, id);
+        if (error) {
+          toast(error);
+          return;
+        }
+      })();
+    },
+    [tripId, t, tCommon],
+  );
   const finishLocate = useCallback(() => {
     setPendingLocationFor(null);
     setDraft(null);
@@ -332,6 +467,7 @@ export function PlacesSection({
           onSelect={() => {}}
           onLocate={() => {}}
           onCancelLocate={() => {}}
+          onDismissLocation={() => {}}
         />
       </div>
     );
@@ -516,6 +652,7 @@ export function PlacesSection({
                     onSelect={selectSaved}
                     onLocate={startLocate}
                     onCancelLocate={cancelLocate}
+                    onDismissLocation={dismissLocation}
                   />
                 </div>
               </Drawer.Content>
@@ -531,6 +668,7 @@ export function PlacesSection({
             onSelect={selectSaved}
             onLocate={startLocate}
             onCancelLocate={cancelLocate}
+            onDismissLocation={dismissLocation}
           />
         </div>
       </div>

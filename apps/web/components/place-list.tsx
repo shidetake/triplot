@@ -4,6 +4,7 @@ import { getIconOutlinePath, getIconPath } from "@triplot/shared/placeIcons";
 import { useTranslations } from "next-intl";
 
 import { ColorBadge } from "./color-badge";
+import { CloseIcon } from "./icons";
 import { PrivateBadge } from "./private-badge";
 
 // 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
@@ -62,6 +63,7 @@ export function PlaceList({
   onSelect,
   onLocate,
   onCancelLocate,
+  onDismissLocation,
 }: {
   places: PlaceRow[];
   selectedId: string | null;
@@ -72,6 +74,8 @@ export function PlaceList({
   // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
   onLocate: (id: string, name: string) => void;
   onCancelLocate: () => void;
+  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う。
+  onDismissLocation: (id: string) => void;
 }) {
   const t = useTranslations("place");
 
@@ -85,7 +89,11 @@ export function PlaceList({
         const statusLabel = p.tentative ? t("statusCandidate") : t("statusConfirmed");
         const statusColor = p.tentative ? "#f59e0b" : "#10b981";
         const isSelected = p.id === selectedId;
+        // タップ時の遷移先（位置を指定モード）は座標の有無だけで決める
+        // （破棄済みでもいつでも地図に登録し直せるように、行クリック自体は
+        // 従来どおり）。バッジの表示だけ location_dismissed で分ける。
         const unmapped = p.lat == null;
+        const showUnmappedBadge = unmapped && !p.location_dismissed;
         const isLocating = unmapped && p.id === locatingId;
         return (
           <li key={p.id}>
@@ -111,9 +119,25 @@ export function PlaceList({
                   <ColorBadge color={statusColor}>{statusLabel}</ColorBadge>
                   <span className="font-medium">{p.name}</span>
                   {p.visibility === "private" && <PrivateBadge />}
-                  {unmapped && (
-                    <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                  {showUnmappedBadge && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDismissLocation(p.id);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter" && e.key !== " ") return;
+                        e.stopPropagation();
+                        e.preventDefault();
+                        onDismissLocation(p.id);
+                      }}
+                      aria-label={t("dismissLocationAria")}
+                      className="inline-flex items-center gap-1 rounded bg-amber-100 px-1.5 text-xs text-amber-700 hover:bg-amber-200 dark:bg-amber-400/20 dark:text-amber-300 dark:hover:bg-amber-400/30"
+                    >
                       {t("unmapped")}
+                      <CloseIcon size={12} />
                     </span>
                   )}
                 </div>

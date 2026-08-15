@@ -20,7 +20,9 @@ import {
   addTripPinOption,
   createPlace,
   deletePlace,
+  dismissPlaceLocation,
   removeTripPinOption,
+  resolvePlaceToGoogle,
   setPlaceLocation,
   updatePlace,
 } from "@triplot/shared/data/places";
@@ -518,6 +520,69 @@ export async function setPlaceLocationAction(
   }
 
   const result = await setPlaceLocation(supabase, placeId, lat, lng);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+// 自由入力（未マップ）の場所を、地図上で選んだ/検索した実在の Google の場所へ
+// 寄せる。同じ旅行に既に登録済みならその既存の場所へ予定/費用を付け替えて
+// マージする（resolve_place_to_google 参照）。
+export async function resolvePlaceToGoogleAction(
+  tripId: string,
+  placeId: string,
+  f: {
+    googlePlaceId: string;
+    name: string;
+    lat: number;
+    lng: number;
+    formattedAddress: string;
+    icon: string | null;
+    region: string | null;
+    locality: string | null;
+  },
+): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: t("loginRequired") };
+  }
+  if (!Number.isFinite(f.lat) || !Number.isFinite(f.lng)) {
+    return { error: t("invalidCoordinates") };
+  }
+
+  const result = await resolvePlaceToGoogle(supabase, placeId, f);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+// 「地図未登録」バッジを今後出さないようにする（未確定のまま置いておく）。
+export async function dismissPlaceLocationAction(
+  tripId: string,
+  placeId: string,
+): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: t("loginRequired") };
+  }
+
+  const result = await dismissPlaceLocation(supabase, placeId);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

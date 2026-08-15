@@ -576,7 +576,8 @@ export function SavedInfo({
             {place.formatted_address}
           </p>
         ) : (
-          place.lat == null && (
+          place.lat == null &&
+          !place.location_dismissed && (
             <p className="mt-0.5 text-xs text-amber-700 dark:text-amber-400">
               {t("noLocation")}
             </p>
