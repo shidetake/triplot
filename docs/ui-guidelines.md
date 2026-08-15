@@ -31,6 +31,25 @@ triplot の UI 規約（テーマ・アイコン・ボタン配色・コピー�
 - ダークモードは `useColorScheme` によるトークン切替（`useTheme`/`useThemedStyles`）。値は
   `.dark {}` と同値。地図はダーク時に夜間スタイル＋マーカーのダーク写像（web の place-map と同じ）。
 
+### RN のシート（ボトムシート）は必ず OS ネイティブのものを使う
+
+**ネイティブアプリのシートは JS で描いた疑似シートを使わず、必ず iOS 標準（UIKit）の
+シートを使う。** これは上の「1. プラットフォームの流儀があるものはそちらを優先」の具体形で、
+web の `vaul`（DOM で描くボトムシート）を RN に持ち込まない、という意味でもある
+（Discord 流＝DOM↔native は越えない）。ネイティブのシートでないと、摺りガラスの質感・
+グラバー・detent の吸い付き・キーボード回避・スクロールの手触りが OS 標準からずれ、
+画面ごとに手触りが食い違う（実機フィードバックで繰り返し指摘された）。
+
+使う API は2つ。**新しく足すときは原則1番**:
+
+| | 使う場面 |
+|---|---|
+| **1. react-native-screens の formSheet**（ルートなら `presentation: "formSheet"`、画面内なら `ScreenStack` + `ScreenStackItem` の `stackPresentation="formSheet"`） | 原則こちら。多段 detent（`sheetAllowedDetents`）・グラバー（`sheetGrabberVisible`）を宣言で持てる。タブ画面の中から出すシート（場所タブ・TODO タブ）も `ScreenStack` を入れ子にしてこれを使う |
+| **2. RN core の `<Modal presentationStyle="pageSheet">`** | **既に formSheet として開いている画面の中からさらに開くピッカー**だけ（通貨選択・コピー元選択）。これも UIKit の PageSheet を使う実物のネイティブシートだが、formSheet の中にさらに `ScreenStack` を入れ子にすると元の画面と二重露光のように重なる実機不具合があるため、この場面に限ってこちらを使う。グラバー等の見た目は自前で 1 に揃える |
+
+**JS 実装のシートライブラリ（`@gorhom/bottom-sheet` 等）は使わない。**
+以前は併用していたが 2026-08 に全廃し、依存関係からも削除済み。復活させない。
+
 ## テーマ・コピー
 
 - **ダークモードは実装済み**（Light / Dark / System の3択。`NEXT_THEME` cookie → `<html class="dark">` → `globals.css` の `.dark {}` トークン反転）。テーマトークン（`bg-background`・`text-foreground`・`bg-primary` 等）と前景色の α 重ね（hover/ボーダー）で書いた色は自動追従するので `dark:` variant は不要。**セマンティック色（amber/red/blue の面・文字）だけはトークン外**なので、「セマンティック色」節のダーク写像に従い `dark:` を併記する。
@@ -38,7 +57,7 @@ triplot の UI 規約（テーマ・アイコン・ボタン配色・コピー�
 - **画面に応じて見た目を変えるときは「何を本質的に切り替えたいか」を見極め、それを決める軸で判定する**。
   脊髄反射で幅やタッチを使い分けず、その表示を本質的に左右している軸を選ぶ:
   - **使える幅で決まること**（要素が画面に対して大きすぎる等）→ **ビューポート幅**で判定。
-    **ルール: 一定幅以上の入力フォームは、狭い画面ではボトムシート（`vaul`）、広い画面ではタップ位置のポップアップ**
+    **ルール: 一定幅以上の入力フォームは、狭い画面ではボトムシート（web は `vaul`。RN は OS ネイティブのシート）、広い画面ではタップ位置のポップアップ**
     （`FormPopover` の `fullScreenOnNarrow`）。**全画面表示は使わない**＝文脈（元画面＝どこから開いたか）が消えるため。
     ボトムシートは下からせり上がり・ドラッグで閉じ・上に元画面が薄暗く残る（Google マップ等と同じ世の中標準）。
     Base UI にシート部品が無いので vaul を使う（shadcn の Drawer も中身は vaul。直に使う理由は下の「ライブラリを使う」段）。
@@ -213,7 +232,9 @@ flowchart TD
   オートコンプリート＝Base UI Combobox（`place-picker`/`place-search`）、`?` ヒント＝Base UI Popover の
   `openOnHover`（`HelpTip`）＝ホバー（PC）でもタップ（モバイル）でも開く。Tooltip はタップで開かないので使わない。
 - 4（ライブラリ）: 日付＝`react-day-picker`（Base UI Popover 内）、地図＝Google Maps、
-  **狭い画面のフォームのボトムシート＝`vaul` を直接使う**。Base UI にシート部品が無いため。
+  **狭い画面のフォームのボトムシート＝`vaul` を直接使う**（**web 限定**。RN 側は OS ネイティブの
+  シートを使う → [[RN のシート（ボトムシート）は必ず OS ネイティブのものを使う]]）。Base UI に
+  シート部品が無いため。
   なお **shadcn の Drawer も中身はこの vaul** だが、そのラッパーは modal＋専用 Overlay 前提で、
   我々の要件＝`modal=false`（フォーム内のポータル popover を生かす）・自前 dim（閉じアニメを切らさない）・
   PC ポップオーバー/モバイルシートの 1 コンポーネント切替 と衝突する。なのでラッパーは噛まさず vaul を

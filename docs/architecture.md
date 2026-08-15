@@ -12,7 +12,9 @@ triplot は **1 バックエンド（Supabase）＋ 複数クライアント**�
 - **web（広い画面＝PC/iPad ・ 狭い画面＝モバイル）** … Next.js 16（React DOM ＋ Tailwind）。Responsive で
   出し分ける（モバイル＝ボトムシート、広い画面＝ポップオーバー等）。この 2 つは **同一コードベース**。
 - **ネイティブ（iOS ＋ Android）** … **Expo（React Native）** で UI を別実装。iOS/Android はここで **統一**
-  （1 モバイルコードベース）。地図は react-native-maps（native）。
+  （1 モバイルコードベース）。地図は react-native-maps（native）。シートは OS 標準（UIKit）のものを使い、
+  web の `vaul` のような JS 実装のシートは持ち込まない（[ui-guidelines.md](./ui-guidelines.md) の
+  「RN のシート（ボトムシート）は必ず OS ネイティブのものを使う」）。
 - **共有するもの** … 型・純ロジック（`settlement` 等）・データアクセス層・Zod スキーマを `packages/shared`
   に置き web/native 双方から import（モノレポ）。**backend（Supabase の RLS/RPC）は全クライアント共通**。
 - **共有しないもの** … UI。React DOM（web）と RN の native 部品（mobile）は描画層が別物なので **統一しない**
