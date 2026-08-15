@@ -685,8 +685,8 @@ export default function PlacesTab() {
     [areaByPlaceId, dayByPlaceId],
   );
 
-  // 地図のピン・一覧の両方がこれを見る（フィルタ無しは全件）。「地図未登録」を
-  // 破棄した場所は showDismissed が true の時だけ含める。
+  // 地図のピン・一覧の両方がこれを見る（フィルタ無しは全件）。非表示にした
+  // 場所は showDismissed が true の時だけ含める。
   const filteredPlaces = useMemo(() => {
     const base = placeFilter
       ? places.filter((p) => matchesPlaceFilter(p.id, placeFilter))
@@ -695,6 +695,10 @@ export default function PlacesTab() {
       ? base
       : base.filter((p) => !(p.lat == null && p.location_dismissed));
   }, [places, placeFilter, matchesPlaceFilter, showDismissed]);
+  const dismissedCount = useMemo(
+    () => places.filter((p) => p.lat == null && p.location_dismissed).length,
+    [places],
+  );
   // 中央寄せスクロール演出（ドラムロール）を有効にするか（PICKER_CENTERING_MIN_ITEMS
   // 参照）。タップ時の scrollToOffset だけでなく、中央寄せ用の上下パディング
   // （pickerCenterPad/pickerTopPad、下）自体もこれで止める。件数が少ない時に
@@ -2531,28 +2535,32 @@ export default function PlacesTab() {
                 })}
               </>
             )}
-            <Text style={styles.filterSectionLabel}>
-              {t("filterSectionOther")}
-            </Text>
-            <Pressable
-              onPress={() => setShowDismissed((v) => !v)}
-              style={[
-                styles.priorityRow,
-                showDismissed && styles.priorityRowSelected,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.priorityRowLabel,
-                  showDismissed && styles.priorityRowLabelSelected,
-                ]}
-              >
-                {t("filterShowDismissed")}
-              </Text>
-              {showDismissed && (
-                <CheckIcon size={16} color={theme.mutedForeground} />
-              )}
-            </Pressable>
+            {dismissedCount > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionOther")}
+                </Text>
+                <Pressable
+                  onPress={() => setShowDismissed((v) => !v)}
+                  style={[
+                    styles.priorityRow,
+                    showDismissed && styles.priorityRowSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.priorityRowLabel,
+                      showDismissed && styles.priorityRowLabelSelected,
+                    ]}
+                  >
+                    {t("filterShowDismissed")}
+                  </Text>
+                  {showDismissed && (
+                    <CheckIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              </>
+            )}
           </ScrollView>
         </ScreenStackItem>
       )}
