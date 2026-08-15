@@ -86,6 +86,28 @@ export default function EventFormRoute() {
     void invalidateInbox();
   };
 
+  // 取り込み下書きの破棄（費用タブの dismissDraft と同じ）。
+  const dismissDraft = (id: string) => {
+    Alert.alert(t("import.dismissDraftTitle"), undefined, [
+      { text: "キャンセル", style: "cancel" },
+      {
+        text: t("import.dismiss"),
+        style: "destructive",
+        onPress: () => {
+          void resolveInboundDraft(supabase, id, "dismissed").then((r) => {
+            if (!r.ok) {
+              Alert.alert(t("import.dismissFailed", { error: r.error }));
+              return;
+            }
+            router.back();
+            void invalidate();
+            void invalidateInbox();
+          });
+        },
+      },
+    ]);
+  };
+
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: 24 }}
@@ -119,6 +141,11 @@ export default function EventFormRoute() {
         onSuccess={
           confirmingDraft
             ? (newEventId) => void confirmDraft(confirmingDraft.id, newEventId)
+            : undefined
+        }
+        onDismissDraft={
+          confirmingDraft
+            ? () => dismissDraft(confirmingDraft.id)
             : undefined
         }
       />

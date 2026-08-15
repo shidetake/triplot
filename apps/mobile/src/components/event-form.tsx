@@ -71,6 +71,7 @@ export function EventForm({
   slot,
   onDone,
   onSuccess,
+  onDismissDraft,
 }: {
   tripId: string;
   members: Member[];
@@ -92,8 +93,12 @@ export function EventForm({
   // 追加/更新が成功したときだけ呼ぶ（キャンセルでは呼ばれない）。追加成功時は
   // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
   onSuccess?: (eventId?: string) => void;
+  // 下書き確定モード（draft 指定時）だけ渡る: この下書きを破棄する
+  // （費用タブの「破棄」と同じ resolveInboundDraft(..., "dismissed")）。
+  onDismissDraft?: () => void;
 }) {
   const t = useTranslations("event");
+  const tImport = useTranslations("import");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editEvent;
@@ -849,6 +854,15 @@ export function EventForm({
             onPress={onDelete}
             style={styles.deleteButton}
             accessibilityLabel="削除"
+          >
+            <TrashIcon size={18} color={theme.destructiveText} />
+          </Pressable>
+        )}
+        {!isEdit && draft && onDismissDraft && (
+          <Pressable
+            onPress={onDismissDraft}
+            style={styles.deleteButton}
+            accessibilityLabel={tImport("dismiss")}
           >
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
