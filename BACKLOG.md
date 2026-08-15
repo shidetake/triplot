@@ -25,3 +25,16 @@ App Store 公開（TestFlight から本番リリースへ）。
 アップロードするとブランド確認（審査・数日）が発動するため未設定にしてある。
 同意画面にロゴを出したくなったら設定して審査を通す。
 （iOS のカレンダーエクスポートは 2026-07-14 実装済み）
+
+### 16. モバイル: @gorhom/bottom-sheet の完全撤去
+旅行編集・カテゴリ管理・エクスポート・予定/費用フォーム・受信箱・設定等は
+react-native-screens の native formSheet に移行済み。場所タブ（地図の文脈を
+残す必要があるフォーム類）も同じ native の ScreenStack/ScreenStackItem に
+移行済み。残っているのは TODO タブの優先度（高/中/低）選択シート1箇所だけ
+（`apps/mobile/src/components/form-sheet.tsx` 使用中。ActionSheetIOS がアイコン
+付き行を出せないための代替）。
+- [ ] タブ画面の中に native の ScreenStack を入れ子にする移行は、タブバー/
+      戻るジェスチャーへの影響を実機で検証してからにしたい（他の formSheet 化と
+      違い、タブ画面に低レベル部品を入れるのは前例が無いため）。移行できたら
+      `@gorhom/bottom-sheet` を依存関係からも削除し `BottomSheetModalProvider`
+      （`apps/mobile/src/app/_layout.tsx`）も外す。
