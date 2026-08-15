@@ -18,6 +18,7 @@ import type { Currency } from "../types/database";
 
 import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
 import { matchPlace, type TripPlace } from "./placeMatch";
+import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
@@ -192,7 +193,16 @@ export function deriveExpenseDraftItems(
       const savedPlace = matchSavedPlace(r.merchant, r.location, ctx.places);
       const place =
         savedPlace ??
-        (r.resolvedPlace ? candidateToDraftPlace(r.resolvedPlace, null) : null);
+        (r.resolvedPlace
+          ? candidateToDraftPlace(
+              r.resolvedPlace,
+              guessImportPlaceIcon({
+                category: r.category,
+                eventTitle: null,
+                merchant: r.merchant,
+              }),
+            )
+          : null);
       return [
         {
           id: d.id,
@@ -312,7 +322,14 @@ export function deriveEventDraftItems(
       const place =
         savedPlace ??
         (ev.kind !== "transit" && ev.resolvedNamedPlace
-          ? candidateToDraftPlace(ev.resolvedNamedPlace, null)
+          ? candidateToDraftPlace(
+              ev.resolvedNamedPlace,
+              guessImportPlaceIcon({
+                category: null,
+                eventTitle: ev.title,
+                merchant: ev.location,
+              }),
+            )
           : null);
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);

@@ -188,7 +188,7 @@ describe("deriveExpenseDraftItems", () => {
       lng: -157.83,
       region: "Hawaii",
       locality: "Honolulu",
-      icon: null,
+      icon: "food",
     });
     // Google 解決済みなので web のクライアント側自動解決は不要。
     expect(items[0].autoResolvePlace).toBeNull();
