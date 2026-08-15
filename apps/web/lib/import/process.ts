@@ -568,6 +568,20 @@ async function runExtraction(
       })
       .eq("id", emailId);
   } else {
+    // 作業状態（draft 行）を抽出結果で作る（エラーからの再抽出では作り直し）。
+    // resolvedFlight/resolvedNamedPlace/resolvedPlace の埋め込みは merge 分岐と
+    // 同じ理由（上のコメント参照）で保存直前に行う。
+    // ステータスを "extracted" にする**前に**この行を終わらせる: 受信箱は
+    // status='extracted' を「表示してよい」の合図として使うため、先に status
+    // を立てて後から draft 行を挿入すると、その間の一瞬だけ「メールの件名は
+    // 見えるが中身（店名・金額）はまだ無い」半端な状態が受信箱に表示されて
+    // しまう（実機フィードバック: 件名 "Fwd: Receipt from Howzit Brewing #liIG"
+    // のまま一瞬表示され、その後に店名・金額の行に変わって見えた）。
+    const enriched = {
+      receipt: await resolveReceiptPlace(supabase, receipt, tripId),
+      events: await prefetchFlights(supabase, events, tripId),
+    };
+    await replacePendingDrafts(supabase, emailId, enriched);
     // LLM が確信を持って旅行を割り当てたら自動割り当て（受信箱でのクリックを省く）。
     await supabase
       .from("inbound_emails")
@@ -582,14 +596,6 @@ async function runExtraction(
         next_retry_at: null,
       })
       .eq("id", emailId);
-    // 作業状態（draft 行）を抽出結果で作る（エラーからの再抽出では作り直し）。
-    // resolvedFlight/resolvedNamedPlace/resolvedPlace の埋め込みは merge 分岐と
-    // 同じ理由（上のコメント参照）で保存直前に行う。
-    const enriched = {
-      receipt: await resolveReceiptPlace(supabase, receipt, tripId),
-      events: await prefetchFlights(supabase, events, tripId),
-    };
-    await replacePendingDrafts(supabase, emailId, enriched);
   }
 }
 
