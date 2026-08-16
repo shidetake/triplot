@@ -8,6 +8,7 @@ import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
+import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
 import { buildImportAddress } from "@/lib/import/inboundAddress";
@@ -109,6 +110,10 @@ export default async function ImportPage() {
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
+      {/* 転送したメールの抽出はサーバー側の非同期処理なので、戻ってきた
+          タイミングで取り直す（旅行詳細は Realtime も併用）。 */}
+      <RefreshOnFocus />
+
       <h1 className="text-2xl font-semibold tracking-tight">{t("heading")}</h1>
 
       <p className="mt-3 text-sm text-muted-foreground">

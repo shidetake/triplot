@@ -17,8 +17,7 @@ import { createClient } from "@/lib/supabase/client";
 // 行は流れない。iOS の useTripDrafts と同じ選択。
 //
 // 接続が切れている間の取りこぼしは、タブに戻ってきた時の再描画で拾う
-// （iOS がフォーカス時に再取得するのと同じ考え方。ポーリングは web だと
-// ページ全体の再描画になるので置かない）。
+// （RefreshOnFocus。旅行一覧・受信箱と共通の部品）。
 export function TripDraftsRealtime({ tripId }: { tripId: string }) {
   const router = useRouter();
   // 同じチャンネル名を2つ purchase しないよう、インスタンスごとに一意にする
@@ -42,13 +41,7 @@ export function TripDraftsRealtime({ tripId }: { tripId: string }) {
       )
       .subscribe();
 
-    const onVisible = () => {
-      if (document.visibilityState === "visible") router.refresh();
-    };
-    document.addEventListener("visibilitychange", onVisible);
-
     return () => {
-      document.removeEventListener("visibilitychange", onVisible);
       void supabase.removeChannel(channel);
     };
   }, [tripId, instanceId, router]);
