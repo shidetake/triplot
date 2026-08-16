@@ -143,6 +143,24 @@ export function ShareIcon({
   );
 }
 
+// Lucide: list-filter（場所の絞り込み。3本線が段々短くなる形＝ iOS Messages の
+// 「フィルタ」・Google の filter_list と同じ見た目。RN の FilterIcon と同一パス）
+export function FilterIcon({
+  size = 18,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <path d="M2 5h20" />
+      <path d="M6 12h12" />
+      <path d="M9 19h6" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: more-horizontal（ミートボール ⋯ メニュー）
 export function EllipsisIcon({
   size = 18,

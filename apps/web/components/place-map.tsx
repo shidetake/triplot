@@ -3,7 +3,6 @@
 import {
   type MutableRefObject,
   type ReactNode,
-  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -298,7 +297,6 @@ export function PlaceMap({
   const mapId = process.env.NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID;
   const colorScheme = useMapColorScheme();
   const placesLib = useMapsLibrary("places");
-  const map = useMap();
   // 長押しで仮ピンを置いた直後に来る合成 click を 1 回だけ食う（タイミング
   // 非依存。これが無いと touchend→click が draft 上の余白タップ＝閉じる
   // に化け、指を離した瞬間に仮ピンが消える）。
@@ -348,34 +346,6 @@ export function PlaceMap({
   const initBounds = boundsOf(focusPoints);
   const initialCenter = initBounds ? centerOf(initBounds) : TOKYO;
 
-  // チップで手動フォーカスしたエリア。null=既定（主役 or 全体）。-1="すべて"。
-  const [focusedIdx, setFocusedIdx] = useState<number | null>(null);
-  const activeIdx = focusedIdx ?? (main ? 0 : -1);
-
-  const focusBounds = useCallback(
-    (b: { south: number; west: number; north: number; east: number }) => {
-      map?.fitBounds(
-        { south: b.south, west: b.west, north: b.north, east: b.east },
-        60,
-      );
-    },
-    [map],
-  );
-  const focusCluster = (c: Cluster, idx: number) => {
-    setFocusedIdx(idx);
-    if (!map) return;
-    if (c.size === 1) {
-      map.setCenter({ lat: c.points[0].lat, lng: c.points[0].lng });
-      map.setZoom(14);
-      return;
-    }
-    focusBounds(c.bounds);
-  };
-  const focusAll = () => {
-    setFocusedIdx(-1);
-    const b = boundsOf(mappedPlaces.map((p) => ({ lat: p.lat, lng: p.lng })));
-    if (b) focusBounds(b);
-  };
 
   const selectedPos: LatLng | null = useMemo(() => {
     if (!selected) return null;
@@ -631,35 +601,6 @@ export function PlaceMap({
           </NarrowSheet>
         )}
       </div>
-      {clusters.length > 1 && (
-        <div className="flex flex-wrap gap-1">
-          {clusters.map((c, i) => (
-            <button
-              key={i}
-              type="button"
-              onClick={() => focusCluster(c, i)}
-              className={`rounded-full border px-2 py-0.5 text-xs ${
-                activeIdx === i
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-foreground/20 bg-background text-muted-foreground"
-              }`}
-            >
-              {c.label ?? t("other")}
-            </button>
-          ))}
-          <button
-            type="button"
-            onClick={focusAll}
-            className={`rounded-full border px-2 py-0.5 text-xs ${
-              activeIdx === -1
-                ? "border-primary bg-primary text-primary-foreground"
-                : "border-foreground/20 bg-background text-muted-foreground"
-            }`}
-          >
-            {t("filterAll")}
-          </button>
-        </div>
-      )}
       {!mapId && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
           {t("noMapId")}

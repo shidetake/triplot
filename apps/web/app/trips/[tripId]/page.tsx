@@ -31,7 +31,11 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
 } from "@triplot/shared/schedule";
-import { sortPlacesByItinerary } from "@triplot/shared/placeOrder";
+import {
+  earliestVisitByPlace,
+  sortPlacesByItinerary,
+  visitDayByPlace,
+} from "@triplot/shared/placeOrder";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
 import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
@@ -132,6 +136,15 @@ export default async function TripDetailPage({
     expenses,
     tzTimeline,
   );
+
+  // 場所の絞り込み（エリア／日にち）に使う派生。日にちは旅行開始日が要る。
+  // Map は RSC 境界を越えられないのでエントリ配列で渡す。
+  const visitDayEntries = trip.start_date
+    ? [...visitDayByPlace(scheduleEvents, expenses, tzTimeline, trip.start_date)]
+    : [];
+  const earliestVisitEntries = [
+    ...earliestVisitByPlace(scheduleEvents, expenses, tzTimeline),
+  ];
 
   const todos: TodoRow[] = deriveTodos(todosRaw, me.id);
   const prepTodos = todos.filter((t) => t.kind === "prep");
@@ -423,6 +436,8 @@ export default async function TripDetailPage({
               tripId={tripId}
               places={places}
               pinOptions={pinOptions}
+              visitDayEntries={visitDayEntries}
+              earliestVisitEntries={earliestVisitEntries}
               members={activeMembers.map((m) => ({
                 id: m.id,
                 color: m.color,

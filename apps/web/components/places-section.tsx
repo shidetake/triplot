@@ -6,7 +6,19 @@ import { useLocale, useTranslations } from "next-intl";
 import { APIProvider } from "@vis.gl/react-google-maps";
 import { Drawer } from "vaul";
 
-import { dominantCenter, type LatLng, TOKYO } from "@triplot/shared/placeMap";
+import {
+  dominantCenter,
+  labelByPlace,
+  type LatLng,
+  TOKYO,
+} from "@triplot/shared/placeMap";
+import {
+  areaFilterOptions,
+  dayFilterOptions,
+  matchesPlaceFilter,
+  type PlaceFilter,
+} from "@triplot/shared/placeFilter";
+import type { VisitDay } from "@triplot/shared/placeOrder";
 
 import { confirmDialog } from "./confirm-dialog";
 import { PlaceList, type PlaceRow } from "./place-list";
@@ -19,6 +31,7 @@ import {
   type PinOption,
   SavedInfo,
 } from "./place-popups";
+import { PlaceFilterMenu } from "./place-filter-menu";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
 import { toast } from "./toast";
@@ -56,12 +69,17 @@ export function PlacesSection({
   tripId,
   places,
   pinOptions,
+  visitDayEntries,
+  earliestVisitEntries,
   members,
   myMemberId,
 }: {
   tripId: string;
   places: PlaceRow[];
   pinOptions: PinOption[];
+  // 絞り込み用の派生（Map は RSC 境界を越えられないのでエントリ配列で受ける）。
+  visitDayEntries: [string, VisitDay][];
+  earliestVisitEntries: [string, number][];
   // 候補ピン（tentative）の色を作成者の hue で塗るのに使う。
   members: { id: string; color: number | null }[];
   myMemberId: string;
@@ -187,14 +205,55 @@ export function PlacesSection({
   // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
   // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
   const [showDismissed, setShowDismissed] = useState(false);
-  const visiblePlaces = useMemo(
-    () =>
-      showDismissed
-        ? places
-        : places.filter((p) => !(p.lat == null && p.location_dismissed)),
-    [places, showDismissed],
+  // 地図のピンと一覧の両方を絞り込む（エリア or 日にちのどちらか一方）。
+  // null＝絞り込みなし。iOS の場所タブと同じ選択肢・同じ規則。
+  const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
+
+  const dayByPlaceId = useMemo(
+    () => new Map(visitDayEntries),
+    [visitDayEntries],
   );
-  const dismissedCount = places.length - visiblePlaces.length;
+  const earliestMsByPlaceId = useMemo(
+    () => new Map(earliestVisitEntries),
+    [earliestVisitEntries],
+  );
+  // エリアは地図のクラスタリングと同じ規則でラベル付けする。
+  const areaByPlaceId = useMemo(
+    () =>
+      labelByPlace(
+        places
+          .filter((p) => p.lat != null && p.lng != null)
+          .map((p) => ({
+            id: p.id,
+            lat: p.lat as number,
+            lng: p.lng as number,
+            region: p.region,
+            locality: p.locality,
+          })),
+      ),
+    [places],
+  );
+  // 選択肢は常に全件から出す＝絞り込み中でも他の選択肢が消えず切り替えられる。
+  const areaOptions = useMemo(
+    () => areaFilterOptions(areaByPlaceId, earliestMsByPlaceId),
+    [areaByPlaceId, earliestMsByPlaceId],
+  );
+  const dayOptions = useMemo(() => dayFilterOptions(dayByPlaceId), [dayByPlaceId]);
+
+  const visiblePlaces = useMemo(() => {
+    const base = placeFilter
+      ? places.filter((p) =>
+          matchesPlaceFilter(p.id, placeFilter, areaByPlaceId, dayByPlaceId),
+        )
+      : places;
+    return showDismissed
+      ? base
+      : base.filter((p) => !(p.lat == null && p.location_dismissed));
+  }, [places, placeFilter, areaByPlaceId, dayByPlaceId, showDismissed]);
+  const dismissedCount = useMemo(
+    () => places.filter((p) => p.lat == null && p.location_dismissed).length,
+    [places],
+  );
   const [selected, setSelected] = useState<Selection | null>(null);
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
   const [draft, setDraft] = useState<LatLng | null>(null);
@@ -563,14 +622,30 @@ export function PlacesSection({
               周りを覆う不透明な枠は敷かない＝入力とボタンの間からも地図が見える
               ようにし、地図の表示領域を最大化する（前回 p-1 の枠を足す方向で
               直したが、逆に地図を隠す面積が増えるとフィードバックがあり撤回）。 */}
-          <PlaceSearch
-            query={query}
-            onQueryChange={setQuery}
-            onClear={clearSearch}
-            biasCenter={biasCenter}
-            onResults={onResults}
-            onPickSaved={pickSaved}
-          />
+          <div className="flex items-start gap-2">
+            <div className="min-w-0 flex-1">
+              <PlaceSearch
+                query={query}
+                onQueryChange={setQuery}
+                onClear={clearSearch}
+                biasCenter={biasCenter}
+                onResults={onResults}
+                onPickSaved={pickSaved}
+              />
+            </div>
+            {/* 絞り込み（エリア/日にち/非表示の場所）。地図のピンと一覧の
+                両方に効く。iOS の地図右上のフィルタと同じ位置づけ。 */}
+            <PlaceFilterMenu
+              filter={placeFilter}
+              onChange={setPlaceFilter}
+              areaOptions={areaOptions}
+              dayOptions={dayOptions}
+              dismissedCount={dismissedCount}
+              showDismissed={showDismissed}
+              onToggleDismissed={() => setShowDismissed((v) => !v)}
+              locale={locale}
+            />
+          </div>
         </div>
 
         <div
@@ -665,17 +740,6 @@ export function PlacesSection({
                     onCancelLocate={cancelLocate}
                     onDismissLocation={dismissLocation}
                   />
-                  {dismissedCount > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShowDismissed((v) => !v)}
-                      className="mt-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
-                    >
-                      {showDismissed
-                        ? t("hideDismissed")
-                        : t("showDismissed", { count: dismissedCount })}
-                    </button>
-                  )}
                 </div>
               </Drawer.Content>
             </Drawer.Portal>
@@ -692,17 +756,6 @@ export function PlacesSection({
             onCancelLocate={cancelLocate}
             onDismissLocation={dismissLocation}
           />
-          {dismissedCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setShowDismissed((v) => !v)}
-              className="mt-2 text-xs text-muted-foreground hover:text-foreground hover:underline"
-            >
-              {showDismissed
-                ? t("hideDismissed")
-                : t("showDismissed", { count: dismissedCount })}
-            </button>
-          )}
         </div>
       </div>
     </APIProvider>

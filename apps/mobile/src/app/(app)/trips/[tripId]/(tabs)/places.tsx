@@ -50,6 +50,12 @@ import {
   TOKYO,
 } from "@triplot/shared/placeMap";
 import {
+  areaFilterOptions,
+  dayFilterOptions,
+  matchesPlaceFilter,
+  type PlaceFilter,
+} from "@triplot/shared/placeFilter";
+import {
   getIconLabel,
   iconKeyForGoogleType,
   type PinOption,
@@ -189,12 +195,6 @@ function estimateListContentH(places: PlaceRow[]): number {
   );
 }
 
-// 地図・一覧を絞り込むフィルタの種類。エリアは labelByPlace の label
-// （null＝ラベル無しの「その他」も区別して絞り込めるようにする）、
-// 日にちは visitDayByPlace の dayIndex で揃える。
-type PlaceFilter =
-  | { kind: "area"; label: string | null }
-  | { kind: "day"; dayIndex: number };
 
 type SavedPlaceRowProps = {
   item: PlaceRow;
@@ -639,47 +639,20 @@ export default function PlacesTab() {
   // フィルタメニューの選択肢。常に全件（places）から出す＝フィルタ中でも
   // 他の選択肢が消えず切り替えられる。エリアは件数の多い順、日にちは
   // 旅程順（dayIndex 昇順）。
-  const areaFilterOptions = useMemo(() => {
-    const counts = new Map<string | null, number>();
-    // エリアの並び順＝旅程順（そのエリアに最初に訪れる場所の絶対時刻が
-    // 早い順）。「成田→ハワイ」の旅程なら千葉県が先に来るようにする
-    // （件数順だと訪問先が多いエリアが先頭に来て旅程と噛み合わない、との
-    // 実機フィードバック）。
-    const earliestMs = new Map<string | null, number>();
-    for (const [placeId, label] of areaByPlaceId) {
-      counts.set(label, (counts.get(label) ?? 0) + 1);
-      const ms = earliestMsByPlaceId.get(placeId);
-      if (ms != null) {
-        const cur = earliestMs.get(label);
-        if (cur == null || ms < cur) earliestMs.set(label, ms);
-      }
-    }
-    return [...counts.entries()].sort((a, b) => {
-      const ma = earliestMs.get(a[0]) ?? Infinity;
-      const mb = earliestMs.get(b[0]) ?? Infinity;
-      // 旅程が分からない（日時未定）エリア同士は件数の多い順で並べる。
-      return ma !== mb ? ma - mb : b[1] - a[1];
-    });
-  }, [areaByPlaceId, earliestMsByPlaceId]);
+  // 選択肢の組み立て（並び順の根拠込み）は shared（web と共用）。
+  const areaOptions = useMemo(
+    () => areaFilterOptions(areaByPlaceId, earliestMsByPlaceId),
+    [areaByPlaceId, earliestMsByPlaceId],
+  );
 
-  const dayFilterOptions = useMemo(() => {
-    const byDay = new Map<
-      number,
-      { dayIndex: number; date: string; count: number }
-    >();
-    for (const day of dayByPlaceId.values()) {
-      const cur = byDay.get(day.dayIndex);
-      if (cur) cur.count += 1;
-      else byDay.set(day.dayIndex, { ...day, count: 1 });
-    }
-    return [...byDay.values()].sort((a, b) => a.dayIndex - b.dayIndex);
-  }, [dayByPlaceId]);
+  const dayOptions = useMemo(
+    () => dayFilterOptions(dayByPlaceId),
+    [dayByPlaceId],
+  );
 
-  const matchesPlaceFilter = useCallback(
+  const matchesFilter = useCallback(
     (placeId: string, f: PlaceFilter): boolean =>
-      f.kind === "area"
-        ? areaByPlaceId.get(placeId) === f.label
-        : dayByPlaceId.get(placeId)?.dayIndex === f.dayIndex,
+      matchesPlaceFilter(placeId, f, areaByPlaceId, dayByPlaceId),
     [areaByPlaceId, dayByPlaceId],
   );
 
@@ -687,12 +660,12 @@ export default function PlacesTab() {
   // 場所は showDismissed が true の時だけ含める。
   const filteredPlaces = useMemo(() => {
     const base = placeFilter
-      ? places.filter((p) => matchesPlaceFilter(p.id, placeFilter))
+      ? places.filter((p) => matchesFilter(p.id, placeFilter))
       : places;
     return showDismissed
       ? base
       : base.filter((p) => !(p.lat == null && p.location_dismissed));
-  }, [places, placeFilter, matchesPlaceFilter, showDismissed]);
+  }, [places, placeFilter, matchesFilter, showDismissed]);
   const dismissedCount = useMemo(
     () => places.filter((p) => p.lat == null && p.location_dismissed).length,
     [places],
@@ -711,7 +684,7 @@ export default function PlacesTab() {
     f.kind === "area"
       ? (f.label ?? t("other"))
       : `${f.dayIndex}日目・${formatDayLabel(
-          dayFilterOptions.find((d) => d.dayIndex === f.dayIndex)?.date ?? "",
+          dayOptions.find((d) => d.dayIndex === f.dayIndex)?.date ?? "",
         )}`;
 
   // フィルタ選択（解除＝null も含む）。選んだフィルタの範囲外に選択中の
@@ -720,11 +693,11 @@ export default function PlacesTab() {
   const applyPlaceFilter = (f: PlaceFilter | null) => {
     setPlaceFilter(f);
     setFilterOpen(false);
-    if (editing && f && !matchesPlaceFilter(editing.id, f)) {
+    if (editing && f && !matchesFilter(editing.id, f)) {
       setEditing(null);
       setFormOpen(false);
     }
-    const target = f ? places.filter((p) => matchesPlaceFilter(p.id, f)) : places;
+    const target = f ? places.filter((p) => matchesFilter(p.id, f)) : places;
     const mapped = target.filter(
       (p): p is PlaceRow & { lat: number; lng: number } =>
         p.lat != null && p.lng != null,
@@ -2465,12 +2438,12 @@ export default function PlacesTab() {
                 <CheckIcon size={16} color={theme.mutedForeground} />
               )}
             </Pressable>
-            {areaFilterOptions.length > 0 && (
+            {areaOptions.length > 0 && (
               <>
                 <Text style={styles.filterSectionLabel}>
                   {t("filterSectionArea")}
                 </Text>
-                {areaFilterOptions.map(([label, count]) => {
+                {areaOptions.map(({ label, count }) => {
                   const selected =
                     placeFilter?.kind === "area" && placeFilter.label === label;
                   return (
@@ -2496,12 +2469,12 @@ export default function PlacesTab() {
                 })}
               </>
             )}
-            {dayFilterOptions.length > 0 && (
+            {dayOptions.length > 0 && (
               <>
                 <Text style={styles.filterSectionLabel}>
                   {t("filterSectionDay")}
                 </Text>
-                {dayFilterOptions.map((d) => {
+                {dayOptions.map((d) => {
                   const selected =
                     placeFilter?.kind === "day" &&
                     placeFilter.dayIndex === d.dayIndex;
