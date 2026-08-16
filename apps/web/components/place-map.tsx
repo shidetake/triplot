@@ -47,6 +47,7 @@ import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
 import { useTranslations } from "next-intl";
 
 import { NarrowSheet } from "./form-popover";
+import { MapControls } from "./map-controls";
 import { PlaceIcon, type PlaceRow } from "./place-list";
 import { type CandidatePlace, extractRegion } from "./place-search";
 import { useMediaQuery } from "./use-media-query";
@@ -462,6 +463,9 @@ export function PlaceMap({
           style={{ width: "100%", height: "100%" }}
         >
           <MapController points={focusPoints} panTo={selectedPos} />
+          {/* 現在地・方位磁針・縮尺バー（iOS の場所タブと同じ仕様）。
+              位置を指定するモード中は地図に集中させるため出さない。 */}
+          <MapControls hidden={locating} />
           <LongPressPin
             onLongPress={onMapTap}
             ignoreNextMapClick={ignoreNextMapClick}
