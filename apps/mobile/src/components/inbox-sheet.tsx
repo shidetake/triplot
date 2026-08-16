@@ -1,18 +1,29 @@
 import * as Clipboard from "expo-clipboard";
+import { useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
-import { dismissInboundEmail } from "@triplot/shared/data/inbox";
+import {
+  dismissInboundEmail,
+  unmergeInboundEmail,
+} from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import {
   EXTRACT_ERROR_NO_CONTENT,
   MONTHLY_EMAIL_CAP,
 } from "@triplot/shared/import/config";
-import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
-import type { EventDraft, Receipt } from "@triplot/shared/import/schema";
+import {
+  eventDraftWhenLabel,
+  extractionSummary,
+} from "@triplot/shared/import/draftLabel";
+import type {
+  EventDraft,
+  Extraction,
+  Receipt,
+} from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { ChevronIcon, CopyIcon } from "@/components/icons";
@@ -61,6 +72,29 @@ export function InboxSheet() {
     const arr = itemsByEmail.get(d.email_id) ?? [];
     arr.push(d);
     itemsByEmail.set(d.email_id, arr);
+  }
+
+  // 合体された子メールを持つメールの、明細を開いているかどうか。
+  // （web は <details>。RN は開閉行＋条件レンダー＝TODO セクションと同じ形）
+  const [openMerged, setOpenMerged] = useState<string | null>(null);
+
+  // 誤って合体されたメールを独立した下書きに戻す。
+  const unmerge = (childId: string) => {
+    void unmergeInboundEmail(supabase, childId).then((r) => {
+      if (!r.ok) {
+        Alert.alert(r.error);
+        return;
+      }
+      void refetch();
+    });
+  };
+
+  const childrenByParent = new Map<string, { id: string; own: Extraction | null }[]>();
+  for (const c of data?.mergedChildren ?? []) {
+    if (!c.merged_into) continue;
+    const arr = childrenByParent.get(c.merged_into) ?? [];
+    arr.push({ id: c.id, own: c.extracted as unknown as Extraction | null });
+    childrenByParent.set(c.merged_into, arr);
   }
 
   const copyAddress = async () => {
@@ -168,6 +202,8 @@ export function InboxSheet() {
             e.subject ||
             t("noContent");
           const assigned = trips.find((tr) => tr.id === e.trip_id);
+          const children = childrenByParent.get(e.id) ?? [];
+          const mergedOpen = openMerged === e.id;
           return (
             <View key={e.id} style={styles.emailCard}>
               <Text style={styles.emailSummary} numberOfLines={1}>
@@ -248,6 +284,69 @@ export function InboxSheet() {
                   <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
                 </Pressable>
               </View>
+
+              {/* 合体されたメール（誤マージの確認と分割）。開閉は行タップ
+                  （web の <details> と同じ扱い）。本体＝このメール自身の
+                  抽出値は分割できないので分割ボタンを出さない。 */}
+              {children.length > 0 && (
+                <View>
+                  <Pressable
+                    onPress={() => setOpenMerged(mergedOpen ? null : e.id)}
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityState={{ expanded: mergedOpen }}
+                  >
+                    <Text style={styles.mergedToggle}>
+                      {t("mergedSummary", { count: children.length + 1 })}
+                    </Text>
+                  </Pressable>
+                  {mergedOpen && (
+                    <View style={styles.mergedList}>
+                      {[
+                        { id: null, own: e.extracted as unknown as Extraction | null },
+                        ...children,
+                      ].map((ch, i) => {
+                        const sm = extractionSummary(
+                          ch.own,
+                          t("unknownMerchant"),
+                        );
+                        return (
+                          <View key={ch.id ?? `own:${i}`} style={styles.mergedRow}>
+                            <View style={styles.mergedRowText}>
+                              <Text style={styles.metaText} numberOfLines={1}>
+                                {sm.title}
+                              </Text>
+                              {sm.amount && (
+                                <>
+                                  <InlineDivider />
+                                  <Text style={styles.metaText}>{sm.amount}</Text>
+                                </>
+                              )}
+                              <InlineDivider />
+                              <Text style={styles.metaText}>
+                                {sm.date}
+                                {ch.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                              </Text>
+                            </View>
+                            {/* 本体（このメール自身）は分けられない。 */}
+                            {ch.id && (
+                              <Pressable
+                                onPress={() => unmerge(ch.id!)}
+                                hitSlop={8}
+                                style={styles.splitButton}
+                              >
+                                <Text style={styles.splitLabel}>
+                                  {t("split")}
+                                </Text>
+                              </Pressable>
+                            )}
+                          </View>
+                        );
+                      })}
+                    </View>
+                  )}
+                </View>
+              )}
             </View>
           );
         })
@@ -354,5 +453,32 @@ const makeStyles = (t: Theme) =>
   },
   assignLabelWarn: { color: t.warnAccent },
   dismissLabel: { fontSize: 12, color: t.mutedForeground },
+  // 合体明細（web の <details> 相当）。開閉行は控えめ、中身は muted の面に置く。
+  mergedToggle: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
+  mergedList: { marginTop: 6, gap: 4 },
+  mergedRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderRadius: 4,
+    backgroundColor: t.secondary,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  mergedRowText: {
+    flex: 1,
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
+  splitButton: {
+    borderWidth: 1,
+    borderColor: t.fgAlpha(0.2),
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  splitLabel: { fontSize: 11, color: t.mutedForeground },
   usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
 });

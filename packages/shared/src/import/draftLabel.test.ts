@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
-import type { EventDraft } from "./schema";
+import {
+  eventDraftWhenLabel,
+  extractionSummary,
+  monthDayLabel,
+} from "./draftLabel";
+import type { EventDraft, Receipt } from "./schema";
 
 describe("monthDayLabel", () => {
   it("年を省いた M/D（ゼロ埋めなし）にする", () => {
@@ -60,5 +64,46 @@ describe("eventDraftWhenLabel", () => {
       "ja",
     );
     expect(label).toBe("8/1(土) 21:05 → 8/1(土) 09:55");
+  });
+});
+
+describe("extractionSummary", () => {
+  it("レシートがあれば店名・金額・日付を出す", () => {
+    expect(
+      extractionSummary(
+        {
+          receipt: {
+            merchant: "Yard House",
+            total: 42.5,
+            currency: "USD",
+            date: "2026-05-01",
+          } as Receipt,
+          events: [],
+        },
+        "(店名不明)",
+      ),
+    ).toEqual({ title: "Yard House", amount: "42.5 USD", date: "2026-05-01" });
+  });
+
+  it("レシートが無ければ先頭の予定のタイトル・開始日を使う", () => {
+    expect(
+      extractionSummary(
+        {
+          receipt: null,
+          events: [
+            { title: "JL784", startDate: "2026-04-28", kind: "transit" } as EventDraft,
+          ],
+        },
+        "(店名不明)",
+      ),
+    ).toEqual({ title: "JL784", amount: null, date: "2026-04-28" });
+  });
+
+  it("何も抽出できていなければフォールバックの文言", () => {
+    expect(extractionSummary(null, "(店名不明)")).toEqual({
+      title: "(店名不明)",
+      amount: null,
+      date: null,
+    });
   });
 });

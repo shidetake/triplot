@@ -10,7 +10,10 @@ import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
-import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
+import {
+  eventDraftWhenLabel,
+  extractionSummary,
+} from "@triplot/shared/import/draftLabel";
 import { buildImportAddress } from "@/lib/import/inboundAddress";
 import { MONTHLY_EMAIL_CAP } from "@/lib/import/importConfig";
 import { EXTRACT_ERROR_NO_CONTENT } from "@/lib/import/process";
@@ -23,19 +26,6 @@ import {
   dismissEmailAction,
   unmergeAction,
 } from "./actions";
-
-// 抽出結果の要約部品（店名 or 予定タイトル / 金額 / 日付）。合体明細の行に出す。
-function extractionSummary(
-  x: Extraction | null,
-  fallback: string,
-): { title: string; amount: string | null; date: string | null } {
-  const first = x?.events[0] ?? null;
-  return {
-    title: x?.receipt?.merchant || first?.title || fallback,
-    amount: x?.receipt ? `${x.receipt.total} ${x.receipt.currency}` : null,
-    date: x?.receipt?.date ?? first?.startDate ?? null,
-  };
-}
 
 export default async function ImportPage() {
   const t = await getTranslations("import");
