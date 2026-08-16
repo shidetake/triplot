@@ -1,10 +1,15 @@
 import { router, Stack } from "expo-router";
 import { useCallback, useMemo } from "react";
-import { View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+import { useLocale, useTranslations } from "use-intl";
+
+import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { HeaderIconButton } from "@/components/header-icon-button";
+import { InlineDivider } from "@/components/inline-divider";
 import { SettingsIcon, ShareIcon } from "@/components/icons";
 import { shareTripInvite } from "@/lib/shareTripInvite";
+import { type Theme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -27,7 +32,19 @@ import { useTripId } from "@/lib/useTripId";
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
+  const locale = useLocale();
+  const t = useTranslations("tripDetail");
+  const styles = useThemedStyles(makeStyles);
   const tripTitle = data?.trip?.title ?? "";
+  // ヘッダー2行目に日程と精算通貨（web の旅行ヘッダーと同じ情報）。iOS の
+  // ナビバーはアバター列まで載せられないので、この2つだけを小さく添える
+  // （メンバーは旅行編集シートに一覧がある）。地図タブを詰めないよう、
+  // 画面内にバーを足すのではなくナビバーの中で完結させる。
+  const trip = data?.trip;
+  const dateRange = trip
+    ? formatTripDateRange(trip.start_date, trip.end_date, locale)
+    : "";
+  const currency = trip?.default_currency ?? "";
 
   // options は identity が変わるたびに expo-router が navigation.setOptions を
   // 呼ぶ。useTripDetail はいいね・優先度変更等の invalidate のたびに再レンダー
@@ -54,13 +71,42 @@ export default function TripLayout() {
     ),
     [tripId],
   );
+  // 2行タイトル（旅行名＋日程｜精算通貨）。headerTitle も headerRight と同じく
+  // identity が変わるたび setOptions が走るのでメモ化する。
+  const headerTitle = useCallback(
+    () => (
+      <View style={styles.titleBlock}>
+        <Text style={styles.title} numberOfLines={1}>
+          {tripTitle}
+        </Text>
+        {(dateRange || currency) && (
+          <View style={styles.subtitleRow}>
+            {dateRange ? (
+              <Text style={styles.subtitle} numberOfLines={1}>
+                {dateRange}
+              </Text>
+            ) : null}
+            {dateRange && currency ? <InlineDivider /> : null}
+            {currency ? (
+              <Text style={styles.subtitle}>
+                {t("settlementCurrency")}: {currency}
+              </Text>
+            ) : null}
+          </View>
+        )}
+      </View>
+    ),
+    [tripTitle, dateRange, currency, styles, t],
+  );
+
   const screenOptions = useMemo(
     () => ({
       title: tripTitle,
+      headerTitle,
       headerBackButtonDisplayMode: "minimal" as const,
       headerRight,
     }),
-    [tripTitle, headerRight],
+    [tripTitle, headerTitle, headerRight],
   );
 
   return (
@@ -103,3 +149,18 @@ const sheetScreenOptions = {
   sheetAllowedDetents: "fitToContents" as const,
   sheetGrabberVisible: true,
 };
+
+const makeStyles = (t: Theme) =>
+  StyleSheet.create({
+    // ナビバーの中央に収まる2行タイトル。1行目は iOS 標準のタイトルと同じ
+    // 大きさ・太さ、2行目は補助情報なので muted の小さい文字。
+    titleBlock: { alignItems: "center", maxWidth: 240 },
+    title: { fontSize: 17, fontWeight: "600", color: t.foreground },
+    subtitleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 6,
+      marginTop: 1,
+    },
+    subtitle: { fontSize: 11, color: t.mutedForeground },
+  });
