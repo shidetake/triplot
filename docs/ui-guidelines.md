@@ -24,6 +24,9 @@ triplot の UI 規約（テーマ・アイコン・ボタン配色・コピー�
    placeholder 文言、アイコン（同じ Lucide / Material Symbols パス）、セマンティック色とその
    ダーク写像。
 
+意図的に片側だけに置いているものは [design/platform-parity.md](./design/platform-parity.md)
+に理由ごとまとめてある（そこに無い差分は揃え忘れとして扱う）。
+
 - **色は web トークンと同値の焼き込み値**で書く。単一の真実は `globals.css`、RN 側の対応表は
   `apps/mobile/src/lib/theme.ts`（oklch を sRGB に変換した不透明値）。テキスト/アイコンの中間色を
   `rgba` で書かない — SVG の複数パスが重なる箇所で透明度が二重にかかり黒ずむ。ボーダー・hover 面
