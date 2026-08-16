@@ -2,7 +2,7 @@ import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { dismissInboundEmail } from "@triplot/shared/data/inbox";
@@ -11,9 +11,12 @@ import {
   EXTRACT_ERROR_NO_CONTENT,
   MONTHLY_EMAIL_CAP,
 } from "@triplot/shared/import/config";
+import { eventDraftWhenLabel } from "@triplot/shared/import/draftLabel";
+import type { EventDraft, Receipt } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { ChevronIcon, CopyIcon } from "@/components/icons";
+import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
@@ -29,6 +32,8 @@ import { useSession } from "@/lib/session";
 // にはならず、呼び出し元の refetch がこのコンポーネントの data も更新する。
 export function InboxSheet() {
   const t = useTranslations("import");
+  const tCommon = useTranslations("common");
+  const locale = useLocale();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { session } = useSession();
@@ -152,14 +157,14 @@ export function InboxSheet() {
       ) : (
         emails.map((e) => {
           const items = itemsByEmail.get(e.id) ?? [];
-          const receipt = items.find((i) => i.kind === "expense")?.payload as
-            | { merchant?: string; total?: number; currency?: string }
-            | undefined;
-          const eventItems = items.filter((i) => i.kind === "event");
+          const receipt = (items.find((i) => i.kind === "expense")?.payload ??
+            null) as Receipt | null;
+          const events = items
+            .filter((i) => i.kind === "event")
+            .map((i) => i.payload as EventDraft);
           const summary =
             receipt?.merchant ||
-            (eventItems[0]?.payload as { title?: string } | undefined)
-              ?.title ||
+            events[0]?.title ||
             e.subject ||
             t("noContent");
           const assigned = trips.find((tr) => tr.id === e.trip_id);
@@ -168,19 +173,42 @@ export function InboxSheet() {
               <Text style={styles.emailSummary} numberOfLines={1}>
                 {summary}
               </Text>
-              <View style={styles.emailMeta}>
-                {receipt?.total != null && (
+              {/* 抽出できた中身を web の /import と同じ粒度で出す（金額・日付・
+                  カテゴリ・場所／予定は1件ずつタイトルと日時）。割り当て先を
+                  決める判断材料なので、要約だけに削らない。 */}
+              {receipt && (
+                <View style={styles.emailMeta}>
                   <Text style={styles.metaText}>
                     {receipt.total} {receipt.currency}
                   </Text>
-                )}
-                <Text style={styles.metaText}>
-                  {String(e.received_at).slice(5, 10).replace("-", "/")}
-                </Text>
-                {items.length > 1 && (
-                  <Text style={styles.metaText}>{items.length}件</Text>
-                )}
-              </View>
+                  <InlineDivider />
+                  <Text style={styles.metaText}>{receipt.date}</Text>
+                  <InlineDivider />
+                  <Text style={styles.metaText}>{receipt.category}</Text>
+                  {receipt.location ? (
+                    <>
+                      <InlineDivider />
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {receipt.location}
+                      </Text>
+                    </>
+                  ) : null}
+                </View>
+              )}
+              {events.map((ev, i) => (
+                <View key={i} style={styles.emailMeta}>
+                  <Text style={styles.metaText} numberOfLines={1}>
+                    {ev.title || tCommon("untitledEvent")}
+                  </Text>
+                  <InlineDivider />
+                  <Text style={styles.metaText}>
+                    {eventDraftWhenLabel(ev, locale)}
+                  </Text>
+                </View>
+              ))}
+              {!receipt && events.length === 0 && (
+                <Text style={styles.metaText}>{t("noContent")}</Text>
+              )}
 
               {/* 旅行割当。タップで割当先選択シート（inbox-pick-trip route。他の
                   formSheet と同じネイティブの質感）を開いて選び直せる（値＋
@@ -295,7 +323,12 @@ const makeStyles = (t: Theme) =>
     gap: 6,
   },
   emailSummary: { fontSize: 14, fontWeight: "500", color: t.foreground },
-  emailMeta: { flexDirection: "row", gap: 10 },
+  emailMeta: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+  },
   metaText: { fontSize: 12, color: t.mutedForeground },
   actionsRow: {
     flexDirection: "row",
