@@ -48,6 +48,28 @@ const HOUR_PX = 29; // 1時間の高さ px（従来48の約6割）
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
 const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 
+// ブロックの高さから、時刻＋（下書きバッジ）＋タイトル1行を確保した「残り」で
+// 場所/メモに回せる行数を返す。HOUR_PX=29 の高密度表示だと1時間の予定でも
+// 時刻＋タイトルで高さの大半を使い切るのに、場所を無条件に描くと場所（店名）が
+// タイトルを押しのけて主役に見えてしまう（iOS の実機フィードバックで判明した
+// のと同じ現象が、狭い画面の web でも起きる）。タイトルは1行ぶん必ず確保し、
+// それでも余りが無ければ場所・メモは出さない。値は各 class のフォントサイズ
+// （leading-tight = 1.25）からの概算。
+const BLOCK_PADDING_H = 4; // py-0.5 の上下
+const TIME_LINE_H = 13; // text-[10px]
+const TITLE_LINE_H = 15; // text-xs
+const EXTRA_LINE_H = 15; // 場所・メモ（text-xs）
+const DRAFT_BADGE_LINE_H = 14; // text-[9px] + mb-0.5
+function maxExtraLines(height: number, isDraft: boolean): number {
+  const reserved =
+    BLOCK_PADDING_H +
+    TIME_LINE_H +
+    (isDraft ? DRAFT_BADGE_LINE_H : 0) +
+    TITLE_LINE_H;
+  const remaining = height - reserved;
+  return remaining < EXTRA_LINE_H ? 0 : Math.floor(remaining / EXTRA_LINE_H);
+}
+
 export type Anchor = { x: number; y: number };
 
 // PC ドラッグで描画中の可変長ゴースト。状態は親で持つ（form 開閉と
@@ -589,8 +611,12 @@ export function WeekCalendar({
       </span>
     );
 
-  const blockLabel = (ev: ScheduleEvent) => {
-    const pn = placeName(ev.startPlaceId);
+  // height はこのブロックの実高さ（px）。タイトルの表示分を確保してなお
+  // 余りがある時だけ場所→メモの順に足す（maxExtraLines 参照）。
+  const blockLabel = (ev: ScheduleEvent, height: number) => {
+    const extras = [placeName(ev.startPlaceId), ev.note]
+      .filter((x): x is string => Boolean(x))
+      .slice(0, maxExtraLines(height, !!ev.isDraft));
     return (
       <>
         {draftBadge(ev)}
@@ -598,8 +624,11 @@ export function WeekCalendar({
           <ReservationMark ev={ev} />
           {ev.title}
         </span>
-        {pn && <span className="block truncate opacity-70">{pn}</span>}
-        {ev.note && <span className="block truncate opacity-70">{ev.note}</span>}
+        {extras.map((text, i) => (
+          <span key={i} className="block truncate opacity-70">
+            {text}
+          </span>
+        ))}
       </>
     );
   };
@@ -1183,7 +1212,7 @@ export function WeekCalendar({
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
-                  {blockLabel(p.event)}
+                  {blockLabel(p.event, h - 1)}
                 </button>
               );
             })}
@@ -1250,9 +1279,15 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {t.event.note && (
-                      <span className="block truncate opacity-70">{t.event.note}</span>
-                    )}
+                    {t.event.note &&
+                      maxExtraLines(
+                        Math.max(ya - yd, MIN_BLOCK),
+                        !!t.event.isDraft,
+                      ) > 0 && (
+                        <span className="block truncate opacity-70">
+                          {t.event.note}
+                        </span>
+                      )}
                   </button>
                 );
               }
@@ -1296,9 +1331,15 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {t.event.note && (
-                      <span className="block truncate opacity-70">{t.event.note}</span>
-                    )}
+                    {t.event.note &&
+                      maxExtraLines(
+                        Math.max(bodyH - yd, MIN_BLOCK),
+                        !!t.event.isDraft,
+                      ) > 0 && (
+                        <span className="block truncate opacity-70">
+                          {t.event.note}
+                        </span>
+                      )}
                   </button>
                   {/* 到着側 */}
                   <button
@@ -1329,9 +1370,13 @@ export function WeekCalendar({
                       <ReservationMark ev={t.event} />
                       {t.event.title}
                     </span>
-                    {t.event.note && (
-                      <span className="block truncate opacity-70">{t.event.note}</span>
-                    )}
+                    {t.event.note &&
+                      maxExtraLines(Math.max(ya, MIN_BLOCK), !!t.event.isDraft) >
+                        0 && (
+                        <span className="block truncate opacity-70">
+                          {t.event.note}
+                        </span>
+                      )}
                   </button>
                 </div>
               );
