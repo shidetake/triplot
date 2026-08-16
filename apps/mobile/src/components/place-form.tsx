@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   Alert,
+  Linking,
   Pressable,
   StyleSheet,
   Text,
@@ -14,6 +15,7 @@ import {
   deletePlace,
   updatePlace,
 } from "@triplot/shared/data/places";
+import { gmapsUrl } from "@triplot/shared/placeLink";
 import { getIconPath, type PinOption } from "@triplot/shared/placeIcons";
 import type { PlaceCandidate } from "@triplot/shared/placesSearch";
 import { candidateToCreatePlace } from "@triplot/shared/placesSearch";
@@ -179,6 +181,19 @@ export function PlaceForm({
         <Text style={styles.address}>{candidate.formattedAddress}</Text>
       ) : null}
 
+      {/* 保存済みの場所だけ「Googleマップで開く」（web の SavedInfo と同じ）。
+          現地でのナビ起動はモバイルでこそ使う導線。Google マップアプリが
+          入っていればそちらが、無ければ Safari が開く（URL は web と同一）。 */}
+      {editPlace && (
+        <Pressable
+          onPress={() => void Linking.openURL(gmapsUrl(editPlace))}
+          accessibilityRole="link"
+          hitSlop={6}
+        >
+          <Text style={styles.mapsLink}>{t("openGoogleMaps")}</Text>
+        </Pressable>
+      )}
+
       {/* アイコン選択（trip のピンセット＋「＋」でカタログから追加/削除） */}
       <View style={styles.iconRow}>
         {sortedPins.map((o) => {
@@ -276,6 +291,8 @@ const makeStyles = (t: Theme) =>
     name: { fontSize: 18, fontWeight: "600", color: t.foreground },
     nameInput: { fontSize: 16 },
     address: { fontSize: 13, color: t.mutedForeground, marginTop: -6 },
+    // インラインのアクションテキスト（web と同じ blue-600 相当。ui-guidelines）。
+    mapsLink: { fontSize: 13, color: t.linkText, marginTop: -6 },
     iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     iconChip: {
       width: 40,

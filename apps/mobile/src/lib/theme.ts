@@ -37,6 +37,10 @@ export const lightTheme = {
   addAccent: "#2563eb", // blue-600（「＋」追加ボタン）
   removeChipBg: "#fee2e2", // red-100
   removeChipText: "#7f1d1d", // red-900
+  // リンク・インラインのアクションテキスト（web: text-blue-600 / dark:blue-400）。
+  // 値は addAccent と同じだが意味が別なので別トークンにする（ui-guidelines の
+  // 「意味→見た目」の向きで持つ原則）。
+  linkText: "#2563eb", // blue-600
 };
 
 export type Theme = typeof lightTheme;
@@ -68,6 +72,7 @@ export const darkTheme: Theme = {
   addAccent: "#60a5fa", // blue-400
   removeChipBg: "rgba(248,113,113,0.2)", // red-400/20
   removeChipText: "#fecaca", // red-200
+  linkText: "#60a5fa", // blue-400
 };
 
 export function useTheme(): Theme {

@@ -41,20 +41,9 @@ export function PlaceIcon({
   );
 }
 
-export function gmapsUrl(
-  p: Pick<PlaceRow, "name" | "google_place_id" | "lat" | "lng">,
-): string {
-  const base = `https://www.google.com/maps/search/?api=1&query=`;
-  // Google 由来は place_id でピンポイント、手動ピンは座標、
-  // 未マップ（座標も無い）は名前で検索だけ。
-  if (p.google_place_id) {
-    return `${base}${encodeURIComponent(p.name)}&query_place_id=${p.google_place_id}`;
-  }
-  if (p.lat != null && p.lng != null) {
-    return `${base}${p.lat},${p.lng}`;
-  }
-  return `${base}${encodeURIComponent(p.name)}`;
-}
+// URL の組み立ては shared（RN の場所編集シートと共用）。既存 import を
+// 壊さないよう、ここから re-export する。
+export { gmapsUrl } from "@triplot/shared/placeLink";
 
 export function PlaceList({
   places,
