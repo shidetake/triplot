@@ -16,6 +16,7 @@ import {
 import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseForm } from "@/components/expense-form";
+import { FormDraftProvider } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
 import {
   useInvalidateInbox,
@@ -108,40 +109,50 @@ export default function ExpenseFormRoute() {
     void invalidateInbox();
   };
 
+  // 入力途中を保持するキー（web の add-expense-button / expense-list と同じ
+  // 体系）。取り込み下書きの確定は下書きごと、編集は費用ごと、新規は旅行ごと。
+  const draftKey = draftId
+    ? `expense:import:${draftId}`
+    : expenseId
+      ? `expense:edit:${expenseId}`
+      : `expense:new:${tripId}`;
+
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <ExpenseForm
-        tripId={tripId}
-        members={members}
-        myMemberId={me.id}
-        defaultCurrency={defaultCurrency}
-        initialCurrency={defaults.initialCurrency}
-        categories={categories}
-        initialCategoryId={defaults.initialCategoryId}
-        averageRates={averageRates}
-        initialPaidAt={defaults.initialPaidAt}
-        places={(data.placesRaw ?? []).map((p) => ({
-          id: p.id,
-          name: p.name,
-        }))}
-        biasCenter={biasCenter}
-        tzTimeline={tzTimeline}
-        editExpense={editExpense}
-        draft={confirmingDraft}
-        onDone={() => {
-          router.back();
-          void invalidate();
-        }}
-        onSuccess={
-          confirmingDraft
-            ? (newExpenseId) =>
-                void confirmDraft(confirmingDraft.id, newExpenseId)
-            : undefined
-        }
-      />
+      <FormDraftProvider draftKey={draftKey}>
+        <ExpenseForm
+          tripId={tripId}
+          members={members}
+          myMemberId={me.id}
+          defaultCurrency={defaultCurrency}
+          initialCurrency={defaults.initialCurrency}
+          categories={categories}
+          initialCategoryId={defaults.initialCategoryId}
+          averageRates={averageRates}
+          initialPaidAt={defaults.initialPaidAt}
+          places={(data.placesRaw ?? []).map((p) => ({
+            id: p.id,
+            name: p.name,
+          }))}
+          biasCenter={biasCenter}
+          tzTimeline={tzTimeline}
+          editExpense={editExpense}
+          draft={confirmingDraft}
+          onDone={() => {
+            router.back();
+            void invalidate();
+          }}
+          onSuccess={
+            confirmingDraft
+              ? (newExpenseId) =>
+                  void confirmDraft(confirmingDraft.id, newExpenseId)
+              : undefined
+          }
+        />
+      </FormDraftProvider>
     </ScrollView>
   );
 }

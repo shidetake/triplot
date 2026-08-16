@@ -15,6 +15,7 @@ import { FEEDBACK_BODY_MAX, type FeedbackKind } from "@triplot/shared/feedback";
 import { SendIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { CompactSegment } from "@/components/visibility-segment";
+import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -30,8 +31,9 @@ export function FeedbackSheet({ onDone }: { onDone: () => void }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
-  const [kind, setKind] = useState<FeedbackKind>("bug");
-  const [body, setBody] = useState("");
+  const clearDraft = useClearDraft();
+  const [kind, setKind] = useDraft<FeedbackKind>("kind", "bug");
+  const [body, setBody] = useDraft("body", "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,6 +66,7 @@ export function FeedbackSheet({ onDone }: { onDone: () => void }) {
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
       // 結果が画面に出ない成功なので通知する（web はトースト。RN は Alert）。
+      clearDraft(); // 送信済み＝この下書きは用済み
       Alert.alert(t("sent"));
       onDone();
     } catch {

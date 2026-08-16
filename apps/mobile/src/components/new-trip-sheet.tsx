@@ -22,6 +22,7 @@ import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currenc
 import { PlusIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { CompactSegment } from "@/components/visibility-segment";
+import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -51,16 +52,20 @@ export function NewTripSheet() {
   const trips = myTrips?.trips ?? [];
   const canCopy = trips.length > 0;
 
-  const [mode, setMode] = useState<"new" | "copy">("new");
-  const [sourceId, setSourceId] = useState("");
+  const clearDraft = useClearDraft();
+  const [mode, setMode] = useDraft<"new" | "copy">("mode", "new");
+  const [sourceId, setSourceId] = useDraft("sourceId", "");
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
-  const [title, setTitle] = useState("");
-  const [displayName, setDisplayName] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(todayStr());
-  const [endDate, setEndDate] = useState(todayStr());
+  const [title, setTitle] = useDraft("title", "");
+  const [displayName, setDisplayName] = useDraft<string | null>(
+    "displayName",
+    null,
+  );
+  const [startDate, setStartDate] = useDraft("startDate", todayStr());
+  const [endDate, setEndDate] = useDraft("endDate", todayStr());
   // 既定は前回旅行の精算通貨。過去の旅行がなければ JPY（web と同じ）。
   const lastCurrency = (trips[0]?.default_currency ?? "JPY") as Currency;
-  const [currency, setCurrency] = useState<Currency>(lastCurrency);
+  const [currency, setCurrency] = useDraft<Currency>("currency", lastCurrency);
   const [currencyPickerOpen, setCurrencyPickerOpen] = useState(false);
   // 日程の inline カレンダーの開閉（同時に開くのは1つだけ）。
   const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
@@ -116,6 +121,7 @@ export function NewTripSheet() {
     // trips/index ごと置き換わってスタックが1枚になる（戻るボタンが消える
     // 実機不具合の原因だった）。back() は呼ばず replace だけで formSheet 自身
     // （trips/new）を旅行詳細に置き換える＝ trips/index は下に残る。
+    clearDraft(); // 作成済み＝この下書きは用済み
     router.replace(`/trips/${r.data.tripId}`);
   };
 

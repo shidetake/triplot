@@ -46,6 +46,7 @@ import { PlacePicker } from "./place-picker";
 import { SheetTitle } from "./sheet-title";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
+import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -103,15 +104,18 @@ export function ExpenseForm({
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editExpense;
+  const clearDraft = useClearDraft();
 
-  const [price, setPrice] = useState(
+  const [price, setPrice] = useDraft(
+    "price",
     isEdit
       ? String(editExpense.local_price)
       : draft
         ? String(draft.initialPrice)
         : "",
   );
-  const [localCurrency, setLocalCurrency] = useState<Currency>(
+  const [localCurrency, setLocalCurrency] = useDraft<Currency>(
+    "localCurrency",
     isEdit
       ? editExpense.local_currency
       : (draft?.initialCurrency ?? initialCurrency),
@@ -121,15 +125,16 @@ export function ExpenseForm({
     const avg = averageRates[c];
     return avg !== undefined ? formatRate(avg) : "";
   };
-  const [rateInput, setRateInput] = useState(() =>
+  const [rateInput, setRateInput] = useDraft("rateInput", () =>
     isEdit ? String(editExpense.rate_to_default) : rateFor(localCurrency),
   );
-  const [categoryId, setCategoryId] = useState(
+  const [categoryId, setCategoryId] = useDraft(
+    "categoryId",
     isEdit
       ? editExpense.category_id
       : (draft?.initialCategoryId ?? initialCategoryId),
   );
-  const [place, setPlace] = useState<PlaceInput>(() => {
+  const [place, setPlace] = useDraft<PlaceInput>("place", () => {
     if (isEdit) return { kind: "saved", placeId: editExpense.place_id };
     // 下書き: 保存済みマッチ／事前解決済みの Google の場所（resolveNamedPlace
     // 参照）はそれを、無ければ抽出した店名を自由入力テキストとして事前入力
@@ -156,11 +161,16 @@ export function ExpenseForm({
       return { kind: "free", label: draft.autoResolvePlace.name };
     return { kind: "saved", placeId: null };
   });
-  const [note, setNote] = useState(isEdit ? (editExpense.note ?? "") : "");
-  const [visibility, setVisibility] = useState<Visibility>(
+  const [note, setNote] = useDraft(
+    "note",
+    isEdit ? (editExpense.note ?? "") : "",
+  );
+  const [visibility, setVisibility] = useDraft<Visibility>(
+    "visibility",
     isEdit ? editExpense.visibility : "shared",
   );
-  const [payer, setPayer] = useState(
+  const [payer, setPayer] = useDraft(
+    "payer",
     isEdit ? editExpense.payer_member_id : myMemberId,
   );
   const [payerOpen, setPayerOpen] = useState(false);
@@ -173,9 +183,12 @@ export function ExpenseForm({
   const initPaidAtTime = isEdit
     ? editExpense.paid_at.slice(11, 16)
     : (draft?.initialTime ?? "00:00");
-  const [paidAtDate, setPaidAtDate] = useState(initPaidAtDate);
-  const [paidAtTime, setPaidAtTime] = useState(initPaidAtTime);
-  const [showTime, setShowTime] = useState(initPaidAtTime !== "00:00");
+  const [paidAtDate, setPaidAtDate] = useDraft("paidAtDate", initPaidAtDate);
+  const [paidAtTime, setPaidAtTime] = useDraft("paidAtTime", initPaidAtTime);
+  const [showTime, setShowTime] = useDraft(
+    "showTime",
+    initPaidAtTime !== "00:00",
+  );
   // inline ピッカーの開閉（同時に開くのは1つだけ）。「＋時刻を指定」は
   // タップと同時にホイールを開く（チップだけ出す方式だともう1タップ要る、
   // という実機フィードバック対応）。
@@ -227,7 +240,9 @@ export function ExpenseForm({
 
   // 割り勘対象（web と同じ導出）。
   const initOnlySelf = isEdit && !editExpense.splittable;
-  const [selectedSplits, setSelectedSplits] = useState<Set<string>>(() =>
+  const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
+    "selectedSplits",
+    () =>
     initOnlySelf
       ? new Set([myMemberId])
       : isEdit
@@ -237,7 +252,8 @@ export function ExpenseForm({
   const splitsMatchAll =
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
-  const [splitMode, setSplitMode] = useState<"all" | "custom">(
+  const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
+    "splitMode",
     isEdit && !splitsMatchAll ? "custom" : "all",
   );
   const toggleSplit = (id: string) => {
@@ -338,6 +354,7 @@ export function ExpenseForm({
       // 作成した費用の id を渡す（取り込み下書きの確定リンクに使う）。
       onSuccess?.(result.data);
     }
+    clearDraft(); // 成功＝この下書きは用済み
     onDone();
   };
 
@@ -354,6 +371,7 @@ export function ExpenseForm({
               Alert.alert(t("deleteFailed", { error: r.error }));
               return;
             }
+            clearDraft(); // 対象が消えたので下書きも破棄
             onDone();
           });
         },

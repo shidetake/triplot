@@ -11,6 +11,7 @@ import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
 import { EventForm } from "@/components/event-form";
+import { FormDraftProvider } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
 import {
   useInvalidateInbox,
@@ -113,47 +114,60 @@ export default function EventFormRoute() {
     ]);
   };
 
+  // 入力途中を保持するキー（web の schedule-section と同じ体系）。取り込み
+  // 下書きの確定は下書きごと、編集は予定ごと、新規は開いたスロットごとに別の
+  // 下書きにする＝別の予定を開いたら前の入力が混ざらない。
+  const draftKey = draftId
+    ? `event:import:${draftId}`
+    : eventId
+      ? `event:edit:${eventId}`
+      : `event:new:${tripId}:${date ?? ""}:${time ?? ""}:${
+          allDay === "1" ? "allday" : "timed"
+        }`;
+
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <EventForm
-        tripId={tripId}
-        members={(data.members ?? []).map((m) => ({
-          id: m.id,
-          display_name: m.display_name,
-          color: m.color,
-        }))}
-        myMemberId={me.id}
-        places={(data.placesRaw ?? []).map((p) => ({
-          id: p.id,
-          name: p.name,
-          lat: p.lat,
-          lng: p.lng,
-        }))}
-        biasCenter={biasCenter}
-        tripStart={trip.start_date}
-        defaultTimezone={trip.default_timezone}
-        events={events}
-        editEvent={editEvent}
-        draft={confirmingDraft}
-        slot={slot}
-        onDone={() => {
-          router.back();
-          void invalidate();
-        }}
-        onSuccess={
-          confirmingDraft
-            ? (newEventId) => void confirmDraft(confirmingDraft.id, newEventId)
-            : undefined
-        }
-        onDismissDraft={
-          confirmingDraft
-            ? () => dismissDraft(confirmingDraft.id)
-            : undefined
-        }
-      />
+      <FormDraftProvider draftKey={draftKey}>
+        <EventForm
+          tripId={tripId}
+          members={(data.members ?? []).map((m) => ({
+            id: m.id,
+            display_name: m.display_name,
+            color: m.color,
+          }))}
+          myMemberId={me.id}
+          places={(data.placesRaw ?? []).map((p) => ({
+            id: p.id,
+            name: p.name,
+            lat: p.lat,
+            lng: p.lng,
+          }))}
+          biasCenter={biasCenter}
+          tripStart={trip.start_date}
+          defaultTimezone={trip.default_timezone}
+          events={events}
+          editEvent={editEvent}
+          draft={confirmingDraft}
+          slot={slot}
+          onDone={() => {
+            router.back();
+            void invalidate();
+          }}
+          onSuccess={
+            confirmingDraft
+              ? (newEventId) => void confirmDraft(confirmingDraft.id, newEventId)
+              : undefined
+          }
+          onDismissDraft={
+            confirmingDraft
+              ? () => dismissDraft(confirmingDraft.id)
+              : undefined
+          }
+        />
+      </FormDraftProvider>
     </ScrollView>
   );
 }

@@ -50,6 +50,7 @@ import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon, PlaneIcon } from "./icons";
 import { FlightPicker } from "./flight-picker";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
+import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Member = { id: string; display_name: string; color: number | null };
@@ -104,6 +105,7 @@ export function EventForm({
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editEvent;
   const prefill = draft?.prefill ?? null;
+  const clearDraft = useClearDraft();
 
   const tzTimeline = useMemo(
     () => buildTripTzTimeline(events, defaultTimezone),
@@ -122,16 +124,24 @@ export function EventForm({
   // 種別は3択セグメントで宣言させず、独立した2トグル（終日／移動）から導出する。
   // ユーザーは「これは移動か？」には答えられるが「これは時差移動か？」では
   // 考え込む。DB 制約上 transit は all_day 不可なので UI でも排他にする。
-  const [allDayOn, setAllDayOn] = useState(initKind === "allday");
-  const [moveOn, setMoveOn] = useState(initKind === "transit");
+  const [allDayOn, setAllDayOn] = useDraft("allDayOn", initKind === "allday");
+  const [moveOn, setMoveOn] = useDraft("moveOn", initKind === "transit");
   const kind: Kind3 = allDayOn ? "allday" : moveOn ? "transit" : "timed";
 
-  const [title, setTitle] = useState(editEvent?.title ?? prefill?.title ?? "");
-  const [note, setNote] = useState(editEvent?.note ?? prefill?.note ?? "");
-  const [visibility, setVisibility] = useState<Visibility>(
+  const [title, setTitle] = useDraft(
+    "title",
+    editEvent?.title ?? prefill?.title ?? "",
+  );
+  const [note, setNote] = useDraft(
+    "note",
+    editEvent?.note ?? prefill?.note ?? "",
+  );
+  const [visibility, setVisibility] = useDraft<Visibility>(
+    "visibility",
     editEvent?.visibility ?? "shared",
   );
-  const [needsReservation, setNeedsReservation] = useState(
+  const [needsReservation, setNeedsReservation] = useDraft(
+    "needsReservation",
     editEvent?.needsReservation ?? false,
   );
   // 下書きの place/endPlace（保存済みマッチ or 事前解決済みフライトの
@@ -159,7 +169,7 @@ export function EventForm({
       icon: "airport",
     };
   };
-  const [place, setPlace] = useState<PlaceInput>(() => {
+  const [place, setPlace] = useDraft<PlaceInput>("place", () => {
     if (editEvent) return { kind: "saved", placeId: editEvent.startPlaceId };
     // 下書き: 保存済みマッチ／事前解決済みフライトの空港はそれを、無ければ
     // 抽出した場所名を自由入力テキストとして事前入力（RN は Google 自動解決を
@@ -172,7 +182,7 @@ export function EventForm({
   });
   // 到着地。空（placeId=null）なら DB 側で end_place_id は NULL＝出発地と同じ。
   // 事前解決済みフライトがあれば到着空港を事前入力する。
-  const [endPlace, setEndPlace] = useState<PlaceInput>(() => {
+  const [endPlace, setEndPlace] = useDraft<PlaceInput>("endPlace", () => {
     if (editEvent) return { kind: "saved", placeId: editEvent.endPlaceId };
     return draftPlaceToInput(prefill?.endPlace ?? null) ?? { kind: "saved", placeId: null };
   });
@@ -186,14 +196,14 @@ export function EventForm({
     today();
   const initTime =
     editEvent?.startAt.slice(11, 16) ?? draft?.time ?? slot?.time ?? "09:00";
-  const [startDate, setStartDate] = useState(initDate);
-  const [startTime, setStartTime] = useState(initTime);
+  const [startDate, setStartDate] = useDraft("startDate", initDate);
+  const [startTime, setStartTime] = useDraft("startTime", initTime);
   const initEndDate =
     editEvent?.endAt?.slice(0, 10) ?? prefill?.endDate ?? initDate;
   const initEndTime =
     editEvent?.endAt?.slice(11, 16) ?? prefill?.endTime ?? addHour(initTime);
-  const [endDate, setEndDate] = useState(initEndDate);
-  const [endTime, setEndTime] = useState(initEndTime);
+  const [endDate, setEndDate] = useDraft("endDate", initEndDate);
+  const [endTime, setEndTime] = useDraft("endTime", initEndTime);
   // inline ピッカーの開閉（同時に開くのは1つだけ）。
   const [openPicker, setOpenPicker] = useState<"start" | "end" | null>(null);
 
@@ -201,10 +211,10 @@ export function EventForm({
   // TZ は場所の座標から導出するのが既定（3段ネストのピッカーを触らせない）。
   // 座標を持たない場所（自由入力＝地図未登録）では導出できないので、その時だけ
   // 保存済みの値／旅行の既定に落として、ユーザーが明示的に選べるようにする。
-  const [tzOverride, setTzOverride] = useState<{
+  const [tzOverride, setTzOverride] = useDraft<{
     start: string | null;
     end: string | null;
-  }>({ start: null, end: null });
+  }>("tzOverride", { start: null, end: null });
   const [tzExpanded, setTzExpanded] = useState(false);
 
   // タイトル欄をフライト番号入力に入れ替えているか。
@@ -428,10 +438,12 @@ export function EventForm({
 
   // 参加者（全員 / 一部）。
   const initCustom = isEdit && (editEvent?.participantMemberIds.length ?? 0) > 0;
-  const [partMode, setPartMode] = useState<"all" | "custom">(
+  const [partMode, setPartMode] = useDraft<"all" | "custom">(
+    "partMode",
     initCustom ? "custom" : "all",
   );
-  const [participants, setParticipants] = useState<Set<string>>(
+  const [participants, setParticipants] = useDraft<Set<string>>(
+    "participants",
     () => new Set(editEvent?.participantMemberIds ?? []),
   );
   const toggleParticipant = (id: string) => {
@@ -535,6 +547,7 @@ export function EventForm({
       // 作成した予定の id を渡す（取り込み下書きの確定リンクに使う）。
       onSuccess?.(result.data);
     }
+    clearDraft(); // 成功＝この下書きは用済み
     onDone();
   };
 
@@ -551,6 +564,7 @@ export function EventForm({
               Alert.alert(t("deleteFailed", { error: r.error }));
               return;
             }
+            clearDraft(); // 対象が消えたので下書きも破棄
             onDone();
           });
         },
