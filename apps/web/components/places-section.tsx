@@ -534,6 +534,9 @@ export function PlacesSection({
           places={visiblePlaces}
           selectedId={null}
           locatingId={null}
+          dayByPlaceId={dayByPlaceId}
+          areaByPlaceId={areaByPlaceId}
+          locale={locale}
           onSelect={() => {}}
           onLocate={() => {}}
           onCancelLocate={() => {}}
@@ -735,6 +738,9 @@ export function PlacesSection({
                       selected?.kind === "saved" ? selected.id : null
                     }
                     locatingId={pendingLocationFor?.id ?? null}
+                    dayByPlaceId={dayByPlaceId}
+                    areaByPlaceId={areaByPlaceId}
+                    locale={locale}
                     onSelect={selectSaved}
                     onLocate={startLocate}
                     onCancelLocate={cancelLocate}
@@ -751,6 +757,9 @@ export function PlacesSection({
             places={visiblePlaces}
             selectedId={selected?.kind === "saved" ? selected.id : null}
             locatingId={pendingLocationFor?.id ?? null}
+            dayByPlaceId={dayByPlaceId}
+            areaByPlaceId={areaByPlaceId}
+            locale={locale}
             onSelect={selectSaved}
             onLocate={startLocate}
             onCancelLocate={cancelLocate}

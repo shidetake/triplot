@@ -433,6 +433,7 @@
     "savedBadge": "Saved",
     "filterAll": "All",
     "filterDayLabel": "Day {day} · {date}",
+    "dayBadge": "Day {day} · {date}",
     "noMapId": "Map ID is not set — pins cannot be shown on the map (use the list instead).",
     "placeCountLabel": "{count} places",
     "placesListLabel": "Places list",
