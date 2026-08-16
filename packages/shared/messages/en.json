@@ -174,7 +174,6 @@
     "back": "Back",
     "exportCalendar": "Events (Google Calendar)",
     "exportMap": "Map (KMZ)",
-    "exportMapKml": "Map (KML)",
     "exportExpenses": "Expenses (CSV)",
     "deleteTrip": "Delete trip",
     "regenerateTitle": "Regenerate invite link?",

@@ -1,10 +1,16 @@
 import { router } from "expo-router";
+import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { buildExpensesCsv, type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
-import { hexToKmlColor } from "@triplot/shared/placeColor";
-import { buildPlacesKml, type KmlPlacemark } from "@triplot/shared/placeKml";
+import {
+  buildPlacesKml,
+  type KmlPlacemark,
+  type KmlStyle,
+} from "@triplot/shared/placeKml";
+import { planKmz, type KmzPlan } from "@triplot/shared/placeKmz";
+import { buildZip, type ZipEntry } from "@triplot/shared/zip";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   deriveCategories,
@@ -20,9 +26,14 @@ import {
   MapIcon,
   WalletIcon,
 } from "@/components/icons";
+import { PinPngRenderer } from "@/components/pin-png-renderer";
 import { SheetTitle } from "@/components/sheet-title";
 import { googleSignInAvailable } from "@/lib/auth";
-import { exportFileViaShareSheet, safeFilename } from "@/lib/exportFile";
+import {
+  exportBytesViaShareSheet,
+  exportFileViaShareSheet,
+  safeFilename,
+} from "@/lib/exportFile";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 
@@ -35,15 +46,19 @@ export function ExportSheet({ tripId }: { tripId: string }) {
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
   const { data, me } = useTripDetail(tripId);
+  // ピン画像を描いている最中の KMZ 計画（描き終わったら zip にする）。
+  const [pendingKmz, setPendingKmz] = useState<KmzPlan | null>(null);
 
   if (!data?.trip || !me) return null;
   const trip = data.trip;
   const members = data.members ?? [];
 
-  // 地図エクスポート（KML）。web は canvas でピン画像を焼いた KMZ だが、
-  // モバイルは KML の標準機能の範囲＝既定マーカー＋色（確定/未確定）のみ。
-  // カテゴリはデータ列で出るのでマイマップの色分けは同等にできる。
-  const onExportMap = async () => {
+  // 地図エクスポート（KMZ = KML ＋ ピン画像の zip。web と同じ出力）。
+  // 色（確定=緑/候補=琥珀）とカテゴリアイコンを焼き込んだピン画像を同梱する
+  // ので、Google Earth では色付きピンで、マイマップでは色・カテゴリ列が活きる。
+  // ピン画像は端末で描く（PinPngRenderer）ため、必要な画像が揃ってから
+  // zip を組む2段構えになっている。
+  const onExportMap = () => {
     const mapped = derivePlaces(data.placesRaw).filter(
       (p) => p.lat != null && p.lng != null,
     );
@@ -51,23 +66,41 @@ export function ExportSheet({ tripId }: { tripId: string }) {
       Alert.alert(t("tripActions.noPlaces"));
       return;
     }
-    const marks: KmlPlacemark[] = mapped.map((p) => ({
+    const placemarks: KmlPlacemark[] = mapped.map((p) => ({
       name: p.name,
       lat: p.lat!,
       lng: p.lng!,
       description:
         [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
-      styleId: p.tentative ? "tentative" : "confirmed",
+      colorHex: p.tentative ? "#f59e0b" : "#10b981",
       category: p.tentative
         ? t("place.statusCandidate")
         : t("place.statusConfirmed"),
+      iconKey: p.icon,
     }));
-    const kml = buildPlacesKml(trip.title, marks, [
-      { id: "confirmed", color: hexToKmlColor("#10b981") },
-      { id: "tentative", color: hexToKmlColor("#f59e0b") },
-    ]);
+    // (アイコン × 色) の畳み込みとスタイル ID 割り当ては shared（web と共用）。
+    const plan = planKmz(placemarks);
+    if (plan.needs.length === 0) {
+      void writeKmz(plan.marks, plan.styles, []);
+      return;
+    }
+    setPendingKmz(plan);
+  };
+
+  // 画像が揃った（または最初から不要だった）ら KMZ を書き出して共有シートへ。
+  const writeKmz = async (
+    marks: KmlPlacemark[],
+    styles: KmlStyle[],
+    files: ZipEntry[],
+  ) => {
+    setPendingKmz(null);
     try {
-      await exportFileViaShareSheet(`${safeFilename(trip.title)}.kml`, kml);
+      const kml = buildPlacesKml(trip.title, marks, styles);
+      const zip = buildZip([
+        { name: "doc.kml", data: new TextEncoder().encode(kml) },
+        ...files,
+      ]);
+      await exportBytesViaShareSheet(`${safeFilename(trip.title)}.kmz`, zip);
     } catch {
       Alert.alert(t("tripActions.mapExportFailed"));
     }
@@ -136,14 +169,24 @@ export function ExportSheet({ tripId }: { tripId: string }) {
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
       )}
-      <Pressable onPress={() => void onExportMap()} style={styles.navRow}>
+      <Pressable onPress={onExportMap} style={styles.navRow}>
         <MapIcon size={18} color={theme.mutedForeground} />
-        <Text style={styles.navRowLabel}>{t("tripActions.exportMapKml")}</Text>
+        <Text style={styles.navRowLabel}>{t("tripActions.exportMap")}</Text>
       </Pressable>
       <Pressable onPress={() => void onExportExpenses()} style={styles.navRow}>
         <WalletIcon size={18} color={theme.mutedForeground} />
         <Text style={styles.navRowLabel}>{t("tripActions.exportExpenses")}</Text>
       </Pressable>
+
+      {/* ピン画像の焼き付け（画面には出ない）。焼き上がったら zip にして共有。 */}
+      {pendingKmz && (
+        <PinPngRenderer
+          needs={pendingKmz.needs}
+          onReady={(files) =>
+            void writeKmz(pendingKmz.marks, pendingKmz.styles, files)
+          }
+        />
+      )}
     </View>
   );
 }

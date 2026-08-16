@@ -12,15 +12,11 @@ import {
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { buildExpensesCsv, type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
-import { hexToKmlColor } from "@triplot/shared/placeColor";
 import { getIconPath } from "@triplot/shared/placeIcons";
-import {
-  buildPlacesKml,
-  type KmlPlacemark,
-  type KmlStyle,
-} from "@triplot/shared/placeKml";
+import { buildPlacesKml, type KmlPlacemark } from "@triplot/shared/placeKml";
+import { planKmz } from "@triplot/shared/placeKmz";
+import { buildZip, type ZipEntry } from "@triplot/shared/zip";
 import { renderPinPng } from "@/lib/placePinImage";
-import { buildZip, type ZipEntry } from "@/lib/zip";
 
 import { Menu } from "@base-ui/react/menu";
 
@@ -168,48 +164,14 @@ export function TripActions({
       return;
     }
     try {
-      // (アイコン × 色) の組み合わせごとに1スタイルを作る（dedupe）。
-      // 「その他」の汎用ピン（iconKey="pin"）はグリフを描かず、地図既定の
-      // マーカーに色だけ載せる（画像化しない）。それ以外は色付きピン画像を生成。
-      const keyOf = (p: KmlPlacemark) =>
-        `${p.iconKey ?? "pin"}|${p.colorHex ?? "none"}`;
-      const isPlainPin = (iconKey: string) => iconKey === "pin";
-      const styleByKey = new Map<
-        string,
-        { styleId: string; iconKey: string; colorHex: string | null }
-      >();
-      for (const p of kmlPlacemarks) {
-        const k = keyOf(p);
-        if (!styleByKey.has(k)) {
-          styleByKey.set(k, {
-            styleId: `s${styleByKey.size}`,
-            iconKey: p.iconKey ?? "pin",
-            colorHex: p.colorHex ?? null,
-          });
-        }
-      }
-
-      // 汎用ピン以外はピン画像を生成して KMZ に同梱。href も決める。
+      // (アイコン × 色) の畳み込みとスタイル ID の割り当ては shared
+      // （RN のエクスポートと共用）。ここは needs のぶんだけ画像を作る。
+      const { marks, styles, needs } = planKmz(kmlPlacemarks);
       const files: ZipEntry[] = [];
-      const hrefByStyle = new Map<string, string>();
-      for (const s of styleByKey.values()) {
-        if (isPlainPin(s.iconKey)) continue; // 画像なし（既定マーカー＋色）
-        const href = `files/${s.styleId}.png`;
+      for (const s of needs) {
         const png = await renderPinPng(getIconPath(s.iconKey), s.colorHex);
-        files.push({ name: href, data: png });
-        hrefByStyle.set(s.styleId, href);
+        files.push({ name: s.href, data: png });
       }
-
-      // 各 placemark にスタイル ID を割り当て、styles を組む。
-      const marks: KmlPlacemark[] = kmlPlacemarks.map((p) => ({
-        ...p,
-        styleId: styleByKey.get(keyOf(p))!.styleId,
-      }));
-      const styles: KmlStyle[] = [...styleByKey.values()].map((s) => ({
-        id: s.styleId,
-        color: hexToKmlColor(s.colorHex),
-        iconHref: hrefByStyle.get(s.styleId), // 汎用ピンは undefined（<Icon> 無し）
-      }));
 
       const kml = buildPlacesKml(tripTitle, marks, styles);
       const zip = buildZip([

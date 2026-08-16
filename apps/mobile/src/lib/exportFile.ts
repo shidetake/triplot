@@ -18,3 +18,14 @@ export async function exportFileViaShareSheet(
 export function safeFilename(title: string): string {
   return title.replace(/[\\/:*?"<>|]/g, "_").trim() || "trip";
 }
+
+// バイナリ（KMZ = zip）を書き出して共有シートへ。テキスト版と同じ流れだが、
+// expo-file-system の write は Uint8Array もそのまま受けられる。
+export async function exportBytesViaShareSheet(
+  filename: string,
+  bytes: Uint8Array,
+): Promise<void> {
+  const file = new File(Paths.cache, filename);
+  file.write(bytes);
+  await Share.share({ url: file.uri });
+}
