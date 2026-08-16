@@ -31,6 +31,12 @@ export default function RootLayout() {
                   options={{ headerShown: false }}
                 />
                 <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                {/* 招待リンク（Universal Link / triplot://join/<token>）の
+                    受け口。認証ゲート((app))の外なので未ログインでも開ける。 */}
+                <Stack.Screen
+                  name="join/[token]"
+                  options={{ headerShown: false }}
+                />
                 <Stack.Screen
                   name="dev-check"
                   options={{ title: "M0 チェック" }}

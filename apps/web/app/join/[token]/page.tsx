@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
+import { peekInvite } from "@triplot/shared/data/invites";
 import { createClient } from "@/lib/supabase/server";
 
 import { JoinForm } from "./join-form";
@@ -15,10 +16,9 @@ export default async function JoinPage({
 
   const supabase = await createClient();
 
-  // peek_invite は anon 可。トークンを知っている人だけが旅行名を見られる。
-  const { data: title } = await supabase.rpc("peek_invite", {
-    p_token: token,
-  });
+  // peek_invite は anon 可。トークンを知っている人だけが旅行名を見られる
+  // （読み取りは shared＝RN の招待参加画面と共用）。
+  const title = await peekInvite(supabase, token);
 
   const {
     data: { user },

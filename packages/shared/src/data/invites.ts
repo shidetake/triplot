@@ -1,6 +1,16 @@
 import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
+// 招待トークンから旅行名だけを覗く（anon 可＝未ログインでも見える）。
+// トークンを知っている人だけが旅行名を見られる。無効なトークンは null。
+export async function peekInvite(
+  sb: DB,
+  token: string,
+): Promise<string | null> {
+  const { data } = await sb.rpc("peek_invite", { p_token: token });
+  return data ?? null;
+}
+
 // 招待トークンで旅行に参加する。セッション（匿名 or Google）必須。
 // 成功で参加した trip の id を返す（呼び出し側で遷移）。
 export async function joinTripViaInvite(
