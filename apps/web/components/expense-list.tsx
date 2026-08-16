@@ -166,83 +166,97 @@ function ExpenseRowItem({
         onClick={(e) => onEdit({ x: e.clientX, y: e.clientY })}
         className="flex w-full items-start p-3 text-left transition hover:bg-foreground/10"
       >
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {category && (
-              <ColorBadge
-                color={category.color}
-                icon={
-                  <ExpenseCategoryIcon
-                    icon={category.icon}
-                    size={14}
-                    className="shrink-0"
-                  />
-                }
-              >
-                {category.name}
-              </ColorBadge>
-            )}
-            <span className="font-medium">
-              {formatAmount(amountInDefault, defaultCurrency)}
-            </span>
-            {isForeign && (
-              <span className="text-xs text-muted-foreground">
-                ({formatAmount(expense.local_price, expense.local_currency)} @{" "}
-                {formatRate(expense.rate_to_default)})
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* 1行目＝カテゴリ/金額（左）＋日時（右）、2行目＝場所（左）＋
+              支払/割り勘（右）の2行構成。以前は縦に4行積んでいて件数が多い
+              旅行で無駄に縦長だった（iOS で実機フィードバックを受けて詰めた
+              形に揃える）。 */}
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+              {category && (
+                <ColorBadge
+                  color={category.color}
+                  icon={
+                    <ExpenseCategoryIcon
+                      icon={category.icon}
+                      size={14}
+                      className="shrink-0"
+                    />
+                  }
+                >
+                  {category.name}
+                </ColorBadge>
+              )}
+              <span className="font-medium">
+                {formatAmount(amountInDefault, defaultCurrency)}
               </span>
-            )}
-            {expense.visibility === "private" && <PrivateBadge />}
+              {isForeign && (
+                <span className="text-xs text-muted-foreground">
+                  ({formatAmount(expense.local_price, expense.local_currency)} @{" "}
+                  {formatRate(expense.rate_to_default)})
+                </span>
+              )}
+              {expense.visibility === "private" && <PrivateBadge />}
+            </div>
+            <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+              {formatDateTime(expense.paid_at)}
+            </span>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
-            <span>{formatDateTime(expense.paid_at)}</span>
-            {/* 狭い画面は写真アバター、広い画面は色付きフルネームチップ（TODO 作成者と同じ）。 */}
-            <span className="inline-flex items-center gap-1">
-              {t("paidLabel")}
-              <MemberAvatar
-                name={payer?.display_name}
-                color={payer?.color}
-                imageUrl={payer?.avatarUrl}
-                className="sm:hidden"
-              />
-              <span
-                style={chipStyle(payer?.color)}
-                className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-              >
-                {payer?.display_name ?? "?"}
-              </span>
+
+          <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
+            <span className="min-w-0 flex-1">
+              {placeName && (
+                <span className="flex items-center gap-1">
+                  <PlaceIcon icon="pin" size={12} className="shrink-0" />
+                  <span className="min-w-0 truncate">{placeName}</span>
+                </span>
+              )}
             </span>
-            {splitMembers && splitMembers.length > 0 && (
+            {/* 狭い画面は写真アバター、広い画面は色付きフルネームチップ（TODO 作成者と同じ）。 */}
+            <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
               <span className="inline-flex items-center gap-1">
-                {t("splitLabel")}
-                <span className="inline-flex flex-wrap items-center gap-0.5 sm:gap-1">
-                  {splitMembers.map((m) => (
-                    <Fragment key={m.id}>
-                      <MemberAvatar
-                        name={m.display_name}
-                        color={m.color}
-                        imageUrl={m.avatarUrl}
-                        className="sm:hidden"
-                      />
-                      <span
-                        style={chipStyle(m.color)}
-                        className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-                      >
-                        {m.display_name}
-                      </span>
-                    </Fragment>
-                  ))}
+                {t("paidLabel")}
+                <MemberAvatar
+                  name={payer?.display_name}
+                  color={payer?.color}
+                  imageUrl={payer?.avatarUrl}
+                  className="sm:hidden"
+                />
+                <span
+                  style={chipStyle(payer?.color)}
+                  className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+                >
+                  {payer?.display_name ?? "?"}
                 </span>
               </span>
-            )}
+              {splitMembers && splitMembers.length > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  {t("splitLabel")}
+                  <span className="inline-flex flex-wrap items-center gap-0.5 sm:gap-1">
+                    {splitMembers.map((m) => (
+                      <Fragment key={m.id}>
+                        <MemberAvatar
+                          name={m.display_name}
+                          color={m.color}
+                          imageUrl={m.avatarUrl}
+                          className="sm:hidden"
+                        />
+                        <span
+                          style={chipStyle(m.color)}
+                          className="hidden rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+                        >
+                          {m.display_name}
+                        </span>
+                      </Fragment>
+                    ))}
+                  </span>
+                </span>
+              )}
+            </span>
           </div>
-          {placeName && (
-            <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
-              <PlaceIcon icon="pin" size={12} className="shrink-0" />
-              <span className="min-w-0 truncate">{placeName}</span>
-            </p>
-          )}
+
           {expense.note && (
-            <p className="mt-1 text-xs text-muted-foreground">{expense.note}</p>
+            <p className="text-xs text-muted-foreground">{expense.note}</p>
           )}
         </div>
       </button>
