@@ -50,14 +50,24 @@ export function CompactSegment<T extends string>({
 }
 
 // 公開範囲（共有/自分のみ）の定型セグメント。
+// readOnly＝変更できない時（他人が作った予定・費用・場所）は、無効化した
+// セグメントではなく値を muted のテキストで出す（web と同じ扱い。押せない
+// コントロールを置くより「変えられない情報」であることが伝わる）。
 export function VisibilitySegment({
   value,
   onChange,
+  readOnly = false,
 }: {
   value: Visibility;
   onChange: (v: Visibility) => void;
+  readOnly?: boolean;
 }) {
   const t = useTranslations("common");
+  const styles = useThemedStyles(makeStyles);
+  const label = value === "shared" ? t("shared") : t("selfOnly");
+  if (readOnly) {
+    return <Text style={styles.readOnlyValue}>{label}</Text>;
+  }
   return (
     <CompactSegment
       options={[
@@ -92,4 +102,5 @@ const makeStyles = (t: Theme) =>
     itemOn: { backgroundColor: t.primary },
     text: { fontSize: 12, fontWeight: "500", color: t.mutedForeground },
     textOn: { color: t.primaryForeground },
+    readOnlyValue: { fontSize: 13, color: t.mutedForeground },
   });

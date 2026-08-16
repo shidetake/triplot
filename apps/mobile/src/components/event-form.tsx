@@ -446,6 +446,11 @@ export function EventForm({
       ? editEvent!.createdByMemberId === myMemberId
       : true);
 
+  // 公開範囲を変えられるのは作成者だけ（web の canChangeVisibility と同じ）。
+  // 他人の共有予定を private にできてしまうと、その人にも見えなくなる。
+  const canChangeVisibility =
+    !isEdit || editEvent!.createdByMemberId === myMemberId;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -804,7 +809,11 @@ export function EventForm({
       <View style={styles.optionsRow}>
         <View style={styles.optionPair}>
           <Text style={styles.label}>{t("visibility")}</Text>
-          <VisibilitySegment value={visibility} onChange={setVisibility} />
+          <VisibilitySegment
+            value={visibility}
+            onChange={setVisibility}
+            readOnly={!canChangeVisibility}
+          />
         </View>
         <View style={styles.optionPair}>
           <Text style={styles.label}>{t("needsReservation")}</Text>

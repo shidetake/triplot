@@ -86,6 +86,10 @@ export function PlaceForm({
       ? editPlace!.created_by_member_id === myMemberId
       : true);
 
+  // 公開範囲を変えられるのは作成者だけ（web の SavedInfo と同じ）。
+  const canChangeVisibility =
+    !isEdit || editPlace!.created_by_member_id === myMemberId;
+
   const submit = async () => {
     setBusy(true);
     setError(null);
@@ -238,7 +242,11 @@ export function PlaceForm({
 
       <View style={styles.inlineRow}>
         <Text style={styles.label}>{t("visibility")}</Text>
-        <VisibilitySegment value={visibility} onChange={setVisibility} />
+        <VisibilitySegment
+          value={visibility}
+          onChange={setVisibility}
+          readOnly={!canChangeVisibility}
+        />
       </View>
 
       {/* メモ */}

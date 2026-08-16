@@ -285,6 +285,10 @@ export function ExpenseForm({
       ? editExpense.created_by_member_id === myMemberId
       : true);
 
+  // 公開範囲を変えられるのは作成者だけ（web の canChangeVisibility と同じ）。
+  const canChangeVisibility =
+    !editExpense || editExpense.created_by_member_id === myMemberId;
+
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -580,7 +584,11 @@ export function ExpenseForm({
         <Text style={[styles.label, styles.labelInline]}>
           {t("visibility")}
         </Text>
-        <VisibilitySegment value={visibility} onChange={setVisibility} />
+        <VisibilitySegment
+          value={visibility}
+          onChange={setVisibility}
+          readOnly={!canChangeVisibility}
+        />
       </View>
 
       {/* 支払った人（shared かつ複数メンバーのときだけ・既定は自分で折りたたみ） */}
