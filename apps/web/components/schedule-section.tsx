@@ -25,6 +25,7 @@ import {
 } from "@triplot/shared/import/drafts";
 
 import { Button } from "@/components/ui/button";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { EventForm, type EventFormMode, toEventFormPrefill } from "./event-form";
 import { HelpTip } from "./help-tip";
@@ -269,6 +270,20 @@ export function ScheduleSection({
 
   const t = useTranslations("schedule");
   const tImport = useTranslations("import");
+
+  // 取り込み下書きの破棄。狭い画面はカレンダー上の疑似ブロックからしか
+  // このフォームに来られず、広い画面のバナーにある × を使えないので、
+  // フォームの中にも破棄の口を用意する（無いと消せない）。
+  const dismissDraft = useCallback(
+    async (draftId: string) => {
+      if (!(await confirmDialog({ title: tImport("dismissDraftTitle") }))) return;
+      const supabase = createClient();
+      await resolveInboundDraft(supabase, draftId, "dismissed");
+      closeForm();
+      router.refresh();
+    },
+    [router, closeForm, tImport],
+  );
   const selectedEventId =
     open?.form.mode === "edit"
       ? open.form.event.id
@@ -402,6 +417,9 @@ export function ScheduleSection({
               open.draftId
                 ? (eventId) => void confirmDraft(open.draftId!, eventId)
                 : undefined
+            }
+            onDismissDraft={
+              open.draftId ? () => void dismissDraft(open.draftId!) : undefined
             }
           />
         </FormPopover>

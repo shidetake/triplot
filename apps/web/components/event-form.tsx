@@ -173,6 +173,7 @@ export function EventForm({
   tzTimeline,
   onDone,
   onSuccess,
+  onDismissDraft,
 }: {
   tripId: string;
   defaultTz: string; // 個別TZの初期値（= 前回入力 or ブラウザTZ）
@@ -188,6 +189,10 @@ export function EventForm({
   // 追加/更新が成功したときだけ呼ぶ（× 閉じでは呼ばれない）。追加成功時は
   // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
   onSuccess?: (eventId?: string) => void;
+  // 取り込み下書きの確定フローで開いた時だけ渡る: この下書きを破棄する。
+  // 狭い画面はカレンダー上の疑似ブロックからしかこのフォームに来られず、
+  // 一覧側の × が無いので、ここに破棄の口が無いと消せなくなる。
+  onDismissDraft?: () => void;
 }) {
   const isEdit = formMode.mode === "edit";
   const ev = isEdit ? formMode.event : null;
@@ -574,6 +579,7 @@ export function EventForm({
   const locale = useLocale();
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
+  const tImport = useTranslations("import");
 
   // 終日は「日時の見せ方」を変えるコントロールなので日時と同じ行の右端に置く
   // （行末の余白が使えて1行節約できる）。入り切らない幅では flex-wrap で
@@ -1095,6 +1101,21 @@ export function EventForm({
       )}
 
       <div className="flex gap-2">
+        {/* 取り込み下書きの破棄（新規＝確定フローの時だけ）。編集時の削除と
+            同じ位置・同じ形で、どちらか一方しか出ない。 */}
+        {!isEdit && onDismissDraft && (
+          <Button
+            type="button"
+            variant="destructive"
+            size="icon"
+            onClick={onDismissDraft}
+            aria-label={tImport("dismiss")}
+            title={tImport("dismiss")}
+            className="shrink-0"
+          >
+            <TrashIcon size={18} />
+          </Button>
+        )}
         {isEdit && (
           <Button
             type="button"
