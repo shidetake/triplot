@@ -134,6 +134,7 @@ export function WeekCalendar({
   placeName,
   onEventPress,
   onSlotPick,
+  onAllDaySlotPick,
 }: {
   schedule: Schedule;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
@@ -147,6 +148,8 @@ export function WeekCalendar({
   // 空き枠の長押し→ゴースト→ドラッグ→離した位置で確定（web と同じ）。
   // date は確定した列の日付、minutes は 0時からの通算分（30分スナップ済み）。
   onSlotPick: (date: string, minutes: number) => void;
+  // 終日帯の長押し→横ドラッグ→離した日付で終日予定を追加（web と同じ）。
+  onAllDaySlotPick?: (date: string) => void;
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -346,6 +349,55 @@ export function WeekCalendar({
     .onFinalize(onGhostFinalize);
   /* eslint-enable react-hooks/refs */
 
+  // ── 終日帯の長押し→横ドラッグで日付を選び、離して終日予定を追加 ──
+  // 時間グリッドのゴーストと同じ操作感（長押しで発動・ドラッグ中は対象が
+  // 動く・離して確定）。終日は日付だけ決まればよいので横方向だけ見る。
+  // 終日の予定が1件も無い週でも押せるよう、下の帯は常に1行ぶんの高さを持つ。
+  const [allDayGhostCol, setAllDayGhostColState] = useState<number | null>(null);
+  const allDayGhostRef = useRef<number | null>(null);
+  const setAllDayGhostCol = useCallback((i: number | null) => {
+    allDayGhostRef.current = i;
+    setAllDayGhostColState(i);
+  }, []);
+  // 帯の内容座標 x → 列インデックス（帯は横スクロール内容の中にあるので
+  // e.x はそのまま内容座標）。
+  const colFromX = useCallback(
+    (x: number) =>
+      Math.max(0, Math.min(columns.length - 1, Math.floor(x / COL))),
+    [columns.length, COL],
+  );
+  const onAllDayStart = useCallback(
+    (e: { x: number }) => setAllDayGhostCol(colFromX(e.x)),
+    [colFromX, setAllDayGhostCol],
+  );
+  const onAllDayUpdate = useCallback(
+    (e: { x: number }) => {
+      const i = colFromX(e.x);
+      if (i !== allDayGhostRef.current) setAllDayGhostCol(i);
+    },
+    [colFromX, setAllDayGhostCol],
+  );
+  const onAllDayEnd = useCallback(() => {
+    const i = allDayGhostRef.current;
+    const col = i != null ? columns[i] : null;
+    if (col) onAllDaySlotPick?.(col.date);
+  }, [columns, onAllDaySlotPick]);
+  const onAllDayFinalize = useCallback(
+    () => setAllDayGhostCol(null),
+    [setAllDayGhostCol],
+  );
+
+  /* eslint-disable react-hooks/refs */
+  const allDayPan = Gesture.Pan()
+    .maxPointers(1)
+    .activateAfterLongPress(500)
+    .runOnJS(true)
+    .onStart(onAllDayStart)
+    .onUpdate(onAllDayUpdate)
+    .onEnd(onAllDayEnd)
+    .onFinalize(onAllDayFinalize);
+  /* eslint-enable react-hooks/refs */
+
   // ゴーストが既存予定と重なるときのレーン引き直し（shared・web と共用）。
   const ghostColKey = ghost ? columns[ghost.columnIndex]?.key : undefined;
   const laneOverrides = computeGhostLaneOverrides(
@@ -470,14 +522,24 @@ export function WeekCalendar({
                 );
               })}
             </View>
-            {/* 終日バー行 */}
-            {allDayRowCount > 0 && (
+            {/* 終日バー行。長押しで終日予定を追加できるよう、終日の予定が
+                無い週でも1行ぶんの高さを確保する（web と同じ）。 */}
+            <GestureDetector gesture={allDayPan}>
               <View
                 style={[
                   styles.allDayArea,
-                  { height: allDayRowCount * ALLDAY_ROW },
+                  { height: Math.max(allDayRowCount, 1) * ALLDAY_ROW },
                 ]}
               >
+                {/* 長押し中のゴースト（確定するとこの日の終日予定になる）。 */}
+                {allDayGhostCol != null && (
+                  <View
+                    style={[
+                      styles.allDayGhost,
+                      { left: allDayGhostCol * COL + 2, width: COL - 4 },
+                    ]}
+                  />
+                )}
                 {allDayBars.map((b) => {
                   const ev = eventById.get(b.event.id);
                   if (!ev) return null;
@@ -524,7 +586,7 @@ export function WeekCalendar({
                   );
                 })}
               </View>
-            )}
+            </GestureDetector>
           </View>
         </ScrollView>
       </View>
@@ -848,6 +910,14 @@ const makeStyles = (t: Theme) =>
     borderRadius: 4,
     justifyContent: "center",
     paddingHorizontal: 4,
+  },
+  // 終日帯の長押しゴースト（時間グリッドのゴーストと同じ半透明の primary）。
+  allDayGhost: {
+    position: "absolute",
+    top: 1,
+    height: ALLDAY_ROW - 2,
+    borderRadius: 4,
+    backgroundColor: t.fgAlpha(0.18),
   },
   // 通常予定のタイトル(eventTitle)と揃える。以前は10pxで理由なく小さかった。
   allDayText: { fontSize: 11, fontWeight: "500", flexShrink: 1 },

@@ -97,6 +97,11 @@ export default function ScheduleTab() {
     router.push(`/trips/${tripId}/event-form?date=${date}&time=${h}:${m}`);
   };
 
+  // 終日帯の長押し→離した日付で終日予定を追加（web と同じ経路。時刻は持たない）。
+  const onAllDaySlotPick = (date: string) => {
+    router.push(`/trips/${tripId}/event-form?date=${date}&allDay=1`);
+  };
+
   const onEventPress = (ev: EventRow) => {
     const draftId = draftIdFromEventId(ev.id);
     if (draftId) {
@@ -125,6 +130,7 @@ export default function ScheduleTab() {
           placeName={placeName}
           onEventPress={onEventPress}
           onSlotPick={onSlotPick}
+          onAllDaySlotPick={onAllDaySlotPick}
         />
       )}
 

@@ -25,11 +25,12 @@ import { useTripId } from "@/lib/useTripId";
 // date・time=空き枠長押しの事前入力（すべて省略なら新規追加）。
 export default function EventFormRoute() {
   const tripId = useTripId();
-  const { eventId, draftId, date, time } = useLocalSearchParams<{
+  const { eventId, draftId, date, time, allDay } = useLocalSearchParams<{
     eventId?: string;
     draftId?: string;
     date?: string;
     time?: string;
+    allDay?: string;
   }>();
   const locale = useLocale();
   const t = useTranslations();
@@ -71,7 +72,11 @@ export default function EventFormRoute() {
   const confirmingDraft = draftId
     ? eventDrafts.find((d) => d.id === draftId)
     : undefined;
-  const slot = date && time ? { date, time } : undefined;
+  // 終日帯の長押しは時刻を持たない（日付だけ）。その場合も slot として渡し、
+  // 時刻の既定は EventForm 側（09:00）に任せる。
+  const slot = date
+    ? { date, time: time ?? "09:00", allDay: allDay === "1" }
+    : undefined;
 
   // 取り込み下書きの確定。EventForm 成功時に呼ばれ、下書きを confirmed に
   // する（web の ScheduleSection と同じ resolveInboundDraft）。この旅行の

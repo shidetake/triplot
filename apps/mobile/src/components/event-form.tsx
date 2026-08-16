@@ -88,7 +88,8 @@ export function EventForm({
   // 使う（editEvent と排他）。確定処理自体は onSuccess 側（呼び出し元）。
   draft?: EventDraftItem;
   // 週カレンダーの空き枠長押しからの事前入力（開始日時。iOS カレンダー流）。
-  slot?: { date: string; time: string };
+  // allDay は終日帯の長押しから来たときだけ true＝終日で開く。
+  slot?: { date: string; time: string; allDay?: boolean };
   onDone: () => void;
   // 追加/更新が成功したときだけ呼ぶ（キャンセルでは呼ばれない）。追加成功時は
   // 作成した予定の id が渡る（取り込み下書きの確定リンクに使う）。
@@ -115,7 +116,9 @@ export function EventForm({
       : editEvent.allDay
         ? "allday"
         : "timed"
-    : (prefill?.kind3 ?? "timed");
+    : slot?.allDay
+      ? "allday"
+      : (prefill?.kind3 ?? "timed");
   // 種別は3択セグメントで宣言させず、独立した2トグル（終日／移動）から導出する。
   // ユーザーは「これは移動か？」には答えられるが「これは時差移動か？」では
   // 考え込む。DB 制約上 transit は all_day 不可なので UI でも排他にする。
