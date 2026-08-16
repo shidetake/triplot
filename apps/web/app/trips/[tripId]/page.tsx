@@ -25,6 +25,7 @@ import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
 import { TripActions } from "@/components/trip-actions";
 import { TripDetailTabs } from "@/components/trip-detail-tabs";
+import { TripDraftsRealtime } from "@/components/trip-drafts-realtime";
 import { TripHeaderCompact } from "@/components/trip-header-compact";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
@@ -292,6 +293,9 @@ export default async function TripDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
+      {/* 取り込み下書きが届いたら再描画する（描画は無い）。 */}
+      <TripDraftsRealtime tripId={tripId} />
+
       <TripHeaderCompact
         backLabel={t("tripDetail.backToTrips")}
         tripTitle={trip.title}
