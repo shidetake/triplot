@@ -38,17 +38,19 @@ const config: ExpoConfig = {
     // ローカルビルドの署名チーム（Apple Development 証明書の OU）。
     // 対話プロンプト無しで expo run:ios の署名を通すために明示する。
     appleTeamId: "D37LHZNVW3",
-    // 招待リンク（https://triplot.app/join/<token>）をアプリで開く
-    // Universal Links は、App ID に Associated Domains の capability を足して
-    // プロビジョニングプロファイルを発行し直すまで宣言できない（宣言だけ
-    // すると署名段階でビルドが落ちる）。Apple Developer Portal を触れる
-    // ようになったら次の1行を ios に戻す:
-    //   ...(isStaging ? {} : { associatedDomains: ["applinks:triplot.app"] }),
-    // staging ビルドには付けない（同じドメインを2つのアプリが宣言すると
-    // どちらがリンクを受けるか OS 依存になるため）。受け口の画面
-    // （src/app/join/[token].tsx）と web 側の apple-app-site-association は
-    // 実装済みなので、戻すのはこの1行だけでよい。
-    // それまでの確認は triplot://join/<token> で行う。
+    // 招待リンク（https://triplot.app/join/<token>）を Safari ではなくアプリで
+    // 開く（受け口は src/app/join/[token].tsx）。対になる
+    // apple-app-site-association は web 側が配信する（apps/web の
+    // app/api/apple-app-site-association）。
+    // staging ビルドには付けない: 同じドメインを2つのアプリが宣言すると
+    // どちらがリンクを受けるか OS 依存になるため（bundle id を分けている
+    // のと同じ理由）。staging の確認は triplot://join/<token> で行う。
+    //
+    // この宣言は App ID の Associated Domains capability と、それを含む
+    // プロビジョニングプロファイルが揃っていないと署名段階でビルドが落ちる。
+    // プロファイルを作り直す時は、この行が入った状態で eas credentials を
+    // 実行すること（EAS が entitlements を見て capability を有効化するため）。
+    ...(isStaging ? {} : { associatedDomains: ["applinks:triplot.app"] }),
     // 標準暗号（HTTPS）のみ使用＝輸出コンプライアンスの申告を事前に済ませる
     // （TestFlight 提出のたびに質問されるのを防ぐ）。infoPlist を明示しておかないと
     // config-plugins の base mod が undefined 参照で prebuild に失敗する事情もある。
