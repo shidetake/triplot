@@ -34,6 +34,7 @@ export default function TripLayout() {
   const { data } = useTripDetail(tripId);
   const locale = useLocale();
   const t = useTranslations("tripDetail");
+  const tActions = useTranslations("tripActions");
   const styles = useThemedStyles(makeStyles);
   const tripTitle = data?.trip?.title ?? "";
   // ヘッダー2行目に日程と精算通貨（web の旅行ヘッダーと同じ情報）。iOS の
@@ -56,20 +57,20 @@ export default function TripLayout() {
     () => (
       <View style={{ flexDirection: "row", gap: 4 }}>
         <HeaderIconButton
-          accessibilityLabel="共有"
+          accessibilityLabel={tActions("share")}
           onPress={() => void shareTripInvite(tripId)}
         >
           <ShareIcon size={20} color="#666666" />
         </HeaderIconButton>
         <HeaderIconButton
-          accessibilityLabel="旅行を編集"
+          accessibilityLabel={tActions("editTrip")}
           onPress={() => router.push(`/trips/${tripId}/edit`)}
         >
           <SettingsIcon size={20} color="#666666" />
         </HeaderIconButton>
       </View>
     ),
-    [tripId],
+    [tripId, tActions],
   );
   // 2行タイトル（旅行名＋日程｜精算通貨）。headerTitle も headerRight と同じく
   // identity が変わるたび setOptions が走るのでメモ化する。

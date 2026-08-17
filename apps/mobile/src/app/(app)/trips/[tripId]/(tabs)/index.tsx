@@ -138,7 +138,7 @@ export default function ScheduleTab() {
       <Pressable
         onPress={() => router.push(`/trips/${tripId}/event-form`)}
         style={styles.fab}
-        accessibilityLabel="予定を追加"
+        accessibilityLabel={t("event.addAria")}
       >
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>

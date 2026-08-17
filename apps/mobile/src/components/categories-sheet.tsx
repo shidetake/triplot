@@ -36,6 +36,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("categories");
   const tExp = useTranslations("expense");
+  const tCommon = useTranslations("common");
   const { data } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
 
@@ -107,7 +108,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
       setEditValue("");
     }
     Alert.alert(t("deleteConfirmTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
         text: t("delete"),
         style: "destructive",
@@ -220,7 +221,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
               setAddValue("");
             }}
             hitSlop={8}
-            accessibilityLabel="キャンセル"
+            accessibilityLabel={tCommon("cancel")}
           >
             <XIcon size={16} color={theme.mutedForeground} />
           </Pressable>

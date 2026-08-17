@@ -100,12 +100,12 @@ export function InboxSheet() {
   const copyAddress = async () => {
     if (!address) return;
     await Clipboard.setStringAsync(address);
-    toast("コピーしました");
+    toast(tCommon("copied"));
   };
 
   const dismiss = (emailId: string) => {
     Alert.alert(t("dismissEmailTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
         text: t("dismiss"),
         style: "destructive",

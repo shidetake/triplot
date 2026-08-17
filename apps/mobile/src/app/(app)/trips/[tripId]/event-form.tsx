@@ -95,7 +95,7 @@ export default function EventFormRoute() {
   // 取り込み下書きの破棄（費用タブの dismissDraft と同じ）。
   const dismissDraft = (id: string) => {
     Alert.alert(t("import.dismissDraftTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: t("import.dismiss"),
         style: "destructive",

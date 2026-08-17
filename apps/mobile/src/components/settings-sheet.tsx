@@ -26,6 +26,7 @@ import {
   SaveIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { toast } from "@/components/toast";
 import { signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -64,7 +65,7 @@ export function SettingsSheet({
   const dirty = vName.trim() !== (profile?.display_name ?? "").trim();
 
   // その場保存（シートは閉じない）。入力値は変わらず「保存された感」が無いので
-  // 成功を通知する（web はトースト、RN は Alert）。
+  // 成功を通知する（web と同じくトースト）。
   const save = async () => {
     setBusy(true);
     const r = await updateDisplayName(supabase, userId!, vName);
@@ -72,7 +73,7 @@ export function SettingsSheet({
     if (!r.ok) return;
     void refetch();
     setName(null);
-    Alert.alert(t("common.saved"));
+    toast(t("common.saved"));
   };
 
   // アバターの変更（web の AvatarUpload と同じ設計）:
@@ -153,7 +154,7 @@ export function SettingsSheet({
       return;
     }
     Alert.alert(t("avatar.changeAria"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: t("avatar.pickImage"),
         onPress: () => void pickAndUploadAvatar(),
@@ -207,7 +208,7 @@ export function SettingsSheet({
               // 必須（表示名）は空にすると変更あり(dirty)でも無効のまま
               // （埋まるまで無効、の規約は編集フォームでも変わらない）。
               disabled={busy || !dirty || !vName.trim()}
-              accessibilityLabel="保存"
+              accessibilityLabel={t("common.save")}
               style={[
                 styles.saveButton,
                 (busy || !dirty || !vName.trim()) && styles.disabled,
@@ -231,7 +232,7 @@ export function SettingsSheet({
         </Pressable>
         <Pressable onPress={onOpenAbout} style={styles.navRow}>
           <InfoIcon size={18} color={theme.mutedForeground} />
-          <Text style={styles.navRowLabel}>このアプリについて</Text>
+          <Text style={styles.navRowLabel}>{t("about.heading")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
       </View>

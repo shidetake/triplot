@@ -38,6 +38,7 @@ export function PlaceIconPicker({
   onChanged: () => void;
 }) {
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const [selected, setSelected] = useState<string | null>(null);
@@ -57,7 +58,7 @@ export function PlaceIconPicker({
         t("iconPickerRemoveTitle", { name }),
         t("iconPickerRemoveBody"),
         [
-          { text: "キャンセル", style: "cancel" },
+          { text: tCommon("cancel"), style: "cancel" },
           {
             text: t("iconPickerRemoveConfirm"),
             style: "destructive",

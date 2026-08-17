@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Dimensions,
   Pressable,
   StyleSheet,
@@ -14,6 +13,7 @@ import { FEEDBACK_BODY_MAX, type FeedbackKind } from "@triplot/shared/feedback";
 
 import { SendIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { toast } from "@/components/toast";
 import { CompactSegment } from "@/components/visibility-segment";
 import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
@@ -65,9 +65,9 @@ export function FeedbackSheet({ onDone }: { onDone: () => void }) {
         }),
       });
       if (!res.ok) throw new Error(`status ${res.status}`);
-      // 結果が画面に出ない成功なので通知する（web はトースト。RN は Alert）。
+      // 結果が画面に出ない成功なので通知する（web と同じくトースト）。
       clearDraft(); // 送信済み＝この下書きは用済み
-      Alert.alert(t("sent"));
+      toast(t("sent"));
       onDone();
     } catch {
       setError(t("sendFailed"));

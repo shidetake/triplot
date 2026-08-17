@@ -31,6 +31,8 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 export default function TripsScreen() {
   const t = useTranslations("trips");
   const tCommon = useTranslations("common");
+  const tHeader = useTranslations("header");
+  const tSettings = useTranslations("settings");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const locale = useLocale();
@@ -83,7 +85,7 @@ export default function TripsScreen() {
           headerRight: () => (
             <View style={styles.headerButtons}>
               <HeaderIconButton
-                accessibilityLabel="取り込み"
+                accessibilityLabel={tHeader("inbox")}
                 onPress={() => router.push("/trips/inbox")}
               >
                 <View>
@@ -100,7 +102,7 @@ export default function TripsScreen() {
               {/* アバター＝アカウント（設定）の入口。web の右上アバターと同じ。
                   自分のアバターは中立 zinc（メンバー色 hue とは別系統）。 */}
               <HeaderIconButton
-                accessibilityLabel="設定"
+                accessibilityLabel={tSettings("heading")}
                 onPress={() => router.push("/trips/settings")}
               >
                 {profile?.avatar_url ? (

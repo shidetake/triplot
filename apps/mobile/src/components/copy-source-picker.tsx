@@ -1,4 +1,5 @@
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useTranslations } from "use-intl";
 
 import type { CopySourceTrip } from "@triplot/shared/copySourceLabel";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
@@ -53,6 +54,7 @@ export function CopySourceModal({
   title: string;
 }) {
   const theme = useTheme();
+  const tCommon = useTranslations("common");
   const styles = useThemedStyles(makeStyles);
   const labels = buildCopySourceLabels(trips);
   return (
@@ -65,7 +67,7 @@ export function CopySourceModal({
       <View style={styles.sheet}>
         <View style={styles.header}>
           <Text style={styles.title}>{title}</Text>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel="閉じる">
+          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel={tCommon("close")}>
             <XIcon size={20} color={theme.mutedForeground} />
           </Pressable>
         </View>

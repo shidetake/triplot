@@ -101,6 +101,7 @@ export function ExpenseForm({
   onSuccess?: (expenseId?: string) => void;
 }) {
   const t = useTranslations("expense");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editExpense;
@@ -361,9 +362,9 @@ export function ExpenseForm({
   const onDelete = () => {
     if (!editExpense) return;
     Alert.alert(t("deleteTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
-        text: "削除",
+        text: tCommon("delete"),
         style: "destructive",
         onPress: () => {
           void deleteExpense(supabase, editExpense.id).then((r) => {
@@ -691,7 +692,7 @@ export function ExpenseForm({
           <Pressable
             onPress={onDelete}
             style={styles.deleteButton}
-            accessibilityLabel="削除"
+            accessibilityLabel={tCommon("delete")}
           >
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
@@ -713,7 +714,7 @@ export function ExpenseForm({
                 rateInput.trim() === "")) &&
               styles.disabled,
           ]}
-          accessibilityLabel={isEdit ? "保存" : t("addAria")}
+          accessibilityLabel={isEdit ? tCommon("save") : t("addAria")}
         >
           <PlusIcon size={20} color={theme.primaryForeground} />
         </Pressable>
@@ -745,7 +746,7 @@ export function ExpenseForm({
             <Pressable
               onPress={() => setCategoryOpen(false)}
               hitSlop={8}
-              accessibilityLabel="閉じる"
+              accessibilityLabel={tCommon("close")}
             >
               <XIcon size={20} color={theme.mutedForeground} />
             </Pressable>

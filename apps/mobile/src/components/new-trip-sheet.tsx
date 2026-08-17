@@ -34,6 +34,7 @@ export function NewTripSheet() {
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
   const tTrips = useTranslations("trips");
+  const tCommon = useTranslations("common");
   const { session } = useSession();
   const userId = session?.user.id;
   const queryClient = useQueryClient();
@@ -188,7 +189,7 @@ export function NewTripSheet() {
         <TextInput
           value={effectiveName}
           onChangeText={setDisplayName}
-          placeholder="名前"
+          placeholder={tCommon("name")}
           placeholderTextColor={theme.subtleForeground}
           style={styles.input}
         />
@@ -274,7 +275,7 @@ export function NewTripSheet() {
         onPress={() => void submit()}
         // 必須（タイトル・表示名）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
         disabled={busy || !title.trim() || !effectiveName.trim()}
-        accessibilityLabel="旅行を作成"
+        accessibilityLabel={tTrips("create")}
         style={[
           styles.submitButton,
           (busy || !title.trim() || !effectiveName.trim()) && styles.disabled,

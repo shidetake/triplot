@@ -39,7 +39,8 @@
     "copied": "Copied",
     "untitledEvent": "(untitled)",
     "loadError": "Failed to load: {message}",
-    "retry": "Retry"
+    "retry": "Retry",
+    "search": "Search"
   },
   "settings": {
     "heading": "Settings",
@@ -198,7 +199,8 @@
     "regenerateFailed": "Failed to regenerate",
     "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it.",
     "regenerateCopied": "New link created and copied",
-    "manageCategories": "Manage Expense Categories"
+    "manageCategories": "Manage Expense Categories",
+    "shareLink": "Send invite link"
   },
   "event": {
     "addAria": "Add event",
@@ -253,7 +255,8 @@
     "flightEstimatedFrom": "Estimated from the flight on {date}",
     "flightHours": "{h}h {m}m",
     "flightApply": "Use this flight",
-    "flightMissingTimes": "Fill in the missing times by hand"
+    "flightMissingTimes": "Fill in the missing times by hand",
+    "timezonePickerTitle": "Select a time zone"
   },
   "expense": {
     "price": "Amount",
@@ -298,7 +301,8 @@
       "casino": "Casino",
       "other": "Other",
       "uncategorized": "Uncategorized"
-    }
+    },
+    "empty": "No expenses yet."
   },
   "todo": {
     "deleteTitle": "Delete this to-do?",
@@ -445,7 +449,14 @@
     "filterShowDismissed": "Show hidden places",
     "showDismissed": "Show {count} hidden places",
     "hideDismissed": "Hide",
-    "filterAria": "Filtering: {label}"
+    "filterAria": "Filtering: {label}",
+    "openList": "Open place list",
+    "resetHeading": "Reset map orientation to north",
+    "myLocation": "Recenter on my location",
+    "locationUnavailable": "Can't use your location",
+    "locationPermissionBody": "Allow location access in the Settings app.",
+    "locationFailed": "Could not get your location",
+    "empty": "No places yet."
   },
   "validation": {
     "loginRequired": "You need to be logged in.",
@@ -626,5 +637,14 @@
     "delete": "Delete",
     "save": "Save",
     "edit": "Edit"
+  },
+  "currency": {
+    "noResults": "No matching currencies"
+  },
+  "about": {
+    "heading": "About this app",
+    "privacyPolicy": "Privacy policy",
+    "licenses": "Open source licenses",
+    "version": "Version {version} ({build})"
   }
 }

@@ -1,5 +1,6 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -253,8 +254,23 @@ function TodoSection({
   const pickPriority = onPickPriority;
 
   // 折りたたみ既定はフェーズ由来（旅行開始後は準備を畳む。web と同じ）。
-  // web は localStorage に手動開閉を覚えるが、RN は M3 では画面内状態のみ。
+  // 手動で開閉したら覚えて次回以降は既定より優先する（web は localStorage、
+  // RN は AsyncStorage。キーの体系も web と同じ）。
+  const storageKey = `triplot.todoCollapsed.${tripId}.${kind}`;
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
+  useEffect(() => {
+    void AsyncStorage.getItem(storageKey).then((saved) => {
+      if (saved === "1" || saved === "0") setCollapsed(saved === "1");
+    });
+  }, [storageKey]);
+  const toggleCollapsed = () => {
+    setCollapsed((c) => {
+      const next = !c;
+      // 保存失敗は無視（画面の状態だけ反映する）。
+      void AsyncStorage.setItem(storageKey, next ? "1" : "0").catch(() => {});
+      return next;
+    });
+  };
 
   const [draft, setDraft] = useState("");
   const [draftPriority, setDraftPriority] = useState<TodoPriority>("medium");
@@ -332,7 +348,7 @@ function TodoSection({
 
   const confirmDelete = (todo: TodoRow) => {
     Alert.alert(t("deleteTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: t("deleteAria"),
         style: "destructive",
@@ -351,7 +367,7 @@ function TodoSection({
   return (
     <View style={styles.section}>
       <Pressable
-        onPress={() => setCollapsed((c) => !c)}
+        onPress={toggleCollapsed}
         style={styles.sectionHeader}
       >
         <ChevronIcon size={16} color={theme.mutedForeground} rotate={collapsed ? 0 : 90} />

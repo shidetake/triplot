@@ -125,7 +125,7 @@ export default function ExpensesTab() {
 
   const dismissDraft = (draftId: string) => {
     Alert.alert(tImport("dismissDraftTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: tImport("dismiss"),
         style: "destructive",
@@ -364,7 +364,7 @@ export default function ExpensesTab() {
         )}
 
         {expenses.length === 0 && (
-          <Text style={styles.empty}>まだ費用がありません。</Text>
+          <Text style={styles.empty}>{tExp("empty")}</Text>
         )}
       </ScrollView>
 

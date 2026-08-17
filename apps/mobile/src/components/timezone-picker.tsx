@@ -16,6 +16,8 @@ import {
 } from "@triplot/shared/timezones";
 
 import { CheckIcon, ChevronIcon } from "./icons";
+import { useTranslations } from "use-intl";
+
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // タイムゾーンピッカー（RN・時差移動の出発/到着TZ用）。web と同じ3段ドリルダウン
@@ -39,6 +41,7 @@ export function TimezonePicker({
   onChange: (iana: string) => void;
 }) {
   const t = useTheme();
+  const tEvent = useTranslations("event");
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<TzGroup | null>(null);
@@ -75,7 +78,7 @@ export function TimezonePicker({
           <View style={styles.grabberRow}>
             <View style={styles.grabber} />
           </View>
-          <Text style={styles.modalTitle}>タイムゾーンを選択</Text>
+          <Text style={styles.modalTitle}>{tEvent("timezonePickerTitle")}</Text>
           <ScrollView contentContainerStyle={styles.list}>
             {!group ? (
               TZ_GROUPS.map((g) => (

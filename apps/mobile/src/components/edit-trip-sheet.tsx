@@ -107,12 +107,12 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
       return;
     }
     void invalidate();
-    // 入力値は見た目が変わらないので成功を通知（web はトースト、RN は Alert）。
+    // 入力値は見た目が変わらないので成功を通知（web と同じくトースト）。
     setTitle(null);
     setStartDate(null);
     setEndDate(null);
     setCurrency(null);
-    Alert.alert(t("common.saved"));
+    toast(t("common.saved"));
   };
 
   // 自分の表示名のその場保存（入力を離れた/確定したタイミング。カテゴリ改名と
@@ -139,7 +139,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
       t("tripActions.regenerateTitle"),
       t("tripActions.regenerateBody"),
       [
-        { text: "キャンセル", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
           text: t("tripActions.regenerateConfirm"),
           style: "destructive",
@@ -166,7 +166,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
 
   const confirmRemoveMember = (memberId: string, name: string) => {
     Alert.alert(t("members.removeTitle", { name }), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: t("members.remove"),
         style: "destructive",
@@ -187,7 +187,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   // 退出後はこの旅行が見えなくなるので旅行一覧へ戻る。
   const confirmLeave = () => {
     Alert.alert(t("members.leaveTitle"), t("members.leaveBody"), [
-      { text: "キャンセル", style: "cancel" },
+      { text: t("common.cancel"), style: "cancel" },
       {
         text: t("members.leaveConfirm"),
         style: "destructive",
@@ -212,7 +212,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
       t("tripActions.deleteTripTitle"),
       t("tripActions.deleteTripBody"),
       [
-        { text: "キャンセル", style: "cancel" },
+        { text: t("common.cancel"), style: "cancel" },
         {
           text: t("tripActions.deleteTrip"),
           style: "destructive",
@@ -353,6 +353,14 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
       {/* メンバー */}
       <View>
         <Text style={styles.sectionTitle}>{t("members.heading")}</Text>
+        {/* 誰の名前を変えられて、誰を外せるのかは見ただけでは分からないので
+            web のメンバー管理ページと同じ説明を出す（権限で文言が変わる）。 */}
+        <Text style={styles.hint}>
+          {t("members.editOwnName")}{" "}
+          {isAdmin
+            ? t("members.adminCanRemove")
+            : t("members.onlyAdminCanRemove")}
+        </Text>
         {members.map((m) => {
           const isMe = m.id === me.id;
           return (
@@ -427,7 +435,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
             onPress={() => void shareTripInvite(tripId)}
             style={styles.outlineButton}
           >
-            <Text style={styles.outlineLabel}>共有リンクを送る</Text>
+            <Text style={styles.outlineLabel}>{t("tripActions.shareLink")}</Text>
           </Pressable>
           <Pressable onPress={regenerateInvite} style={styles.outlineButton}>
             <Text style={styles.outlineLabel}>

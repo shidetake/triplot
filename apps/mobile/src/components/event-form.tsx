@@ -101,6 +101,7 @@ export function EventForm({
 }) {
   const t = useTranslations("event");
   const tImport = useTranslations("import");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editEvent;
@@ -554,9 +555,9 @@ export function EventForm({
   const onDelete = () => {
     if (!editEvent) return;
     Alert.alert(t("deleteTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
-        text: "削除",
+        text: tCommon("delete"),
         style: "destructive",
         onPress: () => {
           void deleteEvent(supabase, editEvent.id).then((r) => {
@@ -879,7 +880,7 @@ export function EventForm({
           <Pressable
             onPress={onDelete}
             style={styles.deleteButton}
-            accessibilityLabel="削除"
+            accessibilityLabel={tCommon("delete")}
           >
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
@@ -897,7 +898,7 @@ export function EventForm({
           onPress={() => void submit()}
           // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={busy || !title.trim()}
-          accessibilityLabel={isEdit ? "保存" : "追加"}
+          accessibilityLabel={isEdit ? tCommon("save") : tCommon("add")}
           style={[
             styles.submitButton,
             (busy || !title.trim()) && styles.disabled,

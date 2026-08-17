@@ -10,6 +10,8 @@ import {
   View,
 } from "react-native";
 
+import { useTranslations } from "use-intl";
+
 import {
   ALL_CURRENCIES,
   COMMON_CURRENCIES,
@@ -55,6 +57,8 @@ export function CurrencyPickerModal({
   title: string;
 }) {
   const theme = useTheme();
+  const t = useTranslations("common");
+  const tCurrency = useTranslations("currency");
   const styles = useThemedStyles(makeStyles);
   const [query, setQuery] = useState("");
 
@@ -95,7 +99,7 @@ export function CurrencyPickerModal({
           <TextInput
             value={query}
             onChangeText={setQuery}
-            placeholder="検索"
+            placeholder={t("search")}
             placeholderTextColor={theme.subtleForeground}
             style={styles.searchInput}
             autoCorrect={false}
@@ -108,7 +112,7 @@ export function CurrencyPickerModal({
           keyboardShouldPersistTaps="handled"
         >
           {filtered.length === 0 ? (
-            <Text style={styles.empty}>該当する通貨がありません</Text>
+            <Text style={styles.empty}>{tCurrency("noResults")}</Text>
           ) : (
             filtered.map((c) => {
               const selected = c === value;

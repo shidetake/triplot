@@ -39,7 +39,8 @@
     "copied": "コピーしました",
     "untitledEvent": "(タイトル不明)",
     "loadError": "読み込みに失敗しました: {message}",
-    "retry": "再試行"
+    "retry": "再試行",
+    "search": "検索"
   },
   "settings": {
     "heading": "設定",
@@ -198,7 +199,8 @@
     "regenerateFailed": "再生成に失敗しました",
     "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください",
     "regenerateCopied": "新しいリンクを作成してコピーしました",
-    "manageCategories": "費用カテゴリ管理"
+    "manageCategories": "費用カテゴリ管理",
+    "shareLink": "共有リンクを送る"
   },
   "event": {
     "addAria": "予定を追加",
@@ -253,7 +255,8 @@
     "flightEstimatedFrom": "{date} の運航にもとづく予測です",
     "flightHours": "{h}時間{m}分",
     "flightApply": "この便を使う",
-    "flightMissingTimes": "時刻が分からない部分は手で入れてください"
+    "flightMissingTimes": "時刻が分からない部分は手で入れてください",
+    "timezonePickerTitle": "タイムゾーンを選択"
   },
   "expense": {
     "price": "価格",
@@ -298,7 +301,8 @@
       "casino": "カジノ",
       "other": "その他",
       "uncategorized": "未分類"
-    }
+    },
+    "empty": "まだ費用がありません。"
   },
   "todo": {
     "deleteTitle": "このTODOを削除しますか？",
@@ -445,7 +449,14 @@
     "filterShowDismissed": "非表示の場所も表示",
     "showDismissed": "非表示の場所を表示（{count}件）",
     "hideDismissed": "隠す",
-    "filterAria": "絞り込み中: {label}"
+    "filterAria": "絞り込み中: {label}",
+    "openList": "場所一覧を開く",
+    "resetHeading": "地図の向きを北にリセット",
+    "myLocation": "現在地に戻る",
+    "locationUnavailable": "現在地を利用できません",
+    "locationPermissionBody": "設定アプリで位置情報の利用を許可してください。",
+    "locationFailed": "現在地を取得できませんでした",
+    "empty": "まだ場所がありません。"
   },
   "validation": {
     "loginRequired": "ログインが必要です",
@@ -626,5 +637,14 @@
     "delete": "削除",
     "save": "保存",
     "edit": "編集"
+  },
+  "currency": {
+    "noResults": "該当する通貨がありません"
+  },
+  "about": {
+    "heading": "このアプリについて",
+    "privacyPolicy": "プライバシーポリシー",
+    "licenses": "オープンソースライセンス",
+    "version": "バージョン {version} ({build})"
   }
 }

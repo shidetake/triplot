@@ -59,6 +59,7 @@ export function PlaceForm({
   onOpenIconPicker: (onPick: (key: string) => void) => void;
 }) {
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editPlace;
@@ -140,9 +141,9 @@ export function PlaceForm({
   const onDelete = () => {
     if (!editPlace) return;
     Alert.alert(t("deleteTitle"), undefined, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
-        text: "削除",
+        text: tCommon("delete"),
         style: "destructive",
         onPress: () => {
           void deletePlace(supabase, editPlace.id).then((r) => {
@@ -265,7 +266,7 @@ export function PlaceForm({
           <Pressable
             onPress={onDelete}
             style={styles.deleteButton}
-            accessibilityLabel="削除"
+            accessibilityLabel={tCommon("delete")}
           >
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
@@ -274,7 +275,7 @@ export function PlaceForm({
           onPress={() => void submit()}
           // 必須（仮ピンの名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={busy || (!!pinDraft && !pinName.trim())}
-          accessibilityLabel={isEdit ? "保存" : t("addPlaceAria")}
+          accessibilityLabel={isEdit ? tCommon("save") : t("addPlaceAria")}
           style={[
             styles.submitButton,
             (busy || (!!pinDraft && !pinName.trim())) && styles.disabled,

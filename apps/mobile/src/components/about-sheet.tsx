@@ -1,5 +1,6 @@
 import * as Application from "expo-application";
 import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { useTranslations } from "use-intl";
 
 import { ChevronIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
@@ -17,6 +18,7 @@ export function AboutSheet({
 }: {
   onOpenLicenses: () => void;
 }) {
+  const t = useTranslations("about");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
 
@@ -25,24 +27,24 @@ export function AboutSheet({
 
   return (
     <View style={styles.content}>
-      <SheetTitle>このアプリについて</SheetTitle>
+      <SheetTitle>{t("heading")}</SheetTitle>
 
       <View style={styles.navList}>
         <Pressable
           onPress={() => void Linking.openURL(PRIVACY_URL)}
           style={styles.navRow}
         >
-          <Text style={styles.navRowLabel}>プライバシーポリシー</Text>
+          <Text style={styles.navRowLabel}>{t("privacyPolicy")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
 
         <Pressable onPress={onOpenLicenses} style={styles.navRow}>
-          <Text style={styles.navRowLabel}>オープンソースライセンス</Text>
+          <Text style={styles.navRowLabel}>{t("licenses")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
       </View>
 
-      <Text style={styles.version}>{`バージョン ${version} (${build})`}</Text>
+      <Text style={styles.version}>{t("version", { version, build })}</Text>
     </View>
   );
 }

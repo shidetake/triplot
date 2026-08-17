@@ -115,6 +115,7 @@ import {
   XIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -1065,6 +1066,9 @@ export default function PlacesTab() {
         });
         // 検索実行で一覧シートを開いて結果を見せる。
         setListOpen(true);
+      } else {
+        // 0件で無反応だと検索が壊れて見える（web は同じ文言を出す）。
+        toast(t("noResults"));
       }
     } catch (e) {
       // 失敗は握りつぶさず見せる（原因の詳細付き。実機でのキー制限・
@@ -1114,8 +1118,8 @@ export default function PlacesTab() {
       const perm = await Location.requestForegroundPermissionsAsync();
       if (perm.status !== "granted") {
         Alert.alert(
-          "現在地を利用できません",
-          "設定アプリで位置情報の利用を許可してください。",
+          t("locationUnavailable"),
+          t("locationPermissionBody"),
         );
         return;
       }
@@ -1126,7 +1130,7 @@ export default function PlacesTab() {
           longitude: pos.coords.longitude,
         };
       } catch (e) {
-        Alert.alert("現在地を取得できませんでした", String(e));
+        Alert.alert(t("locationFailed"), String(e));
         return;
       }
     }
@@ -1519,7 +1523,7 @@ export default function PlacesTab() {
       t("settingLocationFor", { name: locating.name }),
       [
         {
-          text: "キャンセル",
+          text: tCommon("cancel"),
           style: "cancel",
           onPress: () => setPinDraft(null),
         },
@@ -1564,7 +1568,7 @@ export default function PlacesTab() {
     if (!locating) return false;
     const fromName = locating.name;
     Alert.alert(t("resolveToTitle", { to: target.name }), fromName, [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
         text: tCommon("confirm"),
         onPress: () => {
@@ -1596,7 +1600,7 @@ export default function PlacesTab() {
   // 地図に登録し直せる（一方的な通知の抑制に過ぎない）。
   const dismissLocation = (p: PlaceRow) => {
     Alert.alert(t("dismissLocationTitle"), t("dismissLocationBody"), [
-      { text: "キャンセル", style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
         text: tCommon("confirm"),
         onPress: () => {
@@ -1824,9 +1828,18 @@ export default function PlacesTab() {
           </Marker>
         )}
         {pinDraft && (
+          // 仮ピンはドラッグで微調整できる（web の draggable な draft ピンと
+          // 同じ。長押しで置いた位置は指の太さぶんズレるので、置き直しでは
+          // なく寄せられる方が早い）。tracksViewChanges を切らないと
+          // ドラッグ中の再描画が止まる。
           <Marker
             coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
             anchor={{ x: 0.5, y: 0.9 }}
+            draggable
+            onDragEnd={(e) => {
+              const { latitude, longitude } = e.nativeEvent.coordinate;
+              setPinDraft({ lat: latitude, lng: longitude });
+            }}
           >
             <RedPin />
           </Marker>
@@ -1982,7 +1995,7 @@ export default function PlacesTab() {
             <Pressable
               onPress={() => setListOpen(true)}
               style={styles.listButtonWrap}
-              accessibilityLabel="場所一覧を開く"
+              accessibilityLabel={t("openList")}
             >
               <GlassView
                 glassEffectStyle="regular"
@@ -2025,7 +2038,7 @@ export default function PlacesTab() {
             <Pressable
               onPress={resetHeading}
               style={styles.compassButton}
-              accessibilityLabel="地図の向きを北にリセット"
+              accessibilityLabel={t("resetHeading")}
             >
               <Svg
                 viewBox="0 0 24 24"
@@ -2047,7 +2060,7 @@ export default function PlacesTab() {
             <Pressable
               onPress={() => void goToMyLocation()}
               style={styles.myLocationButton}
-              accessibilityLabel="現在地に戻る"
+              accessibilityLabel={t("myLocation")}
             >
               <Svg
                 viewBox="0 -960 960 960"
@@ -2322,7 +2335,7 @@ export default function PlacesTab() {
               />
             )}
             ListEmptyComponent={
-              <Text style={styles.empty}>まだ場所がありません。</Text>
+              <Text style={styles.empty}>{t("empty")}</Text>
             }
           />
         )}
