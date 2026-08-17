@@ -5,6 +5,8 @@ import {
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
 
+import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
+
 import { supabase } from "./supabase";
 
 // ネイティブの Sign in with Apple / Google Sign-In → Supabase の
@@ -36,13 +38,30 @@ export async function signInWithApple(): Promise<boolean> {
   if (!credential.identityToken) {
     throw new Error("Apple identityToken missing");
   }
-  const { error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "apple",
     token: credential.identityToken,
     nonce: rawNonce,
   });
   if (error) throw error;
+  await backfillIdentityProfile(data.user);
   return true;
+}
+
+// Apple サインアップ（名前・写真を返さないことが多い）の後、同じメール
+// アドレスで Google が自動リンクされたケースの穴埋め。display_name/
+// avatar_url が既に入っていれば何もしない（詳細は shared/data/account.ts
+// のコメント）。失敗（Result.error）してもサインイン自体は成功扱いのまま進める。
+async function backfillIdentityProfile(
+  user: { id: string; identities?: { identity_data?: unknown }[] | null } | null,
+): Promise<void> {
+  if (!user) return;
+  await backfillProfileFromIdentities(
+    supabase,
+    user.id,
+    (user.identities as { identity_data?: Record<string, unknown> | null }[]) ??
+      null,
+  );
 }
 
 // Google Sign-In は Google Cloud Console の iOS OAuth Client が要る。
@@ -68,11 +87,12 @@ export async function signInWithGoogle(): Promise<boolean> {
   if (!isSuccessResponse(response)) return false; // キャンセル
   const idToken = response.data.idToken;
   if (!idToken) throw new Error("Google idToken missing");
-  const { error } = await supabase.auth.signInWithIdToken({
+  const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "google",
     token: idToken,
   });
   if (error) throw error;
+  await backfillIdentityProfile(data.user);
   return true;
 }
 
