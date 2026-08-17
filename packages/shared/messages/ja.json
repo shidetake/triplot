@@ -139,6 +139,7 @@
     "joinHint": "ログイン不要で参加だけしたい場合は、共有リンクから直接アクセスしてください。"
   },
   "auth": {
+    "lastUsed": "前回使用",
     "signInWithGoogle": "Google でログイン",
     "signingIn": "ログイン中...",
     "signInFailed": "ログインに失敗しました: {message}",

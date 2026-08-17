@@ -8,6 +8,7 @@ import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { MessageBox } from "@/components/message-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { AuthProvider } from "@/lib/lastAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
 import { joinAction } from "./actions";
@@ -16,10 +17,12 @@ export function JoinForm({
   token,
   defaultName,
   hasSession,
+  lastAuthProvider,
 }: {
   token: string;
   defaultName: string;
   hasSession: boolean;
+  lastAuthProvider: AuthProvider | null;
 }) {
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState<string | null>(null);
@@ -70,12 +73,22 @@ export function JoinForm({
       </label>
 
       {hasSession ? (
-        <Button type="button" onClick={joinDirect} disabled={isPending} className="h-11 w-full">
+        <Button
+          type="button"
+          onClick={joinDirect}
+          disabled={isPending}
+          className="h-11 w-full"
+        >
           {isPending ? t("joining") : t("joinTrip")}
         </Button>
       ) : (
         <div className="space-y-3">
-          <Button type="button" onClick={joinAsGuest} disabled={isPending} className="h-11 w-full">
+          <Button
+            type="button"
+            onClick={joinAsGuest}
+            disabled={isPending}
+            className="h-11 w-full"
+          >
             {isPending ? t("joining") : t("joinAsGuest")}
           </Button>
           <div className="flex items-center gap-3 text-xs text-subtle-foreground">
@@ -86,15 +99,21 @@ export function JoinForm({
           {/* フォーム内の他要素（Input・上のボタン）と同じ w-full に揃える
               （LPのw-72固定はヒーロー内で単独表示する時のみの調整）。 */}
           <div className="flex w-full flex-col gap-3">
-            <OAuthSignInButton provider="google" next={`/join/${token}`} />
-            <OAuthSignInButton provider="apple" next={`/join/${token}`} />
+            <OAuthSignInButton
+              provider="google"
+              next={`/join/${token}`}
+              lastUsed={lastAuthProvider === "google"}
+            />
+            <OAuthSignInButton
+              provider="apple"
+              next={`/join/${token}`}
+              lastUsed={lastAuthProvider === "apple"}
+            />
           </div>
         </div>
       )}
 
-      {error && (
-        <MessageBox kind="error">{error}</MessageBox>
-      )}
+      {error && <MessageBox kind="error">{error}</MessageBox>}
     </div>
   );
 }

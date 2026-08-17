@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
+import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
 
 // ランディングページ（公開）。骨組みのみ — コピー/スクショ等の本体は別タスクで後追い。
@@ -11,7 +12,10 @@ export default async function LandingPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const t = await getTranslations("landing");
+  const [t, lastAuthProvider] = await Promise.all([
+    getTranslations("landing"),
+    resolveLastAuthProvider(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-24">
@@ -31,8 +35,16 @@ export default async function LandingPage() {
             {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。w-72固定でブランド
                 ボタン2つの横幅を揃える。 */}
             <div className="flex w-72 flex-col gap-3">
-              <OAuthSignInButton provider="google" next="/trips" />
-              <OAuthSignInButton provider="apple" next="/trips" />
+              <OAuthSignInButton
+                provider="google"
+                next="/trips"
+                lastUsed={lastAuthProvider === "google"}
+              />
+              <OAuthSignInButton
+                provider="apple"
+                next="/trips"
+                lastUsed={lastAuthProvider === "apple"}
+              />
             </div>
             <p className="text-sm text-muted-foreground">{t("joinHint")}</p>
           </div>

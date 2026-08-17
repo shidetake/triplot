@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { peekInvite } from "@triplot/shared/data/invites";
+import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
 
 import { JoinForm } from "./join-form";
@@ -23,7 +24,10 @@ export default async function JoinPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const t = await getTranslations("join");
+  const [t, lastAuthProvider] = await Promise.all([
+    getTranslations("join"),
+    resolveLastAuthProvider(),
+  ]);
 
   if (!title) {
     return (
@@ -60,6 +64,7 @@ export default async function JoinPage({
           token={token}
           defaultName={defaultName}
           hasSession={!!user}
+          lastAuthProvider={lastAuthProvider}
         />
       </div>
     </main>

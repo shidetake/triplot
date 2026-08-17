@@ -7,6 +7,7 @@ import * as Crypto from "expo-crypto";
 
 import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
 
+import { setLastAuthProvider } from "./lastAuthProvider";
 import { supabase } from "./supabase";
 
 // ネイティブの Sign in with Apple / Google Sign-In → Supabase の
@@ -44,6 +45,7 @@ export async function signInWithApple(): Promise<boolean> {
     nonce: rawNonce,
   });
   if (error) throw error;
+  await setLastAuthProvider("apple");
   await backfillIdentityProfile(data.user);
   return true;
 }
@@ -92,6 +94,7 @@ export async function signInWithGoogle(): Promise<boolean> {
     token: idToken,
   });
   if (error) throw error;
+  await setLastAuthProvider("google");
   await backfillIdentityProfile(data.user);
   return true;
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Pressable,
@@ -8,19 +8,19 @@ import {
   StyleSheet,
   Text,
   TextInput,
-  useColorScheme,
   View,
 } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { joinTripViaInvite, peekInvite } from "@triplot/shared/data/invites";
 
-import { AppleGlyph, GoogleGlyph } from "@/components/oauth-brand-icons";
+import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import {
   googleSignInAvailable,
   signInWithApple,
   signInWithGoogle,
 } from "@/lib/auth";
+import { getLastAuthProvider, type AuthProvider } from "@/lib/lastAuthProvider";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -40,11 +40,15 @@ export default function JoinScreen() {
   const t = useTranslations("join");
   const tErr = useTranslations("errors");
   const tCommon = useTranslations("common");
-  const tAuth = useTranslations("auth");
   const styles = useThemedStyles(makeStyles);
   const theme = useTheme();
-  const dark = useColorScheme() === "dark";
   const { session, isLoading: sessionLoading } = useSession();
+  const [lastAuthProvider, setLastAuthProvider] = useState<AuthProvider | null>(
+    null,
+  );
+  useEffect(() => {
+    void getLastAuthProvider().then(setLastAuthProvider);
+  }, []);
 
   // 旅行名の先読み（anon 可）。トークンが無効なら null。
   const { data: title, isLoading } = useQuery({
@@ -177,28 +181,19 @@ export default function JoinScreen() {
             <View style={styles.separatorLine} />
           </View>
 
-          {/* サインイン画面と同じニュートラル枠線ボタン＋ロゴだけブランド。 */}
-          <Pressable
-            accessibilityRole="button"
+          {/* サインイン画面と同じ共通部品（web と同じニュートラル配色＋
+              「前回使用」バッジ）。 */}
+          <OAuthSignInButton
+            provider="apple"
             onPress={() => void runSignIn(signInWithApple)}
-            style={[styles.oauthButton, dark && styles.oauthButtonDark]}
-          >
-            <AppleGlyph size={18} color={dark ? "#E3E3E3" : "#1f1f1f"} />
-            <Text style={[styles.oauthLabel, dark && styles.oauthLabelDark]}>
-              {tAuth("signInWithApple")}
-            </Text>
-          </Pressable>
+            lastUsed={lastAuthProvider === "apple"}
+          />
           {googleSignInAvailable && (
-            <Pressable
-              accessibilityRole="button"
+            <OAuthSignInButton
+              provider="google"
               onPress={() => void runSignIn(signInWithGoogle)}
-              style={[styles.oauthButton, dark && styles.oauthButtonDark]}
-            >
-              <GoogleGlyph size={18} />
-              <Text style={[styles.oauthLabel, dark && styles.oauthLabelDark]}>
-                {tAuth("signInWithGoogle")}
-              </Text>
-            </Pressable>
+              lastUsed={lastAuthProvider === "google"}
+            />
           )}
         </View>
       )}
@@ -239,21 +234,6 @@ const makeStyles = (t: Theme) =>
     separatorRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     separatorLine: { flex: 1, height: 1, backgroundColor: t.fgAlpha(0.1) },
     separatorLabel: { fontSize: 12, color: t.subtleForeground },
-    // web の OAuthSignInButton と同じニュートラル配色（サインイン画面と共通）。
-    oauthButton: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "center",
-      gap: 10,
-      height: 44,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: "#747775",
-      backgroundColor: "#ffffff",
-    },
-    oauthButtonDark: { backgroundColor: "#131314", borderColor: "#8E918F" },
-    oauthLabel: { fontSize: 15, fontWeight: "500", color: "#1f1f1f" },
-    oauthLabelDark: { color: "#E3E3E3" },
     outlineButton: {
       height: 40,
       paddingHorizontal: 16,

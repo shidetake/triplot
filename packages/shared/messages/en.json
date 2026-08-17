@@ -139,6 +139,7 @@
     "joinHint": "If you just want to join without signing in, open the shared link directly."
   },
   "auth": {
+    "lastUsed": "Last used",
     "signInWithGoogle": "Sign in with Google",
     "signingIn": "Signing in...",
     "signInFailed": "Sign-in failed: {message}",

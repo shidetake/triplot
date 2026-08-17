@@ -31,9 +31,14 @@ const PROVIDER_ICON = {
 export function OAuthSignInButton({
   provider,
   next,
+  lastUsed = false,
 }: {
   provider: keyof typeof LABEL_KEY;
   next?: string;
+  // 前回この端末でサインインに使ったプロバイダか（Google の「前回このアカウントで
+  // ログインしました」等でよく見る UX）。読み取りは cookie から Server Component
+  // 側で行い props で渡す（apps/web/lib/lastAuthProvider.server.ts）。
+  lastUsed?: boolean;
 }) {
   const [isLoading, setIsLoading] = useState(false);
   const t = useTranslations("auth");
@@ -44,6 +49,8 @@ export function OAuthSignInButton({
     const supabase = createClient();
     const callbackUrl = new URL("/auth/callback", window.location.origin);
     if (next) callbackUrl.searchParams.set("next", next);
+    // callback 側で成功時にこの値を cookie へ書き戻す（次回の lastUsed 判定用）。
+    callbackUrl.searchParams.set("provider", provider);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: callbackUrl.toString() },
@@ -60,7 +67,7 @@ export function OAuthSignInButton({
       onClick={handleSignIn}
       disabled={isLoading}
       className={
-        "inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-md " +
+        "relative inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-md " +
         "px-4 font-medium transition focus-visible:outline-none focus-visible:ring-2 " +
         "focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 " +
         NEUTRAL_STYLE
@@ -68,6 +75,11 @@ export function OAuthSignInButton({
     >
       <Icon className="h-5 w-5 shrink-0" />
       <span>{isLoading ? t("signingIn") : t(LABEL_KEY[provider])}</span>
+      {lastUsed && (
+        <span className="absolute -top-2 right-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-medium leading-none text-primary-foreground shadow-sm">
+          {t("lastUsed")}
+        </span>
+      )}
     </button>
   );
 }
