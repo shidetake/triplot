@@ -41,6 +41,7 @@ import { MessageBox } from "./message-box";
 import { TrashIcon, PlusIcon, SaveIcon, ChevronIcon } from "./icons";
 import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
@@ -782,13 +783,12 @@ export function ExpenseForm({
             <TrashIcon size={18} />
           </Button>
         )}
-        <Button
-          type="submit"
+        <SubmitButton
+          busy={isPending}
           // 必須（価格）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
           // 換算通貨が違う時だけ為替レートも必須（履歴が無いと空文字始まり
           // ＝ input の required だけに頼らず埋まるまで無効にする）。
           disabled={
-            isPending ||
             price.trim() === "" ||
             (localCurrency !== defaultCurrency && rateInput.trim() === "")
           }
@@ -797,7 +797,7 @@ export function ExpenseForm({
           className="flex-1"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}
-        </Button>
+        </SubmitButton>
       </div>
 
       {state.error && (

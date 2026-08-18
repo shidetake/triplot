@@ -50,6 +50,7 @@ import { PlacePicker, type PlacePickerInitial } from "./place-picker";
 import { FlightPicker } from "./flight-picker";
 import { deriveTransitTimezones } from "@triplot/shared/placeTimezone";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { ToggleChip } from "./toggle-chip";
@@ -1130,16 +1131,16 @@ export function EventForm({
             <TrashIcon size={18} />
           </Button>
         )}
-        <Button
-          type="submit"
+        <SubmitButton
+          busy={isPending}
           // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={isPending || !title.trim()}
+          disabled={!title.trim()}
           aria-label={isEdit ? tCommon("save") : tCommon("add")}
           title={isEdit ? tCommon("save") : tCommon("add")}
           className="flex-1"
         >
           {isEdit ? <SaveIcon size={20} /> : <PlusIcon size={20} />}
-        </Button>
+        </SubmitButton>
       </div>
 
       {state.error && (

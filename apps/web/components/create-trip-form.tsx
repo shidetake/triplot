@@ -13,7 +13,7 @@ import { tripDayCount } from "@triplot/shared/tripCopy";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { DateRangePopover } from "./date-range-popover";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { inputClass } from "./input-class";
 import { FieldLabel } from "./field-label";
@@ -259,20 +259,20 @@ export function CreateTripForm({
         />
       </div>
 
-      <Button
-        type="submit"
+      <SubmitButton
+        busy={isPending}
         // 必須（タイトル・表示名・日程）は * でなく「埋まるまで作成無効」で
         // 統一する（iOS 方式。以前は日程・表示名だけ fillAll のサーバエラー
         // 頼みで、モバイル版と表現が揺れていた）。
         disabled={
-          isPending || !title.trim() || !displayName.trim() || !range.start || !range.end
+          !title.trim() || !displayName.trim() || !range.start || !range.end
         }
         aria-label={tCommon("create")}
         title={tCommon("create")}
         className="w-full"
       >
         <PlusIcon size={20} />
-      </Button>
+      </SubmitButton>
 
       {showShorterWarning && (
         <MessageBox kind="warning" className="text-xs leading-snug">

@@ -8,7 +8,7 @@ import {
   type UpdateTripState,
 } from "@/app/trips/[tripId]/actions";
 import { toast } from "@/components/toast";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 
 import type { Currency } from "@triplot/shared/types/database";
@@ -110,16 +110,16 @@ export function EditTripForm({
         )}
       </div>
 
-      <Button
-        type="submit"
+      <SubmitButton
+        busy={isPending}
         // 必須（タイトル）は * でなく「埋まるまで保存無効」で表現（iOS 方式）。
-        disabled={isPending || !title.trim()}
+        disabled={!title.trim()}
         aria-label={t("common.save")}
         title={t("common.save")}
         className="w-full"
       >
         <SaveIcon size={20} />
-      </Button>
+      </SubmitButton>
 
       {state.error && <MessageBox kind="error">{state.error}</MessageBox>}
     </form>

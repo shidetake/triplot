@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { FEEDBACK_BODY_MAX, type FeedbackKind } from "@triplot/shared/feedback";
 
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { CloseButton } from "./close-button";
 import { FieldLabel } from "./field-label";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
@@ -117,17 +117,17 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
         />
       </label>
 
-      <Button
-        type="submit"
+      <SubmitButton
+        busy={isPending}
         // 必須（本文）は * でなく「埋まるまで送信無効」で表現（iOS 方式。
         // 以前は textarea の required だけに頼っていて、他フォームと表現が揺れていた）。
-        disabled={isPending || !body.trim()}
+        disabled={!body.trim()}
         aria-label={t("submit")}
         title={t("submit")}
         className="w-full"
       >
         <SendIcon size={20} />
-      </Button>
+      </SubmitButton>
 
       <p className="text-xs text-muted-foreground">{t("diagnosticsNote")}</p>
 

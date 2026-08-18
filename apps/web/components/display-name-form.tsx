@@ -4,7 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { updateDisplayNameAction } from "@/app/settings/actions";
-import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { HelpTip } from "@/components/help-tip";
 import { SaveIcon } from "@/components/icons";
 import { toast } from "@/components/toast";
@@ -43,18 +43,18 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
       <HelpTip label={t("displayNameHelpLabel")} align="right">
         {t("displayNameHelp")}
       </HelpTip>
-      <Button
-        type="submit"
+      <SubmitButton
         size="icon"
+        busy={pending}
         // 必須（表示名）は空にすると変更あり(dirty)でも無効のまま
         // （埋まるまで無効、の規約は編集フォームでも変わらない）。
-        disabled={pending || !dirty || !value.trim()}
+        disabled={!dirty || !value.trim()}
         aria-label={tc("save")}
         title={tc("save")}
         className="shrink-0"
       >
         <SaveIcon size={18} />
-      </Button>
+      </SubmitButton>
     </form>
   );
 }

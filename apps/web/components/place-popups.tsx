@@ -22,6 +22,7 @@ import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
 import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
+import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
 import { gmapsUrl, PlaceIcon, type PlaceRow } from "./place-list";
@@ -297,15 +298,14 @@ export function CandidateInfo({
           className="block w-full"
         />
 
-        <Button
-          type="submit"
-          disabled={isPending}
+        <SubmitButton
+          busy={isPending}
           aria-label={t("addPlaceAria")}
           title={t("addPlaceAria")}
           className="w-full"
         >
           <PlusIcon size={20} />
-        </Button>
+        </SubmitButton>
         {state.error && (
           <MessageBox kind="error" dense>
             {state.error}
@@ -397,16 +397,16 @@ export function DraftInfo({
           className="block w-full"
         />
 
-        <Button
-          type="submit"
+        <SubmitButton
+          busy={isPending}
           // 必須（名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={isPending || !name.trim()}
+          disabled={!name.trim()}
           aria-label={t("addPinAria")}
           title={t("addPinAria")}
           className="w-full"
         >
           <PlusIcon size={20} />
-        </Button>
+        </SubmitButton>
         {state.error && (
           <MessageBox kind="error" dense>
             {state.error}
@@ -626,15 +626,14 @@ export function SavedInfo({
           />
           <div className="flex gap-2">
             {deleteButton}
-            <Button
-              type="submit"
-              disabled={isPending}
+            <SubmitButton
+              busy={isPending}
               aria-label={tCommon("save")}
               title={tCommon("save")}
               className="flex-1"
             >
               <SaveIcon size={20} />
-            </Button>
+            </SubmitButton>
           </div>
           {state.error && (
             <MessageBox kind="error" dense>
