@@ -13,6 +13,7 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useTranslations } from "use-intl";
 
+import { vividColor } from "@triplot/shared/memberColors";
 import {
   eventHueBg,
   eventHueText,
@@ -419,6 +420,7 @@ export function WeekCalendar({
     bg: t.warnBg,
     text: t.warnText,
     dim: false,
+    mixed: false,
   };
 
   // 予定ブロックの色。終日バーも通常/移動ブロックも同じ枠線なし・濃いめの
@@ -443,14 +445,35 @@ export function WeekCalendar({
         bg: t.fgAlpha(0.08),
         text: t.mutedForeground,
         dim: c.kind === "mixed",
+        mixed: c.kind === "mixed",
       };
     }
     return {
       bg: eventHueBg(hue, false),
       text: eventHueText(hue),
       dim: false,
+      mixed: c.kind === "mixed",
     };
   };
+
+  // mixed（2名以上・全員未満）の予定に出す参加者ドット列。「誰が参加か」を
+  // 各メンバーの hue ドットで示す。自分が参加している時は地色が自分の hue に
+  // なりドットが埋もれるので、自分は除外する（web の participantDots と同じ）。
+  const participantDots = (ev: EventRow) => (
+    <View style={styles.dotRow}>
+      {ev.participantMemberIds
+        .filter((id) => id !== myMemberId)
+        .map((id) => (
+          <View
+            key={id}
+            style={[
+              styles.dot,
+              { backgroundColor: vividColor(memberHueById.get(id) ?? null) ?? "#a1a1aa" },
+            ]}
+          />
+        ))}
+    </View>
+  );
 
   // 取り込み下書き（未確定）だけに付ける小バッジ。色のヒントだけでは
   // 分かりにくいという実機フィードバックを受けて追加（web の draftBadge
@@ -581,6 +604,8 @@ export function WeekCalendar({
                             <Text style={styles.allDayExtra}> {extra}</Text>
                           ) : null}
                         </Text>
+                        {/* mixed は右肩に参加者ドット（web の終日バーと同じ）。 */}
+                        {col.mixed && participantDots(ev)}
                       </View>
                     </Pressable>
                   );
@@ -685,13 +710,18 @@ export function WeekCalendar({
                     ]}
                   >
                     {/* 開始時刻を先頭に（本家 Google カレンダーと同じ並び）。
-                        先頭でも強調はしない＝見た目は従来の eventTime のまま。 */}
-                    <Text
-                      style={[styles.eventTime, { color: col.text }]}
-                      numberOfLines={1}
-                    >
-                      {spanLabel(p.event) ?? hhmm(p.topMin)}
-                    </Text>
+                        先頭でも強調はしない＝見た目は従来の eventTime のまま。
+                        mixed の予定は右肩に参加者ドットを出す（ui-guidelines
+                        「色（メンバー・予定）」）。 */}
+                    <View style={styles.timeRow}>
+                      <Text
+                        style={[styles.eventTime, { color: col.text }]}
+                        numberOfLines={1}
+                      >
+                        {spanLabel(p.event) ?? hhmm(p.topMin)}
+                      </Text>
+                      {col.mixed && participantDots(ev)}
+                    </View>
                     {draftBadge(ev)}
                     <Text
                       style={[styles.eventTitle, { color: col.text }]}
@@ -796,13 +826,17 @@ export function WeekCalendar({
                         },
                       ]}
                     >
-                      {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。 */}
-                      <Text
-                        style={[styles.eventTime, { color: col.text }]}
-                        numberOfLines={1}
-                      >
-                        {timeLabel ?? hhmm(part.time)}
-                      </Text>
+                      {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。
+                          mixed は右肩に参加者ドット（web の時差移動と同じ）。 */}
+                      <View style={styles.timeRow}>
+                        <Text
+                          style={[styles.eventTime, { color: col.text }]}
+                          numberOfLines={1}
+                        >
+                          {timeLabel ?? hhmm(part.time)}
+                        </Text>
+                        {col.mixed && participantDots(ev)}
+                      </View>
                       {draftBadge(ev)}
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
@@ -899,6 +933,15 @@ const makeStyles = (t: Theme) =>
   },
   dayHeaderLabel: { fontSize: 12, fontWeight: "600", color: t.foreground },
   tzNote: { fontSize: 9, color: t.mutedForeground },
+  // 時刻＋参加者ドットの行（ドットは右寄せ）。
+  timeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 2,
+  },
+  dotRow: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
+  dot: { width: 6, height: 6, borderRadius: 3 },
   allDayArea: {
     backgroundColor: t.fgAlpha(0.02),
     borderTopWidth: StyleSheet.hairlineWidth,

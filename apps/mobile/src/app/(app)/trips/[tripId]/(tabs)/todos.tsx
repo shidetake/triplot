@@ -38,6 +38,7 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@/components/icons";
+import { PrivateBadge } from "@/components/private-badge";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -491,7 +492,7 @@ function TodoSection({
                       </Text>
                     </Pressable>
                     {todo.visibility === "private" && (
-                      <LockIcon size={14} color={theme.mutedForeground} />
+                      <PrivateBadge />
                     )}
                   </View>
                 )}

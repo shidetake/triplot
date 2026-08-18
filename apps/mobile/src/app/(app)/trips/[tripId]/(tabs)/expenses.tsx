@@ -29,7 +29,8 @@ import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
-import { LockIcon, PlusIcon, XIcon } from "@/components/icons";
+import { PlusIcon, XIcon } from "@/components/icons";
+import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { QueryErrorView } from "@/components/query-error-view";
 import { supabase } from "@/lib/supabase";
@@ -313,7 +314,7 @@ export default function ExpensesTab() {
                         </Text>
                       )}
                       {e.visibility === "private" && (
-                        <LockIcon size={16} color={theme.mutedForeground} />
+                        <PrivateBadge />
                       )}
                     </View>
                     <Text style={styles.metaText}>

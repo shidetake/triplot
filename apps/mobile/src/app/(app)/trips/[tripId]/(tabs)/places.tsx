@@ -111,9 +111,9 @@ import {
   CheckIcon,
   ChevronIcon,
   FilterIcon,
-  LockIcon,
   XIcon,
 } from "@/components/icons";
+import { PrivateBadge } from "@/components/private-badge";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
@@ -300,7 +300,7 @@ function SavedPlaceRow({
             {item.name}
           </Text>
           {item.visibility === "private" && (
-            <LockIcon size={16} color={theme.mutedForeground} />
+            <PrivateBadge />
           )}
           {showUnmappedBadge && (
             <Pressable
