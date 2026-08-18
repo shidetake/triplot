@@ -14,7 +14,7 @@ import {
 } from "@triplot/shared/tripDerive";
 
 import { PlusIcon } from "@/components/icons";
-import { QueryErrorView } from "@/components/query-error-view";
+import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail, useTripDrafts } from "@/lib/useTripDetail";
@@ -69,7 +69,7 @@ export default function ScheduleTab() {
 
   if (loadError) {
     return (
-      <QueryErrorView
+      <LoadError
         error={loadError}
         onRetry={refetch}
         isRetrying={isRefetching}

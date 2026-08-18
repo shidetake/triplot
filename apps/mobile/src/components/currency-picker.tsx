@@ -37,7 +37,7 @@ const CURRENCY_CHOICES: Currency[] = [
 // PageSheet を使う実物の native シート（他の formSheet と同じ「本物」）だが、
 // react-native-screens の ScreenStackItem/sheetAllowedDetents のような
 // 新しい多段 detent API とは別物で、grabber や X 無しの見た目は自前で
-// 揃える必要がある。expense-form/new-trip-sheet 等、既に formSheet として
+// 揃える必要がある。expense-form/create-trip-sheet 等、既に formSheet として
 // 開いている画面の中からさらに ScreenStack を入れ子にして開こうとしたところ、
 // 元の画面と二重露光のように重なって描画される不具合が実機検証で確認できた
 // （react-native-screens の formSheet の中にさらに別の ScreenStack を

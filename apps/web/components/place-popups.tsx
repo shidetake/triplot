@@ -100,6 +100,7 @@ function VisibilityField({
   editable: boolean;
 }) {
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
   if (!editable) {
     // 非作成者は shared 場所の公開範囲を変えられない（RPC と同条件）。
     return <input type="hidden" name="visibility" value={value} />;
@@ -116,7 +117,7 @@ function VisibilityField({
             checked={value === "shared"}
             onChange={() => onChange("shared")}
           />
-          <span>{t("visibilityShared")}</span>
+          <span>{tCommon("shared")}</span>
         </label>
         <label className="inline-flex items-center gap-1">
           <input
@@ -126,7 +127,7 @@ function VisibilityField({
             checked={value === "private"}
             onChange={() => onChange("private")}
           />
-          <span>{t("visibilitySelfOnly")}</span>
+          <span>{tCommon("selfOnly")}</span>
         </label>
       </div>
     </fieldset>

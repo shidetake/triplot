@@ -42,7 +42,7 @@ export default function AppLayout() {
           半径が噛み合わず本家と違う丸みに見えるため、OS のオート計算に任せる
           （場所タブの地図シートと同じ理由。place.tsx 参照）。 */}
       <Stack.Screen
-        name="trips/inbox"
+        name="trips/import"
         options={{
           headerShown: false,
           presentation: "formSheet",
@@ -53,7 +53,7 @@ export default function AppLayout() {
       {/* 取り込み下書きの旅行割当は受信箱からの router.push ドリルイン
           （旅行編集→カテゴリ管理と同じ兄弟ルートパターン）。 */}
       <Stack.Screen
-        name="trips/inbox-pick-trip"
+        name="trips/import-pick-trip"
         options={{
           headerShown: false,
           presentation: "formSheet",

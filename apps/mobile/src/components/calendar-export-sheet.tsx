@@ -149,8 +149,8 @@ export function CalendarExportSheet({ tripId }: { tripId: string }) {
           <CompactSegment
             grow
             options={[
-              { key: "mine", label: t("scopeMineSegment") },
-              { key: "all", label: t("scopeAllSegment") },
+              { key: "mine", label: t("scopeMine", { count: mineEvents.length }) },
+              { key: "all", label: t("scopeAll", { count: events.length }) },
             ]}
             value={scope}
             onChange={setScope}

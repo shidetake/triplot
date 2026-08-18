@@ -25,7 +25,7 @@ export function useTripDetail(tripId: string) {
   // fetchTripDetailRows は throw せず tripError を戻り値に埋め込むので、
   // TanStack Query の isError は素通りする（query.error は素の fetch 失敗
   // 等の別経路だけを拾う）。呼び出し側はここだけ見れば良い
-  // （<QueryErrorView error={loadError} onRetry={refetch} /> と組み合わせる）。
+  // （<LoadError error={loadError} onRetry={refetch} /> と組み合わせる）。
   const loadError = query.error ?? query.data?.tripError ?? null;
 
   return { ...query, me, userId, loadError };

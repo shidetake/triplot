@@ -85,8 +85,8 @@ export default function TripsScreen() {
           headerRight: () => (
             <View style={styles.headerButtons}>
               <HeaderIconButton
-                accessibilityLabel={tHeader("inbox")}
-                onPress={() => router.push("/trips/inbox")}
+                accessibilityLabel={tHeader("import")}
+                onPress={() => router.push("/trips/import")}
               >
                 <View>
                   <InboxIcon size={20} color={theme.mutedForeground} />

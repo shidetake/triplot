@@ -9,9 +9,9 @@ import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
 
 // アプリ内全ページ共通のヘッダー（薄い常時表示バー・auto-hide しない）。
-// 左＝ワードマーク（アプリ内なので → /trips）、右＝受信箱＋アバター。
+// 左＝ワードマーク（アプリ内なので → /trips）、右＝取り込み＋アバター。
 // LP（/）はワードマークの行き先が違う（→ /）ので使わない。
-// 必要なデータ（プロフィール・受信箱バッジ）は自分で fetch する async サーバーコンポーネント。
+// 必要なデータ（プロフィール・取り込みバッジ）は自分で fetch する async サーバーコンポーネント。
 export async function AppHeader() {
   const supabase = await createClient();
   const {
@@ -36,8 +36,8 @@ export async function AppHeader() {
     profile?.display_name?.trim() ??
     null;
 
-  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。RN と共有。
-  const inboxCount = await fetchUnassignedInboundCount(supabase, user.id);
+  // 取り込みバッジ: まだ旅行に割り当てていない下書きの件数（要割当）。RN と共有。
+  const importCount = await fetchUnassignedInboundCount(supabase, user.id);
 
   // admin だけ: 未対応フィードバックの件数（アカウントメニューの「管理」行バッジ）。
   // RLS の feedback_admin_select で admin 以外は読めない（クエリ自体もしない）。
@@ -51,8 +51,8 @@ export async function AppHeader() {
   }
 
   const t = await getTranslations("header");
-  const inboxLabel =
-    inboxCount > 0 ? t("inboxWithCount", { count: inboxCount }) : t("inbox");
+  const importLabel =
+    importCount > 0 ? t("importWithCount", { count: importCount }) : t("import");
 
   return (
     // z-30: ページ内容より上、ポップオーバー/モーダル（z-40/50）より下。
@@ -69,14 +69,14 @@ export async function AppHeader() {
         <div className="flex shrink-0 items-center gap-3">
           <Link
             href="/import"
-            aria-label={inboxLabel}
-            title={inboxLabel}
+            aria-label={importLabel}
+            title={importLabel}
             className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
           >
             <InboxIcon size={24} />
-            {inboxCount > 0 && (
+            {importCount > 0 && (
               <span className="absolute right-0 top-0 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground ring-1 ring-white">
-                {inboxCount > 9 ? "9+" : inboxCount}
+                {importCount > 9 ? "9+" : importCount}
               </span>
             )}
           </Link>

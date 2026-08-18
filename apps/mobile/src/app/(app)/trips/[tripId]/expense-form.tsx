@@ -16,7 +16,7 @@ import {
 import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseForm } from "@/components/expense-form";
-import { FormDraftProvider } from "@/lib/form-draft";
+import { FormHostProvider } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
 import {
   useInvalidateInbox,
@@ -122,7 +122,7 @@ export default function ExpenseFormRoute() {
       contentContainerStyle={{ paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <FormDraftProvider draftKey={draftKey}>
+      <FormHostProvider draftKey={draftKey}>
         <ExpenseForm
           tripId={tripId}
           members={members}
@@ -152,7 +152,7 @@ export default function ExpenseFormRoute() {
               : undefined
           }
         />
-      </FormDraftProvider>
+      </FormHostProvider>
     </ScrollView>
   );
 }

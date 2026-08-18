@@ -147,8 +147,8 @@
     "signInWithApple": "Sign in with Apple"
   },
   "header": {
-    "inbox": "Imports",
-    "inboxWithCount": "Imports ({count} unassigned)"
+    "import": "Imports",
+    "importWithCount": "Imports ({count} unassigned)"
   },
   "account": {
     "account": "Account",
@@ -227,8 +227,6 @@
     "arriveTz": "Arrival timezone",
     "timezone": "Time zone",
     "visibility": "Visibility",
-    "visibilityShared": "Shared",
-    "visibilitySelfOnly": "Just me",
     "participants": "Participants",
     "participantsAll": "Everyone",
     "participantsSome": "Some",
@@ -270,8 +268,6 @@
     "removeTime": "Remove time",
     "memo": "Memo",
     "visibility": "Visibility",
-    "visibilityShared": "Shared",
-    "visibilitySelfOnly": "Just me",
     "payer": "Paid by: {name}",
     "splitTargets": "Split with: {label}",
     "splitAll": "Everyone",
@@ -327,8 +323,6 @@
     "status": "Status",
     "pinShape": "Pin shape",
     "visibility": "Visibility",
-    "visibilityShared": "Shared",
-    "visibilitySelfOnly": "Just me",
     "memo": "Memo",
     "name": "Name",
     "addPin": "Add pin to map",
@@ -512,8 +506,6 @@
     "formLabel": "Export to calendar",
     "heading": "Export to Google Calendar",
     "scopeLabel": "Events to export",
-    "scopeMineSegment": "Mine only",
-    "scopeAllSegment": "All events",
     "targetLabel": "Export to",
     "scopeMine": "Events I'm attending ({count})",
     "scopeAll": "All events ({count})",

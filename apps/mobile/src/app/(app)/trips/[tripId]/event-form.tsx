@@ -11,7 +11,7 @@ import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
 import { EventForm } from "@/components/event-form";
-import { FormDraftProvider } from "@/lib/form-draft";
+import { FormHostProvider } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
 import {
   useInvalidateInbox,
@@ -130,7 +130,7 @@ export default function EventFormRoute() {
       contentContainerStyle={{ paddingBottom: 24 }}
       keyboardShouldPersistTaps="handled"
     >
-      <FormDraftProvider draftKey={draftKey}>
+      <FormHostProvider draftKey={draftKey}>
         <EventForm
           tripId={tripId}
           members={(data.members ?? []).map((m) => ({
@@ -167,7 +167,7 @@ export default function EventFormRoute() {
               : undefined
           }
         />
-      </FormDraftProvider>
+      </FormHostProvider>
     </ScrollView>
   );
 }

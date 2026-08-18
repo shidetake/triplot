@@ -6,7 +6,7 @@ import { type Theme, useThemedStyles } from "@/lib/theme";
 // データ取得に失敗した時の最後の砦。trip 詳細の各タブは全て useTripDetail の
 // loadError をここに渡すだけで良い（apps/mobile/src/lib/useTripDetail.ts
 // 参照）。新しい画面を足す時もこの部品をコピーではなく再利用すること。
-export function QueryErrorView({
+export function LoadError({
   error,
   onRetry,
   isRetrying,

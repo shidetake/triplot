@@ -32,7 +32,7 @@ import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon, XIcon } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
-import { QueryErrorView } from "@/components/query-error-view";
+import { LoadError } from "@/components/load-error";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -66,7 +66,7 @@ export default function ExpensesTab() {
 
   if (loadError) {
     return (
-      <QueryErrorView
+      <LoadError
         error={loadError}
         onRetry={refetch}
         isRetrying={isRefetching}

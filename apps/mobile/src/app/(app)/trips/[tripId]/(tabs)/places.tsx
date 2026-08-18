@@ -99,7 +99,7 @@ import Svg, { Path } from "react-native-svg";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { PlaceIconPicker } from "@/components/place-icon-picker";
 import { PlaceForm } from "@/components/place-form";
-import { QueryErrorView } from "@/components/query-error-view";
+import { LoadError } from "@/components/load-error";
 import {
   CandidatePin,
   candidatePinSize,
@@ -899,7 +899,7 @@ export default function PlacesTab() {
 
   if (loadError) {
     return (
-      <QueryErrorView
+      <LoadError
         error={loadError}
         onRetry={refetch}
         isRetrying={isRefetching}

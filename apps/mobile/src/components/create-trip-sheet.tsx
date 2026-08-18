@@ -23,14 +23,14 @@ import { PlusIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { SubmitButton } from "./submit-button";
 import { CompactSegment } from "@/components/visibility-segment";
-import { useClearDraft, useDraft } from "@/lib/form-draft";
+import { useClearDraft, useDraft } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
 // 旅行作成（FormSheet の中身）。web の create-trip-form と同じ2モード
 // （新規/過去の旅行をコピー）。成功でシートを閉じ、作成した旅行の詳細へ遷移。
-export function NewTripSheet() {
+export function CreateTripSheet() {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");

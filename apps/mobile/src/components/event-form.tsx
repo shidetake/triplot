@@ -51,7 +51,7 @@ import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon, PlaneIcon } from "./icons";
 import { FlightPicker } from "./flight-picker";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
-import { useClearDraft, useDraft } from "@/lib/form-draft";
+import { useClearDraft, useDraft } from "@/components/form-host";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Member = { id: string; display_name: string; color: number | null };

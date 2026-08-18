@@ -147,8 +147,8 @@
     "signInWithApple": "Apple でログイン"
   },
   "header": {
-    "inbox": "取り込み",
-    "inboxWithCount": "取り込み（未割当 {count} 件）"
+    "import": "取り込み",
+    "importWithCount": "取り込み（未割当 {count} 件）"
   },
   "account": {
     "account": "アカウント",
@@ -227,8 +227,6 @@
     "arriveTz": "到着地タイムゾーン",
     "timezone": "タイムゾーン",
     "visibility": "公開範囲",
-    "visibilityShared": "共有",
-    "visibilitySelfOnly": "自分のみ",
     "participants": "参加者",
     "participantsAll": "全員",
     "participantsSome": "一部",
@@ -270,8 +268,6 @@
     "removeTime": "時刻をやめる",
     "memo": "メモ",
     "visibility": "公開範囲",
-    "visibilityShared": "共有",
-    "visibilitySelfOnly": "自分のみ",
     "payer": "支払った人: {name}",
     "splitTargets": "割り勘対象: {label}",
     "splitAll": "全員",
@@ -327,8 +323,6 @@
     "status": "ステータス",
     "pinShape": "ピンの形",
     "visibility": "公開範囲",
-    "visibilityShared": "共有",
-    "visibilitySelfOnly": "自分のみ",
     "memo": "メモ",
     "name": "名前",
     "addPin": "地図にピンを追加",
@@ -512,8 +506,6 @@
     "formLabel": "カレンダーに書き出す",
     "heading": "Google カレンダーへエクスポート",
     "scopeLabel": "出力する予定",
-    "scopeMineSegment": "自分の予定のみ",
-    "scopeAllSegment": "全ての予定",
     "targetLabel": "エクスポート先",
     "scopeMine": "自分が参加する予定のみ（{count}件）",
     "scopeAll": "全ての予定（{count}件）",

@@ -41,7 +41,7 @@ import { useSession } from "@/lib/session";
 // ScrollView 直下の prop としてしか機能しないため）。同じ queryKey で
 // useQuery を呼ぶことで TanStack Query のキャッシュ共有により二重取得
 // にはならず、呼び出し元の refetch がこのコンポーネントの data も更新する。
-export function InboxSheet() {
+export function ImportSheet() {
   const t = useTranslations("import");
   const tCommon = useTranslations("common");
   const locale = useLocale();
@@ -254,7 +254,7 @@ export function InboxSheet() {
               <View style={styles.actionsRow}>
                 <Pressable
                   onPress={() =>
-                    router.push(`/trips/inbox-pick-trip?emailId=${e.id}`)
+                    router.push(`/trips/import-pick-trip?emailId=${e.id}`)
                   }
                   style={[
                     styles.assignButton,

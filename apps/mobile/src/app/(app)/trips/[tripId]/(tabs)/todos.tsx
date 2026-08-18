@@ -27,7 +27,7 @@ import { sortTodos } from "@triplot/shared/todoSort";
 import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
-import { QueryErrorView } from "@/components/query-error-view";
+import { LoadError } from "@/components/load-error";
 import { SheetTitle } from "@/components/sheet-title";
 import {
   CheckIcon,
@@ -95,7 +95,7 @@ export default function TodosTab() {
 
   if (loadError) {
     return (
-      <QueryErrorView
+      <LoadError
         error={loadError}
         onRetry={refetch}
         isRetrying={isRefetching}

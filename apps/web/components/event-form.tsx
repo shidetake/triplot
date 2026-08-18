@@ -1012,7 +1012,7 @@ export function EventForm({
                   checked={visibility === "shared"}
                   onChange={() => setVisibility("shared")}
                 />
-                <span>{t("visibilityShared")}</span>
+                <span>{tCommon("shared")}</span>
               </label>
               <label className="inline-flex items-center gap-1">
                 <input
@@ -1022,13 +1022,13 @@ export function EventForm({
                   checked={visibility === "private"}
                   onChange={() => setVisibility("private")}
                 />
-                <span>{t("visibilitySelfOnly")}</span>
+                <span>{tCommon("selfOnly")}</span>
               </label>
             </div>
           ) : (
             <>
               <span className="text-muted-foreground">
-                {visibility === "shared" ? t("visibilityShared") : t("visibilitySelfOnly")}
+                {visibility === "shared" ? tCommon("shared") : tCommon("selfOnly")}
               </span>
               <input type="hidden" name="visibility" value={visibility} />
             </>
