@@ -273,7 +273,7 @@ const makeStyles = (t: Theme) =>
       color: t.foreground,
     },
     note: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.mutedForeground,
       textAlign: "center",
       paddingVertical: 8,
@@ -306,7 +306,7 @@ const makeStyles = (t: Theme) =>
     },
     primaryLabel: {
       color: t.primaryForeground,
-      fontSize: 15,
+      fontSize: 14,
       fontWeight: "500",
     },
     outlineButton: {
@@ -317,7 +317,7 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    outlineLabel: { fontSize: 13, fontWeight: "500", color: t.foreground },
+    outlineLabel: { fontSize: 14, fontWeight: "500", color: t.foreground },
     disabled: { opacity: 0.5 },
     doneBox: { gap: 12 },
     doneRow: {
@@ -328,7 +328,7 @@ const makeStyles = (t: Theme) =>
     },
     doneText: { fontSize: 14, color: t.foreground },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,

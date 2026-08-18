@@ -228,7 +228,7 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    primaryLabel: { fontSize: 15, fontWeight: "500", color: t.primaryForeground },
+    primaryLabel: { fontSize: 14, fontWeight: "500", color: t.primaryForeground },
     disabled: { opacity: 0.5 },
     signInBlock: { gap: 12 },
     separatorRow: { flexDirection: "row", alignItems: "center", gap: 12 },

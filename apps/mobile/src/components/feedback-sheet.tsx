@@ -140,7 +140,7 @@ const makeStyles = (t: Theme) =>
     disabled: { opacity: 0.5 },
     note: { fontSize: 12, color: t.mutedForeground },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,

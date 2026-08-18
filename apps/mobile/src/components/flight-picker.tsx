@@ -375,7 +375,7 @@ const makeStyles = (t: Theme) =>
     listSub: { fontSize: 12, color: t.mutedForeground },
     hint: { fontSize: 12, color: t.mutedForeground },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,

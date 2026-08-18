@@ -380,7 +380,7 @@ const makeStyles = (t: Theme) =>
   addressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   address: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontVariant: ["tabular-nums"],
     color: t.foreground,
   },
@@ -391,7 +391,7 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
-  empty: { fontSize: 13, color: t.mutedForeground, paddingVertical: 16 },
+  empty: { fontSize: 14, color: t.mutedForeground, paddingVertical: 16 },
   // 上限超過の警告（amber。web の MessageBox kind="warning" と同段）。
   warnBox: {
     borderWidth: 1,

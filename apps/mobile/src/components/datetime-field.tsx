@@ -119,7 +119,7 @@ const makeStyles = (t: Theme) =>
       alignSelf: "flex-start",
     },
     chipText: {
-      fontSize: 15,
+      fontSize: 14,
       color: t.foreground,
       fontVariant: ["tabular-nums"],
     },

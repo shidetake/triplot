@@ -2735,7 +2735,7 @@ const makeStyles = (t: Theme) =>
     paddingHorizontal: 14,
     // 右端の × のぶんを空けて、入力文字が × の下に潜らないようにする。
     paddingRight: 38,
-    fontSize: 15,
+    fontSize: 14,
     color: t.foreground,
   },
   // 入力欄（高さ 44・wrap の先頭）の右端に重ねる全消しボタン。
@@ -2763,7 +2763,7 @@ const makeStyles = (t: Theme) =>
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: t.fgAlpha(0.08),
   },
-  suggestionPrimary: { fontSize: 15, color: t.foreground },
+  suggestionPrimary: { fontSize: 14, color: t.foreground },
   suggestionSecondary: {
     fontSize: 12,
     color: t.mutedForeground,
@@ -2879,7 +2879,7 @@ const makeStyles = (t: Theme) =>
     paddingBottom: 8,
     alignItems: "center",
   },
-  sheetCount: { fontSize: 13, color: t.mutedForeground },
+  sheetCount: { fontSize: 12, color: t.mutedForeground },
   // 場所フィルタの選択行。todos.tsx の優先度ピッカーと同形（行の骨格）。
   priorityRow: {
     flexDirection: "row",
@@ -2896,7 +2896,7 @@ const makeStyles = (t: Theme) =>
   // （このアプリに native の「選択行」精度は無いので、web の既存の選択行
   // 表現に合わせるのが「合わせる」の対象。ui-guidelines「定型部品」参照）。
   priorityRowSelected: { backgroundColor: t.secondary },
-  priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+  priorityRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
   priorityRowLabelSelected: { fontWeight: "600" },
   filterSectionLabel: {
     fontSize: 12,
@@ -2906,7 +2906,7 @@ const makeStyles = (t: Theme) =>
     paddingBottom: 4,
   },
   filterCount: {
-    fontSize: 13,
+    fontSize: 14,
     color: t.subtleForeground,
     fontVariant: ["tabular-nums"],
   },
@@ -2936,7 +2936,7 @@ const makeStyles = (t: Theme) =>
   },
   placeInfo: { flex: 1 },
   placeNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  placeName: { fontSize: 15, color: t.foreground, flexShrink: 1 },
+  placeName: { fontSize: 14, color: t.foreground, flexShrink: 1 },
   // 「地図未登録」バッジ（amber 塗りチップ。web の bg-amber-100 text-amber-700 相当）。
   unmappedBadge: {
     flexDirection: "row",

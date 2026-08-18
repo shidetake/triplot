@@ -102,5 +102,5 @@ const makeStyles = (t: Theme) =>
     itemOn: { backgroundColor: t.primary },
     text: { fontSize: 12, fontWeight: "500", color: t.mutedForeground },
     textOn: { color: t.primaryForeground },
-    readOnlyValue: { fontSize: 13, color: t.mutedForeground },
+    readOnlyValue: { fontSize: 12, color: t.mutedForeground },
   });

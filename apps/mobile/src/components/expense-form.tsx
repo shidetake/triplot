@@ -848,7 +848,7 @@ const makeStyles = (t: Theme) =>
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
     disclosureLabel: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "500",
       color: t.mutedForeground,
     },
@@ -867,7 +867,7 @@ const makeStyles = (t: Theme) =>
     submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,
@@ -884,7 +884,7 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.1),
     },
-    pickerTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
+    pickerTitle: { fontSize: 14, fontWeight: "600", color: t.foreground },
     pickerList: { padding: 16, paddingTop: 4 },
     timeSpinnerWrap: { alignItems: "center" },
     pickerRow: {
@@ -895,6 +895,6 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
-    pickerText: { fontSize: 15, color: t.foreground, flex: 1 },
+    pickerText: { fontSize: 14, color: t.foreground, flex: 1 },
     pickerTextOn: { fontWeight: "700" },
   });

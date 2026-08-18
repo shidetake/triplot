@@ -69,7 +69,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#ffffff",
   },
   buttonDark: { backgroundColor: "#131314", borderColor: "#8E918F" },
-  label: { fontSize: 15, fontWeight: "500", color: "#1f1f1f" },
+  label: { fontSize: 14, fontWeight: "500", color: "#1f1f1f" },
   labelDark: { color: "#E3E3E3" },
   // ボタン上端にまたがる小さなピル（web の absolute -top-2 right-3 と同形）。
   badge: {

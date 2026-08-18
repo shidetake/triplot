@@ -204,14 +204,14 @@ const makeStyles = (t: Theme) =>
     },
     searchInput: {
       flex: 1,
-      fontSize: 15,
+      fontSize: 14,
       color: t.foreground,
       paddingVertical: 0,
     },
     empty: {
       paddingVertical: 24,
       textAlign: "center",
-      fontSize: 13,
+      fontSize: 14,
       color: t.mutedForeground,
     },
     list: { padding: 16, paddingTop: 12 },
@@ -230,12 +230,12 @@ const makeStyles = (t: Theme) =>
     // なかった（実機フィードバック）。
     rowSelected: { backgroundColor: t.secondary },
     code: {
-      fontSize: 15,
+      fontSize: 14,
       color: t.foreground,
       fontVariant: ["tabular-nums"],
       width: 48,
     },
-    name: { fontSize: 13, color: t.mutedForeground, flex: 1 },
+    name: { fontSize: 14, color: t.mutedForeground, flex: 1 },
     textOn: { fontWeight: "700" },
     trigger: {
       height: 36,

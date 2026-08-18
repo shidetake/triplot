@@ -258,7 +258,7 @@ export function SettingsSheet({
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 16 },
-  email: { fontSize: 13, color: t.mutedForeground },
+  email: { fontSize: 12, color: t.mutedForeground },
   profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
   grow: { flex: 1 },
   // 自分のアバターは中立 zinc（メンバー色 hue とは別系統。web の selfAvatarClass と同じ）。
@@ -332,5 +332,5 @@ const makeStyles = (t: Theme) =>
     gap: 6,
     marginTop: 24,
   },
-  signOutLabel: { fontSize: 13, fontWeight: "500", color: t.destructiveText },
+  signOutLabel: { fontSize: 14, fontWeight: "500", color: t.destructiveText },
 });

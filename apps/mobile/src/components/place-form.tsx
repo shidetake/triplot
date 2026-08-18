@@ -178,7 +178,7 @@ export function PlaceForm({
           placeholder={t("name")}
           accessibilityLabel={t("name")}
           placeholderTextColor={theme.subtleForeground}
-          style={[styles.input, styles.nameInput]}
+          style={styles.input}
         />
       ) : (
         <Text style={styles.name}>{name || t("unknownName")}</Text>
@@ -297,10 +297,9 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     content: { paddingHorizontal: 16, paddingBottom: 16, gap: 14 },
     name: { fontSize: 18, fontWeight: "600", color: t.foreground },
-    nameInput: { fontSize: 16 },
-    address: { fontSize: 13, color: t.mutedForeground, marginTop: -6 },
+    address: { fontSize: 12, color: t.mutedForeground, marginTop: -6 },
     // インラインのアクションテキスト（web と同じ blue-600 相当。ui-guidelines）。
-    mapsLink: { fontSize: 13, color: t.linkText, marginTop: -6 },
+    mapsLink: { fontSize: 12, color: t.linkText, marginTop: -6 },
     iconRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
     iconChip: {
       width: 40,
@@ -349,7 +348,7 @@ const makeStyles = (t: Theme) =>
     submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,

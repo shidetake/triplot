@@ -492,7 +492,7 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 16 },
   label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
-  sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: t.foreground },
+  sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginBottom: 8 },
   warn: { fontSize: 11, color: t.warnAccent, marginTop: 6 },
   input: {
@@ -553,7 +553,7 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
-  outlineLabel: { fontSize: 13, fontWeight: "500", color: t.foreground },
+  outlineLabel: { fontSize: 14, fontWeight: "500", color: t.foreground },
   // 見た目は SubmitButton が持つ。個別の指定は不要。
   submitButton: {},
   disabled: { opacity: 0.5 },
@@ -568,9 +568,9 @@ const makeStyles = (t: Theme) =>
     gap: 6,
     marginTop: 24,
   },
-  deleteTripLabel: { fontSize: 13, color: t.destructiveText, fontWeight: "500" },
+  deleteTripLabel: { fontSize: 14, color: t.destructiveText, fontWeight: "500" },
   error: {
-    fontSize: 13,
+    fontSize: 14,
     color: t.errorText,
     backgroundColor: t.errorBg,
     borderRadius: 6,

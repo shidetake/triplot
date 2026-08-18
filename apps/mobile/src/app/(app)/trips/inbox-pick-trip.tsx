@@ -86,6 +86,6 @@ const makeStyles = (t: Theme) =>
       borderBottomColor: t.fgAlpha(0.08),
     },
     rowSelected: { backgroundColor: t.secondary },
-    rowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+    rowLabel: { flex: 1, fontSize: 14, color: t.foreground },
     rowLabelSelected: { fontWeight: "600" },
   });

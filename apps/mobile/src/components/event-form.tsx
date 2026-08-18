@@ -1028,7 +1028,7 @@ const makeStyles = (t: Theme) =>
     optionPair: { flexDirection: "row", alignItems: "center", gap: 8 },
     disclosure: { flexDirection: "row", alignItems: "center" },
     disclosureLabel: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "500",
       color: t.mutedForeground,
     },
@@ -1047,7 +1047,7 @@ const makeStyles = (t: Theme) =>
     submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
-      fontSize: 13,
+      fontSize: 14,
       color: t.errorText,
       backgroundColor: t.errorBg,
       borderRadius: 6,

@@ -319,7 +319,7 @@ const makeStyles = (t: Theme) =>
   submitButton: { marginTop: 8 },
   disabled: { opacity: 0.5 },
   error: {
-    fontSize: 13,
+    fontSize: 14,
     color: t.errorText,
     backgroundColor: t.errorBg,
     borderRadius: 6,

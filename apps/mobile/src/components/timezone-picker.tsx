@@ -200,7 +200,7 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.06),
     },
-    rowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+    rowLabel: { flex: 1, fontSize: 14, color: t.foreground },
     rowLabelBack: { fontWeight: "600" },
     zoneRow: {
       flexDirection: "row",
@@ -211,6 +211,6 @@ const makeStyles = (t: Theme) =>
       borderBottomColor: t.fgAlpha(0.06),
     },
     zoneInfo: { flex: 1 },
-    zoneName: { fontSize: 15, color: t.foreground },
+    zoneName: { fontSize: 14, color: t.foreground },
     zoneSub: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
   });

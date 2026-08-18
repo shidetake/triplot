@@ -572,7 +572,7 @@ const makeStyles = (t: Theme) =>
   content: { padding: 16, gap: 20, paddingBottom: 48 },
   section: { gap: 8 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
-  sectionTitle: { fontSize: 15, fontWeight: "600", color: t.foreground },
+  sectionTitle: { fontSize: 18, fontWeight: "600", color: t.foreground },
   sectionCount: { fontSize: 12, color: t.subtleForeground },
   addRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   input: {
@@ -636,7 +636,7 @@ const makeStyles = (t: Theme) =>
     borderBottomColor: t.fgAlpha(0.08),
   },
   priorityRowSelected: { backgroundColor: t.secondary },
-  priorityRowLabel: { flex: 1, fontSize: 15, color: t.foreground },
+  priorityRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
   priorityRowLabelSelected: { fontWeight: "600" },
   avatar: {
     width: 18,

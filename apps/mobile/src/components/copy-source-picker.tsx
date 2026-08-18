@@ -107,7 +107,7 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.1),
     },
-    title: { fontSize: 15, fontWeight: "600", color: t.foreground },
+    title: { fontSize: 14, fontWeight: "600", color: t.foreground },
     list: { padding: 16, paddingTop: 4 },
     row: {
       flexDirection: "row",
@@ -117,7 +117,7 @@ const makeStyles = (t: Theme) =>
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
-    name: { flex: 1, fontSize: 15, color: t.foreground },
+    name: { flex: 1, fontSize: 14, color: t.foreground },
     trigger: {
       height: 36,
       borderWidth: 1,

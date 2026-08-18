@@ -424,7 +424,7 @@ const makeStyles = (t: Theme) =>
     gap: 8,
     marginBottom: 8,
   },
-  draftHeading: { fontSize: 13, fontWeight: "500", color: t.warnText },
+  draftHeading: { fontSize: 14, fontWeight: "500", color: t.warnText },
   draftRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   draftButton: {
     flex: 1,
@@ -453,7 +453,7 @@ const makeStyles = (t: Theme) =>
   },
   // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
   draftDivider: { width: 1, height: 12, backgroundColor: t.fgAlpha(0.1) },
-  draftLabelText: { fontSize: 13, flexShrink: 1, color: t.foreground },
+  draftLabelText: { fontSize: 14, flexShrink: 1, color: t.foreground },
   confirmChip: {
     borderRadius: 4,
     backgroundColor: t.primary,
