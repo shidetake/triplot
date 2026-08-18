@@ -300,7 +300,7 @@ function fmtDate(d: Date): string {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 16 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
+  label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
   input: {
     height: 36,
     borderWidth: 1,

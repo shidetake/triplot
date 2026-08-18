@@ -324,7 +324,7 @@ const makeStyles = (t: Theme) =>
       justifyContent: "center",
     },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-    label: { fontSize: 13, fontWeight: "500", color: t.foreground },
+    label: { fontSize: 14, fontWeight: "500", color: t.foreground },
     input: {
       height: 36,
       borderWidth: 1,

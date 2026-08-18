@@ -956,7 +956,7 @@ const makeStyles = (t: Theme) =>
     segTextOn: { color: t.primaryForeground },
     hint: { fontSize: 12, color: t.mutedForeground },
     label: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "500",
       marginBottom: 4,
       color: t.foreground,

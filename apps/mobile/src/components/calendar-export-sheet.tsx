@@ -267,7 +267,7 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     content: { paddingHorizontal: 16, gap: 16 },
     label: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "500",
       marginBottom: 6,
       color: t.foreground,

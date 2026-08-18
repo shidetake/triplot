@@ -793,7 +793,7 @@ const makeStyles = (t: Theme) =>
     row2: { flexDirection: "row", gap: 8 },
     grow: { flex: 1 },
     label: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: "500",
       marginBottom: 4,
       color: t.foreground,

@@ -285,7 +285,7 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "center",
   },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
+  label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginTop: 6 },
   input: {
     height: 36,

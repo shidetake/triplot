@@ -491,7 +491,7 @@ function fmtDate(d: Date): string {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   content: { paddingHorizontal: 16, gap: 16 },
-  label: { fontSize: 13, fontWeight: "500", marginBottom: 4, color: t.foreground },
+  label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
   sectionTitle: { fontSize: 16, fontWeight: "600", marginBottom: 8, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginBottom: 8 },
   warn: { fontSize: 11, color: t.warnAccent, marginTop: 6 },
