@@ -12,6 +12,7 @@ import {
 import { chipStyle } from "@triplot/shared/memberColors";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { MemberAvatar } from "./member-avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,7 +73,7 @@ export function MembersManagementList({
     });
   };
 
-  const remove = async (m: Member) => {
+  const onDelete = async (m: Member) => {
     const isSelf = m.id === myMemberId;
     const ok = isSelf
       ? await confirmDialog({
@@ -118,7 +119,7 @@ export function MembersManagementList({
                     cancelEdit();
                   }
                 }}
-                maxLength={32}
+                maxLength={DISPLAY_NAME_MAX}
                 disabled={isPending}
                 aria-label={t("displayName")}
                 className="flex-1 disabled:opacity-50"
@@ -186,7 +187,7 @@ export function MembersManagementList({
                 type="button"
                 variant="destructive"
                 size="iconSm"
-                onClick={() => remove(m)}
+                onClick={() => onDelete(m)}
                 disabled={isPending}
                 aria-label={
                   isMe ? t("leaveAction") : t("removeAria", { name: m.display_name })

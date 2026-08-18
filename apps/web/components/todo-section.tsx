@@ -313,7 +313,7 @@ export function TodoSection({
     });
   };
 
-  const remove = async (todo: TodoRow) => {
+  const onDelete = async (todo: TodoRow) => {
     if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
     startTransition(async () => {
       applyOptimistic({ type: "delete", id: todo.id });
@@ -520,7 +520,7 @@ export function TodoSection({
 
               <button
                 type="button"
-                onClick={() => remove(todo)}
+                onClick={() => onDelete(todo)}
                 aria-label={t("deleteAria")}
                 className="shrink-0 rounded p-1 text-red-600 transition hover:bg-red-600/10"
               >

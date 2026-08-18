@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
 import { updateDisplayNameAction } from "@/app/settings/actions";
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { SubmitButton } from "@/components/submit-button";
 import { HelpTip } from "@/components/help-tip";
 import { SaveIcon } from "@/components/icons";
@@ -37,7 +38,7 @@ export function DisplayNameForm({ defaultValue }: { defaultValue: string }) {
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder={t("namePlaceholder")}
-        maxLength={50}
+        maxLength={DISPLAY_NAME_MAX}
         className="h-9 min-w-0 max-w-[12rem] flex-1 rounded-md border border-foreground/20 bg-background px-3 text-sm focus:border-primary focus:outline-none"
       />
       <HelpTip label={t("displayNameHelpLabel")} align="right">

@@ -7,6 +7,7 @@ import { useTranslations } from "use-intl";
 import { createTrip } from "@triplot/shared/data/trips";
 import { fetchMyTrips, fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { tripDayCount } from "@triplot/shared/tripCopy";
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import type { Currency } from "@triplot/shared/types/database";
 
 import {
@@ -189,6 +190,7 @@ export function CreateTripSheet() {
         <Text style={styles.label}>{t("displayName")}</Text>
         <TextInput
           value={effectiveName}
+          maxLength={DISPLAY_NAME_MAX}
           onChangeText={setDisplayName}
           placeholder={tCommon("name")}
           placeholderTextColor={theme.subtleForeground}

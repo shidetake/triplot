@@ -44,7 +44,7 @@ export function OAuthSignInButton({
   const t = useTranslations("auth");
   const Icon = PROVIDER_ICON[provider];
 
-  const handleSignIn = async () => {
+  const runSignIn = async () => {
     setIsLoading(true);
     const supabase = createClient();
     const callbackUrl = new URL("/auth/callback", window.location.origin);
@@ -64,7 +64,7 @@ export function OAuthSignInButton({
   return (
     <button
       type="button"
-      onClick={handleSignIn}
+      onClick={runSignIn}
       disabled={isLoading}
       className={
         "relative inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-md " +

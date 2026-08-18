@@ -347,7 +347,7 @@ function TodoSection({
     void invalidate();
   };
 
-  const confirmDelete = (todo: TodoRow) => {
+  const onDelete = (todo: TodoRow) => {
     Alert.alert(t("deleteTitle"), undefined, [
       { text: t("common.cancel"), style: "cancel" },
       {
@@ -524,7 +524,7 @@ function TodoSection({
                 )}
 
                 <Pressable
-                  onPress={() => confirmDelete(todo)}
+                  onPress={() => onDelete(todo)}
                   hitSlop={8}
                   accessibilityLabel={t("deleteAria")}
                 >

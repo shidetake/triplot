@@ -102,7 +102,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
     });
   };
 
-  const confirmDelete = (c: Category) => {
+  const onDelete = (c: Category) => {
     if (editId === c.id) {
       setEditId(null);
       setEditValue("");
@@ -177,7 +177,7 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
             )}
             {isCustom && (
               <Pressable
-                onPress={() => confirmDelete(c)}
+                onPress={() => onDelete(c)}
                 hitSlop={8}
                 accessibilityLabel={t("delete")}
               >

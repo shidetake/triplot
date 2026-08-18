@@ -88,7 +88,7 @@ export function CategoryManagementList({
 
   // confirmDialog は transition 外で呼ぶ（transition 内だと React がダイアログの
   // レンダリングを low-priority として遅延し、ダイアログが表示されない）
-  const handleDelete = async (id: string) => {
+  const onDelete = async (id: string) => {
     if (editId === id) { setEditId(null); setEditValue(""); }
     const ok = await confirmDialog({ title: t("deleteConfirmTitle") });
     if (!ok) return;
@@ -152,7 +152,7 @@ export function CategoryManagementList({
             {isCustom && (
               <button
                 type="button"
-                onClick={() => handleDelete(c.id)}
+                onClick={() => onDelete(c.id)}
                 disabled={isDeletePending}
                 aria-label={tc("delete")}
                 title={tc("delete")}

@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
@@ -197,6 +198,7 @@ export function SettingsSheet({
           <View style={styles.nameRow}>
             <TextInput
               value={vName}
+              maxLength={DISPLAY_NAME_MAX}
               onChangeText={setName}
               placeholder={t("settings.namePlaceholder")}
               accessibilityLabel={t("settings.namePlaceholder")}

@@ -44,6 +44,7 @@ import {
   updateTodo,
 } from "@triplot/shared/data/todos";
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
@@ -1048,7 +1049,7 @@ export async function updateMyMemberAction(
   if (!name) {
     return { error: t("enterName") };
   }
-  if (name.length > 32) {
+  if (name.length > DISPLAY_NAME_MAX) {
     return { error: t("nameTooLong") };
   }
 

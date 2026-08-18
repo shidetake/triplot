@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { joinTripViaInvite, peekInvite } from "@triplot/shared/data/invites";
 
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
@@ -148,7 +149,7 @@ export default function JoinScreen() {
           placeholder={t("guestPlaceholder")}
           placeholderTextColor={theme.subtleForeground}
           accessibilityLabel={t("displayNameLabel")}
-          maxLength={32}
+          maxLength={DISPLAY_NAME_MAX}
           style={styles.input}
         />
       </View>

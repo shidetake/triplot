@@ -51,7 +51,7 @@ export default function SignInScreen() {
     return <Redirect href="/" />;
   }
 
-  const run = async (fn: () => Promise<boolean>) => {
+  const runSignIn = async (fn: () => Promise<boolean>) => {
     if (busy) return;
     setBusy(true);
     try {
@@ -71,13 +71,13 @@ export default function SignInScreen() {
       <View style={styles.buttons}>
         <OAuthSignInButton
           provider="apple"
-          onPress={() => void run(signInWithApple)}
+          onPress={() => void runSignIn(signInWithApple)}
           lastUsed={lastAuthProvider === "apple"}
         />
         {googleSignInAvailable && (
           <OAuthSignInButton
             provider="google"
-            onPress={() => void run(signInWithGoogle)}
+            onPress={() => void runSignIn(signInWithGoogle)}
             lastUsed={lastAuthProvider === "google"}
           />
         )}
@@ -87,7 +87,7 @@ export default function SignInScreen() {
           {devSignInAvailable && (
             <Pressable
               accessibilityRole="button"
-              onPress={() => void run(signInWithDevPassword)}
+              onPress={() => void runSignIn(signInWithDevPassword)}
               style={styles.devButton}
             >
               <Text style={styles.devLink}>開発用ログイン</Text>

@@ -11,6 +11,7 @@ import {
 } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { regenerateTripInvite } from "@triplot/shared/data/invites";
 import {
   removeTripMember,
@@ -388,6 +389,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
               {isMe ? (
                 <TextInput
                   value={vMyName}
+                  maxLength={DISPLAY_NAME_MAX}
                   onChangeText={setMyName}
                   onBlur={commitMyName}
                   onSubmitEditing={commitMyName}
