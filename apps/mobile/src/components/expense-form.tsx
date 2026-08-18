@@ -44,6 +44,7 @@ import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
 import { SheetTitle } from "./sheet-title";
+import { SubmitButton } from "./submit-button";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { useClearDraft, useDraft } from "@/lib/form-draft";
@@ -697,27 +698,20 @@ export function ExpenseForm({
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
-        <Pressable
+        <SubmitButton
           onPress={() => void submit()}
+          busy={busy}
           // 必須（価格、通貨が違う時は為替レートも）は * でなく
           // 「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={
-            busy ||
             price.trim() === "" ||
             (localCurrency !== defaultCurrency && rateInput.trim() === "")
           }
-          style={[
-            styles.submitButton,
-            (busy ||
-              price.trim() === "" ||
-              (localCurrency !== defaultCurrency &&
-                rateInput.trim() === "")) &&
-              styles.disabled,
-          ]}
+          style={styles.submitButton}
           accessibilityLabel={isEdit ? tCommon("save") : t("addAria")}
         >
           <PlusIcon size={20} color={theme.primaryForeground} />
-        </Pressable>
+        </SubmitButton>
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -869,14 +863,8 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    submitButton: {
-      flex: 1,
-      height: 44,
-      borderRadius: 6,
-      backgroundColor: t.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    // 見た目（高さ・角丸・primary 塗り）は SubmitButton が持つ。ここは配置だけ。
+    submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
       fontSize: 13,

@@ -43,6 +43,7 @@ import {
 } from "./datetime-field";
 import { PlacePicker } from "./place-picker";
 import { SheetTitle } from "./sheet-title";
+import { SubmitButton } from "./submit-button";
 import { TimezonePicker } from "./timezone-picker";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
@@ -894,22 +895,20 @@ export function EventForm({
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
-        <Pressable
+        <SubmitButton
           onPress={() => void submit()}
+          busy={busy}
           // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={busy || !title.trim()}
+          disabled={!title.trim()}
           accessibilityLabel={isEdit ? tCommon("save") : tCommon("add")}
-          style={[
-            styles.submitButton,
-            (busy || !title.trim()) && styles.disabled,
-          ]}
+          style={styles.submitButton}
         >
           {isEdit ? (
             <SaveIcon size={20} color={theme.primaryForeground} />
           ) : (
             <PlusIcon size={20} color={theme.primaryForeground} />
           )}
-        </Pressable>
+        </SubmitButton>
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -1044,14 +1043,8 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    submitButton: {
-      flex: 1,
-      height: 44,
-      borderRadius: 6,
-      backgroundColor: t.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    // 見た目（高さ・角丸・primary 塗り）は SubmitButton が持つ。ここは配置だけ。
+    submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
       fontSize: 13,

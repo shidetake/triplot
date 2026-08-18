@@ -1,7 +1,6 @@
 import { useState } from "react";
 import {
   Dimensions,
-  Pressable,
   StyleSheet,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import { FEEDBACK_BODY_MAX, type FeedbackKind } from "@triplot/shared/feedback";
 
 import { SendIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { SubmitButton } from "./submit-button";
 import { toast } from "@/components/toast";
 import { CompactSegment } from "@/components/visibility-segment";
 import { useClearDraft, useDraft } from "@/lib/form-draft";
@@ -104,17 +104,15 @@ export function FeedbackSheet({ onDone }: { onDone: () => void }) {
       />
 
       {/* 必須（本文）は「埋まるまで送信無効」で表現（iOS 方式）。 */}
-      <Pressable
+      <SubmitButton
         onPress={() => void submit()}
-        disabled={busy || !body.trim()}
+        busy={busy}
+        disabled={!body.trim()}
         accessibilityLabel={t("submit")}
-        style={[
-          styles.submitButton,
-          (busy || !body.trim()) && styles.disabled,
-        ]}
+        style={styles.submitButton}
       >
         <SendIcon size={20} color={theme.primaryForeground} />
-      </Pressable>
+      </SubmitButton>
 
       <Text style={styles.note}>{t("diagnosticsNote")}</Text>
 
@@ -137,13 +135,8 @@ const makeStyles = (t: Theme) =>
       color: t.foreground,
       textAlignVertical: "top",
     },
-    submitButton: {
-      height: 44,
-      borderRadius: 6,
-      backgroundColor: t.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    // 見た目は SubmitButton が持つ。個別の指定は不要。
+    submitButton: {},
     disabled: { opacity: 0.5 },
     note: { fontSize: 12, color: t.mutedForeground },
     error: {

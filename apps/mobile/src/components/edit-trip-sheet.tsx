@@ -35,6 +35,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { SubmitButton } from "./submit-button";
 import { toast } from "@/components/toast";
 import * as Clipboard from "expo-clipboard";
 
@@ -335,17 +336,15 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           必須（タイトル）が空の間は、変更ありでも無効のまま（埋まるまで無効、の
           規約は編集フォームでも変わらない）。 */}
       {isAdmin && (
-        <Pressable
+        <SubmitButton
           onPress={() => void saveTrip()}
-          disabled={busy || !tripDirty || !vTitle.trim()}
+          busy={busy}
+          disabled={!tripDirty || !vTitle.trim()}
           accessibilityLabel={t("common.save")}
-          style={[
-            styles.submitButton,
-            (busy || !tripDirty || !vTitle.trim()) && styles.disabled,
-          ]}
+          style={styles.submitButton}
         >
           <SaveIcon size={20} color={theme.primaryForeground} />
-        </Pressable>
+        </SubmitButton>
       )}
 
       {error && <Text style={styles.error}>{t(error)}</Text>}
@@ -555,13 +554,8 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
   },
   outlineLabel: { fontSize: 13, fontWeight: "500", color: t.foreground },
-  submitButton: {
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  // 見た目は SubmitButton が持つ。個別の指定は不要。
+  submitButton: {},
   disabled: { opacity: 0.5 },
   deleteTripButton: {
     height: 40,

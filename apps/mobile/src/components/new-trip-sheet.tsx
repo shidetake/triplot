@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { createTrip } from "@triplot/shared/data/trips";
@@ -21,6 +21,7 @@ import {
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
 import { PlusIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
+import { SubmitButton } from "./submit-button";
 import { CompactSegment } from "@/components/visibility-segment";
 import { useClearDraft, useDraft } from "@/lib/form-draft";
 import { supabase } from "@/lib/supabase";
@@ -271,18 +272,16 @@ export function NewTripSheet() {
         <Text style={styles.warn}>{t("shorterWarning")}</Text>
       )}
 
-      <Pressable
+      <SubmitButton
         onPress={() => void submit()}
+        busy={busy}
         // 必須（タイトル・表示名）は * でなく「埋まるまで作成無効」で表現（iOS 方式）。
-        disabled={busy || !title.trim() || !effectiveName.trim()}
+        disabled={!title.trim() || !effectiveName.trim()}
         accessibilityLabel={tTrips("create")}
-        style={[
-          styles.submitButton,
-          (busy || !title.trim() || !effectiveName.trim()) && styles.disabled,
-        ]}
+        style={styles.submitButton}
       >
         <PlusIcon size={20} color={theme.primaryForeground} />
-      </Pressable>
+      </SubmitButton>
 
       {error && <Text style={styles.error}>{error}</Text>}
     </View>
@@ -316,14 +315,8 @@ const makeStyles = (t: Theme) =>
   warn: { fontSize: 12, color: t.warnAccent },
   // 新規モードでコピー元行の場所だけ確保する（シート高さをモードで変えない）。
   hiddenKeepSpace: { opacity: 0 },
-  submitButton: {
-    height: 44,
-    borderRadius: 6,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    marginTop: 8,
-  },
+  // 見た目（高さ・角丸・primary 塗り）は SubmitButton が持つ。ここは配置だけ。
+  submitButton: { marginTop: 8 },
   disabled: { opacity: 0.5 },
   error: {
     fontSize: 13,

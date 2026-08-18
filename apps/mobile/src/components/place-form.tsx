@@ -24,6 +24,7 @@ import type { Visibility } from "@triplot/shared/types/database";
 
 import { PlusIcon, SaveIcon, TrashIcon } from "./icons";
 import { SheetTitle } from "./sheet-title";
+import { SubmitButton } from "./submit-button";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -271,22 +272,20 @@ export function PlaceForm({
             <TrashIcon size={18} color={theme.destructiveText} />
           </Pressable>
         )}
-        <Pressable
+        <SubmitButton
           onPress={() => void submit()}
+          busy={busy}
           // 必須（仮ピンの名前）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
-          disabled={busy || (!!pinDraft && !pinName.trim())}
+          disabled={!!pinDraft && !pinName.trim()}
           accessibilityLabel={isEdit ? tCommon("save") : t("addPlaceAria")}
-          style={[
-            styles.submitButton,
-            (busy || (!!pinDraft && !pinName.trim())) && styles.disabled,
-          ]}
+          style={styles.submitButton}
         >
           {isEdit ? (
             <SaveIcon size={20} color={theme.primaryForeground} />
           ) : (
             <PlusIcon size={20} color={theme.primaryForeground} />
           )}
-        </Pressable>
+        </SubmitButton>
       </View>
 
       {error && <Text style={styles.error}>{error}</Text>}
@@ -346,14 +345,8 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       justifyContent: "center",
     },
-    submitButton: {
-      flex: 1,
-      height: 44,
-      borderRadius: 6,
-      backgroundColor: t.primary,
-      alignItems: "center",
-      justifyContent: "center",
-    },
+    // 見た目（高さ・角丸・primary 塗り）は SubmitButton が持つ。ここは配置だけ。
+    submitButton: { flex: 1 },
     disabled: { opacity: 0.5 },
     error: {
       fontSize: 13,
