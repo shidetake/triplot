@@ -67,7 +67,7 @@ web の `vaul`（DOM で描くボトムシート）を RN に持ち込まない�
 | | 使う場面 |
 |---|---|
 | **1. react-native-screens の formSheet**（ルートなら `presentation: "formSheet"`、画面内なら `ScreenStack` + `ScreenStackItem` の `stackPresentation="formSheet"`） | 原則こちら。多段 detent（`sheetAllowedDetents`）・グラバー（`sheetGrabberVisible`）を宣言で持てる。タブ画面の中から出すシート（場所タブ・TODO タブ）も `ScreenStack` を入れ子にしてこれを使う |
-| **2. RN core の `<Modal presentationStyle="pageSheet">`** | **既に formSheet として開いている画面の中からさらに開くピッカー**だけ（通貨選択・コピー元選択）。これも UIKit の PageSheet を使う実物のネイティブシートだが、formSheet の中にさらに `ScreenStack` を入れ子にすると元の画面と二重露光のように重なる実機不具合があるため、この場面に限ってこちらを使う。グラバー等の見た目は自前で 1 に揃える |
+| **2. RN core の `<Modal presentationStyle="pageSheet">`** | **既に formSheet として開いている画面の中からさらに開くピッカー**だけ（通貨選択・コピー元選択）。これも UIKit の PageSheet を使う実物のネイティブシートだが、formSheet の中にさらに `ScreenStack` を入れ子にすると元の画面と二重露光のように重なる実機不具合があるため、この場面に限ってこちらを使う。**グラバーと見出しの見た目は 1 に揃える必要があるので、器は `PageSheet`（`components/page-sheet.tsx`）に集約**する（各所で書くと片方だけずれる。実際コピー元選択だけグラバーが無く見出しも左寄せになっていた）。この API は detent を持てないので**高さは常に PageSheet 既定**（中身が短くても縮まない）＝ 1 が使えるなら必ず 1 を使う |
 
 **JS 実装のシートライブラリ（`@gorhom/bottom-sheet` 等）は使わない。**
 以前は併用していたが 2026-08 に全廃し、依存関係からも削除済み。復活させない。

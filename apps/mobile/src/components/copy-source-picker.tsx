@@ -1,10 +1,9 @@
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { useTranslations } from "use-intl";
-
+import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { CopySourceTrip } from "@triplot/shared/copySourceLabel";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 
-import { CheckIcon, ChevronIcon, XIcon } from "./icons";
+import { CheckIcon, ChevronIcon } from "./icons";
+import { PageSheet } from "./page-sheet";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // コピー元の旅行選択（トリガー＋モーダルリスト。CurrencyPickerModal と同形）。
@@ -54,60 +53,35 @@ export function CopySourceModal({
   title: string;
 }) {
   const theme = useTheme();
-  const tCommon = useTranslations("common");
   const styles = useThemedStyles(makeStyles);
   const labels = buildCopySourceLabels(trips);
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}
-    >
-      <View style={styles.sheet}>
-        <View style={styles.header}>
-          <Text style={styles.title}>{title}</Text>
-          <Pressable onPress={onClose} hitSlop={8} accessibilityLabel={tCommon("close")}>
-            <XIcon size={20} color={theme.mutedForeground} />
+    <PageSheet visible={visible} onClose={onClose} title={title}>
+      <ScrollView contentContainerStyle={styles.list}>
+        {trips.map((tr) => (
+          <Pressable
+            key={tr.id}
+            onPress={() => {
+              onSelect(tr.id);
+              onClose();
+            }}
+            style={styles.row}
+          >
+            <Text style={styles.name} numberOfLines={1}>
+              {labels.get(tr.id) ?? tr.title}
+            </Text>
+            {tr.id === value && (
+              <CheckIcon size={16} color={theme.foreground} />
+            )}
           </Pressable>
-        </View>
-        <ScrollView contentContainerStyle={styles.list}>
-          {trips.map((tr) => (
-            <Pressable
-              key={tr.id}
-              onPress={() => {
-                onSelect(tr.id);
-                onClose();
-              }}
-              style={styles.row}
-            >
-              <Text style={styles.name} numberOfLines={1}>
-                {labels.get(tr.id) ?? tr.title}
-              </Text>
-              {tr.id === value && (
-                <CheckIcon size={16} color={theme.foreground} />
-              )}
-            </Pressable>
-          ))}
-        </ScrollView>
-      </View>
-    </Modal>
+        ))}
+      </ScrollView>
+    </PageSheet>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    sheet: { flex: 1, backgroundColor: t.background },
-    header: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.fgAlpha(0.1),
-    },
-    title: { fontSize: 14, fontWeight: "600", color: t.foreground },
     list: { padding: 16, paddingTop: 4 },
     row: {
       flexDirection: "row",

@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import {
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -20,6 +19,7 @@ import {
 import type { Currency } from "@triplot/shared/types/database";
 
 import { CheckIcon, ChevronIcon, SearchIcon } from "./icons";
+import { PageSheet } from "./page-sheet";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 主要通貨 → その他全通貨（web の CurrencySelect と同じ並び。COMMON_CURRENCIES
@@ -33,16 +33,8 @@ const CURRENCY_CHOICES: Currency[] = [
 // 精算通貨選択で共用する単一の真実（以前は旅行編集画面だけ6件に絞った独自
 // chip 実装になっていた＝仕様の揺れ）。
 //
-// RN の Modal(presentationStyle="pageSheet") は iOS の UIModalPresentation
-// PageSheet を使う実物の native シート（他の formSheet と同じ「本物」）だが、
-// react-native-screens の ScreenStackItem/sheetAllowedDetents のような
-// 新しい多段 detent API とは別物で、grabber や X 無しの見た目は自前で
-// 揃える必要がある。expense-form/create-trip-sheet 等、既に formSheet として
-// 開いている画面の中からさらに ScreenStack を入れ子にして開こうとしたところ、
-// 元の画面と二重露光のように重なって描画される不具合が実機検証で確認できた
-// （react-native-screens の formSheet の中にさらに別の ScreenStack を
-// 入れ子にする構成は非対応と判断）ため、この Modal 実装のまま「取っ手を
-// 足す・× を外す」という見た目だけ他の native シートに揃える対応にとどめている。
+// 通貨選択（トリガー＋モーダルリスト）。器は PageSheet（コピー元選択と共用。
+// なぜ他のシートと違う API を使うかはそちらのコメント参照）。
 export function CurrencyPickerModal({
   visible,
   value,
@@ -81,69 +73,54 @@ export function CurrencyPickerModal({
   };
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={close}
-    >
-      <View style={styles.sheet}>
-        {/* 取っ手（native formSheet の sheetGrabberVisible と同じ見た目）。
-            × は置かず、他の native シートと同じくスワイプで閉じる。 */}
-        <View style={styles.grabberRow}>
-          <View style={styles.grabber} />
-        </View>
-        <Text style={styles.title}>{title}</Text>
-        <View style={styles.searchWrap}>
-          <SearchIcon size={16} color={theme.subtleForeground} />
-          <TextInput
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t("search")}
-            placeholderTextColor={theme.subtleForeground}
-            style={styles.searchInput}
-            autoCorrect={false}
-            autoCapitalize="none"
-            clearButtonMode="while-editing"
-          />
-        </View>
-        <ScrollView
-          contentContainerStyle={styles.list}
-          keyboardShouldPersistTaps="handled"
-        >
-          {filtered.length === 0 ? (
-            <Text style={styles.empty}>{tCurrency("noResults")}</Text>
-          ) : (
-            filtered.map((c) => {
-              const selected = c === value;
-              return (
-                <Pressable
-                  key={c}
-                  onPress={() => {
-                    onSelect(c);
-                    close();
-                  }}
-                  style={[styles.row, selected && styles.rowSelected]}
-                >
-                  <Text style={[styles.code, selected && styles.textOn]}>
-                    {c}
-                  </Text>
-                  <Text
-                    style={[styles.name, selected && styles.textOn]}
-                    numberOfLines={1}
-                  >
-                    {CURRENCY_NAMES[c] ?? ""}
-                  </Text>
-                  {selected && (
-                    <CheckIcon size={16} color={theme.foreground} />
-                  )}
-                </Pressable>
-              );
-            })
-          )}
-        </ScrollView>
+    <PageSheet visible={visible} onClose={close} title={title}>
+      <View style={styles.searchWrap}>
+        <SearchIcon size={16} color={theme.subtleForeground} />
+        <TextInput
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t("search")}
+          placeholderTextColor={theme.subtleForeground}
+          style={styles.searchInput}
+          autoCorrect={false}
+          autoCapitalize="none"
+          clearButtonMode="while-editing"
+        />
       </View>
-    </Modal>
+      <ScrollView
+        contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
+      >
+        {filtered.length === 0 ? (
+          <Text style={styles.empty}>{tCurrency("noResults")}</Text>
+        ) : (
+          filtered.map((c) => {
+            const selected = c === value;
+            return (
+              <Pressable
+                key={c}
+                onPress={() => {
+                  onSelect(c);
+                  close();
+                }}
+                style={[styles.row, selected && styles.rowSelected]}
+              >
+                <Text style={[styles.code, selected && styles.textOn]}>
+                  {c}
+                </Text>
+                <Text
+                  style={[styles.name, selected && styles.textOn]}
+                  numberOfLines={1}
+                >
+                  {CURRENCY_NAMES[c] ?? ""}
+                </Text>
+                {selected && <CheckIcon size={16} color={theme.foreground} />}
+              </Pressable>
+            );
+          })
+        )}
+      </ScrollView>
+    </PageSheet>
   );
 }
 
@@ -177,21 +154,6 @@ export function CurrencyPickerTrigger({
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    sheet: { flex: 1, backgroundColor: t.background },
-    grabberRow: { alignItems: "center", paddingTop: 8, paddingBottom: 4 },
-    grabber: {
-      width: 36,
-      height: 5,
-      borderRadius: 3,
-      backgroundColor: t.fgAlpha(0.2),
-    },
-    title: {
-      fontSize: 17,
-      fontWeight: "600",
-      color: t.foreground,
-      textAlign: "center",
-      paddingBottom: 14,
-    },
     searchWrap: {
       flexDirection: "row",
       alignItems: "center",
