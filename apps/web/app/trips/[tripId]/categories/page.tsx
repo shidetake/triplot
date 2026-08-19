@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 import { ChevronIcon } from "@/components/icons";
 import { CategoryManagementList } from "@/components/category-management-list";
@@ -43,9 +44,12 @@ export default async function CategoriesPage({
   // （apps/trips/[tripId]/page.tsx と同じ切り分け）。
   if (tripError && tripError.code !== "PGRST116") {
     return (
-      <main className="mx-auto w-full max-w-2xl px-6 py-10">
-        <LoadError message={tripError.message} />
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto w-full max-w-2xl px-6 py-10">
+          <LoadError message={tripError.message} />
+        </main>
+      </>
     );
   }
   if (!trip || !me) notFound();
@@ -61,7 +65,9 @@ export default async function CategoriesPage({
   }));
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <>
+      <AppHeader />
+      <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <div className="mb-6">
         <Link
           href={`/trips/${tripId}`}
@@ -78,5 +84,6 @@ export default async function CategoriesPage({
         <CategoryManagementList tripId={tripId} categories={categories} />
       </div>
     </main>
+    </>
   );
 }

@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { ChevronIcon } from "@/components/icons";
 import { LoadError } from "@/components/load-error";
 import { MembersManagementList } from "@/components/members-management-list";
+import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function MembersPage({
@@ -34,9 +35,12 @@ export default async function MembersPage({
   // （apps/trips/[tripId]/page.tsx と同じ切り分け）。
   if (tripError && tripError.code !== "PGRST116") {
     return (
-      <main className="mx-auto w-full max-w-2xl px-6 py-10">
-        <LoadError message={tripError.message} />
-      </main>
+      <>
+        <AppHeader />
+        <main className="mx-auto w-full max-w-2xl px-6 py-10">
+          <LoadError message={tripError.message} />
+        </main>
+      </>
     );
   }
   if (!trip) notFound();
@@ -47,7 +51,9 @@ export default async function MembersPage({
   const t = await getTranslations("members");
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <>
+      <AppHeader />
+      <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <div className="mb-6">
         <Link
           href={`/trips/${tripId}`}
@@ -78,5 +84,6 @@ export default async function MembersPage({
         iAmAdmin={me.is_admin}
       />
     </main>
+    </>
   );
 }

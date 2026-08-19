@@ -200,7 +200,8 @@
     "regenerateSuccess": "New link created. Tap \"Copy link\" to copy it.",
     "regenerateCopied": "New link created and copied",
     "manageCategories": "Manage Expense Categories",
-    "shareLink": "Send invite link"
+    "shareLink": "Send invite link",
+    "thisTrip": "This trip"
   },
   "event": {
     "addAria": "Add event",

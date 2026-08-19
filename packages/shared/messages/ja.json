@@ -200,7 +200,8 @@
     "regenerateSuccess": "新しいリンクを発行しました。「リンクをコピー」を押してください",
     "regenerateCopied": "新しいリンクを作成してコピーしました",
     "manageCategories": "費用カテゴリ管理",
-    "shareLink": "共有リンクを送る"
+    "shareLink": "共有リンクを送る",
+    "thisTrip": "この旅行"
   },
   "event": {
     "addAria": "予定を追加",

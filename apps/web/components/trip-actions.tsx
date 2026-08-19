@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useTransition,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -29,7 +35,6 @@ import {
   CalendarDaysIcon,
   DownloadIcon,
   EditIcon,
-  EllipsisIcon,
   MapIcon,
   ShareIcon,
   TagIcon,
@@ -57,9 +62,39 @@ function downloadBlob(
   URL.revokeObjectURL(url);
 }
 
-// 旅行のアクション群。Notion 同様、共有アイコン（単体）と ⋯ メニューの
-// 両方から共有でき、⋯ メニューには削除やエクスポートも入れる。
-export function TripActions({
+// 旅行のアクション群（編集・メンバー・カテゴリ・共有・エクスポート・削除）。
+//
+// ヘッダーを1本に統合したのに伴い、置き場所が2箇所に分かれた:
+//   - 共有アイコン … ヘッダーに直接（iOS の旅行ナビバーと同じ位置づけ）
+//   - それ以外     … アカウントメニューの中の「この旅行 ▸」サブメニュー
+// どちらも同じ state（共有トークン・各ポップオーバーの開閉）を触るので、
+// state と各ポップオーバーの実体は Provider が持ち、2つの見た目は context
+// 経由でそれを呼ぶ。ポップオーバーの実体をメニューの中に置くと、メニューが
+// 閉じた瞬間に一緒に unmount されて開けないため、必ず Provider 側に置く。
+type TripActionsCtx = {
+  tripId: string;
+  iAmAdmin: boolean;
+  isPending: boolean;
+  menuView: "main" | "export";
+  setMenuView: (v: "main" | "export") => void;
+  openShare: (anchor: Anchor) => void;
+  openEdit: (anchor: Anchor) => void;
+  onExportMap: () => void;
+  onExportExpenses: () => void;
+  onExportCalendar: (anchor: Anchor) => void;
+  onDelete: () => void;
+};
+
+const Ctx = createContext<TripActionsCtx | null>(null);
+
+function useTripActions(): TripActionsCtx {
+  const v = useContext(Ctx);
+  if (!v) throw new Error("TripActionsProvider の外で使われています");
+  return v;
+}
+
+export function TripActionsProvider({
+  children,
   tripId,
   baseUrl,
   iAmAdmin,
@@ -71,6 +106,7 @@ export function TripActions({
   expenseCsvRows,
   calendarEvents,
 }: {
+  children: ReactNode;
   tripId: string;
   baseUrl: string;
   iAmAdmin: boolean;
@@ -223,141 +259,22 @@ export function TripActions({
   };
 
   return (
-    <>
-      <div className="inline-flex items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          aria-label={t("shareAria")}
-          title={t("shareAria")}
-          onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-        >
-          <ShareIcon size={18} />
-        </Button>
-        <Menu.Root onOpenChange={(open) => { if (!open) setMenuView("main"); }}>
-          <Menu.Trigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label={t("menuAria")}
-                title={t("menuAria")}
-              >
-                <EllipsisIcon size={18} />
-              </Button>
-            }
-          />
-          {/* ⋯ メニュー（共有 / メンバー / エクスポート / 削除）。
-              エクスポートはドリルインで2段目（出力先）を出す。 */}
-          <Menu.Portal>
-            <Menu.Positioner align="end" sideOffset={8} className="z-50">
-              <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
-                {menuView === "main" ? (
-                  <>
-                    {iAmAdmin && (
-                      <Menu.Item
-                        onClick={(e) =>
-                          setEditAnchor({ x: e.clientX, y: e.clientY })
-                        }
-                        className={`flex items-center gap-2 ${menuItemClass}`}
-                      >
-                        <EditIcon size={16} className="text-muted-foreground" />
-                        {t("editTrip")}
-                      </Menu.Item>
-                    )}
-                    <Menu.Item
-                      render={<Link href={`/trips/${tripId}/members`} />}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <UsersIcon size={16} className="text-muted-foreground" />
-                      {t("manageMembers")}
-                    </Menu.Item>
-                    <Menu.Item
-                      render={<Link href={`/trips/${tripId}/categories`} />}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <TagIcon size={16} className="text-muted-foreground" />
-                      {t("manageCategories")}
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <ShareIcon size={16} className="text-muted-foreground" />
-                      {t("share")}
-                    </Menu.Item>
-                    <Menu.Item
-                      closeOnClick={false}
-                      onClick={() => setMenuView("export")}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <DownloadIcon
-                        size={16}
-                        className="text-muted-foreground"
-                      />
-                      {t("export")}
-                      <span
-                        aria-hidden
-                        className="ml-auto text-subtle-foreground"
-                      >
-                        ›
-                      </span>
-                    </Menu.Item>
-                    {iAmAdmin && (
-                      <Menu.Item
-                        onClick={onDelete}
-                        disabled={isPending}
-                        className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
-                      >
-                        <TrashIcon size={16} />
-                        {t("deleteTrip")}
-                      </Menu.Item>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <Menu.Item
-                      closeOnClick={false}
-                      onClick={() => setMenuView("main")}
-                      className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
-                    >
-                      <span aria-hidden>‹</span> {t("back")}
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={(e) =>
-                        onExportCalendar({ x: e.clientX, y: e.clientY })
-                      }
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <CalendarDaysIcon
-                        size={16}
-                        className="text-muted-foreground"
-                      />
-                      {t("exportCalendar")}
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={onExportMap}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <MapIcon size={16} className="text-muted-foreground" />
-                      {t("exportMap")}
-                    </Menu.Item>
-                    <Menu.Item
-                      onClick={onExportExpenses}
-                      className={`flex items-center gap-2 ${menuItemClass}`}
-                    >
-                      <WalletIcon size={16} className="text-muted-foreground" />
-                      {t("exportExpenses")}
-                    </Menu.Item>
-                  </>
-                )}
-              </Menu.Popup>
-            </Menu.Positioner>
-          </Menu.Portal>
-        </Menu.Root>
-      </div>
+    <Ctx.Provider
+      value={{
+        tripId,
+        iAmAdmin,
+        isPending,
+        menuView,
+        setMenuView,
+        openShare,
+        openEdit: setEditAnchor,
+        onExportMap,
+        onExportExpenses,
+        onExportCalendar,
+        onDelete,
+      }}
+    >
+      {children}
 
       {/* 旅行を編集（admin のみ。タイトル・日程・精算通貨） */}
       {editAnchor && (
@@ -416,7 +333,159 @@ export function TripActions({
           events={calendarEvents}
         />
       )}
+    </Ctx.Provider>
+  );
+}
 
-    </>
+// ヘッダーに直接置く共有アイコン。
+export function TripShareButton() {
+  const t = useTranslations("tripActions");
+  const { openShare } = useTripActions();
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon"
+      aria-label={t("shareAria")}
+      title={t("shareAria")}
+      className="rounded-full"
+      onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
+    >
+      <ShareIcon size={20} />
+    </Button>
+  );
+}
+
+// アカウントメニューの中に差し込む「この旅行 ▸」サブメニュー。
+// アカウント（自分）と旅行（対象）は別の意味なので、同じ一覧に混ぜず
+// 1段階挟んで壁を作る（ui-guidelines「同じ目的には同じコントロール」）。
+export function TripMenuSection() {
+  const t = useTranslations("tripActions");
+  const {
+    tripId,
+    iAmAdmin,
+    isPending,
+    menuView,
+    setMenuView,
+    openShare,
+    openEdit,
+    onExportMap,
+    onExportExpenses,
+    onExportCalendar,
+    onDelete,
+  } = useTripActions();
+  return (
+    <Menu.SubmenuRoot
+      onOpenChange={(open) => {
+        if (!open) setMenuView("main");
+      }}
+    >
+      <Menu.SubmenuTrigger
+        className={`flex items-center gap-2 ${menuItemClass}`}
+      >
+        <MapIcon size={16} className="text-muted-foreground" />
+        {t("thisTrip")}
+        <span aria-hidden className="ml-auto text-subtle-foreground">
+          ›
+        </span>
+      </Menu.SubmenuTrigger>
+      <Menu.Portal>
+        <Menu.Positioner align="start" sideOffset={4} className="z-50">
+          <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
+            {menuView === "main" ? (
+              <>
+                {iAmAdmin && (
+                  <Menu.Item
+                    onClick={(e) => openEdit({ x: e.clientX, y: e.clientY })}
+                    className={`flex items-center gap-2 ${menuItemClass}`}
+                  >
+                    <EditIcon size={16} className="text-muted-foreground" />
+                    {t("editTrip")}
+                  </Menu.Item>
+                )}
+                <Menu.Item
+                  render={<Link href={`/trips/${tripId}/members`} />}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <UsersIcon size={16} className="text-muted-foreground" />
+                  {t("manageMembers")}
+                </Menu.Item>
+                <Menu.Item
+                  render={<Link href={`/trips/${tripId}/categories`} />}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <TagIcon size={16} className="text-muted-foreground" />
+                  {t("manageCategories")}
+                </Menu.Item>
+                <Menu.Item
+                  onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <ShareIcon size={16} className="text-muted-foreground" />
+                  {t("share")}
+                </Menu.Item>
+                <Menu.Item
+                  closeOnClick={false}
+                  onClick={() => setMenuView("export")}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <DownloadIcon size={16} className="text-muted-foreground" />
+                  {t("export")}
+                  <span aria-hidden className="ml-auto text-subtle-foreground">
+                    ›
+                  </span>
+                </Menu.Item>
+                {iAmAdmin && (
+                  <Menu.Item
+                    onClick={onDelete}
+                    disabled={isPending}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
+                  >
+                    <TrashIcon size={16} />
+                    {t("deleteTrip")}
+                  </Menu.Item>
+                )}
+              </>
+            ) : (
+              <>
+                <Menu.Item
+                  closeOnClick={false}
+                  onClick={() => setMenuView("main")}
+                  className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
+                >
+                  <span aria-hidden>‹</span> {t("back")}
+                </Menu.Item>
+                <Menu.Item
+                  onClick={(e) =>
+                    onExportCalendar({ x: e.clientX, y: e.clientY })
+                  }
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <CalendarDaysIcon
+                    size={16}
+                    className="text-muted-foreground"
+                  />
+                  {t("exportCalendar")}
+                </Menu.Item>
+                <Menu.Item
+                  onClick={onExportMap}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <MapIcon size={16} className="text-muted-foreground" />
+                  {t("exportMap")}
+                </Menu.Item>
+                <Menu.Item
+                  onClick={onExportExpenses}
+                  className={`flex items-center gap-2 ${menuItemClass}`}
+                >
+                  <WalletIcon size={16} className="text-muted-foreground" />
+                  {t("exportExpenses")}
+                </Menu.Item>
+              </>
+            )}
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.SubmenuRoot>
   );
 }

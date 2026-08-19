@@ -1,10 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { AddExpenseButton } from "@/components/add-expense-button";
-import { ChevronIcon } from "@/components/icons";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
@@ -16,18 +14,21 @@ import {
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
-import { InlineDivider } from "@/components/inline-divider";
+import { AppHeader, TripHeaderSubtitle } from "@/components/app-header";
 import { LoadError } from "@/components/load-error";
 import { MembersSection } from "@/components/members-section";
 import type { PlaceRow } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
-import { TripActions } from "@/components/trip-actions";
+import {
+  TripActionsProvider,
+  TripMenuSection,
+  TripShareButton,
+} from "@/components/trip-actions";
 import { TripDetailTabs } from "@/components/trip-detail-tabs";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { TripDraftsRealtime } from "@/components/trip-drafts-realtime";
-import { TripHeaderCompact } from "@/components/trip-header-compact";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
   buildTripTzTimeline,
@@ -55,7 +56,6 @@ import { type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
 import { type KmlPlacemark } from "@triplot/shared/placeKml";
 import { dominantCenter, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
-import { monthDayLabel } from "@triplot/shared/import/draftLabel";
 import {
   deriveEventDraftItems,
   deriveExpenseDraftItems,
@@ -282,11 +282,10 @@ export default async function TripDetailPage({
     reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
   });
 
-  // ⋯メニュー等（TripActions）は広い画面のヘッダーと狭い画面の圧縮ヘッダーの
-  // 両方に置く。同じ要素オブジェクトを2箇所で使うと React はそれぞれ独立に
-  // マウントする（開くまでネットワークアクセスしないコンポーネントなので無害）。
-  const tripActionsEl = (
-    <TripActions
+  // 旅行のアクションは Provider が state を持ち、共有アイコンはヘッダーに、
+  // それ以外はアカウントメニューの「この旅行 ▸」に出す（trip-actions.tsx）。
+  const tripActions = (
+    <TripActionsProvider
       tripId={tripId}
       baseUrl={inviteBaseUrl}
       iAmAdmin={me.is_admin}
@@ -297,60 +296,40 @@ export default async function TripDetailPage({
       kmlPlacemarks={kmlPlacemarks}
       expenseCsvRows={expenseCsvRows}
       calendarEvents={calendarEvents}
-    />
+    >
+      <AppHeader
+        trip={{
+          title: trip.title,
+          subtitle: (
+            <TripHeaderSubtitle
+              dateRange={formatTripDateRange(
+                trip.start_date,
+                trip.end_date,
+                locale,
+              )}
+              currencyLabel={`${t("tripDetail.settlementCurrency")}: ${trip.default_currency}`}
+            />
+          ),
+        }}
+        tripMenu={<TripMenuSection />}
+        tripActions={<TripShareButton />}
+      />
+    </TripActionsProvider>
   );
-  // 狭い画面の圧縮ヘッダー用（年なし M/D、両方揃っている時だけ）。
-  const compactDateRange =
-    trip.start_date && trip.end_date
-      ? `${monthDayLabel(trip.start_date)}–${monthDayLabel(trip.end_date)}`
-      : "";
 
   return (
-    <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
+    <>
+      {tripActions}
+      <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
       {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
           タブに戻ってきた時にも取り直す（他メンバーの変更を拾う）。 */}
       <TripDraftsRealtime tripId={tripId} />
       <RefreshOnFocus />
 
-      <TripHeaderCompact
-        backLabel={t("tripDetail.backToTrips")}
-        tripTitle={trip.title}
-        dateRangeShort={compactDateRange}
-        members={activeMembers.map((m) => ({
-          id: m.id,
-          display_name: m.display_name,
-          color: m.color,
-          avatarUrl: m.users?.avatar_url ?? null,
-        }))}
-        actions={tripActionsEl}
-      />
-
-      <div className="hidden px-6 pt-10 md:block">
-        <div className="flex items-start justify-between gap-3">
-          <Link
-            href="/trips"
-            className="inline-flex items-center gap-1 text-sm text-muted-foreground transition hover:text-foreground"
-          >
-            <ChevronIcon size={16} className="rotate-180" />
-            {t("tripDetail.backToTrips")}
-          </Link>
-          {tripActionsEl}
-        </div>
-
-        <header className="mt-4">
-          <h1 className="text-2xl font-semibold">{trip.title}</h1>
-          <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-            <span>
-              {formatTripDateRange(trip.start_date, trip.end_date, locale)}
-            </span>
-            <InlineDivider />
-            <span>
-              {t("tripDetail.settlementCurrency")}: {trip.default_currency}
-            </span>
-          </p>
-        </header>
-
-        <section className="mt-8">
+      {/* メンバー一覧は広い画面だけ（狭い画面はヘッダーに入らないので出さない。
+          誰が関わるかは予定の色・費用のアバターで分かる）。 */}
+      <div className="hidden px-6 pt-8 md:block">
+        <section>
           <h2 className="text-sm font-medium text-muted-foreground">
             {t("members.heading")}
           </h2>
@@ -586,7 +565,8 @@ export default async function TripDetailPage({
           </section>
         }
       />
-      </div>
-    </main>
+        </div>
+      </main>
+    </>
   );
 }

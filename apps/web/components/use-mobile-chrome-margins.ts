@@ -41,8 +41,7 @@ function measure(): ChromeMargins {
 // （0.7 のような画面高に対する割合の決め打ちだと、画面が低い端末ほど
 // 実際の余白が減ってしまう）。
 //
-// - top: [data-mobile-chrome-top] を持つ要素（AppHeader・TripHeaderCompact）
-//   の下端のうち最大値。スクロールで隠れていれば自然と小さくなる
+// - top: [data-mobile-chrome-top] を持つ要素（AppHeader）の下端。スクロールで隠れていれば自然と小さくなる
 //   （sticky な AppHeader は常に残るので 0 にはならない）。
 // - bottom: [data-mobile-chrome-bottom] を持つ要素（下部タブバー）の、
 //   viewport 下端からの高さのうち最大値。無ければ 0（タブバーの無いページ）。
@@ -52,7 +51,7 @@ function measure(): ChromeMargins {
 // しまい、実測が後から効いても反映されない）。
 //
 // ただし初期化子はレンダー中に走るため、クライアント遷移（旅行一覧→旅行詳細）
-// の途中では遷移先ページの chrome（TripHeaderCompact 等）がまだ DOM に無く、
+// の途中では遷移先ページの chrome（下部タブバー等）がまだ DOM に無く、
 // 実測から漏れる（リロード時は hydration 時点で全部あるので漏れない——
 // 「入り方によって展開位置が変わる」不具合として実機で発覚）。マウント後
 // （DOM 反映後）に一度再実測して取りこぼしを拾う。値が変わらない時は

@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Menu } from "@base-ui/react/menu";
 
@@ -32,6 +32,7 @@ export function AccountMenu({
   openFeedbackCount = 0,
   deployEnv,
   version,
+  tripMenu,
 }: {
   email: string | null;
   name: string | null;
@@ -45,6 +46,11 @@ export function AccountMenu({
   // （Settings/About 相当）に合わせてここに移した。
   deployEnv: string;
   version: string;
+  // 旅行詳細でだけ差し込まれる「この旅行 ▸」サブメニュー（trip-actions.tsx）。
+  // ヘッダーを1本にまとめた結果アカウントと旅行の入口が隣り合ったので、
+  // 旅行の操作はここに吸収した。ただしアカウント（自分）と旅行（対象）は
+  // 意味が違うので同じ一覧には混ぜず、サブメニューで1段階挟む。
+  tripMenu?: ReactNode;
 }) {
   const router = useRouter();
   const t = useTranslations();
@@ -97,8 +103,14 @@ export function AccountMenu({
                   {email}
                 </div>
               )}
+              {tripMenu && (
+                <>
+                  {tripMenu}
+                  <div className="my-1 border-t border-foreground/5" />
+                </>
+              )}
               {/* ラベルは foreground・アイコンだけ muted（shadcn/ui の
-                  DropdownMenu と同じ配色。旅行の ⋯ メニューとも揃える）。 */}
+                  DropdownMenu と同じ配色）。 */}
               <Menu.Item
                 render={<Link href="/settings" />}
                 className={`flex items-center gap-2 ${menuItemClass}`}

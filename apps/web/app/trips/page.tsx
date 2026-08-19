@@ -9,6 +9,7 @@ import {
   fetchMyTrips,
   fetchUserProfile,
 } from "@triplot/shared/data/reads/trips";
+import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
@@ -21,11 +22,14 @@ export default async function TripsPage() {
   if (!user) redirect("/");
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    <>
+      <AppHeader />
+      <main className="mx-auto w-full max-w-2xl px-6 py-10">
       {/* 他のメンバーが作った旅行・招待で増えた旅行を、戻ってきた時に拾う。 */}
       <RefreshOnFocus />
       <TripsSection userId={user.id} />
     </main>
+    </>
   );
 }
 
