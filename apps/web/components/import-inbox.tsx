@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
+import { useTransition } from "react";
 
 import { SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,6 @@ import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
-import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import {
   eventDraftWhenLabel,
   extractionSummary,
@@ -21,10 +21,12 @@ import {
 } from "@triplot/shared/import/config";
 
 import {
-  assignTripAction,
-  dismissEmailAction,
-  unmergeAction,
-} from "@/app/import/actions";
+  assignInboundEmailTrip,
+  dismissInboundEmail,
+  unmergeInboundEmail,
+} from "@triplot/shared/data/inbox";
+import { createClient } from "@/lib/supabase/client";
+import { toast } from "@/components/toast";
 
 export interface ImportInboxData {
   importAddress: string | null;
@@ -45,10 +47,32 @@ export interface ImportInboxData {
 
 // 取り込み受信箱の中身。ページ（/import）とヘッダーから開くシートの
 // 両方が同じものを描く。見出し（h1 / シートのタイトル）は器側が出す。
-export function ImportInbox({ data }: { data: ImportInboxData }) {
+export function ImportInbox({
+  data,
+  onChanged,
+}: {
+  data: ImportInboxData;
+  // 書き込み後に呼ぶ。器（シート）が取り直す。
+  onChanged: () => void;
+}) {
   const t = useTranslations("import");
   const tCommon = useTranslations("common");
   const locale = useLocale();
+  const [isPending, startTransition] = useTransition();
+
+  // 書き込みは shared のデータ関数をブラウザの Supabase クライアントで直接
+  // 呼ぶ（RN の受信箱と同じ形）。以前は server action ＋ revalidatePath だったが、
+  // ページを廃してシートに一本化したので、再取得は器のコールバックで行う。
+  const run = (fn: () => Promise<{ ok: boolean; error?: string }>) => {
+    startTransition(async () => {
+      const r = await fn();
+      if (!r.ok) {
+        toast(t("dismissFailed", { error: r.error ?? "" }));
+        return;
+      }
+      onChanged();
+    });
+  };
   const {
     importAddress,
     trips,
@@ -61,10 +85,6 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
 
   return (
     <>
-      {/* 転送したメールの抽出はサーバー側の非同期処理なので、戻ってきた
-          タイミングで取り直す（旅行詳細は Realtime も併用）。 */}
-      <RefreshOnFocus />
-
       <p className="mt-3 text-sm text-muted-foreground">
         {t("description")}
       </p>
@@ -107,7 +127,9 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
               </div>
               <DismissEmailButton
                 id={e.id}
-                action={dismissEmailAction}
+                onDismiss={(id) =>
+                  run(() => dismissInboundEmail(createClient(), id))
+                }
                 className="h-7 w-7"
               />
             </li>
@@ -166,10 +188,23 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
                   {/* 旅行の割り当て */}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
                     <form
-                      action={assignTripAction}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const tripId = new FormData(e.currentTarget).get(
+                          "trip_id",
+                        );
+                        run(() =>
+                          assignInboundEmailTrip(
+                            createClient(),
+                            row.id,
+                            typeof tripId === "string" && tripId
+                              ? tripId
+                              : null,
+                          ),
+                        );
+                      }}
                       className="flex items-center gap-2"
                     >
-                      <input type="hidden" name="id" value={row.id} />
                       <select
                         name="trip_id"
                         defaultValue={row.defaultTripId}
@@ -185,6 +220,7 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
                       <Button
                         type="submit"
                         size="iconSm"
+                        disabled={isPending}
                         aria-label={tCommon("save")}
                         title={tCommon("save")}
                         className="shrink-0"
@@ -257,15 +293,18 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
                                   {ch.own?.receipt?.isUpdate ? t("adjustment") : ""}
                                 </span>
                               </span>
-                              <form action={unmergeAction}>
-                                <input type="hidden" name="id" value={ch.id} />
-                                <button
-                                  type="submit"
-                                  className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10"
-                                >
-                                  {t("split")}
-                                </button>
-                              </form>
+                              <button
+                                type="button"
+                                disabled={isPending}
+                                onClick={() =>
+                                  run(() =>
+                                    unmergeInboundEmail(createClient(), ch.id),
+                                  )
+                                }
+                                className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+                              >
+                                {t("split")}
+                              </button>
                             </div>
                           );
                         })}
@@ -276,7 +315,9 @@ export function ImportInbox({ data }: { data: ImportInboxData }) {
 
                 <DismissEmailButton
                   id={row.id}
-                  action={dismissEmailAction}
+                  onDismiss={(id) =>
+                    run(() => dismissInboundEmail(createClient(), id))
+                  }
                   className="h-8 w-8"
                 />
               </div>

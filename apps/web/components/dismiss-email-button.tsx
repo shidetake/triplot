@@ -1,10 +1,8 @@
 "use client";
 
-import { useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import { confirmDialog } from "@/components/confirm-dialog";
-import { toast } from "@/components/toast";
 
 import { CloseButton } from "./close-button";
 
@@ -12,30 +10,22 @@ import { CloseButton } from "./close-button";
 // confirmDialog を挟んでから呼ぶ（form action への直接 submit はしない）。
 export function DismissEmailButton({
   id,
-  action,
+  onDismiss,
   className,
 }: {
   id: string;
-  action: (id: string) => Promise<{ error: string | null }>;
+  // 確認が済んだ後に呼ばれる。実際の書き込みと再取得は呼び出し側。
+  onDismiss: (id: string) => void;
   className?: string;
 }) {
   const t = useTranslations("import");
-  const [isPending, startTransition] = useTransition();
 
   const onClick = async () => {
     if (!(await confirmDialog({ title: t("dismissEmailTitle") }))) return;
-    startTransition(async () => {
-      const { error } = await action(id);
-      if (error) toast(t("dismissFailed", { error }));
-    });
+    onDismiss(id);
   };
 
   return (
-    <CloseButton
-      label={t("dismiss")}
-      onClick={onClick}
-      disabled={isPending}
-      className={className}
-    />
+    <CloseButton label={t("dismiss")} onClick={onClick} className={className} />
   );
 }

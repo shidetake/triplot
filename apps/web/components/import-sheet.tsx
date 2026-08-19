@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
@@ -60,32 +60,46 @@ function ImportSheetBody() {
   const t = useTranslations("import");
   const [data, setData] = useState<ImportInboxData | null>(null);
 
+  const load = useCallback(async () => {
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return null;
+    const raw = await fetchImportInboxRows(supabase, user.id);
+    return {
+      importAddress: raw.importToken
+        ? buildImportAddress(raw.importToken)
+        : null,
+      trips: raw.trips,
+      tripLabel: buildCopySourceLabels(raw.trips),
+      rows: deriveInboxRows(raw),
+      errorRows: raw.errorRows ?? [],
+      usedThisMonth: raw.usedThisMonth ?? 0,
+      overQuota: raw.overQuota ?? 0,
+    } satisfies ImportInboxData;
+  }, []);
+
+  // 開いた時＋タブに戻ってきた時に取り直す。転送メールの抽出はサーバー側の
+  // 非同期処理なので、開きっぱなしのまま増えることがある（RefreshOnFocus と
+  // 同じ考え方だが、こちらはサーバー描画でなく自前の state を更新する）。
   useEffect(() => {
     let alive = true;
-    void (async () => {
-      const supabase = createClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (!user) return;
-      const raw = await fetchImportInboxRows(supabase, user.id);
-      if (!alive) return;
-      setData({
-        importAddress: raw.importToken
-          ? buildImportAddress(raw.importToken)
-          : null,
-        trips: raw.trips,
-        tripLabel: buildCopySourceLabels(raw.trips),
-        rows: deriveInboxRows(raw),
-        errorRows: raw.errorRows ?? [],
-        usedThisMonth: raw.usedThisMonth ?? 0,
-        overQuota: raw.overQuota ?? 0,
+    const refresh = () => {
+      void load().then((d) => {
+        if (alive && d) setData(d);
       });
-    })();
+    };
+    refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       alive = false;
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [load]);
 
   return (
     // 広い画面のポップオーバーでも一覧が読める幅にする（狭い画面はシートが
@@ -93,7 +107,14 @@ function ImportSheetBody() {
     <div className="w-[min(34rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-4">
       <h2 className="text-lg font-semibold">{t("heading")}</h2>
       <div className="mt-3">
-        {data ? <ImportInbox data={data} /> : <InboxSkeleton />}
+        {data ? (
+          <ImportInbox
+            data={data}
+            onChanged={() => void load().then((d) => d && setData(d))}
+          />
+        ) : (
+          <InboxSkeleton />
+        )}
       </div>
     </div>
   );
