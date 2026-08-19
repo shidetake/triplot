@@ -22,6 +22,7 @@ import {
   ChevronIcon,
   EditIcon,
   InfoIcon,
+  MapIcon,
   LogOutIcon,
   MessageSquareIcon,
   SaveIcon,
@@ -41,10 +42,16 @@ export function SettingsSheet({
   onDone,
   onOpenFeedback,
   onOpenAbout,
+  onOpenTrip,
 }: {
   onDone: () => void;
   onOpenFeedback: () => void;
   onOpenAbout: () => void;
+  // 旅行詳細から開いた時だけ渡る。その旅行の設定（旧・歯車が開いていたもの）
+  // への行を先頭に出す（web がアカウントメニューに「この旅行 ▸」を差し込むのと
+  // 同じ。アカウント〔自分〕と旅行〔対象〕は意味が違うので、同じ並びに混ぜず
+  // 独立した節にする）。
+  onOpenTrip?: () => void;
 }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -222,6 +229,16 @@ export function SettingsSheet({
           <Text style={styles.hint}>{t("settings.displayNameHelp")}</Text>
         </View>
       </View>
+
+      {onOpenTrip && (
+        <View style={styles.navList}>
+          <Pressable onPress={onOpenTrip} style={styles.navRow}>
+            <MapIcon size={18} color={theme.mutedForeground} />
+            <Text style={styles.navRowLabel}>{t("tripActions.thisTrip")}</Text>
+            <ChevronIcon size={16} color={theme.subtleForeground} />
+          </Pressable>
+        </View>
+      )}
 
       {/* フィードバック・このアプリについて（iOS 設定流のドリルイン行の並び。
           旅行編集のカテゴリ管理/エクスポート行と同形＝navList が上端の枠を

@@ -1,21 +1,26 @@
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import { useCallback, useMemo } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
+import { HeaderAccountButtons } from "@/components/header-account-buttons";
 import { HeaderIconButton } from "@/components/header-icon-button";
-import { InlineDivider } from "@/components/inline-divider";
-import { SettingsIcon, ShareIcon } from "@/components/icons";
+import { ShareIcon } from "@/components/icons";
 import { shareTripInvite } from "@/lib/shareTripInvite";
 import { type Theme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
-// 旅行詳細のルート。ヘッダーは親 Stack の1本だけ（戻る + 旅行名 + 共有 + 編集）。
+// 旅行詳細のルート。ヘッダーは親 Stack の1本だけ（戻る + 旅行名 + 共有 +
+// 受信箱 + アバター）。
 // 共有はこのアプリの肝なのでメニューに埋めず1タップのボタン（web が共有
 // アイコン単体を出しているのと同じ）。
+// 受信箱とアバターは旅行一覧と同じものを出す（HeaderAccountButtons）。
+// 旅行の設定（旧・歯車）はアバターのシートの中の「この旅行」に吸収した:
+// 旅行詳細でもアカウントの入口が要る＝2つのメニューが隣り合うので、
+// 片方に寄せた（web と同じ判断。ui-guidelines「ナビ / メニューの使い分け」）。
 // 最初の <Stack.Screen> は自分を内包する親 Stack（(app)/_layout.tsx）の
 // この route のオプションを注入する（旅行名が動的なので layout 側に書けない）。
 // ネストした Stack 自身はヘッダーを出さない（二重ヘッダー防止）。
@@ -32,20 +37,26 @@ import { useTripId } from "@/lib/useTripId";
 export default function TripLayout() {
   const tripId = useTripId();
   const { data } = useTripDetail(tripId);
-  const locale = useLocale();
-  const t = useTranslations("tripDetail");
   const tActions = useTranslations("tripActions");
+  const locale = useLocale();
   const styles = useThemedStyles(makeStyles);
   const tripTitle = data?.trip?.title ?? "";
   // ヘッダー2行目に日程と精算通貨（web の旅行ヘッダーと同じ情報）。iOS の
-  // ナビバーはアバター列まで載せられないので、この2つだけを小さく添える
-  // （メンバーは旅行編集シートに一覧がある）。地図タブを詰めないよう、
+  // ナビバーはメンバーのアバター列まで載せられないので、この2つだけを小さく
+  // 添える（メンバーは旅行編集シートに一覧がある）。地図タブを詰めないよう、
   // 画面内にバーを足すのではなくナビバーの中で完結させる。
+  //
+  // **精算通貨は出さない**（web は出す）。iPhone のナビバーは 393pt しかなく、
+  // 中央のタイトルは headerRight の幅を避けてくれないので、右が3つ（共有・
+  // 受信箱・アバター）になると日程＋精算通貨は入らない。入り切らないと iOS 26 は
+  // 右の項目を「…」に畳んでしまい、受信箱のバッジもアバターも見えなくなる
+  // （実機で確認）。幅で決まることなので幅に合わせて落とす
+  // （ui-guidelines「使える幅で決まること→ビューポート幅で判定」）。
+  // 精算通貨は費用タブと旅行の設定シートで分かる。
   const trip = data?.trip;
   const dateRange = trip
     ? formatTripDateRange(trip.start_date, trip.end_date, locale)
     : "";
-  const currency = trip?.default_currency ?? "";
 
   // options は identity が変わるたびに expo-router が navigation.setOptions を
   // 呼ぶ。useTripDetail はいいね・優先度変更等の invalidate のたびに再レンダー
@@ -55,49 +66,34 @@ export default function TripLayout() {
   // だけ setOptions が走るようメモ化する。
   const headerRight = useCallback(
     () => (
-      <View style={{ flexDirection: "row", gap: 4 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
         <HeaderIconButton
           accessibilityLabel={tActions("share")}
           onPress={() => void shareTripInvite(tripId)}
         >
           <ShareIcon size={20} color="#666666" />
         </HeaderIconButton>
-        <HeaderIconButton
-          accessibilityLabel={tActions("editTrip")}
-          onPress={() => router.push(`/trips/${tripId}/edit`)}
-        >
-          <SettingsIcon size={20} color="#666666" />
-        </HeaderIconButton>
+        <HeaderAccountButtons tripId={tripId} />
       </View>
     ),
     [tripId, tActions],
   );
-  // 2行タイトル（旅行名＋日程｜精算通貨）。headerTitle も headerRight と同じく
-  // identity が変わるたび setOptions が走るのでメモ化する。
+  // 2行タイトル（旅行名＋日程）。headerTitle も headerRight と同じく identity が
+  // 変わるたび setOptions が走るのでメモ化する。
   const headerTitle = useCallback(
     () => (
       <View style={styles.titleBlock}>
         <Text style={styles.title} numberOfLines={1}>
           {tripTitle}
         </Text>
-        {(dateRange || currency) && (
-          <View style={styles.subtitleRow}>
-            {dateRange ? (
-              <Text style={styles.subtitle} numberOfLines={1}>
-                {dateRange}
-              </Text>
-            ) : null}
-            {dateRange && currency ? <InlineDivider /> : null}
-            {currency ? (
-              <Text style={styles.subtitle}>
-                {t("settlementCurrency")}: {currency}
-              </Text>
-            ) : null}
-          </View>
-        )}
+        {dateRange ? (
+          <Text style={styles.subtitle} numberOfLines={1}>
+            {dateRange}
+          </Text>
+        ) : null}
       </View>
     ),
-    [tripTitle, dateRange, currency, styles, t],
+    [tripTitle, dateRange, styles],
   );
 
   const screenOptions = useMemo(
@@ -155,13 +151,10 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     // ナビバーの中央に収まる2行タイトル。1行目は iOS 標準のタイトルと同じ
     // 大きさ・太さ、2行目は補助情報なので muted の小さい文字。
-    titleBlock: { alignItems: "center", maxWidth: 240 },
+    // 中央の2行タイトル。iOS はこれをバー全体の中央に置き headerRight を
+    // 避けてくれないので、右の3つ（共有・受信箱・アバター）に潜らない幅で切る
+    // （393pt の画面で中央寄せ＋右 ~110pt ＝ 最大 ~170pt）。
+    titleBlock: { alignItems: "center", maxWidth: 170 },
     title: { fontSize: 17, fontWeight: "600", color: t.foreground },
-    subtitleRow: {
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 6,
-      marginTop: 1,
-    },
-    subtitle: { fontSize: 11, color: t.mutedForeground },
+    subtitle: { fontSize: 11, color: t.mutedForeground, marginTop: 1 },
   });

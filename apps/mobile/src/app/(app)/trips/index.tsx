@@ -16,7 +16,7 @@ import {
   fetchUserProfile,
 } from "@triplot/shared/data/reads/trips";
 
-import { HeaderIconButton } from "@/components/header-icon-button";
+import { HeaderAccountButtons } from "@/components/header-account-buttons";
 import { InboxIcon, PlusIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
@@ -81,46 +81,7 @@ export default function TripsScreen() {
           ここは動的な headerRight（受信箱バッジ）だけ注入する。旅行追加は
           ヘッダーではなく右下 FAB（予定/費用タブと同じ「追加はいつも右下」）。 */}
       <Stack.Screen
-        options={{
-          headerRight: () => (
-            <View style={styles.headerButtons}>
-              <HeaderIconButton
-                accessibilityLabel={tHeader("import")}
-                onPress={() => router.push("/trips/import")}
-              >
-                <View>
-                  <InboxIcon size={20} color={theme.mutedForeground} />
-                  {(inboxCount ?? 0) > 0 && (
-                    <View style={styles.inboxBadge}>
-                      <Text style={styles.inboxBadgeText}>
-                        {(inboxCount ?? 0) > 9 ? "9+" : inboxCount}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </HeaderIconButton>
-              {/* アバター＝アカウント（設定）の入口。web の右上アバターと同じ。
-                  自分のアバターは中立 zinc（メンバー色 hue とは別系統）。 */}
-              <HeaderIconButton
-                accessibilityLabel={tSettings("heading")}
-                onPress={() => router.push("/trips/settings")}
-              >
-                {profile?.avatar_url ? (
-                  <Image
-                    source={{ uri: profile.avatar_url }}
-                    style={styles.headerAvatar}
-                  />
-                ) : (
-                  <View style={styles.headerAvatarFallback}>
-                    <Text style={styles.headerAvatarInitial}>
-                      {avatarInitial}
-                    </Text>
-                  </View>
-                )}
-              </HeaderIconButton>
-            </View>
-          ),
-        }}
+        options={{ headerRight: () => <HeaderAccountButtons /> }}
       />
       {/* 空・エラーの文言も FlatList の中（ListEmptyComponent）に置く。外の
           素の <Text> だとラージタイトルヘッダーのインセット
