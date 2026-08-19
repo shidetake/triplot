@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useState, useTransition } from "react";
 
-import { updateDisplayNameAction } from "@/app/settings/actions";
+import { updateDisplayNameAction } from "@/lib/settingsActions";
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { SubmitButton } from "@/components/submit-button";
 import { HelpTip } from "@/components/help-tip";

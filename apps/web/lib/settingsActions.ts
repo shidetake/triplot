@@ -18,7 +18,9 @@ export async function updateDisplayNameAction(formData: FormData): Promise<void>
   } = await supabase.auth.getUser();
   if (!user) return;
   await updateDisplayName(supabase, user.id, name);
-  revalidatePath("/settings");
+  // 設定はシートで開くので専用ページは無い。表示名は旅行の一覧・詳細に
+  // 出るので、いま見ているページを作り直す。
+  revalidatePath("/", "layout");
 }
 
 // 表示言語を切り替える。NEXT_LOCALE Cookie に保存（i18n/locale の解決順で最優先）。

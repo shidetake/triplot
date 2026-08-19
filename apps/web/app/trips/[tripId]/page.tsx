@@ -297,6 +297,14 @@ export default async function TripDetailPage({
       kmlPlacemarks={kmlPlacemarks}
       expenseCsvRows={expenseCsvRows}
       calendarEvents={calendarEvents}
+      members={activeMembers.map((m) => ({
+        id: m.id,
+        display_name: m.display_name,
+        color: m.color,
+        is_admin: m.is_admin,
+      }))}
+      myMemberId={me.id}
+      categories={categories}
     >
       <AppHeader
         trip={{
@@ -348,7 +356,7 @@ export default async function TripDetailPage({
       <div className="px-6 md:px-0">
       <TripDetailTabs
         schedule={
-          <section className="mt-10 space-y-6">
+          <section className="mt-4 space-y-6 md:mt-10">
             <ScheduleSection
               tripId={tripId}
               initialTz={trip.default_timezone}
@@ -411,7 +419,7 @@ export default async function TripDetailPage({
           // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
           // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
           // （見出しは広い画面だけ）。
-          <section className="mt-10 space-y-6">
+          <section className="mt-4 space-y-6 md:mt-10">
             <h2 className="hidden text-lg font-semibold md:block">
               {t("tripDetail.places")}
             </h2>
@@ -431,7 +439,7 @@ export default async function TripDetailPage({
           </section>
         }
         expenses={
-          <section className="mt-10 space-y-6">
+          <section className="mt-4 space-y-6 md:mt-10">
             {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
                 （components/use-mobile-chrome-margins.ts）。 */}
@@ -537,7 +545,7 @@ export default async function TripDetailPage({
           </section>
         }
         todos={
-          <section className="mt-10 space-y-6">
+          <section className="mt-4 space-y-6 md:mt-10">
             <div className="flex items-center gap-1.5">
               <h2 className="text-lg font-semibold">{t("tripDetail.todoList")}</h2>
               <HelpTip label={t("tripDetail.privateTodoHelpLabel")} widthClass="w-60">

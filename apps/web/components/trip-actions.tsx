@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import {
   createContext,
   useContext,
@@ -33,17 +32,13 @@ import {
 import { type Anchor, FormPopover } from "./form-popover";
 import {
   CalendarDaysIcon,
-  DownloadIcon,
   EditIcon,
   MapIcon,
   ShareIcon,
-  TagIcon,
-  TrashIcon,
-  UsersIcon,
   WalletIcon,
 } from "./icons";
 import { menuItemClass } from "./menu-item";
-import { EditTripForm } from "./edit-trip-form";
+import { TripCategoriesPanel, TripSettings } from "./trip-settings";
 import type { Currency } from "@triplot/shared/types/database";
 import { Button } from "@/components/ui/button";
 
@@ -75,19 +70,44 @@ type TripActionsCtx = {
   tripId: string;
   iAmAdmin: boolean;
   isPending: boolean;
+  tripTitle: string;
+  tripStartDate: string | null;
+  tripEndDate: string | null;
+  tripDefaultCurrency: Currency;
+  hasExpenses: boolean;
+  members: TripMember[];
+  myMemberId: string;
+  categories: TripCategory[];
   menuView: "main" | "export";
   setMenuView: (v: "main" | "export") => void;
   openShare: (anchor: Anchor) => void;
   openEdit: (anchor: Anchor) => void;
+  openCategories: (anchor: Anchor) => void;
+  openExport: (anchor: Anchor) => void;
+  closeEdit: () => void;
   onExportMap: () => void;
   onExportExpenses: () => void;
   onExportCalendar: (anchor: Anchor) => void;
   onDelete: () => void;
 };
 
+export type TripMember = {
+  id: string;
+  display_name: string;
+  color: number | null;
+  is_admin: boolean;
+};
+export type TripCategory = {
+  id: string;
+  name: string;
+  color: string;
+  icon: string;
+  key: string | null;
+};
+
 const Ctx = createContext<TripActionsCtx | null>(null);
 
-function useTripActions(): TripActionsCtx {
+export function useTripActions(): TripActionsCtx {
   const v = useContext(Ctx);
   if (!v) throw new Error("TripActionsProvider の外で使われています");
   return v;
@@ -105,6 +125,9 @@ export function TripActionsProvider({
   kmlPlacemarks,
   expenseCsvRows,
   calendarEvents,
+  members,
+  myMemberId,
+  categories,
 }: {
   children: ReactNode;
   tripId: string;
@@ -121,6 +144,10 @@ export function TripActionsProvider({
   expenseCsvRows: ExpenseCsvRow[];
   // Google カレンダー形式に変換可能な予定（自分に見えるもの）。mine フラグ付き。
   calendarEvents: CalendarExportEvent[];
+  // 旅行の設定シートに畳んだメンバー一覧・費用カテゴリ（iOS と同形）。
+  members: TripMember[];
+  myMemberId: string;
+  categories: TripCategory[];
 }) {
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる
   // （ドリルイン式。Base UI Menu の closeOnClick=false で枠内ビューを切り替える）。
@@ -130,6 +157,9 @@ export function TripActionsProvider({
   const [editAnchor, setEditAnchor] = useState<Anchor | null>(null);
   // カレンダーエクスポートのダイアログ表示位置（null で非表示）。
   const [calendarAnchor, setCalendarAnchor] = useState<Anchor | null>(null);
+  // 旅行の設定シートからのドリルイン先（この上に重ねる）。
+  const [categoriesAnchor, setCategoriesAnchor] = useState<Anchor | null>(null);
+  const [exportAnchor, setExportAnchor] = useState<Anchor | null>(null);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [isPending, start] = useTransition();
 
@@ -264,10 +294,21 @@ export function TripActionsProvider({
         tripId,
         iAmAdmin,
         isPending,
+        tripTitle,
+        tripStartDate,
+        tripEndDate,
+        tripDefaultCurrency,
+        hasExpenses: expenseCsvRows.length > 0,
+        members,
+        myMemberId,
+        categories,
         menuView,
         setMenuView,
         openShare,
         openEdit: setEditAnchor,
+        openCategories: setCategoriesAnchor,
+        openExport: setExportAnchor,
+        closeEdit: () => setEditAnchor(null),
         onExportMap,
         onExportExpenses,
         onExportCalendar,
@@ -276,7 +317,8 @@ export function TripActionsProvider({
     >
       {children}
 
-      {/* 旅行を編集（admin のみ。タイトル・日程・精算通貨） */}
+      {/* 旅行の設定（名前・日程・精算通貨・メンバー・共有・カテゴリ›・
+          エクスポート›・削除）を1枚に。iOS の「旅行を編集」シートと同形。 */}
       {editAnchor && (
         <FormPopover
           anchor={editAnchor}
@@ -284,15 +326,65 @@ export function TripActionsProvider({
           label={t("editTrip")}
           fullScreenOnNarrow
         >
-          <EditTripForm
-            tripId={tripId}
-            title={tripTitle}
-            startDate={tripStartDate}
-            endDate={tripEndDate}
-            defaultCurrency={tripDefaultCurrency}
-            hasExpenses={expenseCsvRows.length > 0}
-            onDone={() => setEditAnchor(null)}
-          />
+          <TripSettings />
+        </FormPopover>
+      )}
+
+      {/* ドリルイン: 費用カテゴリ管理（旅行の設定の上に重ねる） */}
+      {categoriesAnchor && (
+        <FormPopover
+          anchor={categoriesAnchor}
+          onClose={() => setCategoriesAnchor(null)}
+          label={t("manageCategories")}
+          fullScreenOnNarrow
+        >
+          <TripCategoriesPanel />
+        </FormPopover>
+      )}
+
+      {/* ドリルイン: エクスポート（出力先を選ぶ） */}
+      {exportAnchor && (
+        <FormPopover
+          anchor={exportAnchor}
+          onClose={() => setExportAnchor(null)}
+          label={t("export")}
+          fullScreenOnNarrow
+        >
+          <div className="w-[min(20rem,calc(100vw-2rem))] py-1">
+            <button
+              type="button"
+              onClick={(e) => {
+                setExportAnchor(null);
+                onExportCalendar({ x: e.clientX, y: e.clientY });
+              }}
+              className={`flex w-full items-center gap-2 ${menuItemClass}`}
+            >
+              <CalendarDaysIcon size={16} className="text-muted-foreground" />
+              {t("exportCalendar")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExportAnchor(null);
+                onExportMap();
+              }}
+              className={`flex w-full items-center gap-2 ${menuItemClass}`}
+            >
+              <MapIcon size={16} className="text-muted-foreground" />
+              {t("exportMap")}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setExportAnchor(null);
+                onExportExpenses();
+              }}
+              className={`flex w-full items-center gap-2 ${menuItemClass}`}
+            >
+              <WalletIcon size={16} className="text-muted-foreground" />
+              {t("exportExpenses")}
+            </button>
+          </div>
         </FormPopover>
       )}
 
@@ -355,235 +447,41 @@ export function TripShareButton() {
     </Button>
   );
 }
-// 「この旅行」の操作一覧。広い画面のドロップダウンと狭い画面のシートで同じ
-// 中身を出すため、行の仕様を1つの配列に集約し、描画側だけ差し替える。
-type Row =
-  | { kind: "link"; key: string; icon: ReactNode; label: string; href: string }
-  | {
-      kind: "action";
-      key: string;
-      icon: ReactNode;
-      label: string;
-      onClick: (anchor: Anchor) => void;
-      danger?: boolean;
-      disabled?: boolean;
-    }
-  | {
-      kind: "drill";
-      key: string;
-      icon: ReactNode;
-      label: string;
-      to: "main" | "export";
-    };
-
-const MUTED = "text-muted-foreground";
+// アカウントメニュー／シートに差し込む「旅行を編集」の行。
+//
+// 以前は「この旅行 ▸」のサブメニューに6項目（旅行を編集・メンバー管理・
+// 費用カテゴリ管理・共有・エクスポート・旅行を削除）を並べていたが、iOS は
+// 同じものを1枚のシートに畳んでいるので、そちらに揃えて**入口を1つ**にした
+// （中身は trip-settings.tsx）。行の見た目はアカウントの他の行と同じ menuItemClass。
 const ROW = `flex items-center gap-2 ${menuItemClass}`;
-// destructive な行は hover 色が違うので定数を使わず個別に書く（ui-guidelines）。
-const DANGER_ROW =
-  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50";
 
-function useTripRows(): Row[] {
-  const t = useTranslations("tripActions");
-  const c = useTripActions();
-  if (c.menuView === "export") {
-    return [
-      {
-        kind: "drill",
-        key: "back",
-        icon: <span aria-hidden>‹</span>,
-        label: t("back"),
-        to: "main",
-      },
-      {
-        kind: "action",
-        key: "exportCalendar",
-        icon: <CalendarDaysIcon size={16} className={MUTED} />,
-        label: t("exportCalendar"),
-        onClick: c.onExportCalendar,
-      },
-      {
-        kind: "action",
-        key: "exportMap",
-        icon: <MapIcon size={16} className={MUTED} />,
-        label: t("exportMap"),
-        onClick: c.onExportMap,
-      },
-      {
-        kind: "action",
-        key: "exportExpenses",
-        icon: <WalletIcon size={16} className={MUTED} />,
-        label: t("exportExpenses"),
-        onClick: c.onExportExpenses,
-      },
-    ];
-  }
-  return [
-    ...(c.iAmAdmin
-      ? [
-          {
-            kind: "action" as const,
-            key: "editTrip",
-            icon: <EditIcon size={16} className={MUTED} />,
-            label: t("editTrip"),
-            onClick: c.openEdit,
-          },
-        ]
-      : []),
-    {
-      kind: "link",
-      key: "members",
-      icon: <UsersIcon size={16} className={MUTED} />,
-      label: t("manageMembers"),
-      href: `/trips/${c.tripId}/members`,
-    },
-    {
-      kind: "link",
-      key: "categories",
-      icon: <TagIcon size={16} className={MUTED} />,
-      label: t("manageCategories"),
-      href: `/trips/${c.tripId}/categories`,
-    },
-    {
-      kind: "action",
-      key: "share",
-      icon: <ShareIcon size={16} className={MUTED} />,
-      label: t("share"),
-      onClick: c.openShare,
-    },
-    {
-      kind: "drill",
-      key: "export",
-      icon: <DownloadIcon size={16} className={MUTED} />,
-      label: t("export"),
-      to: "export",
-    },
-    ...(c.iAmAdmin
-      ? [
-          {
-            kind: "action" as const,
-            key: "deleteTrip",
-            icon: <TrashIcon size={16} />,
-            label: t("deleteTrip"),
-            onClick: c.onDelete,
-            danger: true,
-            disabled: c.isPending,
-          },
-        ]
-      : []),
-  ];
-}
-
-const chevron = (
-  <span aria-hidden className="ml-auto text-subtle-foreground">
-    ›
-  </span>
-);
-
-// 狭い画面のシート用。アカウントのシートの中に「この旅行」の節として平らに
-// 並べる（iOS のグループ化リストと同じ形。シートの中で入れ子のポップアップを
-// 開くのは扱いにくいので、節見出し＋一覧にする）。
+// 狭い画面のシート用（素の button）。
 export function TripMenuRows() {
   const t = useTranslations("tripActions");
-  const { menuView, setMenuView } = useTripActions();
-  const rows = useTripRows();
+  const { openEdit } = useTripActions();
   return (
-    <div>
-      {menuView === "main" && (
-        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
-          {t("thisTrip")}
-        </div>
-      )}
-      {rows.map((r) =>
-        r.kind === "link" ? (
-          <Link key={r.key} href={r.href} className={ROW}>
-            {r.icon}
-            {r.label}
-          </Link>
-        ) : r.kind === "drill" ? (
-          <button
-            key={r.key}
-            type="button"
-            onClick={() => setMenuView(r.to)}
-            className={r.to === "main" ? `${ROW} ${MUTED}` : ROW}
-          >
-            {r.icon}
-            {r.label}
-            {r.to === "export" && chevron}
-          </button>
-        ) : (
-          <button
-            key={r.key}
-            type="button"
-            disabled={r.disabled}
-            onClick={(e) => r.onClick({ x: e.clientX, y: e.clientY })}
-            className={r.danger ? DANGER_ROW : ROW}
-          >
-            {r.icon}
-            {r.label}
-          </button>
-        ),
-      )}
-    </div>
+    <button
+      type="button"
+      onClick={(e) => openEdit({ x: e.clientX, y: e.clientY })}
+      className={`w-full ${ROW}`}
+    >
+      <EditIcon size={16} className="text-muted-foreground" />
+      {t("editTrip")}
+    </button>
   );
 }
 
-// 広い画面のドロップダウン用。アカウントメニューの中の「この旅行 ▸」サブメニュー。
-// アカウント（自分）と旅行（対象）は別の意味なので、同じ一覧に混ぜず1段階挟んで
-// 壁を作る（ui-guidelines「同じ目的には同じコントロール」）。
+// 広い画面のドロップダウン用（Base UI Menu の中で使う版）。中身は同じ1行。
 export function TripMenuSection() {
   const t = useTranslations("tripActions");
-  const { setMenuView } = useTripActions();
-  const rows = useTripRows();
+  const { openEdit } = useTripActions();
   return (
-    <Menu.SubmenuRoot
-      onOpenChange={(open) => {
-        if (!open) setMenuView("main");
-      }}
+    <Menu.Item
+      onClick={(e) => openEdit({ x: e.clientX, y: e.clientY })}
+      className={ROW}
     >
-      <Menu.SubmenuTrigger className={ROW}>
-        <MapIcon size={16} className={MUTED} />
-        {t("thisTrip")}
-        {chevron}
-      </Menu.SubmenuTrigger>
-      <Menu.Portal>
-        <Menu.Positioner align="start" sideOffset={4} className="z-50">
-          <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
-            {rows.map((r) =>
-              r.kind === "link" ? (
-                <Menu.Item
-                  key={r.key}
-                  render={<Link href={r.href} />}
-                  className={ROW}
-                >
-                  {r.icon}
-                  {r.label}
-                </Menu.Item>
-              ) : r.kind === "drill" ? (
-                <Menu.Item
-                  key={r.key}
-                  closeOnClick={false}
-                  onClick={() => setMenuView(r.to)}
-                  className={r.to === "main" ? `${ROW} ${MUTED}` : ROW}
-                >
-                  {r.icon}
-                  {r.label}
-                  {r.to === "export" && chevron}
-                </Menu.Item>
-              ) : (
-                <Menu.Item
-                  key={r.key}
-                  disabled={r.disabled}
-                  onClick={(e) => r.onClick({ x: e.clientX, y: e.clientY })}
-                  className={r.danger ? DANGER_ROW : ROW}
-                >
-                  {r.icon}
-                  {r.label}
-                </Menu.Item>
-              ),
-            )}
-          </Menu.Popup>
-        </Menu.Positioner>
-      </Menu.Portal>
-    </Menu.SubmenuRoot>
+      <EditIcon size={16} className="text-muted-foreground" />
+      {t("editTrip")}
+    </Menu.Item>
   );
 }

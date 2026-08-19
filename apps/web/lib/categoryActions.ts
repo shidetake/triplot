@@ -17,7 +17,7 @@ import { createClient } from "@/lib/supabase/server";
 
 function revalidate(tripId: string) {
   revalidatePath(`/trips/${tripId}`);
-  revalidatePath(`/trips/${tripId}/categories`);
+  revalidatePath(`/trips/${tripId}`);
 }
 
 export async function createCategoryAction(

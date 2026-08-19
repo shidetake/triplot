@@ -8,6 +8,7 @@ import { AccountMenu } from "@/components/account-menu";
 import { ChevronIcon } from "@/components/icons";
 import { ImportSheetButton } from "@/components/import-sheet";
 import { InlineDivider } from "@/components/inline-divider";
+import { resolveTheme } from "@/i18n/theme.server";
 import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
 
@@ -79,6 +80,8 @@ export async function AppHeader({
   const backLabel = await getTranslations("tripDetail").then((tt) =>
     tt("backToTrips"),
   );
+  // 設定シートのテーマ選択の初期値（cookie から解決）。
+  const currentTheme = await resolveTheme();
 
   return (
     // z-30: ページ内容より上、ポップオーバー/モーダル（z-40/50）より下。
@@ -127,6 +130,7 @@ export async function AppHeader({
             version={getVersion()}
             tripMenu={tripMenu}
             tripRows={tripRows}
+            currentTheme={currentTheme}
           />
         </div>
       </div>

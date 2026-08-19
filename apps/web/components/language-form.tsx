@@ -4,7 +4,7 @@ import { useLocale } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
-import { setLocaleAction } from "@/app/settings/actions";
+import { setLocaleAction } from "@/lib/settingsActions";
 
 // 言語名は endonym（その言語自身での表記）で出す＝UI ロケールに依らず固定。
 const OPTIONS = [

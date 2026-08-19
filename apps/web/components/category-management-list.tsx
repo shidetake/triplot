@@ -8,7 +8,7 @@ import {
   createCategoryAction,
   updateCategoryAction,
   deleteCategoryAction,
-} from "@/app/trips/[tripId]/categories/actions";
+} from "@/lib/categoryActions";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { CloseIcon, PlusIcon, TrashIcon } from "./icons";

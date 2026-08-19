@@ -15,10 +15,12 @@ import {
 } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackForm } from "./feedback-form";
+import { SettingsSheet } from "./settings-sheet";
 import { type Anchor, FormPopover, NarrowSheet } from "./form-popover";
 import { menuItemClass } from "./menu-item";
 import { selfAvatarClass } from "./self-avatar";
 import { useMediaQuery } from "./use-media-query";
+import type { Theme } from "@/i18n/theme";
 
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
 // タップすると email / 設定 / ログアウト等が出る。Apple ログインは写真を返さないので
@@ -41,6 +43,7 @@ export function AccountMenu({
   openFeedbackCount = 0,
   deployEnv,
   version,
+  currentTheme,
   tripMenu,
   tripRows,
 }: {
@@ -56,6 +59,8 @@ export function AccountMenu({
   // （Settings/About 相当）に合わせてここに移した。
   deployEnv: string;
   version: string;
+  // 設定シート（テーマ・言語）の初期値。cookie から解決した現在のテーマ。
+  currentTheme: Theme;
   // 旅行詳細でだけ差し込まれる旅行の操作（trip-actions.tsx）。ヘッダーを1本に
   // まとめた結果アカウントと旅行の入口が隣り合ったので、旅行の操作はここに
   // 吸収した。ただし意味が違うものを同じ一覧に混ぜないよう、広い画面は
@@ -72,6 +77,8 @@ export function AccountMenu({
   // （常駐する）コンポーネントの state で開閉する（create-trip-button と同じ
   // anchor パターン）。
   const [feedbackAnchor, setFeedbackAnchor] = useState<Anchor | null>(null);
+  // 設定もページ遷移でなくオーバーレイで開く（元の画面に戻れるように）。
+  const [settingsAnchor, setSettingsAnchor] = useState<Anchor | null>(null);
 
   const handleSignOut = async () => {
     const supabase = createClient();
@@ -117,6 +124,17 @@ export function AccountMenu({
     </span>
   );
 
+  const settingsHost = settingsAnchor && (
+    <FormPopover
+      anchor={settingsAnchor}
+      onClose={() => setSettingsAnchor(null)}
+      label={t("settings.heading")}
+      fullScreenOnNarrow
+    >
+      <SettingsSheet currentTheme={currentTheme} />
+    </FormPopover>
+  );
+
   const feedbackHost = feedbackAnchor && (
     <FormPopover
       anchor={feedbackAnchor}
@@ -153,10 +171,17 @@ export function AccountMenu({
               {emailRow}
               {tripRows}
               {tripRows && <div className="my-1 border-t border-foreground/5" />}
-              <Link href="/settings" className={rowClass}>
+              <button
+                type="button"
+                onClick={(e) => {
+                  setSheetOpen(false);
+                  setSettingsAnchor({ x: e.clientX, y: e.clientY });
+                }}
+                className={rowClass}
+              >
                 <SettingsIcon size={16} className="text-muted-foreground" />
                 {t("settings.heading")}
-              </Link>
+              </button>
               <button
                 type="button"
                 onClick={(e) => {
@@ -187,6 +212,7 @@ export function AccountMenu({
             </div>
           </NarrowSheet>
         )}
+        {settingsHost}
         {feedbackHost}
       </>
     );
@@ -217,7 +243,12 @@ export function AccountMenu({
                   <div className="my-1 border-t border-foreground/5" />
                 </>
               )}
-              <Menu.Item render={<Link href="/settings" />} className={rowClass}>
+              <Menu.Item
+                onClick={(e) =>
+                  setSettingsAnchor({ x: e.clientX, y: e.clientY })
+                }
+                className={rowClass}
+              >
                 <SettingsIcon size={16} className="text-muted-foreground" />
                 {t("settings.heading")}
               </Menu.Item>
@@ -247,6 +278,7 @@ export function AccountMenu({
         </Menu.Portal>
       </Menu.Root>
 
+      {settingsHost}
       {feedbackHost}
     </>
   );
