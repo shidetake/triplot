@@ -15,7 +15,7 @@ import {
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import { useTranslations } from "use-intl";
 
-import { avatarStyle, firstChar } from "@triplot/shared/memberColors";
+import { firstChar } from "@triplot/shared/memberColors";
 import {
   createTodo,
   deleteTodo,
@@ -41,6 +41,7 @@ import {
 import { PrivateBadge } from "@/components/private-badge";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { avatarStyle } from "@/lib/themeColor";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -548,18 +549,15 @@ function Avatar({ member }: { member: MemberLite }) {
   if (member.avatarUrl) {
     return <Image source={{ uri: member.avatarUrl }} style={styles.avatar} />;
   }
-  const s = avatarStyle(member.color) as {
-    backgroundColor?: string;
-    color?: string;
-  };
+  const s = avatarStyle(member.color, theme.dark);
   return (
     <View
       style={[
         styles.avatar,
-        { backgroundColor: s.backgroundColor ?? theme.fgAlpha(0.08) },
+        { backgroundColor: s?.backgroundColor ?? theme.fgAlpha(0.08) },
       ]}
     >
-      <Text style={[styles.avatarText, { color: s.color ?? theme.mutedForeground }]}>
+      <Text style={[styles.avatarText, { color: s?.color ?? theme.mutedForeground }]}>
         {firstChar(member.display_name)}
       </Text>
     </View>

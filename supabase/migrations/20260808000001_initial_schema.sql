@@ -1202,7 +1202,9 @@ CREATE OR REPLACE FUNCTION "public"."pick_member_color"("p_trip_id" "text") RETU
     SET "search_path" TO 'public'
     AS $$
 declare
-  green_hue int := 140;
+  -- 「確定／全員」に予約した色相（アプリ側の GREEN_HUE と同値。
+  -- 角度は OKLCH の色相環）。メンバー色はここからも距離を取る。
+  green_hue int := 162;
   used_hues int[];
   best_hue int := 0;
   best_dist int := -1;

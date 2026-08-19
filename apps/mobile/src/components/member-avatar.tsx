@@ -1,6 +1,8 @@
 import { Image, StyleSheet, Text, View } from "react-native";
 
-import { avatarStyle, firstChar } from "@triplot/shared/memberColors";
+import { firstChar } from "@triplot/shared/memberColors";
+
+import { avatarStyle } from "@/lib/themeColor";
 
 import { useTheme } from "@/lib/theme";
 
@@ -25,23 +27,20 @@ export function MemberAvatar({
   if (member.avatarUrl) {
     return <Image source={{ uri: member.avatarUrl }} style={round} />;
   }
-  const s = avatarStyle(member.color) as {
-    backgroundColor?: string;
-    color?: string;
-  };
+  const s = avatarStyle(member.color, t.dark);
   return (
     <View
       style={[
         styles.circle,
         round,
-        { backgroundColor: s.backgroundColor ?? t.fgAlpha(0.08) },
+        { backgroundColor: s?.backgroundColor ?? t.fgAlpha(0.08) },
       ]}
     >
       <Text
         style={[
           styles.text,
           {
-            color: s.color ?? t.mutedForeground,
+            color: s?.color ?? t.mutedForeground,
             fontSize: Math.round(size * 0.55),
           },
         ]}

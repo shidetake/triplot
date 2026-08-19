@@ -4,9 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import {
-  eventHueBg,
-  eventHueText,
-  eventHueSelectedBorder,
+  eventBlockColors,
+  eventSelectedBorder,
   GREEN_HUE,
   pickEventColor,
   type EventColor,
@@ -21,7 +20,7 @@ import {
   computeGhostLaneOverrides,
   GHOST_LANE_KEY,
 } from "@triplot/shared/ghostLanes";
-import { vividColor } from "@triplot/shared/memberColors";
+import { dotStyle, ld } from "@/lib/themeColor";
 
 import { CheckIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
@@ -175,7 +174,7 @@ export function WeekCalendar({
             <span
               key={id}
               className="h-1.5 w-1.5 rounded-full"
-              style={{ backgroundColor: vividColor(hue) ?? "#a1a1aa" }}
+              style={dotStyle(hue)}
             />
           );
         })}
@@ -228,13 +227,16 @@ export function WeekCalendar({
           : color.hue;
     return {
       className: sel ? "z-10" : "",
-      style: {
-        backgroundColor: eventHueBg(hue, hov),
-        color: eventHueText(hue),
-        ...(sel
-          ? { boxShadow: `inset 0 0 0 2px ${eventHueSelectedBorder(hue)}` }
-          : null),
-      },
+      style: (() => {
+        const c = eventBlockColors(hue, hov);
+        return {
+          backgroundColor: ld(c.bg),
+          color: ld(c.fg),
+          ...(sel
+            ? { boxShadow: `inset 0 0 0 2px ${ld(eventSelectedBorder(hue))}` }
+            : null),
+        };
+      })(),
     };
   };
   const { groups, columns, timed, transits, allDayBars, allDayRowCount } =

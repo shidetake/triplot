@@ -40,6 +40,7 @@ import {
   InlineNativePicker,
   PickerChip,
 } from "./datetime-field";
+import { ColorDisc } from "./color-badge";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
@@ -460,11 +461,16 @@ export function ExpenseForm({
         >
           <View style={styles.categoryValue}>
             {selectedCategory && (
-              <ExpenseCategoryIcon
-                icon={selectedCategory.icon}
-                size={16}
-                color={selectedCategory.color}
-              />
+              <ColorDisc color={selectedCategory.color} size={20}>
+                {(glyph) => (
+                  <ExpenseCategoryIcon
+                    icon={selectedCategory.icon}
+                    size={20}
+                    inset={0.18}
+                    color={glyph}
+                  />
+                )}
+              </ColorDisc>
             )}
             <Text style={styles.selectText}>
               {selectedCategory ? catName(selectedCategory) : ""}
@@ -755,7 +761,16 @@ export function ExpenseForm({
                 }}
                 style={styles.pickerRow}
               >
-                <ExpenseCategoryIcon icon={c.icon} size={18} color={c.color} />
+                <ColorDisc color={c.color} size={20}>
+                  {(glyph) => (
+                    <ExpenseCategoryIcon
+                      icon={c.icon}
+                      size={20}
+                      inset={0.18}
+                      color={glyph}
+                    />
+                  )}
+                </ColorDisc>
                 <Text
                   style={[
                     styles.pickerText,

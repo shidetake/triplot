@@ -19,6 +19,7 @@ import {
 } from "@triplot/shared/data/categories";
 import { deriveCategories, type Category } from "@triplot/shared/tripDerive";
 
+import { ColorDisc } from "@/components/color-badge";
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { PlusIcon, TrashIcon, XIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
@@ -138,21 +139,16 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
         const isCustom = c.key == null;
         return (
           <View key={c.id} style={styles.row}>
-            <View
-              style={[
-                styles.iconCircle,
-                {
-                  backgroundColor: isEditing ? CUSTOM_CATEGORY_COLOR : c.color,
-                },
-              ]}
-            >
-              <ExpenseCategoryIcon
-                icon={isEditing ? CUSTOM_CATEGORY_ICON : c.icon}
-                size={24}
-                inset={0.18}
-                color="#fff"
-              />
-            </View>
+            <ColorDisc color={isEditing ? CUSTOM_CATEGORY_COLOR : c.color} size={24}>
+              {(glyph) => (
+                <ExpenseCategoryIcon
+                  icon={isEditing ? CUSTOM_CATEGORY_ICON : c.icon}
+                  size={24}
+                  inset={0.18}
+                  color={glyph}
+                />
+              )}
+            </ColorDisc>
             {isEditing ? (
               <TextInput
                 autoFocus
@@ -190,19 +186,16 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
 
       {isAdding ? (
         <View style={styles.row}>
-          <View
-            style={[
-              styles.iconCircle,
-              { backgroundColor: CUSTOM_CATEGORY_COLOR },
-            ]}
-          >
-            <ExpenseCategoryIcon
-              icon={CUSTOM_CATEGORY_ICON}
-              size={24}
-              inset={0.18}
-              color="#fff"
-            />
-          </View>
+          <ColorDisc color={CUSTOM_CATEGORY_COLOR} size={24}>
+            {(glyph) => (
+              <ExpenseCategoryIcon
+                icon={CUSTOM_CATEGORY_ICON}
+                size={24}
+                inset={0.18}
+                color={glyph}
+              />
+            )}
+          </ColorDisc>
           <TextInput
             autoFocus
             value={addValue}
@@ -244,13 +237,6 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       gap: 10,
       paddingVertical: 6,
-    },
-    iconCircle: {
-      width: 24,
-      height: 24,
-      borderRadius: 12,
-      alignItems: "center",
-      justifyContent: "center",
     },
     nameButton: { flex: 1, paddingVertical: 4 },
     name: { fontSize: 14, color: t.foreground },

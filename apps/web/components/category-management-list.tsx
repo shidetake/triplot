@@ -12,6 +12,7 @@ import {
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { CloseIcon, PlusIcon, TrashIcon } from "./icons";
+import { ColorDisc } from "./color-badge";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { inputClass } from "./input-class";
 
@@ -107,16 +108,13 @@ export function CategoryManagementList({
 
         return (
           <div key={c.id} className="flex items-center gap-2">
-            <span
-              className="block h-6 w-6 shrink-0 rounded-full text-white"
-              style={{ backgroundColor: isEditing ? CUSTOM_COLOR : c.color }}
-            >
+            <ColorDisc color={isEditing ? CUSTOM_COLOR : c.color} size={24}>
               <ExpenseCategoryIcon
                 icon={isEditing ? CUSTOM_ICON : c.icon}
                 size={24}
                 inset={0.18}
               />
-            </span>
+            </ColorDisc>
 
             {isEditing ? (
               <input
@@ -168,12 +166,9 @@ export function CategoryManagementList({
       {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる） */}
       {isAdding ? (
         <div className="flex items-center gap-2">
-          <span
-            className="block h-6 w-6 shrink-0 rounded-full text-white"
-            style={{ backgroundColor: CUSTOM_COLOR }}
-          >
+          <ColorDisc color={CUSTOM_COLOR} size={24}>
             <ExpenseCategoryIcon icon={CUSTOM_ICON} size={24} inset={0.18} />
-          </span>
+          </ColorDisc>
           <input
             ref={addInputRef}
             value={addValue}

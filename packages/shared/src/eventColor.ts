@@ -14,7 +14,9 @@
 // もしくは明示的に全 active member が列挙されている場合の両方を含む。
 // （UI 仕様: フォームの "all" モードは空配列で送られる）
 
-export const GREEN_HUE = 140;
+// 「確定／全員」に予約した色相。色相環（OKLCH）上でここだけメンバー色に
+// 使わせず、pick_member_color がここからも距離を取るように割り当てる。
+export const GREEN_HUE = 162;
 
 export type EventColor =
   | { kind: "private" }
@@ -54,24 +56,28 @@ export function pickEventColor(input: {
 }
 
 // ─────────────────────────────────────────────────────────
-// hue → CSS。トーンはメンバーチップ (chipStyle) と統一。
-// 終日／timed／transit 全ブロック共通（枠線なし・地色濃いめに統一済み。
+// hue → 色。トーンはメンバーチップと同じ役割ラダー（colorRoles.ts）から
+// 取る。終日／timed／transit 全ブロック共通（枠線なし・地色濃いめに統一済み。
 // 旧 eventBlockHue*（枠線あり・薄め）は実機で見比べて廃止した）。
+// 返すのはライト/ダークの対で、テーマの解決はプラットフォーム側。
 // ─────────────────────────────────────────────────────────
 
-export function eventHueBg(hue: number, hovered: boolean): string {
-  // 枠なしなので背景をやや濃く（slate-200/300 相当のコントラスト）。
-  return hovered
-    ? `hsl(${hue}, 80%, 78%)`
-    : `hsl(${hue}, 85%, 85%)`;
+import { NEUTRAL, roleColor, type ColorPair } from "./colorRoles";
+
+export function eventBlockColors(
+  hue: number,
+  hovered: boolean,
+): { bg: ColorPair; fg: ColorPair } {
+  const role = hovered ? "surfaceHover" : "surface";
+  return {
+    bg: roleColor(hue, role) ?? NEUTRAL[role],
+    fg: roleColor(hue, "onSurface") ?? NEUTRAL.onSurface,
+  };
 }
 
-export function eventHueText(hue: number): string {
-  return `hsl(${hue}, 45%, 25%)`;
-}
-
-export function eventHueSelectedBorder(hue: number): string {
-  // 選択中の強調枠。地色と同じ hue のまま濃く・太くする（黒枠は地色と
-  // 無関係な色が乗って野暮ったく、別色はメンバー色と衝突しうるため）。
-  return `hsl(${hue}, 65%, 50%)`;
+// 選択中の強調枠。地色と同じ hue のまま濃くする（黒枠は地色と無関係な色が
+// 乗って野暮ったく、別色はメンバー色と衝突しうるため）。面に対して 3:1 以上
+// あることは colorRoles.test.ts が全色相で保証する。
+export function eventSelectedBorder(hue: number): ColorPair {
+  return roleColor(hue, "outline") ?? NEUTRAL.outline;
 }

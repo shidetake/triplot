@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import { useTranslations } from "next-intl";
 
-import { chipStyle } from "@triplot/shared/memberColors";
+import { chipStyle } from "@/lib/themeColor";
 import type { LatLng } from "@triplot/shared/placeMap";
 import type { TripTzTimeline } from "@triplot/shared/schedule";
 import type { Currency } from "@triplot/shared/types/database";

@@ -30,6 +30,7 @@ import type { Currency } from "@triplot/shared/types/database";
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon, XIcon } from "@/components/icons";
+import { ColorBadge } from "@/components/color-badge";
 import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { LoadError } from "@/components/load-error";
@@ -288,21 +289,18 @@ export default function ExpensesTab() {
                   <View style={styles.expenseInfoRow}>
                     <View style={styles.expenseLeftGroup}>
                       {category && (
-                        <View
-                          style={[
-                            styles.categoryBadge,
-                            { backgroundColor: category.color },
-                          ]}
+                        <ColorBadge
+                          color={category.color}
+                          icon={(glyph) => (
+                            <ExpenseCategoryIcon
+                              icon={category.icon}
+                              size={13}
+                              color={glyph}
+                            />
+                          )}
                         >
-                          <ExpenseCategoryIcon
-                            icon={category.icon}
-                            size={13}
-                            color="#fff"
-                          />
-                          <Text style={styles.categoryName}>
-                            {category.name}
-                          </Text>
-                        </View>
+                          {category.name}
+                        </ColorBadge>
                       )}
                       <Text style={styles.amount}>
                         {formatAmount(amountInDefault, defaultCurrency)}
@@ -538,16 +536,6 @@ const makeStyles = (t: Theme) =>
     gap: 8,
     flexShrink: 0,
   },
-  // カテゴリの色付きピル（web の ColorBadge と同形: 色地・白文字・rounded-full）。
-  categoryBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    borderRadius: 999,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  categoryName: { fontSize: 12, fontWeight: "500", color: "#fff" },
   metaGroup: { flexDirection: "row", alignItems: "center", gap: 4 },
   placeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   amount: { fontSize: 14, fontWeight: "500", color: t.foreground },

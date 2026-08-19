@@ -43,7 +43,8 @@ import {
   TOKYO,
 } from "@triplot/shared/placeMap";
 
-import { pastelBgColor, vividColor } from "@triplot/shared/memberColors";
+import { pinColors } from "@triplot/shared/memberColors";
+import { GREEN_HUE } from "@triplot/shared/eventColor";
 import { useTranslations } from "next-intl";
 
 import { NarrowSheet } from "./form-popover";
@@ -480,11 +481,13 @@ export function PlaceMap({
               // （選択を外すと元のピンに戻る。iOS と同じ挙動）。
               const creatorHue = memberHueById.get(p.created_by_member_id);
               const isDarkMap = colorScheme === "DARK";
-              const bg = isDarkMap
-                ? pastelBgColor(p.tentative ? creatorHue : 140)
-                : p.tentative
-                  ? (vividColor(creatorHue) ?? "#6b7280")
-                  : "#10b981";
+              // 未確定は作成者のメンバー色、確定は予約色（GREEN_HUE）。
+              // 地図はテーマを自前で解決済み（colorScheme）なので対から選ぶ。
+              const pin = pinColors(
+                p.tentative ? creatorHue : GREEN_HUE,
+                p.tentative,
+              );
+              const mode = isDarkMap ? "dark" : "light";
               const isSel = selected?.kind === "saved" && selected.id === p.id;
               return (
                 <AdvancedMarker
@@ -497,12 +500,11 @@ export function PlaceMap({
                     <RedPin />
                   ) : (
                     <div
-                      className={`flex h-7 w-7 items-center justify-center rounded-full border-2 shadow ${
-                        isDarkMap ? "border-gray-500" : "border-white"
-                      } ${p.tentative ? "opacity-50" : ""}`}
+                      className="flex h-7 w-7 items-center justify-center rounded-full border-2 shadow"
                       style={{
-                        backgroundColor: bg,
-                        color: isDarkMap ? "#202124" : "white",
+                        backgroundColor: pin.bg[mode],
+                        borderColor: pin.border[mode],
+                        color: pin.glyph[mode],
                       }}
                     >
                       <PlaceIcon icon={p.icon} size={16} />

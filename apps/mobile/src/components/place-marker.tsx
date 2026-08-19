@@ -2,27 +2,17 @@ import { Text, View } from "react-native";
 import Svg, { Circle, Path } from "react-native-svg";
 
 import { getIconPath } from "@triplot/shared/placeIcons";
-import { pastelBgColor } from "@triplot/shared/memberColors";
+import { pinColors } from "@triplot/shared/memberColors";
+import { GREEN_HUE } from "@triplot/shared/eventColor";
 
 import { useTheme } from "@/lib/theme";
 
-// 未確定マーカー（ライトモード）の地色。vividColor と同じ hue で明度だけ
-// 上げた不透明色（透明度は使わない＝PlaceMarker 本体のコメント参照）。
-// hue が無い時は vividColor のフォールバック（#6b7280）を明るくした中立
-// グレーにする。
-function tentativeFillColor(hue: number | null): string {
-  if (hue == null || !Number.isFinite(hue) || hue < 0 || hue >= 360) {
-    return "#a8adb8";
-  }
-  return `hsl(${Math.round(hue)}, 55%, 68%)`;
-}
-
 // 保存済み場所のマーカー（web の place-map と同形＝色付き丸＋白縁＋白カテゴリ
-// アイコン）。確定=green(#10b981)、未確定(tentative)=作成者のメンバー色を
-// 明るくした不透明色（tentativeFillColor。web は同じ見た目を opacity-50 で
-// 表すが、RN は下のコメントの理由で opacity を使わない）。hue が無い未確定は
-// 中立グレー。ダーク地図では web と同じく「パステル面＋グレー縁＋濃色アイコン」
-// に反転して地図に馴染ませる。
+// アイコン）。確定=予約色(GREEN_HUE)、未確定(tentative)=作成者のメンバー色。
+// 配色は pinColors（役割ラダー）から取るので色相による明るさのばらつきが無い。
+// ダーク地図では web と同じく「パステル面＋グレー縁＋濃色アイコン」に反転して
+// 地図に馴染ませる。web は未確定を opacity-50 で薄く見せるが、RN は下の
+// コメントの理由で opacity を使わず、最初から明るい不透明色で表す。
 export function PlaceMarker({
   icon,
   tentative,
@@ -35,13 +25,11 @@ export function PlaceMarker({
   size?: number;
 }) {
   const t = useTheme();
-  const bg = t.dark
-    ? pastelBgColor(tentative ? creatorHue : 140)
-    : tentative
-      ? tentativeFillColor(creatorHue)
-      : "#10b981";
-  const border = t.dark ? "#6b7280" : "#fff";
-  const glyph = t.dark ? "#202124" : "#fff";
+  const m = t.dark ? "dark" : "light";
+  const pin = pinColors(tentative ? creatorHue : GREEN_HUE, tentative);
+  const bg = pin.bg[m];
+  const border = pin.border[m];
+  const glyph = pin.glyph[m];
   return (
     // 影を付けない・opacity で薄めない: react-native-maps は Marker を
     // 画像化（ビットマップ化）して地図に置くため、CSS の box-shadow や

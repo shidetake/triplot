@@ -13,10 +13,8 @@ import {
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useTranslations } from "use-intl";
 
-import { vividColor } from "@triplot/shared/memberColors";
 import {
-  eventHueBg,
-  eventHueText,
+  eventBlockColors,
   GREEN_HUE,
   pickEventColor,
 } from "@triplot/shared/eventColor";
@@ -32,6 +30,7 @@ import {
 import type { EventRow } from "@triplot/shared/tripDerive";
 
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { dotStyle } from "@/lib/themeColor";
 
 const ticketMarkSource = require("../../assets/marks/reservation-ticket.png");
 const checkMarkSource = require("../../assets/marks/reservation-check.png");
@@ -448,9 +447,11 @@ export function WeekCalendar({
         mixed: c.kind === "mixed",
       };
     }
+    const cols = eventBlockColors(hue, false);
+    const m = t.dark ? "dark" : "light";
     return {
-      bg: eventHueBg(hue, false),
-      text: eventHueText(hue),
+      bg: cols.bg[m],
+      text: cols.fg[m],
       dim: false,
       mixed: c.kind === "mixed",
     };
@@ -468,7 +469,7 @@ export function WeekCalendar({
             key={id}
             style={[
               styles.dot,
-              { backgroundColor: vividColor(memberHueById.get(id) ?? null) ?? "#a1a1aa" },
+              dotStyle(memberHueById.get(id) ?? null, t.dark),
             ]}
           />
         ))}

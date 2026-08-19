@@ -9,7 +9,7 @@ import {
   removeMemberAction,
   updateMyMemberAction,
 } from "@/app/trips/[tripId]/actions";
-import { chipStyle } from "@triplot/shared/memberColors";
+import { chipStyle } from "@/lib/themeColor";
 
 import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";

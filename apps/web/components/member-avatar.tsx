@@ -1,4 +1,5 @@
-import { avatarStyle, firstChar } from "@triplot/shared/memberColors";
+import { firstChar } from "@triplot/shared/memberColors";
+import { avatarStyle } from "@/lib/themeColor";
 
 // メンバーの省略表示。色付きの丸（その人の hue）に表示名の先頭 1 文字を入れる。
 // 日本語含む 1 コードポイントが安定して 1 文字として収まるよう、幅・高さは固定、

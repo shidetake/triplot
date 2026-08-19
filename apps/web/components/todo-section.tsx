@@ -31,7 +31,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { MemberAvatar } from "@/components/member-avatar";
-import { chipStyle } from "@triplot/shared/memberColors";
+import { chipStyle } from "@/lib/themeColor";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { useMediaQuery } from "@/components/use-media-query";
 import { sortTodos } from "@triplot/shared/todoSort";

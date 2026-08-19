@@ -118,8 +118,11 @@ describe("pickEventColor", () => {
     ).toEqual({ kind: "mixed", selfHue: null });
   });
 
-  it("green は確定色 (140°) と同じ hue を期待", () => {
+  it("確定色の hue は SQL の pick_member_color と同じ値", () => {
     // pick の戻り値そのものには hue は含めないが、UI 側で GREEN_HUE を使う前提。
-    expect(GREEN_HUE).toBe(140);
+    // この値は supabase/migrations の pick_member_color の green_hue と
+    // 一致していないと、メンバーに確定色とほぼ同じ色が割り当たる。
+    // 角度は OKLCH の色相環（162° ≒ 従来の #10b981 と同じ緑）。
+    expect(GREEN_HUE).toBe(162);
   });
 });

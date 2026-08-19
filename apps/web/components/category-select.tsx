@@ -5,6 +5,7 @@ import { Select } from "@base-ui/react/select";
 
 import type { Category } from "./expense-form";
 import { inputClass } from "./input-class";
+import { ColorDisc } from "./color-badge";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon } from "./icons";
 import { menuItemClass } from "./menu-item";
@@ -88,11 +89,8 @@ function CategoryChip({ category }: { category: Category }) {
   // svg を丸いっぱい(20px)に描き、余白は inset で SVG 内側に作る。CSS の flex
   // 中央寄せを使わないので、エンジン/DPR をまたいでもサブピクセルのズレが出ない。
   return (
-    <span
-      className="block h-5 w-5 shrink-0 rounded-full text-white"
-      style={{ backgroundColor: category.color }}
-    >
+    <ColorDisc color={category.color} size={20}>
       <ExpenseCategoryIcon icon={category.icon} size={20} inset={0.18} />
-    </span>
+    </ColorDisc>
   );
 }

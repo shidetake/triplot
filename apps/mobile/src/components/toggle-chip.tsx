@@ -1,8 +1,7 @@
 import { Pressable, StyleSheet, Text } from "react-native";
 
-import { chipStyle } from "@triplot/shared/memberColors";
-
-import { type Theme, useThemedStyles } from "@/lib/theme";
+import { chipStyle } from "@/lib/themeColor";
+import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // メンバー選択のトグルチップ（web の components/toggle-chip.tsx 相当）。
 // 非選択＝muted+輪郭、選択＝hue があればメンバー色の薄い面、無ければ primary 塗り。
@@ -18,10 +17,8 @@ export function ToggleChip({
   onPress: () => void;
 }) {
   const styles = useThemedStyles(makeStyles);
-  const member = on && hue != null ? (chipStyle(hue) as {
-    backgroundColor?: string;
-    color?: string;
-  }) : null;
+  const t = useTheme();
+  const member = on && hue != null ? chipStyle(hue, t.dark) : null;
   return (
     <Pressable
       accessibilityRole="button"
