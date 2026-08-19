@@ -15,15 +15,24 @@ import {
 } from "@/components/icons";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackForm } from "./feedback-form";
-import { type Anchor, FormPopover } from "./form-popover";
+import { type Anchor, FormPopover, NarrowSheet } from "./form-popover";
 import { menuItemClass } from "./menu-item";
 import { selfAvatarClass } from "./self-avatar";
+import { useMediaQuery } from "./use-media-query";
 
 // 右上のアカウントメニュー。アバター（Google 写真があれば写真、無ければ頭文字の丸）を
-// タップするとドロップダウンで email / 設定 / ログアウト。Apple ログインは写真を返さない
-// ので頭文字フォールバックが効く（docs/ui-guidelines.md のアバター項）。
-// 開閉・外側クリック・Esc・キーボード操作・フォーカスは Base UI Menu に委ねる
-// （ui-guidelines「部品の作り方」step2＝native 相当の無いメニューは shadcn/Base UI）。
+// タップすると email / 設定 / ログアウト等が出る。Apple ログインは写真を返さないので
+// 頭文字フォールバックが効く（docs/ui-guidelines.md のアバター項）。
+//
+// 開き方は幅で変える（ui-guidelines「狭い画面ではボトムシート、広い画面では
+// タップ位置のポップアップ」）:
+//   - 広い画面 … Base UI Menu のドロップダウン（開閉・外側クリック・Esc・
+//     キーボード操作・フォーカスを委ねられる）
+//   - 狭い画面 … ボトムシート。iOS のアカウントシートと同じ形
+// 行の見た目は menuItemClass に集約してあるので、Menu.Item と素の button/Link の
+// どちらで描いても揃う。閾値は FormPopover と同じ。
+const SHEET_BELOW = "(max-width: 639px)";
+
 export function AccountMenu({
   email,
   name,
@@ -33,6 +42,7 @@ export function AccountMenu({
   deployEnv,
   version,
   tripMenu,
+  tripRows,
 }: {
   email: string | null;
   name: string | null;
@@ -46,17 +56,21 @@ export function AccountMenu({
   // （Settings/About 相当）に合わせてここに移した。
   deployEnv: string;
   version: string;
-  // 旅行詳細でだけ差し込まれる「この旅行 ▸」サブメニュー（trip-actions.tsx）。
-  // ヘッダーを1本にまとめた結果アカウントと旅行の入口が隣り合ったので、
-  // 旅行の操作はここに吸収した。ただしアカウント（自分）と旅行（対象）は
-  // 意味が違うので同じ一覧には混ぜず、サブメニューで1段階挟む。
+  // 旅行詳細でだけ差し込まれる旅行の操作（trip-actions.tsx）。ヘッダーを1本に
+  // まとめた結果アカウントと旅行の入口が隣り合ったので、旅行の操作はここに
+  // 吸収した。ただし意味が違うものを同じ一覧に混ぜないよう、広い画面は
+  // サブメニュー（tripMenu）、狭い画面は節見出し付きの一覧（tripRows）にする。
   tripMenu?: ReactNode;
+  tripRows?: ReactNode;
 }) {
   const router = useRouter();
   const t = useTranslations();
+  const narrow = useMediaQuery(SHEET_BELOW);
+  const [sheetOpen, setSheetOpen] = useState(false);
   const initial = (name ?? email ?? "?").trim().charAt(0).toUpperCase() || "?";
-  // フィードバックフォームはメニューが閉じた後も生きるよう、この（常駐する）
-  // コンポーネントの state で開閉する（create-trip-button と同じ anchor パターン）。
+  // フィードバックフォームはメニュー/シートが閉じた後も生きるよう、この
+  // （常駐する）コンポーネントの state で開閉する（create-trip-button と同じ
+  // anchor パターン）。
   const [feedbackAnchor, setFeedbackAnchor] = useState<Anchor | null>(null);
 
   const handleSignOut = async () => {
@@ -64,6 +78,119 @@ export function AccountMenu({
     await supabase.auth.signOut();
     router.refresh();
   };
+
+  const avatarFace = avatarUrl ? (
+    // 外部（Google）のアバター URL。next/image のドメイン設定を増やさず素の img で。
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+  ) : (
+    initial
+  );
+  const avatarClass = `${selfAvatarClass} h-8 w-8 text-sm transition hover:ring-foreground/40`;
+  // admin の未対応フィードバック（受信箱バッジと同型）。開かなくても気づけるように。
+  const adminBadge = isAdmin && openFeedbackCount > 0 && (
+    <span className="pointer-events-none absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground ring-1 ring-white">
+      {openFeedbackCount > 9 ? "9+" : openFeedbackCount}
+    </span>
+  );
+
+  const emailRow = email && (
+    <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
+      {email}
+    </div>
+  );
+  const versionRow = (
+    <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">
+      {deployEnv} · {version}
+    </div>
+  );
+  // ラベルは foreground・アイコンだけ muted（shadcn/ui の DropdownMenu と同じ配色）。
+  const rowClass = `flex items-center gap-2 ${menuItemClass}`;
+  // ログアウトは元に戻せる操作だが、世の中一般のアプリの慣例に合わせて
+  // destructive の赤にする。旅行削除メニューと同じ配色（trip-actions.tsx 参照）。
+  const signOutClass =
+    "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10";
+
+  const adminCountBadge = openFeedbackCount > 0 && (
+    <span className="ml-auto flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground">
+      {openFeedbackCount > 9 ? "9+" : openFeedbackCount}
+    </span>
+  );
+
+  const feedbackHost = feedbackAnchor && (
+    <FormPopover
+      anchor={feedbackAnchor}
+      onClose={() => setFeedbackAnchor(null)}
+      label={t("feedback.heading")}
+      fullScreenOnNarrow
+      draftKey="feedback"
+    >
+      <FeedbackForm onDone={() => setFeedbackAnchor(null)} />
+    </FormPopover>
+  );
+
+  if (narrow) {
+    return (
+      <>
+        <span className="relative inline-flex">
+          <button
+            type="button"
+            aria-label={t("account.account")}
+            title={email ?? t("account.account")}
+            onClick={() => setSheetOpen(true)}
+            className={avatarClass}
+          >
+            {avatarFace}
+          </button>
+          {adminBadge}
+        </span>
+        {sheetOpen && (
+          <NarrowSheet
+            label={t("account.account")}
+            onClose={() => setSheetOpen(false)}
+          >
+            <div className="pb-2 text-sm">
+              {emailRow}
+              {tripRows}
+              {tripRows && <div className="my-1 border-t border-foreground/5" />}
+              <Link href="/settings" className={rowClass}>
+                <SettingsIcon size={16} className="text-muted-foreground" />
+                {t("settings.heading")}
+              </Link>
+              <button
+                type="button"
+                onClick={(e) => {
+                  setSheetOpen(false);
+                  setFeedbackAnchor({ x: e.clientX, y: e.clientY });
+                }}
+                className={rowClass}
+              >
+                <MessageSquareIcon size={16} className="text-muted-foreground" />
+                {t("feedback.menuLink")}
+              </button>
+              {isAdmin && (
+                <Link href="/admin" className={rowClass}>
+                  <ShieldIcon size={16} className="text-muted-foreground" />
+                  {t("admin.menuLink")}
+                  {adminCountBadge}
+                </Link>
+              )}
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className={signOutClass}
+              >
+                <LogOutIcon size={16} />
+                {t("account.signOut")}
+              </button>
+              {versionRow}
+            </div>
+          </NarrowSheet>
+        )}
+        {feedbackHost}
+      </>
+    );
+  }
 
   return (
     <>
@@ -73,48 +200,24 @@ export function AccountMenu({
           <Menu.Trigger
             aria-label={t("account.account")}
             title={email ?? t("account.account")}
-            className={`${selfAvatarClass} h-8 w-8 text-sm transition hover:ring-foreground/40`}
+            className={avatarClass}
           >
-            {avatarUrl ? (
-              // 外部（Google）のアバター URL。next/image のドメイン設定を増やさず素の img で。
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              initial
-            )}
+            {avatarFace}
           </Menu.Trigger>
-          {/* admin の未対応フィードバック（受信箱バッジと同型）。メニューを開かなくても気づけるように。 */}
-          {isAdmin && openFeedbackCount > 0 && (
-            <span className="pointer-events-none absolute -right-1 -top-1 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground ring-1 ring-white">
-              {openFeedbackCount > 9 ? "9+" : openFeedbackCount}
-            </span>
-          )}
+          {adminBadge}
         </span>
 
         <Menu.Portal>
           <Menu.Positioner align="end" sideOffset={8} className="z-50">
             <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 shadow-lg">
-              {email && (
-                <div className="truncate border-b border-foreground/5 px-3 py-2 text-xs text-muted-foreground">
-                  {email}
-                </div>
-              )}
+              {emailRow}
               {tripMenu && (
                 <>
                   {tripMenu}
                   <div className="my-1 border-t border-foreground/5" />
                 </>
               )}
-              {/* ラベルは foreground・アイコンだけ muted（shadcn/ui の
-                  DropdownMenu と同じ配色）。 */}
-              <Menu.Item
-                render={<Link href="/settings" />}
-                className={`flex items-center gap-2 ${menuItemClass}`}
-              >
+              <Menu.Item render={<Link href="/settings" />} className={rowClass}>
                 <SettingsIcon size={16} className="text-muted-foreground" />
                 {t("settings.heading")}
               </Menu.Item>
@@ -122,59 +225,29 @@ export function AccountMenu({
                 onClick={(e) =>
                   setFeedbackAnchor({ x: e.clientX, y: e.clientY })
                 }
-                className={`flex items-center gap-2 ${menuItemClass}`}
+                className={rowClass}
               >
-                <MessageSquareIcon
-                  size={16}
-                  className="text-muted-foreground"
-                />
+                <MessageSquareIcon size={16} className="text-muted-foreground" />
                 {t("feedback.menuLink")}
               </Menu.Item>
               {isAdmin && (
-                <Menu.Item
-                  render={<Link href="/admin" />}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
+                <Menu.Item render={<Link href="/admin" />} className={rowClass}>
                   <ShieldIcon size={16} className="text-muted-foreground" />
                   {t("admin.menuLink")}
-                  {openFeedbackCount > 0 && (
-                    <span className="ml-auto flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground">
-                      {openFeedbackCount > 9 ? "9+" : openFeedbackCount}
-                    </span>
-                  )}
+                  {adminCountBadge}
                 </Menu.Item>
               )}
-              {/* ログアウトは元に戻せる操作だが、世の中一般のアプリの慣例に
-                  合わせて destructive の赤にする（実機フィードバックで方針
-                  転換。削除等の不可逆操作だけを赤にする、という以前の方針
-                  より世の中の慣例を優先）。旅行削除メニューと同じ配色
-                  （trip-actions.tsx 参照）。 */}
-              <Menu.Item
-                onClick={handleSignOut}
-                className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10"
-              >
+              <Menu.Item onClick={handleSignOut} className={signOutClass}>
                 <LogOutIcon size={16} />
                 {t("account.signOut")}
               </Menu.Item>
-              <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">
-                {deployEnv} · {version}
-              </div>
+              {versionRow}
             </Menu.Popup>
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
 
-      {feedbackAnchor && (
-        <FormPopover
-          anchor={feedbackAnchor}
-          onClose={() => setFeedbackAnchor(null)}
-          label={t("feedback.heading")}
-          fullScreenOnNarrow
-          draftKey="feedback"
-        >
-          <FeedbackForm onDone={() => setFeedbackAnchor(null)} />
-        </FormPopover>
-      )}
+      {feedbackHost}
     </>
   );
 }

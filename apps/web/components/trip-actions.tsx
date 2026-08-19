@@ -355,133 +355,231 @@ export function TripShareButton() {
     </Button>
   );
 }
+// 「この旅行」の操作一覧。広い画面のドロップダウンと狭い画面のシートで同じ
+// 中身を出すため、行の仕様を1つの配列に集約し、描画側だけ差し替える。
+type Row =
+  | { kind: "link"; key: string; icon: ReactNode; label: string; href: string }
+  | {
+      kind: "action";
+      key: string;
+      icon: ReactNode;
+      label: string;
+      onClick: (anchor: Anchor) => void;
+      danger?: boolean;
+      disabled?: boolean;
+    }
+  | {
+      kind: "drill";
+      key: string;
+      icon: ReactNode;
+      label: string;
+      to: "main" | "export";
+    };
 
-// アカウントメニューの中に差し込む「この旅行 ▸」サブメニュー。
-// アカウント（自分）と旅行（対象）は別の意味なので、同じ一覧に混ぜず
-// 1段階挟んで壁を作る（ui-guidelines「同じ目的には同じコントロール」）。
+const MUTED = "text-muted-foreground";
+const ROW = `flex items-center gap-2 ${menuItemClass}`;
+// destructive な行は hover 色が違うので定数を使わず個別に書く（ui-guidelines）。
+const DANGER_ROW =
+  "flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50";
+
+function useTripRows(): Row[] {
+  const t = useTranslations("tripActions");
+  const c = useTripActions();
+  if (c.menuView === "export") {
+    return [
+      {
+        kind: "drill",
+        key: "back",
+        icon: <span aria-hidden>‹</span>,
+        label: t("back"),
+        to: "main",
+      },
+      {
+        kind: "action",
+        key: "exportCalendar",
+        icon: <CalendarDaysIcon size={16} className={MUTED} />,
+        label: t("exportCalendar"),
+        onClick: c.onExportCalendar,
+      },
+      {
+        kind: "action",
+        key: "exportMap",
+        icon: <MapIcon size={16} className={MUTED} />,
+        label: t("exportMap"),
+        onClick: c.onExportMap,
+      },
+      {
+        kind: "action",
+        key: "exportExpenses",
+        icon: <WalletIcon size={16} className={MUTED} />,
+        label: t("exportExpenses"),
+        onClick: c.onExportExpenses,
+      },
+    ];
+  }
+  return [
+    ...(c.iAmAdmin
+      ? [
+          {
+            kind: "action" as const,
+            key: "editTrip",
+            icon: <EditIcon size={16} className={MUTED} />,
+            label: t("editTrip"),
+            onClick: c.openEdit,
+          },
+        ]
+      : []),
+    {
+      kind: "link",
+      key: "members",
+      icon: <UsersIcon size={16} className={MUTED} />,
+      label: t("manageMembers"),
+      href: `/trips/${c.tripId}/members`,
+    },
+    {
+      kind: "link",
+      key: "categories",
+      icon: <TagIcon size={16} className={MUTED} />,
+      label: t("manageCategories"),
+      href: `/trips/${c.tripId}/categories`,
+    },
+    {
+      kind: "action",
+      key: "share",
+      icon: <ShareIcon size={16} className={MUTED} />,
+      label: t("share"),
+      onClick: c.openShare,
+    },
+    {
+      kind: "drill",
+      key: "export",
+      icon: <DownloadIcon size={16} className={MUTED} />,
+      label: t("export"),
+      to: "export",
+    },
+    ...(c.iAmAdmin
+      ? [
+          {
+            kind: "action" as const,
+            key: "deleteTrip",
+            icon: <TrashIcon size={16} />,
+            label: t("deleteTrip"),
+            onClick: c.onDelete,
+            danger: true,
+            disabled: c.isPending,
+          },
+        ]
+      : []),
+  ];
+}
+
+const chevron = (
+  <span aria-hidden className="ml-auto text-subtle-foreground">
+    ›
+  </span>
+);
+
+// 狭い画面のシート用。アカウントのシートの中に「この旅行」の節として平らに
+// 並べる（iOS のグループ化リストと同じ形。シートの中で入れ子のポップアップを
+// 開くのは扱いにくいので、節見出し＋一覧にする）。
+export function TripMenuRows() {
+  const t = useTranslations("tripActions");
+  const { menuView, setMenuView } = useTripActions();
+  const rows = useTripRows();
+  return (
+    <div>
+      {menuView === "main" && (
+        <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground">
+          {t("thisTrip")}
+        </div>
+      )}
+      {rows.map((r) =>
+        r.kind === "link" ? (
+          <Link key={r.key} href={r.href} className={ROW}>
+            {r.icon}
+            {r.label}
+          </Link>
+        ) : r.kind === "drill" ? (
+          <button
+            key={r.key}
+            type="button"
+            onClick={() => setMenuView(r.to)}
+            className={r.to === "main" ? `${ROW} ${MUTED}` : ROW}
+          >
+            {r.icon}
+            {r.label}
+            {r.to === "export" && chevron}
+          </button>
+        ) : (
+          <button
+            key={r.key}
+            type="button"
+            disabled={r.disabled}
+            onClick={(e) => r.onClick({ x: e.clientX, y: e.clientY })}
+            className={r.danger ? DANGER_ROW : ROW}
+          >
+            {r.icon}
+            {r.label}
+          </button>
+        ),
+      )}
+    </div>
+  );
+}
+
+// 広い画面のドロップダウン用。アカウントメニューの中の「この旅行 ▸」サブメニュー。
+// アカウント（自分）と旅行（対象）は別の意味なので、同じ一覧に混ぜず1段階挟んで
+// 壁を作る（ui-guidelines「同じ目的には同じコントロール」）。
 export function TripMenuSection() {
   const t = useTranslations("tripActions");
-  const {
-    tripId,
-    iAmAdmin,
-    isPending,
-    menuView,
-    setMenuView,
-    openShare,
-    openEdit,
-    onExportMap,
-    onExportExpenses,
-    onExportCalendar,
-    onDelete,
-  } = useTripActions();
+  const { setMenuView } = useTripActions();
+  const rows = useTripRows();
   return (
     <Menu.SubmenuRoot
       onOpenChange={(open) => {
         if (!open) setMenuView("main");
       }}
     >
-      <Menu.SubmenuTrigger
-        className={`flex items-center gap-2 ${menuItemClass}`}
-      >
-        <MapIcon size={16} className="text-muted-foreground" />
+      <Menu.SubmenuTrigger className={ROW}>
+        <MapIcon size={16} className={MUTED} />
         {t("thisTrip")}
-        <span aria-hidden className="ml-auto text-subtle-foreground">
-          ›
-        </span>
+        {chevron}
       </Menu.SubmenuTrigger>
       <Menu.Portal>
         <Menu.Positioner align="start" sideOffset={4} className="z-50">
           <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
-            {menuView === "main" ? (
-              <>
-                {iAmAdmin && (
-                  <Menu.Item
-                    onClick={(e) => openEdit({ x: e.clientX, y: e.clientY })}
-                    className={`flex items-center gap-2 ${menuItemClass}`}
-                  >
-                    <EditIcon size={16} className="text-muted-foreground" />
-                    {t("editTrip")}
-                  </Menu.Item>
-                )}
+            {rows.map((r) =>
+              r.kind === "link" ? (
                 <Menu.Item
-                  render={<Link href={`/trips/${tripId}/members`} />}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
+                  key={r.key}
+                  render={<Link href={r.href} />}
+                  className={ROW}
                 >
-                  <UsersIcon size={16} className="text-muted-foreground" />
-                  {t("manageMembers")}
+                  {r.icon}
+                  {r.label}
                 </Menu.Item>
+              ) : r.kind === "drill" ? (
                 <Menu.Item
-                  render={<Link href={`/trips/${tripId}/categories`} />}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
-                  <TagIcon size={16} className="text-muted-foreground" />
-                  {t("manageCategories")}
-                </Menu.Item>
-                <Menu.Item
-                  onClick={(e) => openShare({ x: e.clientX, y: e.clientY })}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
-                  <ShareIcon size={16} className="text-muted-foreground" />
-                  {t("share")}
-                </Menu.Item>
-                <Menu.Item
+                  key={r.key}
                   closeOnClick={false}
-                  onClick={() => setMenuView("export")}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
+                  onClick={() => setMenuView(r.to)}
+                  className={r.to === "main" ? `${ROW} ${MUTED}` : ROW}
                 >
-                  <DownloadIcon size={16} className="text-muted-foreground" />
-                  {t("export")}
-                  <span aria-hidden className="ml-auto text-subtle-foreground">
-                    ›
-                  </span>
+                  {r.icon}
+                  {r.label}
+                  {r.to === "export" && chevron}
                 </Menu.Item>
-                {iAmAdmin && (
-                  <Menu.Item
-                    onClick={onDelete}
-                    disabled={isPending}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
-                  >
-                    <TrashIcon size={16} />
-                    {t("deleteTrip")}
-                  </Menu.Item>
-                )}
-              </>
-            ) : (
-              <>
+              ) : (
                 <Menu.Item
-                  closeOnClick={false}
-                  onClick={() => setMenuView("main")}
-                  className={`flex items-center gap-1 text-muted-foreground ${menuItemClass}`}
+                  key={r.key}
+                  disabled={r.disabled}
+                  onClick={(e) => r.onClick({ x: e.clientX, y: e.clientY })}
+                  className={r.danger ? DANGER_ROW : ROW}
                 >
-                  <span aria-hidden>‹</span> {t("back")}
+                  {r.icon}
+                  {r.label}
                 </Menu.Item>
-                <Menu.Item
-                  onClick={(e) =>
-                    onExportCalendar({ x: e.clientX, y: e.clientY })
-                  }
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
-                  <CalendarDaysIcon
-                    size={16}
-                    className="text-muted-foreground"
-                  />
-                  {t("exportCalendar")}
-                </Menu.Item>
-                <Menu.Item
-                  onClick={onExportMap}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
-                  <MapIcon size={16} className="text-muted-foreground" />
-                  {t("exportMap")}
-                </Menu.Item>
-                <Menu.Item
-                  onClick={onExportExpenses}
-                  className={`flex items-center gap-2 ${menuItemClass}`}
-                >
-                  <WalletIcon size={16} className="text-muted-foreground" />
-                  {t("exportExpenses")}
-                </Menu.Item>
-              </>
+              ),
             )}
           </Menu.Popup>
         </Menu.Positioner>

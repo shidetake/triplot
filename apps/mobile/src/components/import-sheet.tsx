@@ -11,6 +11,7 @@ import {
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
+import { deriveInboxRows } from "@triplot/shared/import/inboxRows";
 import {
   EXTRACT_ERROR_NO_CONTENT,
   MONTHLY_EMAIL_CAP,
@@ -20,9 +21,7 @@ import {
   extractionSummary,
 } from "@triplot/shared/import/draftLabel";
 import type {
-  EventDraft,
   Extraction,
-  Receipt,
 } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
@@ -66,13 +65,13 @@ export function ImportSheet() {
   // 複数あると割当先の選択でどちらか分からなくなっていた）。
   const tripLabels = buildCopySourceLabels(trips);
 
-  // メール単位に下書きをまとめて要約（web の rows 組み立ての簡略版）。
-  const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
-  for (const d of data?.draftRows ?? []) {
-    const arr = itemsByEmail.get(d.email_id) ?? [];
-    arr.push(d);
-    itemsByEmail.set(d.email_id, arr);
-  }
+  // 1メール＝1行の組み立ては shared（web の受信箱と同じ関数）。
+  const rows = deriveInboxRows({
+    emails: data?.emails ?? null,
+    draftRows: data?.draftRows ?? null,
+    mergedChildren: data?.mergedChildren ?? null,
+  });
+  const rowById = new Map(rows.map((r) => [r.id, r]));
 
   // 合体された子メールを持つメールの、明細を開いているかどうか。
   // （web は <details>。RN は開閉行＋条件レンダー＝TODO セクションと同じ形）
@@ -88,14 +87,6 @@ export function ImportSheet() {
       void refetch();
     });
   };
-
-  const childrenByParent = new Map<string, { id: string; own: Extraction | null }[]>();
-  for (const c of data?.mergedChildren ?? []) {
-    if (!c.merged_into) continue;
-    const arr = childrenByParent.get(c.merged_into) ?? [];
-    arr.push({ id: c.id, own: c.extracted as unknown as Extraction | null });
-    childrenByParent.set(c.merged_into, arr);
-  }
 
   const copyAddress = async () => {
     if (!address) return;
@@ -190,19 +181,16 @@ export function ImportSheet() {
         <Text style={styles.empty}>{t("emptyState")}</Text>
       ) : (
         emails.map((e) => {
-          const items = itemsByEmail.get(e.id) ?? [];
-          const receipt = (items.find((i) => i.kind === "expense")?.payload ??
-            null) as Receipt | null;
-          const events = items
-            .filter((i) => i.kind === "event")
-            .map((i) => i.payload as EventDraft);
+          const row = rowById.get(e.id);
+          const receipt = row?.receipt ?? null;
+          const events = row?.events ?? [];
           const summary =
             receipt?.merchant ||
             events[0]?.title ||
             e.subject ||
             t("noContent");
           const assigned = trips.find((tr) => tr.id === e.trip_id);
-          const children = childrenByParent.get(e.id) ?? [];
+          const children = row?.children ?? [];
           const mergedOpen = openMerged === e.id;
           return (
             <View key={e.id} style={styles.emailCard}>

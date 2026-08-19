@@ -5,7 +5,8 @@ import type { ReactNode } from "react";
 import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 
 import { AccountMenu } from "@/components/account-menu";
-import { ChevronIcon, InboxIcon } from "@/components/icons";
+import { ChevronIcon } from "@/components/icons";
+import { ImportSheetButton } from "@/components/import-sheet";
 import { InlineDivider } from "@/components/inline-divider";
 import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
@@ -26,12 +27,15 @@ import { getDeployEnv, getVersion } from "@/lib/version";
 export async function AppHeader({
   trip,
   tripMenu,
+  tripRows,
   tripActions,
 }: {
   // 旅行詳細でだけ渡す。渡すとワードマークの代わりに戻る＋2行タイトルになる。
   trip?: { title: string; subtitle: ReactNode };
-  // アカウントメニューに差し込む「この旅行 ▸」サブメニュー。
+  // アカウントメニューに差し込む旅行の操作。広い画面はサブメニュー、
+  // 狭い画面のシートは節見出し付きの一覧。
   tripMenu?: ReactNode;
+  tripRows?: ReactNode;
   // バーに直接置く旅行のアクション（共有アイコン）。
   tripActions?: ReactNode;
 } = {}) {
@@ -72,9 +76,6 @@ export async function AppHeader({
     openFeedbackCount = feedbackCount ?? 0;
   }
 
-  const t = await getTranslations("header");
-  const importLabel =
-    importCount > 0 ? t("importWithCount", { count: importCount }) : t("import");
   const backLabel = await getTranslations("tripDetail").then((tt) =>
     tt("backToTrips"),
   );
@@ -115,19 +116,7 @@ export async function AppHeader({
         )}
         <div className="flex shrink-0 items-center gap-1">
           {tripActions}
-          <Link
-            href="/import"
-            aria-label={importLabel}
-            title={importLabel}
-            className="relative flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"
-          >
-            <InboxIcon size={24} />
-            {importCount > 0 && (
-              <span className="absolute right-0 top-0 flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground ring-1 ring-white">
-                {importCount > 9 ? "9+" : importCount}
-              </span>
-            )}
-          </Link>
+          <ImportSheetButton count={importCount} />
           <AccountMenu
             email={user.email ?? null}
             name={accountName}
@@ -137,6 +126,7 @@ export async function AppHeader({
             deployEnv={getDeployEnv()}
             version={getVersion()}
             tripMenu={tripMenu}
+            tripRows={tripRows}
           />
         </div>
       </div>

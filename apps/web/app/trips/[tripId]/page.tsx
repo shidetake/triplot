@@ -23,6 +23,7 @@ import { type EventRow, ScheduleSection } from "@/components/schedule-section";
 import { type TodoRow, TodoSection } from "@/components/todo-section";
 import {
   TripActionsProvider,
+  TripMenuRows,
   TripMenuSection,
   TripShareButton,
 } from "@/components/trip-actions";
@@ -312,6 +313,7 @@ export default async function TripDetailPage({
           ),
         }}
         tripMenu={<TripMenuSection />}
+        tripRows={<TripMenuRows />}
         tripActions={<TripShareButton />}
       />
     </TripActionsProvider>
