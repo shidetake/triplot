@@ -77,7 +77,8 @@ export default function AppLayout() {
           シートのような外側のシートからは開けない（閉じてから開こうとしても
           その指示が捨てられる。実機で4通り試して全滅）。開く画面の状態
           （地図のカメラ位置・スクロール位置）を保つ必要がないシートは
-          ルート階層に置くのが既定。 */}
+          ルート階層に置くのが既定（docs/ui-guidelines.md
+          「シートのルートは原則いちばん外側に置く」）。 */}
       <Stack.Screen
         name="trips/trip-edit"
         options={{
