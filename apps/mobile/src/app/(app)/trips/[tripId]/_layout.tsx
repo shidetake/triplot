@@ -111,10 +111,6 @@ export default function TripLayout() {
       <Stack.Screen options={screenOptions} />
       <Stack>
         <Stack.Screen name="(tabs)" options={tabsScreenOptions} />
-        <Stack.Screen name="edit" options={sheetScreenOptions} />
-        <Stack.Screen name="categories" options={sheetScreenOptions} />
-        <Stack.Screen name="export" options={sheetScreenOptions} />
-        <Stack.Screen name="calendar-export" options={sheetScreenOptions} />
         {/* 予定/費用フォームも他の formSheet と同じ fitToContents。日時チップを
             開くと直下に inline カレンダーが伸びるので、シート自身が持ち上がって
             それを見せる（旅行作成シートと同じ挙動＝ui-guidelines）。以前は

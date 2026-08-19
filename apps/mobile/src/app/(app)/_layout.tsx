@@ -70,6 +70,50 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
+      {/* 旅行のシート（編集・カテゴリ管理・エクスポート・カレンダー
+          エクスポート）。対象の旅行は ?tripId= で渡す。
+          **旅行詳細の入れ子スタックではなくここ（ルート階層）に置く。**
+          内側に置くと「その内側にいる画面」からしか開けず、アカウントの
+          シートのような外側のシートからは開けない（閉じてから開こうとしても
+          その指示が捨てられる。実機で4通り試して全滅）。開く画面の状態
+          （地図のカメラ位置・スクロール位置）を保つ必要がないシートは
+          ルート階層に置くのが既定。 */}
+      <Stack.Screen
+        name="trips/trip-edit"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="trips/trip-categories"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="trips/trip-export"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
+      <Stack.Screen
+        name="trips/trip-calendar-export"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: "fitToContents",
+          sheetGrabberVisible: true,
+        }}
+      />
       {/* フィードバック・このアプリについて・OSSライセンスは設定からの
           ドリルイン（router.push）。native-stack の push は「前を裏に残して
           上に重ねる」挙動を素で持つ。ライセンス一覧はこのアプリについてからの

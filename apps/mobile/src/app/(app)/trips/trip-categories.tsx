@@ -1,11 +1,11 @@
 import { ScrollView } from "react-native";
 
 import { CategoriesSheet } from "@/components/categories-sheet";
-import { useTripId } from "@/lib/useTripId";
+import { useTripIdParam } from "@/lib/useTripIdParam";
 
-// カテゴリ管理（native formSheet ルート）。旅行編集からのドリルイン。
+// カテゴリ管理（ルート階層の native formSheet ルート）。旅行編集からのドリルイン。
 export default function CategoriesRoute() {
-  const tripId = useTripId();
+  const tripId = useTripIdParam();
   return (
     <ScrollView
       contentContainerStyle={{ paddingBottom: 24 }}

@@ -159,7 +159,7 @@ export function ExportSheet({ tripId }: { tripId: string }) {
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
       {googleSignInAvailable && (
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/calendar-export`)}
+          onPress={() => router.push(`/trips/trip-calendar-export?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <CalendarDaysIcon size={18} color={theme.mutedForeground} />

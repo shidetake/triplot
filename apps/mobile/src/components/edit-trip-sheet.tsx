@@ -236,11 +236,9 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   };
 
   // 旅行詳細画面全体から離脱して旅行一覧へ戻る（退出・削除で共通）。
-  // dismissAll() はこのシートを内包するネストした Stack だけを pop するので、
-  // 外側の Stack には旅行詳細画面がまだ残っており、続けて replace("/trips") すると
-  // 既存の一覧画面の上にもう1枚 trips/index が積まれて余分な戻るボタンが出る
-  // （実機で確認した不具合）。dismissTo は外側含めて既存の /trips まで一気に
-  // 戻ってくれるので、こちらを使う。
+  // このシート・旅行詳細・（経由していれば）アカウントのシートを一気に畳んで
+  // 既存の一覧画面まで戻す。replace("/trips") だと既存の一覧の上にもう1枚
+  // trips/index が積まれて余分な戻るボタンが出る（実機で確認した不具合）。
   const leaveTripDetail = () => {
     router.dismissTo("/trips");
   };
@@ -450,7 +448,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
       <View style={styles.navList}>
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/categories`)}
+          onPress={() => router.push(`/trips/trip-categories?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <TagIcon size={18} color={theme.mutedForeground} />
@@ -458,7 +456,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
         <Pressable
-          onPress={() => router.push(`/trips/${tripId}/export`)}
+          onPress={() => router.push(`/trips/trip-export?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <DownloadIcon size={18} color={theme.mutedForeground} />

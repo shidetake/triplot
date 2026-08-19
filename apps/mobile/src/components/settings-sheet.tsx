@@ -230,20 +230,20 @@ export function SettingsSheet({
         </View>
       </View>
 
-      {onOpenTrip && (
-        <View style={styles.navList}>
+      {/* ドリルイン行（iOS 設定流の並び。旅行編集のカテゴリ管理/エクスポート行と
+          同形＝navList が上端の枠を持ち、行同士の区切りは各 navRow の下端だけ）。
+          旅行詳細から開いた時だけ先頭に「旅行を編集」が入る（旧・歯車の行き先）。
+          節を分けると区切り線が二重に出て隙間が空くので、同じ並びに入れる。 */}
+      <View style={styles.navList}>
+        {onOpenTrip && (
           <Pressable onPress={onOpenTrip} style={styles.navRow}>
             <MapIcon size={18} color={theme.mutedForeground} />
-            <Text style={styles.navRowLabel}>{t("tripActions.thisTrip")}</Text>
+            <Text style={styles.navRowLabel}>
+              {t("tripActions.editTrip")}
+            </Text>
             <ChevronIcon size={16} color={theme.subtleForeground} />
           </Pressable>
-        </View>
-      )}
-
-      {/* フィードバック・このアプリについて（iOS 設定流のドリルイン行の並び。
-          旅行編集のカテゴリ管理/エクスポート行と同形＝navList が上端の枠を
-          持ち、行同士の区切りは各 navRow の下端だけにする）。 */}
-      <View style={styles.navList}>
+        )}
         <Pressable onPress={onOpenFeedback} style={styles.navRow}>
           <MessageSquareIcon size={18} color={theme.mutedForeground} />
           <Text style={styles.navRowLabel}>{t("feedback.menuLink")}</Text>
