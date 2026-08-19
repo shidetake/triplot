@@ -147,10 +147,13 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     // ナビバーの中央に収まる2行タイトル。1行目は iOS 標準のタイトルと同じ
     // 大きさ・太さ、2行目は補助情報なので muted の小さい文字。
-    // 中央の2行タイトル。iOS はこれをバー全体の中央に置き headerRight を
-    // 避けてくれないので、右の3つ（共有・受信箱・アバター）に潜らない幅で切る
-    // （393pt の画面で中央寄せ＋右 ~110pt ＝ 最大 ~170pt）。
-    titleBlock: { alignItems: "center", maxWidth: 170 },
+    // 2行タイトル。**戻るボタンと右のボタン群の隙間の中央**に置く。
+    //
+    // 入れ物を flex: 1 で隙間いっぱいに広げてから中央寄せする。中身の幅に
+    // 合わせた入れ物にすると、中央寄せが効く範囲が文字の幅だけになり、
+    // 隙間の左端に詰めて置かれる（実機で確認）。幅を px で決め打ちすると
+    // 旅行名の長さでずれるので、必ずレイアウトで解く。
+    titleBlock: { flex: 1, alignItems: "center", justifyContent: "center" },
     title: { fontSize: 17, fontWeight: "600", color: t.foreground },
     subtitle: { fontSize: 11, color: t.mutedForeground, marginTop: 1 },
   });
