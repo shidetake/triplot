@@ -39,6 +39,7 @@ import {
   TrashIcon,
 } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
+import { ReservationIcon } from "@/components/reservation-icon";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { avatarStyle } from "@/lib/themeColor";
@@ -481,6 +482,9 @@ function TodoSection({
                   />
                 ) : (
                   <View style={styles.titleGroup}>
+                    {/* 予定の「要予約」から作られた TODO の印（web と同形）。
+                        タイトルの先頭に付ける。 */}
+                    {todo.event_id && <ReservationIcon size={16} />}
                     <Pressable
                       onPress={() => startEdit(todo)}
                       style={styles.titleShrink}

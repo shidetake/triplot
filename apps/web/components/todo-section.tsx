@@ -471,23 +471,29 @@ export function TodoSection({
                     {todo.visibility === "private" && (
                       <PrivateBadge className="shrink-0" />
                     )}
-                    {/* 作成者: 狭い画面は色アバター（イニシャル）、広い画面は名前の色チップ。
-                        押せない情報なのでタイトル側に寄せる。しきい値はボトムシートと同じ 640px（Tailwind sm）。 */}
-                    <MemberAvatar
-                      name={memberName(todo.created_by_member_id)}
-                      color={memberColor(todo.created_by_member_id)}
-                      imageUrl={memberAvatar(todo.created_by_member_id)}
-                      className="shrink-0 sm:hidden"
-                    />
-                    <span
-                      style={chipStyle(memberColor(todo.created_by_member_id))}
-                      className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-                    >
-                      {memberName(todo.created_by_member_id)}
-                    </span>
                   </div>
                 )}
               </div>
+
+              {/* 作成者: 狭い画面は色アバター（イニシャル）、広い画面は名前の色チップ。
+                  **行のトップレベルに置く**（タイトル側に入れるとタイトルの長さで
+                  位置がガタつく。iOS と同形）。しきい値はボトムシートと同じ 640px。 */}
+              {editingId !== todo.id && (
+                <>
+                  <MemberAvatar
+                    name={memberName(todo.created_by_member_id)}
+                    color={memberColor(todo.created_by_member_id)}
+                    imageUrl={memberAvatar(todo.created_by_member_id)}
+                    className="shrink-0 sm:hidden"
+                  />
+                  <span
+                    style={chipStyle(memberColor(todo.created_by_member_id))}
+                    className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+                  >
+                    {memberName(todo.created_by_member_id)}
+                  </span>
+                </>
+              )}
 
               {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
               {kind === "onsite" && (

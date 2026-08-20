@@ -70,7 +70,9 @@ export function TripDetailTabs({
       <nav
         data-mobile-chrome-bottom
         aria-label={t("navLabel")}
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-foreground/10 bg-background/95 backdrop-blur pb-[env(safe-area-inset-bottom)] md:hidden"
+        // 半透明＋backdrop-blur でスクロールした中身が透けるガラス調
+        // （iOS 26 のタブバーと同じ質感。/95 だとほぼ不透明で blur が効かない）。
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-foreground/10 bg-background/75 backdrop-blur-lg backdrop-saturate-150 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {TABS.map(({ key, Icon }) => {
           const active = key === activeTab;
@@ -85,7 +87,18 @@ export function TripDetailTabs({
                 active ? "text-foreground" : "text-muted-foreground",
               )}
             >
-              <Icon size={24} />
+              {/* 選択中はアイコンの背後にカプセルを敷く（iOS のタブバーと同じ）。
+                  タブのアイコンは塗ると何のアイコンか分からなくなる線画なので、
+                  グリフ自体は塗らず「背後のカプセル＋色の濃淡」で示す。
+                  色の濃淡だけだと選択中が分かりにくいという実機フィードバック。 */}
+              <span
+                className={cn(
+                  "flex items-center justify-center rounded-full px-4 py-0.5 transition",
+                  active && "bg-accent",
+                )}
+              >
+                <Icon size={24} />
+              </span>
               <span>{t(key)}</span>
             </button>
           );
