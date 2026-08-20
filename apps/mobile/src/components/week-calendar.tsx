@@ -999,14 +999,19 @@ const makeStyles = (t: Theme) =>
     borderStyle: "dashed",
     borderColor: t.dark ? "rgba(251,191,36,0.5)" : "#fbbf24", // amber-400
   },
-  eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 1 },
+  // flexShrink: 0 ＝ ブロックが低くてもタイトルは縮まない。RN の <Text> は
+  // 既定で縦に縮むので、下に続く場所・メモに押されてタイトルが線になって
+  // しまう（行数制限を外した時に発生）。はみ出す分は下の場所・メモ側が
+  // ブロックの overflow: hidden で切られる。
+  eventTitle: { fontSize: 11, fontWeight: "500", flexShrink: 0 },
   // 終日バー（常に1行）専用。時刻/タイトルブロックの予約マークは折り返しが
   // 要るため row ではなく Text の子として Image を埋め込む（ReservationMark
   // 参照）。1行しか無いここは row で並べても字下げ問題が起きないのでそのまま。
   titleRow: { flexDirection: "row", alignItems: "flex-start", gap: 2 },
   // 場所（タイトルの次の優先度。web の blockLabel の場所行と同じ薄字）。
   eventPlace: { fontSize: 9, opacity: 0.7 },
-  eventTime: { fontSize: 9, opacity: 0.7 },
+  // 時刻もタイトルと同じく縮ませない（上から順に読める状態を保つ）。
+  eventTime: { fontSize: 9, opacity: 0.7, flexShrink: 0 },
   // 長押しゴースト（web の border-slate-400 / bg-slate-100/50 / text-slate-800
   // と同値の焼き込み。web も両モード同色）。
   ghostBlock: {
