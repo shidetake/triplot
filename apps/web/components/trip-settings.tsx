@@ -40,7 +40,9 @@ export function TripSettings() {
   const rowClass = `flex w-full items-center gap-2 ${menuItemClass}`;
 
   return (
-    <div className="max-h-[80vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto">
+    // 幅とスクロールは器（FormPopover / NarrowSheet）が持つ。中身が幅を指定すると
+    // ボトムシートの中で左寄せになり右に余白が残る（実機フィードバックで発覚）。
+    <div>
       {/* 旅行名・日程・精算通貨（admin のみ編集可）。 */}
       <EditTripForm
         tripId={tripId}
@@ -132,7 +134,7 @@ export function TripCategoriesPanel() {
   const t = useTranslations("categories");
   const { tripId, categories } = useTripActions();
   return (
-    <div className="max-h-[80vh] w-[min(28rem,calc(100vw-2rem))] overflow-y-auto p-4">
+    <div className="p-4">
       <h2 className="mb-3 text-lg font-semibold">{t("heading")}</h2>
       <CategoryManagementList tripId={tripId} categories={categories} />
     </div>

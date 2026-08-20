@@ -102,9 +102,8 @@ function ImportSheetBody() {
   }, [load]);
 
   return (
-    // 広い画面のポップオーバーでも一覧が読める幅にする（狭い画面はシートが
-    // 幅を持つので max-w だけ効く）。
-    <div className="w-[min(34rem,calc(100vw-2rem))] max-h-[70vh] overflow-y-auto p-4">
+    // 幅とスクロールは器（FormPopover / NarrowSheet）が持つ。
+    <div className="p-4">
       <h2 className="text-lg font-semibold">{t("heading")}</h2>
       <div className="mt-3">
         {data ? (

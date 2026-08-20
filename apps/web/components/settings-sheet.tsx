@@ -61,7 +61,8 @@ export function SettingsSheet({ currentTheme }: { currentTheme: Theme }) {
   }, []);
 
   return (
-    <div className="w-[min(28rem,calc(100vw-2rem))] space-y-6 p-4">
+    // 幅とスクロールは器（FormPopover / NarrowSheet）が持つ。
+    <div className="space-y-6 p-4">
       <h2 className="text-lg font-semibold">{t("heading")}</h2>
 
       {profile ? (
