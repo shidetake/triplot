@@ -150,6 +150,17 @@ const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
 // ピンとラベルの間隔（px）。
 const CANDIDATE_LABEL_GAP = 4;
 
+// 地図の下端に入れる余白。MapView はタブバーの裏まで広がっているので、
+// これが無いと Google Maps SDK が左下に描く **Google ロゴがタブバーと画面下端に
+// 隠れる**。ロゴは Google Maps Platform の帰属表示ポリシーで
+// 「常に見えて読めること・隠したり変えたりしないこと」が求められているため、
+// 隠れたままにはできない（消すのも不可）。
+// 値は他の地図オーバーレイ（一覧ボタン・現在地・縮尺バー）と同じ 100
+// ＝タブバーの上に出る高さ。ここを変えたら projectionSize も一緒に効く。
+const MAP_BOTTOM_PADDING = 100;
+// 参照が変わるたびに native へ書き戻さないよう外に出す。
+const MAP_PADDING = { top: 0, right: 0, bottom: MAP_BOTTOM_PADDING, left: 0 };
+
 // 選択中の行をその場で膨らませる（Phase 2）際の連続アニメーション用。
 const AnimatedPressable = Reanimated.createAnimatedComponent(Pressable);
 // スクロールで焦点行が変わるたびに focusProgress をそこへ寄せるスプリング
@@ -498,6 +509,23 @@ export default function PlacesTab() {
     height: number;
   } | null>(null);
 
+  // 地図の投影に使う実寸。MapView はタブバーの裏まで広がっているが、
+  // mapPadding（MAP_BOTTOM_PADDING）を入れているぶん「リージョンが対応する
+  // 矩形」は下端が持ち上がっている（Google Maps iOS SDK の padding は
+  // visibleRegion をインセットする）。ラベルの投影も縮尺バーの計算も
+  // 「リージョン ↔ 矩形」の対応が前提なので、ビューの実寸ではなく
+  // この持ち上げ後の寸法を渡す。
+  const projectionSize = useMemo(
+    () =>
+      mapSize
+        ? {
+            width: mapSize.width,
+            height: Math.max(1, mapSize.height - MAP_BOTTOM_PADDING),
+          }
+        : null,
+    [mapSize],
+  );
+
   // 現在地（青丸）。showsUserLocation の native 描画は Google の内部レイヤーが
   // 独自の重なり順を持ち、確定ピンの zIndex をいじっても後ろに隠れたまま
   // だった（実機検証済み）。自前の Marker として描くことで確定ピンより
@@ -800,7 +828,7 @@ export default function PlacesTab() {
   // 候補ピンの店名ラベル配置（greedy 衝突回避）。選択中を先頭にして
   // 一番良い位置（右）を優先的に取らせる。
   const labelPlacements = useMemo<Record<string, LabelPlacement>>(() => {
-    if (!mapSize || candidates.length === 0) return {};
+    if (!projectionSize || candidates.length === 0) return {};
     const selectedId = selectedCandidate?.placeId ?? null;
     const items = [...candidates]
       .sort((a, b) =>
@@ -816,18 +844,22 @@ export default function PlacesTab() {
     return layoutLabels(
       items,
       region ?? initialRegion,
-      mapSize,
+      projectionSize,
       CANDIDATE_LABEL_GAP,
     );
-  }, [candidates, selectedCandidate, region, initialRegion, mapSize]);
+  }, [candidates, selectedCandidate, region, initialRegion, projectionSize]);
 
   // 縮尺バーの値（実距離とバー幅）。最大 100px 分の実距離を 1/2/5 刻みに丸める。
   const scaleBar = useMemo(
     () =>
-      mapSize
-        ? computeScaleBar(scaleRegion ?? region ?? initialRegion, mapSize, 100)
+      projectionSize
+        ? computeScaleBar(
+            scaleRegion ?? region ?? initialRegion,
+            projectionSize,
+            100,
+          )
         : null,
-    [scaleRegion, region, initialRegion, mapSize],
+    [scaleRegion, region, initialRegion, projectionSize],
   );
 
   // 地図のピンから選んだ行を、一覧シート側でも見える位置まで運ぶ
@@ -1680,6 +1712,10 @@ export default function PlacesTab() {
         provider={PROVIDER_GOOGLE}
         style={StyleSheet.absoluteFill}
         initialRegion={initialRegion}
+        // Google ロゴをタブバーの上に逃がす（MAP_BOTTOM_PADDING のコメント参照）。
+        // padding は SDK 側でリージョンもインセットするので、投影に使う寸法は
+        // projectionSize（ビュー実寸 − この余白）を渡す。
+        mapPadding={MAP_PADDING}
         customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
         // ダブルタップズームを切る代わりにシングルタップの認識遅延を大幅に
         // 減らす（react-native-maps 公式ドキュメントの注記どおり）。地図タップで

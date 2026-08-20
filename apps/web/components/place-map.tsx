@@ -385,6 +385,7 @@ export function PlaceMap({
           defaultZoom={places.length > 1 ? 11 : 13}
           gestureHandling="greedy"
           disableDefaultUI
+          keyboardShortcuts={false}
           // 本家同様、ベースマップの POI（店/施設）アイコンをタップ可能に。
           clickableIcons
           onClick={(e) => {
