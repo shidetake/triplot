@@ -42,28 +42,25 @@ import {
   dismissPlaceLocationAction,
   resolvePlaceToGoogleAction,
 } from "@/app/trips/[tripId]/actions";
+import { ChevronIcon } from "./icons";
+import { fitAndHalfDetents } from "@triplot/shared/sheetDetents";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
   MOBILE_TAB_TOP_OFFSET,
   NARROW_SCREEN_QUERY,
 } from "@/lib/mobileTabChrome";
 
-// 場所一覧ボトムシートの3つの高さ。
-// - mini: ハンドル+件数の行だけがちょうど収まる高さ（48px）。地図を触った・
-//   一覧の項目を選んだ・展開後に閉じた、など「もう見た」後はここまで畳む。
-// - welcome: タブに入った直後だけの初期表示（96px）。ハンドル+件数の行の下に
-//   一覧の先頭が少し覗く高さで、何があるか一目で分かる（mini と違い意図的に
-//   覗かせている）。
-// - expanded: 上の検索欄がちょうど見える高さで止める。画面高に対する割合の
-//   決め打ちだと端末ごとに余白がブレるため、実測した chrome の高さ
-//   （useMobileChromeMargins）+ 検索欄自身の高さから動的に算出する
-//   （下の expandedSnap）。
-const MINI_SNAP = "48px";
-const WELCOME_SNAP = "96px";
+// 一覧シートの段（detent）。計算は shared の fitAndHalfDetents（iOS と共通）。
+// 「中身にフィット（上限＝検索欄の下まで）」＋「画面の半分」の2段で、開いた
+// 瞬間は大きい方から。
+//
 // 検索欄の行の高さ(h-9=36px) + 検索バーの上マージン(12px) + 検索欄の下の余白。
 // 下の余白は上マージンと同じ 12px（検索欄の上に見えている地図の帯と同じだけ
 // 下にも見せる）。PlaceSearch の見た目を変えたらここも見直す。
 const SEARCH_ROW_EXTRA_PX = 36 + 12 + 12;
+// 小さい段を足す下限。これを下回るなら1段のまま（取っ手だけのシートを作らない）。
+// 見出し帯 + 1行ぶん。
+const SHEET_MIN_HALF_PX = 44 + 56;
 
 export function PlacesSection({
   tripId,
@@ -100,92 +97,66 @@ export function PlacesSection({
   const isNarrow = useMediaQuery(NARROW_SCREEN_QUERY);
   const showPlacesSheet = isActive && isNarrow;
 
-  // 展開時の高さ = viewport高 − 実測した上の chrome − 検索欄ぶん。画面高の
-  // 割合ではなく実測値からの引き算にすることで、端末の画面高が変わっても
-  // 検索欄がちょうど見える位置で止まるようにする。
-  //
-  // 下部タブバーぶん（chrome bottom）はここでは引かない: 実機計測で、引くと
-  // シート上端が狙いよりちょうどタブバー高ぶん下に出た。この Drawer.Content
-  // は bottom をタブバー上端にオフセットして置いているが、vaul の px snapPoint
-  // の translate 幅は viewport 下端起点で計算されるため、オフセットぶんは
-  // 相殺されず二重に効いてしまう（NarrowSheet は bottom-0 なのでこの項自体が
-  // 発生しない）。
+  // シートの段（detent）は iOS と同じ計算に載せる（@triplot/shared/sheetDetents）。
+  // 「中身にフィット（上限＝検索欄の下まで）」＋「画面の半分」の2段で、開いた
+  // 瞬間は大きい方から。以前は 48px/96px の帯を常時覗かせる形だったが、
+  // それだとタブバーの上に浮かせるための bottom オフセットが要り、vaul の
+  // px snapPoint（viewport 下端起点）と二重に効く問題を抱えていた。浮島
+  // ボタンから開く形にして bottom:0 に戻したので、その問題ごと無くなった。
   const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
-  const expandedSnap = useMemo(
-    () =>
-      `${Math.max(0, viewportHeight - chromeTopPx - SEARCH_ROW_EXTRA_PX)}px`,
-    [viewportHeight, chromeTopPx],
-  );
+  const [placesSheetOpen, setPlacesSheetOpen] = useState(false);
+  // 中身の実測高（一覧の中身＋見出し帯）。届くまでは概算で組む。
+  const [listContentH, setListContentH] = useState(0);
+  const listMeasureRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const ro = new ResizeObserver(() => setListContentH(el.scrollHeight));
+    ro.observe(el);
+    setListContentH(el.scrollHeight);
+    return () => ro.disconnect();
+  }, []);
 
   const [query, setQuery] = useState("");
   // 狭い画面のみ: 場所リストを Vaul のドラッグ可能なボトムシートにする
-  // （Google マップ風）。form-popover.tsx の NarrowSheet と同じ「viewport 基準
-  // の fixed + 明示的 height」パターンに合わせる（container prop で地図パネルに
-  // 閉じ込める案は snapPoints の内部計算と噛み合わず実機以前にレイアウトが
-  // 壊れたため不採用。bottom オフセットでタブバーの上に固定する側で対応）。
+  // （Google マップ風）。**閉じている間は出さず、地図の上の浮島ボタンから開く**
+  // （iOS と同形。以前は常に帯を覗かせていた）。bottom:0 に置けるので、他の
+  // シート（NarrowSheet）と同じ「viewport 基準の fixed + 明示的 height」に
+  // そのまま乗る。
   //
-  // 「今どの段か」は px 文字列そのものではなく意味（mini/welcome/expanded）で
-  // 持つ。expandedSnap は resize のたびに値が変わりうるため、literal な px
-  // 文字列を state に持つと、展開中に resize が起きて expandedSnap の値が
-  // ずれた瞬間 activeSnapPoint が snapPoints 配列のどれとも一致しなくなり、
-  // vaul 側の位置計算が壊れる（実機で「展開時の上限がずれる」不具合として発覚）。
-  // モードで持てば、resize後も常に最新の expandedSnap を渡せる。
-  //
-  // welcome（一覧の先頭を少し覗かせる初期表示）は場所が1件以上ある時だけ。
-  // 0件では覗かせる中身が無く、無駄に地図を隠すだけなので mini から始める。
-  const entryMode = places.length > 0 ? "welcome" : "mini";
-  const [placesSheetMode, setPlacesSheetMode] = useState<
-    "mini" | "welcome" | "expanded"
-  >(entryMode);
-  const snapForMode = useCallback(
-    (mode: "mini" | "welcome" | "expanded") =>
-      mode === "mini"
-        ? MINI_SNAP
-        : mode === "welcome"
-          ? WELCOME_SNAP
-          : expandedSnap,
-    [expandedSnap],
+  // 段は shared の fitAndHalfDetents（iOS と同じ計算）。「今どの段か」は px
+  // 文字列そのものではなく意味（half/fit）で持つ: 実測や resize で px の値が
+  // 変わった瞬間に activeSnapPoint が snapPoints のどれとも一致しなくなり、
+  // vaul の位置計算が壊れるため（実機で「展開時の上限がずれる」不具合として発覚）。
+  const sheetCapPx = Math.max(0, viewportHeight - chromeTopPx - SEARCH_ROW_EXTRA_PX);
+  const { detents: placesDetents } = useMemo(
+    () =>
+      fitAndHalfDetents({
+        contentHeight: listContentH || sheetCapPx,
+        capHeight: sheetCapPx,
+        referenceHeight: Math.max(1, viewportHeight - chromeTopPx),
+        minHalfHeight: SHEET_MIN_HALF_PX,
+      }),
+    [listContentH, sheetCapPx, viewportHeight, chromeTopPx],
   );
-  const placesSheetSnap = snapForMode(placesSheetMode);
-  const setPlacesSheetSnap = useCallback(
-    (snap: number | string | null) => {
-      setPlacesSheetMode(
-        snap === MINI_SNAP ? "mini" : snap === WELCOME_SNAP ? "welcome" : "expanded",
-      );
-    },
-    [],
-  );
-  // 地図を触った・一覧の項目を選んだ、など「もう見た」操作の後はここまで畳む。
+  // 検索結果は件数が多くなりがちなので、iOS と同じく画面の 1/4・1/2 の2段で
+  // 地図と一覧を同時に見せる（本家 Google マップの検索結果シートと同じ）。
+  const searchDetents = [0.25, 0.5];
+  const inSearch = query.trim().length > 0;
+  const refPx = Math.max(1, viewportHeight - chromeTopPx);
+  const [snapIndex, setSnapIndex] = useState<"small" | "large">("large");
+  // 地図を触った・一覧の項目を選んだ、など「もう見た」操作の後は閉じる
+  // （以前は mini まで畳んでいたが、閉じている間は浮島ボタンが出るので同じ意味）。
   const collapsePlacesSheet = useCallback(() => {
-    setPlacesSheetMode("mini");
+    setPlacesSheetOpen(false);
   }, []);
 
-  // 他タブに移ったら初期表示の高さ（entryMode）に戻しておく（React 公式の
-  // 「props の変化に応じて state を調整する」パターン＝render中の直接setState。
-  // useEffectでのcascading更新を避けるため、isActive の変化を前回値比較で
-  // 検知する）。展開したまま他タブへ行ってまた場所タブに戻ると、いきなり
-  // 展開済みで出てきて驚くため、非表示になった瞬間に戻しておく。再度この
-  // タブに来た時にまた「何があるか一目で分かる」表示から始まってほしい。
+  // 他タブに移ったら閉じておく（React 公式の「props の変化に応じて state を
+  // 調整する」パターン＝render 中の直接 setState）。展開したまま他タブへ行って
+  // また戻ると、いきなり開いた状態で出てきて驚くため。
   const [prevIsActive, setPrevIsActive] = useState(isActive);
   if (isActive !== prevIsActive) {
     setPrevIsActive(isActive);
-    if (!isActive) setPlacesSheetMode(entryMode);
+    if (!isActive) setPlacesSheetOpen(false);
   }
-
-  // welcome は今まさにそこで静止している間だけ snapPoints に含める。ドラッグは
-  // 常にその時点の snapPoints の中でしか止まれないため、mini↔expanded の
-  // ドラッグ中は welcome を候補から外しておかないと、途中で一瞬引っかかって
-  // 見える（ミニマムから開く時／マックスから閉じる時に welcome で止まらない
-  // でほしい、というフィードバックへの対応）。welcome から一度でも離れたら
-  // （タップ・ドラッグ・地図操作いずれでも）以降は mini/expanded の2点だけに
-  // なり、次にこのタブへ入り直すまで welcome は候補に戻らない。
-  const placesSheetSnapPoints = useMemo<(number | string)[]>(
-    () =>
-      placesSheetMode === "welcome"
-        ? [MINI_SNAP, WELCOME_SNAP, expandedSnap]
-        : [MINI_SNAP, expandedSnap],
-    [placesSheetMode, expandedSnap],
-  );
 
   // 背景スクロールの固定。Drawer.Root は modal=false（フォーム内のポータル等を
   // 生かす他の用途と合わせた設計）なので vaul 自身の scroll-lock には乗れない
@@ -255,6 +226,19 @@ export function PlacesSection({
     [places],
   );
   const [selected, setSelected] = useState<Selection | null>(null);
+
+  // 行を選択している間は小さい段までに制限する（一覧より地図が主役という方針。
+  // iOS と同じ）。検索中は iOS と同じ [0.25, 0.5]。
+  const activeDetents =
+    inSearch
+      ? searchDetents
+      : selected?.kind === "saved"
+        ? [placesDetents[0]]
+        : placesDetents;
+  const snapPoints = activeDetents.map((d) => `${Math.round(d * refPx)}px`);
+  const activeSnap =
+    snapPoints[snapIndex === "small" ? 0 : snapPoints.length - 1] ??
+    snapPoints[0];
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
   const [draft, setDraft] = useState<LatLng | null>(null);
   // タップ選択中のベースマップ POI（マーカーは出さず吹き出しだけ）。
@@ -687,51 +671,72 @@ export function PlacesSection({
             パターン。bottom を MOBILE_TAB_BOTTOM_OFFSET にしてタブバーの上に固定する
             （container prop で地図パネルに閉じ込める案は snapPoints の内部
             計算と噛み合わずレイアウトが壊れたため不採用）。 */}
-        {showPlacesSheet && (
+        {/* 一覧を開く浮島ボタン（タブバーの上に浮かせる）。常設シートをやめ、
+            押した時だけシートを出す＝閉じている間は地図が全部見える（iOS と
+            同形）。ガラス調は tabbar と同じ「半透明＋backdrop-blur」。 */}
+        {showPlacesSheet && !placesSheetOpen && (
+          <button
+            type="button"
+            onClick={() => {
+              setSnapIndex("large");
+              setPlacesSheetOpen(true);
+            }}
+            aria-label={t("openList")}
+            style={{ bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 12px)` }}
+            className="fixed left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-foreground/10 bg-background/75 px-4 py-2 text-xs font-medium text-foreground shadow-lg backdrop-blur-lg backdrop-saturate-150 transition active:scale-95 md:hidden"
+          >
+            <ChevronIcon size={16} className="-rotate-90" />
+            {t("placeCountLabel", { count: visiblePlaces.length })}
+          </button>
+        )}
+
+        {showPlacesSheet && placesSheetOpen && (
           <Drawer.Root
             open
             modal={false}
-            dismissible={false}
-            snapPoints={placesSheetSnapPoints}
-            activeSnapPoint={placesSheetSnap}
-            setActiveSnapPoint={setPlacesSheetSnap}
+            snapPoints={snapPoints}
+            activeSnapPoint={activeSnap}
+            setActiveSnapPoint={(snap) =>
+              setSnapIndex(snap === snapPoints[0] ? "small" : "large")
+            }
             scrollLockTimeout={0}
             repositionInputs={false}
+            onOpenChange={(next) => {
+              if (!next) setPlacesSheetOpen(false);
+            }}
           >
             <Drawer.Portal>
               <Drawer.Content
                 aria-label={t("placesListLabel")}
-                // 高さは 100dvh（CSS単位）ではなく、expandedSnap の計算と vaul の
-                // オフセット計算が使っているのと同じ window.innerHeight の実測値
-                // （px）にする。dvh と innerHeight は iOS Safari で一致しないこと
-                // があり、ズレたぶんシートの静止位置が計算と食い違って展開時の
-                // 上限がずれる（NarrowSheet と同種の「配置と基準の不一致」バグ）。
-                style={{
-                  height: `${viewportHeight}px`,
-                  bottom: MOBILE_TAB_BOTTOM_OFFSET,
-                }}
-                className="fixed inset-x-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
+                // 高さは 100dvh（CSS単位）ではなく、段の計算と vaul のオフセット
+                // 計算が使っているのと同じ window.innerHeight の実測値（px）。
+                // dvh と innerHeight は iOS Safari で一致しないことがあり、ズレた
+                // ぶんシートの静止位置が計算と食い違う（NarrowSheet と同種の
+                // 「配置と基準の不一致」バグ）。
+                // bottom は 0（タブバーの上に浮かせるオフセットは持たない）。
+                // オフセットを持つと vaul の px snapPoint（viewport 下端起点）と
+                // 二重に効いて狙いより下に出る。
+                style={{ height: `${viewportHeight}px` }}
+                className="fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
               >
                 <Drawer.Title className="sr-only">
                   {t("placesListLabel")}
                 </Drawer.Title>
-                <button
-                  type="button"
-                  onClick={() =>
-                    // 開いていた（expanded）ものを閉じる操作＝「一度開いて閉じた」
-                    // なので mini まで畳む。閉じていれば expanded まで開く。
-                    setPlacesSheetMode(
-                      placesSheetMode === "expanded" ? "mini" : "expanded",
-                    )
-                  }
-                  className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
-                >
+                <div className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing">
                   <Drawer.Handle className="!h-1.5 !w-9" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("placeCountLabel", { count: visiblePlaces.length })}
                   </span>
-                </button>
-                <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">
+                </div>
+                <div
+                  ref={listMeasureRef}
+                  // 下タブバーは z-30 でシート(z-20)の上に描かれるので、末尾の
+                  // 行が裏に隠れないぶんだけ下余白を足す。
+                  style={{
+                    paddingBottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)`,
+                  }}
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
+                >
                   <PlaceList
                     places={visiblePlaces}
                     selectedId={

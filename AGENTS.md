@@ -197,6 +197,22 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
 
+## web をローカルで見る（開発用ログイン）
+
+web の入口は OAuth（Google / Apple）だけなので、自動テストや AI エージェントは
+そのままではサインインできない。iOS と同じ**開発用ログイン**を web にも置いてある
+（`components/dev-sign-in-button.tsx`。LP に「開発用ログイン」のリンクが出る）。
+
+- **`next dev` の時だけ有効**。`process.env.NODE_ENV === "development"` で分岐して
+  いるので、本番ビルドにはボタン自体が含まれない。
+- 資格情報とローカルの向き先は gitignore された `apps/web/.env.development.local`:
+  `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` を **staging** に向け、
+  `NEXT_PUBLIC_DEV_LOGIN_EMAIL` / `NEXT_PUBLIC_DEV_LOGIN_PASSWORD` を置く
+  （`.env.local` は本番を向いているので、上書きするこのファイルで staging に寄せる）。
+- モバイル幅の見た目は Playwright で撮る（ブラウザのウィンドウをリサイズしても
+  ビューポートが変わらないことがある）。`devices["iPhone 15 Pro"]` で開いて
+  開発用ログインを押してから目的のページへ、という流れ。
+
 ## web の動作確認は staging（Vercel Preview）で行う
 
 環境（本番/確認用で DB が分かれていること・全体像）は

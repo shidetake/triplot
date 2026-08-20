@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
+import { DevSignInButton } from "@/components/dev-sign-in-button";
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
@@ -47,6 +48,8 @@ export default async function LandingPage() {
               />
             </div>
             <p className="text-sm text-muted-foreground">{t("joinHint")}</p>
+            {/* 開発用ログイン（next dev のみ・本番ビルドには存在しない）。 */}
+            <DevSignInButton />
           </div>
         )}
       </section>
