@@ -97,7 +97,10 @@ const hhmm = (min: number) => formatMinutes(min, false);
 // topMin/endMin（その日の中で見える範囲だけ）をそのまま出すとブロックごとに
 // 違う時刻が出て統一感がない。日をまたぐ予定だけ、どのブロックにも同じ
 // 「開始 - 終了」（元の startAt/endAt）を出す。単日の予定は今まで通り。
-function spanLabel(ev: { startAt: string; endAt: string | null }): string | null {
+function spanLabel(ev: {
+  startAt: string;
+  endAt: string | null;
+}): string | null {
   if (!ev.endAt) return null;
   const s = parseWall(ev.startAt);
   const e = parseWall(ev.endAt);
@@ -250,7 +253,10 @@ export function WeekCalendar({
   // 列の途中にあると、到着時刻より後は本当は到着側のTZになっている。
   // 長押しで新規予定を作るときはその境界を跨いで押されうるので、押した
   // 時刻込みで解決し直す（表示上の列そのものは分けない設計を維持したまま）。
-  const tzAtMinute = (column: (typeof columns)[number], minutes: number): string => {
+  const tzAtMinute = (
+    column: (typeof columns)[number],
+    minutes: number,
+  ): string => {
     let tz = column.tz;
     let bestArriveMin = -1;
     for (const t of transits) {
@@ -483,41 +489,38 @@ export function WeekCalendar({
       }
     };
   });
-  const updateAutoScroll = useCallback(
-    (clientX: number, clientY: number) => {
-      const el = scrollRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const EDGE = 40;
-      const SPEED = 8;
-      const mode = dragModeRef.current;
-      let vx = 0;
-      let vy = 0;
-      // 左端は時刻ガター(GUTTER)が常に居座っているので、列が始まる
-      // 位置（rect.left + GUTTER）を基準にトリガを置く。これが無いと
-      // ゴーストがガター裏に潜り込んでから初めて auto-scroll が動いて
-      // ガターに被って見える。
-      const leftEdge = rect.left + GUTTER + EDGE;
-      if (mode === "time") {
-        // 通常予定は時刻＋日付の両軸を動かせるので、縦/横の両端で反応
-        if (clientY < rect.top + EDGE) vy = -SPEED;
-        else if (clientY > rect.bottom - EDGE) vy = SPEED;
-        if (clientX < leftEdge) vx = -SPEED;
-        else if (clientX > rect.right - EDGE) vx = SPEED;
-      } else if (mode === "allday") {
-        // 終日ゴーストは横移動のみ → 横の端だけ反応
-        if (clientX < leftEdge) vx = -SPEED;
-        else if (clientX > rect.right - EDGE) vx = SPEED;
-      }
-      const st = autoScrollRef.current;
-      st.vx = vx;
-      st.vy = vy;
-      if ((vx !== 0 || vy !== 0) && st.rafId == null) {
-        st.rafId = requestAnimationFrame(() => tickRef.current());
-      }
-    },
-    [],
-  );
+  const updateAutoScroll = useCallback((clientX: number, clientY: number) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const EDGE = 40;
+    const SPEED = 8;
+    const mode = dragModeRef.current;
+    let vx = 0;
+    let vy = 0;
+    // 左端は時刻ガター(GUTTER)が常に居座っているので、列が始まる
+    // 位置（rect.left + GUTTER）を基準にトリガを置く。これが無いと
+    // ゴーストがガター裏に潜り込んでから初めて auto-scroll が動いて
+    // ガターに被って見える。
+    const leftEdge = rect.left + GUTTER + EDGE;
+    if (mode === "time") {
+      // 通常予定は時刻＋日付の両軸を動かせるので、縦/横の両端で反応
+      if (clientY < rect.top + EDGE) vy = -SPEED;
+      else if (clientY > rect.bottom - EDGE) vy = SPEED;
+      if (clientX < leftEdge) vx = -SPEED;
+      else if (clientX > rect.right - EDGE) vx = SPEED;
+    } else if (mode === "allday") {
+      // 終日ゴーストは横移動のみ → 横の端だけ反応
+      if (clientX < leftEdge) vx = -SPEED;
+      else if (clientX > rect.right - EDGE) vx = SPEED;
+    }
+    const st = autoScrollRef.current;
+    st.vx = vx;
+    st.vy = vy;
+    if ((vx !== 0 || vy !== 0) && st.rafId == null) {
+      st.rafId = requestAnimationFrame(() => tickRef.current());
+    }
+  }, []);
   const stopAutoScroll = useCallback(() => {
     const st = autoScrollRef.current;
     st.vx = 0;
@@ -535,7 +538,6 @@ export function WeekCalendar({
       stopAutoScroll();
     };
   }, [unlockPageScroll, stopAutoScroll]);
-
 
   const hourTicks: number[] = [];
   for (let m = winStart; m <= winEnd; m += 60) hourTicks.push(m);
@@ -566,7 +568,11 @@ export function WeekCalendar({
         : null;
     if (!target?.columnKey) return null;
     return computeGhostLaneOverrides(
-      { columnKey: target.columnKey, topMin: target.topMin, endMin: target.endMin },
+      {
+        columnKey: target.columnKey,
+        topMin: target.topMin,
+        endMin: target.endMin,
+      },
       timed,
       transits,
     );
@@ -590,11 +596,7 @@ export function WeekCalendar({
   }, [allDayGhost, allDayBars]);
 
   if (columns.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        {tSched("noDates")}
-      </p>
-    );
+    return <p className="text-sm text-muted-foreground">{tSched("noDates")}</p>;
   }
 
   // ゴーストが既存より下の段を使う場合はバンドを伸ばす。
@@ -656,210 +658,214 @@ export function WeekCalendar({
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}
         <div className="sticky top-0 z-30">
-        {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
-        <div className="flex border-b border-foreground/10 bg-background">
-          <div
-            className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-background"
-            style={{ width: GUTTER }}
-          />
-          {groups.map((g) => (
+          {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
+          <div className="flex border-b border-foreground/10 bg-background">
             <div
-              key={g.key}
-              className="relative shrink-0 border-r border-foreground/10 px-1 py-1 text-center"
-              style={{ width: g.columns.length * COL }}
-            >
-              <div className="text-xs font-medium text-foreground">
-                {g.label}
-              </div>
-              {g.tzNote && (
-                // 前進する便は注記だけ出発日＋到着日の2列ぶんの幅で見せる
-                // （列は結合しない）。狭い時は2行まで折り返す。
-                <div
-                  className="line-clamp-2 text-[10px] leading-tight text-slate-600"
-                  // 親の px-1（左右 4px）の内側に置かれるので、span*COL ぴったり
-                  // だと左の 4px ぶん右にずれて隣の日付に食い込む。左右 8px を
-                  // 引いてスパン内（4px インセット）に収める。
-                  style={{ width: (g.tzNoteSpan ?? g.columns.length) * COL - 8 }}
-                >
-                  {g.tzNote}
+              className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-background"
+              style={{ width: GUTTER }}
+            />
+            {groups.map((g) => (
+              <div
+                key={g.key}
+                className="relative shrink-0 border-r border-foreground/10 px-1 py-1 text-center"
+                style={{ width: g.columns.length * COL }}
+              >
+                <div className="text-xs font-medium text-foreground">
+                  {g.label}
                 </div>
-              )}
-            </div>
-          ))}
-        </div>
+                {g.tzNote && (
+                  // 前進する便は注記だけ出発日＋到着日の2列ぶんの幅で見せる
+                  // （列は結合しない）。狭い時は2行まで折り返す。
+                  <div
+                    className="line-clamp-2 text-[10px] leading-tight text-slate-600"
+                    // 親の px-1（左右 4px）の内側に置かれるので、span*COL ぴったり
+                    // だと左の 4px ぶん右にずれて隣の日付に食い込む。左右 8px を
+                    // 引いてスパン内（4px インセット）に収める。
+                    style={{
+                      width: (g.tzNoteSpan ?? g.columns.length) * COL - 8,
+                    }}
+                  >
+                    {g.tzNote}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
 
-        {/* ── 終日帯 ── */}
-        {/* data-mobile-chrome-top: 予定追加のボトムシートを開いた時、この
+          {/* ── 終日帯 ── */}
+          {/* data-mobile-chrome-top: 予定追加のボトムシートを開いた時、この
             終日帯の下端までは見えるようにする実測対象
             （components/use-mobile-chrome-margins.ts）。 */}
-        <div
-          data-mobile-chrome-top
-          className="flex border-b border-foreground/10 bg-muted"
-        >
           <div
-            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-muted text-[10px] text-muted-foreground"
-            style={{ width: GUTTER }}
+            data-mobile-chrome-top
+            className="flex border-b border-foreground/10 bg-muted"
           >
-            {tSched("allDayLabel")}
-          </div>
-          <div
-            className="relative"
-            style={{ width: totalW, height: allDayBandH }}
-            onTouchStart={(e) => {
-              recentTouchUntil.current = performance.now() + 700;
-              // 既存の終日バー上でのタッチは選択用なので長押し対象外
-              const target = e.target as HTMLElement;
-              if (target.closest("button")) return;
-              if (e.touches.length !== 1) {
-                clearAllDayLongPress();
-                return;
-              }
-              const t = e.touches[0];
-              const stripEl = e.currentTarget;
-              clearAllDayLongPress();
-              allDayLongPressInfo.current = {
-                startX: t.clientX,
-                startY: t.clientY,
-                stripEl,
-                pressFired: false,
-              };
-              allDayLongPressTimer.current = setTimeout(() => {
-                allDayLongPressTimer.current = null;
-                const info = allDayLongPressInfo.current;
-                if (!info) return;
-                info.pressFired = true;
-                const idx = columnIndexFromX(info.stripEl, t.clientX);
-                const c = columns[idx];
-                if (!c) return;
-                // 成立した瞬間にページ scroll を即時ロック（useEffect 経由
-                // だと 1 フレーム空いてスクロールが滑る原因になる）。
-                lockPageScroll();
-                dragModeRef.current = "allday";
-                dragPosRef.current = { x: t.clientX, y: t.clientY };
-                setAllDayGhost({ date: c.date, columnIndex: idx });
-              }, 500);
-            }}
-            onTouchMove={(e) => {
-              const info = allDayLongPressInfo.current;
-              if (!info) return;
-              const t = e.touches[0];
-              if (!t) return;
-              if (!info.pressFired) {
-                if (
-                  Math.abs(t.clientX - info.startX) > 10 ||
-                  Math.abs(t.clientY - info.startY) > 10
-                ) {
+            <div
+              className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-muted text-[10px] text-muted-foreground"
+              style={{ width: GUTTER }}
+            >
+              {tSched("allDayLabel")}
+            </div>
+            <div
+              className="relative"
+              style={{ width: totalW, height: allDayBandH }}
+              onTouchStart={(e) => {
+                recentTouchUntil.current = performance.now() + 700;
+                // 既存の終日バー上でのタッチは選択用なので長押し対象外
+                const target = e.target as HTMLElement;
+                if (target.closest("button")) return;
+                if (e.touches.length !== 1) {
                   clearAllDayLongPress();
-                }
-                return;
-              }
-              dragPosRef.current = { x: t.clientX, y: t.clientY };
-              const idx = columnIndexFromX(info.stripEl, t.clientX);
-              const c = columns[idx];
-              const g = allDayGhostRef.current;
-              if (c && g && idx !== g.columnIndex) {
-                setAllDayGhost({ date: c.date, columnIndex: idx });
-              }
-              // 端なら auto-scroll（横方向）。
-              updateAutoScroll(t.clientX, t.clientY);
-            }}
-            onTouchEnd={() => {
-              const info = allDayLongPressInfo.current;
-              recentTouchUntil.current = performance.now() + 700;
-              clearAllDayLongPress();
-              stopAutoScroll();
-              dragPosRef.current = null;
-              dragModeRef.current = null;
-              unlockPageScroll();
-              if (info?.pressFired) {
-                const g = allDayGhostRef.current;
-                if (g) {
-                  const stripRect = info.stripEl.getBoundingClientRect();
-                  const anchorX =
-                    stripRect.left + g.columnIndex * COL + COL / 2;
-                  const anchorY = stripRect.top + stripRect.height / 2;
-                  setAllDayGhost(null);
-                  onAllDaySlotClick(g.date, { x: anchorX, y: anchorY });
                   return;
                 }
-              }
-              setAllDayGhost(null);
-            }}
-            onTouchCancel={() => {
-              clearAllDayLongPress();
-              stopAutoScroll();
-              dragPosRef.current = null;
-              dragModeRef.current = null;
-              unlockPageScroll();
-              setAllDayGhost(null);
-            }}
-          >
-            {allDayBars.map((b) => {
-              const sel = selectedEventId === b.event.id;
-              const hov = hoveredEventId === b.event.id;
-              const color = colorOf(b.event);
-              const app = eventAppearance(color, sel, hov, !!b.event.isDraft);
-              return (
-                <button
-                  key={b.event.id}
-                  type="button"
-                  onClick={(e) =>
-                    onEventClick(b.event.id, { x: e.clientX, y: e.clientY })
+                const t = e.touches[0];
+                const stripEl = e.currentTarget;
+                clearAllDayLongPress();
+                allDayLongPressInfo.current = {
+                  startX: t.clientX,
+                  startY: t.clientY,
+                  stripEl,
+                  pressFired: false,
+                };
+                allDayLongPressTimer.current = setTimeout(() => {
+                  allDayLongPressTimer.current = null;
+                  const info = allDayLongPressInfo.current;
+                  if (!info) return;
+                  info.pressFired = true;
+                  const idx = columnIndexFromX(info.stripEl, t.clientX);
+                  const c = columns[idx];
+                  if (!c) return;
+                  // 成立した瞬間にページ scroll を即時ロック（useEffect 経由
+                  // だと 1 フレーム空いてスクロールが滑る原因になる）。
+                  lockPageScroll();
+                  dragModeRef.current = "allday";
+                  dragPosRef.current = { x: t.clientX, y: t.clientY };
+                  setAllDayGhost({ date: c.date, columnIndex: idx });
+                }, 500);
+              }}
+              onTouchMove={(e) => {
+                const info = allDayLongPressInfo.current;
+                if (!info) return;
+                const t = e.touches[0];
+                if (!t) return;
+                if (!info.pressFired) {
+                  if (
+                    Math.abs(t.clientX - info.startX) > 10 ||
+                    Math.abs(t.clientY - info.startY) > 10
+                  ) {
+                    clearAllDayLongPress();
                   }
-                  onMouseEnter={() => setHoveredEventId(b.event.id)}
-                  onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute flex items-center gap-1 rounded px-1 text-left text-xs ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
-                  style={{
-                    left: b.startColIndex * COL + 2,
-                    width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
-                    top: b.row * ALLDAY_ROW + 2,
-                    height: ALLDAY_ROW - 2,
-                    ...app.style,
-                  }}
-                  title={b.event.title}
-                >
-                  {color.kind === "mixed" && participantDots(b.event)}
-                  <ReservationMark ev={b.event} />
-                  <span className="truncate">
-                    {/* タイトルは通常予定の blockLabel と同じ font-medium、
+                  return;
+                }
+                dragPosRef.current = { x: t.clientX, y: t.clientY };
+                const idx = columnIndexFromX(info.stripEl, t.clientX);
+                const c = columns[idx];
+                const g = allDayGhostRef.current;
+                if (c && g && idx !== g.columnIndex) {
+                  setAllDayGhost({ date: c.date, columnIndex: idx });
+                }
+                // 端なら auto-scroll（横方向）。
+                updateAutoScroll(t.clientX, t.clientY);
+              }}
+              onTouchEnd={() => {
+                const info = allDayLongPressInfo.current;
+                recentTouchUntil.current = performance.now() + 700;
+                clearAllDayLongPress();
+                stopAutoScroll();
+                dragPosRef.current = null;
+                dragModeRef.current = null;
+                unlockPageScroll();
+                if (info?.pressFired) {
+                  const g = allDayGhostRef.current;
+                  if (g) {
+                    const stripRect = info.stripEl.getBoundingClientRect();
+                    const anchorX =
+                      stripRect.left + g.columnIndex * COL + COL / 2;
+                    const anchorY = stripRect.top + stripRect.height / 2;
+                    setAllDayGhost(null);
+                    onAllDaySlotClick(g.date, { x: anchorX, y: anchorY });
+                    return;
+                  }
+                }
+                setAllDayGhost(null);
+              }}
+              onTouchCancel={() => {
+                clearAllDayLongPress();
+                stopAutoScroll();
+                dragPosRef.current = null;
+                dragModeRef.current = null;
+                unlockPageScroll();
+                setAllDayGhost(null);
+              }}
+            >
+              {allDayBars.map((b) => {
+                const sel = selectedEventId === b.event.id;
+                const hov = hoveredEventId === b.event.id;
+                const color = colorOf(b.event);
+                const app = eventAppearance(color, sel, hov, !!b.event.isDraft);
+                return (
+                  <button
+                    key={b.event.id}
+                    type="button"
+                    onClick={(e) =>
+                      onEventClick(b.event.id, { x: e.clientX, y: e.clientY })
+                    }
+                    onMouseEnter={() => setHoveredEventId(b.event.id)}
+                    onMouseLeave={() => setHoveredEventId(null)}
+                    className={`absolute flex items-center gap-1 rounded px-1 text-left text-xs ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
+                    style={{
+                      left: b.startColIndex * COL + 2,
+                      width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
+                      top: b.row * ALLDAY_ROW + 2,
+                      height: ALLDAY_ROW - 2,
+                      ...app.style,
+                    }}
+                    title={b.event.title}
+                  >
+                    {color.kind === "mixed" && participantDots(b.event)}
+                    <ReservationMark ev={b.event} />
+                    <span className="truncate">
+                      {/* タイトルは通常予定の blockLabel と同じ font-medium、
                         場所・メモは同じ opacity-70 で続ける（改行はしない）。
                         未確定チップはタイトルの前（終日は時刻が無いので改行せず同じ行）。 */}
-                    {draftBadge(b.event)}
-                    <span className="font-medium">{b.event.title}</span>
-                    {[placeName(b.event.startPlaceId), b.event.note]
-                      .filter((s): s is string => !!s)
-                      .map((s, i) => (
-                        <span key={i} className="opacity-70">
-                          {" "}
-                          {s}
-                        </span>
-                      ))}
-                  </span>
-                </button>
-              );
-            })}
-            {/* スマホ長押し中のゴースト枠（1日分・半透明）。同列に既存
+                      {draftBadge(b.event)}
+                      <span className="font-medium">{b.event.title}</span>
+                      {[placeName(b.event.startPlaceId), b.event.note]
+                        .filter((s): s is string => !!s)
+                        .map((s, i) => (
+                          <span key={i} className="opacity-70">
+                            {" "}
+                            {s}
+                          </span>
+                        ))}
+                    </span>
+                  </button>
+                );
+              })}
+              {/* スマホ長押し中のゴースト枠（1日分・半透明）。同列に既存
                 バーがあればその下の段に積み上げる（足りなければバンドも伸びる）。 */}
-            {allDayGhost && (() => {
-              const [, m, d] = allDayGhost.date.split("-");
-              const row = ghostAllDayRow ?? 0;
-              return (
-                <div
-                  className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-xs leading-tight text-slate-800"
-                  style={{
-                    left: allDayGhost.columnIndex * COL + 2,
-                    width: COL - 4,
-                    top: row * ALLDAY_ROW + 2,
-                    height: ALLDAY_ROW - 2,
-                  }}
-                >
-                  {Number(m)}/{Number(d)}
-                </div>
-              );
-            })()}
+              {allDayGhost &&
+                (() => {
+                  const [, m, d] = allDayGhost.date.split("-");
+                  const row = ghostAllDayRow ?? 0;
+                  return (
+                    <div
+                      className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-xs leading-tight text-slate-800"
+                      style={{
+                        left: allDayGhost.columnIndex * COL + 2,
+                        width: COL - 4,
+                        top: row * ALLDAY_ROW + 2,
+                        height: ALLDAY_ROW - 2,
+                      }}
+                    >
+                      {Number(m)}/{Number(d)}
+                    </div>
+                  );
+                })()}
+            </div>
           </div>
         </div>
-        </div>{/* ── ヘッダ + 終日帯 sticky ラッパー end ── */}
+        {/* ── ヘッダ + 終日帯 sticky ラッパー end ── */}
 
         {/* ── 本体（0:00〜24:00 固定グリッド） ── */}
         <div className="flex">
@@ -962,7 +968,10 @@ export function WeekCalendar({
                   }
                   // info.tz は押した瞬間の列TZ（静的）。同日forward便の到着後を
                   // 押した場合はズレるので、確定した時刻で解決し直す。
-                  const tz = tzAtMinute(columns[info.columnIndex], info.startMin);
+                  const tz = tzAtMinute(
+                    columns[info.columnIndex],
+                    info.startMin,
+                  );
                   if (info.dragging) {
                     // ドラッグ確定 → 開始/終了を form に渡す。
                     // ゴースト(pcDrag)は親が form 閉じ時にクリアするので、
@@ -1235,159 +1244,206 @@ export function WeekCalendar({
                   ? columns[pcDrag.columnIndex]?.key
                   : undefined;
               return transits.map((t) => {
-              const di = colIndexByKey.get(t.departColumnKey);
-              const ai = colIndexByKey.get(t.arriveColumnKey);
-              if (di == null || ai == null) return null;
-              const yd = y(t.departMin);
-              const ya = y(t.arriveMin);
-              const sel = selectedEventId === t.event.id;
-              const hov = hoveredEventId === t.event.id;
-              const fade = isMyEvent(t.event) ? "" : " opacity-50";
-              const color = colorOf(t.event);
-              const app = eventAppearance(color, sel, hov, !!t.event.isDraft);
-              const baseClass = `${app.className}${fade}`;
-              const baseStyle = app.style;
-              const dots =
-                color.kind === "mixed" ? participantDots(t.event) : null;
-              const ov = laneOverrides?.get(t.event.id);
-              if (di === ai) {
-                // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
-                // 同じ列・同じ時間帯に通常予定やゴーストがあればレーンを分け合う。
-                const useOv = ov && ghostColKey === t.departColumnKey;
-                const laneCount = useOv ? ov.laneCount : t.departLaneCount;
-                const lane = useOv ? ov.lane : t.departLane;
-                const w = COL / laneCount;
+                const di = colIndexByKey.get(t.departColumnKey);
+                const ai = colIndexByKey.get(t.arriveColumnKey);
+                if (di == null || ai == null) return null;
+                const yd = y(t.departMin);
+                const ya = y(t.arriveMin);
+                const sel = selectedEventId === t.event.id;
+                const hov = hoveredEventId === t.event.id;
+                const fade = isMyEvent(t.event) ? "" : " opacity-50";
+                const color = colorOf(t.event);
+                const app = eventAppearance(color, sel, hov, !!t.event.isDraft);
+                const baseClass = `${app.className}${fade}`;
+                const baseStyle = app.style;
+                const dots =
+                  color.kind === "mixed" ? participantDots(t.event) : null;
+                const ov = laneOverrides?.get(t.event.id);
+                if (di === ai) {
+                  // 同一列で完結する移動（時差が戻らず時刻も前進）。1ブロックで描く。
+                  // 同じ列・同じ時間帯に通常予定やゴーストがあればレーンを分け合う。
+                  const useOv = ov && ghostColKey === t.departColumnKey;
+                  const laneCount = useOv ? ov.laneCount : t.departLaneCount;
+                  const lane = useOv ? ov.lane : t.departLane;
+                  const w = COL / laneCount;
+                  return (
+                    <button
+                      key={t.event.id}
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(t.event.id, {
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }}
+                      onMouseEnter={() => setHoveredEventId(t.event.id)}
+                      onMouseLeave={() => setHoveredEventId(null)}
+                      className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                      style={{
+                        left: di * COL + lane * w + 1,
+                        width: w - 2,
+                        top: yd,
+                        height: Math.max(ya - yd, MIN_BLOCK),
+                        ...baseStyle,
+                      }}
+                    >
+                      <span className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                        </span>
+                        {dots}
+                      </span>
+                      {draftBadge(t.event)}
+                      <span className="font-medium">
+                        <ReservationMark ev={t.event} />
+                        {t.event.title}
+                      </span>
+                      {/* 通常の予定と同じく場所→メモの順に、高さの許す分だけ
+                        出す（以前はメモだけだった。iOS と同形）。 */}
+                      {[placeName(t.event.startPlaceId), t.event.note]
+                        .filter((x): x is string => Boolean(x))
+                        .slice(
+                          0,
+                          maxExtraLines(
+                            Math.max(ya - yd, MIN_BLOCK),
+                            !!t.event.isDraft,
+                          ),
+                        )
+                        .map((text, i) => (
+                          <span
+                            key={i}
+                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                          >
+                            {text}
+                          </span>
+                        ))}
+                    </button>
+                  );
+                }
+                // 出発側・到着側は別列なので、それぞれ独立に重なり（＋ゴースト）を分け合う。
+                const depUseOv = ov && ghostColKey === t.departColumnKey;
+                const departLaneCount = depUseOv
+                  ? ov.laneCount
+                  : t.departLaneCount;
+                const departLane = depUseOv ? ov.lane : t.departLane;
+                const wd = COL / departLaneCount;
+                const arrUseOv = ov && ghostColKey === t.arriveColumnKey;
+                const arriveLaneCount = arrUseOv
+                  ? ov.laneCount
+                  : t.arriveLaneCount;
+                const arriveLane = arrUseOv ? ov.lane : t.arriveLane;
+                const wa = COL / arriveLaneCount;
                 return (
-                  <button
-                    key={t.event.id}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
-                    }}
-                    onMouseEnter={() => setHoveredEventId(t.event.id)}
-                    onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
-                    style={{
-                      left: di * COL + lane * w + 1,
-                      width: w - 2,
-                      top: yd,
-                      height: Math.max(ya - yd, MIN_BLOCK),
-                      ...baseStyle,
-                    }}
-                  >
-                    <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
-                      </span>
-                      {dots}
-                    </span>
-                    {draftBadge(t.event)}
-                    <span className="font-medium">
-                      <ReservationMark ev={t.event} />
-                      {t.event.title}
-                    </span>
-                    {t.event.note &&
-                      maxExtraLines(
-                        Math.max(ya - yd, MIN_BLOCK),
-                        !!t.event.isDraft,
-                      ) > 0 && (
-                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
-                          {t.event.note}
+                  <div key={t.event.id}>
+                    {/* 出発側 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(t.event.id, {
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }}
+                      onMouseEnter={() => setHoveredEventId(t.event.id)}
+                      onMouseLeave={() => setHoveredEventId(null)}
+                      className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                      style={{
+                        left: di * COL + departLane * wd + 1,
+                        width: wd - 2,
+                        top: yd,
+                        height: Math.max(bodyH - yd, MIN_BLOCK),
+                        ...baseStyle,
+                      }}
+                    >
+                      <span className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                         </span>
-                      )}
-                  </button>
+                        {dots}
+                      </span>
+                      {draftBadge(t.event)}
+                      <span className="font-medium">
+                        <ReservationMark ev={t.event} />
+                        {t.event.title}
+                      </span>
+                      {/* 通常の予定と同じく場所→メモの順（iOS と同形）。2列に
+                        分かれる便でも、どちらのブロックにも同じものを出す
+                        （時刻表示と同じ考え方）。 */}
+                      {[placeName(t.event.startPlaceId), t.event.note]
+                        .filter((x): x is string => Boolean(x))
+                        .slice(
+                          0,
+                          maxExtraLines(
+                            Math.max(bodyH - yd, MIN_BLOCK),
+                            !!t.event.isDraft,
+                          ),
+                        )
+                        .map((text, i) => (
+                          <span
+                            key={i}
+                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                          >
+                            {text}
+                          </span>
+                        ))}
+                    </button>
+                    {/* 到着側 */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(t.event.id, {
+                          x: e.clientX,
+                          y: e.clientY,
+                        });
+                      }}
+                      onMouseEnter={() => setHoveredEventId(t.event.id)}
+                      onMouseLeave={() => setHoveredEventId(null)}
+                      className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
+                      style={{
+                        left: ai * COL + arriveLane * wa + 1,
+                        width: wa - 2,
+                        top: 0,
+                        height: Math.max(ya, MIN_BLOCK),
+                        ...baseStyle,
+                      }}
+                    >
+                      <span className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] tabular-nums opacity-70">
+                          {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
+                        </span>
+                        {dots}
+                      </span>
+                      {draftBadge(t.event)}
+                      <span className="font-medium">
+                        <ReservationMark ev={t.event} />
+                        {t.event.title}
+                      </span>
+                      {/* 通常の予定と同じく場所→メモの順（iOS と同形）。2列に
+                        分かれる便でも、どちらのブロックにも同じものを出す
+                        （時刻表示と同じ考え方）。 */}
+                      {[placeName(t.event.startPlaceId), t.event.note]
+                        .filter((x): x is string => Boolean(x))
+                        .slice(
+                          0,
+                          maxExtraLines(
+                            Math.max(ya, MIN_BLOCK),
+                            !!t.event.isDraft,
+                          ),
+                        )
+                        .map((text, i) => (
+                          <span
+                            key={i}
+                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                          >
+                            {text}
+                          </span>
+                        ))}
+                    </button>
+                  </div>
                 );
-              }
-              // 出発側・到着側は別列なので、それぞれ独立に重なり（＋ゴースト）を分け合う。
-              const depUseOv = ov && ghostColKey === t.departColumnKey;
-              const departLaneCount = depUseOv ? ov.laneCount : t.departLaneCount;
-              const departLane = depUseOv ? ov.lane : t.departLane;
-              const wd = COL / departLaneCount;
-              const arrUseOv = ov && ghostColKey === t.arriveColumnKey;
-              const arriveLaneCount = arrUseOv ? ov.laneCount : t.arriveLaneCount;
-              const arriveLane = arrUseOv ? ov.lane : t.arriveLane;
-              const wa = COL / arriveLaneCount;
-              return (
-                <div key={t.event.id}>
-                  {/* 出発側 */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
-                    }}
-                    onMouseEnter={() => setHoveredEventId(t.event.id)}
-                    onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
-                    style={{
-                      left: di * COL + departLane * wd + 1,
-                      width: wd - 2,
-                      top: yd,
-                      height: Math.max(bodyH - yd, MIN_BLOCK),
-                      ...baseStyle,
-                    }}
-                  >
-                    <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
-                      </span>
-                      {dots}
-                    </span>
-                    {draftBadge(t.event)}
-                    <span className="font-medium">
-                      <ReservationMark ev={t.event} />
-                      {t.event.title}
-                    </span>
-                    {t.event.note &&
-                      maxExtraLines(
-                        Math.max(bodyH - yd, MIN_BLOCK),
-                        !!t.event.isDraft,
-                      ) > 0 && (
-                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
-                          {t.event.note}
-                        </span>
-                      )}
-                  </button>
-                  {/* 到着側 */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onEventClick(t.event.id, { x: e.clientX, y: e.clientY });
-                    }}
-                    onMouseEnter={() => setHoveredEventId(t.event.id)}
-                    onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${baseClass}`}
-                    style={{
-                      left: ai * COL + arriveLane * wa + 1,
-                      width: wa - 2,
-                      top: 0,
-                      height: Math.max(ya, MIN_BLOCK),
-                      ...baseStyle,
-                    }}
-                  >
-                    <span className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] tabular-nums opacity-70">
-                        {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
-                      </span>
-                      {dots}
-                    </span>
-                    {draftBadge(t.event)}
-                    <span className="font-medium">
-                      <ReservationMark ev={t.event} />
-                      {t.event.title}
-                    </span>
-                    {t.event.note &&
-                      maxExtraLines(Math.max(ya, MIN_BLOCK), !!t.event.isDraft) >
-                        0 && (
-                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
-                          {t.event.note}
-                        </span>
-                      )}
-                  </button>
-                </div>
-              );
               });
             })()}
           </div>
