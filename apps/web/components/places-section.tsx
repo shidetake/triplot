@@ -668,7 +668,7 @@ export function PlacesSection({
             （Drawer.Portal は document.body に直接ポータルするため、他タブ表示中に
             親の hidden/block だけでは隠せない。isActive で明示的に出し分ける）。
             form-popover.tsx の NarrowSheet と同じ viewport 基準の fixed+明示的height
-            パターン。bottom を MOBILE_TAB_BOTTOM_OFFSET にしてタブバーの上に固定する
+            パターン。タブバーの上に重ねる（他のボトムシートと同じ）。
             （container prop で地図パネルに閉じ込める案は snapPoints の内部
             計算と噛み合わずレイアウトが壊れたため不採用）。 */}
         {/* 一覧を開く浮島ボタン（タブバーの上に浮かせる）。常設シートをやめ、
@@ -716,8 +716,12 @@ export function PlacesSection({
                 // bottom は 0（タブバーの上に浮かせるオフセットは持たない）。
                 // オフセットを持つと vaul の px snapPoint（viewport 下端起点）と
                 // 二重に効いて狙いより下に出る。
+                // z-40: 下タブバー（z-30）より上に重ねる。他のボトムシートと
+                // 同じく画面の一番上に乗せる形（iOS の一覧シートも同じ）。
+                // 背後は暗くしない＝地図はそのまま見えて操作もできる
+                // （iOS の sheetLargestUndimmedDetentIndex="last" と同じ）。
                 style={{ height: `${viewportHeight}px` }}
-                className="fixed inset-x-0 bottom-0 z-20 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
+                className="fixed inset-x-0 bottom-0 z-40 flex flex-col rounded-t-2xl border-t border-foreground/10 bg-background shadow-[0_-4px_16px_rgba(0,0,0,0.12)] outline-none md:hidden"
               >
                 <Drawer.Title className="sr-only">
                   {t("placesListLabel")}
@@ -730,12 +734,7 @@ export function PlacesSection({
                 </div>
                 <div
                   ref={listMeasureRef}
-                  // 下タブバーは z-30 でシート(z-20)の上に描かれるので、末尾の
-                  // 行が裏に隠れないぶんだけ下余白を足す。
-                  style={{
-                    paddingBottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)`,
-                  }}
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
                 >
                   <PlaceList
                     places={visiblePlaces}
