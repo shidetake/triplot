@@ -611,14 +611,16 @@ export function WeekCalendar({
     return (
       <>
         {draftBadge(ev)}
-        <span className="font-medium">
+        {/* タイトル・場所・メモはそれぞれ独立した行にして文頭から書く
+            （終日バーだけは高さ1行の帯なので1行に並べる）。 */}
+        <span className="block font-medium [overflow-wrap:anywhere]">
           <ReservationMark ev={ev} />
           {ev.title}
         </span>
         {extras.map((text, i) => (
           <span
             key={i}
-            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+            className="block text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
           >
             {text}
           </span>
@@ -1279,7 +1281,7 @@ export function WeekCalendar({
                         {dots}
                       </span>
                       {draftBadge(t.event)}
-                      <span className="font-medium">
+                      <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
                       </span>
@@ -1290,7 +1292,7 @@ export function WeekCalendar({
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="block text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
@@ -1341,7 +1343,7 @@ export function WeekCalendar({
                         {dots}
                       </span>
                       {draftBadge(t.event)}
-                      <span className="font-medium">
+                      <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
                       </span>
@@ -1353,7 +1355,7 @@ export function WeekCalendar({
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="block text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
@@ -1387,7 +1389,7 @@ export function WeekCalendar({
                         {dots}
                       </span>
                       {draftBadge(t.event)}
-                      <span className="font-medium">
+                      <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
                       </span>
@@ -1399,7 +1401,7 @@ export function WeekCalendar({
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="block text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
