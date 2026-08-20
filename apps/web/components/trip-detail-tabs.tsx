@@ -6,7 +6,7 @@ import {
   CalendarDaysIcon,
   ListTodoIcon,
   MapIcon,
-  WalletIcon,
+  DollarSignIcon,
 } from "@/components/icons";
 import {
   setActiveTripTab,
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { key: "schedule", Icon: CalendarDaysIcon },
   { key: "places", Icon: MapIcon },
-  { key: "expenses", Icon: WalletIcon },
+  { key: "expenses", Icon: DollarSignIcon },
   { key: "todos", Icon: ListTodoIcon },
 ] as const satisfies { key: TabKey; Icon: unknown }[];
 
@@ -82,8 +82,12 @@ export function TripDetailTabs({
               type="button"
               onClick={() => setActiveTripTab(key)}
               aria-current={active ? "page" : undefined}
+              // ラベルは出さずアイコンのみ（iOS のタブバーと同じ）。文言を持たない
+              // ぶん aria-label で読み上げのアクセシブル名を担保する。
+              aria-label={t(key)}
+              title={t(key)}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 py-2 text-[10px] font-medium transition",
+                "flex flex-1 items-center justify-center py-2 transition",
                 active ? "text-foreground" : "text-muted-foreground",
               )}
             >
@@ -93,13 +97,12 @@ export function TripDetailTabs({
                   色の濃淡だけだと選択中が分かりにくいという実機フィードバック。 */}
               <span
                 className={cn(
-                  "flex items-center justify-center rounded-full px-4 py-0.5 transition",
+                  "flex items-center justify-center rounded-full px-4 py-1.5 transition",
                   active && "bg-accent",
                 )}
               >
                 <Icon size={24} />
               </span>
-              <span>{t(key)}</span>
             </button>
           );
         })}

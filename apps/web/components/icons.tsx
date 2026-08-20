@@ -521,6 +521,22 @@ export function WalletIcon({
   );
 }
 
+// Lucide: dollar-sign（旅行タブバー・費用）
+export function DollarSignIcon({
+  size = 18,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <line x1="12" x2="12" y1="2" y2="22" />
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: list-todo（旅行タブバー・TODO）
 export function ListTodoIcon({
   size = 18,
