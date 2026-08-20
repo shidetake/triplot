@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import {
   Alert,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -41,6 +40,7 @@ import {
   PickerChip,
 } from "./datetime-field";
 import { ColorDisc } from "./color-badge";
+import { PageSheet } from "./page-sheet";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
@@ -733,24 +733,13 @@ export function ExpenseForm({
         title={t("currency")}
       />
 
-      {/* カテゴリ選択モーダル（通貨と同形）。 */}
-      <Modal
+      {/* カテゴリ選択（通貨・コピー元と同じ器＝PageSheet。取っ手と中央寄せの
+          見出しを他のシートに揃えるため、器は1つに集約している）。 */}
+      <PageSheet
         visible={categoryOpen}
-        animationType="slide"
-        presentationStyle="pageSheet"
-        onRequestClose={() => setCategoryOpen(false)}
+        onClose={() => setCategoryOpen(false)}
+        title={t("category")}
       >
-        <View style={styles.pickerSheet}>
-          <View style={styles.pickerHeader}>
-            <Text style={styles.pickerTitle}>{t("category")}</Text>
-            <Pressable
-              onPress={() => setCategoryOpen(false)}
-              hitSlop={8}
-              accessibilityLabel={tCommon("close")}
-            >
-              <XIcon size={20} color={theme.mutedForeground} />
-            </Pressable>
-          </View>
           <ScrollView contentContainerStyle={styles.pickerList}>
             {sortedCategories.map((c) => (
               <Pressable
@@ -785,8 +774,7 @@ export function ExpenseForm({
               </Pressable>
             ))}
           </ScrollView>
-        </View>
-      </Modal>
+      </PageSheet>
     </View>
   );
 }
@@ -889,17 +877,6 @@ const makeStyles = (t: Theme) =>
       padding: 10,
     },
     // 通貨/カテゴリ選択モーダル共通（ヘッダー＝タイトル＋×、行＝値＋補足＋✓）。
-    pickerSheet: { flex: 1, backgroundColor: t.background },
-    pickerHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      justifyContent: "space-between",
-      paddingHorizontal: 16,
-      paddingVertical: 14,
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: t.fgAlpha(0.1),
-    },
-    pickerTitle: { fontSize: 14, fontWeight: "600", color: t.foreground },
     pickerList: { padding: 16, paddingTop: 4 },
     timeSpinnerWrap: { alignItems: "center" },
     pickerRow: {
