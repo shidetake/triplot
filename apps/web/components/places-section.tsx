@@ -638,10 +638,11 @@ export function PlacesSection({
         <div
           className="fixed inset-x-0 md:static md:inset-auto"
           style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
-          // 地図に触ったら一覧シートは邪魔なので mini まで畳む（タップ・ピン
-          // ドラッグ開始・パン開始、いずれも pointerdown で拾える）。検索バーは
-          // 別の兄弟要素なのでここには含まれない。
-          onPointerDown={collapsePlacesSheet}
+          // 地図に触っても一覧シートは閉じない。シートは背後を暗くしておらず
+          // 地図はそのまま操作できるので、開いたまま動かせる方が使いやすい
+          // （iOS も閉じない。以前は pointerdown で畳んでいたが、パンしようと
+          // した瞬間に閉じてしまうという実機フィードバック）。閉じたい時は
+          // シートを下にドラッグする。
         >
           <PlaceMap
             places={visiblePlaces}

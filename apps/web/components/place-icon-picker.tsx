@@ -5,11 +5,18 @@ import { useTranslations } from "next-intl";
 
 import { Dialog } from "@base-ui/react/dialog";
 
+import { NarrowSheet } from "./form-popover";
+import { useMediaQuery } from "./use-media-query";
+
 import {
   addTripPinOptionAction,
   removeTripPinOptionAction,
 } from "@/app/trips/[tripId]/actions";
-import { ICON_CATALOG, getIcon, type PinOption } from "@triplot/shared/placeIcons";
+import {
+  ICON_CATALOG,
+  getIcon,
+  type PinOption,
+} from "@triplot/shared/placeIcons";
 import { Button } from "@/components/ui/button";
 
 import { confirmDialog } from "./confirm-dialog";
@@ -35,6 +42,8 @@ export function PlaceIconPicker({
   onClose: () => void;
 }) {
   const t = useTranslations("place");
+  // 狭い画面の判定は FormPopover の閾値と同じ（フォーム幅から導いた 640px）。
+  const narrow = useMediaQuery("(max-width: 639px)");
   const tCommon = useTranslations("common");
   const [selected, setSelected] = useState<string | null>(null);
   const [isPending, start] = useTransition();
@@ -54,7 +63,9 @@ export function PlaceIconPicker({
     setError(null);
     if (selectedOption) {
       // 削除
-      const iconName = selectedEntry ? t(`icon.${selectedEntry.key}`) : selectedOption.label;
+      const iconName = selectedEntry
+        ? t(`icon.${selectedEntry.key}`)
+        : selectedOption.label;
       const ok = await confirmDialog({
         title: t("iconPickerRemoveTitle", { name: iconName }),
         body: t("iconPickerRemoveBody"),
@@ -84,6 +95,101 @@ export function PlaceIconPicker({
     }
   };
 
+  const body = (
+    <>
+      <div className="flex-1 overflow-y-auto p-2">
+        <div className="grid grid-cols-8 gap-px">
+          {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
+            const used = optionByIcon.has(it.key);
+            const sel = selected === it.key;
+            // 選択ハイライトは状態で色を変える: 未追加=青(追加候補)、
+            // 追加済=赤(削除候補)。下のボタン色とも揃う。
+            const selectedClass = used
+              ? "bg-red-100 text-red-900 dark:bg-red-400/20 dark:text-red-200"
+              : "bg-blue-100 text-blue-900 dark:bg-blue-400/20 dark:text-blue-200";
+            // 追加済み=塗り（ToggleChip の「選択中=色を塗る」と同じ考え方）、
+            // 未追加=アウトライン線画。opacity での dim はしない
+            // （色トークン差＋形状差自体で見分けられるようにする）。
+            const idleClass = used
+              ? "text-foreground hover:bg-foreground/10"
+              : "text-muted-foreground hover:bg-foreground/10";
+            return (
+              <button
+                key={it.key}
+                type="button"
+                onClick={() => setSelected(it.key)}
+                disabled={isPending}
+                title={t(`icon.${it.key}`)}
+                aria-pressed={sel}
+                className={`flex h-9 items-center justify-center rounded-md transition ${
+                  sel ? selectedClass : idleClass
+                } disabled:cursor-not-allowed`}
+              >
+                <PlaceIcon icon={it.key} size={20} outline={!used} />
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <footer className="border-t border-foreground/5">
+        <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
+          {t("iconPickerSelected")}
+          {selectedEntry ? (
+            <>
+              <span className="inline-flex items-center text-foreground">
+                <PlaceIcon icon={selectedEntry.key} size={20} />
+              </span>
+              <span className="font-medium text-foreground">
+                {t(`icon.${selectedEntry.key}`)}
+              </span>
+            </>
+          ) : (
+            <span className="text-subtle-foreground">
+              {t("iconPickerNone")}
+            </span>
+          )}
+        </div>
+        {error && <p className="px-4 pb-2 text-xs text-red-600">{error}</p>}
+        <div className="flex justify-end gap-2 px-4 pb-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onClose}
+            disabled={isPending}
+          >
+            {tCommon("cancel")}
+          </Button>
+          <Button
+            type="button"
+            variant={mode === "remove" ? "destructive" : "primary"}
+            onClick={submit}
+            disabled={!selected || isPending}
+          >
+            {isPending
+              ? mode === "remove"
+                ? tCommon("deleting")
+                : tCommon("adding")
+              : mode === "remove"
+                ? tCommon("delete")
+                : tCommon("add")}
+          </Button>
+        </div>
+      </footer>
+    </>
+  );
+
+  // 狭い画面はボトムシート（iOS の formSheet と同じ）。広い画面は中央モーダル
+  // のまま（選択を強制する種類の UI なので dim を敷く。ui-guidelines
+  // 「レイヤーと影」）。
+  if (narrow) {
+    return (
+      <NarrowSheet label={t("iconPickerAria")} onClose={onClose}>
+        <div className="flex max-h-[80vh] flex-col">{body}</div>
+      </NarrowSheet>
+    );
+  }
+
   return (
     <Dialog.Root
       open
@@ -99,85 +205,7 @@ export function PlaceIconPicker({
           aria-label={t("iconPickerAria")}
           className="fixed left-1/2 top-1/2 z-50 flex max-h-[85vh] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-background shadow-xl outline-none"
         >
-        <div className="flex-1 overflow-y-auto p-2">
-          <div className="grid grid-cols-8 gap-px">
-            {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
-              const used = optionByIcon.has(it.key);
-              const sel = selected === it.key;
-              // 選択ハイライトは状態で色を変える: 未追加=青(追加候補)、
-              // 追加済=赤(削除候補)。下のボタン色とも揃う。
-              const selectedClass = used
-                ? "bg-red-100 text-red-900 dark:bg-red-400/20 dark:text-red-200"
-                : "bg-blue-100 text-blue-900 dark:bg-blue-400/20 dark:text-blue-200";
-              // 追加済み=塗り（ToggleChip の「選択中=色を塗る」と同じ考え方）、
-              // 未追加=アウトライン線画。opacity での dim はしない
-              // （色トークン差＋形状差自体で見分けられるようにする）。
-              const idleClass = used
-                ? "text-foreground hover:bg-foreground/10"
-                : "text-muted-foreground hover:bg-foreground/10";
-              return (
-                <button
-                  key={it.key}
-                  type="button"
-                  onClick={() => setSelected(it.key)}
-                  disabled={isPending}
-                  title={t(`icon.${it.key}`)}
-                  aria-pressed={sel}
-                  className={`flex h-9 items-center justify-center rounded-md transition ${
-                    sel ? selectedClass : idleClass
-                  } disabled:cursor-not-allowed`}
-                >
-                  <PlaceIcon icon={it.key} size={20} outline={!used} />
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <footer className="border-t border-foreground/5">
-          <div className="flex items-center gap-2 px-4 py-2 text-xs text-muted-foreground">
-            {t("iconPickerSelected")}
-            {selectedEntry ? (
-              <>
-                <span className="inline-flex items-center text-foreground">
-                  <PlaceIcon icon={selectedEntry.key} size={20} />
-                </span>
-                <span className="font-medium text-foreground">
-                  {t(`icon.${selectedEntry.key}`)}
-                </span>
-              </>
-            ) : (
-              <span className="text-subtle-foreground">{t("iconPickerNone")}</span>
-            )}
-          </div>
-          {error && (
-            <p className="px-4 pb-2 text-xs text-red-600">{error}</p>
-          )}
-          <div className="flex justify-end gap-2 px-4 pb-3">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onClose}
-              disabled={isPending}
-            >
-              {tCommon("cancel")}
-            </Button>
-            <Button
-              type="button"
-              variant={mode === "remove" ? "destructive" : "primary"}
-              onClick={submit}
-              disabled={!selected || isPending}
-            >
-              {isPending
-                ? mode === "remove"
-                  ? tCommon("deleting")
-                  : tCommon("adding")
-                : mode === "remove"
-                  ? tCommon("delete")
-                  : tCommon("add")}
-            </Button>
-          </div>
-        </footer>
+          {body}
         </Dialog.Popup>
       </Dialog.Portal>
     </Dialog.Root>

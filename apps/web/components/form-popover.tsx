@@ -107,11 +107,15 @@ export function NarrowSheet({
   const GRABBER_ROW_H = 16 + 6 + 12; // pt-4 + ハンドル 6px + pb-3
   const visible =
     contentH > 0 ? Math.min(contentH + GRABBER_ROW_H, maxVisible) : maxVisible;
-  const openSnapPx = Math.min(
-    viewportHeight,
-    Math.max(0, visible + gapAbove),
-  );
-  const sheetSnapPoints = [`${openSnapPx}px`, 1];
+  const openSnapPx = Math.min(viewportHeight, Math.max(0, visible + gapAbove));
+  const sheetSnapPoints: (number | string)[] = [`${openSnapPx}px`, 1];
+  // 段は**制御して**持つ。中身の実測は初回描画の後に届くので、非制御のままだと
+  // 「実測前の高さ（＝上限いっぱい）」で止まったきり、snapPoints の値だけが
+  // 差し替わって vaul の現在位置とどれも一致しなくなる（フィルタのシートが
+  // 中身に合わず全画面で開く不具合として発覚）。添字で持てば、px が変わっても
+  // 常に最新の値を渡せる。
+  const [snapIdx, setSnapIdx] = useState(0);
+  const activeSnap = sheetSnapPoints[snapIdx] ?? sheetSnapPoints[0];
 
   const requestClose = useCallback(() => setOpen(false), []);
 
@@ -165,6 +169,10 @@ export function NarrowSheet({
         // ＝中間スナップのボディドラッグ（拡大/閉じ）と上限スナップでのスクロール
         // （vaul の素の挙動）を生かす。
         snapPoints={sheetSnapPoints}
+        activeSnapPoint={activeSnap}
+        setActiveSnapPoint={(snap) =>
+          setSnapIdx(snap === sheetSnapPoints[0] ? 0 : 1)
+        }
         // スクロール直後のドラッグ無効化時間を 0 に＝スクロール上端で（バウンス中でも）すぐ
         // 下スワイプで閉じられる（既定 100ms だとバウンスが収まるまで閉じられず固く感じる）。
         scrollLockTimeout={0}
@@ -198,11 +206,11 @@ export function NarrowSheet({
                 ※ vaul の仕様上、中身がネイティブスクロールするのは全画面スナップの時だけ。
                 ref は「中身の高さに合わせて開く」ための実測用（上の openSnapPx）。
                 グラバー帯（pt-4 pb-3 + 6px）と下余白 pb-5 も見えるので足す。 */}
-            <div
-              ref={measureRef}
-              className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5"
-            >
-              {child}
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
+              {/* 実測は**中身**を包んだこの div で行う。外側のスクロール容器は
+                  flex-1 で伸びるので、その scrollHeight は中身ではなく容器自身の
+                  高さを返してしまう（中身が短くてもシートが全画面で開く不具合）。 */}
+              <div ref={measureRef}>{child}</div>
             </div>
           </Drawer.Content>
         </Drawer.Portal>
