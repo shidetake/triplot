@@ -77,21 +77,39 @@ export function NarrowSheet({
 }) {
   const [open, setOpen] = useState(true);
 
-  // 開いたときに見せる高さの逆算。vaul は px の snapPoint を「viewport 高
-  // (containerSize.height) からの translateY オフセット」として扱う（Content
-  // 自身の高さ＝SHEET_MAX_PERCENT ではなく、常に viewport 高が基準）。Content
-  // は bottom-0・高さ SHEET_MAX_PERCENT なので、無変形（translateY=0）の時点で
-  // 既に上に (1-SHEET_MAX_PERCENT/100) 分の隙間を自然に持っている。この分を
-  // 考慮せず「viewport高 − chrome高」だけで px を出すと、実際に見える上余白が
-  // その隙間ぶん多く出てしまう（実機で発覚）。
-  //   見える上余白 = 2×viewport高 − Content高 − 開いたsnapのpx
-  // を解いて px を逆算する。
+  // 開いたときに見せる高さ。**中身の高さに合わせる**（iOS の formSheet の
+  // sheetAllowedDetents: "fitToContents" と同じ）。常に上端いっぱいまで開くと、
+  // 中身が短いシートで無駄に画面を覆う。特に地図ピンの編集は、後ろの地図が
+  // 全部隠れて何を編集しているか分からなくなる（実機フィードバック）。
+  // 中身が入り切らない時は上の chrome の下まで（そこが上限）。
+  //
+  // px の逆算: vaul は px の snapPoint を「viewport 高からの translateY
+  // オフセット」として扱う（Content 自身の高さ＝SHEET_MAX_PERCENT ではなく、
+  // 常に viewport 高が基準）。Content は bottom-0・高さ SHEET_MAX_PERCENT なので、
+  // 無変形（translateY=0）の時点で既に上に (1-SHEET_MAX_PERCENT/100) 分の隙間を
+  // 自然に持っている。
+  //   見えるシート高 = 開いたsnapのpx − viewport高 × (1 - SHEET_MAX_PERCENT/100)
+  // を解いて px を出す。
   const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
   const maxFraction = SHEET_MAX_PERCENT / 100;
-  const desiredTopMargin = chromeTopPx + 8; // 8px は一息つく余白
+  const gapAbove = viewportHeight * (1 - maxFraction);
+  // 中身の実測高（グラバー帯を含む）。ResizeObserver で追うので、フォームの
+  // 開閉（日付ピッカー等）で伸び縮みしてもその都度合わせ直す。
+  const [contentH, setContentH] = useState(0);
+  const measureRef = useCallback((el: HTMLDivElement | null) => {
+    if (!el) return;
+    const ro = new ResizeObserver(() => setContentH(el.scrollHeight));
+    ro.observe(el);
+    setContentH(el.scrollHeight);
+    return () => ro.disconnect();
+  }, []);
+  const maxVisible = Math.max(0, viewportHeight - chromeTopPx - 8); // 8px は一息つく余白
+  const GRABBER_ROW_H = 16 + 6 + 12; // pt-4 + ハンドル 6px + pb-3
+  const visible =
+    contentH > 0 ? Math.min(contentH + GRABBER_ROW_H, maxVisible) : maxVisible;
   const openSnapPx = Math.min(
     viewportHeight,
-    Math.max(0, viewportHeight * (2 - maxFraction) - desiredTopMargin),
+    Math.max(0, visible + gapAbove),
   );
   const sheetSnapPoints = [`${openSnapPx}px`, 1];
 
@@ -177,8 +195,13 @@ export function NarrowSheet({
             </div>
             <Drawer.Title className="sr-only">{label}</Drawer.Title>
             {/* overscroll-contain: 末端まで来てもスクロールが背景に伝わらない。
-                ※ vaul の仕様上、中身がネイティブスクロールするのは全画面スナップの時だけ。 */}
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5">
+                ※ vaul の仕様上、中身がネイティブスクロールするのは全画面スナップの時だけ。
+                ref は「中身の高さに合わせて開く」ための実測用（上の openSnapPx）。
+                グラバー帯（pt-4 pb-3 + 6px）と下余白 pb-5 も見えるので足す。 */}
+            <div
+              ref={measureRef}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5"
+            >
               {child}
             </div>
           </Drawer.Content>
