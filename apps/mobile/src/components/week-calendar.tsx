@@ -54,16 +54,6 @@ const MIN_BLOCK = 18; // ブロック最低高さ
 // 店名だけが目立って見えた）。タイトルは1行ぶん必ず確保し、それでも余りが
 // 無ければ場所・メモは一切出さない（タイトルを削ってまで場所を見せない）。
 // 値は各 style のフォントサイズからの概算。
-const TIME_LINE_H = 12; // eventTime（fontSize 9）
-const TITLE_LINE_H = 14; // eventTitle（fontSize 11）
-const EXTRA_LINE_H = 12; // eventPlace/note（fontSize 9）
-const DRAFT_BADGE_LINE_H = 13; // draftBadge（独立行、fontSize 9 + 余白）
-function maxExtraLines(height: number, isDraft: boolean): number {
-  const reserved =
-    2 + TIME_LINE_H + (isDraft ? DRAFT_BADGE_LINE_H : 0) + TITLE_LINE_H; // 2 = eventBlock の paddingVertical(1)×2
-  const remaining = height - reserved;
-  return remaining < EXTRA_LINE_H ? 0 : Math.floor(remaining / EXTRA_LINE_H);
-}
 
 // 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
 // 引いた残りに約4.5日分入る値（(393-44)/80 ≈ 4.4日）。狭い端末（iPhone mini
@@ -732,24 +722,20 @@ export function WeekCalendar({
                       {p.event.title}
                     </Text>
                     {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
-                        タイトルの表示分を確保してなお余りがある時だけ出す
-                        （maxExtraLines 参照。タイトルを押しのけて場所が
-                        主役に見えることを防ぐ）。 */}
-                    {(() => {
-                      const extra = maxExtraLines(height, Boolean(ev.isDraft));
-                      const extras = [placeName(ev.startPlaceId), ev.note]
-                        .filter((x): x is string => Boolean(x))
-                        .slice(0, extra);
-                      return extras.map((text, i) => (
+                        折り返しも行数も制限せずそのまま書く。ブロックは
+                        overflow: hidden なので入らない分はブロックが切る
+                        （上限を決め打ちすると「高さが余っているのに出ない」が
+                        起きる）。 */}
+                    {[placeName(ev.startPlaceId), ev.note]
+                      .filter((x): x is string => Boolean(x))
+                      .map((text, i) => (
                         <Text
                           key={i}
                           style={[styles.eventPlace, { color: col.text }]}
-                          numberOfLines={2}
                         >
                           {text}
                         </Text>
-                      ));
-                    })()}
+                      ))}
                   </Pressable>
                 );
               })}
@@ -846,26 +832,17 @@ export function WeekCalendar({
                         <ReservationMark ev={ev} textColor={col.text} />
                         {t.event.title}
                       </Text>
-                      {/* タイトルを押しのけないよう、余りがある時だけ場所/メモを出す
-                          （timed ブロックと同じ maxExtraLines）。 */}
-                      {(() => {
-                        const extra = maxExtraLines(
-                          part.height,
-                          Boolean(ev.isDraft),
-                        );
-                        const extras = [pn, ev.note]
-                          .filter((x): x is string => Boolean(x))
-                          .slice(0, extra);
-                        return extras.map((text, i) => (
+                      {/* 通常の予定と同じく、行数を制限せず書いてブロックに切らせる。 */}
+                      {[pn, ev.note]
+                        .filter((x): x is string => Boolean(x))
+                        .map((text, i) => (
                           <Text
                             key={i}
                             style={[styles.eventPlace, { color: col.text }]}
-                            numberOfLines={2}
                           >
                             {text}
                           </Text>
-                        ));
-                      })()}
+                        ))}
                     </Pressable>
                   );
                 });

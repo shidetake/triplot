@@ -54,23 +54,6 @@ const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 // のと同じ現象が、狭い画面の web でも起きる）。タイトルは1行ぶん必ず確保し、
 // それでも余りが無ければ場所・メモは出さない。値は各 class のフォントサイズ
 // （leading-tight = 1.25）からの概算。
-const BLOCK_PADDING_H = 4; // py-0.5 の上下
-const TIME_LINE_H = 13; // text-[10px]
-const TITLE_LINE_H = 15; // text-xs
-// 場所・メモ（text-[10px] leading-tight）。ui-guidelines「テキストサイズの階層」の
-// 高密度グリッド例外＝週カレンダーの副情報は text-[10px]。本文と同じ text-xs だと
-// 1行あたりが高く、同じ長さの予定でも場所とメモの両方が入らない。
-const EXTRA_LINE_H = 13;
-const DRAFT_BADGE_LINE_H = 14; // text-[9px] + mb-0.5
-function maxExtraLines(height: number, isDraft: boolean): number {
-  const reserved =
-    BLOCK_PADDING_H +
-    TIME_LINE_H +
-    (isDraft ? DRAFT_BADGE_LINE_H : 0) +
-    TITLE_LINE_H;
-  const remaining = height - reserved;
-  return remaining < EXTRA_LINE_H ? 0 : Math.floor(remaining / EXTRA_LINE_H);
-}
 
 export type Anchor = { x: number; y: number };
 
@@ -618,12 +601,13 @@ export function WeekCalendar({
       </span>
     );
 
-  // height はこのブロックの実高さ（px）。タイトルの表示分を確保してなお
-  // 余りがある時だけ場所→メモの順に足す（maxExtraLines 参照）。
-  const blockLabel = (ev: ScheduleEvent, height: number) => {
-    const extras = [placeName(ev.startPlaceId), ev.note]
-      .filter((x): x is string => Boolean(x))
-      .slice(0, maxExtraLines(height, !!ev.isDraft));
+  // 場所→メモの順に、そのまま全部書く。折り返しも行数も制限しない
+  // （ブロックが overflow-hidden なので、入らない分はブロックが切る。
+  // 上限を決め打ちすると「高さが余っているのに出ない」が起きる）。
+  const blockLabel = (ev: ScheduleEvent) => {
+    const extras = [placeName(ev.startPlaceId), ev.note].filter(
+      (x): x is string => Boolean(x),
+    );
     return (
       <>
         {draftBadge(ev)}
@@ -634,7 +618,7 @@ export function WeekCalendar({
         {extras.map((text, i) => (
           <span
             key={i}
-            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
           >
             {text}
           </span>
@@ -1229,7 +1213,7 @@ export function WeekCalendar({
                     </span>
                     {color.kind === "mixed" && participantDots(p.event)}
                   </span>
-                  {blockLabel(p.event, h - 1)}
+                  {blockLabel(p.event)}
                 </button>
               );
             })}
@@ -1303,17 +1287,10 @@ export function WeekCalendar({
                         出す（以前はメモだけだった。iOS と同形）。 */}
                       {[placeName(t.event.startPlaceId), t.event.note]
                         .filter((x): x is string => Boolean(x))
-                        .slice(
-                          0,
-                          maxExtraLines(
-                            Math.max(ya - yd, MIN_BLOCK),
-                            !!t.event.isDraft,
-                          ),
-                        )
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
@@ -1373,17 +1350,10 @@ export function WeekCalendar({
                         （時刻表示と同じ考え方）。 */}
                       {[placeName(t.event.startPlaceId), t.event.note]
                         .filter((x): x is string => Boolean(x))
-                        .slice(
-                          0,
-                          maxExtraLines(
-                            Math.max(bodyH - yd, MIN_BLOCK),
-                            !!t.event.isDraft,
-                          ),
-                        )
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
@@ -1426,17 +1396,10 @@ export function WeekCalendar({
                         （時刻表示と同じ考え方）。 */}
                       {[placeName(t.event.startPlaceId), t.event.note]
                         .filter((x): x is string => Boolean(x))
-                        .slice(
-                          0,
-                          maxExtraLines(
-                            Math.max(ya, MIN_BLOCK),
-                            !!t.event.isDraft,
-                          ),
-                        )
                         .map((text, i) => (
                           <span
                             key={i}
-                            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+                            className="text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
                           >
                             {text}
                           </span>
