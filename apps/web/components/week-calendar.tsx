@@ -57,7 +57,10 @@ const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 const BLOCK_PADDING_H = 4; // py-0.5 の上下
 const TIME_LINE_H = 13; // text-[10px]
 const TITLE_LINE_H = 15; // text-xs
-const EXTRA_LINE_H = 15; // 場所・メモ（text-xs）
+// 場所・メモ（text-[10px] leading-tight）。ui-guidelines「テキストサイズの階層」の
+// 高密度グリッド例外＝週カレンダーの副情報は text-[10px]。本文と同じ text-xs だと
+// 1行あたりが高く、同じ長さの予定でも場所とメモの両方が入らない。
+const EXTRA_LINE_H = 13;
 const DRAFT_BADGE_LINE_H = 14; // text-[9px] + mb-0.5
 function maxExtraLines(height: number, isDraft: boolean): number {
   const reserved =
@@ -627,7 +630,10 @@ export function WeekCalendar({
           {ev.title}
         </span>
         {extras.map((text, i) => (
-          <span key={i} className="block truncate opacity-70">
+          <span
+            key={i}
+            className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]"
+          >
             {text}
           </span>
         ))}
@@ -1286,7 +1292,7 @@ export function WeekCalendar({
                         Math.max(ya - yd, MIN_BLOCK),
                         !!t.event.isDraft,
                       ) > 0 && (
-                        <span className="block truncate opacity-70">
+                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
                           {t.event.note}
                         </span>
                       )}
@@ -1338,7 +1344,7 @@ export function WeekCalendar({
                         Math.max(bodyH - yd, MIN_BLOCK),
                         !!t.event.isDraft,
                       ) > 0 && (
-                        <span className="block truncate opacity-70">
+                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
                           {t.event.note}
                         </span>
                       )}
@@ -1375,7 +1381,7 @@ export function WeekCalendar({
                     {t.event.note &&
                       maxExtraLines(Math.max(ya, MIN_BLOCK), !!t.event.isDraft) >
                         0 && (
-                        <span className="block truncate opacity-70">
+                        <span className="line-clamp-2 text-[10px] leading-tight opacity-70 [overflow-wrap:anywhere]">
                           {t.event.note}
                         </span>
                       )}
