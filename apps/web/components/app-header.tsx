@@ -7,7 +7,6 @@ import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 import { AccountMenu } from "@/components/account-menu";
 import { ChevronIcon } from "@/components/icons";
 import { ImportSheetButton } from "@/components/import-sheet";
-import { InlineDivider } from "@/components/inline-divider";
 import { resolveTheme } from "@/i18n/theme.server";
 import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
@@ -32,7 +31,9 @@ export async function AppHeader({
   tripActions,
 }: {
   // 旅行詳細でだけ渡す。渡すとワードマークの代わりに戻る＋2行タイトルになる。
-  trip?: { title: string; subtitle: ReactNode };
+  // 2行目は日程だけ（精算通貨は出さない。iOS と揃える＝ナビバーは旅行名と
+  // 日程まで。精算通貨は費用タブと旅行の設定で分かる）。
+  trip?: { title: string; dateRange: string };
   // アカウントメニューに差し込む旅行の操作。広い画面はサブメニュー、
   // 狭い画面のシートは節見出し付きの一覧。
   tripMenu?: ReactNode;
@@ -94,6 +95,9 @@ export async function AppHeader({
       <div className="flex h-12 items-center justify-between gap-2 px-6">
         {trip ? (
           // 旅行詳細: 戻る＋2行タイトル（iOS の旅行ナビバーと同じ形）。
+          // タイトルは flex-1 で「戻るボタンと右のボタン群の隙間」いっぱいに
+          // 広げてから中央寄せする。入れ物を中身の幅にすると左端に詰まる
+          // （iOS 側と同じ理屈。_layout.tsx の titleBlock 参照）。
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <Link
               href="/trips"
@@ -103,13 +107,15 @@ export async function AppHeader({
             >
               <ChevronIcon size={20} className="rotate-180" />
             </Link>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1 text-center">
               <p className="truncate text-sm font-semibold leading-tight">
                 {trip.title}
               </p>
-              <p className="flex items-center gap-2 truncate text-[11px] leading-tight text-muted-foreground">
-                {trip.subtitle}
-              </p>
+              {trip.dateRange && (
+                <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                  {trip.dateRange}
+                </p>
+              )}
             </div>
           </div>
         ) : (
@@ -117,7 +123,9 @@ export async function AppHeader({
             triplot
           </Link>
         )}
-        <div className="flex shrink-0 items-center gap-1">
+        {/* アイコン同士のタップ領域が接しないよう gap-3（ui-guidelines の
+            「gap-2 だとタップ領域が被りやすい」と同じ値）。 */}
+        <div className="flex shrink-0 items-center gap-3">
           {tripActions}
           <ImportSheetButton count={importCount} />
           <AccountMenu
@@ -135,22 +143,5 @@ export async function AppHeader({
         </div>
       </div>
     </header>
-  );
-}
-
-// 2行タイトルの2行目（日程 ｜ 精算通貨）。旅行詳細のページから渡す。
-export function TripHeaderSubtitle({
-  dateRange,
-  currencyLabel,
-}: {
-  dateRange: string;
-  currencyLabel: string;
-}) {
-  return (
-    <>
-      {dateRange && <span className="truncate">{dateRange}</span>}
-      {dateRange && <InlineDivider />}
-      <span className="shrink-0">{currencyLabel}</span>
-    </>
   );
 }

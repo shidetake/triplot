@@ -14,7 +14,7 @@ import {
 import { type Category } from "@/components/expense-form";
 import { ExpenseList, type ExpenseRow } from "@/components/expense-list";
 import { ExpenseSummaryView } from "@/components/expense-summary";
-import { AppHeader, TripHeaderSubtitle } from "@/components/app-header";
+import { AppHeader } from "@/components/app-header";
 import { LoadError } from "@/components/load-error";
 import { MembersSection } from "@/components/members-section";
 import type { PlaceRow } from "@/components/place-list";
@@ -309,15 +309,10 @@ export default async function TripDetailPage({
       <AppHeader
         trip={{
           title: trip.title,
-          subtitle: (
-            <TripHeaderSubtitle
-              dateRange={formatTripDateRange(
-                trip.start_date,
-                trip.end_date,
-                locale,
-              )}
-              currencyLabel={`${t("tripDetail.settlementCurrency")}: ${trip.default_currency}`}
-            />
+          dateRange: formatTripDateRange(
+            trip.start_date,
+            trip.end_date,
+            locale,
           ),
         }}
         tripMenu={<TripMenuSection />}
@@ -353,7 +348,10 @@ export default async function TripDetailPage({
         </section>
       </div>
 
-      <div className="px-6 md:px-0">
+      {/* 狭い画面の左右余白は px-4(16px)＝iOS のタブ（padding: 16）と同値。
+          px-6(24px) だと同じレイアウトでも web だけ窮屈に見える。
+          広い画面はページコンテナ側（main の md:px-6）が持つ。 */}
+      <div className="px-4 md:px-0">
       <TripDetailTabs
         schedule={
           <section className="mt-4 space-y-6 md:mt-10">
