@@ -108,6 +108,12 @@ export function PlacesSection({
   const [placesSheetOpen, setPlacesSheetOpen] = useState(false);
   // 中身の実測高（一覧の中身＋見出し帯）。届くまでは概算で組む。
   const [listContentH, setListContentH] = useState(0);
+  // 取っ手＋件数の帯の高さ（一覧に使える高さを出すのに引く）。中身が変わらない
+  // ので1回測れば足りる。
+  const [listChromeH, setListChromeH] = useState(0);
+  const listChromeRef = useCallback((el: HTMLDivElement | null) => {
+    if (el) setListChromeH(el.offsetHeight);
+  }, []);
   const listMeasureRef = useCallback((el: HTMLDivElement | null) => {
     if (!el) return;
     const ro = new ResizeObserver(() => setListContentH(el.scrollHeight));
@@ -245,6 +251,9 @@ export function PlacesSection({
   const activeSnap =
     snapPoints[snapIndex === "small" ? 0 : snapPoints.length - 1] ??
     snapPoints[0];
+  // 今の段でシートが画面に見せている高さ（px）。snapPoints は viewport 下端
+  // からのオフセット px なので、その値がそのまま見えている高さになる。
+  const activeSnapPx = Number.parseInt(activeSnap ?? "0", 10) || 0;
   // 地図タップで置いた仮ピン（未保存）。selected とは排他。
   const [draft, setDraft] = useState<LatLng | null>(null);
   // タップ選択中のベースマップ POI（マーカーは出さず吹き出しだけ）。
@@ -782,7 +791,10 @@ export function PlacesSection({
                 <Drawer.Title className="sr-only">
                   {t("placesListLabel")}
                 </Drawer.Title>
-                <div className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing">
+                <div
+                  ref={listChromeRef}
+                  className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
+                >
                   <Drawer.Handle className="!h-1.5 !w-9" />
                   <span className="text-xs font-medium text-muted-foreground">
                     {t("placeCountLabel", { count: visiblePlaces.length })}
@@ -790,6 +802,15 @@ export function PlacesSection({
                 </div>
                 <div
                   ref={listMeasureRef}
+                  // 一覧に使える高さは**今の段で画面に見えている分**まで。
+                  // Drawer.Content の高さは常に画面いっぱいで、段はそれを下へ
+                  // ずらして表示するので、flex-1 のままだと器の高さが「見えて
+                  // いる分」より大きくなる＝中身が収まってしまい、画面の外に
+                  // はみ出した行にスクロールで辿り着けない（選択中は段が1つに
+                  // 固定されて広げられないので、下の方の行が選べなくなる）。
+                  style={{
+                    maxHeight: Math.max(0, activeSnapPx - listChromeH),
+                  }}
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
                 >
                   <PlaceList
