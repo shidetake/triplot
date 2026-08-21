@@ -1,6 +1,12 @@
 "use client";
 
-import { useActionState, useEffect, useId, useState, useTransition } from "react";
+import {
+  useActionState,
+  useEffect,
+  useId,
+  useState,
+  useTransition,
+} from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
@@ -42,10 +48,10 @@ function popupWrapClass(inSheet: boolean, hasOwnMaxHeight = true): string {
   return cn(
     "flex flex-col gap-2",
     inSheet
-      // ボトムシート内の左右余白。event-form/expense-form 等の FormPopover 経由
-      // フォームと同じ `p-4`（このリポジトリの de facto パターンだが
-      // ui-guidelines.md に書かれていなかったので追記した）。
-      ? "w-full p-4"
+      ? // ボトムシート内の左右余白。event-form/expense-form 等の FormPopover 経由
+        // フォームと同じ `p-4`（このリポジトリの de facto パターンだが
+        // ui-guidelines.md に書かれていなかったので追記した）。
+        "w-full p-4"
       : cn(
           "w-[min(16rem,calc(100vw-3rem))] pr-1",
           hasOwnMaxHeight && "max-h-[26rem] overflow-y-auto pb-2",
@@ -62,9 +68,10 @@ function TentativeField({
 }) {
   const t = useTranslations("place");
   return (
-    <fieldset className="text-sm">
-      <legend className="font-medium">{t("status")}</legend>
-      <div className="mt-1 flex gap-3">
+    // ラベルと選択肢は1行に（費用・予定フォームと同じ形。縦を1行ぶん詰める）。
+    <div className="flex items-center gap-2 text-sm">
+      <span className="font-medium">{t("status")}</span>
+      <div className="flex gap-3" role="radiogroup" aria-label={t("status")}>
         <label className="inline-flex items-center gap-1">
           <input
             type="radio"
@@ -86,7 +93,7 @@ function TentativeField({
           <span>{t("statusCandidate")}</span>
         </label>
       </div>
-    </fieldset>
+    </div>
   );
 }
 
@@ -106,9 +113,14 @@ function VisibilityField({
     return <input type="hidden" name="visibility" value={value} />;
   }
   return (
-    <fieldset className="text-sm">
-      <legend className="font-medium">{t("visibility")}</legend>
-      <div className="mt-1 flex gap-3">
+    // ラベルと選択肢は1行に（費用・予定フォームと同じ形）。
+    <div className="flex items-center gap-2 text-sm">
+      <span className="font-medium">{t("visibility")}</span>
+      <div
+        className="flex gap-3"
+        role="radiogroup"
+        aria-label={t("visibility")}
+      >
         <label className="inline-flex items-center gap-1">
           <input
             type="radio"
@@ -130,7 +142,7 @@ function VisibilityField({
           <span>{tCommon("selfOnly")}</span>
         </label>
       </div>
-    </fieldset>
+    </div>
   );
 }
 
@@ -150,8 +162,10 @@ function IconPicker({
   const sorted = [...options].sort((a, b) => a.sort_order - b.sort_order);
   return (
     <fieldset className="text-sm">
-      <legend className="font-medium">{t("pinShape")}</legend>
-      <div className="mt-1 flex flex-wrap gap-1">
+      {/* 見出しは出さない（アイコンが並んでいれば何を選ぶ欄か分かる。縦を詰める）。
+          可視ラベルが無いぶん、読み上げ用の名前は sr-only の legend で担保する。 */}
+      <legend className="sr-only">{t("pinShape")}</legend>
+      <div className="flex flex-wrap gap-1">
         {sorted.map((o) => {
           const catalogEntry = getIcon(o.icon);
           const label = catalogEntry ? t(`icon.${catalogEntry.key}`) : o.label;
@@ -257,16 +271,17 @@ export function CandidateInfo({
             )}
           </p>
         )}
-        <p className="mt-0.5 text-xs text-muted-foreground">{candidate.address}</p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {candidate.address}
+        </p>
       </div>
 
-      <form action={formAction} className="space-y-2 border-t border-foreground/10 pt-2">
+      <form
+        action={formAction}
+        className="space-y-2 border-t border-foreground/10 pt-2"
+      >
         <input type="hidden" name="name" value={candidate.name} />
-        <input
-          type="hidden"
-          name="google_place_id"
-          value={candidate.placeId}
-        />
+        <input type="hidden" name="google_place_id" value={candidate.placeId} />
         <input type="hidden" name="lat" value={candidate.lat} />
         <input type="hidden" name="lng" value={candidate.lng} />
         <input
@@ -278,18 +293,14 @@ export function CandidateInfo({
         <input type="hidden" name="locality" value={candidate.locality ?? ""} />
 
         <input type="hidden" name="icon" value={icon} />
-        <TentativeField value={tentative} onChange={setTentative} />
         <IconPicker
           tripId={tripId}
           options={pinOptions}
           value={icon}
           onChange={setIcon}
         />
-        <VisibilityField
-          value={visibility}
-          onChange={setVisibility}
-          editable
-        />
+        <TentativeField value={tentative} onChange={setTentative} />
+        <VisibilityField value={visibility} onChange={setVisibility} editable />
         <Input
           id={noteId}
           type="text"
@@ -353,7 +364,8 @@ export function DraftInfo({
       <div>
         <p className="text-sm font-semibold">{t("addPin")}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}{t("dragHint")}
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}
+          {t("dragHint")}
         </p>
       </div>
 
@@ -377,18 +389,14 @@ export function DraftInfo({
           aria-label={t("name")}
           className="block w-full"
         />
-        <TentativeField value={tentative} onChange={setTentative} />
         <IconPicker
           tripId={tripId}
           options={pinOptions}
           value={icon}
           onChange={setIcon}
         />
-        <VisibilityField
-          value={visibility}
-          onChange={setVisibility}
-          editable
-        />
+        <TentativeField value={tentative} onChange={setTentative} />
+        <VisibilityField value={visibility} onChange={setVisibility} editable />
         <Input
           id={noteId}
           type="text"
@@ -461,9 +469,12 @@ export function LocateInfo({
     <div className="flex w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 pr-1">
       <div>
         <p className="text-sm font-semibold">{t("setLocation")}</p>
-        <p className="mt-0.5 text-xs text-muted-foreground">{t("settingLocationFor", { name: placeName })}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
-          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}{t("dragHint")}
+          {t("settingLocationFor", { name: placeName })}
+        </p>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}
+          {t("dragHint")}
         </p>
       </div>
       <div className="flex gap-2 border-t border-foreground/10 pt-2">
@@ -485,7 +496,9 @@ export function LocateInfo({
         </Button>
       </div>
       {error && (
-        <MessageBox kind="error" dense>{error}</MessageBox>
+        <MessageBox kind="error" dense>
+          {error}
+        </MessageBox>
       )}
     </div>
   );
@@ -575,7 +588,10 @@ export function SavedInfo({
           {/* ボトムシートはドラッグダウン/dim タップで閉じる（× は出さない。
               ui-guidelines「定型部品」の × 閉じるボタン節）。 */}
           {!inSheet && (
-            <CloseButton onClick={onDone} className="-mr-0.5 -mt-0.5 shrink-0" />
+            <CloseButton
+              onClick={onDone}
+              className="-mr-0.5 -mt-0.5 shrink-0"
+            />
           )}
         </div>
         {place.formatted_address ? (
@@ -610,13 +626,13 @@ export function SavedInfo({
         >
           <input type="hidden" name="place_id" value={place.id} />
           <input type="hidden" name="icon" value={icon} />
-          <TentativeField value={tentative} onChange={setTentative} />
           <IconPicker
-          tripId={tripId}
-          options={pinOptions}
-          value={icon}
-          onChange={setIcon}
-        />
+            tripId={tripId}
+            options={pinOptions}
+            value={icon}
+            onChange={setIcon}
+          />
+          <TentativeField value={tentative} onChange={setTentative} />
           <VisibilityField
             value={visibility}
             onChange={setVisibility}
