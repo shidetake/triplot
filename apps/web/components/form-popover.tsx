@@ -68,11 +68,17 @@ export function NarrowSheet({
   label,
   onClose,
   draftKey,
+  undimmed = false,
   children,
 }: {
   label?: string;
   onClose: () => void;
   draftKey?: string;
+  // 背後を暗くせず、触れるままにする（iOS の formSheet の
+  // sheetLargestUndimmedDetentIndex="last" と同じ）。地図の上に出すシート用
+  // ＝場所を選んでいる間も地図を動かせる（本家 Apple/Google マップの場所カード
+  // と同じ）。既定は暗くする＝「決めるまで戻れない」フォーム用。
+  undimmed?: boolean;
   children: React.ReactNode;
 }) {
   const [open, setOpen] = useState(true);
@@ -130,13 +136,14 @@ export function NarrowSheet({
   // Vaul の scroll-lock には乗れない。代わりにドキュメントスクローラの overflow を自前で固定する。
   // 開いている間ずっと（閉じアニメ中も）ロックし、アンマウントで元に戻す。
   useEffect(() => {
+    if (undimmed) return; // 背後を触らせるシートは固定しない
     const el = document.documentElement;
     const prev = el.style.overflow;
     el.style.overflow = "hidden";
     return () => {
       el.style.overflow = prev;
     };
-  }, []);
+  }, [undimmed]);
 
   // フォームの保存/削除成功（onDone）を内部クローズに差し替える（閉じアニメを通すため）。
   const child = isValidElement<{ onDone?: () => void }>(children)
@@ -149,7 +156,8 @@ export function NarrowSheet({
           （Portal 内だと閉じる時 Vaul が即撤去してフェードアウトが切れる）。せり上がりに
           合わせて animate-in でフェードイン・閉じで animate-out でフェードアウト。
           touch-none＝この帯を触っても背景はスクロールしない。タップで閉じる（Instagram と同じ）。 */}
-      {typeof document !== "undefined" &&
+      {!undimmed &&
+        typeof document !== "undefined" &&
         createPortal(
           <div
             className={`fixed inset-0 z-40 touch-none bg-black/40 duration-500 ${

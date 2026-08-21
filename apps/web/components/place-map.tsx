@@ -598,12 +598,20 @@ export function PlaceMap({
               selected.kind === "saved" ? t("editFormLabel") : t("addFormLabel")
             }
             onClose={onCloseInfo}
+            // 地図の上に出すシートなので背後を暗くせず、開いている間も地図を
+            // 動かせるままにする（iOS と同じ。本家 Apple/Google マップの場所
+            // カードと同じ挙動）。
+            undimmed
           >
             {infoContent}
           </NarrowSheet>
         )}
         {narrow && draft && !locating && draftContent && (
-          <NarrowSheet label={t("addFormLabel")} onClose={onCloseDraft}>
+          <NarrowSheet
+            label={t("addFormLabel")}
+            onClose={onCloseDraft}
+            undimmed
+          >
             {draftContent}
           </NarrowSheet>
         )}
