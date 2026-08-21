@@ -763,6 +763,14 @@ export function PlacesSection({
             }
             scrollLockTimeout={0}
             repositionInputs={false}
+            // このシートだけ、下げる/閉じるは**取っ手のドラッグ限定**にする。
+            // 中身が一覧＝上下に送る操作が主で、上へ送っている途中にシート自体が
+            // 下がってしまうことがあった（スクロールの上端に着いた瞬間にドラッグが
+            // シートへ渡る、vaul の標準の受け渡し）。一覧は「送る」に専念させ、
+            // シートを動かすのは取っ手だけにした方が手元が安定する。
+            // 他のボトムシート（NarrowSheet 側のフォーム類）は中身が短くボディ
+            // ドラッグで閉じられた方が速いので、そちらは付けない。
+            handleOnly
             onOpenChange={(next) => {
               if (next) return;
               setPlacesSheetOpen(false);
