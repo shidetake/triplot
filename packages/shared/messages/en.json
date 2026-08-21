@@ -638,6 +638,7 @@
     "heading": "About this app",
     "privacyPolicy": "Privacy policy",
     "licenses": "Open source licenses",
+    "googleNotice": "Google Maps legal notices",
     "version": "Version {version} ({build})"
   }
 }

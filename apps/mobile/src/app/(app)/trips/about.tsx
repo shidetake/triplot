@@ -8,7 +8,10 @@ import { AboutSheet } from "@/components/about-sheet";
 export default function AboutRoute() {
   return (
     <ScrollView contentContainerStyle={{ paddingBottom: 24 }}>
-      <AboutSheet onOpenLicenses={() => router.push("/trips/licenses")} />
+      <AboutSheet
+        onOpenLicenses={() => router.push("/trips/licenses")}
+        onOpenGoogleNotice={() => router.push("/trips/google-notice")}
+      />
     </ScrollView>
   );
 }

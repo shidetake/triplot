@@ -1,5 +1,13 @@
 import { useMemo, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import {
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
@@ -38,7 +46,8 @@ export function PlacePicker({
   const tPlace = useTranslations("place");
   const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
-  const { predictions, search, clear, resolve } = usePlaceAutocomplete(biasCenter);
+  const { predictions, search, clear, resolve } =
+    usePlaceAutocomplete(biasCenter);
 
   const text =
     value.kind === "saved"
@@ -55,9 +64,11 @@ export function PlacePicker({
 
   const rows: Row[] = focused
     ? [
-        ...savedMatches.map(
-          (p): Row => ({ type: "saved", id: p.id, name: p.name }),
-        ),
+        ...savedMatches.map((p): Row => ({
+          type: "saved",
+          id: p.id,
+          name: p.name,
+        })),
         ...predictions.map((p): Row => ({ type: "google", prediction: p })),
       ]
     : [];
@@ -88,45 +99,61 @@ export function PlacePicker({
       />
       {rows.length > 0 && (
         <View style={styles.suggestions}>
-          {rows.map((row) =>
-            row.type === "saved" ? (
-              <Pressable
-                key={`s-${row.id}`}
-                // onBlur より先に発火させたいので onPressIn
-                onPressIn={() => {
-                  onChange({ kind: "saved", placeId: row.id });
-                  closeSuggestions();
-                  Keyboard.dismiss();
-                }}
-                style={styles.suggestionRow}
-              >
-                <Text style={styles.suggestionText}>{row.name}</Text>
-                <Text style={styles.savedBadge}>{tPlace("savedBadge")}</Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                key={`g-${row.prediction.placeId}`}
-                onPressIn={() => {
-                  closeSuggestions();
-                  Keyboard.dismiss();
-                  void resolve(row.prediction).then((c) => {
-                    if (c) onChange(candidateToPlaceInput(c));
-                  });
-                }}
-                style={styles.suggestionRow}
-              >
-                <View style={styles.suggestionTextCol}>
-                  <Text style={styles.suggestionText} numberOfLines={1}>
-                    {row.prediction.primaryText}
-                  </Text>
-                  {row.prediction.secondaryText ? (
-                    <Text style={styles.suggestionSecondary} numberOfLines={1}>
-                      {row.prediction.secondaryText}
+          {/* 候補だけがスクロールし、下の帰属表示は流れない
+              （器は maxHeight で頭打ちなので、包まないと候補に押し出されて
+              切れる＝「常に見えて読めること」を満たせない）。 */}
+          <ScrollView
+            style={styles.suggestionScroll}
+            keyboardShouldPersistTaps="handled"
+          >
+            {rows.map((row) =>
+              row.type === "saved" ? (
+                <Pressable
+                  key={`s-${row.id}`}
+                  // onBlur より先に発火させたいので onPressIn
+                  onPressIn={() => {
+                    onChange({ kind: "saved", placeId: row.id });
+                    closeSuggestions();
+                    Keyboard.dismiss();
+                  }}
+                  style={styles.suggestionRow}
+                >
+                  <Text style={styles.suggestionText}>{row.name}</Text>
+                  <Text style={styles.savedBadge}>{tPlace("savedBadge")}</Text>
+                </Pressable>
+              ) : (
+                <Pressable
+                  key={`g-${row.prediction.placeId}`}
+                  onPressIn={() => {
+                    closeSuggestions();
+                    Keyboard.dismiss();
+                    void resolve(row.prediction).then((c) => {
+                      if (c) onChange(candidateToPlaceInput(c));
+                    });
+                  }}
+                  style={styles.suggestionRow}
+                >
+                  <View style={styles.suggestionTextCol}>
+                    <Text style={styles.suggestionText} numberOfLines={1}>
+                      {row.prediction.primaryText}
                     </Text>
-                  ) : null}
-                </View>
-              </Pressable>
-            ),
+                    {row.prediction.secondaryText ? (
+                      <Text
+                        style={styles.suggestionSecondary}
+                        numberOfLines={1}
+                      >
+                        {row.prediction.secondaryText}
+                      </Text>
+                    ) : null}
+                  </View>
+                </Pressable>
+              ),
+            )}
+          </ScrollView>
+          {/* 地図を伴わずに Google の場所データを出すので帰属表示が要る
+              （web の GoogleAttribution と同じ理由・同じ文言）。 */}
+          {rows.some((r) => r.type === "google") && (
+            <Text style={styles.attribution}>Google Maps</Text>
           )}
         </View>
       )}
@@ -154,6 +181,7 @@ const makeStyles = (t: Theme) =>
       backgroundColor: t.background,
       overflow: "hidden",
     },
+    suggestionScroll: { flexShrink: 1 },
     suggestionRow: {
       flexDirection: "row",
       alignItems: "center",
@@ -172,4 +200,13 @@ const makeStyles = (t: Theme) =>
       color: t.mutedForeground,
     },
     savedBadge: { fontSize: 11, color: t.subtleForeground },
+    attribution: {
+      fontSize: 12,
+      color: t.mutedForeground,
+      textAlign: "right",
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.fgAlpha(0.1),
+    },
   });

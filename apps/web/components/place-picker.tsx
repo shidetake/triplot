@@ -8,6 +8,7 @@ import { Combobox } from "@base-ui/react/combobox";
 
 import type { LatLng } from "@triplot/shared/placeMap";
 
+import { GoogleAttribution } from "./google-attribution";
 import { inputClass } from "./input-class";
 import { extractRegion } from "./place-search";
 import { menuItemClass } from "./menu-item";
@@ -75,7 +76,13 @@ async function tryResolvePlace(
   if (!bestPred || bestScore < AUTO_ROUND_THRESHOLD) return null;
   const place = bestPred.toPlace();
   await place.fetchFields({
-    fields: ["id", "displayName", "formattedAddress", "addressComponents", "location"],
+    fields: [
+      "id",
+      "displayName",
+      "formattedAddress",
+      "addressComponents",
+      "location",
+    ],
   });
   const loc = place.location;
   if (!place.id || !loc) return null;
@@ -205,9 +212,9 @@ export function PlacePicker({
           }
         : null,
   );
-  const [gSug, setGSug] = useState<
-    google.maps.places.AutocompleteSuggestion[]
-  >([]);
+  const [gSug, setGSug] = useState<google.maps.places.AutocompleteSuggestion[]>(
+    [],
+  );
   // 自由入力に付随する座標（フライトから入れた空港）。文字を編集したら
   // 別の場所を指し始めたとみなして落とす。
   const initialFree = initial?.kind === "free" ? initial : null;
@@ -234,7 +241,9 @@ export function PlacePicker({
       // 使えるので親へ渡す。依存はプリミティブで持つ（オブジェクトを依存に置くと
       // 親が毎レンダー新しい initial を作る構造と噛み合って無限ループになる）。
       onCoordsChange(
-        freeLat != null && freeLng != null ? { lat: freeLat, lng: freeLng } : null,
+        freeLat != null && freeLng != null
+          ? { lat: freeLat, lng: freeLng }
+          : null,
       );
       return;
     }
@@ -243,8 +252,7 @@ export function PlacePicker({
       return;
     }
     const hit = places.find((p) => p.id === resolved.id) as
-      | { lat?: number | null; lng?: number | null }
-      | undefined;
+      { lat?: number | null; lng?: number | null } | undefined;
     onCoordsChange(
       hit && hit.lat != null && hit.lng != null
         ? { lat: hit.lat, lng: hit.lng }
@@ -484,7 +492,11 @@ export function PlacePicker({
     <div className="relative mt-1">
       <input type="hidden" name={`${namePrefix}place_mode`} value={mode} />
       <input type="hidden" name={`${namePrefix}place_id`} value={placeId} />
-      <input type="hidden" name={`${namePrefix}place_label`} value={placeLabel} />
+      <input
+        type="hidden"
+        name={`${namePrefix}place_label`}
+        value={placeLabel}
+      />
       <input
         type="hidden"
         name={`${namePrefix}place_lat`}
@@ -506,7 +518,11 @@ export function PlacePicker({
       <input type="hidden" name={`${namePrefix}g_lat`} value={g.lat} />
       <input type="hidden" name={`${namePrefix}g_lng`} value={g.lng} />
       <input type="hidden" name={`${namePrefix}g_region`} value={g.region} />
-      <input type="hidden" name={`${namePrefix}g_locality`} value={g.locality} />
+      <input
+        type="hidden"
+        name={`${namePrefix}g_locality`}
+        value={g.locality}
+      />
       <input type="hidden" name={`${namePrefix}g_icon`} value={g.icon} />
 
       <Combobox.Root
@@ -538,8 +554,10 @@ export function PlacePicker({
               その器より上に出さないと裏に隠れる（place-search は地図上で単独なので
               z-20 で足りるが、こちらは重なりの上に出す必要がある）。 */}
           <Combobox.Positioner sideOffset={4} className="z-[60]">
-            <Combobox.Popup className="max-h-64 w-[var(--anchor-width)] overflow-y-auto rounded-md border border-foreground/10 bg-background shadow-lg">
-              <Combobox.List>
+            {/* 候補リストだけがスクロールし、Google の帰属表示は流れないよう
+                器を flex-col にして footer を外に出す（GoogleAttribution 参照）。 */}
+            <Combobox.Popup className="flex max-h-64 w-[var(--anchor-width)] flex-col rounded-md border border-foreground/10 bg-background shadow-lg">
+              <Combobox.List className="min-h-0 flex-1 overflow-y-auto">
                 {(row: Row) => (
                   <Combobox.Item
                     key={
@@ -573,6 +591,7 @@ export function PlacePicker({
                   </Combobox.Item>
                 )}
               </Combobox.List>
+              {rows.some((r) => r.type === "google") && <GoogleAttribution />}
             </Combobox.Popup>
           </Combobox.Positioner>
         </Combobox.Portal>

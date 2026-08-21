@@ -180,6 +180,21 @@ Google Maps Platform の帰属表示ポリシーは「**常に見えて読める
   **`keyboardShortcuts={false}`** で消す（ドキュメントには挙動としか書かれていないが、
   実際にボタンごと消えるのを確認済み）。
 
+**地図の外にも帰属表示が要る場所が2つある。**
+
+- **地図を伴わずに Google の場所データを出す所**（予定/費用フォームの場所欄の
+  サジェスト）。ポリシーは「Google ロゴを入れること。狭ければ "Google Maps" の
+  テキストでも可」としている。候補リストの足元は狭いのでテキストを採り、
+  **スクロールする候補の内側ではなく外**に置く（スクロールで流れると
+  「常に見えて読めること」を満たせない）。web は `GoogleAttribution`、
+  RN は place-picker の `attribution`。
+- **iOS SDK の法的通知**。地図上の Google ロゴとは別に、
+  `[GMSServices openSourceLicenseInfo]` の内容をアプリ内に載せる必要がある
+  （「このアプリについて」の一部が推奨）。npm の依存関係を走査する
+  `scripts/gen-licenses.mjs` では拾えないので、オープンソースライセンス一覧とは
+  **別の行**にしてある。全文は約110万文字あり、1つの `<Text>` に入れると iOS の
+  テキストレイアウトが破綻して**何も描画されない**ので FlatList で分割する。
+
 ### OAuth ログインボタン（Google/Apple）はニュートラル配色統一＋ロゴのみブランド
 
 `OAuthSignInButton`（`components/oauth-sign-in-button.tsx`）は triplot の共通 `<Button>` を使わず、

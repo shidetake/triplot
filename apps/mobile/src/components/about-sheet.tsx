@@ -15,8 +15,10 @@ const PRIVACY_URL = "https://triplot.app/privacy";
 // （モバイル固有の About 画面）。
 export function AboutSheet({
   onOpenLicenses,
+  onOpenGoogleNotice,
 }: {
   onOpenLicenses: () => void;
+  onOpenGoogleNotice: () => void;
 }) {
   const t = useTranslations("about");
   const theme = useTheme();
@@ -40,6 +42,13 @@ export function AboutSheet({
 
         <Pressable onPress={onOpenLicenses} style={styles.navRow}>
           <Text style={styles.navRowLabel}>{t("licenses")}</Text>
+          <ChevronIcon size={16} color={theme.subtleForeground} />
+        </Pressable>
+
+        {/* Google Maps SDK の法的通知は npm の依存関係走査では拾えないので
+            ライセンス一覧とは別の行にする（lib/googleMapsNotice.ts 参照）。 */}
+        <Pressable onPress={onOpenGoogleNotice} style={styles.navRow}>
+          <Text style={styles.navRowLabel}>{t("googleNotice")}</Text>
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
       </View>

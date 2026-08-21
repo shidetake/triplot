@@ -149,6 +149,16 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
+      {/* Google マップの法的通知も長大なのでライセンス一覧と同じ決め打ち detent。 */}
+      <Stack.Screen
+        name="trips/google-notice"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: [0.9],
+          sheetGrabberVisible: true,
+        }}
+      />
       <Stack.Screen
         name="trips/new"
         options={{

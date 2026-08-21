@@ -638,6 +638,7 @@
     "heading": "このアプリについて",
     "privacyPolicy": "プライバシーポリシー",
     "licenses": "オープンソースライセンス",
+    "googleNotice": "Google マップの法的通知",
     "version": "バージョン {version} ({build})"
   }
 }
