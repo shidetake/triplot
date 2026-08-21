@@ -587,6 +587,10 @@ export function PlacesSection({
           canEdit={canEdit}
           canDelete={canEdit}
           canChangeVisibility={isCreator}
+          // 2タップ目でここが**新しく開く**ので、その時だけ編集モードで始まる
+          // （初期値だけを見るので、広い画面の InfoWindow＝選択と同時にもう
+          // 開いている方は今までどおり閲覧モードのまま）。
+          startEditing={savedInfoOpen}
           onDone={closeInfo}
         />
       );

@@ -498,6 +498,7 @@ export function SavedInfo({
   canEdit,
   canDelete,
   canChangeVisibility,
+  startEditing = false,
   onDone,
 }: {
   tripId: string;
@@ -506,12 +507,17 @@ export function SavedInfo({
   canEdit: boolean;
   canDelete: boolean;
   canChangeVisibility: boolean;
+  // 開いた直後から編集モードにする（**初期値だけ**）。狭い画面は一覧の行の
+  // 2タップ目でここへ来るので、そこからさらに鉛筆を押させない＝iOS と同じ
+  // 2タップで編集に着く。名前・住所・Google マップへのリンクは編集モードでも
+  // 出るので、直行しても失うものは無い。
+  startEditing?: boolean;
   onDone: () => void;
 }) {
   const t = useTranslations("place");
   const tCommon = useTranslations("common");
   const inSheet = useInSheet();
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(startEditing && canEdit);
 
   const [state, formAction, isPending] = useActionState(
     updatePlaceAction.bind(null, tripId),
