@@ -261,6 +261,7 @@ export function PlaceMap({
   onSelectCandidate,
   onCloseInfo,
   onDismissSelection,
+  onCloseList,
   onMapTap,
   onDraftMove,
   onCloseDraft,
@@ -285,6 +286,9 @@ export function PlaceMap({
   // 地図の何もない所のタップで一段戻る時に呼ぶ。選択を解いて詳細も閉じる
   // （シートを閉じるだけの onCloseInfo とは別＝そちらは選択を残す）。
   onDismissSelection: () => void;
+  // 場所一覧のシートを開いている時だけ渡す（閉じる手）。選択も仮ピンも無い時に
+  // 地図の何もない所をタップしたら、最後の一段としてこれを閉じる。
+  onCloseList?: () => void;
   onMapTap: (p: LatLng) => void;
   onDraftMove: (p: LatLng) => void;
   onCloseDraft: () => void;
@@ -464,6 +468,12 @@ export function PlaceMap({
             }
             if (draft) {
               onCloseDraft();
+              return;
+            }
+            // 一覧を開いているだけ（選択も仮ピンも無い）なら一覧を閉じる
+            // ＝iOS の「段階的に一段戻す」の最後の一段。
+            if (onCloseList) {
+              onCloseList();
               return;
             }
             // PC（マウス）の普通クリックは本家同様その場に自由ピン。

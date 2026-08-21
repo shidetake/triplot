@@ -708,6 +708,11 @@ export function PlacesSection({
             onSelectCandidate={selectCandidate}
             onCloseInfo={closeInfo}
             onDismissSelection={dismissSelection}
+            onCloseList={
+              showPlacesSheet && placesSheetOpen
+                ? () => setPlacesSheetOpen(false)
+                : undefined
+            }
             // 保存済みの場所は2タップ目まで詳細シートを出さない（候補・POI は
             // 選択＝詳細なのでそのまま出す）。
             infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
