@@ -56,7 +56,6 @@ export { gmapsUrl } from "@triplot/shared/placeLink";
 export function PlaceList({
   places,
   selectedId,
-  dimUnfocused = false,
   locatingId,
   dayByPlaceId,
   areaByPlaceId,
@@ -68,8 +67,6 @@ export function PlaceList({
 }: {
   places: PlaceRow[];
   selectedId: string | null;
-  // 場所を選んでいる間は、選ばれていない行を一段薄くする（iOS と同じ。
-  // どれが選択中かを、行の膨らみと背景に加えて明暗でも示す）。
   // 選択中の行に出す「◯日目・M/D(曜)」「エリア」バッジ用（無い場所は出さない）。
   dayByPlaceId: Map<string, VisitDay>;
   areaByPlaceId: Map<string, string | null>;
@@ -77,7 +74,6 @@ export function PlaceList({
   // 現在「位置を指定」モード中の未マップ place の id（あれば）。
   // その行は active 表示にして、クリックで取り消しできるようにする。
   locatingId: string | null;
-  dimUnfocused?: boolean;
   onSelect: (id: string) => void;
   // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
   onLocate: (id: string, name: string) => void;
@@ -108,7 +104,7 @@ export function PlaceList({
         const day = dayByPlaceId.get(p.id);
         const area = areaByPlaceId.get(p.id) ?? null;
         return (
-          <li key={p.id} data-place-id={p.id}>
+          <li key={p.id}>
             <button
               type="button"
               onClick={() =>
@@ -124,7 +120,7 @@ export function PlaceList({
                   : isSelected
                     ? "bg-accent"
                     : "hover:bg-foreground/10"
-              } ${dimUnfocused && !isSelected && !isLocating ? "opacity-50" : ""}`}
+              }`}
             >
               {/* 種別のアイコンを候補=琥珀／確定=緑で塗る（iOS の一覧と同じ。
                   以前はステータスを文字のバッジで出していたが、アイコンの色で
