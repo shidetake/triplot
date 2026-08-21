@@ -281,9 +281,21 @@ export function PlacesSection({
     [],
   );
 
+  // 保存済みの場所は「1タップ目＝一覧の中で選択、2タップ目＝詳細を開く」
+  // （iOS と同じ）。選択しただけの状態と、詳細シートを開いた状態を分けて持つ。
+  const [savedInfoOpen, setSavedInfoOpen] = useState(false);
+
   const closeInfo = useCallback(() => {
-    setSelected(null);
-    setPoi(null);
+    // 詳細を閉じても選択は残す＝一覧のその行が選択されたまま戻る（iOS と同じ）。
+    // 候補・POI は選択そのものが詳細と一体なので選択ごと解除する。
+    setSelected((cur) => {
+      if (cur?.kind === "saved") {
+        setSavedInfoOpen(false);
+        return cur;
+      }
+      setPoi(null);
+      return null;
+    });
   }, []);
 
   // 「位置を指定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
@@ -365,10 +377,22 @@ export function PlacesSection({
       }
       setDraft(null);
       setPoi(null);
-      setSelected({ kind: "saved", id });
-      collapsePlacesSheet();
+      setSelected((cur) => {
+        // 既に選んでいる場所をもう一度タップ＝詳細（編集）へ進む。
+        if (cur?.kind === "saved" && cur.id === id) {
+          setSavedInfoOpen(true);
+          return cur;
+        }
+        // 1タップ目は選択だけ。詳細シートは出さず、一覧の中でその行が
+        // 開いた状態にする（iOS の「プレビュー」と同じ）。一覧が閉じて
+        // いれば開く＝どこから選んでも選択の見え方が同じになる。
+        setSavedInfoOpen(false);
+        setSnapIndex("small");
+        setPlacesSheetOpen(true);
+        return { kind: "saved", id };
+      });
     },
-    [collapsePlacesSheet, places, pendingLocationFor, resolveLocatingTo],
+    [places, pendingLocationFor, resolveLocatingTo],
   );
   // この Google place が旅行に登録済みなら、その保存済みの場所を返す
   // （同じ店を POI タップ・検索・候補ピンから何度でも追加できてしまい、
@@ -661,6 +685,9 @@ export function PlacesSection({
             onSelectSaved={selectSaved}
             onSelectCandidate={selectCandidate}
             onCloseInfo={closeInfo}
+            // 保存済みの場所は2タップ目まで詳細シートを出さない（候補・POI は
+            // 選択＝詳細なのでそのまま出す）。
+            infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
             onMapTap={onMapTap}
             onDraftMove={onDraftMove}
             onCloseDraft={closeDraft}

@@ -9,7 +9,7 @@ import type { VisitDay } from "@triplot/shared/placeOrder";
 import { formatDayLabel } from "@triplot/shared/schedule";
 import { useTranslations } from "next-intl";
 
-import { CloseIcon } from "./icons";
+import { ChevronIcon, CloseIcon } from "./icons";
 import { PrivateBadge } from "./private-badge";
 
 // 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
@@ -189,7 +189,7 @@ export function PlaceList({
                   </p>
                 )}
               </div>
-              {unmapped && (
+              {unmapped ? (
                 <span
                   className={`shrink-0 text-xs ${
                     isLocating ? "text-amber-700 dark:text-amber-400" : "text-blue-600"
@@ -197,6 +197,16 @@ export function PlaceList({
                 >
                   {isLocating ? t("cancelLocate") : t("setPin")}
                 </span>
+              ) : (
+                // 選択中の行にだけ「＞」を出す＝もう1タップで詳細に進めることを
+                // 示す（iOS 標準リストのディスクロージャと同じ表し方。iOS 版と
+                // 同形）。
+                isSelected && (
+                  <ChevronIcon
+                    size={16}
+                    className="mt-0.5 shrink-0 text-muted-foreground"
+                  />
+                )
               )}
             </button>
           </li>

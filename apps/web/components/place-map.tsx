@@ -264,6 +264,7 @@ export function PlaceMap({
   onPoiSelect,
   poi,
   infoContent,
+  infoSheetOpen = true,
   draftContent,
   locating,
   className,
@@ -283,6 +284,11 @@ export function PlaceMap({
   onCloseDraft: () => void;
   onPoiSelect: (c: CandidatePlace) => void;
   infoContent: ReactNode;
+  // 狭い画面で infoContent をボトムシートとして出すか。保存済みの場所は
+  // 「1タップ目＝一覧で選択、2タップ目＝詳細」なので、呼び出し側が段を持つ。
+  // 広い画面の InfoWindow はこの旗に関係なく選択に追従する（一覧が常に隣に
+  // 見えているので段を分ける意味が無い）。
+  infoSheetOpen?: boolean;
   draftContent: ReactNode;
   // draftContent が LocateInfo（既存 place への位置設定。onDone が「保存成功」
   // 専用の意味を持ち、ボトムシートの汎用クローズに置き換えられると困る）か
@@ -592,7 +598,7 @@ export function PlaceMap({
             は onDone が「保存成功」専用の意味を持ち、ボトムシートの汎用クローズ
             （NarrowSheet が onDone を上書きする）と衝突するため対象外のまま
             InfoWindow で出す。 */}
-        {narrow && selected && infoContent && (
+        {narrow && selected && infoContent && infoSheetOpen && (
           <NarrowSheet
             label={
               selected.kind === "saved" ? t("editFormLabel") : t("addFormLabel")
