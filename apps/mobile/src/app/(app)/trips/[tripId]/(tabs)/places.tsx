@@ -151,15 +151,27 @@ const CANDIDATE_LABEL = { fontSize: 13, lineHeight: 16, maxWidth: 130 };
 const CANDIDATE_LABEL_GAP = 4;
 
 // 地図の下端に入れる余白。MapView はタブバーの裏まで広がっているので、
-// これが無いと Google Maps SDK が左下に描く **Google ロゴがタブバーと画面下端に
-// 隠れる**。ロゴは Google Maps Platform の帰属表示ポリシーで
+// これが無いと Google Maps SDK が左下に描く **Google ロゴがタブバーと画面の
+// 角丸に隠れる**（角丸半径 55pt の端末では、下から 8〜25pt の高さで左端が
+// 12〜33pt 内側に食い込む。シミュレータは角丸マスクを描かないので実機でしか
+// 分からない）。ロゴは Google Maps Platform の帰属表示ポリシーで
 // 「常に見えて読めること・隠したり変えたりしないこと」が求められているため、
-// 隠れたままにはできない（消すのも不可）。
-// 値は他の地図オーバーレイ（一覧ボタン・現在地・縮尺バー）と同じ 100
-// ＝タブバーの上に出る高さ。ここを変えたら projectionSize も一緒に効く。
-const MAP_BOTTOM_PADDING = 100;
+// 隠れたままにはできない（消すのも・小さくするのも不可。SDK に大きさの API は
+// 無く、ポリシーもロゴの改変を禁じている）。
+// 値の出どころ: タブバーの浮島は画面下端から 21.7pt の位置に高さ 62pt で浮く
+// （実測）＝上端が 83.7pt。SDK はロゴを「余白の端から 8pt 上」に描くので、
+// 余白 84 でロゴ下端が 92pt ＝タブバーとの間に 8pt の隙間が残る。
+// 76 まで下げると隙間が 0.6pt しかなく、端末差でタブバーに飲まれる。
+// ここを変えたら projectionSize も一緒に効く。
+const MAP_BOTTOM_PADDING = 84;
 // 参照が変わるたびに native へ書き戻さないよう外に出す。
 const MAP_PADDING = { top: 0, right: 0, bottom: MAP_BOTTOM_PADDING, left: 0 };
+
+// SDK は Google ロゴを「余白の端から 8pt 上・高さ 17pt」で描く（実測）。
+// 縮尺バーもロゴも左下なので、縮尺バーはこのロゴの上に載せる
+// （ロゴ側は動かせないので、避けるのは常にこちら）。
+const GOOGLE_LOGO_TOP = MAP_BOTTOM_PADDING + 8 + 17;
+const SCALE_BAR_BOTTOM = GOOGLE_LOGO_TOP + 8;
 
 // 選択中の行をその場で膨らませる（Phase 2）際の連続アニメーション用。
 const AnimatedPressable = Reanimated.createAnimatedComponent(Pressable);
@@ -2885,10 +2897,12 @@ const makeStyles = (t: Theme) =>
   // 縮尺バー。右側は現在地ボタン・方位磁針の縦列なので、本家 Google マップと
   // 同じく左下に置く。ダーク地図でも読めるよう、候補ピンのラベルと同じ
   // 「ハロー付き文字」。
+  // 高さは Google ロゴの真上（SCALE_BAR_BOTTOM）。同じ左下に出るので、
+  // ぶつかったら動かすのは常にこちら（ロゴは動かせない）。
   scaleBar: {
     position: "absolute",
     left: 12,
-    bottom: 100,
+    bottom: SCALE_BAR_BOTTOM,
     alignItems: "flex-start",
   },
   scaleBarText: {
