@@ -52,6 +52,15 @@ function MyLocationDot({ size = 18 }: { size?: number }) {
 const buttonClass =
   "pointer-events-auto flex items-center justify-center rounded-full bg-background shadow-[0_2px_6px_rgba(0,0,0,0.15)] transition";
 
+// 地図の上に重ねる自前オーバーレイの共通の下端（地図の下端からの px）。
+//
+// Google ロゴはベースマップが地図の左下（下端から 3〜23px）に描き、帰属表示は
+// 覆えない（docs/ui-guidelines.md「地図の帰属表示は消さない・隠さない」）。
+// なのでロゴのすぐ上を自前オーバーレイの床にして、縮尺バー・現在地・一覧を開く
+// 浮島の**下端を全部この線に揃える**。
+// 浮島は地図の外（places-section）にあるので、そちら側でも同じ値を使う。
+export const MAP_OVERLAY_BOTTOM_PX = 29;
+
 export function MapControls({
   // 位置を指定するモード中は地図に集中させるため操作系を出さない（iOS と同じ）。
   hidden = false,
@@ -127,7 +136,9 @@ export function MapControls({
         }
         prevZoom.current = z;
       }),
-      map.addListener("heading_changed", () => setHeading(map.getHeading() ?? 0)),
+      map.addListener("heading_changed", () =>
+        setHeading(map.getHeading() ?? 0),
+      ),
       // 自分で動かしたら「現在地を追っている」状態は解除（本家と同じ）。
       map.addListener("dragstart", () => setFollowing(false)),
       // 初回の値は地図の描画が落ち着いた時に取る（effect の中で直接 setState
@@ -173,11 +184,15 @@ export function MapControls({
         // 器は pointer-events-none にし、各ボタンだけ拾う。
         <div className="pointer-events-none absolute inset-0 z-10">
           {/* 縮尺バー（左下）。右側は現在地・方位磁針の縦列なので本家と同じ左下。
-              明暗どちらのベースマップでも読めるようハロー付きの文字にする。 */}
+              明暗どちらのベースマップでも読めるようハロー付きの文字にする。
+              下端は Google ロゴのすぐ上（MAP_OVERLAY_BOTTOM_PX）。 */}
           {scale && (
             <div
-              className="absolute left-3 bottom-16 transition-opacity duration-300 md:bottom-4"
-              style={{ opacity: scaleVisible ? 1 : 0 }}
+              className="absolute left-3 transition-opacity duration-300"
+              style={{
+                bottom: MAP_OVERLAY_BOTTOM_PX,
+                opacity: scaleVisible ? 1 : 0,
+              }}
             >
               {/* ハローの色は地図の明暗に合わせる（iOS の textShadowColor と同値）。
                   ベースマップの色はアプリのテーマに追従するので dark: で足りる。 */}
@@ -199,7 +214,8 @@ export function MapControls({
               onClick={() => map?.setHeading(0)}
               aria-label="地図の向きを北にリセット"
               title="地図の向きを北にリセット"
-              className={`${buttonClass} absolute right-3 bottom-[8.5rem] h-10 w-10 md:bottom-[4.5rem]`}
+              style={{ bottom: MAP_OVERLAY_BOTTOM_PX + 44 + 8 }}
+              className={`${buttonClass} absolute right-3 h-10 w-10`}
             >
               <svg
                 viewBox="0 0 24 24"
@@ -224,7 +240,8 @@ export function MapControls({
             onClick={goToMyLocation}
             aria-label="現在地に戻る"
             title="現在地に戻る"
-            className={`${buttonClass} absolute right-3 bottom-16 h-11 w-11 md:bottom-4`}
+            style={{ bottom: MAP_OVERLAY_BOTTOM_PX }}
+            className={`${buttonClass} absolute right-3 h-11 w-11`}
           >
             <svg
               viewBox="0 -960 960 960"

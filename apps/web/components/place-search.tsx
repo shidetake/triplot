@@ -7,9 +7,7 @@ import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Combobox } from "@base-ui/react/combobox";
 
 import type { LatLng } from "@triplot/shared/placeMap";
-import { SearchIcon } from "@/components/icons";
 import { menuItemClass } from "./menu-item";
-import { Button } from "@/components/ui/button";
 import { inputClass } from "./input-class";
 import { CloseButton } from "./close-button";
 
@@ -35,10 +33,7 @@ export type CandidatePlace = {
 // searchByText / autocomplete の fetchFields どちらの addressComponents も
 // 同じ形（{ types, longText }）なので共有する。
 export function extractRegion(
-  components:
-    | { types: string[]; longText: string | null }[]
-    | null
-    | undefined,
+  components: { types: string[]; longText: string | null }[] | null | undefined,
 ): { region: string | null; locality: string | null } {
   const pick = (type: string) =>
     components?.find((c) => c.types.includes(type))?.longText ?? null;
@@ -262,38 +257,29 @@ export function PlaceSearch({
         if (s) pick(s as google.maps.places.AutocompleteSuggestion);
       }}
     >
-      {/* 検索ボタン（テキスト検索）は form の submit で温存。候補が開いていて
-          ハイライト中なら Combobox が Enter を奪って候補確定する（submit しない）。 */}
+      {/* 検索ボタンは置かず、入力欄の Enter で検索する（iOS と同じ。ボタンぶんの
+          幅を入力欄に回せる）。form の中の入力欄が1つだけなので Enter は暗黙の
+          submit になる。候補が開いていてハイライト中なら Combobox が Enter を
+          奪って候補確定する（submit しない）。 */}
       <form onSubmit={onSubmit} className="space-y-1" autoComplete="off">
-        <div className="flex gap-2">
-          <div className="relative min-w-0 flex-1">
-            <Combobox.Input
-              ref={inputRef}
-              placeholder={t("searchPlaceholder")}
-              autoComplete="off"
-              className={`block w-full min-w-0 pr-9 ${inputClass}`}
+        <div className="relative min-w-0">
+          <Combobox.Input
+            ref={inputRef}
+            placeholder={t("searchPlaceholder")}
+            autoComplete="off"
+            disabled={!ready}
+            className={`block w-full min-w-0 pr-9 ${inputClass}`}
+          />
+          {query && (
+            <CloseButton
+              label={t("searchClear")}
+              onClick={() => {
+                setSug([]);
+                onClear();
+              }}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2"
             />
-            {query && (
-              <CloseButton
-                label={t("searchClear")}
-                onClick={() => {
-                  setSug([]);
-                  onClear();
-                }}
-                className="absolute right-1.5 top-1/2 -translate-y-1/2"
-              />
-            )}
-          </div>
-          <Button
-            type="submit"
-            size="icon"
-            disabled={!ready || pending}
-            aria-label={t("searchAria")}
-            title={t("searchAria")}
-            className="shrink-0"
-          >
-            <SearchIcon size={18} />
-          </Button>
+          )}
         </div>
 
         <Combobox.Portal>

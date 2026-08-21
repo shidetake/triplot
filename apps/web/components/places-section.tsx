@@ -31,6 +31,7 @@ import {
   type PinOption,
   SavedInfo,
 } from "./place-popups";
+import { MAP_OVERLAY_BOTTOM_PX } from "./map-controls";
 import { PlaceFilterMenu } from "./place-filter-menu";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
@@ -126,7 +127,10 @@ export function PlacesSection({
   // 文字列そのものではなく意味（half/fit）で持つ: 実測や resize で px の値が
   // 変わった瞬間に activeSnapPoint が snapPoints のどれとも一致しなくなり、
   // vaul の位置計算が壊れるため（実機で「展開時の上限がずれる」不具合として発覚）。
-  const sheetCapPx = Math.max(0, viewportHeight - chromeTopPx - SEARCH_ROW_EXTRA_PX);
+  const sheetCapPx = Math.max(
+    0,
+    viewportHeight - chromeTopPx - SEARCH_ROW_EXTRA_PX,
+  );
   const { detents: placesDetents } = useMemo(
     () =>
       fitAndHalfDetents({
@@ -209,7 +213,10 @@ export function PlacesSection({
     () => areaFilterOptions(areaByPlaceId, earliestMsByPlaceId),
     [areaByPlaceId, earliestMsByPlaceId],
   );
-  const dayOptions = useMemo(() => dayFilterOptions(dayByPlaceId), [dayByPlaceId]);
+  const dayOptions = useMemo(
+    () => dayFilterOptions(dayByPlaceId),
+    [dayByPlaceId],
+  );
 
   const visiblePlaces = useMemo(() => {
     const base = placeFilter
@@ -229,12 +236,11 @@ export function PlacesSection({
 
   // 行を選択している間は小さい段までに制限する（一覧より地図が主役という方針。
   // iOS と同じ）。検索中は iOS と同じ [0.25, 0.5]。
-  const activeDetents =
-    inSearch
-      ? searchDetents
-      : selected?.kind === "saved"
-        ? [placesDetents[0]]
-        : placesDetents;
+  const activeDetents = inSearch
+    ? searchDetents
+    : selected?.kind === "saved"
+      ? [placesDetents[0]]
+      : placesDetents;
   const snapPoints = activeDetents.map((d) => `${Math.round(d * refPx)}px`);
   const activeSnap =
     snapPoints[snapIndex === "small" ? 0 : snapPoints.length - 1] ??
@@ -511,9 +517,7 @@ export function PlacesSection({
   if (!apiKey) {
     return (
       <div className="space-y-4">
-        <MessageBox kind="warning">
-          {t("noApiKey")}
-        </MessageBox>
+        <MessageBox kind="warning">{t("noApiKey")}</MessageBox>
         <PlaceList
           places={visiblePlaces}
           selectedId={null}
@@ -637,7 +641,10 @@ export function PlacesSection({
 
         <div
           className="fixed inset-x-0 md:static md:inset-auto"
-          style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
+          style={{
+            top: MOBILE_TAB_TOP_OFFSET,
+            bottom: MOBILE_TAB_BOTTOM_OFFSET,
+          }}
           // 地図に触っても一覧シートは閉じない。シートは背後を暗くしておらず
           // 地図はそのまま操作できるので、開いたまま動かせる方が使いやすい
           // （iOS も閉じない。以前は pointerdown で畳んでいたが、パンしようと
@@ -683,7 +690,11 @@ export function PlacesSection({
               setPlacesSheetOpen(true);
             }}
             aria-label={t("openList")}
-            style={{ bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 12px)` }}
+            // 下端は地図上の他のオーバーレイ（縮尺バー・現在地）と同じ線
+            // ＝Google ロゴのすぐ上。以前は 12px で、帰属表示に重なっていた。
+            style={{
+              bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + ${MAP_OVERLAY_BOTTOM_PX}px)`,
+            }}
             className="fixed left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-foreground/10 bg-background/75 px-4 py-2 text-xs font-medium text-foreground shadow-lg backdrop-blur-lg backdrop-saturate-150 transition active:scale-95 md:hidden"
           >
             <ChevronIcon size={16} className="-rotate-90" />
@@ -739,9 +750,7 @@ export function PlacesSection({
                 >
                   <PlaceList
                     places={visiblePlaces}
-                    selectedId={
-                      selected?.kind === "saved" ? selected.id : null
-                    }
+                    selectedId={selected?.kind === "saved" ? selected.id : null}
                     locatingId={pendingLocationFor?.id ?? null}
                     dayByPlaceId={dayByPlaceId}
                     areaByPlaceId={areaByPlaceId}

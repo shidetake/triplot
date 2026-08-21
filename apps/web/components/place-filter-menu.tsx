@@ -152,7 +152,9 @@ export function PlaceFilterMenu({
       size="icon"
       aria-label={t("filterAria", { label })}
       title={t("filterAria", { label })}
-      className="shrink-0 bg-background data-[active]:bg-primary"
+      // 地図の上に単独で浮かぶアイコン操作子なので丸（iOS と同形。直径は
+      // 隣の検索欄の高さ＝size="icon" の h-9 と同じ）。
+      className="shrink-0 rounded-full bg-background data-[active]:bg-primary"
     >
       <FilterIcon size={18} />
     </Button>
