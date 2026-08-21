@@ -20,7 +20,9 @@ import {
 /** <html class> の "dark" を MutationObserver で監視し、colorScheme 文字列を返す。 */
 function useMapColorScheme(): "DARK" | "LIGHT" {
   const [isDark, setIsDark] = useState(
-    () => typeof document !== "undefined" && document.documentElement.classList.contains("dark"),
+    () =>
+      typeof document !== "undefined" &&
+      document.documentElement.classList.contains("dark"),
   );
   useEffect(() => {
     const el = document.documentElement;
@@ -258,6 +260,7 @@ export function PlaceMap({
   onSelectSaved,
   onSelectCandidate,
   onCloseInfo,
+  onDismissSelection,
   onMapTap,
   onDraftMove,
   onCloseDraft,
@@ -279,6 +282,9 @@ export function PlaceMap({
   onSelectSaved: (id: string) => void;
   onSelectCandidate: (placeId: string) => void;
   onCloseInfo: () => void;
+  // 地図の何もない所のタップで一段戻る時に呼ぶ。選択を解いて詳細も閉じる
+  // （シートを閉じるだけの onCloseInfo とは別＝そちらは選択を残す）。
+  onDismissSelection: () => void;
   onMapTap: (p: LatLng) => void;
   onDraftMove: (p: LatLng) => void;
   onCloseDraft: () => void;
@@ -312,7 +318,6 @@ export function PlaceMap({
   // 直近にタッチがあった締切。これ以内の click はタッチ由来とみなし、
   // 自由ピンの click ドロップ（＝マウス専用）を行わない。
   const recentTouchUntil = useRef(0);
-
 
   // 未マップ（自由入力）の場所は座標が無いので地図に出さない。
   const mappedPlaces = useMemo(
@@ -353,7 +358,6 @@ export function PlaceMap({
   // fitBounds 前の初期中心。bounds 中心なら日付変更線跨ぎでも正しい側に出る。
   const initBounds = boundsOf(focusPoints);
   const initialCenter = initBounds ? centerOf(initBounds) : TOKYO;
-
 
   const selectedPos: LatLng | null = useMemo(() => {
     if (!selected) return null;
@@ -452,8 +456,10 @@ export function PlaceMap({
               return;
             }
             // 何か開いていれば「閉じるだけ」優先。
+            // 何もない所のタップは段階的に一段戻す（iOS と同じ）。
+            // 選択中なら選択を解く＝スクロールで選択を変えるモードから抜ける。
             if (selected) {
-              onCloseInfo();
+              onDismissSelection();
               return;
             }
             if (draft) {

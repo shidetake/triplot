@@ -434,6 +434,16 @@ export function PlacesSection({
     el.scrollBy({ top: delta, behavior: "smooth" });
   }, [pendingCenterId, pickerPad]);
 
+  // 地図の何もない所のタップ＝一段戻る。**選択そのものを解く**ので、スクロールで
+  // 選択を変えるモードからも抜ける（iOS の「段階的に一段戻す」と同じ。詳細を
+  // 開いていれば一緒に閉じる）。
+  // シートを下まで引いて閉じ切った時も同じ後始末をする。
+  const dismissSelection = useCallback(() => {
+    setSavedInfoOpen(false);
+    setSelected(null);
+    setPoi(null);
+  }, []);
+
   const closeInfo = useCallback(() => {
     // 詳細を閉じても選択は残す＝一覧のその行が選択されたまま戻る（iOS と同じ）。
     // 候補・POI は選択そのものが詳細と一体なので選択ごと解除する。
@@ -839,6 +849,7 @@ export function PlacesSection({
             onSelectSaved={selectSaved}
             onSelectCandidate={selectCandidate}
             onCloseInfo={closeInfo}
+            onDismissSelection={dismissSelection}
             // 保存済みの場所は2タップ目まで詳細シートを出さない（候補・POI は
             // 選択＝詳細なのでそのまま出す）。
             infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
@@ -895,7 +906,11 @@ export function PlacesSection({
             scrollLockTimeout={0}
             repositionInputs={false}
             onOpenChange={(next) => {
-              if (!next) setPlacesSheetOpen(false);
+              if (next) return;
+              setPlacesSheetOpen(false);
+              // 閉じ切ったら選択も解く＝スクロールで選択を変えるモードから
+              // 抜ける（開き直した時に前の選択が残っていない）。
+              dismissSelection();
             }}
           >
             <Drawer.Portal>

@@ -174,8 +174,11 @@ export function PlaceList({
                 )}
                 {isSelected && (day || area) && (
                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    {/* 何日目・日付は「一番伝えたい情報」なので塗りチップで
+                        強調する（iOS と同値: secondary の地＋前景色の太字）。
+                        エリアはその補足なのでチップにせず控えめなテキストのみ。 */}
                     {day && (
-                      <span className="rounded bg-muted px-1.5">
+                      <span className="rounded bg-secondary px-1.5 font-semibold text-foreground">
                         {t("dayBadge", {
                           day: day.dayIndex,
                           date: formatDayLabel(day.date, locale),
