@@ -457,7 +457,7 @@ export function PlaceMap({
             }
             // 何か開いていれば「閉じるだけ」優先。
             // 何もない所のタップは段階的に一段戻す（iOS と同じ）。
-            // 選択中なら選択を解く＝スクロールで選択を変えるモードから抜ける。
+            // 選択中なら選択を解く（一覧の選択表示も元に戻る）。
             if (selected) {
               onDismissSelection();
               return;

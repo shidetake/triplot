@@ -68,9 +68,8 @@ export function PlaceList({
 }: {
   places: PlaceRow[];
   selectedId: string | null;
-  // 「スクロールで選択を変える」モード中は、選ばれていない行を一段薄くする
-  // （iOS のピッカーと同じ。どれが選択中かを、行の膨らみと背景に加えて
-  // 明暗でも示す）。
+  // 場所を選んでいる間は、選ばれていない行を一段薄くする（iOS と同じ。
+  // どれが選択中かを、行の膨らみと背景に加えて明暗でも示す）。
   // 選択中の行に出す「◯日目・M/D(曜)」「エリア」バッジ用（無い場所は出さない）。
   dayByPlaceId: Map<string, VisitDay>;
   areaByPlaceId: Map<string, string | null>;

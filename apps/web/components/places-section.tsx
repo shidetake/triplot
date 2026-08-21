@@ -63,9 +63,8 @@ const SEARCH_ROW_EXTRA_PX = 36 + 12 + 12;
 // 見出し帯 + 1行ぶん。
 const SHEET_MIN_HALF_PX = 44 + 56;
 
-// 「スクロールで選択を変える」（iOS のピッカーと同じ）を効かせる最小件数。
-// これ未満だと中央に寄せる余白を作れない（iOS の PICKER_CENTERING_MIN_ITEMS
-// と同じ値）。
+// 選んだ行を一覧の中央へ寄せるのに要る最小件数。これ未満だと中央に寄せる
+// 余白を作れない（iOS の PICKER_CENTERING_MIN_ITEMS と同じ値）。
 const PICKER_MIN_ITEMS = 3;
 
 export function PlacesSection({
@@ -114,16 +113,12 @@ export function PlacesSection({
   // 中身の実測高（一覧の中身＋見出し帯）。届くまでは概算で組む。
   const [listContentH, setListContentH] = useState(0);
   // 一覧のスクロール容器。中身の実測（シートの段の計算）と、下の
-  // 「スクロールで選択を変える」の両方がこの要素を見る。
+  // 選んだ行を中央へ寄せる処理の両方がこの要素を見る。
   const listElRef = useRef<HTMLDivElement | null>(null);
-  // 自分で scrollTo した分は拾わない（タップ選択→中央寄せが、そのまま
-  // 「スクロールされた」と解釈されて別の行に飛ぶのを防ぐ）。
-  const programmaticScrollUntil = useRef(0);
-  const scrollRafRef = useRef(0);
-  // ピッカー中に一覧の上下へ足す余白。**どの行も中央に来られる**ようにする
-  // ためのもので（先頭と末尾の行は、これが無いと中央まで上がれない）、件数が
-  // 少なくて一覧がそもそもスクロールしない場合もこれでスクロールできるように
-  // なる（iOS の pickerCenterPad と同じ役割）。
+  // 選択中に一覧の上下へ足す余白。**どの行も中央に来られる**ようにするための
+  // もので（先頭と末尾の行は、これが無いと中央まで上がれない）、件数が少なくて
+  // 一覧がそもそもスクロールしない場合もこれでスクロールできるようになる
+  // （iOS の pickerCenterPad と同じ役割）。
   const [pickerPad, setPickerPad] = useState({ top: 0, bottom: 0 });
   // シートの段の計算に使う「中身の高さ」からはこの余白を除く（余白ごと数えると
   // 中身に合わせて開く段が画面いっぱいまで伸びてしまう）。
@@ -139,7 +134,7 @@ export function PlacesSection({
     return () => ro.disconnect();
   }, []);
 
-  // ピッカーの「中央」＝**画面に見えている範囲**の中央。シートは段に応じて
+  // ここでの「中央」＝**画面に見えている範囲**の中央。シートは段に応じて
   // 下へずらして表示されるので、器の高さ（clientHeight）の半分ではない
   // （器の下半分は画面の外にあることがある）。
   const visibleCenterY = (el: HTMLElement): number => {
@@ -148,25 +143,6 @@ export function PlacesSection({
     const bottom = Math.min(c.bottom, window.innerHeight);
     return (top + bottom) / 2;
   };
-
-  // その中央に一番近い行の id を今のレイアウトから求める。行の高さは選択で
-  // 変わる（選択中の行だけ住所とバッジが出る）ので、定数ではなく毎回実寸で測る。
-  const centeredPlaceId = useCallback((): string | null => {
-    const el = listElRef.current;
-    if (!el) return null;
-    const centerY = visibleCenterY(el);
-    let bestId: string | null = null;
-    let bestDist = Infinity;
-    for (const li of el.querySelectorAll<HTMLElement>("[data-place-id]")) {
-      const r = li.getBoundingClientRect();
-      const d = Math.abs((r.top + r.bottom) / 2 - centerY);
-      if (d < bestDist) {
-        bestDist = d;
-        bestId = li.dataset.placeId ?? null;
-      }
-    }
-    return bestId;
-  }, []);
 
   // タップで選んだ行を中央へ運ぶ。実際に運ぶのは下の effect（余白が入って
   // レイアウトが決まってから測る必要があるため、ここでは予約だけする）。
@@ -337,47 +313,12 @@ export function PlacesSection({
     [],
   );
 
-  // 一覧をスクロールすると、中央に来た行がそのまま選択になる（iOS のピッカーと
-  // 同じ）。効くのは**保存済みの場所を選んでいる間だけ**＝1タップ目で選択して
-  // から。まだ何も選んでいない時に勝手に選ばれると、ただ一覧を眺めたいだけの
-  // スクロールが選択を書き換えてしまう。
-  const onListScroll = useCallback(() => {
-    if (Date.now() < programmaticScrollUntil.current) return;
-    if (scrollRafRef.current) return;
-    scrollRafRef.current = requestAnimationFrame(() => {
-      scrollRafRef.current = 0;
-      const el = listElRef.current;
-      if (!el) return;
-      if (el.querySelectorAll("[data-place-id]").length < PICKER_MIN_ITEMS)
-        return;
-      const id = centeredPlaceId();
-      if (!id) return;
-      setSelected((cur) => {
-        // 選択中でない（＝ピッカーモードではない）／詳細を開いている間は触らない。
-        if (cur?.kind !== "saved" || cur.id === id) return cur;
-        // 地図未登録の行はスクロールでも選べない（タップと同じ制約。中央に来ても
-        // 選択は直前のままにして、地図の赤ピンと選択中の行が食い違わないように
-        // する）。
-        const p = places.find((x) => x.id === id);
-        if (!p || p.lat == null || p.lng == null) return cur;
-        return { kind: "saved", id };
-      });
-    });
-  }, [centeredPlaceId, places]);
-
-  useEffect(
-    () => () => {
-      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
-    },
-    [],
-  );
-
   // 保存済みの場所は「1タップ目＝一覧の中で選択、2タップ目＝詳細を開く」
   // （iOS と同じ）。選択しただけの状態と、詳細シートを開いた状態を分けて持つ。
   const [savedInfoOpen, setSavedInfoOpen] = useState(false);
 
-  // ピッカー（スクロールで選択を変える）が効いている状態。選ばれていない行を
-  // 一段薄くする表示もこれで切り替える。
+  // 場所を選んでいる状態。選ばれていない行を一段薄くする表示と、中央寄せの
+  // 余白をこれで切り替える。
   const pickerActive =
     selected?.kind === "saved" &&
     !savedInfoOpen &&
@@ -385,7 +326,7 @@ export function PlacesSection({
     visiblePlaces.length >= PICKER_MIN_ITEMS;
 
   // 余白の量は「容器の半分 − 行の半分」。行の高さは選択で変わるので、選ばれて
-  // いない行（＝素の高さ）を測る。ピッカーを抜けたら 0 に戻す。
+  // いない行（＝素の高さ）を測る。選択が解けたら 0 に戻す。
   const measurePickerPad = useCallback(() => {
     const el = listElRef.current;
     const next = (() => {
@@ -428,9 +369,6 @@ export function PlacesSection({
     const r = li.getBoundingClientRect();
     const delta = (r.top + r.bottom) / 2 - visibleCenterY(el);
     if (Math.abs(delta) < 1) return;
-    // 自分で動かしている間のスクロールは拾わない（onListScroll）。smooth の
-    // 完了イベントは無いので時間で締める。
-    programmaticScrollUntil.current = Date.now() + 700;
     el.scrollBy({ top: delta, behavior: "smooth" });
   }, [pendingCenterId, pickerPad]);
 
@@ -908,8 +846,7 @@ export function PlacesSection({
             onOpenChange={(next) => {
               if (next) return;
               setPlacesSheetOpen(false);
-              // 閉じ切ったら選択も解く＝スクロールで選択を変えるモードから
-              // 抜ける（開き直した時に前の選択が残っていない）。
+              // 閉じ切ったら選択も解く（開き直した時に前の選択が残らない）。
               dismissSelection();
             }}
           >
@@ -942,7 +879,6 @@ export function PlacesSection({
                 </div>
                 <div
                   ref={listMeasureRef}
-                  onScroll={onListScroll}
                   style={
                     pickerPad.top + pickerPad.bottom > 0
                       ? {
