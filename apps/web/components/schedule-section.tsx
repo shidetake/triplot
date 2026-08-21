@@ -27,7 +27,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { createClient } from "@/lib/supabase/client";
-import { EventForm, type EventFormMode, toEventFormPrefill } from "./event-form";
+import { AddFab } from "./add-fab";
+import {
+  EventForm,
+  type EventFormMode,
+  toEventFormPrefill,
+} from "./event-form";
 import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
@@ -89,7 +94,12 @@ export function ScheduleSection({
   // メール取り込みの未確定予定。カレンダー上に amber+破線の疑似ブロックとして
   // 描画し、タップで確定フォームを開く（フローティングバナーは廃止）。
   eventDrafts: EventDraftItem[];
-  places: { id: string; name: string; lat: number | null; lng: number | null }[];
+  places: {
+    id: string;
+    name: string;
+    lat: number | null;
+    lng: number | null;
+  }[];
   // color は予定ブロック色の決定（1人だけ参加 → その人の hue）に必要。
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
@@ -276,7 +286,8 @@ export function ScheduleSection({
   // フォームの中にも破棄の口を用意する（無いと消せない）。
   const dismissDraft = useCallback(
     async (draftId: string) => {
-      if (!(await confirmDialog({ title: tImport("dismissDraftTitle") }))) return;
+      if (!(await confirmDialog({ title: tImport("dismissDraftTitle") })))
+        return;
       const supabase = createClient();
       await resolveInboundDraft(supabase, draftId, "dismissed");
       closeForm();
@@ -352,21 +363,11 @@ export function ScheduleSection({
       {/* 狭い画面だけのフローティング操作（Google カレンダー風の FAB）。
           広い画面の見出し行にある「?」ヒントはここでは出さない＝カレンダーが
           画面いっぱいになるこの表示なら + の意味は説明無しでも伝わるため。 */}
-      <div
-        className="fixed right-4 z-20 flex flex-col items-end gap-2 md:hidden"
-        style={{ bottom: `calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)` }}
-      >
-        <Button
-          type="button"
-          size="icon"
-          onClick={openCreate}
-          aria-label={t("addAria")}
-          title={t("addAria")}
-          className="h-12 w-12 rounded-full shadow-lg"
-        >
-          <PlusIcon size={20} />
-        </Button>
-      </div>
+      <AddFab
+        onClick={openCreate}
+        label={t("addAria")}
+        bottom={`calc(${MOBILE_TAB_BOTTOM_OFFSET} + 16px)`}
+      />
 
       {/* 狭い画面はカレンダーが fixed で画面を覆うため、この凡例は隠れて見えなく
           なる（下に隠れた不可視コンテンツを残さないよう非表示にする）。 */}
@@ -387,7 +388,9 @@ export function ScheduleSection({
         <FormPopover
           anchor={open.anchor}
           onClose={closeForm}
-          label={open.draftId ? tImport("confirmFormLabel") : t("eventFormLabel")}
+          label={
+            open.draftId ? tImport("confirmFormLabel") : t("eventFormLabel")
+          }
           fullScreenOnNarrow
           // ボトムシート時の下書き保持キー。取り込み下書きの確定は
           // ImportDraftRow と同じ形式（draftId ごと）、編集は予定ごと、新規は
