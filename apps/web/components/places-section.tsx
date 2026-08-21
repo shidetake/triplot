@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
@@ -63,6 +63,11 @@ const SEARCH_ROW_EXTRA_PX = 36 + 12 + 12;
 // 見出し帯 + 1行ぶん。
 const SHEET_MIN_HALF_PX = 44 + 56;
 
+// 「スクロールで選択を変える」（iOS のピッカーと同じ）を効かせる最小件数。
+// これ未満だと中央に寄せる余白を作れない（iOS の PICKER_CENTERING_MIN_ITEMS
+// と同じ値）。
+const PICKER_MIN_ITEMS = 3;
+
 export function PlacesSection({
   tripId,
   places,
@@ -108,13 +113,64 @@ export function PlacesSection({
   const [placesSheetOpen, setPlacesSheetOpen] = useState(false);
   // 中身の実測高（一覧の中身＋見出し帯）。届くまでは概算で組む。
   const [listContentH, setListContentH] = useState(0);
+  // 一覧のスクロール容器。中身の実測（シートの段の計算）と、下の
+  // 「スクロールで選択を変える」の両方がこの要素を見る。
+  const listElRef = useRef<HTMLDivElement | null>(null);
+  // 自分で scrollTo した分は拾わない（タップ選択→中央寄せが、そのまま
+  // 「スクロールされた」と解釈されて別の行に飛ぶのを防ぐ）。
+  const programmaticScrollUntil = useRef(0);
+  const scrollRafRef = useRef(0);
+  // ピッカー中に一覧の上下へ足す余白。**どの行も中央に来られる**ようにする
+  // ためのもので（先頭と末尾の行は、これが無いと中央まで上がれない）、件数が
+  // 少なくて一覧がそもそもスクロールしない場合もこれでスクロールできるように
+  // なる（iOS の pickerCenterPad と同じ役割）。
+  const [pickerPad, setPickerPad] = useState({ top: 0, bottom: 0 });
+  // シートの段の計算に使う「中身の高さ」からはこの余白を除く（余白ごと数えると
+  // 中身に合わせて開く段が画面いっぱいまで伸びてしまう）。
+  const pickerPadRef = useRef(0);
   const listMeasureRef = useCallback((el: HTMLDivElement | null) => {
+    listElRef.current = el;
     if (!el) return;
-    const ro = new ResizeObserver(() => setListContentH(el.scrollHeight));
+    const measure = () =>
+      setListContentH(Math.max(0, el.scrollHeight - pickerPadRef.current));
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setListContentH(el.scrollHeight);
+    measure();
     return () => ro.disconnect();
   }, []);
+
+  // ピッカーの「中央」＝**画面に見えている範囲**の中央。シートは段に応じて
+  // 下へずらして表示されるので、器の高さ（clientHeight）の半分ではない
+  // （器の下半分は画面の外にあることがある）。
+  const visibleCenterY = (el: HTMLElement): number => {
+    const c = el.getBoundingClientRect();
+    const top = Math.max(c.top, 0);
+    const bottom = Math.min(c.bottom, window.innerHeight);
+    return (top + bottom) / 2;
+  };
+
+  // その中央に一番近い行の id を今のレイアウトから求める。行の高さは選択で
+  // 変わる（選択中の行だけ住所とバッジが出る）ので、定数ではなく毎回実寸で測る。
+  const centeredPlaceId = useCallback((): string | null => {
+    const el = listElRef.current;
+    if (!el) return null;
+    const centerY = visibleCenterY(el);
+    let bestId: string | null = null;
+    let bestDist = Infinity;
+    for (const li of el.querySelectorAll<HTMLElement>("[data-place-id]")) {
+      const r = li.getBoundingClientRect();
+      const d = Math.abs((r.top + r.bottom) / 2 - centerY);
+      if (d < bestDist) {
+        bestDist = d;
+        bestId = li.dataset.placeId ?? null;
+      }
+    }
+    return bestId;
+  }, []);
+
+  // タップで選んだ行を中央へ運ぶ。実際に運ぶのは下の effect（余白が入って
+  // レイアウトが決まってから測る必要があるため、ここでは予約だけする）。
+  const [pendingCenterId, setPendingCenterId] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
   // 狭い画面のみ: 場所リストを Vaul のドラッグ可能なボトムシートにする
@@ -281,9 +337,102 @@ export function PlacesSection({
     [],
   );
 
+  // 一覧をスクロールすると、中央に来た行がそのまま選択になる（iOS のピッカーと
+  // 同じ）。効くのは**保存済みの場所を選んでいる間だけ**＝1タップ目で選択して
+  // から。まだ何も選んでいない時に勝手に選ばれると、ただ一覧を眺めたいだけの
+  // スクロールが選択を書き換えてしまう。
+  const onListScroll = useCallback(() => {
+    if (Date.now() < programmaticScrollUntil.current) return;
+    if (scrollRafRef.current) return;
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = 0;
+      const el = listElRef.current;
+      if (!el) return;
+      if (el.querySelectorAll("[data-place-id]").length < PICKER_MIN_ITEMS)
+        return;
+      const id = centeredPlaceId();
+      if (!id) return;
+      setSelected((cur) => {
+        // 選択中でない（＝ピッカーモードではない）／詳細を開いている間は触らない。
+        if (cur?.kind !== "saved" || cur.id === id) return cur;
+        // 地図未登録の行はスクロールでも選べない（タップと同じ制約。中央に来ても
+        // 選択は直前のままにして、地図の赤ピンと選択中の行が食い違わないように
+        // する）。
+        const p = places.find((x) => x.id === id);
+        if (!p || p.lat == null || p.lng == null) return cur;
+        return { kind: "saved", id };
+      });
+    });
+  }, [centeredPlaceId, places]);
+
+  useEffect(
+    () => () => {
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    },
+    [],
+  );
+
   // 保存済みの場所は「1タップ目＝一覧の中で選択、2タップ目＝詳細を開く」
   // （iOS と同じ）。選択しただけの状態と、詳細シートを開いた状態を分けて持つ。
   const [savedInfoOpen, setSavedInfoOpen] = useState(false);
+
+  // ピッカー（スクロールで選択を変える）が効いている状態。選ばれていない行を
+  // 一段薄くする表示もこれで切り替える。
+  const pickerActive =
+    selected?.kind === "saved" &&
+    !savedInfoOpen &&
+    !pendingLocationFor &&
+    visiblePlaces.length >= PICKER_MIN_ITEMS;
+
+  // 余白の量は「容器の半分 − 行の半分」。行の高さは選択で変わるので、選ばれて
+  // いない行（＝素の高さ）を測る。ピッカーを抜けたら 0 に戻す。
+  const measurePickerPad = useCallback(() => {
+    const el = listElRef.current;
+    const next = (() => {
+      if (!el || !pickerActive) return { top: 0, bottom: 0 };
+      const rows = el.querySelectorAll<HTMLElement>("[data-place-id]");
+      const plain = [...rows].find((li) => !li.querySelector(".bg-accent"));
+      const rowH = plain?.offsetHeight ?? 64;
+      // 見えている中央が器の上端からどれだけ下か。先頭の行はここまで上がれれば
+      // 中央に来られる（＝上の余白）。末尾の行はその残りぶん（＝下の余白）。
+      const offset = visibleCenterY(el) - el.getBoundingClientRect().top;
+      return {
+        top: Math.max(0, offset - rowH / 2),
+        bottom: Math.max(0, el.clientHeight - offset - rowH / 2),
+      };
+    })();
+    pickerPadRef.current = next.top + next.bottom;
+    setPickerPad((cur) =>
+      cur.top === next.top && cur.bottom === next.bottom ? cur : next,
+    );
+  }, [pickerActive]);
+
+  // 段を切り替えるとシートが数百 ms かけて動くので、変わった直後の実測は
+  // 古い位置を指す。落ち着いてからもう一度測り直す。
+  useEffect(() => {
+    measurePickerPad();
+    const id = setTimeout(measurePickerPad, 450);
+    return () => clearTimeout(id);
+  }, [measurePickerPad, visiblePlaces.length, snapIndex, placesSheetOpen]);
+
+  // 予約された行を中央へ運ぶ。**余白（pickerPad）が実際に DOM に入ってから**
+  // でないと測れないので、それも依存に入れて「入った後の描画」で動かす。
+  // 余白が 0 のまま（件数が少ない）なら中央寄せはしない＝iOS と同じ。
+  useEffect(() => {
+    const id = pendingCenterId;
+    if (!id || pickerPad.top + pickerPad.bottom <= 0) return;
+    const el = listElRef.current;
+    const li = el?.querySelector<HTMLElement>(`[data-place-id="${id}"]`);
+    if (!el || !li) return;
+    setPendingCenterId(null);
+    const r = li.getBoundingClientRect();
+    const delta = (r.top + r.bottom) / 2 - visibleCenterY(el);
+    if (Math.abs(delta) < 1) return;
+    // 自分で動かしている間のスクロールは拾わない（onListScroll）。smooth の
+    // 完了イベントは無いので時間で締める。
+    programmaticScrollUntil.current = Date.now() + 700;
+    el.scrollBy({ top: delta, behavior: "smooth" });
+  }, [pendingCenterId, pickerPad]);
 
   const closeInfo = useCallback(() => {
     // 詳細を閉じても選択は残す＝一覧のその行が選択されたまま戻る（iOS と同じ）。
@@ -389,6 +538,7 @@ export function PlacesSection({
         setSavedInfoOpen(false);
         setSnapIndex("small");
         setPlacesSheetOpen(true);
+        setPendingCenterId(id);
         return { kind: "saved", id };
       });
     },
@@ -777,11 +927,21 @@ export function PlacesSection({
                 </div>
                 <div
                   ref={listMeasureRef}
+                  onScroll={onListScroll}
+                  style={
+                    pickerPad.top + pickerPad.bottom > 0
+                      ? {
+                          paddingTop: pickerPad.top,
+                          paddingBottom: pickerPad.bottom,
+                        }
+                      : undefined
+                  }
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
                 >
                   <PlaceList
                     places={visiblePlaces}
                     selectedId={selected?.kind === "saved" ? selected.id : null}
+                    dimUnfocused={pickerActive}
                     locatingId={pendingLocationFor?.id ?? null}
                     dayByPlaceId={dayByPlaceId}
                     areaByPlaceId={areaByPlaceId}

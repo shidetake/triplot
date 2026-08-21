@@ -56,6 +56,7 @@ export { gmapsUrl } from "@triplot/shared/placeLink";
 export function PlaceList({
   places,
   selectedId,
+  dimUnfocused = false,
   locatingId,
   dayByPlaceId,
   areaByPlaceId,
@@ -67,6 +68,9 @@ export function PlaceList({
 }: {
   places: PlaceRow[];
   selectedId: string | null;
+  // 「スクロールで選択を変える」モード中は、選ばれていない行を一段薄くする
+  // （iOS のピッカーと同じ。どれが選択中かを、行の膨らみと背景に加えて
+  // 明暗でも示す）。
   // 選択中の行に出す「◯日目・M/D(曜)」「エリア」バッジ用（無い場所は出さない）。
   dayByPlaceId: Map<string, VisitDay>;
   areaByPlaceId: Map<string, string | null>;
@@ -74,6 +78,7 @@ export function PlaceList({
   // 現在「位置を指定」モード中の未マップ place の id（あれば）。
   // その行は active 表示にして、クリックで取り消しできるようにする。
   locatingId: string | null;
+  dimUnfocused?: boolean;
   onSelect: (id: string) => void;
   // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
   onLocate: (id: string, name: string) => void;
@@ -90,7 +95,9 @@ export function PlaceList({
   return (
     <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
       {places.map((p) => {
-        const statusLabel = p.tentative ? t("statusCandidate") : t("statusConfirmed");
+        const statusLabel = p.tentative
+          ? t("statusCandidate")
+          : t("statusConfirmed");
         const statusColor = p.tentative ? "#f59e0b" : "#10b981";
         const isSelected = p.id === selectedId;
         // タップ時の遷移先（位置を指定モード）は座標の有無だけで決める
@@ -102,7 +109,7 @@ export function PlaceList({
         const day = dayByPlaceId.get(p.id);
         const area = areaByPlaceId.get(p.id) ?? null;
         return (
-          <li key={p.id}>
+          <li key={p.id} data-place-id={p.id}>
             <button
               type="button"
               onClick={() =>
@@ -118,7 +125,7 @@ export function PlaceList({
                   : isSelected
                     ? "bg-accent"
                     : "hover:bg-foreground/10"
-              }`}
+              } ${dimUnfocused && !isSelected && !isLocating ? "opacity-50" : ""}`}
             >
               {/* 種別のアイコンを候補=琥珀／確定=緑で塗る（iOS の一覧と同じ。
                   以前はステータスを文字のバッジで出していたが、アイコンの色で
@@ -192,7 +199,9 @@ export function PlaceList({
               {unmapped ? (
                 <span
                   className={`shrink-0 text-xs ${
-                    isLocating ? "text-amber-700 dark:text-amber-400" : "text-blue-600"
+                    isLocating
+                      ? "text-amber-700 dark:text-amber-400"
+                      : "text-blue-600"
                   }`}
                 >
                   {isLocating ? t("cancelLocate") : t("setPin")}
