@@ -26,7 +26,6 @@ import { useInSheet } from "./form-host";
 import { TrashIcon, EditIcon, PlusIcon, SaveIcon } from "./icons";
 import { MessageBox } from "./message-box";
 import { PlaceIconPicker } from "./place-icon-picker";
-import { PlaceRating } from "./place-rating";
 import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
@@ -251,15 +250,9 @@ export function CandidateInfo({
         />
       )}
       <div>
+        {/* 評価は地図の候補ピンと検索結果の一覧に出ているので、ここでは出さない
+            （同じ情報を3箇所に置かない＝そのぶん縦が1行詰まる）。 */}
         <p className="text-sm font-semibold">{candidate.name}</p>
-        {candidate.rating != null && (
-          <p className="text-xs">
-            <PlaceRating
-              rating={candidate.rating}
-              count={candidate.userRatingCount}
-            />
-          </p>
-        )}
         <p className="mt-0.5 text-xs text-muted-foreground">
           {candidate.address}
         </p>

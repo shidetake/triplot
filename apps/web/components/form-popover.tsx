@@ -196,6 +196,9 @@ export function NarrowSheet({
         <Drawer.Portal>
           <Drawer.Content
             aria-label={label}
+            // 地図がこのシートに覆われている高さを実測するための目印
+            // （place-map の MapController が拾う）。
+            data-bottom-sheet
             // 高さ = 拡大上限（SHEET_MAX_PERCENT）。これがそのまま「最上スナップ時の可視高」＝拡大の
             // 上限になり、上に (100-値)% の隙間が残って元画面が dim で覗く。最上スナップ(1.0)では
             // translate0 になり、そこでだけ中身がネイティブスクロールする。dvh＝実表示ビューポート基準

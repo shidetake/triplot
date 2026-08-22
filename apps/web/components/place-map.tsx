@@ -248,20 +248,62 @@ function MapController({
   }, [map, key]);
 
   // ピン/一覧から選択されたらその位置へ寄せる（吹き出しが画面外に出ないように）。
-  // 本家 Google マップと同じく「ズームは一切変えずパンだけ」。既にほぼ中央に
-  // あるピンは動かさない — 判定は本家同様厳しめ（画面の各軸10%以内）で、
-  // 少しでも端にあれば中央へ寄せる。
+  // 本家 Google マップと同じく「ズームは一切変えずパンだけ」。
+  //
+  // 寄せ先は地図の中央ではなく「**ボトムシートに隠れていない部分**の中央」。
+  // 選択するとシートがせり上がって地図の下半分を覆うので、素直に中央へ寄せると
+  // 選んだピンがそのシートの裏に入ってしまう。Maps JS には地図全体の padding が
+  // 無いので、覆われている高さのぶんだけ panBy でずらす。
+  //
+  // 覆っている高さは prop で受け取らず DOM から実測する: 覆う可能性のあるシート
+  // （場所一覧・候補の吹き出し）は高さの決まり方がそれぞれ違ううえ、ドラッグや
+  // 中身の実測で開いている間も変わるため。シート側に data-bottom-sheet を付けて
+  // あるので、それを地図の矩形と突き合わせれば実際の重なりが分かる。
   useEffect(() => {
     if (!map || !panTo) return;
-    const b = map.getBounds();
-    const c = map.getCenter();
-    if (b && c) {
-      const span = b.toSpan();
-      const dx = Math.abs(panTo.lng - c.lng()) / span.lng();
-      const dy = Math.abs(panTo.lat - c.lat()) / span.lat();
-      if (dx < 0.1 && dy < 0.1) return;
-    }
-    map.panTo(panTo);
+    const apply = () => {
+      const mapRect = map.getDiv().getBoundingClientRect();
+      // 地図に重なっているシートのうち、一番深く覆っているものの高さ。
+      let coveredPx = 0;
+      for (const el of document.querySelectorAll<HTMLElement>(
+        "[data-bottom-sheet]",
+      )) {
+        const r = el.getBoundingClientRect();
+        if (r.height === 0 || r.top >= mapRect.bottom) continue;
+        coveredPx = Math.max(
+          coveredPx,
+          mapRect.bottom - Math.max(r.top, mapRect.top),
+        );
+      }
+      const visibleH = Math.max(0, mapRect.height - coveredPx);
+      // 覆いが地図をほぼ埋めている時は寄せ先を作れないので素直に中央へ。
+      const offsetY = visibleH > 80 ? coveredPx / 2 : 0;
+
+      const b = map.getBounds();
+      const c = map.getCenter();
+      if (b && c) {
+        const span = b.toSpan();
+        // 「もう見えている位置にあるなら動かさない」判定も、地図の中央ではなく
+        // 寄せ先（見えている部分の中央）からの距離で見る。
+        const targetLat = c.lat() - (offsetY / mapRect.height) * span.lat();
+        const dx = Math.abs(panTo.lng - c.lng()) / span.lng();
+        const dy = Math.abs(panTo.lat - targetLat) / span.lat();
+        if (dx < 0.1 && dy < 0.1) return;
+      }
+      map.panTo(panTo);
+      // panTo は地図の中央に置くので、覆われているぶんの半分だけ地図を下へ
+      // ずらす＝ピンが見えている部分の中央へ上がってくる。
+      if (offsetY > 0) map.panBy(0, offsetY);
+    };
+
+    // 2回動かす。選択した瞬間はシートがまだせり上がっている途中で、この時点の
+    // 実測では覆う高さが分からない（0 か中途半端な値になる）。かといって
+    // せり上がりを待ってから動かすと反応が鈍く感じるので、まず素直に寄せて、
+    // シートが決まってからもう一度測って持ち上げる。2回目は上の「もう見えて
+    // いるなら動かさない」判定を通るので、要らなければ何も起きない。
+    apply();
+    const id = setTimeout(apply, 450);
+    return () => clearTimeout(id);
   }, [map, panTo]);
 
   return null;

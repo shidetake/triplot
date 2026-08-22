@@ -797,6 +797,9 @@ export function PlacesSection({
             <Drawer.Portal>
               <Drawer.Content
                 aria-label={t("placesListLabel")}
+                // 地図がこのシートに覆われている高さを実測するための目印
+                // （place-map の MapController が拾う）。
+                data-bottom-sheet
                 // 高さは 100dvh（CSS単位）ではなく、段の計算と vaul のオフセット
                 // 計算が使っているのと同じ window.innerHeight の実測値（px）。
                 // dvh と innerHeight は iOS Safari で一致しないことがあり、ズレた
