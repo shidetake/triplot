@@ -10,6 +10,7 @@ import { PlaceRating } from "./place-rating";
 // 検索結果の一覧（ボトムシートの中身）。iOS の検索結果シートと同じ形:
 // 行の先頭グリフは地図の候補ピンと同じカテゴリアイコン（Google 赤）、
 // その右に店名と「★評価 (件数) 住所」の1行。
+// 枠は付けない（シート自体が枠なので二重になる）。行の区切り線だけ＝iOS と同じ形。
 export function CandidateList({
   candidates,
   selectedPlaceId,
@@ -20,7 +21,7 @@ export function CandidateList({
   onSelect: (placeId: string) => void;
 }) {
   return (
-    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
+    <ul className="divide-y divide-foreground/10">
       {candidates.map((c) => {
         const isSelected = c.placeId === selectedPlaceId;
         return (
@@ -28,7 +29,7 @@ export function CandidateList({
             <button
               type="button"
               onClick={() => onSelect(c.placeId)}
-              className={`flex w-full items-start gap-2 p-3 text-left text-sm transition ${
+              className={`flex w-full items-start gap-2 py-2.5 text-left text-sm transition ${
                 isSelected ? "bg-accent" : "hover:bg-foreground/10"
               }`}
             >

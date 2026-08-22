@@ -2257,11 +2257,10 @@ export default function PlacesTab() {
                       やめる操作が別に要る。役割は検索欄の × と同じ。 */}
                   <Pressable
                     onPress={clearSearch}
-                    hitSlop={8}
                     accessibilityLabel={t("searchClear")}
                     style={styles.sheetHeaderClose}
                   >
-                    <XIcon size={16} color={theme.subtleForeground} />
+                    <XIcon size={20} color={theme.subtleForeground} />
                   </Pressable>
                 </View>
               }
@@ -2962,7 +2961,17 @@ const makeStyles = (t: Theme) =>
       // 件数は中央のまま、× だけ右上に重ねる（件数の位置を動かさない）。
       justifyContent: "center",
     },
-    sheetHeaderClose: { position: "absolute", right: 12, top: 12 },
+    // 本家 Google マップの結果一覧の × と同じくらいの大きさ（アイコンボタンの
+    // 既定 36pt・グリフ 20pt）。
+    sheetHeaderClose: {
+      position: "absolute",
+      right: 10,
+      top: 6,
+      width: 36,
+      height: 36,
+      alignItems: "center",
+      justifyContent: "center",
+    },
     sheetCount: { fontSize: 12, color: t.mutedForeground },
     // 場所フィルタの選択行。todos.tsx の優先度ピッカーと同形（行の骨格）。
     priorityRow: {

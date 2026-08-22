@@ -842,7 +842,8 @@ export function PlacesSection({
                     <CloseButton
                       label={t("searchClear")}
                       onClick={clearSearch}
-                      className="absolute right-2 top-2"
+                      iconSize={20}
+                      className="absolute right-2 top-1.5 h-9 w-9"
                     />
                   )}
                 </div>
@@ -869,6 +870,7 @@ export function PlacesSection({
                     />
                   ) : (
                     <PlaceList
+                      framed={false}
                       places={visiblePlaces}
                       selectedId={
                         selected?.kind === "saved" ? selected.id : null

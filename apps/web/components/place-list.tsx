@@ -56,6 +56,7 @@ export { gmapsUrl } from "@triplot/shared/placeLink";
 export function PlaceList({
   places,
   selectedId,
+  framed = true,
   locatingId,
   dayByPlaceId,
   areaByPlaceId,
@@ -67,6 +68,9 @@ export function PlaceList({
 }: {
   places: PlaceRow[];
   selectedId: string | null;
+  // ページの中に置く時は枠付きのカードにする。ボトムシートの中では枠を外して
+  // 行の区切り線だけにする（シート自体が枠なので二重になる＝iOS と同じ形）。
+  framed?: boolean;
   // 選択中の行に出す「◯日目・M/D(曜)」「エリア」バッジ用（無い場所は出さない）。
   dayByPlaceId: Map<string, VisitDay>;
   areaByPlaceId: Map<string, string | null>;
@@ -88,7 +92,11 @@ export function PlaceList({
   }
 
   return (
-    <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
+    <ul
+      className={`divide-y divide-foreground/10 ${
+        framed ? "rounded-md border border-foreground/10 bg-background" : ""
+      }`}
+    >
       {places.map((p) => {
         const statusLabel = p.tentative
           ? t("statusCandidate")
@@ -114,7 +122,9 @@ export function PlaceList({
                     ? onLocate(p.id, p.name)
                     : onSelect(p.id)
               }
-              className={`flex w-full items-start gap-2 p-3 text-left text-sm transition ${
+              className={`flex w-full items-start gap-2 text-left text-sm transition ${
+                framed ? "p-3" : "py-2.5"
+              } ${
                 isLocating
                   ? "border-l-4 border-amber-400 bg-amber-50 dark:bg-amber-400/10"
                   : isSelected
