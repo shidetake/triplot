@@ -843,7 +843,11 @@ export function PlacesSection({
                       label={t("searchClear")}
                       onClick={clearSearch}
                       iconSize={20}
-                      className="absolute right-2 top-1.5 h-9 w-9"
+                      // 本家 Google マップと同じく、丸い地を敷いてボタンらしく
+                      // 見せる（× 閉じるの既定は地を持たないが、ここは検索を
+                      // やめる操作＝見つけてもらう必要があるので目立たせる）。
+                      // 地は前景色の α 重ね、hover は一段濃く。
+                      className="absolute right-2 top-1.5 h-9 w-9 bg-foreground/10 text-muted-foreground hover:bg-foreground/20 hover:text-foreground"
                     />
                   )}
                 </div>

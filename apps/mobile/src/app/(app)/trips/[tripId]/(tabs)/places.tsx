@@ -2260,7 +2260,7 @@ export default function PlacesTab() {
                     accessibilityLabel={t("searchClear")}
                     style={styles.sheetHeaderClose}
                   >
-                    <XIcon size={20} color={theme.subtleForeground} />
+                    <XIcon size={20} color={theme.mutedForeground} />
                   </Pressable>
                 </View>
               }
@@ -2961,14 +2961,17 @@ const makeStyles = (t: Theme) =>
       // 件数は中央のまま、× だけ右上に重ねる（件数の位置を動かさない）。
       justifyContent: "center",
     },
-    // 本家 Google マップの結果一覧の × と同じくらいの大きさ（アイコンボタンの
-    // 既定 36pt・グリフ 20pt）。
+    // 本家 Google マップの結果一覧の × と同じ（アイコンボタンの既定 36pt・
+    // グリフ 20pt）。丸い地を敷いてボタンらしく見せる＝検索をやめる操作なので
+    // 見つけてもらう必要がある。地は前景色の α 重ね（web と同値）。
     sheetHeaderClose: {
       position: "absolute",
       right: 10,
       top: 6,
       width: 36,
       height: 36,
+      borderRadius: 18,
+      backgroundColor: t.fgAlpha(0.1),
       alignItems: "center",
       justifyContent: "center",
     },
