@@ -357,6 +357,7 @@
     "searchAria": "検索",
     "detailFailed": "場所の詳細を取得できませんでした",
     "noResults": "該当する場所が見つかりませんでした",
+    "searchResultCount": "検索結果 {count}件",
     "searchFailed": "検索に失敗しました。時間をおいて再度お試しください。",
     "unknownName": "(名称不明)",
     "other": "その他",

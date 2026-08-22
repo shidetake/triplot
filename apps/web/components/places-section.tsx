@@ -32,6 +32,7 @@ import {
   SavedInfo,
 } from "./place-popups";
 import { MAP_OVERLAY_BOTTOM_PX } from "./map-controls";
+import { CandidateList } from "./candidate-list";
 import { PlaceFilterMenu } from "./place-filter-menu";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
@@ -183,6 +184,9 @@ export function PlacesSection({
     };
   }, [showPlacesSheet]);
   const [candidates, setCandidates] = useState<CandidatePlace[]>([]);
+  // 検索結果が出ている間は、一覧シートの中身を候補（検索結果）に差し替える
+  // （iOS の listMode = "search" と同じ）。
+  const inCandidates = candidates.length > 0;
   // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
   // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
   const [showDismissed, setShowDismissed] = useState(false);
@@ -280,6 +284,13 @@ export function PlacesSection({
       setCandidates(results);
       setDraft(null);
       setPoi(null);
+      // 検索したら結果の一覧をシートで出す（iOS と同じ）。段は searchDetents の
+      // 大きい方（画面の半分）＝地図と一覧を同時に見せる本家 Google マップの
+      // 検索結果シートと同じ見せ方。
+      if (results.length > 0) {
+        setSnapIndex("large");
+        setPlacesSheetOpen(true);
+      }
       // autocomplete からの 1 件確定なら、その候補を「選択中（吹き出し開く）」に。
       if (opts?.selectFirst && results[0]) {
         setSelected({ kind: "candidate", placeId: results[0].placeId });
@@ -810,7 +821,9 @@ export function PlacesSection({
                 >
                   <Drawer.Handle className="!h-1.5 !w-9" />
                   <span className="text-xs font-medium text-muted-foreground">
-                    {t("placeCountLabel", { count: visiblePlaces.length })}
+                    {inCandidates
+                      ? t("searchResultCount", { count: candidates.length })
+                      : t("placeCountLabel", { count: visiblePlaces.length })}
                   </span>
                 </div>
                 <div
@@ -826,18 +839,30 @@ export function PlacesSection({
                   }}
                   className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4"
                 >
-                  <PlaceList
-                    places={visiblePlaces}
-                    selectedId={selected?.kind === "saved" ? selected.id : null}
-                    locatingId={pendingLocationFor?.id ?? null}
-                    dayByPlaceId={dayByPlaceId}
-                    areaByPlaceId={areaByPlaceId}
-                    locale={locale}
-                    onSelect={selectSaved}
-                    onLocate={startLocate}
-                    onCancelLocate={cancelLocate}
-                    onDismissLocation={dismissLocation}
-                  />
+                  {inCandidates ? (
+                    <CandidateList
+                      candidates={candidates}
+                      selectedPlaceId={
+                        selected?.kind === "candidate" ? selected.placeId : null
+                      }
+                      onSelect={selectCandidate}
+                    />
+                  ) : (
+                    <PlaceList
+                      places={visiblePlaces}
+                      selectedId={
+                        selected?.kind === "saved" ? selected.id : null
+                      }
+                      locatingId={pendingLocationFor?.id ?? null}
+                      dayByPlaceId={dayByPlaceId}
+                      areaByPlaceId={areaByPlaceId}
+                      locale={locale}
+                      onSelect={selectSaved}
+                      onLocate={startLocate}
+                      onCancelLocate={cancelLocate}
+                      onDismissLocation={dismissLocation}
+                    />
+                  )}
                 </div>
               </Drawer.Content>
             </Drawer.Portal>

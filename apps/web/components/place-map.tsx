@@ -36,6 +36,22 @@ function useMapColorScheme(): "DARK" | "LIGHT" {
 }
 
 import {
+  CANDIDATE_LABEL,
+  CANDIDATE_LABEL_GAP,
+  candidatePinSize,
+} from "@triplot/shared/placeMarker";
+import {
+  estimateLabelBox,
+  type LabelPlacement,
+  layoutLabels,
+  type MapRegion,
+  markerGeometry,
+} from "@triplot/shared/mapLabelLayout";
+import { iconKeyForGoogleType } from "@triplot/shared/placeIcons";
+
+import { CandidatePin } from "./candidate-pin";
+
+import {
   boundsOf,
   centerOf,
   type Cluster,
@@ -451,6 +467,8 @@ export function PlaceMap({
                     ...extractRegion(place.addressComponents),
                     rating: null,
                     userRatingCount: null,
+                    // POI タップは Essentials だけ取る（評価も種別も要求しない）。
+                    primaryType: null,
                     photoUri: null,
                   });
                 } catch {
@@ -537,27 +555,16 @@ export function PlaceMap({
               );
             })}
 
-          {mapId &&
-            candidates.map((c) => {
-              const isSel =
-                selected?.kind === "candidate" &&
-                selected.placeId === c.placeId;
-              return (
-                <AdvancedMarker
-                  key={`cand-${c.placeId}`}
-                  position={{ lat: c.lat, lng: c.lng }}
-                  title={c.name}
-                  onClick={() => onSelectCandidate(c.placeId)}
-                >
-                  {isSel ? (
-                    <RedPin />
-                  ) : (
-                    // 非選択: 本家の小さい赤リングの丸（赤枠太め・白小さめ）
-                    <div className="h-[18px] w-[18px] rounded-full border-[5px] border-[#EA4335] bg-white shadow" />
-                  )}
-                </AdvancedMarker>
-              );
-            })}
+          {mapId && (
+            <CandidateMarkers
+              candidates={candidates}
+              selectedPlaceId={
+                selected?.kind === "candidate" ? selected.placeId : null
+              }
+              dark={colorScheme === "DARK"}
+              onSelect={onSelectCandidate}
+            />
+          )}
 
           {selected && selectedPos && !narrow && (
             <InfoWindow
@@ -644,5 +651,147 @@ export function PlaceMap({
         </p>
       )}
     </div>
+  );
+}
+
+// 検索候補のマーカー群（ピル＋評価値のピン＋店名ラベル）。iOS の
+// CandidateMarker と同じ形で、衝突回避の配置計算も同じ shared 関数に載る
+// （layoutLabels / markerGeometry）。ラベルは「置ける分だけ出して、
+// 置けない分は隠す」＝本家 Google マップと同じ振る舞い。
+function CandidateMarkers({
+  candidates,
+  selectedPlaceId,
+  dark,
+  onSelect,
+}: {
+  candidates: CandidatePlace[];
+  selectedPlaceId: string | null;
+  dark: boolean;
+  onSelect: (placeId: string) => void;
+}) {
+  const map = useMap();
+  const [region, setRegion] = useState<MapRegion | null>(null);
+  const [size, setSize] = useState<{ width: number; height: number } | null>(
+    null,
+  );
+
+  // 表示範囲とビューの実寸。どちらもラベルの投影に要る（region → 画面座標）。
+  useEffect(() => {
+    if (!map) return;
+    const div = map.getDiv();
+    const readRegion = () => {
+      const b = map.getBounds();
+      if (!b) return;
+      const ne = b.getNorthEast();
+      const sw = b.getSouthWest();
+      setRegion({
+        latitude: (ne.lat() + sw.lat()) / 2,
+        longitude: (ne.lng() + sw.lng()) / 2,
+        latitudeDelta: Math.abs(ne.lat() - sw.lat()),
+        longitudeDelta: Math.abs(ne.lng() - sw.lng()),
+      });
+    };
+    // 再配置は重いので、ジェスチャ確定（idle）だけで振り直す＝iOS と同じ
+    // タイミング（本家 Google マップのラベル再配置もこの単位）。
+    // 初回の値も外部イベント経由で受け取る（effect の中で直接 setState すると
+    // 連鎖レンダーになる。MapControls の region 取得と同じ理由）。idle は地図の
+    // 描画が落ち着いた時に、ResizeObserver は observe した直後に一度発火する。
+    const listener = map.addListener("idle", readRegion);
+    const ro = new ResizeObserver(() =>
+      setSize({ width: div.clientWidth, height: div.clientHeight }),
+    );
+    ro.observe(div);
+    return () => {
+      listener.remove();
+      ro.disconnect();
+    };
+  }, [map]);
+
+  // 選択中を先頭にして、一番良い位置（右）を優先的に取らせる。
+  const placements = useMemo<Record<string, LabelPlacement>>(() => {
+    if (!region || !size || candidates.length === 0) return {};
+    const items = [...candidates]
+      .sort((a, b) =>
+        a.placeId === selectedPlaceId
+          ? -1
+          : b.placeId === selectedPlaceId
+            ? 1
+            : 0,
+      )
+      .map((c) => ({
+        id: c.placeId,
+        lat: c.lat,
+        lng: c.lng,
+        pin: candidatePinSize(c.rating),
+        label: estimateLabelBox(c.name, CANDIDATE_LABEL),
+      }));
+    return layoutLabels(items, region, size, CANDIDATE_LABEL_GAP);
+  }, [candidates, selectedPlaceId, region, size]);
+
+  return (
+    <>
+      {candidates.map((c) => {
+        const isSel = c.placeId === selectedPlaceId;
+        const placement = placements[c.placeId] ?? "hidden";
+        const pin = candidatePinSize(c.rating);
+        const label = estimateLabelBox(c.name, CANDIDATE_LABEL);
+        const g = markerGeometry(placement, pin, label, CANDIDATE_LABEL_GAP);
+        return (
+          <AdvancedMarker
+            key={`cand-${c.placeId}`}
+            position={{ lat: c.lat, lng: c.lng }}
+            title={c.name}
+            zIndex={isSel ? 100 : 10}
+            anchorPoint={[`${g.anchorX * 100}%`, `${g.anchorY * 100}%`]}
+            onClick={() => onSelect(c.placeId)}
+          >
+            <div
+              style={{ position: "relative", width: g.width, height: g.height }}
+            >
+              <div style={{ position: "absolute", left: g.pinX, top: g.pinY }}>
+                <CandidatePin
+                  icon={iconKeyForGoogleType(c.primaryType)}
+                  rating={c.rating}
+                  selected={isSel}
+                  dark={dark}
+                />
+              </div>
+              {placement !== "hidden" &&
+                g.labelX != null &&
+                g.labelY != null && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      left: g.labelX,
+                      top: g.labelY,
+                      width: label.width,
+                      fontSize: CANDIDATE_LABEL.fontSize,
+                      lineHeight: `${CANDIDATE_LABEL.lineHeight}px`,
+                      fontWeight: 500,
+                      textAlign:
+                        placement === "left"
+                          ? "right"
+                          : placement === "right"
+                            ? "left"
+                            : "center",
+                      // 地図ラベルと同じハロー付き文字（ライト=濃字+白縁、
+                      // ダーク=白字+夜間スタイルの地色縁）。ベースマップの地名より
+                      // 一段目立たせる。
+                      color: dark ? "#ffffff" : "#202124",
+                      textShadow: `0 0 2px ${dark ? "#242f3e" : "#ffffff"}`,
+                      display: "-webkit-box",
+                      WebkitBoxOrient: "vertical",
+                      WebkitLineClamp: label.lines,
+                      overflow: "hidden",
+                    }}
+                  >
+                    {c.name}
+                  </span>
+                )}
+            </div>
+          </AdvancedMarker>
+        );
+      })}
+    </>
   );
 }

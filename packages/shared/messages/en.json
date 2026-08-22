@@ -357,6 +357,7 @@
     "searchAria": "Search",
     "detailFailed": "Failed to get place details",
     "noResults": "No matching places found",
+    "searchResultCount": "{count} results",
     "searchFailed": "Search failed. Please try again later.",
     "unknownName": "(unknown)",
     "other": "Other",

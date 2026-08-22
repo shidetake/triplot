@@ -24,6 +24,8 @@ export type CandidatePlace = {
   locality: string | null;
   rating: number | null;
   userRatingCount: number | null;
+  // 候補ピンのカテゴリグリフ用（iconKeyForGoogleType で形に落とす）。
+  primaryType: string | null;
   // 写真はここで URI まで作るが、課金は <img> が実際に読まれた時。
   // 吹き出しを開くまで <img> を描かないことで Photo 課金を抑える。
   photoUri: string | null;
@@ -45,6 +47,8 @@ export function extractRegion(
 
 // Enterprise ティア。これ以上のフィールド（営業時間/電話等）は要求しない。
 // addressComponents は住所系SKUで、現状の課金ティアを上げない。
+// primaryType も rating より下のティアなので、rating を要求している時点で
+// 請求は変わらない（iOS の検索も同じフィールドを取っている）。
 const FIELDS = [
   "id",
   "displayName",
@@ -53,6 +57,7 @@ const FIELDS = [
   "location",
   "rating",
   "userRatingCount",
+  "primaryType",
   "photos",
 ];
 
@@ -176,6 +181,7 @@ export function PlaceSearch({
           ...extractRegion(place.addressComponents),
           rating: place.rating ?? null,
           userRatingCount: place.userRatingCount ?? null,
+          primaryType: place.primaryType ?? null,
           photoUri: place.photos?.[0]?.getURI({ maxWidth: 400 }) ?? null,
         };
         onQueryChange(cp.name);
@@ -223,6 +229,7 @@ export function PlaceSearch({
             ...extractRegion(p.addressComponents),
             rating: p.rating ?? null,
             userRatingCount: p.userRatingCount ?? null,
+            primaryType: p.primaryType ?? null,
             photoUri: p.photos?.[0]?.getURI({ maxWidth: 400 }) ?? null,
           }));
 
