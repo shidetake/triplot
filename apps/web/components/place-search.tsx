@@ -204,6 +204,11 @@ export function PlaceSearch({
     // 検索ボタン経路では autocomplete セッションは「中断」扱い。新しいトークンに。
     tokenRef.current = null;
     setSug([]);
+    // 入力から手を離す＝ソフトウェアキーボードを閉じる。検索したら結果を見たい
+    // のに、キーボードが出たままだと画面の半分が隠れて結果のシートが読めない。
+    // 結果を待たずここで閉じる（通信の往復ぶん遅れて閉じると引っかかる）。
+    // 候補を選んだ経路（pick）も同じように閉じている。
+    inputRef.current?.blur();
     setPending(true);
     setError(null);
     void (async () => {
