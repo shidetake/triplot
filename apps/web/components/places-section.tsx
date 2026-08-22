@@ -33,6 +33,7 @@ import {
 } from "./place-popups";
 import { MAP_OVERLAY_BOTTOM_PX } from "./map-controls";
 import { CandidateList } from "./candidate-list";
+import { CloseButton } from "./close-button";
 import { PlaceFilterMenu } from "./place-filter-menu";
 import { type CandidatePlace, PlaceSearch } from "./place-search";
 import { MessageBox } from "./message-box";
@@ -824,7 +825,7 @@ export function PlacesSection({
                 </Drawer.Title>
                 <div
                   ref={listChromeRef}
-                  className="flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
+                  className="relative flex shrink-0 cursor-grab flex-col items-center gap-1.5 pb-2 pt-2.5 active:cursor-grabbing"
                 >
                   <Drawer.Handle className="!h-1.5 !w-9" />
                   <span className="text-xs font-medium text-muted-foreground">
@@ -832,6 +833,18 @@ export function PlacesSection({
                       ? t("searchResultCount", { count: candidates.length })
                       : t("placeCountLabel", { count: visiblePlaces.length })}
                   </span>
+                  {/* 検索結果の時だけ × を出す（本家 Google マップと同じ）。
+                      ボトムシートには普通 × を置かない（取っ手を下げれば閉じると
+                      分かるため）が、ここは「シートを下げる」＝結果を残したまま
+                      畳むで、検索そのものをやめる操作が別に要る。役割は検索欄の
+                      × と同じ＝押すと結果も地図のピンも消える。 */}
+                  {inCandidates && (
+                    <CloseButton
+                      label={t("searchClear")}
+                      onClick={clearSearch}
+                      className="absolute right-2 top-2"
+                    />
+                  )}
                 </div>
                 <div
                   ref={listMeasureRef}
