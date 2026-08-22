@@ -764,7 +764,11 @@ export function PlacesSection({
             className="fixed left-1/2 z-20 flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-foreground/10 bg-background/75 px-4 py-2 text-xs font-medium text-foreground shadow-lg backdrop-blur-lg backdrop-saturate-150 transition active:scale-95 md:hidden"
           >
             <ChevronIcon size={16} className="-rotate-90" />
-            {t("placeCountLabel", { count: visiblePlaces.length })}
+            {/* 検索結果が残っている間はそちらの件数を出す。一覧を下げても結果は
+                捨てないので、このボタンがそのまま「開き直す手」になる。 */}
+            {inCandidates
+              ? t("searchResultCount", { count: candidates.length })
+              : t("placeCountLabel", { count: visiblePlaces.length })}
           </button>
         )}
 

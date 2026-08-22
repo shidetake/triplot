@@ -2050,8 +2050,13 @@ export default function PlacesTab() {
                 style={styles.listButton}
               >
                 <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
+                {/* 検索結果が残っている間はそちらの件数を出す。一覧を下げても
+                    結果は捨てないので、このボタンがそのまま「開き直す手」に
+                    なる（検索し直さないと戻せない、というフィードバック）。 */}
                 <Text style={styles.listButtonText}>
-                  {filteredPlaces.length}件の場所
+                  {candidates.length > 0
+                    ? `検索結果 ${candidates.length}件`
+                    : `${filteredPlaces.length}件の場所`}
                 </Text>
               </GlassView>
             </Pressable>
@@ -2197,10 +2202,14 @@ export default function PlacesTab() {
           // 他の formSheet と同じ質感。地図の上でも背後をぼかして読みやすい
           // （本家 Apple マップの場所シートと同じ）。
           // スワイプ閉じで一覧を閉じる（× は付けない＝native シートはドラッグで
-          // 閉じる）。検索結果は破棄し、プレビュー選択（赤ピン）も解除する。
+          // 閉じる）。プレビュー選択（赤ピン）は解除する。
+          // **検索結果は捨てない**: 地図を広く見ようとして下げただけのつもりでも
+          // 結果ごと消えて、検索し直さないと戻せなかった（フィードバック）。
+          // 地図のピンも一覧も残し、浮島ボタンから開き直せるようにする。
+          // 捨てるのは検索のクリア（×）と、地図の何もない所のタップ（一段戻す
+          // 梯子の最後）の時だけ。
           onDismissed={() => {
             setListOpen(false);
-            setCandidates([]);
             setEditing(null);
             setSelectedCandidate(null);
           }}
