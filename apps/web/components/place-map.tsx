@@ -46,6 +46,7 @@ import {
   layoutLabels,
   type MapRegion,
   markerGeometry,
+  projectPoint,
 } from "@triplot/shared/mapLabelLayout";
 import { iconKeyForGoogleType } from "@triplot/shared/placeIcons";
 
@@ -261,9 +262,10 @@ function MapController({
   // あるので、それを地図の矩形と突き合わせれば実際の重なりが分かる。
   useEffect(() => {
     if (!map || !panTo) return;
-    const apply = () => {
+
+    // 今このフレームで地図が覆われている高さ（と、そこから決まる寄せ量）。
+    const measure = () => {
       const mapRect = map.getDiv().getBoundingClientRect();
-      // 地図に重なっているシートのうち、一番深く覆っているものの高さ。
       let coveredPx = 0;
       for (const el of document.querySelectorAll<HTMLElement>(
         "[data-bottom-sheet]",
@@ -276,33 +278,69 @@ function MapController({
         );
       }
       const visibleH = Math.max(0, mapRect.height - coveredPx);
-      // 覆いが地図をほぼ埋めている時は寄せ先を作れないので素直に中央へ。
-      const offsetY = visibleH > 80 ? coveredPx / 2 : 0;
+      return {
+        mapRect,
+        visibleH,
+        // 覆いが地図をほぼ埋めている時は寄せ先を作れないので素直に中央へ。
+        offsetY: visibleH > 80 ? coveredPx / 2 : 0,
+      };
+    };
 
-      const b = map.getBounds();
-      const c = map.getCenter();
-      if (b && c) {
-        const span = b.toSpan();
-        // 「もう見えている位置にあるなら動かさない」判定も、地図の中央ではなく
-        // 寄せ先（見えている部分の中央）からの距離で見る。
-        const targetLat = c.lat() - (offsetY / mapRect.height) * span.lat();
-        const dx = Math.abs(panTo.lng - c.lng()) / span.lng();
-        const dy = Math.abs(panTo.lat - targetLat) / span.lat();
-        if (dx < 0.1 && dy < 0.1) return;
-      }
+    const panToTarget = (offsetY: number) => {
       map.panTo(panTo);
       // panTo は地図の中央に置くので、覆われているぶんの半分だけ地図を下へ
       // ずらす＝ピンが見えている部分の中央へ上がってくる。
       if (offsetY > 0) map.panBy(0, offsetY);
     };
 
-    // 2回動かす。選択した瞬間はシートがまだせり上がっている途中で、この時点の
-    // 実測では覆う高さが分からない（0 か中途半端な値になる）。かといって
-    // せり上がりを待ってから動かすと反応が鈍く感じるので、まず素直に寄せて、
-    // シートが決まってからもう一度測って持ち上げる。2回目は上の「もう見えて
-    // いるなら動かさない」判定を通るので、要らなければ何も起きない。
-    apply();
-    const id = setTimeout(apply, 450);
+    // 1回目: 選択した合図として寄せる。ほぼ寄せ先にあるなら動かさない（本家
+    // 同様、少しでも端にあれば中央へ寄せる）。
+    const { mapRect, offsetY } = measure();
+    const b = map.getBounds();
+    const c = map.getCenter();
+    let alreadyThere = false;
+    if (b && c) {
+      const span = b.toSpan();
+      const targetLat = c.lat() - (offsetY / mapRect.height) * span.lat();
+      alreadyThere =
+        Math.abs(panTo.lng - c.lng()) / span.lng() < 0.1 &&
+        Math.abs(panTo.lat - targetLat) / span.lat() < 0.1;
+    }
+    if (!alreadyThere) panToTarget(offsetY);
+
+    // 2回目: シートがせり上がりきってから、**ピンが本当に隠れている時だけ**
+    // 持ち上げる。1回目の時点ではシートがまだ動いている途中で覆う高さが
+    // 分からないため、この確認が要る。
+    //
+    // ここは緯度の差ではなく**ピンの画面上の位置**で判定する。緯度差で見ると、
+    // 1回目のパンで既に見えている場合でも「寄せ先からは離れている」ので動いて
+    // しまい、見えているのに最後にひと跳ねする（実機フィードバック）。
+    const id = setTimeout(() => {
+      const m = measure();
+      const bb = map.getBounds();
+      const cc = map.getCenter();
+      if (!bb || !cc) return;
+      const span = bb.toSpan();
+      const { x, y } = projectPoint(
+        {
+          latitude: cc.lat(),
+          longitude: cc.lng(),
+          latitudeDelta: span.lat(),
+          longitudeDelta: span.lng(),
+        },
+        { width: m.mapRect.width, height: m.mapRect.height },
+        { lat: panTo.lat, lng: panTo.lng },
+      );
+      // 端ぎりぎりは「見えている」と数えない（ピンの高さぶんの余裕を見る）。
+      const margin = 48;
+      const onScreen =
+        x > margin &&
+        x < m.mapRect.width - margin &&
+        y > margin &&
+        y < m.visibleH - margin;
+      if (onScreen) return;
+      panToTarget(m.offsetY);
+    }, 450);
     return () => clearTimeout(id);
   }, [map, panTo]);
 
