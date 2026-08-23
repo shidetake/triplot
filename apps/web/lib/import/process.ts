@@ -7,7 +7,10 @@ import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
-import type { StoredEventDraft, StoredReceipt } from "@triplot/shared/import/drafts";
+import type {
+  StoredEventDraft,
+  StoredReceipt,
+} from "@triplot/shared/import/drafts";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import {
   resolveAirportPlace,
@@ -19,11 +22,7 @@ import {
   isLikelyUnsubscribeUrl,
   isUnknownReceiptHostUrl,
 } from "./links";
-import {
-  type DraftCandidate,
-  findMerge,
-  selectMergeCandidates,
-} from "./merge";
+import { type DraftCandidate, findMerge, selectMergeCandidates } from "./merge";
 import { appendLinkText, gatherReceiptText } from "./pipeline";
 import {
   extractionGainedDetail,
@@ -48,7 +47,9 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 // 月初（UTC）の ISO 文字列。
 function monthStartIso(): string {
   const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1),
+  ).toISOString();
 }
 
 // 抽出に渡す候補旅行（在籍中の旅行）。LLM が tripId を推論する材料。
@@ -91,8 +92,7 @@ function extractionFromDrafts(
   rows: { kind: string; payload: unknown }[],
 ): Extraction {
   const receipt = rows.find((r) => r.kind === "expense")?.payload as
-    | Receipt
-    | undefined;
+    Receipt | undefined;
   return {
     receipt: receipt ?? null,
     events: rows
@@ -127,8 +127,11 @@ async function replacePendingDrafts(
       .filter((d) => d.kind === "event")
       .map((d) => stableStringify(d.payload)),
   );
-  const rows: { email_id: string; kind: string; payload: Receipt | EventDraft }[] =
-    [];
+  const rows: {
+    email_id: string;
+    kind: string;
+    payload: Receipt | EventDraft;
+  }[] = [];
   if (x.receipt && !hasConfirmedExpense) {
     rows.push({ email_id: emailId, kind: "expense", payload: x.receipt });
   }
@@ -241,7 +244,9 @@ export function classifyFailure(err: unknown): FailureKind {
   }
   const msg = err instanceof Error ? err.message : String(err ?? "");
   if (/rate.?limit|too many requests|\b429\b/i.test(msg)) return "rate_limit";
-  if (/\b5\d\d\b|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(msg))
+  if (
+    /\b5\d\d\b|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(msg)
+  )
     return "transient";
   return "unknown";
 }
@@ -320,7 +325,9 @@ async function fetchTripBiasCenter(
     .not("lat", "is", null)
     .not("lng", "is", null);
   const points = (data ?? [])
-    .filter((p): p is { lat: number; lng: number } => p.lat != null && p.lng != null)
+    .filter(
+      (p): p is { lat: number; lng: number } => p.lat != null && p.lng != null,
+    )
     .map((p) => ({ lat: p.lat, lng: p.lng }));
   return dominantCenter(points);
 }
@@ -349,7 +356,8 @@ async function fetchBiasCenterForDate(
       .order("end_at", { ascending: false })
       .limit(1);
     // end_place_id が null は「到着地は出発地と同じ」の意味（NULL = 開始と同じ）。
-    const placeId = transits?.[0]?.end_place_id ?? transits?.[0]?.start_place_id;
+    const placeId =
+      transits?.[0]?.end_place_id ?? transits?.[0]?.start_place_id;
     if (placeId) {
       const { data: place } = await supabase
         .from("places")
@@ -391,7 +399,11 @@ async function prefetchFlights(
       const parsed = parseFlightNumber(ev.vehicleNumber);
       if (parsed) {
         try {
-          const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
+          const outcome = await lookupFlight(
+            api,
+            parsed.normalized,
+            ev.startDate,
+          );
           if (outcome.kind === "found") {
             const places = await resolveFlightPlaces(outcome.flight);
             result.push({
@@ -416,7 +428,11 @@ async function prefetchFlights(
     // 誤った店に解決するより、素直に「解決できない」方が安全）。
     if (placesApiKey && ev.location) {
       try {
-        const biasCenter = await fetchBiasCenterForDate(supabase, tripId, ev.startDate);
+        const biasCenter = await fetchBiasCenterForDate(
+          supabase,
+          tripId,
+          ev.startDate,
+        );
         if (biasCenter) {
           const resolved = await resolveNamedPlace(ev.location, null, {
             apiKey: placesApiKey,
@@ -451,7 +467,8 @@ async function resolveReceiptPlace(
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
-  if (!apiKey || !receipt.merchant || receipt.category === "渡航") return receipt;
+  if (!apiKey || !receipt.merchant || receipt.category === "渡航")
+    return receipt;
   try {
     const biasCenter = await fetchBiasCenterForDate(
       supabase,
@@ -459,10 +476,14 @@ async function resolveReceiptPlace(
       receipt.serviceDate ?? receipt.date,
     );
     if (!biasCenter) return receipt;
-    const resolved = await resolveNamedPlace(receipt.merchant, receipt.location, {
-      apiKey,
-      biasCenter,
-    });
+    const resolved = await resolveNamedPlace(
+      receipt.merchant,
+      receipt.location,
+      {
+        apiKey,
+        biasCenter,
+      },
+    );
     return resolved ? { ...receipt, resolvedPlace: resolved } : receipt;
   } catch {
     return receipt;
@@ -569,7 +590,11 @@ async function runExtraction(
     // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
     const merged = {
-      receipt: await resolveReceiptPlace(supabase, merge.merged.receipt, tripId),
+      receipt: await resolveReceiptPlace(
+        supabase,
+        merge.merged.receipt,
+        tripId,
+      ),
       events: await prefetchFlights(supabase, merge.merged.events, tripId),
     };
     await replacePendingDrafts(supabase, merge.targetId, merged);
@@ -687,10 +712,18 @@ export async function extractInBackground(
 // 期限の来たリトライ対象（status='error' かつ next_retry_at <= now）を再抽出する。
 // Cloudflare の毎分 cron（retry-extract）から呼ぶ。成功すれば runExtraction が status を
 // 進める。再び失敗したらバックオフを延ばし、上限/恒久失敗で打ち切る。
+// 1 回の drain の結果。呼び出し元（cron）が診断ログに使う。
+export type RetryDrainSummary = {
+  attempted: number;
+  succeeded: number;
+  rateLimited: boolean;
+  failed: number;
+};
+
 export async function retryDueErrors(
   supabase: ServiceClient,
   opts: { userId?: string; limit?: number } = {},
-): Promise<void> {
+): Promise<RetryDrainSummary> {
   let q = supabase
     .from("inbound_emails")
     .select("id, user_id, raw, retry_count")
@@ -702,11 +735,20 @@ export async function retryDueErrors(
   if (opts.userId) q = q.eq("user_id", opts.userId);
   const { data: rows } = await q;
 
+  const summary: RetryDrainSummary = {
+    attempted: 0,
+    succeeded: 0,
+    rateLimited: false,
+    failed: 0,
+  };
+
   for (const row of rows ?? []) {
     if (!row.raw || !row.user_id) continue;
     const attempt = (row.retry_count ?? 0) + 1;
+    summary.attempted++;
     try {
       await runExtraction(supabase, row.id, row.user_id, row.raw);
+      summary.succeeded++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "extract failed";
       const kind = classifyFailure(e);
@@ -728,12 +770,14 @@ export async function retryDueErrors(
           .eq("status", "error")
           .not("next_retry_at", "is", null)
           .lte("next_retry_at", new Date().toISOString());
-        return;
+        summary.rateLimited = true;
+        return summary;
       }
 
       // transient は打ち切らない（障害が続いてもレシートを失わない）。retry_count は
       // バックオフの指数として使い、6h で頭打ち。最終的な回収は 90 日の expire。
       // unknown だけは MAX_RETRIES で蓋をする（誤分類の保険）。
+      summary.failed++;
       const giveUp =
         kind === "permanent" || (kind === "unknown" && attempt >= MAX_RETRIES);
       await supabase
@@ -748,6 +792,7 @@ export async function retryDueErrors(
         .eq("id", row.id);
     }
   }
+  return summary;
 }
 
 // 月間上限で保留された over_quota 行を、枠が空いた分だけ抽出する（翌月の自動再抽出）。
@@ -775,7 +820,8 @@ export async function reprocessOverQuota(
     if (!row.raw || !row.user_id) continue;
     let remaining = remainingByUser.get(row.user_id);
     if (remaining === undefined) {
-      remaining = MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
+      remaining =
+        MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
     }
     if (remaining <= 0) {
       remainingByUser.set(row.user_id, 0);
