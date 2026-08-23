@@ -17,6 +17,7 @@
     "test:watch": "npm -w @triplot/web run test:watch",
     "db:types": "bash scripts/gen-db-types.sh",
     "db:types:check": "bash scripts/check-db-types.sh",
+    "check:client-boundary": "node scripts/check-client-boundary.mjs",
     "db:push:staging": "bash scripts/db-push-staging.sh",
     "licenses:generate": "node scripts/gen-licenses.mjs",
     "web:version:generate": "node scripts/gen-web-version.mjs",

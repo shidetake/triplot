@@ -1,4 +1,5 @@
 npm run lint
 npm run typecheck
 npm test
+npm run check:client-boundary
 npm run db:types:check
