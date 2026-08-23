@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 import { AvatarUpload } from "@/components/avatar-upload";
+import { DeleteAccountButton } from "@/components/delete-account-button";
 import { DisplayNameForm } from "@/components/display-name-form";
 import { LanguageForm } from "@/components/language-form";
 import { ThemeForm } from "@/components/theme-form";
@@ -90,6 +91,11 @@ export function SettingsSheet({ currentTheme }: { currentTheme: Theme }) {
       <div className="space-y-1">
         <label className="block text-sm font-medium">{t("language")}</label>
         <LanguageForm />
+      </div>
+
+      {/* 取り消せない操作なので、他の設定と区切り線で隔てて一番下に置く。 */}
+      <div className="border-t border-foreground/10 pt-6">
+        <DeleteAccountButton />
       </div>
     </div>
   );
