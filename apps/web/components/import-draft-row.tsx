@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { useSiblingConfirm } from "@/lib/import/sibling-confirm";
 import { createClient } from "@/lib/supabase/client";
 
 import { CloseButton } from "./close-button";
@@ -19,6 +20,10 @@ import { InlineDivider } from "./inline-divider";
 // この行にそれぞれのフォームを載せる。
 export function ImportDraftRow({
   draftId,
+  draftIds = [draftId],
+  emailIds,
+  tripId,
+  myMemberId,
   labelParts,
   formLabel,
   draftKey,
@@ -26,6 +31,13 @@ export function ImportDraftRow({
   truncateTail = false,
 }: {
   draftId: string;
+  // 重なりをまとめた予定は複数行を表す（費用は常に1件）。
+  draftIds?: string[];
+  // この行の出どころのメール。同じメールの残り（費用⇄予定）も一緒に
+  // 確定/破棄する（@triplot/shared/data/inbox の confirmSiblingDrafts）。
+  emailIds: string[];
+  tripId: string;
+  myMemberId: string;
   // ボタンに出す見出しの各部品（店名・金額・日付など）。間は InlineDivider（縦棒）で区切る。
   labelParts: string[];
   formLabel: string;
@@ -46,18 +58,33 @@ export function ImportDraftRow({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const router = useRouter();
 
-  const resolve = async (
-    status: "confirmed" | "dismissed",
-    ids?: { expenseId?: string; eventId?: string },
-  ) => {
+  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+    tripId,
+    myMemberId,
+  );
+
+  const onConfirm = async (ids?: {
+    expenseId?: string;
+    eventId?: string;
+  }) => {
     const supabase = createClient();
-    await resolveInboundDraft(supabase, draftId, status, ids);
+    await resolveInboundDraft(supabase, draftId, "confirmed", ids);
+    await confirmSiblings(emailIds, draftIds);
     router.refresh();
   };
 
+  // 破棄はメール単位（確定と同じ単位）。1通から出た費用と予定は同じ
+  // 出来事の別の見え方なので、片方だけ残しても使い道がない。
   const onDismiss = async () => {
-    if (!(await confirmDialog({ title: t("dismissDraftTitle") }))) return;
-    await resolve("dismissed");
+    if (
+      !(await confirmDialog({
+        title: t("dismissDraftTitle"),
+        body: t("dismissDraftBody"),
+      }))
+    )
+      return;
+    await dismissSiblings(emailIds);
+    router.refresh();
   };
 
   return (
@@ -104,7 +131,7 @@ export function ImportDraftRow({
           draftKey={draftKey}
         >
           {children({
-            confirmDraft: (ids) => resolve("confirmed", ids),
+            confirmDraft: onConfirm,
             close: () => setAnchor(null),
           })}
         </FormPopover>

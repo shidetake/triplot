@@ -13,11 +13,13 @@ type Props = Omit<
   "onDone" | "onSuccess"
 > & {
   draftId: string;
+  emailIds: string[];
   labelParts: string[];
 };
 
 export function DraftConfirmButton({
   draftId,
+  emailIds,
   labelParts,
   ...formProps
 }: Props) {
@@ -26,6 +28,9 @@ export function DraftConfirmButton({
   return (
     <ImportDraftRow
       draftId={draftId}
+      emailIds={emailIds}
+      tripId={formProps.tripId}
+      myMemberId={formProps.myMemberId}
       labelParts={labelParts}
       formLabel={t("confirmFormLabel")}
       draftKey={`expense:import:${draftId}`}

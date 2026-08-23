@@ -127,6 +127,7 @@ export function resolveDraftOverlaps(
       ...it,
       prefill: { ...it.prefill },
       draftIds: [...it.draftIds],
+      emailIds: [...it.emailIds],
     }));
     for (let changed = true; changed;) {
       changed = false;
@@ -147,6 +148,8 @@ export function resolveDraftOverlaps(
           a.prefill.title = title;
           a.labelParts = [title, a.labelParts[1] ?? ""];
           a.draftIds.push(...b.draftIds);
+          for (const e2 of b.emailIds)
+            if (!a.emailIds.includes(e2)) a.emailIds.push(e2);
           result.set(b.id, null); // 表示からは消える
           merged.splice(j, 1);
           changed = true;

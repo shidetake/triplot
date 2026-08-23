@@ -11,6 +11,7 @@ import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 import { EventForm } from "@/components/event-form";
 import { FormHostProvider } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
+import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import {
   useInvalidateInbox,
   useInvalidateTrip,
@@ -85,29 +86,38 @@ export default function EventFormRoute() {
   const draftIdsOf = (id: string) =>
     eventDrafts.find((d) => d.id === id)?.draftIds ?? [id];
 
+  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+    tripId,
+    me.id,
+  );
+
+  // 同じメールから出た費用の下書きも一緒に確定する（1通のメールはたいてい
+  // 費用と予定の両方を産むので、片方だけ確定すると相方が残る）。web の
+  // ScheduleSection と同じ。
+  const emailIdsOf = (id: string) =>
+    eventDrafts.find((d) => d.id === id)?.emailIds ?? [];
+
   const confirmDraft = async (id: string, newEventId?: string) => {
-    const r = await resolveInboundDrafts(
-      supabase,
-      draftIdsOf(id),
-      "confirmed",
-      {
-        eventId: newEventId,
-      },
-    );
+    const draftIds = draftIdsOf(id);
+    const r = await resolveInboundDrafts(supabase, draftIds, "confirmed", {
+      eventId: newEventId,
+    });
     if (!r.ok) Alert.alert(r.error);
+    await confirmSiblings(emailIdsOf(id), draftIds);
     void invalidate();
     void invalidateInbox();
   };
 
-  // 取り込み下書きの破棄（費用タブの dismissDraft と同じ）。
+  // 取り込み下書きの破棄（費用タブの dismissDraft と同じ）。確定と同じく
+  // メール単位で、同じメールから出た費用・予定をまとめて破棄する。
   const dismissDraft = (id: string) => {
-    Alert.alert(t("import.dismissDraftTitle"), undefined, [
+    Alert.alert(t("import.dismissDraftTitle"), t("import.dismissDraftBody"), [
       { text: t("common.cancel"), style: "cancel" },
       {
         text: t("import.dismiss"),
         style: "destructive",
         onPress: () => {
-          void resolveInboundDrafts(supabase, draftIdsOf(id), "dismissed").then(
+          void dismissSiblings(emailIdsOf(id)).then(
             (r) => {
               if (!r.ok) {
                 Alert.alert(t("import.dismissFailed", { error: r.error }));

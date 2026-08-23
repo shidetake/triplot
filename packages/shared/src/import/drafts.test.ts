@@ -105,7 +105,7 @@ const expenseCtx = {
 describe("deriveExpenseDraftItems", () => {
   it("カテゴリ名の一致・保存済み場所マッチ・ラベル部品を組み立てる", () => {
     const items = deriveExpenseDraftItems(
-      [{ id: "d1", kind: "expense", payload: receipt({}) }],
+      [{ id: "d1", email_id: "e-d1", kind: "expense", payload: receipt({}) }],
       expenseCtx,
     );
     expect(items).toHaveLength(1);
@@ -126,6 +126,7 @@ describe("deriveExpenseDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "expense",
           payload: receipt({ currency: "$", category: "飲食" }),
         },
@@ -141,6 +142,7 @@ describe("deriveExpenseDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "expense",
           payload: receipt({ merchant: "Yard House", location: "Lewers St" }),
         },
@@ -159,6 +161,7 @@ describe("deriveExpenseDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "expense",
           payload: {
             ...receipt({ merchant: "Yard House", location: "Lewers St" }),
@@ -197,8 +200,8 @@ describe("deriveExpenseDraftItems", () => {
   it("event 下書きは無視し、merchant 空はフォールバック見出しにする", () => {
     const items = deriveExpenseDraftItems(
       [
-        { id: "d1", kind: "event", payload: eventDraft({}) },
-        { id: "d2", kind: "expense", payload: receipt({ merchant: "" }) },
+        { id: "d1", email_id: "e-d1", kind: "event", payload: eventDraft({}) },
+        { id: "d2", email_id: "e-d2", kind: "expense", payload: receipt({ merchant: "" }) },
       ],
       expenseCtx,
     );
@@ -221,6 +224,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: eventDraft({
             kind: "transit",
@@ -263,6 +267,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: eventDraft({
             kind: "transit",
@@ -282,6 +287,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: {
             ...eventDraft({
@@ -331,6 +337,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: {
             ...eventDraft({
@@ -385,6 +392,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: eventDraft({ title: "Kai Coffee", startTime: null }),
         },
@@ -405,6 +413,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: {
             ...eventDraft({ title: "Yard House", location: "Lewers St" }),
@@ -444,6 +453,7 @@ describe("deriveEventDraftItems", () => {
       [
         {
           id: "d1",
+          email_id: "e-d1",
           kind: "event",
           payload: {
             ...eventDraft({
@@ -480,7 +490,7 @@ describe("deriveEventDraftItems", () => {
 
   it("タイトル空はフォールバック見出し（prefill.title は空のまま）", () => {
     const items = deriveEventDraftItems(
-      [{ id: "d1", kind: "event", payload: eventDraft({ title: "" }) }],
+      [{ id: "d1", email_id: "e-d1", kind: "event", payload: eventDraft({ title: "" }) }],
       eventCtx,
     );
     expect(items[0].labelParts[0]).toBe("無題の予定");
@@ -492,6 +502,7 @@ describe("draftToScheduleEvent", () => {
   const base: EventDraftItem = {
     id: "d1",
     draftIds: ["d1"],
+    emailIds: ["e-d1"],
     labelParts: ["NRT-HNL", "8/1 21:00 → 8/1 09:35"],
     date: "2026-08-01",
     time: "21:00",

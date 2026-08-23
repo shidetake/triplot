@@ -13,11 +13,18 @@ type Props = Omit<
   "onDone" | "onSuccess"
 > & {
   draftId: string;
+  // 重なりをまとめた予定は複数の下書き行を表す。
+  draftIds: string[];
+  emailIds: string[];
+  myMemberId: string;
   labelParts: string[];
 };
 
 export function EventDraftConfirmButton({
   draftId,
+  draftIds,
+  emailIds,
+  myMemberId,
   labelParts,
   ...formProps
 }: Props) {
@@ -26,6 +33,10 @@ export function EventDraftConfirmButton({
   return (
     <ImportDraftRow
       draftId={draftId}
+      draftIds={draftIds}
+      emailIds={emailIds}
+      tripId={formProps.tripId}
+      myMemberId={myMemberId}
       labelParts={labelParts}
       formLabel={t("confirmFormLabel")}
       draftKey={`event:import:${draftId}`}

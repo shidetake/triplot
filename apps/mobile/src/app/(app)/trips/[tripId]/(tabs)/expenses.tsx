@@ -43,6 +43,7 @@ import {
   useTripDetail,
   useTripDrafts,
 } from "@/lib/useTripDetail";
+import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import { useTripId } from "@/lib/useTripId";
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 
@@ -127,14 +128,17 @@ export default function ExpensesTab() {
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
   });
 
-  const dismissDraft = (draftId: string) => {
-    Alert.alert(tImport("dismissDraftTitle"), undefined, [
+  const { dismissSiblings } = useSiblingConfirm(tripId, me.id);
+
+  // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。
+  const dismissDraft = (emailId: string) => {
+    Alert.alert(tImport("dismissDraftTitle"), tImport("dismissDraftBody"), [
       { text: t("common.cancel"), style: "cancel" },
       {
         text: tImport("dismiss"),
         style: "destructive",
         onPress: () => {
-          void resolveInboundDraft(supabase, draftId, "dismissed").then((r) => {
+          void dismissSiblings([emailId]).then((r) => {
             if (!r.ok) {
               Alert.alert(tImport("dismissFailed", { error: r.error }));
               return;
@@ -193,7 +197,7 @@ export default function ExpensesTab() {
                   </View>
                 </Pressable>
                 <Pressable
-                  onPress={() => dismissDraft(d.id)}
+                  onPress={() => dismissDraft(d.emailId)}
                   hitSlop={8}
                   accessibilityLabel={tImport("dismiss")}
                 >

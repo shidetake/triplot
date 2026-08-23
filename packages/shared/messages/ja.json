@@ -570,9 +570,13 @@
     "copyAddress": "アドレスをコピー",
     "confirmFormLabel": "取り込みを確定",
     "errorNoContent": "取り込める費用・予定が見つかりませんでした。",
-    "dismissDraftTitle": "この下書きを破棄しますか？",
+    "dismissDraftTitle": "この取り込みを破棄しますか？",
     "dismissEmailTitle": "このメールを破棄しますか？",
-    "dismissFailed": "破棄に失敗しました: {error}"
+    "dismissFailed": "破棄に失敗しました: {error}",
+    "siblingConfirmedExpense": "費用も一緒に登録しました",
+    "siblingConfirmedEvent": "予定も一緒に登録しました",
+    "siblingConfirmedBoth": "費用と予定も一緒に登録しました",
+    "dismissDraftBody": "同じメールから出た費用・予定をまとめて破棄します。"
   },
   "admin": {
     "heading": "管理",

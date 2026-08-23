@@ -404,6 +404,9 @@ export default async function TripDetailPage({
                             <EventDraftConfirmButton
                               key={d.id}
                               draftId={d.id}
+                              draftIds={d.draftIds}
+                              emailIds={d.emailIds}
+                              myMemberId={me.id}
                               labelParts={d.labelParts}
                               tripId={tripId}
                               defaultTz={d.tz}
@@ -508,6 +511,7 @@ export default async function TripDetailPage({
                         <DraftConfirmButton
                           key={d.id}
                           draftId={d.id}
+                          emailIds={[d.emailId]}
                           labelParts={d.labelParts}
                           tripId={tripId}
                           members={activeMembers.map((m) => ({

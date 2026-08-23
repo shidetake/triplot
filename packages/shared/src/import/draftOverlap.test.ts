@@ -25,6 +25,7 @@ function item(
   return {
     id,
     draftIds: [id],
+    emailIds: [`e-${id}`],
     labelParts: [o.title ?? "夕食", fmt(date, time)],
     date,
     time,

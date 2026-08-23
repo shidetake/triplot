@@ -18,6 +18,7 @@ import type { Currency } from "@triplot/shared/types/database";
 import { ExpenseForm } from "@/components/expense-form";
 import { FormHostProvider } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
+import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import {
   useInvalidateInbox,
   useInvalidateTrip,
@@ -103,11 +104,17 @@ export default function ExpenseFormRoute() {
   // する（web の DraftConfirmButton と同じ resolveInboundDraft）。この旅行の
   // 未確定が全部片付くと親メールも DB 側で自動的に確定扱いになるので、受信箱の
   // キャッシュも合わせて無効化する（useInvalidateInbox 参照）。
+  const { confirmSiblings } = useSiblingConfirm(tripId, me.id);
+
+  // 同じメールから出た予定の下書きも一緒に確定する（1通のメールはたいてい
+  // 費用と予定の両方を産むので、片方だけ確定すると相方が残る）。
   const confirmDraft = async (id: string, newExpenseId?: string) => {
     const r = await resolveInboundDraft(supabase, id, "confirmed", {
       expenseId: newExpenseId,
     });
     if (!r.ok) Alert.alert(r.error);
+    const emailId = draftItems.find((d) => d.id === id)?.emailId;
+    if (emailId) await confirmSiblings([emailId], [id]);
     void invalidate();
     void invalidateInbox();
   };

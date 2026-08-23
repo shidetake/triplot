@@ -37,6 +37,7 @@ function eventDraft(o: { lng?: number; name?: string }) {
   return [
     {
       id: "d1",
+      email_id: "e-d1",
       kind: "event",
       payload: {
         kind: "timed",
@@ -143,6 +144,7 @@ describe("終日の下書き", () => {
     return [
       {
         id: "d1",
+        email_id: "e-d1",
         kind: "event",
         payload: {
           kind: "allday",

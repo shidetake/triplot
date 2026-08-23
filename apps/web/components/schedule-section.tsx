@@ -27,6 +27,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { toEventFormPrefill } from "@/lib/event-form-prefill";
+import { useSiblingConfirm } from "@/lib/import/sibling-confirm";
 import { createClient } from "@/lib/supabase/client";
 import { AddFab } from "./add-fab";
 import { EventForm, type EventFormMode } from "./event-form";
@@ -285,15 +286,26 @@ export function ScheduleSection({
       eventDrafts.find((d) => d.id === draftId)?.draftIds ?? [draftId],
     [eventDrafts],
   );
+  // 同じメールから出た費用の下書きも一緒に確定する（1通のメールは
+  // たいてい費用と予定の両方を産むので、片方だけ確定すると相方が残る）。
+  const emailIdsOf = useCallback(
+    (draftId: string) =>
+      eventDrafts.find((d) => d.id === draftId)?.emailIds ?? [],
+    [eventDrafts],
+  );
+  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+    tripId,
+    myMemberId,
+  );
   const confirmDraft = useCallback(
     async (draftId: string, eventId?: string) => {
       const supabase = createClient();
-      await resolveInboundDrafts(supabase, draftIdsOf(draftId), "confirmed", {
-        eventId,
-      });
+      const draftIds = draftIdsOf(draftId);
+      await resolveInboundDrafts(supabase, draftIds, "confirmed", { eventId });
+      await confirmSiblings(emailIdsOf(draftId), draftIds);
       router.refresh();
     },
-    [router, draftIdsOf],
+    [router, draftIdsOf, emailIdsOf, confirmSiblings],
   );
 
   const t = useTranslations("schedule");
@@ -304,14 +316,19 @@ export function ScheduleSection({
   // フォームの中にも破棄の口を用意する（無いと消せない）。
   const dismissDraft = useCallback(
     async (draftId: string) => {
-      if (!(await confirmDialog({ title: tImport("dismissDraftTitle") })))
+      if (
+        !(await confirmDialog({
+          title: tImport("dismissDraftTitle"),
+          body: tImport("dismissDraftBody"),
+        }))
+      )
         return;
-      const supabase = createClient();
-      await resolveInboundDrafts(supabase, draftIdsOf(draftId), "dismissed");
+      // 破棄も確定と同じくメール単位（ImportDraftRow と揃える）。
+      await dismissSiblings(emailIdsOf(draftId));
       closeForm();
       router.refresh();
     },
-    [router, closeForm, tImport, draftIdsOf],
+    [router, closeForm, tImport, emailIdsOf, dismissSiblings],
   );
   const selectedEventId =
     open?.form.mode === "edit"

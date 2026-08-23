@@ -570,9 +570,13 @@
     "copyAddress": "Copy address",
     "confirmFormLabel": "Confirm import",
     "errorNoContent": "No expenses or events could be extracted.",
-    "dismissDraftTitle": "Dismiss this draft?",
+    "dismissDraftTitle": "Discard this import?",
     "dismissEmailTitle": "Dismiss this email?",
-    "dismissFailed": "Failed to dismiss: {error}"
+    "dismissFailed": "Failed to dismiss: {error}",
+    "siblingConfirmedExpense": "Expense added too",
+    "siblingConfirmedEvent": "Event added too",
+    "siblingConfirmedBoth": "Expense and event added too",
+    "dismissDraftBody": "The expense and event from the same email are discarded together."
   },
   "admin": {
     "heading": "Admin",

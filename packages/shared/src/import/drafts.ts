@@ -28,7 +28,14 @@ import type { EventDraft, Receipt } from "./schema";
 import { resolveDraftOverlaps } from "./draftOverlap";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
-export type PendingDraft = { id: string; kind: string; payload: unknown };
+// email_id は「同じメールから出た費用と予定」を突き合わせるのに要る
+// （片方を確定したら残りも確定する＝siblingConfirm.ts）。
+export type PendingDraft = {
+  id: string;
+  email_id: string;
+  kind: string;
+  payload: unknown;
+};
 
 // prefetchFlights（apps/web/lib/import/process.ts）が LLM 抽出後に仕込む
 // 後付けデータ。LLM の出力ではないので EventDraft 本体（zod スキーマ）には
@@ -87,6 +94,8 @@ export type DraftAutoResolvePlace = {
 // 費用下書き1件 → 費用フォームの事前入力一式。
 export type ExpenseDraftItem = {
   id: string;
+  // この下書きが出てきたメール（siblingConfirm.ts が同じメールの予定を探す）。
+  emailId: string;
   // 確定ボタン/行に出す見出しの各部品（店名・金額・日付。縦棒区切りで描画）。
   labelParts: string[];
   initialPrice: number;
@@ -132,6 +141,10 @@ export type EventDraftItem = {
   // 2件以上になる。確定時は**全部**を解決しないと、畳んだ側が未確定のまま
   // 残って再び現れる（resolveDraftOverlaps 参照）。
   draftIds: string[];
+  // draftIds の出どころのメール（重複なし）。重なりのマージは別メールの
+  // 下書き同士でも起きるので複数になり得る。確定/破棄をこのメールの
+  // 残りにも波及させる（siblingConfirm.ts）。
+  emailIds: string[];
   labelParts: string[];
   date: string; // 開始日
   time: string; // 開始時刻（不明なら "09:00"）
@@ -221,6 +234,7 @@ export function deriveExpenseDraftItems(
       return [
         {
           id: d.id,
+          emailId: d.email_id,
           // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
           labelParts: [
             r.merchant || ctx.unknownMerchantLabel,
@@ -310,6 +324,7 @@ export function deriveEventDraftItems(
         const item: EventDraftItem = {
           id: d.id,
           draftIds: [d.id],
+          emailIds: [d.email_id],
           labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
           date: depDate ?? ev.startDate,
           time: depTime ?? ev.startTime ?? "09:00",
@@ -386,6 +401,7 @@ export function deriveEventDraftItems(
         {
           id: d.id,
           draftIds: [d.id],
+          emailIds: [d.email_id],
           labelParts: [title, whenLabel],
           date: ev.startDate,
           time: ev.startTime ?? "09:00",
@@ -438,24 +454,38 @@ export function draftIdFromEventId(eventId: string): string | null {
 
 // EventDraftItem（メール取り込みの未確定予定）をカレンダー描画用の疑似
 // ScheduleEvent に変換する。DB には存在しない表示専用イベント（isDraft）。
+// 下書きの開始/終了（壁時計）。カレンダーの疑似ブロックと、確定して実際に
+// 作る予定の両方がここから取る（別々に組み立てると必ずずれる）。
+//
+// 終日は時刻を持たないので、endTime を条件にすると endAt が null になり
+// 「初日だけの1日予定」に化ける。宿泊が初日にしか出ず、しかも複数日と
+// 判定されないので乗継日に到着側の列から始める処理（layoutWeek の
+// transit-depart スキップ）も効かなくなっていた。実イベントと同じく
+// 日付だけで組み立てる（保存時も `${date}T00:00:00`）。
+export function draftEventTimes(d: EventDraftItem): {
+  allDay: boolean;
+  startAt: string;
+  endAt: string | null;
+} {
+  const endDate = d.prefill.endDate ?? d.date;
+  const allDay = d.prefill.kind3 === "allday";
+  return {
+    allDay,
+    startAt: allDay ? `${d.date}T00:00:00` : `${d.date}T${d.time}`,
+    endAt: allDay
+      ? `${endDate}T00:00:00`
+      : d.prefill.endTime
+        ? `${endDate}T${d.prefill.endTime}`
+        : null,
+  };
+}
+
 export function draftToScheduleEvent(
   d: EventDraftItem,
   myMemberId: string,
 ): EventRow {
   const kind3 = d.prefill.kind3;
-  const endDate = d.prefill.endDate ?? d.date;
-  // 終日は時刻を持たないので、endTime を条件にすると endAt が null になり
-  // 「初日だけの1日予定」に化ける。宿泊が初日にしか出ず、しかも複数日と
-  // 判定されないので乗継日に到着側の列から始める処理（layoutWeek の
-  // transit-depart スキップ）も効かなくなっていた。実イベントと同じく
-  // 日付だけで組み立てる（保存時も `${date}T00:00:00`）。
-  const isAllDay = kind3 === "allday";
-  const startAt = isAllDay ? `${d.date}T00:00:00` : `${d.date}T${d.time}`;
-  const endAt = isAllDay
-    ? `${endDate}T00:00:00`
-    : d.prefill.endTime
-      ? `${endDate}T${d.prefill.endTime}`
-      : null;
+  const { allDay: isAllDay, startAt, endAt } = draftEventTimes(d);
   return {
     id: draftEventId(d.id),
     title: d.labelParts[0],

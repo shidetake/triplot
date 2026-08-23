@@ -9,7 +9,7 @@ import type { DB } from "../client";
 export async function fetchTripPendingDrafts(sb: DB, tripId: string) {
   const { data } = await sb
     .from("inbound_drafts")
-    .select("id, kind, payload, inbound_emails!inner(trip_id, status)")
+    .select("id, email_id, kind, payload, inbound_emails!inner(trip_id, status)")
     .eq("inbound_emails.trip_id", tripId)
     .eq("inbound_emails.status", "extracted")
     .eq("status", "pending")
