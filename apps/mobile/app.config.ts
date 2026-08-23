@@ -130,6 +130,14 @@ const config: ExpoConfig = {
         backgroundColor: "#ffffff",
         image: "./assets/images/splash-icon.png",
         imageWidth: 76,
+        // userInterfaceStyle: "automatic" で OS のテーマに追従するので、
+        // スプラッシュも合わせる（白固定だとダークの端末で起動時に白が光る）。
+        // 地の色は lib/theme.ts の dark.background と同値。マークは同じ緑青の
+        // 色相ランプのまま明度だけ持ち上げてある（暗い地でも沈まないように）。
+        dark: {
+          backgroundColor: "#0a0a0a",
+          image: "./assets/images/splash-icon-dark.png",
+        },
       },
     ],
     // 場所タブの地図: 現在地の青丸＋「現在地に戻る」ボタン用。フォアグラウンド
