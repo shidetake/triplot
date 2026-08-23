@@ -780,6 +780,18 @@ hue は色相環上の角度（**OKLCH**, 0–359°）。円周上の等間隔�
 ここに書くのは「Base UI 既定では決まらない＝我々が決めた差分」だけ:
 
 - 位置：画面下中央（`fixed bottom-6 left-1/2 -translate-x-1/2 z-50`）。Base UI は位置を決めないので明示。
+  - **RN のネイティブシートの中だけ上端**（`<Toaster inSheet />`）。シートは
+    `sheetAllowedDetents: "fitToContents"` で、画面の View が「見えているシート」より
+    下まで伸びているため、下寄せだと画面外に出て**一度も見えない**（実測: 同時に描いた
+    top 基準の probe はシート上端に出るのに bottom 基準はどこにも出ない）。
+    シートに status bar は無いので safe area は足さず、grabber のすぐ下に出す。
+  - **シートを持つ画面は、その画面自身にも `<Toaster inSheet />` を置く**。ルートの
+    Toaster はシートの view controller の裏に回って実機では見えない。`toast()` は
+    全ての Toaster に配るので、裏に回った側は見えないだけで害はない
+    （「今どれが手前か」を当てにいく実装にしない — 以前は listener をスタックに積んで
+    最後尾＝手前と見なしていたが、ディープリンクでシートを直接開くとルートと画面が
+    同時にマウントされ、エフェクトが子→親の順に走るためルートが最後尾になり、
+    トーストがシートの裏に配送されて何も出なかった）。
 - 見た目：`bg-primary text-primary-foreground rounded-md px-4 py-2 text-sm shadow-lg`。
 - 実装：root layout に `<Toaster />` を1つ。どこからでも `toast("…")`（`components/toast.tsx`、React 外からも呼べる standalone manager）。サーバアクションは呼んだクライアント側で `await` 後に `toast()`。
 

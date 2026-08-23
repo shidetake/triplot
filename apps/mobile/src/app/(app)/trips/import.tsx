@@ -15,8 +15,8 @@ import { usePullRefresh } from "@/lib/usePullRefresh";
 // （app/_layout.tsx）は native-stack の presentation:"formSheet" で
 // 開いたこの画面自身の view controller には実機で届かない（別の
 // ネイティブ画面の裏に回る。シミュレータでは偶然表に出ることがあるが
-// 実機 TestFlight では出ない＝実機フィードバックで判明）。toast.tsx の
-// スタックにこのローカル Toaster が積まれている間はこちらが優先される。
+// 実機 TestFlight では出ない＝実機フィードバックで判明）。toast() は
+// 全ての Toaster に配るので、裏に回ったルート側は見えないだけで害はない。
 export default function InboxRoute() {
   const { session } = useSession();
   const userId = session?.user.id;
@@ -35,7 +35,7 @@ export default function InboxRoute() {
       >
         <ImportSheet />
       </ScrollView>
-      <Toaster />
+      <Toaster inSheet />
     </View>
   );
 }
