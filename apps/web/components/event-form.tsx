@@ -25,10 +25,6 @@ import {
   flightTerminalNote,
   flightTitle,
 } from "@triplot/shared/flight";
-import type {
-  EventDraftPlacePrefill,
-  EventDraftPrefill,
-} from "@triplot/shared/import/drafts";
 import {
   resolveAirportPlace,
   type PlaceCandidate,
