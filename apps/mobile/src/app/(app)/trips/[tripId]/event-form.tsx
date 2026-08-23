@@ -39,6 +39,13 @@ export default function EventFormRoute() {
   const invalidate = useInvalidateTrip(tripId);
   const invalidateInbox = useInvalidateInbox();
 
+  // フックは早期 return より前で呼ぶ（ガードの後ろに置くと描画ごとに
+  // フックの数が変わって落ちる）。
+  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+    tripId,
+    me?.id,
+  );
+
   if (!data?.trip || !me) return null;
   const trip = data.trip;
 
@@ -85,11 +92,6 @@ export default function EventFormRoute() {
   // ScheduleSection と同じ。
   const draftIdsOf = (id: string) =>
     eventDrafts.find((d) => d.id === id)?.draftIds ?? [id];
-
-  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
-    tripId,
-    me.id,
-  );
 
   // 同じメールから出た費用の下書きも一緒に確定する（1通のメールはたいてい
   // 費用と予定の両方を産むので、片方だけ確定すると相方が残る）。web の

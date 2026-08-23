@@ -34,7 +34,6 @@ import { ColorBadge } from "@/components/color-badge";
 import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { LoadError } from "@/components/load-error";
-import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 import {
@@ -45,7 +44,6 @@ import {
 } from "@/lib/useTripDetail";
 import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import { useTripId } from "@/lib/useTripId";
-import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
 // 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（native formSheet ルート
@@ -65,6 +63,9 @@ export default function ExpensesTab() {
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
   const invalidateInbox = useInvalidateInbox();
+  // フックは早期 return より前で呼ぶ（下の loadError / データ未着のガードの
+  // 後ろに置くと描画ごとにフックの数が変わって落ちる）。
+  const { dismissSiblings } = useSiblingConfirm(tripId, me?.id);
 
   if (loadError) {
     return (
@@ -127,8 +128,6 @@ export default function ExpensesTab() {
     })),
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
   });
-
-  const { dismissSiblings } = useSiblingConfirm(tripId, me.id);
 
   // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。
   const dismissDraft = (emailId: string) => {

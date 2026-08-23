@@ -41,6 +41,10 @@ export default function ExpenseFormRoute() {
   const invalidate = useInvalidateTrip(tripId);
   const invalidateInbox = useInvalidateInbox();
 
+  // フックは早期 return より前で呼ぶ（ガードの後ろに置くと描画ごとに
+  // フックの数が変わって落ちる）。
+  const { confirmSiblings } = useSiblingConfirm(tripId, me?.id);
+
   if (!data?.trip || !me) return null;
   const trip = data.trip;
 
@@ -104,8 +108,6 @@ export default function ExpenseFormRoute() {
   // する（web の DraftConfirmButton と同じ resolveInboundDraft）。この旅行の
   // 未確定が全部片付くと親メールも DB 側で自動的に確定扱いになるので、受信箱の
   // キャッシュも合わせて無効化する（useInvalidateInbox 参照）。
-  const { confirmSiblings } = useSiblingConfirm(tripId, me.id);
-
   // 同じメールから出た予定の下書きも一緒に確定する（1通のメールはたいてい
   // 費用と予定の両方を産むので、片方だけ確定すると相方が残る）。
   const confirmDraft = async (id: string, newExpenseId?: string) => {
