@@ -552,7 +552,7 @@
     "forwardLabel": "Forward emails to",
     "usageCount": "This month: {used} / {cap}",
     "overQuotaWarning": "⚠ You've reached this month's limit ({cap}). {over} email(s) are on hold and will be processed next month.",
-    "errorRateLimited": "Busy right now — still working through the queue.",
+    "errorRateLimited": "Still working through the queue. Check back in a little while.",
     "errorWillRetry": "Import failed. Will retry automatically later.",
     "errorNoRetry": "Import failed (could not retry).",
     "dismiss": "Dismiss",

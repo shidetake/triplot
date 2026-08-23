@@ -552,7 +552,7 @@
     "forwardLabel": "メールの転送先",
     "usageCount": "今月の取り込み: {used} / {cap} 件",
     "overQuotaWarning": "⚠ 今月の上限（{cap}件）に達したため、{over}件が未処理のまま保留されています。翌月にリセットされます。",
-    "errorRateLimited": "混み合っています。順番に取り込んでいます。",
+    "errorRateLimited": "順番に取り込んでいます。時間をおいて確認してください。",
     "errorWillRetry": "取り込みに失敗しました。時間をおいて自動で再試行します。",
     "errorNoRetry": "取り込みに失敗しました（再試行できませんでした）。",
     "dismiss": "破棄",
