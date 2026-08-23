@@ -16,7 +16,7 @@ import {
   buildTripTzTimeline,
   formatMinutes,
 } from "@triplot/shared/schedule";
-import { resolveInboundDraft } from "@triplot/shared/data/inbox";
+import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
 import {
   draftEventId,
   draftIdFromEventId,
@@ -278,13 +278,22 @@ export function ScheduleSection({
 
   // 取り込み下書きの確定。EventForm 成功時に呼ばれ、下書きを confirmed に
   // する（ImportDraftRow と同じ resolveInboundDraft）。
+  // 重なった同一店の下書きは1件にまとめて表示しているので、畳んだぶんも
+  // 一緒に解決する（1件だけだと残りが未確定のまま再び現れる）。
+  const draftIdsOf = useCallback(
+    (draftId: string) =>
+      eventDrafts.find((d) => d.id === draftId)?.draftIds ?? [draftId],
+    [eventDrafts],
+  );
   const confirmDraft = useCallback(
     async (draftId: string, eventId?: string) => {
       const supabase = createClient();
-      await resolveInboundDraft(supabase, draftId, "confirmed", { eventId });
+      await resolveInboundDrafts(supabase, draftIdsOf(draftId), "confirmed", {
+        eventId,
+      });
       router.refresh();
     },
-    [router],
+    [router, draftIdsOf],
   );
 
   const t = useTranslations("schedule");
@@ -298,11 +307,11 @@ export function ScheduleSection({
       if (!(await confirmDialog({ title: tImport("dismissDraftTitle") })))
         return;
       const supabase = createClient();
-      await resolveInboundDraft(supabase, draftId, "dismissed");
+      await resolveInboundDrafts(supabase, draftIdsOf(draftId), "dismissed");
       closeForm();
       router.refresh();
     },
-    [router, closeForm, tImport],
+    [router, closeForm, tImport, draftIdsOf],
   );
   const selectedEventId =
     open?.form.mode === "edit"

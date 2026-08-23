@@ -12,7 +12,11 @@ import {
   parseFlightNumber,
 } from "../flight";
 import type { PlaceCandidate } from "../placesSearch";
-import { resolveExpenseTz, type TripTzTimeline } from "../schedule";
+import {
+  formatDayLabel,
+  resolveExpenseTz,
+  type TripTzTimeline,
+} from "../schedule";
 import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
 
@@ -20,6 +24,7 @@ import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
+import { resolveDraftOverlaps } from "./draftOverlap";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
 export type PendingDraft = { id: string; kind: string; payload: unknown };
@@ -117,6 +122,10 @@ export type EventDraftPrefill = {
 // 予定下書き1件 → 予定フォーム（create モード）の事前入力一式。
 export type EventDraftItem = {
   id: string;
+  // この項目が表す下書き行の id 一式。重なった同一店の下書きをまとめた時に
+  // 2件以上になる。確定時は**全部**を解決しないと、畳んだ側が未確定のまま
+  // 残って再び現れる（resolveDraftOverlaps 参照）。
+  draftIds: string[];
   labelParts: string[];
   date: string; // 開始日
   time: string; // 開始時刻（不明なら "09:00"）
@@ -253,7 +262,7 @@ export function deriveEventDraftItems(
     reservationRefLabel: (ref: string) => string;
   },
 ): EventDraftItem[] {
-  return (drafts ?? [])
+  const items = (drafts ?? [])
     .filter((d) => d.kind === "event")
     .flatMap((d) => {
       const ev = d.payload as unknown as StoredEventDraft | null;
@@ -280,9 +289,10 @@ export function deriveEventDraftItems(
         const flightHeadline = flightTitle(f);
         const item: EventDraftItem = {
           id: d.id,
+          draftIds: [d.id],
           labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
           date: depDate ?? ev.startDate,
-          time: depTime ?? (ev.startTime ?? "09:00"),
+          time: depTime ?? ev.startTime ?? "09:00",
           tz,
           prefill: {
             kind3: "transit",
@@ -292,8 +302,14 @@ export function deriveEventDraftItems(
             endTime: arrTime ?? null,
             departTz: f.departure.lat === null ? f.departure.timeZone : null,
             arriveTz: f.arrival.lat === null ? f.arrival.timeZone : null,
-            place: draftPlaceFromFlightEndpoint(f.departure, ev.resolvedDeparturePlace),
-            endPlace: draftPlaceFromFlightEndpoint(f.arrival, ev.resolvedArrivalPlace),
+            place: draftPlaceFromFlightEndpoint(
+              f.departure,
+              ev.resolvedDeparturePlace,
+            ),
+            endPlace: draftPlaceFromFlightEndpoint(
+              f.arrival,
+              ev.resolvedArrivalPlace,
+            ),
             autoResolvePlace: null,
             flightNumber: null,
           },
@@ -347,6 +363,7 @@ export function deriveEventDraftItems(
       return [
         {
           id: d.id,
+          draftIds: [d.id],
           labelParts: [title, whenLabel],
           date: ev.startDate,
           time: ev.startTime ?? "09:00",
@@ -376,6 +393,13 @@ export function deriveEventDraftItems(
         },
       ];
     });
+
+  // 重なった未確定どうしを整える（同じ場所はまとめ、違う場所は中点で切る）。
+  // 派生の最後に一度だけ通す＝web も RN も同じ結果になる。
+  return resolveDraftOverlaps(
+    items,
+    (date, time) => `${formatDayLabel(date, ctx.locale)} ${time}`,
+  );
 }
 
 // カレンダー上の疑似イベント id（実イベントと衝突しない）。
