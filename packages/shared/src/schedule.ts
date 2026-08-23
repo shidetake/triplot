@@ -57,9 +57,7 @@ const WEEKDAY_JA = ["日", "月", "火", "水", "木", "金", "土"] as const;
 
 /** "YYYY-MM-DDTHH:MM[:SS]" → 日付文字列と「0時からの分」 */
 export function parseWall(s: string): { date: string; minutes: number } {
-  const m = s.match(
-    /^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/,
-  );
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2}))?/);
   if (!m) return { date: s.slice(0, 10), minutes: 0 };
   const [, , , , hh, mm] = m;
   return {
@@ -115,7 +113,9 @@ export function wallClockToUtcMs(wall: string, tz: string): number {
     minute: "2-digit",
     second: "2-digit",
   });
-  const p = Object.fromEntries(fmt.formatToParts(asUtc).map((x) => [x.type, x.value]));
+  const p = Object.fromEntries(
+    fmt.formatToParts(asUtc).map((x) => [x.type, x.value]),
+  );
   const readBackAsUtc = Date.UTC(
     Number(p.year),
     Number(p.month) - 1,
@@ -146,7 +146,9 @@ export function utcMsToWallClock(ms: number, tz: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
-  const p = Object.fromEntries(fmt.formatToParts(ms).map((x) => [x.type, x.value]));
+  const p = Object.fromEntries(
+    fmt.formatToParts(ms).map((x) => [x.type, x.value]),
+  );
   return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
 }
 
@@ -155,7 +157,9 @@ export function utcMsToWallClock(ms: number, tz: string): string {
  * kind='transit' の startTz は DB 制約で必ず非null（呼び出し側は transit で
  * フィルタ済みの配列を渡す前提）。
  */
-function sortTransitsByDepartureInstant(events: ScheduleEvent[]): ScheduleEvent[] {
+function sortTransitsByDepartureInstant(
+  events: ScheduleEvent[],
+): ScheduleEvent[] {
   return [...events].sort(
     (a, b) =>
       wallClockToUtcMs(a.startAt, a.startTz as string) -
@@ -385,8 +389,18 @@ export function buildSchedule(
       // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
       depCol = depReused
         ? lastCol!
-        : { key: `t-${t.id}-dep`, date: departDate, tz: startTz, role: "transit-depart" };
-      arrCol = { key: `t-${t.id}-arr`, date: arriveDate, tz: arriveTz, role: "transit-arrive" };
+        : {
+            key: `t-${t.id}-dep`,
+            date: departDate,
+            tz: startTz,
+            role: "transit-depart",
+          };
+      arrCol = {
+        key: `t-${t.id}-arr`,
+        date: arriveDate,
+        tz: arriveTz,
+        role: "transit-arrive",
+      };
       const label =
         departDate === arriveDate
           ? formatDayLabel(departDate, locale)
@@ -409,7 +423,12 @@ export function buildSchedule(
       const sameDay = arriveDate === departDate;
       depCol = depReused
         ? lastCol!
-        : pushDay(departDate, startTz, `${startTz} → ${arriveTz}`, sameDay ? 1 : 2);
+        : pushDay(
+            departDate,
+            startTz,
+            `${startTz} → ${arriveTz}`,
+            sameDay ? 1 : 2,
+          );
       arrCol = sameDay ? depCol : pushDay(arriveDate, arriveTz);
     }
 
@@ -660,17 +679,15 @@ export function buildSchedule(
     if (cluster.length) flush();
   }
 
-  const placedTransits: PlacedTransit[] = [...transitMeta.values()].map(
-    (m) => {
-      const lanes = transitLanes.get(m.event.id) ?? {
-        departLane: 0,
-        departLaneCount: 1,
-        arriveLane: 0,
-        arriveLaneCount: 1,
-      };
-      return { ...m, ...lanes };
-    },
-  );
+  const placedTransits: PlacedTransit[] = [...transitMeta.values()].map((m) => {
+    const lanes = transitLanes.get(m.event.id) ?? {
+      departLane: 0,
+      departLaneCount: 1,
+      arriveLane: 0,
+      arriveLaneCount: 1,
+    };
+    return { ...m, ...lanes };
+  });
 
   // 4) 終日／連日バー（上部帯）。列index範囲＋行スタック
   // 期間が長いほど上の段に来るよう「長さ DESC → 開始日 ASC」でソート。
@@ -757,14 +774,13 @@ export function buildTripTzTimeline(
 ): TripTzTimeline {
   const transits = sortTransitsByDepartureInstant(
     events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
-  )
-    .map((t) => ({
-      transitId: t.id,
-      departDate: parseWall(t.startAt).date,
-      arriveDate: parseWall(t.endAt as string).date,
-      departTz: t.startTz as string,
-      arriveTz: t.endTz as string,
-    }));
+  ).map((t) => ({
+    transitId: t.id,
+    departDate: parseWall(t.startAt).date,
+    arriveDate: parseWall(t.endAt as string).date,
+    departTz: t.startTz as string,
+    arriveTz: t.endTz as string,
+  }));
   return { fallbackTz: defaultTimezone ?? "UTC", transits };
 }
 
@@ -787,6 +803,54 @@ export type TzResolution =
  */
 export function dedupeTzCandidates(options: TzCandidate[]): TzCandidate[] {
   return options.filter((o, i, a) => a.findIndex((x) => x.tz === o.tz) === i);
+}
+
+/** 指定日の正午時点での、その TZ の UTC オフセット（時間）。DST もそのまま反映される。 */
+function tzOffsetHours(tz: string, onDate: string): number {
+  const wall = `${onDate}T12:00:00`;
+  return (Date.parse(`${wall}Z`) - wallClockToUtcMs(wall, tz)) / 3_600_000;
+}
+
+/** 経度差・時差は円環なので、差を [-12, 12] に畳んでから絶対値を取る（日付変更線対策）。 */
+function circularHourGap(a: number, b: number): number {
+  let d = a - b;
+  while (d > 12) d -= 24;
+  while (d < -12) d += 24;
+  return Math.abs(d);
+}
+
+/**
+ * 移動日の TZ 候補から、場所の経度に一番合うものを選ぶ。
+ *
+ * 移動日は同じ暦日に2つの TZ が並ぶので、壁時計だけでは «どちら側の 15:12 か»
+ * を決められない（だからフォームが選ばせている）。だが場所が分かっていれば
+ * 一意に決まる: 経度 ÷ 15 が太陽時のオフセットで、それに一番近い候補が
+ * その場所の側。
+ *
+ *   Hana Koa Brewing  経度 -157.9 → -10.5h → Pacific/Honolulu(-10) を選ぶ
+ *                                            （Asia/Tokyo(+9) ではない）
+ *
+ * TZ データベースも通信も要らず、候補が «飛行機で移動した2地点» である以上
+ * 十分に離れているので、粗い推定で足りる。判定できない時は null を返し、
+ * 呼び出し側が従来どおり先頭候補にフォールバックする。
+ */
+export function pickTzByLongitude(
+  options: TzCandidate[],
+  lng: number | null | undefined,
+  onDate: string,
+): TzCandidate | null {
+  if (lng == null || !Number.isFinite(lng) || options.length === 0) return null;
+  const solar = lng / 15;
+  let best: TzCandidate | null = null;
+  let bestGap = Infinity;
+  for (const o of options) {
+    const gap = circularHourGap(solar, tzOffsetHours(o.tz, onDate));
+    if (gap < bestGap) {
+      bestGap = gap;
+      best = o;
+    }
+  }
+  return best;
 }
 
 /**

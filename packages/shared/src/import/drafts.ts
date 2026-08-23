@@ -14,6 +14,7 @@ import {
 import type { PlaceCandidate } from "../placesSearch";
 import {
   formatDayLabel,
+  pickTzByLongitude,
   resolveExpenseTz,
   type TripTzTimeline,
 } from "../schedule";
@@ -268,8 +269,18 @@ export function deriveEventDraftItems(
       const ev = d.payload as unknown as StoredEventDraft | null;
       if (!ev) return [];
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
+      // 移動日は候補が2つ出る。場所が解決できていれば、その経度から
+      // どちら側かを当てて初期選択にする（フォームでは変更できる）。
+      // 当てられない時だけ従来どおり先頭候補。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
-      const tz = res.kind === "single" ? res.tz : res.options[0].tz;
+      const tz =
+        res.kind === "single"
+          ? res.tz
+          : (pickTzByLongitude(
+              res.options,
+              ev.resolvedNamedPlace?.lng,
+              ev.startDate,
+            )?.tz ?? res.options[0].tz);
 
       // 事前解決済みのフライト（apps/web/lib/import/process.ts の
       // prefetchFlights が抽出直後に仕込む）があれば、フライト番号機能で
