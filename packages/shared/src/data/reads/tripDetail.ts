@@ -25,12 +25,16 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
       .eq("id", tripId)
       .single(),
     sb
+      // 退会した人（left_at あり）も返す。過去の費用の支払者や割り勘の対象、
+      // 予定の参加者は退会後も記録として残るので、名前と色を引けないと
+      // 支払者が空欄になり、割り勘の人数が実際より少なく表示される。
+      // 「今この旅行にいる人」が要る側（ピッカー・全員参加の判定）は
+      // left_at で絞る。
       .from("trip_members")
       .select(
-        "id, user_id, display_name, kind, color, is_admin, users(avatar_url)",
+        "id, user_id, display_name, kind, color, is_admin, left_at, users(avatar_url)",
       )
       .eq("trip_id", tripId)
-      .is("left_at", null)
       .order("joined_at", { ascending: true }),
     sb
       .from("expense_categories")

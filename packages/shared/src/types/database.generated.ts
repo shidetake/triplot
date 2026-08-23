@@ -789,7 +789,7 @@ export type Database = {
           kind: string
           left_at: string | null
           trip_id: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           color?: number | null
@@ -800,7 +800,7 @@ export type Database = {
           kind: string
           left_at?: string | null
           trip_id: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           color?: number | null
@@ -811,7 +811,7 @@ export type Database = {
           kind?: string
           left_at?: string | null
           trip_id?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: [
           {
@@ -1033,6 +1033,7 @@ export type Database = {
         Args: { p_category_key: string }
         Returns: string
       }
+      delete_account: { Args: never; Returns: undefined }
       dismiss_inbound_email: { Args: { p_id: string }; Returns: undefined }
       dismiss_place_location: {
         Args: { p_place_id: string }

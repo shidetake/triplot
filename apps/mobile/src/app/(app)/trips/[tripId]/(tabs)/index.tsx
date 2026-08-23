@@ -81,7 +81,9 @@ export default function ScheduleTab() {
   const memberHueById = new Map(
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
-  const activeMemberCount = (data.members ?? []).length;
+  const activeMemberCount = (data.members ?? []).filter(
+    (m) => m.left_at === null,
+  ).length;
   // ブロックに場所名を出す（web の schedule-section.placeName と同じ解決）。
   const placeNameById = new Map(
     (data.placesRaw ?? []).map((p) => [p.id, p.name]),

@@ -52,7 +52,10 @@ export default function ExpenseFormRoute() {
   );
   const expenses = deriveOrderedExpenses(data.expensesRaw, tzTimeline);
   const averageRates = deriveAverageRates(expenses, defaultCurrency);
-  const members = (data.members ?? []).map((m) => ({
+  // 選べるのは今この旅行にいる人だけ（退会者は候補に出さない）。
+  const members = (data.members ?? [])
+    .filter((m) => m.left_at === null)
+    .map((m) => ({
     id: m.id,
     display_name: m.display_name,
     color: m.color,

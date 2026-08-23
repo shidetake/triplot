@@ -152,7 +152,12 @@
   },
   "account": {
     "account": "アカウント",
-    "signOut": "ログアウト"
+    "signOut": "ログアウト",
+    "deleteAccount": "アカウントを削除",
+    "deleteConfirmTitle": "アカウントを削除しますか？",
+    "deleteConfirmBody": "ログイン情報・プロフィール・あなただけに見える予定や費用は消えます。\n共有した旅行の予定・場所・費用は、割り勘の記録として旅行に残ります。\n元に戻せません。",
+    "deleteConfirmLabel": "削除",
+    "deleteFailed": "削除に失敗しました: {message}"
   },
   "schedule": {
     "heading": "スケジュール",

@@ -7,7 +7,10 @@ import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
-import type { StoredEventDraft, StoredReceipt } from "@triplot/shared/import/drafts";
+import type {
+  StoredEventDraft,
+  StoredReceipt,
+} from "@triplot/shared/import/drafts";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import {
   resolveAirportPlace,
@@ -19,11 +22,7 @@ import {
   isLikelyUnsubscribeUrl,
   isUnknownReceiptHostUrl,
 } from "./links";
-import {
-  type DraftCandidate,
-  findMerge,
-  selectMergeCandidates,
-} from "./merge";
+import { type DraftCandidate, findMerge, selectMergeCandidates } from "./merge";
 import { appendLinkText, gatherReceiptText } from "./pipeline";
 import {
   extractionGainedDetail,
@@ -48,7 +47,9 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 // 月初（UTC）の ISO 文字列。
 function monthStartIso(): string {
   const d = new Date();
-  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)).toISOString();
+  return new Date(
+    Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1),
+  ).toISOString();
 }
 
 // 抽出に渡す候補旅行（在籍中の旅行）。LLM が tripId を推論する材料。
@@ -91,8 +92,7 @@ function extractionFromDrafts(
   rows: { kind: string; payload: unknown }[],
 ): Extraction {
   const receipt = rows.find((r) => r.kind === "expense")?.payload as
-    | Receipt
-    | undefined;
+    Receipt | undefined;
   return {
     receipt: receipt ?? null,
     events: rows
@@ -127,8 +127,11 @@ async function replacePendingDrafts(
       .filter((d) => d.kind === "event")
       .map((d) => stableStringify(d.payload)),
   );
-  const rows: { email_id: string; kind: string; payload: Receipt | EventDraft }[] =
-    [];
+  const rows: {
+    email_id: string;
+    kind: string;
+    payload: Receipt | EventDraft;
+  }[] = [];
   if (x.receipt && !hasConfirmedExpense) {
     rows.push({ email_id: emailId, kind: "expense", payload: x.receipt });
   }
@@ -210,18 +213,44 @@ async function tryMerge(
   return findMerge(EXTRACT_MODEL, { extraction, text }, candidates);
 }
 
-// 自動リトライ: レート制限など一時的な失敗のみ対象（パース不能等は恒久失敗で再試行
-// しない）。次回時刻は 429 の Retry-After を優先し、無ければ exp backoff（1min から
-// 倍々、6h 上限）。MAX_RETRIES 回で打ち切り。実発火は Cloudflare の毎分 cron。
+// 自動リトライ。失敗を**性質で分けて**扱う（詳細は docs/design/import-flow.md）。
+//
+//   rate_limit  429。時間で解ける。バックオフしない＝毎分の cron で同条件で再挑戦し、
+//               通る分だけ通す（制限そのものが調速機になる）。行の落ち度ではないので
+//               retry_count を増やさない。
+//   transient   5xx・ネットワーク。相手が弱っているので指数バックオフで優しくする。
+//               打ち切らない（障害が2時間続いたらレシートを失う、では困る）。
+//   permanent   パース不能・費用も予定も無い等。その行固有なので即打ち切り。
+//   unknown     分類できないもの。一時的として扱うが MAX_RETRIES で蓋をする
+//               （永続的な失敗を「再試行します」と 90 日間言い続けないため）。
+//
+// 打ち切らない経路の最終的な回収は expire-inbound（90 日で削除）が担う。
+export type FailureKind = "rate_limit" | "transient" | "permanent" | "unknown";
+
 const MAX_RETRIES = 6;
 const RETRY_BASE_MS = 60_000;
 const RETRY_MAX_MS = 6 * 3_600_000;
 
-function isRetryable(msg: string): boolean {
-  return /rate.?limit|free tier|quota|too many requests|429|503|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(
-    msg,
-  );
+// ステータスコードで判定する。メッセージの正規表現だと、レート制限とクレジット枯渇が
+// どちらも "free tier" / "quota" を含むため区別できない（実際に区別できていなかった）。
+// APICallError が取れないケースだけ文字列に落ちる。
+export function classifyFailure(err: unknown): FailureKind {
+  const status = APICallError.isInstance(err) ? err.statusCode : undefined;
+  if (status === 429) return "rate_limit";
+  if (status !== undefined) {
+    if (status >= 500) return "transient";
+    if (status === 408) return "transient";
+    return "permanent";
+  }
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (/rate.?limit|too many requests|\b429\b/i.test(msg)) return "rate_limit";
+  if (
+    /\b5\d\d\b|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(msg)
+  )
+    return "transient";
+  return "unknown";
 }
+
 function backoffMs(retryCount: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** retryCount, RETRY_MAX_MS);
 }
@@ -235,11 +264,6 @@ function parseRetryAfterMs(err: unknown): number | null {
   if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
   const at = Date.parse(ra);
   return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
-}
-
-// 次回リトライまでの待ち（Retry-After 優先、上限 RETRY_MAX_MS）。
-function nextRetryMs(err: unknown, attempt: number): number {
-  return Math.min(parseRetryAfterMs(err) ?? backoffMs(attempt), RETRY_MAX_MS);
 }
 
 // LLM が見つけた明細リンク(detailUrl)のうち、まだ許可リストに無いホストを学習用に
@@ -301,7 +325,9 @@ async function fetchTripBiasCenter(
     .not("lat", "is", null)
     .not("lng", "is", null);
   const points = (data ?? [])
-    .filter((p): p is { lat: number; lng: number } => p.lat != null && p.lng != null)
+    .filter(
+      (p): p is { lat: number; lng: number } => p.lat != null && p.lng != null,
+    )
     .map((p) => ({ lat: p.lat, lng: p.lng }));
   return dominantCenter(points);
 }
@@ -330,7 +356,8 @@ async function fetchBiasCenterForDate(
       .order("end_at", { ascending: false })
       .limit(1);
     // end_place_id が null は「到着地は出発地と同じ」の意味（NULL = 開始と同じ）。
-    const placeId = transits?.[0]?.end_place_id ?? transits?.[0]?.start_place_id;
+    const placeId =
+      transits?.[0]?.end_place_id ?? transits?.[0]?.start_place_id;
     if (placeId) {
       const { data: place } = await supabase
         .from("places")
@@ -372,7 +399,11 @@ async function prefetchFlights(
       const parsed = parseFlightNumber(ev.vehicleNumber);
       if (parsed) {
         try {
-          const outcome = await lookupFlight(api, parsed.normalized, ev.startDate);
+          const outcome = await lookupFlight(
+            api,
+            parsed.normalized,
+            ev.startDate,
+          );
           if (outcome.kind === "found") {
             const places = await resolveFlightPlaces(outcome.flight);
             result.push({
@@ -397,7 +428,11 @@ async function prefetchFlights(
     // 誤った店に解決するより、素直に「解決できない」方が安全）。
     if (placesApiKey && ev.location) {
       try {
-        const biasCenter = await fetchBiasCenterForDate(supabase, tripId, ev.startDate);
+        const biasCenter = await fetchBiasCenterForDate(
+          supabase,
+          tripId,
+          ev.startDate,
+        );
         if (biasCenter) {
           const resolved = await resolveNamedPlace(ev.location, null, {
             apiKey: placesApiKey,
@@ -432,7 +467,8 @@ async function resolveReceiptPlace(
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
-  if (!apiKey || !receipt.merchant || receipt.category === "渡航") return receipt;
+  if (!apiKey || !receipt.merchant || receipt.category === "渡航")
+    return receipt;
   try {
     const biasCenter = await fetchBiasCenterForDate(
       supabase,
@@ -440,10 +476,14 @@ async function resolveReceiptPlace(
       receipt.serviceDate ?? receipt.date,
     );
     if (!biasCenter) return receipt;
-    const resolved = await resolveNamedPlace(receipt.merchant, receipt.location, {
-      apiKey,
-      biasCenter,
-    });
+    const resolved = await resolveNamedPlace(
+      receipt.merchant,
+      receipt.location,
+      {
+        apiKey,
+        biasCenter,
+      },
+    );
     return resolved ? { ...receipt, resolvedPlace: resolved } : receipt;
   } catch {
     return receipt;
@@ -550,7 +590,11 @@ async function runExtraction(
     // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
     const merged = {
-      receipt: await resolveReceiptPlace(supabase, merge.merged.receipt, tripId),
+      receipt: await resolveReceiptPlace(
+        supabase,
+        merge.merged.receipt,
+        tripId,
+      ),
       events: await prefetchFlights(supabase, merge.merged.events, tripId),
     };
     await replacePendingDrafts(supabase, merge.targetId, merged);
@@ -612,15 +656,22 @@ async function attemptExtraction(
     await runExtraction(supabase, emailId, userId, raw);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "extract failed";
+    const kind = classifyFailure(e);
+    // permanent 以外は再試行対象。rate_limit は Retry-After を尊重し、無ければ
+    // 素の 1 分（バックオフしない＝次の cron で同条件で再挑戦）。
+    const delay =
+      kind === "rate_limit"
+        ? Math.min(parseRetryAfterMs(e) ?? RETRY_BASE_MS, RETRY_MAX_MS)
+        : backoffMs(0);
     await supabase
       .from("inbound_emails")
       .update({
         status: "error",
         extract_error: msg,
-        // 解禁時刻は Retry-After 優先（無ければ exp backoff）。
-        next_retry_at: isRetryable(msg)
-          ? new Date(Date.now() + nextRetryMs(e, 0)).toISOString()
-          : null,
+        next_retry_at:
+          kind === "permanent"
+            ? null
+            : new Date(Date.now() + delay).toISOString(),
       })
       .eq("id", emailId);
   }
@@ -661,10 +712,18 @@ export async function extractInBackground(
 // 期限の来たリトライ対象（status='error' かつ next_retry_at <= now）を再抽出する。
 // Cloudflare の毎分 cron（retry-extract）から呼ぶ。成功すれば runExtraction が status を
 // 進める。再び失敗したらバックオフを延ばし、上限/恒久失敗で打ち切る。
+// 1 回の drain の結果。呼び出し元（cron）が診断ログに使う。
+export type RetryDrainSummary = {
+  attempted: number;
+  succeeded: number;
+  rateLimited: boolean;
+  failed: number;
+};
+
 export async function retryDueErrors(
   supabase: ServiceClient,
   opts: { userId?: string; limit?: number } = {},
-): Promise<void> {
+): Promise<RetryDrainSummary> {
   let q = supabase
     .from("inbound_emails")
     .select("id, user_id, raw, retry_count")
@@ -676,14 +735,51 @@ export async function retryDueErrors(
   if (opts.userId) q = q.eq("user_id", opts.userId);
   const { data: rows } = await q;
 
+  const summary: RetryDrainSummary = {
+    attempted: 0,
+    succeeded: 0,
+    rateLimited: false,
+    failed: 0,
+  };
+
   for (const row of rows ?? []) {
     if (!row.raw || !row.user_id) continue;
     const attempt = (row.retry_count ?? 0) + 1;
+    summary.attempted++;
     try {
       await runExtraction(supabase, row.id, row.user_id, row.raw);
+      summary.succeeded++;
     } catch (e) {
       const msg = e instanceof Error ? e.message : "extract failed";
-      const giveUp = attempt >= MAX_RETRIES || !isRetryable(msg);
+      const kind = classifyFailure(e);
+
+      // レート制限に当たったら、この回はここで終わり。残りを投げても同じ 429 が
+      // 返るだけで、行ごとにバックオフを伸ばす罰を配って回ることになる（以前の
+      // 挙動）。期限の来ている行をまとめて押し出して break すれば、次の毎分 cron が
+      // 同じ条件で再挑戦し、**通る分だけ通る**。制限そのものが調速機になるので、
+      // こちらが流量を推定する必要はない。
+      if (kind === "rate_limit") {
+        const delay = Math.min(
+          parseRetryAfterMs(e) ?? RETRY_BASE_MS,
+          RETRY_MAX_MS,
+        );
+        const until = new Date(Date.now() + delay).toISOString();
+        await supabase
+          .from("inbound_emails")
+          .update({ extract_error: msg, next_retry_at: until })
+          .eq("status", "error")
+          .not("next_retry_at", "is", null)
+          .lte("next_retry_at", new Date().toISOString());
+        summary.rateLimited = true;
+        return summary;
+      }
+
+      // transient は打ち切らない（障害が続いてもレシートを失わない）。retry_count は
+      // バックオフの指数として使い、6h で頭打ち。最終的な回収は 90 日の expire。
+      // unknown だけは MAX_RETRIES で蓋をする（誤分類の保険）。
+      summary.failed++;
+      const giveUp =
+        kind === "permanent" || (kind === "unknown" && attempt >= MAX_RETRIES);
       await supabase
         .from("inbound_emails")
         .update({
@@ -691,11 +787,12 @@ export async function retryDueErrors(
           extract_error: msg,
           next_retry_at: giveUp
             ? null
-            : new Date(Date.now() + nextRetryMs(e, attempt)).toISOString(),
+            : new Date(Date.now() + backoffMs(attempt)).toISOString(),
         })
         .eq("id", row.id);
     }
   }
+  return summary;
 }
 
 // 月間上限で保留された over_quota 行を、枠が空いた分だけ抽出する（翌月の自動再抽出）。
@@ -723,7 +820,8 @@ export async function reprocessOverQuota(
     if (!row.raw || !row.user_id) continue;
     let remaining = remainingByUser.get(row.user_id);
     if (remaining === undefined) {
-      remaining = MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
+      remaining =
+        MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
     }
     if (remaining <= 0) {
       remainingByUser.set(row.user_id, 0);

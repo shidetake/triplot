@@ -80,7 +80,8 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   const vCurrency = currency ?? (trip.default_currency as Currency);
   const vMyName = myName ?? me.display_name;
 
-  const members = data.members ?? [];
+  // 管理対象は今この旅行にいる人だけ（退会者は既に外れている）。
+  const members = (data.members ?? []).filter((m) => m.left_at === null);
   const hasExpenses = (data.expensesRaw ?? []).length > 0;
 
   // 旅行情報（タイトル・日程・通貨）に変更がある時だけ保存を有効に

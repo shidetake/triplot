@@ -15,7 +15,7 @@ import {
 import { useTranslations } from "use-intl";
 
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
-import { updateDisplayName } from "@triplot/shared/data/account";
+import { deleteAccount, updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
 import {
@@ -24,6 +24,7 @@ import {
   InfoIcon,
   MapIcon,
   LogOutIcon,
+  TrashIcon,
   MessageSquareIcon,
   SaveIcon,
 } from "@/components/icons";
@@ -175,6 +176,46 @@ export function SettingsSheet({
     ]);
   };
 
+  // アカウント削除。共有した内容が旅行に残ることを confirm の本文で明示する
+  // （消えると誤解されるのも、黙って残すのも困る）。
+  const [deleting, setDeleting] = useState(false);
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      t("account.deleteConfirmTitle"),
+      t("account.deleteConfirmBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("account.deleteConfirmLabel"),
+          style: "destructive",
+          onPress: () => {
+            void (async () => {
+              setDeleting(true);
+              const {
+                data: { user },
+              } = await supabase.auth.getUser();
+              if (!user) {
+                setDeleting(false);
+                return;
+              }
+              const result = await deleteAccount(supabase, user.id);
+              if (!result.ok) {
+                setDeleting(false);
+                Alert.alert(
+                  t("account.deleteFailed", { message: result.error }),
+                );
+                return;
+              }
+              onDone();
+              // アカウントはもう無いので、残っているセッションを捨てる。
+              void signOut();
+            })();
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <View style={styles.content}>
       <SheetTitle>{t("settings.heading")}</SheetTitle>
@@ -238,9 +279,7 @@ export function SettingsSheet({
         {onOpenTrip && (
           <Pressable onPress={onOpenTrip} style={styles.navRow}>
             <MapIcon size={18} color={theme.mutedForeground} />
-            <Text style={styles.navRowLabel}>
-              {t("tripActions.editTrip")}
-            </Text>
+            <Text style={styles.navRowLabel}>{t("tripActions.editTrip")}</Text>
             <ChevronIcon size={16} color={theme.subtleForeground} />
           </Pressable>
         )}
@@ -270,86 +309,119 @@ export function SettingsSheet({
         <LogOutIcon size={16} color={theme.destructiveText} />
         <Text style={styles.signOutLabel}>{t("account.signOut")}</Text>
       </Pressable>
+
+      {/* アカウント削除。App Store Review Guideline 5.1.1(v) がアプリ内での
+          削除経路を求めている。取り消せないので、ログアウトの下に離して置き
+          Alert で確認を挟む（iOS の流儀＝破壊的確認は Alert / ActionSheet）。 */}
+      <Pressable
+        onPress={handleDeleteAccount}
+        disabled={deleting}
+        style={[styles.deleteAccountButton, deleting && styles.busy]}
+      >
+        <TrashIcon size={16} color={theme.destructiveText} />
+        <Text style={styles.signOutLabel}>{t("account.deleteAccount")}</Text>
+      </Pressable>
     </View>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  content: { paddingHorizontal: 16, gap: 16 },
-  email: { fontSize: 12, color: t.mutedForeground },
-  profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
-  grow: { flex: 1 },
-  // 自分のアバターは中立 zinc（メンバー色 hue とは別系統。web の selfAvatarClass と同じ）。
-  avatarButton: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: t.fgAlpha(0.1),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarImage: { width: 64, height: 64, borderRadius: 32 },
-  avatarInitial: { fontSize: 20, fontWeight: "500", color: t.mutedForeground },
-  avatarEditBadge: {
-    position: "absolute",
-    right: -2,
-    top: -2,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: t.primary,
-    borderWidth: 2,
-    borderColor: t.background,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
-  hint: { fontSize: 12, color: t.mutedForeground, marginTop: 6 },
-  input: {
-    height: 36,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    fontSize: 14,
-    color: t.foreground,
-  },
-  nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  // 入力と同じ高さ 36px の正方アイコンボタン（web の size="icon" h-9 w-9 と同形）。
-  saveButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 6,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  disabled: { opacity: 0.5 },
-  // iOS 設定流のドリルイン行（edit-trip-sheet の navRow と同形）。
-  navList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: t.fgAlpha(0.08),
-  },
-  navRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: t.fgAlpha(0.08),
-  },
-  navRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
-  signOutButton: {
-    height: 40,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: t.destructiveBorder,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: 6,
-    marginTop: 24,
-  },
-  signOutLabel: { fontSize: 14, fontWeight: "500", color: t.destructiveText },
-});
+    content: { paddingHorizontal: 16, gap: 16 },
+    email: { fontSize: 12, color: t.mutedForeground },
+    profileRow: { flexDirection: "row", alignItems: "center", gap: 16 },
+    grow: { flex: 1 },
+    // 自分のアバターは中立 zinc（メンバー色 hue とは別系統。web の selfAvatarClass と同じ）。
+    avatarButton: {
+      width: 64,
+      height: 64,
+      borderRadius: 32,
+      backgroundColor: t.fgAlpha(0.1),
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    avatarImage: { width: 64, height: 64, borderRadius: 32 },
+    avatarInitial: {
+      fontSize: 20,
+      fontWeight: "500",
+      color: t.mutedForeground,
+    },
+    avatarEditBadge: {
+      position: "absolute",
+      right: -2,
+      top: -2,
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: t.primary,
+      borderWidth: 2,
+      borderColor: t.background,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    label: {
+      fontSize: 14,
+      fontWeight: "500",
+      marginBottom: 4,
+      color: t.foreground,
+    },
+    hint: { fontSize: 12, color: t.mutedForeground, marginTop: 6 },
+    input: {
+      height: 36,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      fontSize: 14,
+      color: t.foreground,
+    },
+    nameRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    // 入力と同じ高さ 36px の正方アイコンボタン（web の size="icon" h-9 w-9 と同形）。
+    saveButton: {
+      width: 36,
+      height: 36,
+      borderRadius: 6,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    disabled: { opacity: 0.5 },
+    // iOS 設定流のドリルイン行（edit-trip-sheet の navRow と同形）。
+    navList: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.fgAlpha(0.08),
+    },
+    navRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 12,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.08),
+    },
+    navRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
+    signOutButton: {
+      height: 40,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 24,
+    },
+    signOutLabel: { fontSize: 14, fontWeight: "500", color: t.destructiveText },
+    deleteAccountButton: {
+      height: 40,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 6,
+      marginTop: 8,
+    },
+    busy: { opacity: 0.5 },
+  });

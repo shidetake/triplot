@@ -92,3 +92,33 @@ export async function backfillProfileFromIdentities(
   if (updateError) return err(updateError.message);
   return ok(undefined);
 }
+
+// アカウントの削除（App Store Review Guideline 5.1.1(v)）。
+//
+// 本体は delete_account() RPC が1トランザクションでやる。ここが持つのは
+// **アバターの削除だけ**で、これは Supabase が storage.objects への直接 DELETE を
+// 禁じており（Storage API 経由でしか消せない）RPC の中に入れられないため。
+//
+// 順序は「アバター → RPC」。先にアバターを消すのは、失敗したら中断して
+// アカウントを残せるから。逆順だと、消えたアカウントのアバターだけが
+// バケットに取り残される。
+export async function deleteAccount(
+  sb: DB,
+  userId: string,
+): Promise<Result<void>> {
+  const { data: files, error: listError } = await sb.storage
+    .from("avatars")
+    .list(userId);
+  if (listError) return err(listError.message);
+
+  if (files && files.length > 0) {
+    const { error } = await sb.storage
+      .from("avatars")
+      .remove(files.map((f) => `${userId}/${f.name}`));
+    if (error) return err(error.message);
+  }
+
+  const { error } = await sb.rpc("delete_account");
+  if (error) return err(error.message);
+  return ok(undefined);
+}

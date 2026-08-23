@@ -152,7 +152,12 @@
   },
   "account": {
     "account": "Account",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "deleteAccount": "Delete account",
+    "deleteConfirmTitle": "Delete your account?",
+    "deleteConfirmBody": "Your sign-in, profile, and anything visible only to you will be deleted.\nShared plans, places, and expenses stay in the trip as part of the settlement record.\nThis cannot be undone.",
+    "deleteConfirmLabel": "Delete",
+    "deleteFailed": "Could not delete the account: {message}"
   },
   "schedule": {
     "heading": "Schedule",

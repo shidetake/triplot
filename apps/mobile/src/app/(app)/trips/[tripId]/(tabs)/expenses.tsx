@@ -85,6 +85,8 @@ export default function ExpensesTab() {
   );
   const expenses = deriveOrderedExpenses(data.expensesRaw, tzTimeline);
   const averageRates = deriveAverageRates(expenses, defaultCurrency);
+  // 退会者も含む全員。支払者名と割り勘の対象は退会後も記録として残るので
+  // ここで絞ると支払者が空欄になり、精算の金額も釣り合わなくなる。
   const members: MemberLite[] = (data.members ?? []).map((m) => ({
     id: m.id,
     display_name: m.display_name,
