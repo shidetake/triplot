@@ -103,7 +103,7 @@ const expenseCtx = {
 };
 
 describe("deriveExpenseDraftItems", () => {
-  it("支払日の古い順に並べる（同じ日はレシートの時刻順）", () => {
+  it("使う日の古い順に並べる（同じ日はレシートの時刻順）", () => {
     // 取り込んだ順（inbound_drafts の created_at）ではなく、旅程の順で
     // 並んでほしい。まとめて転送するとメールの到着順は旅程と無関係になる。
     const items = deriveExpenseDraftItems(
@@ -116,6 +116,30 @@ describe("deriveExpenseDraftItems", () => {
       expenseCtx,
     );
     expect(items.map((i) => i.id)).toEqual(["d4", "d3", "d2", "d1"]);
+  });
+
+  it("航空券・宿は支払日でなく使う日（serviceDate）の位置に並ぶ", () => {
+    // 実データ: 2025-11-28 購入・2026-05-04 搭乗の航空券。支払日で並べると
+    // 旅程のずっと手前（一覧の先頭）に飛んでしまう。
+    const items = deriveExpenseDraftItems(
+      [
+        {
+          id: "flight",
+          email_id: "e1",
+          kind: "expense",
+          payload: receipt({ date: "2025-11-28", serviceDate: "2026-05-04" }),
+        },
+        { id: "d1", email_id: "e2", kind: "expense", payload: receipt({ date: "2026-05-01" }) },
+        { id: "d2", email_id: "e3", kind: "expense", payload: receipt({ date: "2026-05-05" }) },
+      ],
+      expenseCtx,
+    );
+    expect(items.map((i) => i.id)).toEqual(["d1", "flight", "d2"]);
+    // 行に出す日付も並べ替えと同じ「使う日」（支払日を出すと並び順と
+    // 食い違って一覧が並んでいないように見える）。
+    expect(items[1].labelParts[2]).toBe("5/4");
+    // 一方、費用に入る日付は支払日のまま。
+    expect(items[1].initialPaidAt).toBe("2025-11-28");
   });
 
   it("カテゴリ名の一致・保存済み場所マッチ・ラベル部品を組み立てる", () => {

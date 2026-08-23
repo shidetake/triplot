@@ -205,6 +205,24 @@ export function deriveExpenseDraftItems(
 ): ExpenseDraftItem[] {
   return (drafts ?? [])
     .filter((d) => d.kind === "expense")
+    // 旅程の順（＝その費用を「使う日」の古い順）。取り込んだ順
+    // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
+    // 並ぶので旅程と関係ない並びになる。
+    //
+    // 並べる基準は serviceDate（航空券の搭乗日・宿のチェックイン日）を優先し、
+    // 無ければ date（支払日）。航空券や宿は旅行の数か月前に買うので、支払日で
+    // 並べると旅程のずっと手前に飛ぶ（実データで 2025-11-28 購入・2026-05-04
+    // 搭乗の航空券が一覧の先頭に来ていた）。同じ日はレシートの時刻順、時刻が
+    // 無いものは同日の先頭。
+    .sort((a, b) => {
+      const ra = a.payload as unknown as StoredReceipt | null;
+      const rb = b.payload as unknown as StoredReceipt | null;
+      const key = (r: StoredReceipt | null) => r?.serviceDate ?? r?.date ?? "";
+      return (
+        key(ra).localeCompare(key(rb)) ||
+        (ra?.time ?? "").localeCompare(rb?.time ?? "")
+      );
+    })
     .flatMap((d) => {
       const r = d.payload as unknown as StoredReceipt | null;
       if (!r) return [];
@@ -236,10 +254,13 @@ export function deriveExpenseDraftItems(
           id: d.id,
           emailId: d.email_id,
           // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
+          // 出すのは**並べ替えに使ったのと同じ日**（使う日）。支払日を出すと、
+          // 航空券（購入日が数か月前）や宿（決済が退室日）の行だけ並び順と
+          // 食い違う日付が出て、一覧が並んでいないように見える。
           labelParts: [
             r.merchant || ctx.unknownMerchantLabel,
             `${r.total} ${r.currency}`,
-            monthDayLabel(r.date),
+            monthDayLabel(r.serviceDate ?? r.date),
           ],
           initialPrice: r.total,
           initialCurrency: currency,
@@ -253,15 +274,7 @@ export function deriveExpenseDraftItems(
           initialTime: r.time ?? undefined,
         },
       ];
-    })
-    // 支払日の古い順。取り込んだ順（inbound_drafts.created_at）だと、まとめて
-    // 転送したメールの到着順で並ぶので旅程と関係ない並びになる。同じ日は
-    // レシートの時刻順、時刻が無いものは同日の先頭に置く。
-    .sort(
-      (a, b) =>
-        a.initialPaidAt.localeCompare(b.initialPaidAt) ||
-        (a.initialTime ?? "").localeCompare(b.initialTime ?? ""),
-    );
+    });
 }
 
 // 事前解決できたフライトの空港を場所の事前入力にする。Google の場所として
