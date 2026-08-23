@@ -210,18 +210,42 @@ async function tryMerge(
   return findMerge(EXTRACT_MODEL, { extraction, text }, candidates);
 }
 
-// 自動リトライ: レート制限など一時的な失敗のみ対象（パース不能等は恒久失敗で再試行
-// しない）。次回時刻は 429 の Retry-After を優先し、無ければ exp backoff（1min から
-// 倍々、6h 上限）。MAX_RETRIES 回で打ち切り。実発火は Cloudflare の毎分 cron。
+// 自動リトライ。失敗を**性質で分けて**扱う（詳細は docs/design/import-flow.md）。
+//
+//   rate_limit  429。時間で解ける。バックオフしない＝毎分の cron で同条件で再挑戦し、
+//               通る分だけ通す（制限そのものが調速機になる）。行の落ち度ではないので
+//               retry_count を増やさない。
+//   transient   5xx・ネットワーク。相手が弱っているので指数バックオフで優しくする。
+//               打ち切らない（障害が2時間続いたらレシートを失う、では困る）。
+//   permanent   パース不能・費用も予定も無い等。その行固有なので即打ち切り。
+//   unknown     分類できないもの。一時的として扱うが MAX_RETRIES で蓋をする
+//               （永続的な失敗を「再試行します」と 90 日間言い続けないため）。
+//
+// 打ち切らない経路の最終的な回収は expire-inbound（90 日で削除）が担う。
+export type FailureKind = "rate_limit" | "transient" | "permanent" | "unknown";
+
 const MAX_RETRIES = 6;
 const RETRY_BASE_MS = 60_000;
 const RETRY_MAX_MS = 6 * 3_600_000;
 
-function isRetryable(msg: string): boolean {
-  return /rate.?limit|free tier|quota|too many requests|429|503|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(
-    msg,
-  );
+// ステータスコードで判定する。メッセージの正規表現だと、レート制限とクレジット枯渇が
+// どちらも "free tier" / "quota" を含むため区別できない（実際に区別できていなかった）。
+// APICallError が取れないケースだけ文字列に落ちる。
+export function classifyFailure(err: unknown): FailureKind {
+  const status = APICallError.isInstance(err) ? err.statusCode : undefined;
+  if (status === 429) return "rate_limit";
+  if (status !== undefined) {
+    if (status >= 500) return "transient";
+    if (status === 408) return "transient";
+    return "permanent";
+  }
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (/rate.?limit|too many requests|\b429\b/i.test(msg)) return "rate_limit";
+  if (/\b5\d\d\b|overloaded|timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(msg))
+    return "transient";
+  return "unknown";
 }
+
 function backoffMs(retryCount: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** retryCount, RETRY_MAX_MS);
 }
@@ -235,11 +259,6 @@ function parseRetryAfterMs(err: unknown): number | null {
   if (Number.isFinite(secs)) return Math.max(0, secs * 1000);
   const at = Date.parse(ra);
   return Number.isNaN(at) ? null : Math.max(0, at - Date.now());
-}
-
-// 次回リトライまでの待ち（Retry-After 優先、上限 RETRY_MAX_MS）。
-function nextRetryMs(err: unknown, attempt: number): number {
-  return Math.min(parseRetryAfterMs(err) ?? backoffMs(attempt), RETRY_MAX_MS);
 }
 
 // LLM が見つけた明細リンク(detailUrl)のうち、まだ許可リストに無いホストを学習用に
@@ -612,15 +631,22 @@ async function attemptExtraction(
     await runExtraction(supabase, emailId, userId, raw);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "extract failed";
+    const kind = classifyFailure(e);
+    // permanent 以外は再試行対象。rate_limit は Retry-After を尊重し、無ければ
+    // 素の 1 分（バックオフしない＝次の cron で同条件で再挑戦）。
+    const delay =
+      kind === "rate_limit"
+        ? Math.min(parseRetryAfterMs(e) ?? RETRY_BASE_MS, RETRY_MAX_MS)
+        : backoffMs(0);
     await supabase
       .from("inbound_emails")
       .update({
         status: "error",
         extract_error: msg,
-        // 解禁時刻は Retry-After 優先（無ければ exp backoff）。
-        next_retry_at: isRetryable(msg)
-          ? new Date(Date.now() + nextRetryMs(e, 0)).toISOString()
-          : null,
+        next_retry_at:
+          kind === "permanent"
+            ? null
+            : new Date(Date.now() + delay).toISOString(),
       })
       .eq("id", emailId);
   }
@@ -683,7 +709,33 @@ export async function retryDueErrors(
       await runExtraction(supabase, row.id, row.user_id, row.raw);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "extract failed";
-      const giveUp = attempt >= MAX_RETRIES || !isRetryable(msg);
+      const kind = classifyFailure(e);
+
+      // レート制限に当たったら、この回はここで終わり。残りを投げても同じ 429 が
+      // 返るだけで、行ごとにバックオフを伸ばす罰を配って回ることになる（以前の
+      // 挙動）。期限の来ている行をまとめて押し出して break すれば、次の毎分 cron が
+      // 同じ条件で再挑戦し、**通る分だけ通る**。制限そのものが調速機になるので、
+      // こちらが流量を推定する必要はない。
+      if (kind === "rate_limit") {
+        const delay = Math.min(
+          parseRetryAfterMs(e) ?? RETRY_BASE_MS,
+          RETRY_MAX_MS,
+        );
+        const until = new Date(Date.now() + delay).toISOString();
+        await supabase
+          .from("inbound_emails")
+          .update({ extract_error: msg, next_retry_at: until })
+          .eq("status", "error")
+          .not("next_retry_at", "is", null)
+          .lte("next_retry_at", new Date().toISOString());
+        return;
+      }
+
+      // transient は打ち切らない（障害が続いてもレシートを失わない）。retry_count は
+      // バックオフの指数として使い、6h で頭打ち。最終的な回収は 90 日の expire。
+      // unknown だけは MAX_RETRIES で蓋をする（誤分類の保険）。
+      const giveUp =
+        kind === "permanent" || (kind === "unknown" && attempt >= MAX_RETRIES);
       await supabase
         .from("inbound_emails")
         .update({
@@ -691,7 +743,7 @@ export async function retryDueErrors(
           extract_error: msg,
           next_retry_at: giveUp
             ? null
-            : new Date(Date.now() + nextRetryMs(e, attempt)).toISOString(),
+            : new Date(Date.now() + backoffMs(attempt)).toISOString(),
         })
         .eq("id", row.id);
     }
