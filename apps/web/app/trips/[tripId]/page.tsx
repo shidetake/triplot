@@ -6,7 +6,7 @@ import { AddExpenseButton } from "@/components/add-expense-button";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
 import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
-import { toEventFormPrefill } from "@/components/event-form";
+import { toEventFormPrefill } from "@/lib/event-form-prefill";
 import {
   buildCalendarExportEvents,
   type CalendarExportEvent,
@@ -31,9 +31,7 @@ import { TripDetailTabs } from "@/components/trip-detail-tabs";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { TripDraftsRealtime } from "@/components/trip-drafts-realtime";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
-import {
-  buildTripTzTimeline,
-} from "@triplot/shared/schedule";
+import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
@@ -64,7 +62,6 @@ import {
 import type { TripPlace } from "@triplot/shared/import/placeMatch";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency } from "@triplot/shared/types/database";
-
 
 export default async function TripDetailPage({
   params,
@@ -149,7 +146,14 @@ export default async function TripDetailPage({
   // 場所の絞り込み（エリア／日にち）に使う派生。日にちは旅行開始日が要る。
   // Map は RSC 境界を越えられないのでエントリ配列で渡す。
   const visitDayEntries = trip.start_date
-    ? [...visitDayByPlace(scheduleEvents, expenses, tzTimeline, trip.start_date)]
+    ? [
+        ...visitDayByPlace(
+          scheduleEvents,
+          expenses,
+          tzTimeline,
+          trip.start_date,
+        ),
+      ]
     : [];
   const earliestVisitEntries = [
     ...earliestVisitByPlace(scheduleEvents, expenses, tzTimeline),
@@ -183,7 +187,9 @@ export default async function TripDetailPage({
       description:
         [p.formatted_address, p.note].filter(Boolean).join("\n") || null,
       colorHex: p.tentative ? "#f59e0b" : "#10b981",
-      category: p.tentative ? t("place.statusCandidate") : t("place.statusConfirmed"),
+      category: p.tentative
+        ? t("place.statusCandidate")
+        : t("place.statusConfirmed"),
       iconKey: p.icon,
     }));
   // スケジュールの Google 検索の地理バイアス（マップ済みピンが集まる主役
@@ -218,9 +224,7 @@ export default async function TripDetailPage({
   // CSV エクスポート用: ID を名前に解決した行。発生順（expenses は既に
   // 発生順に並んでいる）。
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
-  const memberNameById = new Map(
-    allMembers.map((m) => [m.id, m.display_name]),
-  );
+  const memberNameById = new Map(allMembers.map((m) => [m.id, m.display_name]));
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
   // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ
   // （変換は shared/gcalEvent、RN と共用）。RLS で既に shared+private(自分) に
@@ -336,255 +340,272 @@ export default async function TripDetailPage({
     <>
       {tripActions}
       <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
-      {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
+        {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
           タブに戻ってきた時にも取り直す（他メンバーの変更を拾う）。 */}
-      <TripDraftsRealtime tripId={tripId} />
-      <RefreshOnFocus />
+        <TripDraftsRealtime tripId={tripId} />
+        <RefreshOnFocus />
 
-      {/* メンバー一覧は広い画面だけ（狭い画面はヘッダーに入らないので出さない。
+        {/* メンバー一覧は広い画面だけ（狭い画面はヘッダーに入らないので出さない。
           誰が関わるかは予定の色・費用のアバターで分かる）。 */}
-      <div className="hidden px-6 pt-8 md:block">
-        <section>
-          <h2 className="text-sm font-medium text-muted-foreground">
-            {t("members.heading")}
-          </h2>
-          <MembersSection
-            members={activeMembers.map((m) => ({
-              id: m.id,
-              display_name: m.display_name,
-              color: m.color,
-            }))}
-          />
-        </section>
-      </div>
-
-      {/* 狭い画面の左右余白は px-4(16px)＝iOS のタブ（padding: 16）と同値。
-          px-6(24px) だと同じレイアウトでも web だけ窮屈に見える。
-          広い画面はページコンテナ側（main の md:px-6）が持つ。 */}
-      <div className="px-4 md:px-0">
-      <TripDetailTabs
-        schedule={
-          <section className="mt-4 space-y-6 md:mt-10">
-            <ScheduleSection
-              tripId={tripId}
-              initialTz={trip.default_timezone}
-              tripStart={trip.start_date}
-              tripEnd={trip.end_date}
-              events={scheduleEvents}
-              places={placesForPicker}
-              members={allMembers.map((m) => ({
+        <div className="hidden px-6 pt-8 md:block">
+          <section>
+            <h2 className="text-sm font-medium text-muted-foreground">
+              {t("members.heading")}
+            </h2>
+            <MembersSection
+              members={activeMembers.map((m) => ({
                 id: m.id,
                 display_name: m.display_name,
                 color: m.color,
-                active: m.active,
               }))}
-              biasCenter={placesBiasCenter}
-              myMemberId={me.id}
-              eventDrafts={eventDrafts}
-              afterHeading={
-                eventDrafts.length > 0 && (
+            />
+          </section>
+        </div>
+
+        {/* 狭い画面の左右余白は px-4(16px)＝iOS のタブ（padding: 16）と同値。
+          px-6(24px) だと同じレイアウトでも web だけ窮屈に見える。
+          広い画面はページコンテナ側（main の md:px-6）が持つ。 */}
+        <div className="px-4 md:px-0">
+          <TripDetailTabs
+            schedule={
+              <section className="mt-4 space-y-6 md:mt-10">
+                <ScheduleSection
+                  tripId={tripId}
+                  initialTz={trip.default_timezone}
+                  tripStart={trip.start_date}
+                  tripEnd={trip.end_date}
+                  events={scheduleEvents}
+                  places={placesForPicker}
+                  members={allMembers.map((m) => ({
+                    id: m.id,
+                    display_name: m.display_name,
+                    color: m.color,
+                    active: m.active,
+                  }))}
+                  biasCenter={placesBiasCenter}
+                  myMemberId={me.id}
+                  eventDrafts={eventDrafts}
+                  afterHeading={
+                    eventDrafts.length > 0 && (
+                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
+                        <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
+                          {t("tripDetail.pendingImports", {
+                            count: eventDrafts.length,
+                          })}
+                          <HelpTip
+                            label={t("tripDetail.importHelpLabel")}
+                            widthClass="w-52"
+                          >
+                            {t("tripDetail.importEventHelp")}
+                          </HelpTip>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          {eventDrafts.map((d) => (
+                            <EventDraftConfirmButton
+                              key={d.id}
+                              draftId={d.id}
+                              labelParts={d.labelParts}
+                              tripId={tripId}
+                              defaultTz={d.tz}
+                              tripStart={trip.start_date}
+                              tripEnd={trip.end_date}
+                              state={{
+                                mode: "create",
+                                date: d.date,
+                                time: d.time,
+                                tz: d.tz,
+                                prefill: toEventFormPrefill(d.prefill),
+                              }}
+                              places={placesForPicker}
+                              members={activeMembers.map((m) => ({
+                                id: m.id,
+                                display_name: m.display_name,
+                                color: m.color,
+                              }))}
+                              biasCenter={placesBiasCenter}
+                              tzTimeline={tzTimeline}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  }
+                />
+              </section>
+            }
+            places={
+              // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
+              // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
+              // （見出しは広い画面だけ）。
+              <section className="mt-4 space-y-6 md:mt-10">
+                <h2 className="hidden text-lg font-semibold md:block">
+                  {t("tripDetail.places")}
+                </h2>
+
+                <PlacesSection
+                  tripId={tripId}
+                  places={places}
+                  pinOptions={pinOptions}
+                  visitDayEntries={visitDayEntries}
+                  earliestVisitEntries={earliestVisitEntries}
+                  members={allMembers.map((m) => ({
+                    id: m.id,
+                    color: m.color,
+                  }))}
+                  myMemberId={me.id}
+                />
+              </section>
+            }
+            expenses={
+              <section className="mt-4 space-y-6 md:mt-10">
+                {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
+                見出し+追加ボタンの行までは見えるようにする実測対象
+                （components/use-mobile-chrome-margins.ts）。 */}
+                <div
+                  data-mobile-chrome-top
+                  className="flex items-center justify-between gap-2"
+                >
+                  <h2 className="text-lg font-semibold">
+                    {t("tripDetail.expenses")}
+                  </h2>
+                  <AddExpenseButton
+                    tripId={tripId}
+                    members={activeMembers.map((m) => ({
+                      id: m.id,
+                      display_name: m.display_name,
+                      color: m.color,
+                    }))}
+                    myMemberId={me.id}
+                    defaultCurrency={defaultCurrency}
+                    initialCurrency={initialCurrency}
+                    categories={categories}
+                    initialCategoryId={initialCategoryId}
+                    averageRates={averageRates}
+                    initialPaidAt={initialPaidAt}
+                    places={placesForPicker}
+                    biasCenter={placesBiasCenter}
+                    tzTimeline={tzTimeline}
+                    tripStart={trip.start_date}
+                    tripEnd={trip.end_date}
+                  />
+                </div>
+
+                {importDrafts.length > 0 && (
                   <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
                     <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
-                      {t("tripDetail.pendingImports", { count: eventDrafts.length })}
-                      <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
-                        {t("tripDetail.importEventHelp")}
+                      {t("tripDetail.pendingImports", {
+                        count: importDrafts.length,
+                      })}
+                      <HelpTip
+                        label={t("tripDetail.importHelpLabel")}
+                        widthClass="w-52"
+                      >
+                        {t("tripDetail.importHelp")}
                       </HelpTip>
                     </div>
                     <div className="mt-3 space-y-2">
-                      {eventDrafts.map((d) => (
-                        <EventDraftConfirmButton
+                      {importDrafts.map((d) => (
+                        <DraftConfirmButton
                           key={d.id}
                           draftId={d.id}
                           labelParts={d.labelParts}
                           tripId={tripId}
-                          defaultTz={d.tz}
-                          tripStart={trip.start_date}
-                          tripEnd={trip.end_date}
-                          state={{
-                            mode: "create",
-                            date: d.date,
-                            time: d.time,
-                            tz: d.tz,
-                            prefill: toEventFormPrefill(d.prefill),
-                          }}
-                          places={placesForPicker}
                           members={activeMembers.map((m) => ({
                             id: m.id,
                             display_name: m.display_name,
                             color: m.color,
                           }))}
+                          myMemberId={me.id}
+                          defaultCurrency={defaultCurrency}
+                          initialCurrency={d.initialCurrency}
+                          categories={categories}
+                          initialCategoryId={d.initialCategoryId}
+                          averageRates={averageRates}
+                          initialPaidAt={d.initialPaidAt}
+                          places={placesForPicker}
                           biasCenter={placesBiasCenter}
                           tzTimeline={tzTimeline}
+                          tripStart={trip.start_date}
+                          tripEnd={trip.end_date}
+                          initialPrice={d.initialPrice}
+                          initialPlace={d.initialPlace}
+                          autoResolvePlace={d.autoResolvePlace}
+                          initialTime={d.initialTime}
                         />
                       ))}
                     </div>
                   </div>
-                )
-              }
-            />
-          </section>
-        }
-        places={
-          // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
-          // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
-          // （見出しは広い画面だけ）。
-          <section className="mt-4 space-y-6 md:mt-10">
-            <h2 className="hidden text-lg font-semibold md:block">
-              {t("tripDetail.places")}
-            </h2>
+                )}
 
-            <PlacesSection
-              tripId={tripId}
-              places={places}
-              pinOptions={pinOptions}
-              visitDayEntries={visitDayEntries}
-              earliestVisitEntries={earliestVisitEntries}
-              members={allMembers.map((m) => ({
-                id: m.id,
-                color: m.color,
-              }))}
-              myMemberId={me.id}
-            />
-          </section>
-        }
-        expenses={
-          <section className="mt-4 space-y-6 md:mt-10">
-            {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
-                見出し+追加ボタンの行までは見えるようにする実測対象
-                （components/use-mobile-chrome-margins.ts）。 */}
-            <div
-              data-mobile-chrome-top
-              className="flex items-center justify-between gap-2"
-            >
-              <h2 className="text-lg font-semibold">{t("tripDetail.expenses")}</h2>
-              <AddExpenseButton
-                tripId={tripId}
-                members={activeMembers.map((m) => ({
-                  id: m.id,
-                  display_name: m.display_name,
-                  color: m.color,
-                }))}
-                myMemberId={me.id}
-                defaultCurrency={defaultCurrency}
-                initialCurrency={initialCurrency}
-                categories={categories}
-                initialCategoryId={initialCategoryId}
-                averageRates={averageRates}
-                initialPaidAt={initialPaidAt}
-                places={placesForPicker}
-                biasCenter={placesBiasCenter}
-                tzTimeline={tzTimeline}
-                tripStart={trip.start_date}
-                tripEnd={trip.end_date}
-              />
-            </div>
+                <ExpenseSummaryView
+                  summary={summary}
+                  settlements={settlements}
+                  members={allMembers}
+                  defaultCurrency={defaultCurrency}
+                  averageRates={averageRates}
+                />
 
-            {importDrafts.length > 0 && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-                <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
-                  {t("tripDetail.pendingImports", { count: importDrafts.length })}
-                  <HelpTip label={t("tripDetail.importHelpLabel")} widthClass="w-52">
-                    {t("tripDetail.importHelp")}
+                <ExpenseList
+                  tripId={tripId}
+                  expenses={expenses}
+                  members={allMembers.map((m) => ({
+                    id: m.id,
+                    display_name: m.display_name,
+                    color: m.color,
+                    avatarUrl: m.users?.avatar_url ?? null,
+                    active: m.active,
+                  }))}
+                  categories={categories}
+                  places={placesForPicker}
+                  defaultCurrency={defaultCurrency}
+                  initialCurrency={initialCurrency}
+                  initialCategoryId={initialCategoryId}
+                  averageRates={averageRates}
+                  initialPaidAt={initialPaidAt}
+                  biasCenter={placesBiasCenter}
+                  tzTimeline={tzTimeline}
+                  tripStart={trip.start_date}
+                  tripEnd={trip.end_date}
+                  myMemberId={me.id}
+                />
+              </section>
+            }
+            todos={
+              <section className="mt-4 space-y-6 md:mt-10">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="text-lg font-semibold">
+                    {t("tripDetail.todoList")}
+                  </h2>
+                  <HelpTip
+                    label={t("tripDetail.privateTodoHelpLabel")}
+                    widthClass="w-60"
+                  >
+                    {t("tripDetail.privateTodoHelp")}
                   </HelpTip>
                 </div>
-                <div className="mt-3 space-y-2">
-                  {importDrafts.map((d) => (
-                    <DraftConfirmButton
-                      key={d.id}
-                      draftId={d.id}
-                      labelParts={d.labelParts}
-                      tripId={tripId}
-                      members={activeMembers.map((m) => ({
-                        id: m.id,
-                        display_name: m.display_name,
-                        color: m.color,
-                      }))}
-                      myMemberId={me.id}
-                      defaultCurrency={defaultCurrency}
-                      initialCurrency={d.initialCurrency}
-                      categories={categories}
-                      initialCategoryId={d.initialCategoryId}
-                      averageRates={averageRates}
-                      initialPaidAt={d.initialPaidAt}
-                      places={placesForPicker}
-                      biasCenter={placesBiasCenter}
-                      tzTimeline={tzTimeline}
-                      tripStart={trip.start_date}
-                      tripEnd={trip.end_date}
-                      initialPrice={d.initialPrice}
-                      initialPlace={d.initialPlace}
-                      autoResolvePlace={d.autoResolvePlace}
-                      initialTime={d.initialTime}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
 
-            <ExpenseSummaryView
-              summary={summary}
-              settlements={settlements}
-              members={allMembers}
-              defaultCurrency={defaultCurrency}
-              averageRates={averageRates}
-            />
+                <TodoSection
+                  tripId={tripId}
+                  kind="prep"
+                  title={t("tripDetail.todoPrep")}
+                  defaultCollapsed={tripStarted}
+                  todos={prepTodos}
+                  members={todoMembers}
+                  myMemberId={me.id}
+                />
 
-            <ExpenseList
-              tripId={tripId}
-              expenses={expenses}
-              members={allMembers.map((m) => ({
-                id: m.id,
-                display_name: m.display_name,
-                color: m.color,
-                avatarUrl: m.users?.avatar_url ?? null,
-                active: m.active,
-              }))}
-              categories={categories}
-              places={placesForPicker}
-              defaultCurrency={defaultCurrency}
-              initialCurrency={initialCurrency}
-              initialCategoryId={initialCategoryId}
-              averageRates={averageRates}
-              initialPaidAt={initialPaidAt}
-              biasCenter={placesBiasCenter}
-              tzTimeline={tzTimeline}
-              tripStart={trip.start_date}
-              tripEnd={trip.end_date}
-              myMemberId={me.id}
-            />
-          </section>
-        }
-        todos={
-          <section className="mt-4 space-y-6 md:mt-10">
-            <div className="flex items-center gap-1.5">
-              <h2 className="text-lg font-semibold">{t("tripDetail.todoList")}</h2>
-              <HelpTip label={t("tripDetail.privateTodoHelpLabel")} widthClass="w-60">
-                {t("tripDetail.privateTodoHelp")}
-              </HelpTip>
-            </div>
-
-            <TodoSection
-              tripId={tripId}
-              kind="prep"
-              title={t("tripDetail.todoPrep")}
-              defaultCollapsed={tripStarted}
-              todos={prepTodos}
-              members={todoMembers}
-              myMemberId={me.id}
-            />
-
-            <TodoSection
-              tripId={tripId}
-              kind="onsite"
-              title={t("tripDetail.todoOnsite")}
-              defaultCollapsed={false}
-              todos={onsiteTodos}
-              members={todoMembers}
-              myMemberId={me.id}
-            />
-          </section>
-        }
-      />
+                <TodoSection
+                  tripId={tripId}
+                  kind="onsite"
+                  title={t("tripDetail.todoOnsite")}
+                  defaultCollapsed={false}
+                  todos={onsiteTodos}
+                  members={todoMembers}
+                  myMemberId={me.id}
+                />
+              </section>
+            }
+          />
         </div>
       </main>
     </>

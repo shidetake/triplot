@@ -20,12 +20,19 @@ import {
   updateEventAction,
 } from "@/app/trips/[tripId]/actions";
 import type { LatLng } from "@triplot/shared/placeMap";
-import { type Flight, flightTerminalNote, flightTitle } from "@triplot/shared/flight";
+import {
+  type Flight,
+  flightTerminalNote,
+  flightTitle,
+} from "@triplot/shared/flight";
 import type {
   EventDraftPlacePrefill,
   EventDraftPrefill,
 } from "@triplot/shared/import/drafts";
-import { resolveAirportPlace, type PlaceCandidate } from "@triplot/shared/placesSearch";
+import {
+  resolveAirportPlace,
+  type PlaceCandidate,
+} from "@triplot/shared/placesSearch";
 import {
   dedupeTzCandidates,
   formatMinutes,
@@ -59,7 +66,6 @@ import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 const initialState: EventMutationState = { ok: false, error: null };
 
-
 // セグメントトラックの各ピル（sr-only native radio を内包）。ui-guidelines「セグメントトラック」。
 // sr-only radio に focus が当たるので has-[:focus-visible] でラベル側にリングを出す（a11y）。
 
@@ -91,7 +97,6 @@ function minToDt(min: number): { date: string; time: string } {
   return { date, time: formatMinutes(rem) };
 }
 
-
 // 取り込み下書きの事前入力（メール取り込みの確定で使う）。開始日時・通常予定のTZは
 // create モードの date/time/tz で渡すので、ここはそれ以外の初期値だけ。
 export type EventFormPrefill = {
@@ -117,27 +122,9 @@ export type EventFormPrefill = {
   flightNumber: string | null;
 };
 
-// 共有の下書き事前入力（EventDraftPrefill）→ web のフォーム用事前入力。
-// place/endPlace だけ形が違う（shared は座標を name/lat/lng で持つ、web の
-// PlacePickerInitial は label/coords）ので変換する。
-function draftPlaceToInitial(p: EventDraftPlacePrefill): PlacePickerInitial {
-  if (!p) return null;
-  if (p.kind === "saved") return p;
-  if (p.kind === "google") return p;
-  return {
-    kind: "free",
-    label: p.name,
-    coords: p.lat !== null && p.lng !== null ? { lat: p.lat, lng: p.lng } : null,
-    icon: "airport",
-  };
-}
-export function toEventFormPrefill(p: EventDraftPrefill): EventFormPrefill {
-  return {
-    ...p,
-    place: draftPlaceToInitial(p.place),
-    endPlace: draftPlaceToInitial(p.endPlace),
-  };
-}
+// 下書き事前入力への変換は lib/event-form-prefill.ts にある。
+// このファイルは "use client" なので、サーバーコンポーネント（旅行詳細ページ）
+// から呼べる場所に置く必要がある。
 
 export type EventFormMode =
   | {
@@ -182,7 +169,12 @@ export function EventForm({
   tripEnd: string | null;
   state: EventFormMode;
   // lat/lng は移動の TZ を場所から導出できるか判定するのに使う。
-  places: { id: string; name: string; lat: number | null; lng: number | null }[];
+  places: {
+    id: string;
+    name: string;
+    lat: number | null;
+    lng: number | null;
+  }[];
   members: { id: string; display_name: string; color: number | null }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   tzTimeline: TripTzTimeline;
@@ -197,7 +189,8 @@ export function EventForm({
 }) {
   const isEdit = formMode.mode === "edit";
   const ev = isEdit ? formMode.event : null;
-  const prefill = formMode.mode === "create" ? (formMode.prefill ?? null) : null;
+  const prefill =
+    formMode.mode === "create" ? (formMode.prefill ?? null) : null;
   const mapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   // 場所欄の初期値。編集時は既存の place_id から復元する（自由入力も
@@ -272,7 +265,8 @@ export function EventForm({
     const asInitial = (e: Flight["departure"]): PlacePickerInitial => ({
       kind: "free",
       label: e.name,
-      coords: e.lat !== null && e.lng !== null ? { lat: e.lat, lng: e.lng } : null,
+      coords:
+        e.lat !== null && e.lng !== null ? { lat: e.lat, lng: e.lng } : null,
       icon: "airport",
     });
     const asGoogleInitial = (c: PlaceCandidate): PlacePickerInitial => ({
@@ -306,7 +300,9 @@ export function EventForm({
         if (!dep && !arr) return;
         setFlightPlaces((prev) => ({
           gen: (prev?.gen ?? 0) + 1,
-          start: dep ? asGoogleInitial(dep) : (prev?.start ?? asInitial(f.departure)),
+          start: dep
+            ? asGoogleInitial(dep)
+            : (prev?.start ?? asInitial(f.departure)),
           end: arr ? asGoogleInitial(arr) : (prev?.end ?? asInitial(f.arrival)),
         }));
       })();
@@ -454,14 +450,14 @@ export function EventForm({
   // 既定選択にする（week-calendar 側で列ごとに解決済みの formMode.tz と
   // 揃える。一致しなければ先頭候補＝出発側）。
   const createDisambig =
-    !isEdit && startResolution.kind === "ambiguous" && formMode.mode === "create"
+    !isEdit &&
+    startResolution.kind === "ambiguous" &&
+    formMode.mode === "create"
       ? (startResolution.options.find((o) => o.tz === formMode.tz) ??
         startResolution.options[0])
       : null;
   const [tz, setTzRaw] = useDraft("tz", tzInit);
-  const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<
-    string | null
-  >(
+  const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<string | null>(
     "tzDisambigTransitId",
     editDisambig?.transitId ?? createDisambig?.transitId ?? null,
   );
@@ -518,9 +514,11 @@ export function EventForm({
   } | null>(null);
   const [departTzOverride, setDepartTz] = useDraft("departTz", "");
   const [arriveTzOverride, setArriveTz] = useDraft("arriveTz", "");
-  const derivedTz = deriveTransitTimezones(startCoords, endCoords ?? startCoords);
-  const departTz =
-    departTzOverride || derivedTz.startTz || departTzInit;
+  const derivedTz = deriveTransitTimezones(
+    startCoords,
+    endCoords ?? startCoords,
+  );
+  const departTz = departTzOverride || derivedTz.startTz || departTzInit;
   const arriveTz =
     arriveTzOverride || derivedTz.endTz || prefill?.arriveTz || endTzInit;
   const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
@@ -628,9 +626,7 @@ export function EventForm({
       )}
 
       <input type="hidden" name="kind" value={submitKind} />
-      {kind3 === "allday" && (
-        <input type="hidden" name="all_day" value="on" />
-      )}
+      {kind3 === "allday" && <input type="hidden" name="all_day" value="on" />}
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
 
       {/* ラベルは置かず placeholder＝フィールド名（iOS カレンダー方式）。
@@ -644,7 +640,13 @@ export function EventForm({
         <>
           <input type="hidden" name="title" value={title} />
           <FlightPicker
-            date={kind3 === "allday" ? alldayStart : kind3 === "transit" ? departDate : sDate}
+            date={
+              kind3 === "allday"
+                ? alldayStart
+                : kind3 === "transit"
+                  ? departDate
+                  : sDate
+            }
             initialNumber={prefill?.flightNumber ?? undefined}
             autoApply={autoApplyFlight}
             onCancel={() => {
@@ -762,7 +764,9 @@ export function EventForm({
       {kind3 === "transit" && (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
+            <span className="text-sm text-muted-foreground">
+              {t("dateTime")}
+            </span>
             <div className="flex items-center gap-2">
               <DateTimePopover
                 variant="start"
@@ -903,7 +907,9 @@ export function EventForm({
               どちらをタップしても同じ結合エディタ（カレンダー＋時刻）が開く＝iOS カレンダー方式。
               送信値は hidden で流す（チップは UI 専用の controlled 部品）。 */}
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t("dateTime")}</span>
+            <span className="text-sm text-muted-foreground">
+              {t("dateTime")}
+            </span>
             <div className="flex items-center gap-2">
               <DateTimePopover
                 variant="start"
@@ -1003,7 +1009,11 @@ export function EventForm({
         <div className="flex items-center gap-2">
           <span className="font-medium">{t("visibility")}</span>
           {canChangeVis ? (
-            <div className="flex gap-3" role="radiogroup" aria-label={t("visibility")}>
+            <div
+              className="flex gap-3"
+              role="radiogroup"
+              aria-label={t("visibility")}
+            >
               <label className="inline-flex items-center gap-1">
                 <input
                   type="radio"
@@ -1028,7 +1038,9 @@ export function EventForm({
           ) : (
             <>
               <span className="text-muted-foreground">
-                {visibility === "shared" ? tCommon("shared") : tCommon("selfOnly")}
+                {visibility === "shared"
+                  ? tCommon("shared")
+                  : tCommon("selfOnly")}
               </span>
               <input type="hidden" name="visibility" value={visibility} />
             </>
@@ -1066,7 +1078,10 @@ export function EventForm({
             aria-expanded={pMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
-            <span>{t("participants")}: {pMode === "all" ? t("participantsAll") : t("participantsSome")}</span>
+            <span>
+              {t("participants")}:{" "}
+              {pMode === "all" ? t("participantsAll") : t("participantsSome")}
+            </span>
             <ChevronIcon
               size={16}
               className={`transition-transform ${pMode === "all" ? "rotate-90" : "-rotate-90"}`}

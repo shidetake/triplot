@@ -26,13 +26,10 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { toEventFormPrefill } from "@/lib/event-form-prefill";
 import { createClient } from "@/lib/supabase/client";
 import { AddFab } from "./add-fab";
-import {
-  EventForm,
-  type EventFormMode,
-  toEventFormPrefill,
-} from "./event-form";
+import { EventForm, type EventFormMode } from "./event-form";
 import { HelpTip } from "./help-tip";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
