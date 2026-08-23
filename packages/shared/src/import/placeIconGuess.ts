@@ -47,7 +47,9 @@ export function guessImportPlaceIcon(input: {
     return "food";
   }
   if (eventTitle === "買い物") {
-    return textHints(merchant, GROCERY_KEYWORDS) ? "local_grocery_store" : "shopping";
+    return textHints(merchant, GROCERY_KEYWORDS)
+      ? "local_grocery_store"
+      : "shopping";
   }
   if (eventTitle === "観光") return "sightseeing";
 
@@ -58,7 +60,9 @@ export function guessImportPlaceIcon(input: {
       return "food";
     case "土産":
     case "衣服":
-      return textHints(merchant, GROCERY_KEYWORDS) ? "local_grocery_store" : "shopping";
+      return textHints(merchant, GROCERY_KEYWORDS)
+        ? "local_grocery_store"
+        : "shopping";
     case "エンタメ":
       return "activity";
     case "カジノ":

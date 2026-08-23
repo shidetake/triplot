@@ -97,6 +97,9 @@ function minToDt(min: number): { date: string; time: string } {
 // create モードの date/time/tz で渡すので、ここはそれ以外の初期値だけ。
 export type EventFormPrefill = {
   kind3: Kind3;
+  // 移動日にどちらの TZ を選んだか（shared の EventDraftPrefill と同じ）。
+  // この下書きの TZ の決定そのもので、初期選択もカレンダーの列もここから決まる。
+  tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
   title: string;
   note: string | null;
   endDate: string | null; // timed の終了日 / allday のチェックアウト日 / transit の到着日
@@ -442,15 +445,29 @@ export function EventForm({
         ? { transitId: ev!.tzDisambigTransitId, side: ev!.tzDisambigSide }
         : startResolution.options[0]
       : null;
-  // 新規作成時、長押しした列が乗継日の候補のどれかに一致するならその候補を
-  // 既定選択にする（week-calendar 側で列ごとに解決済みの formMode.tz と
-  // 揃える。一致しなければ先頭候補＝出発側）。
+  // 新規作成時の既定選択。取り込み下書きは場所からどちら側かを当てて
+  // prefill.tzDisambig に入れてあるので、それを最優先で使う（TZ の決定は
+  // そこが唯一の源で、カレンダーの列も同じ値から決まる）。
+  // 下書きでない新規は、長押しした列が候補のどれかに一致すればそれ
+  // （week-calendar 側で列ごとに解決済みの formMode.tz と揃える）。
+  // どちらも当たらなければ先頭候補＝出発側。
   const createDisambig =
     !isEdit &&
     startResolution.kind === "ambiguous" &&
     formMode.mode === "create"
-      ? (startResolution.options.find((o) => o.tz === formMode.tz) ??
-        startResolution.options[0])
+      ? (() => {
+          const chosen = formMode.prefill?.tzDisambig;
+          return (
+            (chosen
+              ? startResolution.options.find(
+                  (o) =>
+                    o.transitId === chosen.transitId && o.side === chosen.side,
+                )
+              : null) ??
+            startResolution.options.find((o) => o.tz === formMode.tz) ??
+            startResolution.options[0]
+          );
+        })()
       : null;
   const [tz, setTzRaw] = useDraft("tz", tzInit);
   const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<string | null>(

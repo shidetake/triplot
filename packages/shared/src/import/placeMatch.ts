@@ -72,7 +72,11 @@ function scorePlace(
 
   // 住所シグナル（番地・通り名の共有を加点）。名前より堅い手がかり。
   if (receipt.location && place.formattedAddress) {
-    score += jaccard(nameTokens(receipt.location), nameTokens(place.formattedAddress)) * 0.4;
+    score +=
+      jaccard(
+        nameTokens(receipt.location),
+        nameTokens(place.formattedAddress),
+      ) * 0.4;
   }
   return score;
 }

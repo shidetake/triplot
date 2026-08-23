@@ -101,6 +101,11 @@ export type ExpenseDraftItem = {
 // 予定下書きの事前入力（開始日時・TZ 以外）。web の EventFormPrefill と同形。
 export type EventDraftPrefill = {
   kind3: "timed" | "allday" | "transit";
+  // 移動日にどちらの TZ を選んだか。本物の予定が持つ tzDisambigTransitId/side と
+  // 同じ意味で、**これがこの下書きの TZ の決定そのもの**。フォームの初期選択も
+  // カレンダーの列もここから決まる（片方だけ別経路で通すと、選択は「日本」なのに
+  // 列は「ハワイ」のような食い違いが起きる）。移動日でなければ null。
+  tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
   title: string;
   note: string | null;
   endDate: string | null;
@@ -130,11 +135,7 @@ export type EventDraftItem = {
   labelParts: string[];
   date: string; // 開始日
   time: string; // 開始時刻（不明なら "09:00"）
-  tz: string; // 旅程から解決した通常予定のTZ
-  // 移動日にどちら側を選んだか。カレンダーの列の判定に要る（本物の予定の
-  // tzDisambigTransitId/side と同じ意味）。ここが null だと resolveEventTz が
-  // 先頭候補＝出発側に落ちるので、ハワイの予定が日本の列に出てしまう。
-  tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
+  tz: string; // 旅程から解決した通常予定のTZ（prefill.tzDisambig から導かれる）
   prefill: EventDraftPrefill;
 };
 
@@ -310,13 +311,13 @@ export function deriveEventDraftItems(
           id: d.id,
           draftIds: [d.id],
           labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
-          // transit は departTz/arriveTz を明示的に持つので曖昧さが無い。
-          tzDisambig: null,
           date: depDate ?? ev.startDate,
           time: depTime ?? ev.startTime ?? "09:00",
           tz,
           prefill: {
             kind3: "transit",
+            // transit は departTz/arriveTz を明示的に持つので曖昧さが無い。
+            tzDisambig: null,
             title: flightHeadline,
             note: flightTerminalNote(f),
             endDate: arrDate ?? null,
@@ -386,12 +387,12 @@ export function deriveEventDraftItems(
           id: d.id,
           draftIds: [d.id],
           labelParts: [title, whenLabel],
-          tzDisambig,
           date: ev.startDate,
           time: ev.startTime ?? "09:00",
           tz,
           prefill: {
             kind3: ev.kind,
+            tzDisambig,
             title: ev.title,
             note: noteParts.length > 0 ? noteParts.join(" ・ ") : null,
             endDate: ev.endDate,
@@ -454,8 +455,8 @@ export function draftToScheduleEvent(
     endAt,
     startTz: kind3 === "transit" ? (d.prefill.departTz ?? d.tz) : null,
     endTz: kind3 === "transit" ? (d.prefill.arriveTz ?? d.tz) : null,
-    tzDisambigTransitId: d.tzDisambig?.transitId ?? null,
-    tzDisambigSide: d.tzDisambig?.side ?? null,
+    tzDisambigTransitId: d.prefill.tzDisambig?.transitId ?? null,
+    tzDisambigSide: d.prefill.tzDisambig?.side ?? null,
     startPlaceId: null,
     endPlaceId: null,
     visibility: "shared",

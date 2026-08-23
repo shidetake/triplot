@@ -98,7 +98,10 @@ describe("extractionGainedDetail", () => {
       ),
     ).toBe(false);
     expect(
-      extractionGainedDetail({ receipt: null, events: [] }, { receipt: null, events: [] }),
+      extractionGainedDetail(
+        { receipt: null, events: [] },
+        { receipt: null, events: [] },
+      ),
     ).toBe(false);
   });
 });

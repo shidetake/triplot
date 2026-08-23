@@ -25,13 +25,13 @@ function item(
   return {
     id,
     draftIds: [id],
-    tzDisambig: null,
     labelParts: [o.title ?? "夕食", fmt(date, time)],
     date,
     time,
     tz: o.tz ?? "Pacific/Honolulu",
     prefill: {
       kind3: o.kind3 ?? "timed",
+      tzDisambig: null,
       title: o.title ?? "夕食",
       note: o.note ?? null,
       endDate: o.endDate ?? null,
@@ -260,9 +260,13 @@ describe("draftToScheduleEvent（見出しと移動日の列）", () => {
 
   it("移動日に選んだ側をカレンダーへ渡す（列の判定に要る）", async () => {
     const { draftToScheduleEvent } = await import("./drafts");
+    const base = item({ id: "a" });
     const withTz = {
-      ...item({ id: "a" }),
-      tzDisambig: { transitId: "t1", side: "arrive" as const },
+      ...base,
+      prefill: {
+        ...base.prefill,
+        tzDisambig: { transitId: "t1", side: "arrive" as const },
+      },
     };
     const ev = draftToScheduleEvent(withTz, "m1");
     expect(ev.tzDisambigTransitId).toBe("t1");

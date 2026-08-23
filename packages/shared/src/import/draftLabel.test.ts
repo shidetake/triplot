@@ -91,7 +91,11 @@ describe("extractionSummary", () => {
         {
           receipt: null,
           events: [
-            { title: "JL784", startDate: "2026-04-28", kind: "transit" } as EventDraft,
+            {
+              title: "JL784",
+              startDate: "2026-04-28",
+              kind: "transit",
+            } as EventDraft,
           ],
         },
         "(店名不明)",

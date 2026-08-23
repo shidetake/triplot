@@ -52,7 +52,11 @@ describe("deriveInboxRows", () => {
       emails: [email("parent")],
       draftRows: null,
       mergedChildren: [
-        { id: "c1", extracted: { receipt: { total: 1 } }, merged_into: "parent" },
+        {
+          id: "c1",
+          extracted: { receipt: { total: 1 } },
+          merged_into: "parent",
+        },
         { id: "c2", extracted: null, merged_into: "parent" },
         // 親が今回の一覧に居ない子は捨てられる（map に無いだけ）
         { id: "c3", extracted: null, merged_into: "other" },

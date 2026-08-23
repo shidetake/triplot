@@ -25,8 +25,7 @@ export function deriveInboxRows(input: {
   emails: { id: string; extracted: unknown; trip_id: string | null }[] | null;
   draftRows: { email_id: string; kind: string; payload: unknown }[] | null;
   mergedChildren:
-    | { id: string; extracted: unknown; merged_into: string | null }[]
-    | null;
+    { id: string; extracted: unknown; merged_into: string | null }[] | null;
 }): InboxRow[] {
   const itemsByEmail = new Map<string, { kind: string; payload: unknown }[]>();
   for (const d of input.draftRows ?? []) {
@@ -52,8 +51,7 @@ export function deriveInboxRows(input: {
       id: e.id,
       receipt:
         (items.find((i) => i.kind === "expense")?.payload as
-          | Receipt
-          | undefined) ?? null,
+          Receipt | undefined) ?? null,
       events: items
         .filter((i) => i.kind === "event")
         .map((i) => i.payload as EventDraft),

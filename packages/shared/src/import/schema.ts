@@ -26,7 +26,9 @@ export const RECEIPT_CATEGORIES = [
 export const receiptSchema = z.object({
   merchant: z
     .string()
-    .describe("店舗・サービス名。例: Uber / KAI COFFEE ALOHILANI。不明なら空文字"),
+    .describe(
+      "店舗・サービス名。例: Uber / KAI COFFEE ALOHILANI。不明なら空文字",
+    ),
   total: z
     .number()
     .describe("合計（支払）金額の数値のみ。通貨記号・桁区切りは含めない"),
@@ -114,7 +116,9 @@ export const eventDraftSchema = z.object({
   endTime: z
     .string()
     .nullable()
-    .describe("終了時刻（transit は到着時刻）。HH:MM、現地の壁時計。不明は null"),
+    .describe(
+      "終了時刻（transit は到着時刻）。HH:MM、現地の壁時計。不明は null",
+    ),
   departTz: z
     .string()
     .nullable()
