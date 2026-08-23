@@ -248,19 +248,14 @@ describe("resolveDraftOverlaps", () => {
   });
 });
 
-describe("draftToScheduleEvent（まとめた件数と移動日の列）", () => {
-  it("まとめた時はブロックの見出しに件数を出す", async () => {
+describe("draftToScheduleEvent（見出しと移動日の列）", () => {
+  it("まとめても見出しは素のまま（件数などを足さない）", async () => {
     const { draftToScheduleEvent } = await import("./drafts");
     const merged = {
       ...item({ id: "a", place: google("P1") }),
       draftIds: ["a", "b", "c", "d"],
     };
-    expect(draftToScheduleEvent(merged, "m1").title).toBe("夕食 ×4");
-  });
-
-  it("1件のままなら件数を出さない", async () => {
-    const { draftToScheduleEvent } = await import("./drafts");
-    expect(draftToScheduleEvent(item({ id: "a" }), "m1").title).toBe("夕食");
+    expect(draftToScheduleEvent(merged, "m1").title).toBe("夕食");
   });
 
   it("移動日に選んだ側をカレンダーへ渡す（列の判定に要る）", async () => {

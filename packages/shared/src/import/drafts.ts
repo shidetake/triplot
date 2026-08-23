@@ -447,12 +447,7 @@ export function draftToScheduleEvent(
   const endAt = d.prefill.endTime ? `${endDate}T${d.prefill.endTime}` : null;
   return {
     id: draftEventId(d.id),
-    // 同じ店の重なりをまとめた時は件数を出す。出さないと「他のレシートが
-    // 消えた」ようにしか見えない（実機フィードバック）。
-    title:
-      d.draftIds.length > 1
-        ? `${d.labelParts[0]} ×${d.draftIds.length}`
-        : d.labelParts[0],
+    title: d.labelParts[0],
     kind: kind3 === "transit" ? "transit" : "normal",
     allDay: kind3 === "allday",
     startAt,
