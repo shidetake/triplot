@@ -130,7 +130,11 @@ export type EventDraftItem = {
   labelParts: string[];
   date: string; // 開始日
   time: string; // 開始時刻（不明なら "09:00"）
-  tz: string; // 旅程から解決した通常予定のTZ（乗継日は先頭候補）
+  tz: string; // 旅程から解決した通常予定のTZ
+  // 移動日にどちら側を選んだか。カレンダーの列の判定に要る（本物の予定の
+  // tzDisambigTransitId/side と同じ意味）。ここが null だと resolveEventTz が
+  // 先頭候補＝出発側に落ちるので、ハワイの予定が日本の列に出てしまう。
+  tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
   prefill: EventDraftPrefill;
 };
 
@@ -273,14 +277,18 @@ export function deriveEventDraftItems(
       // どちら側かを当てて初期選択にする（フォームでは変更できる）。
       // 当てられない時だけ従来どおり先頭候補。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
-      const tz =
+      const picked =
         res.kind === "single"
-          ? res.tz
+          ? null
           : (pickTzByLongitude(
               res.options,
               ev.resolvedNamedPlace?.lng,
               ev.startDate,
-            )?.tz ?? res.options[0].tz);
+            ) ?? res.options[0]);
+      const tz = res.kind === "single" ? res.tz : picked!.tz;
+      const tzDisambig = picked
+        ? { transitId: picked.transitId, side: picked.side }
+        : null;
 
       // 事前解決済みのフライト（apps/web/lib/import/process.ts の
       // prefetchFlights が抽出直後に仕込む）があれば、フライト番号機能で
@@ -302,6 +310,8 @@ export function deriveEventDraftItems(
           id: d.id,
           draftIds: [d.id],
           labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
+          // transit は departTz/arriveTz を明示的に持つので曖昧さが無い。
+          tzDisambig: null,
           date: depDate ?? ev.startDate,
           time: depTime ?? ev.startTime ?? "09:00",
           tz,
@@ -376,6 +386,7 @@ export function deriveEventDraftItems(
           id: d.id,
           draftIds: [d.id],
           labelParts: [title, whenLabel],
+          tzDisambig,
           date: ev.startDate,
           time: ev.startTime ?? "09:00",
           tz,
@@ -436,15 +447,20 @@ export function draftToScheduleEvent(
   const endAt = d.prefill.endTime ? `${endDate}T${d.prefill.endTime}` : null;
   return {
     id: draftEventId(d.id),
-    title: d.labelParts[0],
+    // 同じ店の重なりをまとめた時は件数を出す。出さないと「他のレシートが
+    // 消えた」ようにしか見えない（実機フィードバック）。
+    title:
+      d.draftIds.length > 1
+        ? `${d.labelParts[0]} ×${d.draftIds.length}`
+        : d.labelParts[0],
     kind: kind3 === "transit" ? "transit" : "normal",
     allDay: kind3 === "allday",
     startAt,
     endAt,
     startTz: kind3 === "transit" ? (d.prefill.departTz ?? d.tz) : null,
     endTz: kind3 === "transit" ? (d.prefill.arriveTz ?? d.tz) : null,
-    tzDisambigTransitId: null,
-    tzDisambigSide: null,
+    tzDisambigTransitId: d.tzDisambig?.transitId ?? null,
+    tzDisambigSide: d.tzDisambig?.side ?? null,
     startPlaceId: null,
     endPlaceId: null,
     visibility: "shared",

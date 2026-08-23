@@ -492,6 +492,7 @@ describe("draftToScheduleEvent", () => {
   const base: EventDraftItem = {
     id: "d1",
     draftIds: ["d1"],
+    tzDisambig: null,
     labelParts: ["NRT-HNL", "8/1 21:00 → 8/1 09:35"],
     date: "2026-08-01",
     time: "21:00",

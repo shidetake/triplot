@@ -25,6 +25,7 @@ function item(
   return {
     id,
     draftIds: [id],
+    tzDisambig: null,
     labelParts: [o.title ?? "夕食", fmt(date, time)],
     date,
     time,
@@ -244,5 +245,32 @@ describe("resolveDraftOverlaps", () => {
     expect(out).toHaveLength(1);
     expect(out[0].prefill.endDate).toBe("2026-05-01");
     expect(out[0].prefill.endTime).toBe("01:00");
+  });
+});
+
+describe("draftToScheduleEvent（まとめた件数と移動日の列）", () => {
+  it("まとめた時はブロックの見出しに件数を出す", async () => {
+    const { draftToScheduleEvent } = await import("./drafts");
+    const merged = {
+      ...item({ id: "a", place: google("P1") }),
+      draftIds: ["a", "b", "c", "d"],
+    };
+    expect(draftToScheduleEvent(merged, "m1").title).toBe("夕食 ×4");
+  });
+
+  it("1件のままなら件数を出さない", async () => {
+    const { draftToScheduleEvent } = await import("./drafts");
+    expect(draftToScheduleEvent(item({ id: "a" }), "m1").title).toBe("夕食");
+  });
+
+  it("移動日に選んだ側をカレンダーへ渡す（列の判定に要る）", async () => {
+    const { draftToScheduleEvent } = await import("./drafts");
+    const withTz = {
+      ...item({ id: "a" }),
+      tzDisambig: { transitId: "t1", side: "arrive" as const },
+    };
+    const ev = draftToScheduleEvent(withTz, "m1");
+    expect(ev.tzDisambigTransitId).toBe("t1");
+    expect(ev.tzDisambigSide).toBe("arrive");
   });
 });
