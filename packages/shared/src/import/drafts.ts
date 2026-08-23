@@ -443,9 +443,19 @@ export function draftToScheduleEvent(
   myMemberId: string,
 ): EventRow {
   const kind3 = d.prefill.kind3;
-  const startAt = `${d.date}T${d.time}`;
   const endDate = d.prefill.endDate ?? d.date;
-  const endAt = d.prefill.endTime ? `${endDate}T${d.prefill.endTime}` : null;
+  // 終日は時刻を持たないので、endTime を条件にすると endAt が null になり
+  // 「初日だけの1日予定」に化ける。宿泊が初日にしか出ず、しかも複数日と
+  // 判定されないので乗継日に到着側の列から始める処理（layoutWeek の
+  // transit-depart スキップ）も効かなくなっていた。実イベントと同じく
+  // 日付だけで組み立てる（保存時も `${date}T00:00:00`）。
+  const isAllDay = kind3 === "allday";
+  const startAt = isAllDay ? `${d.date}T00:00:00` : `${d.date}T${d.time}`;
+  const endAt = isAllDay
+    ? `${endDate}T00:00:00`
+    : d.prefill.endTime
+      ? `${endDate}T${d.prefill.endTime}`
+      : null;
   return {
     id: draftEventId(d.id),
     title: d.labelParts[0],

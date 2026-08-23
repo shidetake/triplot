@@ -525,7 +525,10 @@ describe("draftToScheduleEvent", () => {
     expect(ev.createdByMemberId).toBe("me");
   });
 
-  it("allday は endTime が無いので endAt は null（web と同じ）", () => {
+  // かつては「endTime が無いので endAt は null」を仕様として固定していたが、
+  // それだと複数日の宿泊が初日だけの1日予定に化けていた（実機で発覚）。
+  // 終日は時刻を持たないので、日付だけで組み立てるのが正しい。
+  it("allday は終了日まで伸びる（時刻を持たないので日付で組み立てる）", () => {
     const ev = draftToScheduleEvent(
       {
         ...base,
@@ -542,7 +545,8 @@ describe("draftToScheduleEvent", () => {
     );
     expect(ev.allDay).toBe(true);
     expect(ev.kind).toBe("normal");
-    expect(ev.endAt).toBeNull();
+    expect(ev.startAt).toBe("2026-08-01T00:00:00");
+    expect(ev.endAt).toBe("2026-08-03T00:00:00");
     expect(ev.startTz).toBeNull();
   });
 });

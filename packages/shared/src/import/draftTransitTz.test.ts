@@ -137,3 +137,41 @@ describe("移動日の下書きの TZ", () => {
     expect(ev.tzDisambigSide).toBeNull();
   });
 });
+
+describe("終日の下書き", () => {
+  function alldayDraft(endDate: string | null) {
+    return [
+      {
+        id: "d1",
+        kind: "event",
+        payload: {
+          kind: "allday",
+          title: "The Royal Hawaiian",
+          startDate: "2026-04-28",
+          startTime: null,
+          endDate,
+          endTime: null,
+          departTz: null,
+          arriveTz: null,
+          location: null,
+          vehicleNumber: null,
+          referenceId: null,
+        },
+      },
+    ];
+  }
+
+  it("終了日まで伸びる（endTime が無くても1日に潰れない）", () => {
+    const [item] = deriveEventDraftItems(alldayDraft("2026-05-04"), ctx);
+    const ev = draftToScheduleEvent(item, "m1");
+    expect(ev.allDay).toBe(true);
+    expect(ev.startAt).toBe("2026-04-28T00:00:00");
+    expect(ev.endAt).toBe("2026-05-04T00:00:00");
+  });
+
+  it("終了日が無ければ初日だけ", () => {
+    const [item] = deriveEventDraftItems(alldayDraft(null), ctx);
+    const ev = draftToScheduleEvent(item, "m1");
+    expect(ev.endAt).toBe("2026-04-28T00:00:00");
+  });
+});
