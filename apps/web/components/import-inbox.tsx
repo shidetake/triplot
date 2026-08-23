@@ -39,6 +39,7 @@ export interface ImportInboxData {
     subject: string | null;
     sender: string | null;
     extract_error: string | null;
+    extract_error_kind: string | null;
     next_retry_at: string | null;
   }[];
   usedThisMonth: number;
@@ -85,13 +86,13 @@ export function ImportInbox({
 
   return (
     <>
-      <p className="mt-3 text-sm text-muted-foreground">
-        {t("description")}
-      </p>
+      <p className="mt-3 text-sm text-muted-foreground">{t("description")}</p>
 
       {importAddress && (
         <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-xs text-muted-foreground">{t("forwardLabel")}</span>
+          <span className="text-xs text-muted-foreground">
+            {t("forwardLabel")}
+          </span>
           <ImportAddress address={importAddress} />
         </div>
       )}
@@ -111,18 +112,32 @@ export function ImportInbox({
           {errorRows.map((e) => (
             <li
               key={e.id}
-              className="flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3 dark:border-red-400/20 dark:bg-red-400/10"
+              // レート制限は「混んでいて順番待ち」であって失敗ではないので、
+              // 赤い箱にしない（失敗したと誤解させない）。
+              className={
+                e.extract_error_kind === "rate_limit"
+                  ? "flex items-start justify-between gap-3 rounded-lg border border-foreground/10 p-3"
+                  : "flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3 dark:border-red-400/20 dark:bg-red-400/10"
+              }
             >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-foreground">
                   {e.subject || e.sender || t("unknownMerchant")}
                 </div>
-                <div className="mt-0.5 text-xs text-red-700 dark:text-red-300">
+                <div
+                  className={
+                    e.extract_error_kind === "rate_limit"
+                      ? "mt-0.5 text-xs text-muted-foreground"
+                      : "mt-0.5 text-xs text-red-700 dark:text-red-300"
+                  }
+                >
                   {e.extract_error === EXTRACT_ERROR_NO_CONTENT
                     ? t("errorNoContent")
-                    : e.next_retry_at
-                      ? t("errorWillRetry")
-                      : t("errorNoRetry")}
+                    : e.extract_error_kind === "rate_limit"
+                      ? t("errorRateLimited")
+                      : e.next_retry_at
+                        ? t("errorWillRetry")
+                        : t("errorNoRetry")}
                 </div>
               </div>
               <DismissEmailButton
@@ -138,13 +153,14 @@ export function ImportInbox({
       )}
 
       {rows.length === 0 ? (
-        <p className="mt-10 text-sm text-muted-foreground">
-          {t("emptyState")}
-        </p>
+        <p className="mt-10 text-sm text-muted-foreground">{t("emptyState")}</p>
       ) : (
         <ul className="mt-8 space-y-3">
           {rows.map((row) => (
-            <li key={row.id} className="rounded-lg border border-foreground/10 p-4">
+            <li
+              key={row.id}
+              className="rounded-lg border border-foreground/10 p-4"
+            >
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
@@ -235,7 +251,9 @@ export function ImportInbox({
                         className="text-sm font-medium text-foreground underline underline-offset-2"
                       >
                         {t("confirmAtTrip", {
-                          title: tripTitle.get(row.assignedTripId) ?? t("tripFallback"),
+                          title:
+                            tripTitle.get(row.assignedTripId) ??
+                            t("tripFallback"),
                         })}
                       </Link>
                     ) : (
@@ -253,7 +271,10 @@ export function ImportInbox({
                       <div className="mt-2 space-y-1">
                         {/* このメール自身の元の抽出値（分けられない本体） */}
                         {(() => {
-                          const s = extractionSummary(row.own, t("unknownMerchant"));
+                          const s = extractionSummary(
+                            row.own,
+                            t("unknownMerchant"),
+                          );
                           return (
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
                               <span>{s.title}</span>
@@ -266,14 +287,19 @@ export function ImportInbox({
                               <InlineDivider />
                               <span>
                                 {s.date}
-                                {row.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                                {row.own?.receipt?.isUpdate
+                                  ? t("adjustment")
+                                  : ""}
                               </span>
                             </div>
                           );
                         })()}
                         {/* 合体された子メール（分けられる） */}
                         {row.children.map((ch) => {
-                          const s = extractionSummary(ch.own, t("unknownMerchant"));
+                          const s = extractionSummary(
+                            ch.own,
+                            t("unknownMerchant"),
+                          );
                           return (
                             <div
                               key={ch.id}
@@ -290,7 +316,9 @@ export function ImportInbox({
                                 <InlineDivider />
                                 <span>
                                   {s.date}
-                                  {ch.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                                  {ch.own?.receipt?.isUpdate
+                                    ? t("adjustment")
+                                    : ""}
                                 </span>
                               </span>
                               <button

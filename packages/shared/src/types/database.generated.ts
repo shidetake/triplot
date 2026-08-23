@@ -469,6 +469,7 @@ export type Database = {
         Row: {
           body_text: string | null
           extract_error: string | null
+          extract_error_kind: string | null
           extracted: Json | null
           extracted_at: string | null
           id: string
@@ -489,6 +490,7 @@ export type Database = {
         Insert: {
           body_text?: string | null
           extract_error?: string | null
+          extract_error_kind?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string
@@ -509,6 +511,7 @@ export type Database = {
         Update: {
           body_text?: string | null
           extract_error?: string | null
+          extract_error_kind?: string | null
           extracted?: Json | null
           extracted_at?: string | null
           id?: string

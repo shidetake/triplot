@@ -69,7 +69,9 @@ export async function fetchImportInboxRows(sb: DB, userId: string) {
   // 取り込みに失敗した行。next_retry_at があれば自動リトライ待ち。
   const { data: errorRows } = await sb
     .from("inbound_emails")
-    .select("id, subject, sender, received_at, extract_error, next_retry_at")
+    .select(
+      "id, subject, sender, received_at, extract_error, extract_error_kind, next_retry_at",
+    )
     .eq("status", "error")
     .order("received_at", { ascending: false });
 

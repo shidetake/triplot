@@ -668,6 +668,7 @@ async function attemptExtraction(
       .update({
         status: "error",
         extract_error: msg,
+        extract_error_kind: kind,
         next_retry_at:
           kind === "permanent"
             ? null
@@ -766,7 +767,11 @@ export async function retryDueErrors(
         const until = new Date(Date.now() + delay).toISOString();
         await supabase
           .from("inbound_emails")
-          .update({ extract_error: msg, next_retry_at: until })
+          .update({
+            extract_error: msg,
+            extract_error_kind: "rate_limit",
+            next_retry_at: until,
+          })
           .eq("status", "error")
           .not("next_retry_at", "is", null)
           .lte("next_retry_at", new Date().toISOString());
@@ -785,6 +790,7 @@ export async function retryDueErrors(
         .update({
           retry_count: attempt,
           extract_error: msg,
+          extract_error_kind: kind,
           next_retry_at: giveUp
             ? null
             : new Date(Date.now() + backoffMs(attempt)).toISOString(),

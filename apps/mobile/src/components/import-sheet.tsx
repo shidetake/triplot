@@ -20,9 +20,7 @@ import {
   eventDraftWhenLabel,
   extractionSummary,
 } from "@triplot/shared/import/draftLabel";
-import type {
-  Extraction,
-} from "@triplot/shared/import/schema";
+import type { Extraction } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
 import { ChevronIcon, CopyIcon } from "@/components/icons";
@@ -152,29 +150,39 @@ export function ImportSheet() {
       )}
 
       {/* 取り込みに失敗したメール（web のエラー行と同じ。× で破棄） */}
-      {(data?.errorRows ?? []).map((e) => (
-        <View key={e.id} style={styles.errorCard}>
-          <View style={styles.errorBody}>
-            <Text style={styles.emailSummary} numberOfLines={1}>
-              {e.subject || e.sender || t("unknownMerchant")}
-            </Text>
-            <Text style={styles.errorText}>
-              {e.extract_error === EXTRACT_ERROR_NO_CONTENT
-                ? t("errorNoContent")
-                : e.next_retry_at
-                  ? t("errorWillRetry")
-                  : t("errorNoRetry")}
-            </Text>
-          </View>
-          <Pressable
-            onPress={() => dismiss(e.id)}
-            hitSlop={8}
-            accessibilityLabel={t("dismiss")}
+      {(data?.errorRows ?? []).map((e) => {
+        // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
+        // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
+        const queued = e.extract_error_kind === "rate_limit";
+        return (
+          <View
+            key={e.id}
+            style={queued ? styles.queuedCard : styles.errorCard}
           >
-            <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
-          </Pressable>
-        </View>
-      ))}
+            <View style={styles.errorBody}>
+              <Text style={styles.emailSummary} numberOfLines={1}>
+                {e.subject || e.sender || t("unknownMerchant")}
+              </Text>
+              <Text style={queued ? styles.queuedText : styles.errorText}>
+                {e.extract_error === EXTRACT_ERROR_NO_CONTENT
+                  ? t("errorNoContent")
+                  : queued
+                    ? t("errorRateLimited")
+                    : e.next_retry_at
+                      ? t("errorWillRetry")
+                      : t("errorNoRetry")}
+              </Text>
+            </View>
+            <Pressable
+              onPress={() => dismiss(e.id)}
+              hitSlop={8}
+              accessibilityLabel={t("dismiss")}
+            >
+              <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
+            </Pressable>
+          </View>
+        );
+      })}
 
       {/* メール一覧 */}
       {emails.length === 0 ? (
@@ -263,9 +271,7 @@ export function ImportSheet() {
                   <ChevronIcon
                     size={14}
                     rotate={90}
-                    color={
-                      assigned ? theme.foreground : theme.warnAccent
-                    }
+                    color={assigned ? theme.foreground : theme.warnAccent}
                   />
                 </Pressable>
                 <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
@@ -291,7 +297,10 @@ export function ImportSheet() {
                   {mergedOpen && (
                     <View style={styles.mergedList}>
                       {[
-                        { id: null, own: e.extracted as unknown as Extraction | null },
+                        {
+                          id: null,
+                          own: e.extracted as unknown as Extraction | null,
+                        },
                         ...children,
                       ].map((ch, i) => {
                         const sm = extractionSummary(
@@ -299,7 +308,10 @@ export function ImportSheet() {
                           t("unknownMerchant"),
                         );
                         return (
-                          <View key={ch.id ?? `own:${i}`} style={styles.mergedRow}>
+                          <View
+                            key={ch.id ?? `own:${i}`}
+                            style={styles.mergedRow}
+                          >
                             <View style={styles.mergedRowText}>
                               <Text style={styles.metaText} numberOfLines={1}>
                                 {sm.title}
@@ -307,13 +319,17 @@ export function ImportSheet() {
                               {sm.amount && (
                                 <>
                                   <InlineDivider />
-                                  <Text style={styles.metaText}>{sm.amount}</Text>
+                                  <Text style={styles.metaText}>
+                                    {sm.amount}
+                                  </Text>
                                 </>
                               )}
                               <InlineDivider />
                               <Text style={styles.metaText}>
                                 {sm.date}
-                                {ch.own?.receipt?.isUpdate ? t("adjustment") : ""}
+                                {ch.own?.receipt?.isUpdate
+                                  ? t("adjustment")
+                                  : ""}
                               </Text>
                             </View>
                             {/* 本体（このメール自身）は分けられない。 */}
@@ -355,118 +371,129 @@ export function ImportSheet() {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  content: { paddingHorizontal: 16, gap: 12 },
-  description: { fontSize: 12, color: t.mutedForeground },
-  addressBox: {
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.1),
-    borderRadius: 6,
-    padding: 12,
-    gap: 6,
-  },
-  addressLabel: { fontSize: 12, color: t.mutedForeground },
-  addressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
-  address: {
-    flex: 1,
-    fontSize: 14,
-    fontVariant: ["tabular-nums"],
-    color: t.foreground,
-  },
-  copyButton: {
-    height: 28,
-    width: 28,
-    borderRadius: 6,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  empty: { fontSize: 14, color: t.mutedForeground, paddingVertical: 16 },
-  // 上限超過の警告（amber。web の MessageBox kind="warning" と同段）。
-  warnBox: {
-    borderWidth: 1,
-    borderColor: t.warnBorder,
-    backgroundColor: t.warnBg,
-    borderRadius: 6,
-    padding: 10,
-  },
-  warnText: { fontSize: 12, color: t.warnText },
-  // 取り込み失敗メール（red。web のエラー行と同じ薄い赤面＋赤枠）。
-  errorCard: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 8,
-    borderWidth: 1,
-    borderColor: t.destructiveBorder,
-    backgroundColor: t.errorBg,
-    borderRadius: 6,
-    padding: 12,
-  },
-  errorBody: { flex: 1, gap: 2 },
-  errorText: { fontSize: 12, color: t.errorText },
-  emailCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.fgAlpha(0.15),
-    borderRadius: 6,
-    padding: 12,
-    gap: 6,
-  },
-  emailSummary: { fontSize: 14, fontWeight: "500", color: t.foreground },
-  emailMeta: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8,
-  },
-  metaText: { fontSize: 12, color: t.mutedForeground },
-  actionsRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  assignButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    flexShrink: 1,
-    gap: 4,
-    borderRadius: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: t.fgAlpha(0.05),
-  },
-  assignButtonWarn: { backgroundColor: t.warnChipBg },
-  assignLabel: {
-    flexShrink: 1,
-    fontSize: 12,
-    fontWeight: "500",
-    color: t.foreground,
-  },
-  assignLabelWarn: { color: t.warnAccent },
-  dismissLabel: { fontSize: 12, color: t.mutedForeground },
-  // 合体明細（web の <details> 相当）。開閉行は控えめ、中身は muted の面に置く。
-  mergedToggle: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
-  mergedList: { marginTop: 6, gap: 4 },
-  mergedRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    borderRadius: 4,
-    backgroundColor: t.secondary,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-  },
-  mergedRowText: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8,
-  },
-  splitButton: {
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.2),
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  splitLabel: { fontSize: 11, color: t.mutedForeground },
-  usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
-});
+    content: { paddingHorizontal: 16, gap: 12 },
+    description: { fontSize: 12, color: t.mutedForeground },
+    addressBox: {
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      padding: 12,
+      gap: 6,
+    },
+    addressLabel: { fontSize: 12, color: t.mutedForeground },
+    addressRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+    address: {
+      flex: 1,
+      fontSize: 14,
+      fontVariant: ["tabular-nums"],
+      color: t.foreground,
+    },
+    copyButton: {
+      height: 28,
+      width: 28,
+      borderRadius: 6,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    empty: { fontSize: 14, color: t.mutedForeground, paddingVertical: 16 },
+    // 上限超過の警告（amber。web の MessageBox kind="warning" と同段）。
+    warnBox: {
+      borderWidth: 1,
+      borderColor: t.warnBorder,
+      backgroundColor: t.warnBg,
+      borderRadius: 6,
+      padding: 10,
+    },
+    warnText: { fontSize: 12, color: t.warnText },
+    // 取り込み失敗メール（red。web のエラー行と同じ薄い赤面＋赤枠）。
+    errorCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: t.destructiveBorder,
+      backgroundColor: t.errorBg,
+      borderRadius: 6,
+      padding: 12,
+    },
+    errorBody: { flex: 1, gap: 2 },
+    errorText: { fontSize: 12, color: t.errorText },
+    // 順番待ち（レート制限）は中立の見た目。処理中であって失敗ではない。
+    queuedCard: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      padding: 12,
+    },
+    queuedText: { fontSize: 12, color: t.mutedForeground },
+    emailCard: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.fgAlpha(0.15),
+      borderRadius: 6,
+      padding: 12,
+      gap: 6,
+    },
+    emailSummary: { fontSize: 14, fontWeight: "500", color: t.foreground },
+    emailMeta: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 8,
+    },
+    metaText: { fontSize: 12, color: t.mutedForeground },
+    actionsRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+    },
+    assignButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      flexShrink: 1,
+      gap: 4,
+      borderRadius: 6,
+      paddingHorizontal: 10,
+      paddingVertical: 6,
+      backgroundColor: t.fgAlpha(0.05),
+    },
+    assignButtonWarn: { backgroundColor: t.warnChipBg },
+    assignLabel: {
+      flexShrink: 1,
+      fontSize: 12,
+      fontWeight: "500",
+      color: t.foreground,
+    },
+    assignLabelWarn: { color: t.warnAccent },
+    dismissLabel: { fontSize: 12, color: t.mutedForeground },
+    // 合体明細（web の <details> 相当）。開閉行は控えめ、中身は muted の面に置く。
+    mergedToggle: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
+    mergedList: { marginTop: 6, gap: 4 },
+    mergedRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      borderRadius: 4,
+      backgroundColor: t.secondary,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    mergedRowText: {
+      flex: 1,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 8,
+    },
+    splitButton: {
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 4,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    splitLabel: { fontSize: 11, color: t.mutedForeground },
+    usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
+  });
