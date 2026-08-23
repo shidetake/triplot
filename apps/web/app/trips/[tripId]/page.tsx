@@ -106,7 +106,14 @@ export default async function TripDetailPage({
   }
   if (!trip) notFound();
 
-  const activeMembers = members ?? [];
+  // 退会者を含む全員。名前・色の解決（費用の支払者、割り勘の対象、予定の
+  // 参加者、場所の作成者）はこちらを使う。「今この旅行にいる人」が要る側
+  // （ピッカー・全員参加の判定・メンバー管理）は active で絞る。
+  const allMembers = (members ?? []).map((m) => ({
+    ...m,
+    active: m.left_at === null,
+  }));
+  const activeMembers = allMembers.filter((m) => m.active);
   const me = activeMembers.find((m) => m.user_id === user.id);
   if (!me) notFound();
 
@@ -151,7 +158,8 @@ export default async function TripDetailPage({
   const todos: TodoRow[] = deriveTodos(todosRaw, me.id);
   const prepTodos = todos.filter((t) => t.kind === "prep");
   const onsiteTodos = todos.filter((t) => t.kind === "onsite");
-  const todoMembers = activeMembers.map((m) => ({
+  // TODO は作成者・いいねの表示にしか使わない（ピッカーは無い）ので全員。
+  const todoMembers = allMembers.map((m) => ({
     id: m.id,
     display_name: m.display_name,
     color: m.color,
@@ -198,9 +206,11 @@ export default async function TripDetailPage({
   const averageRates = deriveAverageRates(expenses, defaultCurrency);
 
   // Settlement / Summary 用に default_currency に換算済みで渡す
+  // 退会者も含める。退会しても払った分・借りた分は消えないので、
+  // active だけで精算すると金額が釣り合わなくなる。
   const settlements = calculateSettlements(
     toSettlementExpenses(expenses),
-    activeMembers.map((m) => ({ id: m.id })),
+    allMembers.map((m) => ({ id: m.id })),
   );
 
   const summary = calculateExpenseSummary(toSummaryExpenses(expenses), me.id);
@@ -209,7 +219,7 @@ export default async function TripDetailPage({
   // 発生順に並んでいる）。
   const categoryNameById = new Map(categories.map((c) => [c.id, c.name]));
   const memberNameById = new Map(
-    activeMembers.map((m) => [m.id, m.display_name]),
+    allMembers.map((m) => [m.id, m.display_name]),
   );
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
   // カレンダーエクスポート用: 自分に見える予定を Google カレンダー形式の入力へ
@@ -362,10 +372,11 @@ export default async function TripDetailPage({
               tripEnd={trip.end_date}
               events={scheduleEvents}
               places={placesForPicker}
-              members={activeMembers.map((m) => ({
+              members={allMembers.map((m) => ({
                 id: m.id,
                 display_name: m.display_name,
                 color: m.color,
+                active: m.active,
               }))}
               biasCenter={placesBiasCenter}
               myMemberId={me.id}
@@ -428,7 +439,7 @@ export default async function TripDetailPage({
               pinOptions={pinOptions}
               visitDayEntries={visitDayEntries}
               earliestVisitEntries={earliestVisitEntries}
-              members={activeMembers.map((m) => ({
+              members={allMembers.map((m) => ({
                 id: m.id,
                 color: m.color,
               }))}
@@ -513,7 +524,7 @@ export default async function TripDetailPage({
             <ExpenseSummaryView
               summary={summary}
               settlements={settlements}
-              members={activeMembers}
+              members={allMembers}
               defaultCurrency={defaultCurrency}
               averageRates={averageRates}
             />
@@ -521,11 +532,12 @@ export default async function TripDetailPage({
             <ExpenseList
               tripId={tripId}
               expenses={expenses}
-              members={activeMembers.map((m) => ({
+              members={allMembers.map((m) => ({
                 id: m.id,
                 display_name: m.display_name,
                 color: m.color,
                 avatarUrl: m.users?.avatar_url ?? null,
+                active: m.active,
               }))}
               categories={categories}
               places={placesForPicker}

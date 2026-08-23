@@ -22,11 +22,15 @@ import { PrivateBadge } from "./private-badge";
 import type { ExpenseRow } from "@triplot/shared/tripDerive";
 export type { ExpenseRow };
 
+// 退会者を含む全員が渡る。支払者名と割り勘の対象は退会後も記録として残るので、
+// ここで引けないと支払者が空欄になり、割り勘の人数が実際より少なく見える。
+// 編集フォームに渡すときだけ active で絞る（もう選べない人を候補に出さない）。
 type Member = {
   id: string;
   display_name: string;
   color: number | null;
   avatarUrl?: string | null;
+  active: boolean;
 };
 
 export function ExpenseList({
@@ -108,7 +112,7 @@ export function ExpenseList({
         >
           <ExpenseForm
             tripId={tripId}
-            members={members}
+            members={members.filter((m) => m.active)}
             myMemberId={myMemberId}
             defaultCurrency={defaultCurrency}
             initialCurrency={initialCurrency}

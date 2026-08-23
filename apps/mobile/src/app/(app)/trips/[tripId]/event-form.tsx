@@ -133,7 +133,9 @@ export default function EventFormRoute() {
       <FormHostProvider draftKey={draftKey}>
         <EventForm
           tripId={tripId}
-          members={(data.members ?? []).map((m) => ({
+          members={(data.members ?? [])
+            .filter((m) => m.left_at === null)
+            .map((m) => ({
             id: m.id,
             display_name: m.display_name,
             color: m.color,

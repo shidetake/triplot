@@ -101,7 +101,14 @@ export function ScheduleSection({
     lng: number | null;
   }[];
   // color は予定ブロック色の決定（1人だけ参加 → その人の hue）に必要。
-  members: { id: string; display_name: string; color: number | null }[];
+  // 退会者を含む全員（予定ブロックの色・参加者ドットの解決に要る）。
+  // ピッカーと「全員参加」の判定は active で絞る。
+  members: {
+    id: string;
+    display_name: string;
+    color: number | null;
+    active: boolean;
+  }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
   // 広い画面だけに出す取り込みバナー（確認ボタン付き一覧）。狭い画面は
@@ -138,6 +145,11 @@ export function ScheduleSection({
   // 予定の色判定で使う、参加者 id → hue の引き辞書。
   const memberHueById = useMemo(
     () => new Map(members.map((m) => [m.id, m.color])),
+    [members],
+  );
+  // 新規作成で選べるのは今この旅行にいる人だけ。
+  const activeMembers = useMemo(
+    () => members.filter((m) => m.active),
     [members],
   );
   const [open, setOpen] = useState<OpenForm | null>(null);
@@ -349,7 +361,7 @@ export function ScheduleSection({
           placeName={placeName}
           selectedEventId={selectedEventId}
           myMemberId={myMemberId}
-          activeMemberCount={members.length}
+          activeMemberCount={activeMembers.length}
           memberHueById={memberHueById}
           pcDrag={pcDrag}
           onPcDragChange={setPcDrag}
@@ -412,7 +424,7 @@ export function ScheduleSection({
             tripEnd={tripEnd}
             state={open.form}
             places={places}
-            members={members}
+            members={activeMembers}
             biasCenter={biasCenter}
             tzTimeline={tzTimeline}
             onDone={closeForm}
