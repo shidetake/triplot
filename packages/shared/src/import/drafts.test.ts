@@ -103,6 +103,21 @@ const expenseCtx = {
 };
 
 describe("deriveExpenseDraftItems", () => {
+  it("支払日の古い順に並べる（同じ日はレシートの時刻順）", () => {
+    // 取り込んだ順（inbound_drafts の created_at）ではなく、旅程の順で
+    // 並んでほしい。まとめて転送するとメールの到着順は旅程と無関係になる。
+    const items = deriveExpenseDraftItems(
+      [
+        { id: "d1", email_id: "e1", kind: "expense", payload: receipt({ date: "2026-08-03" }) },
+        { id: "d2", email_id: "e2", kind: "expense", payload: receipt({ date: "2026-08-01", time: "18:00" }) },
+        { id: "d3", email_id: "e3", kind: "expense", payload: receipt({ date: "2026-08-01", time: "09:30" }) },
+        { id: "d4", email_id: "e4", kind: "expense", payload: receipt({ date: "2026-08-01", time: null }) },
+      ],
+      expenseCtx,
+    );
+    expect(items.map((i) => i.id)).toEqual(["d4", "d3", "d2", "d1"]);
+  });
+
   it("カテゴリ名の一致・保存済み場所マッチ・ラベル部品を組み立てる", () => {
     const items = deriveExpenseDraftItems(
       [{ id: "d1", email_id: "e-d1", kind: "expense", payload: receipt({}) }],

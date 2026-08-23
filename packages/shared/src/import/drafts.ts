@@ -253,7 +253,15 @@ export function deriveExpenseDraftItems(
           initialTime: r.time ?? undefined,
         },
       ];
-    });
+    })
+    // 支払日の古い順。取り込んだ順（inbound_drafts.created_at）だと、まとめて
+    // 転送したメールの到着順で並ぶので旅程と関係ない並びになる。同じ日は
+    // レシートの時刻順、時刻が無いものは同日の先頭に置く。
+    .sort(
+      (a, b) =>
+        a.initialPaidAt.localeCompare(b.initialPaidAt) ||
+        (a.initialTime ?? "").localeCompare(b.initialTime ?? ""),
+    );
 }
 
 // 事前解決できたフライトの空港を場所の事前入力にする。Google の場所として
