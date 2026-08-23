@@ -22,6 +22,22 @@ export async function resolveInboundDraft(
   return ok(undefined);
 }
 
+// 重なった同一店の下書きをまとめて表示している場合、確定/破棄では**畳んだぶんも
+// 全部**解決する。1件しか解決しないと、残りが未確定のまま再び現れる
+// （import/draftOverlap.ts の resolveDraftOverlaps 参照）。
+export async function resolveInboundDrafts(
+  sb: DB,
+  draftIds: string[],
+  status: "confirmed" | "dismissed",
+  ids: { expenseId?: string; eventId?: string } = {},
+): Promise<Result<void>> {
+  for (const id of draftIds) {
+    const r = await resolveInboundDraft(sb, id, status, ids);
+    if (!r.ok) return r;
+  }
+  return ok(undefined);
+}
+
 // メールを破棄する（残っている未確定の下書きを全部 dismissed に。確定済みはそのまま）。
 export async function dismissInboundEmail(
   sb: DB,

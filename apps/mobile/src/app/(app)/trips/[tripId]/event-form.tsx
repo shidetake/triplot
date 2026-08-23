@@ -2,10 +2,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { Alert, ScrollView } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
-import { resolveInboundDraft } from "@triplot/shared/data/inbox";
-import {
-  deriveEventDraftItems,
-} from "@triplot/shared/import/drafts";
+import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
+import { deriveEventDraftItems } from "@triplot/shared/import/drafts";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
@@ -67,9 +65,7 @@ export default function EventFormRoute() {
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
     ) ?? undefined;
 
-  const editEvent = eventId
-    ? events.find((e) => e.id === eventId)
-    : undefined;
+  const editEvent = eventId ? events.find((e) => e.id === eventId) : undefined;
   const confirmingDraft = draftId
     ? eventDrafts.find((d) => d.id === draftId)
     : undefined;
@@ -83,10 +79,21 @@ export default function EventFormRoute() {
   // する（web の ScheduleSection と同じ resolveInboundDraft）。この旅行の
   // 未確定が全部片付くと親メールも DB 側で自動的に確定扱いになるので、受信箱の
   // キャッシュも合わせて無効化する（useInvalidateInbox 参照）。
+  // 重なった同一店の下書きは1件にまとめて表示しているので、畳んだぶんも
+  // 一緒に解決する（1件だけだと残りが未確定のまま再び現れる）。web の
+  // ScheduleSection と同じ。
+  const draftIdsOf = (id: string) =>
+    eventDrafts.find((d) => d.id === id)?.draftIds ?? [id];
+
   const confirmDraft = async (id: string, newEventId?: string) => {
-    const r = await resolveInboundDraft(supabase, id, "confirmed", {
-      eventId: newEventId,
-    });
+    const r = await resolveInboundDrafts(
+      supabase,
+      draftIdsOf(id),
+      "confirmed",
+      {
+        eventId: newEventId,
+      },
+    );
     if (!r.ok) Alert.alert(r.error);
     void invalidate();
     void invalidateInbox();
@@ -100,15 +107,17 @@ export default function EventFormRoute() {
         text: t("import.dismiss"),
         style: "destructive",
         onPress: () => {
-          void resolveInboundDraft(supabase, id, "dismissed").then((r) => {
-            if (!r.ok) {
-              Alert.alert(t("import.dismissFailed", { error: r.error }));
-              return;
-            }
-            router.back();
-            void invalidate();
-            void invalidateInbox();
-          });
+          void resolveInboundDrafts(supabase, draftIdsOf(id), "dismissed").then(
+            (r) => {
+              if (!r.ok) {
+                Alert.alert(t("import.dismissFailed", { error: r.error }));
+                return;
+              }
+              router.back();
+              void invalidate();
+              void invalidateInbox();
+            },
+          );
         },
       },
     ]);
@@ -136,10 +145,10 @@ export default function EventFormRoute() {
           members={(data.members ?? [])
             .filter((m) => m.left_at === null)
             .map((m) => ({
-            id: m.id,
-            display_name: m.display_name,
-            color: m.color,
-          }))}
+              id: m.id,
+              display_name: m.display_name,
+              color: m.color,
+            }))}
           myMemberId={me.id}
           places={(data.placesRaw ?? []).map((p) => ({
             id: p.id,
@@ -160,13 +169,12 @@ export default function EventFormRoute() {
           }}
           onSuccess={
             confirmingDraft
-              ? (newEventId) => void confirmDraft(confirmingDraft.id, newEventId)
+              ? (newEventId) =>
+                  void confirmDraft(confirmingDraft.id, newEventId)
               : undefined
           }
           onDismissDraft={
-            confirmingDraft
-              ? () => dismissDraft(confirmingDraft.id)
-              : undefined
+            confirmingDraft ? () => dismissDraft(confirmingDraft.id) : undefined
           }
         />
       </FormHostProvider>
