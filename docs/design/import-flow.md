@@ -177,6 +177,47 @@ sequenceDiagram
   同じく Cloudflare に逃がす（毎分・無料）。状態は DB が持つので、心拍 Worker はメール Worker と
   別の独立ユニット（[`architecture.md`](../architecture.md) の定期実行を参照）。
 
+### AI Gateway の無料枠の制限
+
+リトライ設計はここの制約に従属するので、分かっていることと分かっていないことを分けて置く。
+
+**制限は2種類あり、性質が違う。**
+
+| | 内容 | 公開値 |
+|---|---|---|
+| **短期のレート制限** | モデルごとに課される。超えると `429` が返り、少し待てば再び通る | **非公開** |
+| **月次の無料クレジット** | 金額の枠。最初のリクエストで開始。クレジットを購入すると有料枠に移り、月次の無料クレジットは適用されなくなる | **非公開** |
+
+出典: [AI Gateway Pricing](https://vercel.com/docs/ai-gateway/pricing)（"Free tier requests are also
+rate limited per model, with lower limits than the paid tier. If you exceed a limit, AI Gateway
+returns a `429` error and you can retry after a short wait."）。**具体的な RPM も月次クレジット額も
+Vercel は公表していない**（[コミュニティの質問](https://community.vercel.com/t/question-about-ai-gateway-production-rate-limits/41849)
+も未回答）。数値を前提にした設計を書かないこと。
+
+**使っているモデルは「常時無料」の対象ではない。** 抽出は `google/gemini-2.5-flash`
+（`apps/web/lib/import/importConfig.ts`）で、これは
+[Free Tier models](https://vercel.com/ai-gateway/models?freeTier=true) の一覧に載っておらず
+$0.30/1M（入力）・$2.50/1M（出力）の課金対象。無料枠では「通るが強く絞られる」状態になる。
+
+**実測（2026-08-23、レシート約25通を一括転送）**:
+
+- 最初の1〜2通だけ成功し、残り23通が `status=error`。全件に `next_retry_at` が入り打ち切りはゼロ
+- 毎分の cron で再試行し続けて、**約6分で1件成功**（`error` 23→22）
+- → 枠の枯渇ではなく**短期のレート制限に張り付いている**状態。枯渇なら1件も通らない
+
+**この実測から分かる設計上の問題**: 定常的な流量制限に対して指数バックオフ
+（1分→2分→4分…6時間上限）は逆効果になる。失敗のたびに待ちが倍になるので、**滞留が古くなるほど
+流量が落ちる**。バックオフは「相手が過負荷だから引く」ための戦略で、「毎分 N 件までなら通る」に
+対しては定速リトライが正しい。`isRetryable` は既にレート制限を判別しているので、そこだけ
+固定間隔に分岐させれば済む（未実施）。
+
+**現状を確認する手段**（数値が非公開なぶん、実測で見るしかない）:
+
+- 残高と累計使用額 — ダッシュボードの AI Gateway タブ、または
+  [`GET /v1/credits`](https://vercel.com/docs/ai-gateway/sdks-and-apis/rest-api)（`AI_GATEWAY_API_KEY` が要る）
+- 滞留の実態 — `inbound_emails` の `status='error'` を `retry_count` / `next_retry_at` 付きで数える。
+  時間を空けて2回数えれば、通っているのか完全に止まっているのか区別できる
+
 ## 3. 確定（下書き → 費用・予定）
 
 旅行に割り当てられた下書きは、旅行画面の「未確定の取り込み」に**費用は費用セクション、
