@@ -587,7 +587,15 @@
     "feedbackEmpty": "No feedback yet.",
     "markDone": "Mark as done",
     "markOpen": "Reopen",
-    "updateFailed": "Failed to update: {error}"
+    "updateFailed": "Failed to update: {error}",
+    "creditsHeading": "AI Gateway credits",
+    "creditsDescription": "Balance used for extracting forwarded receipts. When it runs out, imports stop until you top up.",
+    "creditsBalance": "Balance",
+    "creditsTotalUsed": "Total used",
+    "creditsPerEmail": "{amount} per email (measured average)",
+    "creditsRemainingEmails": "about {count} more emails",
+    "creditsLow": "The balance is running low. Consider topping up.",
+    "creditsUnavailable": "Could not read the balance (AI_GATEWAY_API_KEY not set, or the lookup failed)."
   },
   "feedback": {
     "menuLink": "Feedback",

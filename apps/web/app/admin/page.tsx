@@ -5,6 +5,7 @@ import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
 import { InlineDivider } from "@/components/inline-divider";
+import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,6 +16,15 @@ import { updateFeedbackStatusAction } from "./actions";
 //    レシート基盤を RECEIPT_LINK_HOSTS（コード定数）に PR で昇格させる判断材料にする。
 //    昇格の操作自体はこの画面には無い（コード変更＝PR レビューがゲート）。
 //  - ユーザーフィードバック: 不具合報告・要望の一覧と対応状態の管理。
+// 残高がこれを下回ったら警告を出す。目安は「上限まで使うユーザー1人の1か月分」
+// （月100通 × 実測 $0.021 ≒ $2）。1人ぶんを切ったら手当てが要る、という線。
+const CREDITS_LOW_USD = 2;
+
+// クレジットは USD 建て。小数が意味を持つ額なので3桁まで見せる。
+function formatUsd(v: number): string {
+  return `$${v.toFixed(3)}`;
+}
+
 export default async function AdminPage() {
   const supabase = await createClient();
   const {
@@ -45,6 +55,25 @@ export default async function AdminPage() {
     )
     .order("created_at", { ascending: false });
 
+  // AI Gateway の残高（診断）。尽きると取り込みが止まり、入金するまで復旧しない
+  // ＝運用者が気づける場所が要る。1通あたりの単価は固定値を持たず、
+  // 「累計使用額 ÷ 抽出できたメール数」で毎回出す（定数だと実態からずれていく）。
+  const [credits, { count: extractedCount }] = await Promise.all([
+    fetchGatewayCredits(),
+    supabase
+      .from("inbound_emails")
+      .select("id", { count: "exact", head: true })
+      .not("extracted_at", "is", null),
+  ]);
+  const perEmail =
+    credits && extractedCount && extractedCount > 0
+      ? credits.totalUsed / extractedCount
+      : null;
+  const remainingEmails =
+    credits && perEmail && perEmail > 0
+      ? Math.floor(credits.balance / perEmail)
+      : null;
+
   const [t, tFeedback, locale] = await Promise.all([
     getTranslations("admin"),
     getTranslations("feedback"),
@@ -56,13 +85,57 @@ export default async function AdminPage() {
       <h1 className="text-2xl font-semibold tracking-tight">{t("heading")}</h1>
 
       <section className="mt-10">
+        <h2 className="text-lg font-semibold">{t("creditsHeading")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("creditsDescription")}
+        </p>
+        {credits ? (
+          <>
+            <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="text-xs text-muted-foreground">
+                {t("creditsBalance")}
+              </span>
+              <span className="text-lg font-semibold tabular-nums">
+                {formatUsd(credits.balance)}
+              </span>
+              <InlineDivider />
+              <span className="text-xs text-muted-foreground">
+                {t("creditsTotalUsed")}
+              </span>
+              <span className="text-sm tabular-nums">
+                {formatUsd(credits.totalUsed)}
+              </span>
+            </div>
+            {perEmail !== null && remainingEmails !== null && (
+              <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                {t("creditsPerEmail", { amount: formatUsd(perEmail) })}
+                {" / "}
+                {t("creditsRemainingEmails", { count: remainingEmails })}
+              </p>
+            )}
+            {credits.balance < CREDITS_LOW_USD && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
+                {t("creditsLow")}
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="mt-4 text-sm text-muted-foreground">
+            {t("creditsUnavailable")}
+          </p>
+        )}
+      </section>
+
+      <section className="mt-10">
         <h2 className="text-lg font-semibold">{t("candidatesHeading")}</h2>
         <p className="mt-1 text-xs text-muted-foreground">
           {t("candidatesDescription")}
         </p>
 
         {(candidates ?? []).length === 0 ? (
-          <p className="mt-6 text-sm text-muted-foreground">{t("emptyState")}</p>
+          <p className="mt-6 text-sm text-muted-foreground">
+            {t("emptyState")}
+          </p>
         ) : (
           <ul className="mt-4 divide-y divide-foreground/10">
             {(candidates ?? []).map((c) => (

@@ -587,7 +587,15 @@
     "feedbackEmpty": "フィードバックはまだありません。",
     "markDone": "対応済みにする",
     "markOpen": "未対応に戻す",
-    "updateFailed": "更新に失敗しました: {error}"
+    "updateFailed": "更新に失敗しました: {error}",
+    "creditsHeading": "AI Gateway のクレジット",
+    "creditsDescription": "メール取り込みの抽出に使う残高です。尽きると取り込みが止まり、入金するまで復旧しません。",
+    "creditsBalance": "残高",
+    "creditsTotalUsed": "累計使用",
+    "creditsPerEmail": "1通あたり {amount}（実測平均）",
+    "creditsRemainingEmails": "残り約 {count} 通ぶん",
+    "creditsLow": "残高が少なくなっています。入金を検討してください。",
+    "creditsUnavailable": "残高を取得できませんでした（AI_GATEWAY_API_KEY 未設定、または照会に失敗）。"
   },
   "feedback": {
     "menuLink": "フィードバック",
