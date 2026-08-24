@@ -149,8 +149,12 @@ export function ImportSheet() {
         </View>
       )}
 
-      {/* 取り込みに失敗したメール（web のエラー行と同じ。× で破棄） */}
-      {(data?.errorRows ?? []).map((e) => {
+      {/* 取り込みに失敗した／順番待ちのメール。まとまりの中は詰める
+          （面と枠を持つカードは自分で境界を持つので、隙間は最小で足りる）。 */}
+      {(data?.errorRows ?? []).length > 0 && (
+        <View style={styles.group}>
+          <Text style={styles.groupHeading}>{t("waitingHeading")}</Text>
+          {(data?.errorRows ?? []).map((e) => {
         // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
         // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
         const queued = e.extract_error_kind === "rate_limit";
@@ -179,16 +183,20 @@ export function ImportSheet() {
               accessibilityLabel={t("dismiss")}
             >
               <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
-            </Pressable>
-          </View>
-        );
-      })}
+              </Pressable>
+            </View>
+          );
+          })}
+        </View>
+      )}
 
-      {/* メール一覧 */}
+      {/* 未確定の下書き */}
       {emails.length === 0 ? (
         <Text style={styles.empty}>{t("emptyState")}</Text>
       ) : (
-        emails.map((e) => {
+        <View style={styles.group}>
+          <Text style={styles.groupHeading}>{t("draftsHeading")}</Text>
+          {emails.map((e) => {
           const row = rowById.get(e.id);
           const receipt = row?.receipt ?? null;
           const events = row?.events ?? [];
@@ -353,7 +361,8 @@ export function ImportSheet() {
               )}
             </View>
           );
-        })
+          })}
+        </View>
       )}
 
       {/* 使用量 */}
@@ -371,7 +380,12 @@ export function ImportSheet() {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    content: { paddingHorizontal: 16, gap: 12 },
+    // 外側の gap は**まとまりの境目**（転送先アドレス／取り込み待ち／未確定の
+    // 下書き／使用量）。まとまりの中は group の gap で詰める。間隔が情報を
+    // 持つように、この2段以外の値を混ぜない（ui-guidelines「カードの間隔」）。
+    content: { paddingHorizontal: 16, gap: 24 },
+    group: { gap: 8 },
+    groupHeading: { fontSize: 12, color: t.mutedForeground },
     description: { fontSize: 12, color: t.mutedForeground },
     addressBox: {
       borderWidth: 1,

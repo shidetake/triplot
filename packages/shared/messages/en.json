@@ -580,7 +580,9 @@
     "dismissDraftBody": "The expense and event from the same email are discarded together.",
     "newTrip": "New trip",
     "newTripHint": "Create it from the suggested trip on the trips list",
-    "noTripsToAssign": "No trips to assign to yet."
+    "noTripsToAssign": "No trips to assign to yet.",
+    "waitingHeading": "Processing",
+    "draftsHeading": "Pending imports"
   },
   "admin": {
     "heading": "Admin",

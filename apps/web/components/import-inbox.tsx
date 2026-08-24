@@ -137,7 +137,11 @@ export function ImportInbox({
       )}
 
       {errorRows.length > 0 && (
-        <ul className="mt-6 space-y-2">
+        <>
+          <h3 className="mt-6 text-xs text-muted-foreground">
+            {t("waitingHeading")}
+          </h3>
+          <ul className="mt-2 space-y-2">
           {errorRows.map((e) => (
             <li
               key={e.id}
@@ -184,12 +188,17 @@ export function ImportInbox({
             </li>
           ))}
         </ul>
+        </>
       )}
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">{t("emptyState")}</p>
       ) : (
-        <ul className="mt-8 space-y-3">
+        <>
+          <h3 className="mt-6 text-xs text-muted-foreground">
+            {t("draftsHeading")}
+          </h3>
+          <ul className="mt-2 space-y-2">
           {rows.map((row) => (
             <li
               key={row.id}
@@ -390,6 +399,7 @@ export function ImportInbox({
             </li>
           ))}
         </ul>
+        </>
       )}
     </>
   );

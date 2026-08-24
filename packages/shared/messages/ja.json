@@ -580,7 +580,9 @@
     "dismissDraftBody": "同じメールから出た費用・予定をまとめて破棄します。",
     "newTrip": "新規旅行",
     "newTripHint": "旅行一覧の「旅行の候補」から作成できます",
-    "noTripsToAssign": "割り当てられる旅行がまだありません。"
+    "noTripsToAssign": "割り当てられる旅行がまだありません。",
+    "waitingHeading": "取り込み待ち",
+    "draftsHeading": "未確定の取り込み"
   },
   "admin": {
     "heading": "管理",
