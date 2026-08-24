@@ -23,11 +23,34 @@ npm run dev          # next dev
 npm run build        # next build
 npm run lint         # eslint
 npx tsc --noEmit     # 型チェック（pre-commit / pre-push でも実行される）
-npm test             # vitest run（一回だけ）
+npm test             # vitest run（一回だけ。純関数のみ・DB に触らない）
+npm run test:db      # 実 DB（staging）に繋ぐテスト。手で走らせる（下記）
 npm run test:watch   # vitest watch
 npx vitest run lib/settlement.test.ts        # 単一ファイル
 npx vitest run -t "settles greedy"           # テスト名で絞り込み
 ```
+
+### 実 DB のテスト（`npm run test:db`）
+
+純関数のテストでは**原理的に捕まらない壊れ方**がある。トリガと cascade の
+噛み合わせ、RLS、RPC の引数のズレなど、DB の中でしか起きないもの。実際、
+「移動の予定とそれを参照する予定がある旅行を削除できない」不具合は、
+ユニットテストを何本足しても見つからなかった。
+
+`packages/shared/dbtests/` がその層で、旅行を作って中身を入れて最後に消す、
+という1本を持つ。**staging に繋ぐ**（資格情報は gitignore された
+`apps/web/.env.development.local`＝web の開発用ログインと同じもの。無ければ
+skip する。本番を向いていたら例外で止まる）。
+
+- `npm test` とは別。Docker も資格情報も要らない `npm test` が pre-commit /
+  pre-push で回り、こちらは**手で**走らせる（提出前とスキーマを触った時）。
+  `dbtests/` は `src/` の外に置いてあるので、通常のテストが拾うことはない。
+- staging はプレビュー確認にも使う場所なので、**自分で作った旅行の中だけ**を
+  触る。`truncate` もユーザー単位の削除もしない。後片付けは削除機能そのもの
+  （＝後始末がテスト対象を兼ねる）で、落ちて消せなかったぶんは次回の開始時に
+  接頭辞 `__dbtest__` で拾って消す。
+- **中間状態をアサートしない**。値の形は純関数側のテストの仕事で、ここは
+  操作が通るか / 最後に消えるかだけを見る（落ちた時に原因を追いやすくする）。
 
 Husky フック:
 - `pre-commit`: lint + tsc
