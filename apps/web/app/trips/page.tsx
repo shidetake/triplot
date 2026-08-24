@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { CreateTripButton } from "@/components/create-trip-button";
+import { InboxRealtime } from "@/components/inbox-realtime";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { LoadError } from "@/components/load-error";
 import {
@@ -33,6 +34,7 @@ export default async function TripsPage() {
       <main className="mx-auto w-full max-w-2xl px-6 py-10">
       {/* 他のメンバーが作った旅行・招待で増えた旅行を、戻ってきた時に拾う。 */}
       <RefreshOnFocus />
+      <InboxRealtime userId={user.id} />
       <TripsSection userId={user.id} />
     </main>
     </>

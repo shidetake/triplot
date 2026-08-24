@@ -1,13 +1,15 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, Stack } from "expo-router";
 import {
   FlatList,
   Image,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   View,
 } from "react-native";
+import { useEffect, useId } from "react";
 import { useLocale, useTranslations } from "use-intl";
 
 import {
@@ -27,6 +29,7 @@ import { HeaderAccountButtons } from "@/components/header-account-buttons";
 import { InboxIcon, PlusIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
+import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -72,6 +75,46 @@ export default function TripsScreen() {
     ...tripProposalDefaults(p),
     emailIds: p.emailIds,
   }));
+
+  // メールの取り込みはサーバー側の非同期処理で終わるので、クライアントの操作に
+  // 紐づく再取得では拾えない（転送したのにアプリを再起動するまで出てこない）。
+  // 旅行詳細の useTripDrafts と同じ Realtime 購読を、一覧では「自分宛の
+  // inbound_emails 全部」に対して張る（未割り当ての行は trip_id が null なので
+  // trip_id では絞れない）。RLS が効くので他ユーザーの行は流れない。
+  // チャンネル名を useId() で一意にするのも同じ理由（同名の二重 subscribe が
+  // 実機でクラッシュした事例に倣う）。
+  const qc = useQueryClient();
+  const instanceId = useId();
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`inbound_emails:user:${userId}:${instanceId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "inbound_emails",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          void qc.invalidateQueries({ queryKey: ["unassignedDrafts", userId] });
+          void qc.invalidateQueries({ queryKey: ["inboxCount", userId] });
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [userId, instanceId, qc]);
+
+  // 引っ張り更新は旅行と候補の両方を取り直す。
+  const { refreshing, onRefresh } = usePullRefresh(async () => {
+    await Promise.all([
+      refetch(),
+      qc.refetchQueries({ queryKey: ["unassignedDrafts", userId] }),
+    ]);
+  });
 
   // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。web の
   // AppHeader と同じ shared read。
@@ -146,10 +189,12 @@ export default function TripsScreen() {
         }
         // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
         // スクロールでタイトルが縮む標準挙動を効かせる。
-        // 引っ張り更新は付けない: ラージタイトルとの組み合わせで1回更新すると
-        // 二度と引けなくなる不具合（実機）があり、フォーカス時の自動再取得と
-        // 操作後の invalidate で足りるため撤去（挙動の一貫性優先）。
         contentInsetAdjustmentBehavior="automatic"
+        // 取り込みは Realtime で反映されるが、接続が切れている時の保険として
+        // 手動の更新も置く（世の中どおりの引っ張り更新）。
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
         contentContainerStyle={styles.list}
         renderItem={({ item }) => (
           <Pressable
