@@ -5,6 +5,7 @@ import { after, NextResponse } from "next/server";
 import { parseImportToken } from "@/lib/import/inboundAddress";
 import { extractInBackground } from "@/lib/import/process";
 import { createServiceClient } from "@/lib/supabase/service";
+import { decodeMimeWords } from "@triplot/shared/import/mimeWords";
 
 // Cloudflare Email Worker からの受信メール通知を受ける webhook。生メール(MIME)を
 // inbound_emails に保存し、本人が特定できればレスポンス後にバックグラウンド抽出する。
@@ -51,7 +52,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const subject = typeof body.subject === "string" ? body.subject : null;
+  // 件名は MIME encoded-word（=?UTF-8?Q?...?=）で来ることがある。転送元次第で
+  // 既に解かれていることもあるが、生のまま届くと受信箱にその文字列が並ぶ。
+  const subject = decodeMimeWords(
+    typeof body.subject === "string" ? body.subject : null,
+  );
   const messageId =
     typeof body.messageId === "string" ? body.messageId : null;
   const size = typeof body.rawSize === "number" ? body.rawSize : raw.length;

@@ -142,10 +142,15 @@ export function ImportInbox({
             <li
               key={e.id}
               // レート制限は「混んでいて順番待ち」であって失敗ではないので、
-              // 赤い箱にしない（失敗したと誤解させない）。
+              // 赤い箱にしない（失敗したと誤解させない）。かといって通常の
+              // カードと同じ見た目だと「済んだもの」に見えるので、薄いグレーの
+              // 面で「まだ処理中」を示す。amber は使わない — ガイドラインで
+              // amber は「要対応」の色で、これは放置すれば勝手に完了するため。
+              // 破線も使わない — 「ここに追加できる」の意味で旅行の候補に
+              // 使っており、同じ製品の中で記号が二重の意味を持つのを避ける。
               className={
                 e.extract_error_kind === "rate_limit"
-                  ? "flex items-start justify-between gap-3 rounded-lg border border-foreground/10 p-3"
+                  ? "flex items-start justify-between gap-3 rounded-lg border border-foreground/10 bg-muted/60 p-3"
                   : "flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3 dark:border-red-400/20 dark:bg-red-400/10"
               }
             >

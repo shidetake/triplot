@@ -418,13 +418,18 @@ const makeStyles = (t: Theme) =>
     },
     errorBody: { flex: 1, gap: 2 },
     errorText: { fontSize: 12, color: t.errorText },
-    // 順番待ち（レート制限）は中立の見た目。処理中であって失敗ではない。
+    // 順番待ち（レート制限）は処理中であって失敗ではないので赤くしない。
+    // ただし通常のカードと同じ見た目だと「済んだもの」に見えるので、薄い
+    // グレーの面で「まだ処理中」を示す。amber は使わない（ガイドラインで
+    // amber は「要対応」の色。これは放置すれば勝手に完了する）。破線も
+    // 使わない（「ここに追加できる」の意味で旅行の候補に使っている）。
     queuedCard: {
       flexDirection: "row",
       alignItems: "flex-start",
       gap: 8,
       borderWidth: 1,
       borderColor: t.fgAlpha(0.1),
+      backgroundColor: t.secondary,
       borderRadius: 6,
       padding: 12,
     },
