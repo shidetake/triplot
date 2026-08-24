@@ -8,6 +8,27 @@
 実装（Expo/React Native、`apps/mobile`）は完了済み。残っているのは
 App Store 公開（TestFlight から本番リリースへ）。
 
+提出前にやること:
+
+- [ ] **AI Gateway のクレジットを買う**。無料枠は月あたりヘビーユーザー2人分
+  程度しかなく、公開して人が増えると取り込みが止まる。枠と上限の詳細は
+  [docs/design/import-flow.md](docs/design/import-flow.md) の
+  「AI Gateway の無料枠の制限」。
+- [ ] **バージョンを 1.0.0 にする**。`apps/mobile/app.config.ts` の `version`
+  （ビルド番号は `eas.json` の `autoIncrement` が自動で上げるので触らない）。
+  **提出用ビルドの直前に上げる** — TestFlight の確認ビルドを 1.0.0 で
+  埋めてしまわないため。手順は [docs/versioning.md](docs/versioning.md)。
+- [ ] **審査員用のデモアカウントを審査メモに書く**。入口が OAuth（Google /
+  Apple）だけなので、審査員がサインインできないと即リジェクトされる。
+  App Store Connect のバージョン情報 → 「App Review Information」に
+  メール／パスワードを記載する。開発用ログインは `next dev` と EAS の
+  preview ビルドにしか入っていない（本番ビルドにはボタン自体が無い）ので、
+  **審査用のアカウントを別途用意して渡す**必要がある。
+- [ ] **migration をスカッシュする**。「本番運用フェーズに入った」と宣言する
+  タイミングと同じ。以降は backfill を真面目に書く運用に切り替わる
+  （AGENTS.md「Migration ポリシー（開発期間中）」）。スキーマが固まって
+  からでよい。
+
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。
 
