@@ -118,7 +118,8 @@
     "heading": "Trips",
     "empty": "You haven't joined any trips yet.",
     "create": "Create a trip",
-    "dateRange": "{start} – {end}"
+    "dateRange": "{start} – {end}",
+    "proposal": "Suggested trip"
   },
   "createTrip": {
     "modeNew": "New",

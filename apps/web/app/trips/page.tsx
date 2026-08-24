@@ -9,6 +9,12 @@ import {
   fetchMyTrips,
   fetchUserProfile,
 } from "@triplot/shared/data/reads/trips";
+import { fetchUnassignedDrafts } from "@triplot/shared/data/reads/inbox";
+import {
+  deriveTripProposals,
+  tripProposalDefaults,
+} from "@triplot/shared/import/tripProposal";
+import { TripProposalCard } from "@/components/trip-proposal-card";
 import { AppHeader } from "@/components/app-header";
 import { createClient } from "@/lib/supabase/server";
 import { formatTripDateRange } from "@triplot/shared/ymd";
@@ -36,10 +42,16 @@ export default async function TripsPage() {
 async function TripsSection({ userId }: { userId: string }) {
   // 読み取りクエリは shared（RN の旅行一覧と共用）。
   const supabase = await createClient();
-  const [profile, { trips, error }] = await Promise.all([
+  const [profile, { trips, error }, unassigned] = await Promise.all([
     fetchUserProfile(supabase, userId),
     fetchMyTrips(supabase, userId),
+    fetchUnassignedDrafts(supabase, userId),
   ]);
+  // まだ作っていない旅行の候補（移動・宿泊の未割り当ての下書きを日付でまとめたもの）。
+  const proposals = deriveTripProposals(unassigned).map((p) => ({
+    ...tripProposalDefaults(p),
+    emailIds: p.emailIds,
+  }));
   const defaultDisplayName = profile?.display_name?.trim() || null;
 
   const [t, locale] = await Promise.all([
@@ -67,10 +79,25 @@ async function TripsSection({ userId }: { userId: string }) {
         />
       </div>
 
-      {trips.length === 0 ? (
+      {trips.length === 0 && proposals.length === 0 ? (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       ) : (
         <ul className="space-y-2">
+          {proposals.map((p) => (
+            <li key={p.emailIds.join(",")}>
+              <TripProposalCard
+                proposal={p}
+                defaultDisplayName={defaultDisplayName}
+                trips={trips.map((trip) => ({
+                  id: trip.id,
+                  title: trip.title,
+                  default_currency: trip.default_currency,
+                  start_date: trip.start_date,
+                  end_date: trip.end_date,
+                }))}
+              />
+            </li>
+          ))}
           {trips.map((trip) => (
             <li key={trip.id}>
               <Link

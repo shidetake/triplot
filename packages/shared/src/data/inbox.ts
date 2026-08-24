@@ -250,6 +250,21 @@ export async function unmergeInboundEmail(
   return ok(undefined);
 }
 
+// 旅行の候補（仮旅行）を本物の旅行にする。旅行を作り、その候補を構成する
+// メールを全部そこへ割り当てる。以降は普通の旅行なので、下書きの確定は
+// 旅行画面の通常フローに乗る（ここでは費用・予定は作らない）。
+export async function assignInboundEmailsToTrip(
+  sb: DB,
+  emailIds: string[],
+  tripId: string,
+): Promise<Result<void>> {
+  for (const id of emailIds) {
+    const r = await assignInboundEmailTrip(sb, id, tripId);
+    if (!r.ok) return r;
+  }
+  return ok(undefined);
+}
+
 // 下書きを旅行に割り当てる（費用化＝確定は旅行画面で行う）。tripId 未選択は null。
 export async function assignInboundEmailTrip(
   sb: DB,

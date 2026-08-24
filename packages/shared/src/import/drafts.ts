@@ -198,7 +198,7 @@ function candidateToDraftPlace(
 // （搭乗日・チェックイン日）があればそれを費用の日付にする。
 // serviceDate を使うときは time を捨てる — time はレシートの購入時刻なので、
 // 搭乗日と組み合わせると実在しない日時になる。
-function receiptDate(r: StoredReceipt | null): {
+export function receiptDate(r: StoredReceipt | null): {
   date: string;
   time: string | undefined;
 } {

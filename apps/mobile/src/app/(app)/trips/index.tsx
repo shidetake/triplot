@@ -10,7 +10,14 @@ import {
 } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
-import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
+import {
+  fetchUnassignedDrafts,
+  fetchUnassignedInboundCount,
+} from "@triplot/shared/data/reads/inbox";
+import {
+  deriveTripProposals,
+  tripProposalDefaults,
+} from "@triplot/shared/import/tripProposal";
 import {
   fetchMyTrips,
   fetchUserProfile,
@@ -53,6 +60,19 @@ export default function TripsScreen() {
 
   const trips = data?.trips ?? [];
 
+  // 旅行の候補（仮旅行）。まだ作っていない旅行の証拠になる未割り当ての
+  // 下書き（移動・宿泊）を日付でまとめたもの。web の trips/page.tsx と
+  // 同じ shared の導出を使う。
+  const { data: unassigned } = useQuery({
+    queryKey: ["unassignedDrafts", userId],
+    queryFn: () => fetchUnassignedDrafts(supabase, userId!),
+    enabled: !!userId,
+  });
+  const proposals = deriveTripProposals(unassigned ?? null).map((p) => ({
+    ...tripProposalDefaults(p),
+    emailIds: p.emailIds,
+  }));
+
   // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。web の
   // AppHeader と同じ shared read。
   const { data: inboxCount } = useQuery({
@@ -90,6 +110,40 @@ export default function TripsScreen() {
       <FlatList
         data={trips}
         keyExtractor={(item) => item.id}
+        // 候補は実在の旅行の前（＝一覧の先頭）に置く。まだ作っていない旅行が
+        // あることに気付かせるのが目的なので、下に埋もれると意味がない。
+        ListHeaderComponent={
+          proposals.length > 0 ? (
+            <View style={styles.proposals}>
+              {proposals.map((p) => (
+                <Pressable
+                  key={p.emailIds.join(",")}
+                  style={styles.proposalCard}
+                  onPress={() =>
+                    router.push({
+                      pathname: "/trips/new",
+                      params: {
+                        ...(p.title ? { title: p.title } : {}),
+                        start: p.startDate,
+                        end: p.endDate,
+                        emails: p.emailIds.join(","),
+                      },
+                    })
+                  }
+                >
+                  <Text style={styles.proposalLabel}>{t("proposal")}</Text>
+                  <Text style={styles.cardTitle}>
+                    {p.title ??
+                      formatTripDateRange(p.startDate, p.endDate, locale)}
+                  </Text>
+                  <Text style={styles.cardSub}>
+                    {formatTripDateRange(p.startDate, p.endDate, locale)}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          ) : null
+        }
         // ラージタイトル（iOS）配下でヘッダー高さぶんインセットを自動調整し、
         // スクロールでタイトルが縮む標準挙動を効かせる。
         // 引っ張り更新は付けない: ラージタイトルとの組み合わせで1回更新すると
@@ -157,6 +211,17 @@ const makeStyles = (t: Theme) =>
     borderRadius: 6,
     padding: 16,
   },
+  proposals: { gap: 8, marginBottom: 8 },
+  // 破線＝「ここに追加できる」（ui-guidelines）。実線にすると既に存在する
+  // 旅行に見えてしまう。
+  proposalCard: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: t.fgAlpha(0.2),
+    borderRadius: 6,
+    padding: 16,
+  },
+  proposalLabel: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
   cardTitle: { fontSize: 14, fontWeight: "500", color: t.foreground },
   cardSub: { marginTop: 4, fontSize: 12, color: t.mutedForeground },
   empty: { padding: 24, fontSize: 14, color: t.mutedForeground },

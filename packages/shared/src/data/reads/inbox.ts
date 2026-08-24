@@ -17,6 +17,23 @@ export async function fetchTripPendingDrafts(sb: DB, tripId: string) {
   return data;
 }
 
+// まだ旅行に割り当てられていない未確定の下書き（自分の分。RLS で own のみ）。
+// 旅行の候補（仮旅行）を組み立てるのに使う（import/tripProposal.ts）。
+export async function fetchUnassignedDrafts(sb: DB, userId: string) {
+  const { data } = await sb
+    .from("inbound_drafts")
+    .select("kind, payload, inbound_emails!inner(id, user_id, trip_id, status)")
+    .eq("inbound_emails.user_id", userId)
+    .is("inbound_emails.trip_id", null)
+    .eq("inbound_emails.status", "extracted")
+    .eq("status", "pending");
+  return (data ?? []).map((d) => ({
+    emailId: d.inbound_emails.id,
+    kind: d.kind,
+    payload: d.payload,
+  }));
+}
+
 // 受信箱バッジの件数 = まだ旅行に割り当てていない下書きメール（要割当）。
 // web の AppHeader と RN の旅行一覧ヘッダーで共有。
 export async function fetchUnassignedInboundCount(

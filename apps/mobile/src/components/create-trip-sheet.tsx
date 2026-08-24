@@ -4,6 +4,7 @@ import { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
 
+import { assignInboundEmailsToTrip } from "@triplot/shared/data/inbox";
 import { createTrip } from "@triplot/shared/data/trips";
 import { fetchMyTrips, fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { tripDayCount } from "@triplot/shared/tripCopy";
@@ -31,7 +32,18 @@ import { useSession } from "@/lib/session";
 
 // 旅行作成（FormSheet の中身）。web の create-trip-form と同じ2モード
 // （新規/過去の旅行をコピー）。成功でシートを閉じ、作成した旅行の詳細へ遷移。
-export function CreateTripSheet() {
+// 旅行の候補（仮旅行）から開いた時は、日程・名前を埋めた状態で始まり、
+// 作成後にその候補を構成するメールを新しい旅行へ割り当てる。
+export function CreateTripSheet({
+  proposal,
+}: {
+  proposal?: {
+    title: string | null;
+    startDate: string;
+    endDate: string;
+    emailIds: string[];
+  };
+} = {}) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations("createTrip");
@@ -59,13 +71,19 @@ export function CreateTripSheet() {
   const [mode, setMode] = useDraft<"new" | "copy">("mode", "new");
   const [sourceId, setSourceId] = useDraft("sourceId", "");
   const [sourcePickerOpen, setSourcePickerOpen] = useState(false);
-  const [title, setTitle] = useDraft("title", "");
+  const [title, setTitle] = useDraft("title", proposal?.title ?? "");
   const [displayName, setDisplayName] = useDraft<string | null>(
     "displayName",
     null,
   );
-  const [startDate, setStartDate] = useDraft("startDate", todayStr());
-  const [endDate, setEndDate] = useDraft("endDate", todayStr());
+  const [startDate, setStartDate] = useDraft(
+    "startDate",
+    proposal?.startDate ?? todayStr(),
+  );
+  const [endDate, setEndDate] = useDraft(
+    "endDate",
+    proposal?.endDate ?? todayStr(),
+  );
   // 既定は前回旅行の精算通貨。過去の旅行がなければ JPY（web と同じ）。
   const lastCurrency = (trips[0]?.default_currency ?? "JPY") as Currency;
   const [currency, setCurrency] = useDraft<Currency>("currency", lastCurrency);
@@ -113,12 +131,25 @@ export function CreateTripSheet() {
       sourceTripId: mode === "copy" && sourceId ? sourceId : undefined,
       clientTz: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
+    if (r.ok && proposal) {
+      const a = await assignInboundEmailsToTrip(
+        supabase,
+        proposal.emailIds,
+        r.data.tripId,
+      );
+      if (!a.ok) {
+        setBusy(false);
+        setError(a.error);
+        return;
+      }
+    }
     setBusy(false);
     if (!r.ok) {
       setError(r.error);
       return;
     }
     void queryClient.invalidateQueries({ queryKey: ["trips", userId] });
+    void queryClient.invalidateQueries({ queryKey: ["inbox", userId] });
     // formSheet（trips/new）を router.back() で先に閉じてから replace すると、
     // 閉じた直後の「trips/index だけ」の状態に対して replace が効いてしまい、
     // trips/index ごと置き換わってスタックが1枚になる（戻るボタンが消える

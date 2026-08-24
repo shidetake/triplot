@@ -47,10 +47,19 @@ export function CreateTripForm({
   defaultDisplayName,
   trips,
   onDone,
+  proposal,
 }: {
   defaultDisplayName?: string | null;
   trips: CopyableTrip[];
   onDone: () => void;
+  // 旅行の候補（仮旅行）から開いた時の事前入力。作成後、この候補を構成する
+  // メールが新しい旅行に割り当てられる（createTripAction が処理する）。
+  proposal?: {
+    title: string | null;
+    startDate: string;
+    endDate: string;
+    emailIds: string[];
+  };
 }) {
   const [state, formAction, isPending] = useActionState(
     createTripAction,
@@ -67,7 +76,7 @@ export function CreateTripForm({
   const [mode, setMode] = useDraft<"new" | "copy">("mode", "new");
   const [sourceId, setSourceId] = useDraft("sourceId", "");
   // タイトル・通貨はコピー元選択時にプリフィルしたいので制御する。
-  const [title, setTitle] = useDraft("title", "");
+  const [title, setTitle] = useDraft("title", proposal?.title ?? "");
   const [displayName, setDisplayName] = useDraft(
     "displayName",
     defaultDisplayName ?? "",
@@ -131,6 +140,14 @@ export function CreateTripForm({
           ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
       {!inSheet && (
         <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
+      )}
+      {/* 旅行の候補から開いた時だけ。作成後にこのメール群を新しい旅行へ割り当てる。 */}
+      {proposal && (
+        <input
+          type="hidden"
+          name="import_email_ids"
+          value={proposal.emailIds.join(",")}
+        />
       )}
 
       {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型。
@@ -235,6 +252,8 @@ export function CreateTripForm({
           <DateRangePopover
             startName="start_date"
             endName="end_date"
+            defaultStart={proposal?.startDate}
+            defaultEnd={proposal?.endDate}
             required
             onChange={(start, end) => setRange({ start, end })}
           />

@@ -118,7 +118,8 @@
     "heading": "旅行",
     "empty": "まだ参加している旅行はありません。",
     "create": "旅行を作成",
-    "dateRange": "{start} – {end}"
+    "dateRange": "{start} – {end}",
+    "proposal": "旅行の候補"
   },
   "createTrip": {
     "modeNew": "新規",
