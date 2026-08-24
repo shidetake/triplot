@@ -1,11 +1,26 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, Pressable, ScrollView, StyleSheet, Text } from "react-native";
-import { useTranslations } from "use-intl";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { useLocale, useTranslations } from "use-intl";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import { assignInboundEmailTrip } from "@triplot/shared/data/inbox";
-import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
+import {
+  fetchImportInboxRows,
+  fetchUnassignedDrafts,
+} from "@triplot/shared/data/reads/inbox";
+import {
+  deriveTripProposals,
+  tripProposalDefaults,
+} from "@triplot/shared/import/tripProposal";
+import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { CheckIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
@@ -20,6 +35,7 @@ import { useSession } from "@/lib/session";
 export default function InboxPickTripRoute() {
   const { emailId } = useLocalSearchParams<{ emailId: string }>();
   const t = useTranslations("import");
+  const locale = useLocale();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { session } = useSession();
@@ -37,6 +53,23 @@ export default function InboxPickTripRoute() {
   // （create-trip のコピー元選択と同じ関数）。
   const tripLabels = buildCopySourceLabels(trips);
 
+  // 旅行が1つも無いと、この一覧は空のまま何も選べない行き止まりになる。
+  // そのメールが旅行の候補（仮旅行）に含まれているなら、「新規旅行として
+  // 扱われる」ことをここでも示す。押せる行にはしない — 作成は旅行一覧の
+  // 候補カードから行う（ここから旅行作成シートへ push すると、作成後の
+  // router.replace でこのシートの積み方が壊れる）。
+  const { data: unassigned } = useQuery({
+    queryKey: ["unassignedDrafts", userId],
+    queryFn: () => fetchUnassignedDrafts(supabase, userId!),
+    enabled: !!userId,
+  });
+  const found = deriveTripProposals(unassigned ?? null).find((p) =>
+    p.emailIds.includes(emailId),
+  );
+  // 日程・名前は旅行一覧の候補カードと同じ導出を通す（生の値を出すと、
+  // 「最低1泊を見込む」補正のぶんカードと期間が食い違って見える）。
+  const proposal = found ? tripProposalDefaults(found) : null;
+
   const pick = async (tripId: string) => {
     const r = await assignInboundEmailTrip(supabase, emailId, tripId);
     if (!r.ok) {
@@ -50,6 +83,29 @@ export default function InboxPickTripRoute() {
   return (
     <ScrollView contentContainerStyle={styles.content}>
       <SheetTitle>{t("selectTripPrompt")}</SheetTitle>
+      {proposal && (
+        <View style={styles.row}>
+          <View style={styles.newTripText}>
+            <Text style={styles.rowLabel}>
+              {proposal.title
+                ? `${t("newTrip")}: ${proposal.title}`
+                : t("newTrip")}
+            </Text>
+            <Text style={styles.newTripSub}>
+              {formatTripDateRange(
+                proposal.startDate,
+                proposal.endDate,
+                locale,
+              )}
+              {" · "}
+              {t("newTripHint")}
+            </Text>
+          </View>
+        </View>
+      )}
+      {trips.length === 0 && !proposal && (
+        <Text style={styles.empty}>{t("noTripsToAssign")}</Text>
+      )}
       {trips.map((tr) => {
         const selected = tr.id === currentTripId;
         return (
@@ -87,5 +143,8 @@ const makeStyles = (t: Theme) =>
     },
     rowSelected: { backgroundColor: t.secondary },
     rowLabel: { flex: 1, fontSize: 14, color: t.foreground },
+    newTripText: { flex: 1, gap: 2 },
+    newTripSub: { fontSize: 12, color: t.mutedForeground },
+    empty: { padding: 16, fontSize: 14, color: t.mutedForeground },
     rowLabelSelected: { fontWeight: "600" },
   });

@@ -577,7 +577,10 @@
     "siblingConfirmedExpense": "Expense added too",
     "siblingConfirmedEvent": "Event added too",
     "siblingConfirmedBoth": "Expense and event added too",
-    "dismissDraftBody": "The expense and event from the same email are discarded together."
+    "dismissDraftBody": "The expense and event from the same email are discarded together.",
+    "newTrip": "New trip",
+    "newTripHint": "Create it from the suggested trip on the trips list",
+    "noTripsToAssign": "No trips to assign to yet."
   },
   "admin": {
     "heading": "Admin",

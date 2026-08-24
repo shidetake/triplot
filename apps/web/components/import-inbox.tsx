@@ -26,6 +26,8 @@ import {
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { createClient } from "@/lib/supabase/client";
+import { deriveTripProposals } from "@triplot/shared/import/tripProposal";
+
 import { toast } from "@/components/toast";
 
 export interface ImportInboxData {
@@ -74,6 +76,27 @@ export function ImportInbox({
       onChanged();
     });
   };
+  // 旅行が1つも無いと、下の選択は「旅行を選択」だけの行き止まりになる。
+  // そのメールが旅行の候補（仮旅行）に含まれているなら、新規旅行として
+  // 扱われることをここでも示す。選べない選択肢にしてあるのは、作成は
+  // 旅行一覧の候補カードで行うため（RN の import-pick-trip と同じ扱い）。
+  const proposalEmailIds = new Set(
+    deriveTripProposals(
+      data.rows
+        .filter((r) => !r.assignedTripId)
+        .flatMap((r) => [
+          ...(r.receipt
+            ? [{ emailId: r.id, kind: "expense", payload: r.receipt }]
+            : []),
+          ...r.events.map((ev) => ({
+            emailId: r.id,
+            kind: "event",
+            payload: ev,
+          })),
+        ]),
+    ).flatMap((p) => p.emailIds),
+  );
+
   const {
     importAddress,
     trips,
@@ -227,6 +250,11 @@ export function ImportInbox({
                         className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
                         <option value="">{t("selectTrip")}</option>
+                        {proposalEmailIds.has(row.id) && (
+                          <option value="" disabled>
+                            {t("newTrip")}
+                          </option>
+                        )}
                         {trips.map((trip) => (
                           <option key={trip.id} value={trip.id}>
                             {tripTitle.get(trip.id) ?? trip.title}

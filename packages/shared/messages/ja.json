@@ -577,7 +577,10 @@
     "siblingConfirmedExpense": "費用も一緒に登録しました",
     "siblingConfirmedEvent": "予定も一緒に登録しました",
     "siblingConfirmedBoth": "費用と予定も一緒に登録しました",
-    "dismissDraftBody": "同じメールから出た費用・予定をまとめて破棄します。"
+    "dismissDraftBody": "同じメールから出た費用・予定をまとめて破棄します。",
+    "newTrip": "新規旅行",
+    "newTripHint": "旅行一覧の「旅行の候補」から作成できます",
+    "noTripsToAssign": "割り当てられる旅行がまだありません。"
   },
   "admin": {
     "heading": "管理",
