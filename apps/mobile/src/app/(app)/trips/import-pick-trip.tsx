@@ -53,30 +53,42 @@ export default function InboxPickTripRoute() {
   // （create-trip のコピー元選択と同じ関数）。
   const tripLabels = buildCopySourceLabels(trips);
 
-  // 旅行が1つも無いと、この一覧は空のまま何も選べない行き止まりになる。
-  // そのメールが旅行の候補（仮旅行）に含まれているなら、「新規旅行として
-  // 扱われる」ことをここでも示す。押せる行にはしない — 作成は旅行一覧の
-  // 候補カードから行う（ここから旅行作成シートへ push すると、作成後の
-  // router.replace でこのシートの積み方が壊れる）。
+  // 「新規旅行」= どの旅行にも割り当てない状態。旅行一覧に候補（仮旅行）として
+  // 出る。旅行が1つも無いと、この一覧は空のまま何も選べない行き止まりになるので
+  // その受け皿でもある。
+  //
+  // **選べる行にしてある**（割り当てを null に戻す）。既存の旅行を選ぶと候補は
+  // 見た目上消えるが、下書きが未確定のうちは元の状態に戻せないと困る
+  // （確定してしまえば受信箱から消えるので、この画面自体に来なくなる）。
+  //
+  // 候補の計算は未割り当ての下書きだけを見るので、既に割り当て済みのこの
+  // メールはそのままでは候補に現れない。「割り当てを外したらどうなるか」を
+  // 出したいので、自分の下書きを足してから導出する。
   const { data: unassigned } = useQuery({
     queryKey: ["unassignedDrafts", userId],
     queryFn: () => fetchUnassignedDrafts(supabase, userId!),
     enabled: !!userId,
   });
-  const found = deriveTripProposals(unassigned ?? null).find((p) =>
-    p.emailIds.includes(emailId),
-  );
+  const myDrafts = (data?.draftRows ?? [])
+    .filter((d) => d.email_id === emailId)
+    .map((d) => ({ emailId, kind: d.kind, payload: d.payload }));
+  const found = deriveTripProposals([
+    ...(unassigned ?? []).filter((d) => d.emailId !== emailId),
+    ...myDrafts,
+  ]).find((p) => p.emailIds.includes(emailId));
   // 日程・名前は旅行一覧の候補カードと同じ導出を通す（生の値を出すと、
   // 「最低1泊を見込む」補正のぶんカードと期間が食い違って見える）。
   const proposal = found ? tripProposalDefaults(found) : null;
 
-  const pick = async (tripId: string) => {
+  // tripId が null なら割り当てを外す（＝新規旅行に戻す）。
+  const pick = async (tripId: string | null) => {
     const r = await assignInboundEmailTrip(supabase, emailId, tripId);
     if (!r.ok) {
       Alert.alert(r.error);
       return;
     }
     void queryClient.invalidateQueries({ queryKey: ["inbox", userId] });
+    void queryClient.invalidateQueries({ queryKey: ["unassignedDrafts", userId] });
     router.back();
   };
 
@@ -84,9 +96,14 @@ export default function InboxPickTripRoute() {
     <ScrollView contentContainerStyle={styles.content}>
       <SheetTitle>{t("selectTripPrompt")}</SheetTitle>
       {proposal && (
-        <View style={styles.row}>
+        <Pressable
+          onPress={() => void pick(null)}
+          style={[styles.row, !currentTripId && styles.rowSelected]}
+        >
           <View style={styles.newTripText}>
-            <Text style={styles.rowLabel}>
+            <Text
+              style={[styles.rowLabel, !currentTripId && styles.rowLabelSelected]}
+            >
               {proposal.title
                 ? `${t("newTrip")}: ${proposal.title}`
                 : t("newTrip")}
@@ -101,7 +118,10 @@ export default function InboxPickTripRoute() {
               {t("newTripHint")}
             </Text>
           </View>
-        </View>
+          {!currentTripId && (
+            <CheckIcon size={16} color={theme.mutedForeground} />
+          )}
+        </Pressable>
       )}
       {trips.length === 0 && !proposal && (
         <Text style={styles.empty}>{t("noTripsToAssign")}</Text>

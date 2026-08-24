@@ -76,26 +76,32 @@ export function ImportInbox({
       onChanged();
     });
   };
-  // 旅行が1つも無いと、下の選択は「旅行を選択」だけの行き止まりになる。
-  // そのメールが旅行の候補（仮旅行）に含まれているなら、新規旅行として
-  // 扱われることをここでも示す。選べない選択肢にしてあるのは、作成は
-  // 旅行一覧の候補カードで行うため（RN の import-pick-trip と同じ扱い）。
-  const proposalEmailIds = new Set(
-    deriveTripProposals(
-      data.rows
-        .filter((r) => !r.assignedTripId)
-        .flatMap((r) => [
-          ...(r.receipt
-            ? [{ emailId: r.id, kind: "expense", payload: r.receipt }]
-            : []),
-          ...r.events.map((ev) => ({
-            emailId: r.id,
-            kind: "event",
-            payload: ev,
-          })),
-        ]),
-    ).flatMap((p) => p.emailIds),
-  );
+  // 「新規旅行」= どの旅行にも割り当てない状態。旅行一覧に候補（仮旅行）として
+  // 出る。旅行が1つも無いと、この選択は「旅行を選択」だけの行き止まりになるので
+  // その受け皿でもある。空の選択肢を選ぶと割り当てが外れる（＝候補に戻る）ので、
+  // 既存の旅行を選んだ後でも元に戻せる。下書きが未確定のうちは戻せる必要がある
+  // （確定すれば受信箱から消えるので、この選択自体が出なくなる）。
+  //
+  // 候補の計算は未割り当ての下書きだけを見るので、既に割り当て済みの行は
+  // そのままでは候補に現れない。「割り当てを外したらどうなるか」を出したいので、
+  // その行の下書きを足してから導出する。
+  const draftsOf = (r: (typeof data.rows)[number]) => [
+    ...(r.receipt
+      ? [{ emailId: r.id, kind: "expense", payload: r.receipt }]
+      : []),
+    ...r.events.map((ev) => ({ emailId: r.id, kind: "event", payload: ev })),
+  ];
+  const unassignedDrafts = data.rows
+    .filter((r) => !r.assignedTripId)
+    .flatMap(draftsOf);
+  const wouldBeNewTrip = (rowId: string) => {
+    const row = data.rows.find((r) => r.id === rowId);
+    if (!row) return false;
+    return deriveTripProposals([
+      ...unassignedDrafts.filter((d) => d.emailId !== rowId),
+      ...draftsOf(row),
+    ]).some((p) => p.emailIds.includes(rowId));
+  };
 
   const {
     importAddress,
@@ -249,12 +255,11 @@ export function ImportInbox({
                         defaultValue={row.defaultTripId}
                         className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
-                        <option value="">{t("selectTrip")}</option>
-                        {proposalEmailIds.has(row.id) && (
-                          <option value="" disabled>
-                            {t("newTrip")}
-                          </option>
-                        )}
+                        <option value="">
+                          {wouldBeNewTrip(row.id)
+                            ? t("newTrip")
+                            : t("selectTrip")}
+                        </option>
                         {trips.map((trip) => (
                           <option key={trip.id} value={trip.id}>
                             {tripTitle.get(trip.id) ?? trip.title}
