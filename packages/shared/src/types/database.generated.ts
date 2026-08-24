@@ -1037,6 +1037,7 @@ export type Database = {
         Returns: string
       }
       delete_account: { Args: never; Returns: undefined }
+      delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       dismiss_inbound_email: { Args: { p_id: string }; Returns: undefined }
       dismiss_place_location: {
         Args: { p_place_id: string }

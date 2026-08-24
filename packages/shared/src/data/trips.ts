@@ -174,15 +174,15 @@ export async function deleteTrip(
     .maybeSingle();
   if (!me?.is_admin) return err("errors.notAdmin");
 
-  const { data, error } = await sb
-    .from("trips")
-    .delete()
-    .eq("id", tripId)
-    .select("id");
-  if (error) return err(error.message);
-  // RLS で 0 行になった（事前チェック後に権限が変わった等）→ 権限エラーに変換。
-  if (!data || data.length === 0) {
-    return err("errors.notAdmin");
+  // 直接 delete すると、旅行に「移動の予定」と「それを参照する予定・費用」の
+  // 両方があるときに Postgres が失敗する（同じ行に削除と更新が1文の中で重なる。
+  // 詳細は migration 20260824131500_delete_trip_rpc.sql）。RPC が参照を先に
+  // 外してから消す。管理者チェックは RPC の中でも行う。
+  const { error } = await sb.rpc("delete_trip", { p_trip_id: tripId });
+  if (error) {
+    // 事前チェック後に権限が変わった等。
+    if (error.message.includes("admin required")) return err("errors.notAdmin");
+    return err(error.message);
   }
   return ok(undefined);
 }
