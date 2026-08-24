@@ -127,7 +127,7 @@ describe("deriveExpenseDraftItems", () => {
           id: "flight",
           email_id: "e1",
           kind: "expense",
-          payload: receipt({ date: "2025-11-28", serviceDate: "2026-05-04" }),
+          payload: receipt({ date: "2025-11-28", serviceDate: "2026-05-04", time: "10:15" }),
         },
         { id: "d1", email_id: "e2", kind: "expense", payload: receipt({ date: "2026-05-01" }) },
         { id: "d2", email_id: "e3", kind: "expense", payload: receipt({ date: "2026-05-05" }) },
@@ -135,11 +135,12 @@ describe("deriveExpenseDraftItems", () => {
       expenseCtx,
     );
     expect(items.map((i) => i.id)).toEqual(["d1", "flight", "d2"]);
-    // 行に出す日付も並べ替えと同じ「使う日」（支払日を出すと並び順と
-    // 食い違って一覧が並んでいないように見える）。
+    // 費用に入る日付・行に出す日付も同じ「使う日」。3つが揃っているので、
+    // 確定しても行の位置が動かない（費用が持てる日付は paid_at 1本だけ）。
+    expect(items[1].initialPaidAt).toBe("2026-05-04");
     expect(items[1].labelParts[2]).toBe("5/4");
-    // 一方、費用に入る日付は支払日のまま。
-    expect(items[1].initialPaidAt).toBe("2025-11-28");
+    // 購入時刻は搭乗日と組み合わせると実在しない日時になるので捨てる。
+    expect(items[1].initialTime).toBeUndefined();
   });
 
   it("カテゴリ名の一致・保存済み場所マッチ・ラベル部品を組み立てる", () => {

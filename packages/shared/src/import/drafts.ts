@@ -190,6 +190,23 @@ function candidateToDraftPlace(
   };
 }
 
+// レシートから、その費用の日付（expenses.paid_at に入る値）を決める。
+//
+// **費用が持てる日付は paid_at ひとつだけ**なので、「支払った日」と「実際に
+// 使う日」が離れるもの（航空券は数か月前に購入、宿は退室日に決済）は
+// どちらか一方しか残せない。旅程に沿って読める方を採り、serviceDate
+// （搭乗日・チェックイン日）があればそれを費用の日付にする。
+// serviceDate を使うときは time を捨てる — time はレシートの購入時刻なので、
+// 搭乗日と組み合わせると実在しない日時になる。
+function receiptDate(r: StoredReceipt | null): {
+  date: string;
+  time: string | undefined;
+} {
+  if (!r) return { date: "", time: undefined };
+  if (r.serviceDate) return { date: r.serviceDate, time: undefined };
+  return { date: r.date, time: r.time ?? undefined };
+}
+
 // 費用下書き（kind="expense"）→ 事前入力。カテゴリは抽出済みのカテゴリ名を
 // その旅行の expense_categories に名前で対応づけ、無ければ fallback
 // （直近入力のカテゴリ）。通貨は ISO 4217 形式でなければ精算通貨。
@@ -205,27 +222,23 @@ export function deriveExpenseDraftItems(
 ): ExpenseDraftItem[] {
   return (drafts ?? [])
     .filter((d) => d.kind === "expense")
-    // 旅程の順（＝その費用を「使う日」の古い順）。取り込んだ順
+    // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
     // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
-    // 並ぶので旅程と関係ない並びになる。
-    //
-    // 並べる基準は serviceDate（航空券の搭乗日・宿のチェックイン日）を優先し、
-    // 無ければ date（支払日）。航空券や宿は旅行の数か月前に買うので、支払日で
-    // 並べると旅程のずっと手前に飛ぶ（実データで 2025-11-28 購入・2026-05-04
-    // 搭乗の航空券が一覧の先頭に来ていた）。同じ日はレシートの時刻順、時刻が
-    // 無いものは同日の先頭。
+    // 並ぶので旅程と関係ない並びになる。同じ日は時刻順、時刻が無いものは
+    // 同日の先頭。並べる基準は receiptDate()＝実際に費用に入る日付なので、
+    // 確定しても行の位置は変わらない。
     .sort((a, b) => {
-      const ra = a.payload as unknown as StoredReceipt | null;
-      const rb = b.payload as unknown as StoredReceipt | null;
-      const key = (r: StoredReceipt | null) => r?.serviceDate ?? r?.date ?? "";
+      const ra = receiptDate(a.payload as unknown as StoredReceipt | null);
+      const rb = receiptDate(b.payload as unknown as StoredReceipt | null);
       return (
-        key(ra).localeCompare(key(rb)) ||
-        (ra?.time ?? "").localeCompare(rb?.time ?? "")
+        ra.date.localeCompare(rb.date) ||
+        (ra.time ?? "").localeCompare(rb.time ?? "")
       );
     })
     .flatMap((d) => {
       const r = d.payload as unknown as StoredReceipt | null;
       if (!r) return [];
+      const when = receiptDate(r);
       const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
         ? (r.currency as Currency)
         : ctx.defaultCurrency;
@@ -254,24 +267,21 @@ export function deriveExpenseDraftItems(
           id: d.id,
           emailId: d.email_id,
           // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
-          // 出すのは**並べ替えに使ったのと同じ日**（使う日）。支払日を出すと、
-          // 航空券（購入日が数か月前）や宿（決済が退室日）の行だけ並び順と
-          // 食い違う日付が出て、一覧が並んでいないように見える。
           labelParts: [
             r.merchant || ctx.unknownMerchantLabel,
             `${r.total} ${r.currency}`,
-            monthDayLabel(r.serviceDate ?? r.date),
+            monthDayLabel(when.date),
           ],
           initialPrice: r.total,
           initialCurrency: currency,
           initialCategoryId: categoryId,
-          initialPaidAt: r.date,
+          initialPaidAt: when.date,
           // 店名はメモではなく場所へ（低確信は店名のままテキスト場所になる）。
           initialPlace: place,
           autoResolvePlace: place
             ? null
             : { name: r.merchant, location: r.location },
-          initialTime: r.time ?? undefined,
+          initialTime: when.time,
         },
       ];
     });
