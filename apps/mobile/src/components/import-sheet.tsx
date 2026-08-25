@@ -281,6 +281,11 @@ export function ImportSheet() {
                   onPress={() =>
                     router.push(`/trips/import-pick-trip?emailId=${e.id}`)
                   }
+                  // 見た目は 12pt の文字＋上下 6 の padding で約28pt しかなく、
+                  // HIG が求めるタップ対象の最小 44pt に足りない。見た目を
+                  // 変えずに当たり判定だけ広げる（上下の行のピッカーとは
+                  // 24pt 離れているので、10 ずつ広げても重ならない）。
+                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
                   style={[
                     styles.assignButton,
                     !assigned && styles.assignButtonWarn,
