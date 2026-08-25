@@ -168,8 +168,12 @@ export default function ExpensesTab() {
             <Text style={styles.draftHeading}>
               {t("tripDetail.pendingImports", { count: draftItems.length })}
             </Text>
-            {draftItems.map((d) => (
-              <View key={d.id} style={styles.draftRow}>
+            <View style={styles.draftList}>
+            {draftItems.map((d, i) => (
+              <View
+                key={d.id}
+                style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
+              >
                 <Pressable
                   onPress={() =>
                     router.push(`/trips/${tripId}/expense-form?draftId=${d.id}`)
@@ -204,6 +208,7 @@ export default function ExpensesTab() {
                 </Pressable>
               </View>
             ))}
+            </View>
           </View>
         )}
 
@@ -428,19 +433,35 @@ const makeStyles = (t: Theme) =>
     marginBottom: 8,
   },
   draftHeading: { fontSize: 14, fontWeight: "500", color: t.warnText },
-  draftRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  // 同種の項目が並ぶ一覧は1件ずつ枠と隙間を持たせず、一覧全体を1つの枠にして
+  // 行を区切り線で分ける（費用一覧・受信箱と同じ形。ui-guidelines「カードや
+  // 行を縦に並べる時の間隔」）。
+  draftList: {
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: t.fgAlpha(0.12),
+    borderRadius: 6,
+    overflow: "hidden",
+    backgroundColor: t.background,
+  },
+  draftRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  draftRowDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.1),
+  },
+  // padding は行（draftRow）が持つ。ここにも付けると二重になって、
+  // 店名と日付に使える幅が減り省略が増える。
   draftButton: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
     gap: 8,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.1),
-    borderRadius: 6,
-    backgroundColor: t.background,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
   },
   draftLabelParts: {
     flex: 1,

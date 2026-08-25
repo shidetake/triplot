@@ -151,17 +151,32 @@ export function ImportSheet() {
 
       {/* 取り込みに失敗した／順番待ちのメール。まとまりの中は詰める
           （面と枠を持つカードは自分で境界を持つので、隙間は最小で足りる）。 */}
-      {(data?.errorRows ?? []).length > 0 && (
-        <View style={styles.group}>
-          <Text style={styles.groupHeading}>{t("waitingHeading")}</Text>
-          {(data?.errorRows ?? []).map((e) => {
+      {/* 取り込み待ち（順番待ち）と 取り込みに失敗 は別のまとまりにする。
+          状態が違うものを1つの枠に入れると、枠の意味（＝ここは1つのまとまり）と
+          食い違う。件数はどちらも普段0〜数件なので分けても縦は増えない。 */}
+      {([
+        ["waitingHeading", true],
+        ["failedHeading", false],
+      ] as const).map(([headingKey, wantQueued]) => {
+        const group = (data?.errorRows ?? []).filter(
+          (e) => (e.extract_error_kind === "rate_limit") === wantQueued,
+        );
+        if (group.length === 0) return null;
+        return (
+        <View key={headingKey} style={styles.group}>
+          <Text style={styles.groupHeading}>{t(headingKey)}</Text>
+          <View style={styles.listCard}>
+          {group.map((e, i) => {
         // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
         // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
         const queued = e.extract_error_kind === "rate_limit";
         return (
           <View
             key={e.id}
-            style={queued ? styles.queuedCard : styles.errorCard}
+            style={[
+              queued ? styles.queuedRow : styles.errorRow,
+              i > 0 && styles.listRowDivider,
+            ]}
           >
             <View style={styles.errorBody}>
               <Text style={styles.emailSummary} numberOfLines={1}>
@@ -187,8 +202,10 @@ export function ImportSheet() {
             </View>
           );
           })}
+          </View>
         </View>
-      )}
+        );
+      })}
 
       {/* 未確定の下書き */}
       {emails.length === 0 ? (
@@ -196,7 +213,8 @@ export function ImportSheet() {
       ) : (
         <View style={styles.group}>
           <Text style={styles.groupHeading}>{t("draftsHeading")}</Text>
-          {emails.map((e) => {
+          <View style={styles.listCard}>
+          {emails.map((e, i) => {
           const row = rowById.get(e.id);
           const receipt = row?.receipt ?? null;
           const events = row?.events ?? [];
@@ -209,7 +227,10 @@ export function ImportSheet() {
           const children = row?.children ?? [];
           const mergedOpen = openMerged === e.id;
           return (
-            <View key={e.id} style={styles.emailCard}>
+            <View
+              key={e.id}
+              style={[styles.listRow, i > 0 && styles.listRowDivider]}
+            >
               <Text style={styles.emailSummary} numberOfLines={1}>
                 {summary}
               </Text>
@@ -362,6 +383,7 @@ export function ImportSheet() {
             </View>
           );
           })}
+          </View>
         </View>
       )}
 
@@ -385,6 +407,34 @@ const makeStyles = (t: Theme) =>
     // 持つように、この2段以外の値を混ぜない（ui-guidelines「カードの間隔」）。
     content: { paddingHorizontal: 16, gap: 24 },
     group: { gap: 8 },
+    // 同種の項目が並ぶ一覧は、1件ずつ枠と隙間を持たせず**一覧全体を1つの枠**に
+    // して行を区切り線で分ける（費用一覧の expenseListCard と同じ形。件数が
+    // 増える場所で無駄に縦長にならない）。
+    listCard: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.fgAlpha(0.12),
+      borderRadius: 6,
+      overflow: "hidden",
+    },
+    listRow: { padding: 12, gap: 6 },
+    listRowDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.fgAlpha(0.1),
+    },
+    queuedRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      padding: 12,
+      backgroundColor: t.secondary,
+    },
+    errorRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      gap: 8,
+      padding: 12,
+      backgroundColor: t.errorBg,
+    },
     groupHeading: { fontSize: 12, color: t.mutedForeground },
     description: { fontSize: 12, color: t.mutedForeground },
     addressBox: {

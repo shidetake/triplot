@@ -582,7 +582,8 @@
     "newTripHint": "Create it from the suggested trip on the trips list",
     "noTripsToAssign": "No trips to assign to yet.",
     "waitingHeading": "Processing",
-    "draftsHeading": "Pending imports"
+    "draftsHeading": "Pending imports",
+    "failedHeading": "Failed"
   },
   "admin": {
     "heading": "Admin",

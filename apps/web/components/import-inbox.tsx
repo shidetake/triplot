@@ -136,13 +136,25 @@ export function ImportInbox({
         </MessageBox>
       )}
 
-      {errorRows.length > 0 && (
-        <>
+      {/* 取り込み待ち（順番待ち）と 取り込みに失敗 は別のまとまり。状態が違う
+          ものを1つの枠に入れると、枠の意味（＝ここは1つのまとまり）と食い違う。 */}
+      {(
+        [
+          ["waitingHeading", true],
+          ["failedHeading", false],
+        ] as const
+      ).map(([headingKey, wantQueued]) => {
+        const group = errorRows.filter(
+          (e) => (e.extract_error_kind === "rate_limit") === wantQueued,
+        );
+        if (group.length === 0) return null;
+        return (
+        <div key={headingKey}>
           <h3 className="mt-6 text-xs text-muted-foreground">
-            {t("waitingHeading")}
+            {t(headingKey)}
           </h3>
-          <ul className="mt-2 space-y-2">
-          {errorRows.map((e) => (
+          <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
+          {group.map((e) => (
             <li
               key={e.id}
               // レート制限は「混んでいて順番待ち」であって失敗ではないので、
@@ -154,8 +166,8 @@ export function ImportInbox({
               // 使っており、同じ製品の中で記号が二重の意味を持つのを避ける。
               className={
                 e.extract_error_kind === "rate_limit"
-                  ? "flex items-start justify-between gap-3 rounded-lg border border-foreground/10 bg-muted/60 p-3"
-                  : "flex items-start justify-between gap-3 rounded-lg border border-red-600/20 bg-red-50/50 p-3 dark:border-red-400/20 dark:bg-red-400/10"
+                  ? "flex items-start justify-between gap-3 bg-muted/60 p-3"
+                  : "flex items-start justify-between gap-3 bg-red-50/50 p-3 dark:bg-red-400/10"
               }
             >
               <div className="min-w-0">
@@ -187,9 +199,10 @@ export function ImportInbox({
               />
             </li>
           ))}
-        </ul>
-        </>
-      )}
+          </ul>
+        </div>
+        );
+      })}
 
       {rows.length === 0 ? (
         <p className="mt-10 text-sm text-muted-foreground">{t("emptyState")}</p>
@@ -198,12 +211,12 @@ export function ImportInbox({
           <h3 className="mt-6 text-xs text-muted-foreground">
             {t("draftsHeading")}
           </h3>
-          <ul className="mt-2 space-y-2">
+          {/* 同種の項目が並ぶ一覧は1件ずつ枠と隙間を持たせず、一覧全体を1つの枠に
+              して行を区切り線で分ける（ui-guidelines「カードや行を縦に並べる時の
+              間隔」。費用一覧の ExpenseList と同じ形）。 */}
+          <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
           {rows.map((row) => (
-            <li
-              key={row.id}
-              className="rounded-lg border border-foreground/10 p-4"
-            >
+            <li key={row.id} className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">
