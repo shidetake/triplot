@@ -91,7 +91,7 @@ describe("resolveDraftOverlaps", () => {
     expect(out[0].prefill.endTime).toBe("17:54");
   });
 
-  it("違う場所で重なったら先勝ち（前は動かさず、後ろを前の終了から始める）", () => {
+  it("違う場所で重なったら重なり区間の中点で切る", () => {
     const out = resolveDraftOverlaps(
       [
         item({ id: "a", time: "12:00", endTime: "14:00", place: google("P1") }),
@@ -100,12 +100,11 @@ describe("resolveDraftOverlaps", () => {
       fmt,
     );
     expect(out).toHaveLength(2);
-    // 前の終了（＝会計時刻という事実）は動かさない
-    expect(out[0].prefill.endTime).toBe("14:00");
-    expect(out[1].time).toBe("14:00");
+    expect(out[0].prefill.endTime).toBe("13:30");
+    expect(out[1].time).toBe("13:30");
     expect(out[1].prefill.endTime).toBe("15:00");
     // 開始が動いた側はラベルも作り直す
-    expect(out[1].labelParts[1]).toBe("2026-04-30 14:00");
+    expect(out[1].labelParts[1]).toBe("2026-04-30 13:30");
   });
 
   // 実データで踏んだ形。会計は Village(17:12) → Howzit(17:25) の順なのに、
@@ -134,19 +133,21 @@ describe("resolveDraftOverlaps", () => {
     const by = Object.fromEntries(
       out.map((i) => [i.id, `${i.time}-${i.prefill.endTime}`]),
     );
-    expect(by.village).toBe("16:12-17:12");
-    expect(by.howzit).toBe("17:12-17:25");
+    // 重なり区間 15:25-17:12 の中点 16:18 で切る。順番は会計どおり
+    // （Village が先、Howzit が後）で入れ替わらない。
+    expect(by.village).toBe("16:12-16:18");
+    expect(by.howzit).toBe("16:18-17:25");
   });
 
-  it("前の終了が後ろの終了より後なら、潰さずそのまま残す", () => {
-    // 会計は a(12:10) → b(12:30) だが、a の見積もりが b の終了を追い越している。
-    // 終了は事実なので動かせず、切ると0分の予定になるので触らない。
+  it("中点が前の開始を追い越す時は、そこまで下げない（順番を崩さない）", () => {
+    // 会計は a(12:10) → b(12:30)。素の中点は 11:50 で a の開始 11:40 より
+    // 手前ではないが、b が大きく前倒しされると中点が a の開始を追い越しうる。
     const receiptMin = (it: { id: string }) =>
       it.id === "a" ? 12 * 60 + 10 : 12 * 60 + 30;
     const out = resolveDraftOverlaps(
       [
-        item({ id: "a", time: "11:40", endTime: "13:00", place: google("P1") }),
-        item({ id: "b", time: "12:00", endTime: "12:30", place: google("P2") }),
+        item({ id: "a", time: "12:00", endTime: "12:30", place: google("P1") }),
+        item({ id: "b", time: "10:00", endTime: "13:00", place: google("P2") }),
       ],
       fmt,
       receiptMin,
@@ -154,8 +155,10 @@ describe("resolveDraftOverlaps", () => {
     const by = Object.fromEntries(
       out.map((i) => [i.id, `${i.time}-${i.prefill.endTime}`]),
     );
-    expect(by.a).toBe("11:40-13:00");
-    expect(by.b).toBe("12:00-12:30");
+    // 素の中点は 11:15 で a の開始 12:00 より手前＝順番が入れ替わる。
+    // そこまで下げず a の開始で止める。
+    expect(by.a).toBe("12:00-12:00");
+    expect(by.b).toBe("12:00-13:00");
   });
 
   it("重なっていなければ何もしない", () => {
@@ -176,8 +179,8 @@ describe("resolveDraftOverlaps", () => {
       fmt,
     );
     expect(out).toHaveLength(2);
-    expect(out[0].prefill.endTime).toBe("14:00");
-    expect(out[1].time).toBe("14:00");
+    expect(out[0].prefill.endTime).toBe("13:30");
+    expect(out[1].time).toBe("13:30");
   });
 
   it("宿泊・移動は重なっても触らない", () => {

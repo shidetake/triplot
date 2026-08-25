@@ -94,6 +94,7 @@ function joinNotes(a: string | null, b: string | null): string | null {
  * 重なった未確定の予定下書きを整える。
  *  - 同じ場所どうし → 1件にまとめる（時間帯は和集合、下書き id は全部持つ）
  *  - 違う場所どうし → 重なり区間の中点で切って重ならないようにする
+ *    （前後は会計時刻で決める。順番が入れ替わる場合だけ中点を手前に下げない）
  *
  * @param formatWhen ラベルの日時部分の作り直し（開始が動いたときだけ使う）
  */
@@ -162,10 +163,13 @@ export function resolveDraftOverlaps(
       }
     }
 
-    // --- 2. 残った（＝場所が違う or 場所不明の）重なりを解く ---
-    // **先勝ち**: 前の予定は動かさず、後ろの開始を前の終了に合わせる。
-    // 前後は会計時刻で決める（開始は見積もり込みの推測値なので、それで
-    // 並べると「長く見積もられた方が先」になって実際の順番と食い違う）。
+    // --- 2. 残った（＝場所が違う or 場所不明の）重なりを中点で切る ---
+    // 重なり区間の中点で分け、前の終了と後ろの開始をそこに揃える。
+    //
+    // **前後は会計時刻で決める。** 開始は所要時間の見積もりが入った推測値なので、
+    // それで並べると「長く見積もられた方が先」になって実際の順番と食い違う
+    // （実データ: 会計 17:12 の Village より、会計 17:25 の Howzit が2時間
+    // 見積もりで 15:25 開始になっていた）。
     merged = merged.sort(
       (a, b) =>
         (receiptMinOf(a) ?? startMin(a)) - (receiptMinOf(b) ?? startMin(b)),
@@ -174,12 +178,20 @@ export function resolveDraftOverlaps(
       const prev = merged[i - 1];
       const cur = merged[i];
       const pe = endMin(prev)!;
-      if (startMin(cur) >= pe) continue;
-      // 前の終了が後ろの終了より後なら、終了（＝会計時刻という事実）を
-      // 動かさずには解けない。潰れた0分の予定を作るよりそのまま残す。
-      if (pe >= endMin(cur)!) continue;
+      const cs = startMin(cur);
+      const ce = endMin(cur)!;
+      if (cs >= pe) continue;
 
-      const at = fromMin(pe);
+      const mid = Math.floor((cs + Math.min(pe, ce)) / 2);
+      // 中点だけだと順番が入れ替わることがある（前が短く、後ろが大きく
+      // 前倒しされていると中点が前の開始より手前に来る）。順番を崩さないのが
+      // 最優先なので、そこまでは下げない。
+      const cut = Math.min(Math.max(mid, startMin(prev)), ce);
+
+      const at = fromMin(cut);
+      prev.prefill.endDate = at.date === prev.date ? null : at.date;
+      prev.prefill.endTime = at.time;
+
       cur.date = at.date;
       cur.time = at.time;
       // ラベルは「日付 開始時刻」なので、開始が動いたここだけ作り直す。
