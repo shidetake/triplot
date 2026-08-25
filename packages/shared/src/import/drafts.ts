@@ -25,7 +25,7 @@ import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
-import { enforceReceiptOrder, resolveDraftOverlaps } from "./draftOverlap";
+import { resolveDraftOverlaps } from "./draftOverlap";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
 // email_id は「同じメールから出た費用と予定」を突き合わせるのに要る
@@ -489,23 +489,14 @@ export function deriveEventDraftItems(
     );
   }
 
-  // 1. 所要時間の見積もりが会計の前後をひっくり返していたら直す
-  // 2. そのうえで重なった未確定どうしを整える（同じ場所はまとめ、違う場所は
-  //    中点で切る）
+  // 重なった未確定どうしを整える（同じ場所はまとめ、違う場所は先勝ちで切る）。
   // 派生の最後に一度だけ通す＝web も RN も同じ結果になる。
-  return resolveDraftOverlaps(
-    enforceReceiptOrder(
-      items,
-      (it) => {
-        const mins = it.emailIds
-          .map((id) => receiptMinByEmail.get(id))
-          .filter((v): v is number => v !== undefined);
-        return mins.length > 0 ? Math.min(...mins) : null;
-      },
-      whenLabel,
-    ),
-    whenLabel,
-  );
+  return resolveDraftOverlaps(items, whenLabel, (it) => {
+    const mins = it.emailIds
+      .map((id) => receiptMinByEmail.get(id))
+      .filter((v): v is number => v !== undefined);
+    return mins.length > 0 ? Math.min(...mins) : null;
+  });
 }
 
 // カレンダー上の疑似イベント id（実イベントと衝突しない）。

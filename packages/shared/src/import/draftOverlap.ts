@@ -90,83 +90,6 @@ function joinNotes(a: string | null, b: string | null): string | null {
   return uniq.length > 0 ? uniq.join(" ・ ") : null;
 }
 
-// 会計順の逆転を直す。
-//
-// ■ なぜ要るか
-//   レシート由来の仮予定は、後払いの業態だと「レシート時刻＝終了」で、開始は
-//   所要時間ぶん遡って作られる。この所要時間は LLM の見積もりなので、後の
-//   会計の方が長く見積もられると開始が前の会計より早くなり、**実際の順番と
-//   逆に並ぶ**。
-//
-//   実データ（同じ日・同じ夕方）:
-//     会計 17:12 Village Bottle Shop → 16:12–17:12
-//     会計 17:25 Howzit Brewing      → 15:25–17:25  ← 開始が Village より早い
-//
-//   会計時刻の前後は事実として分かる（同じメールの費用側に入っている）ので、
-//   見積もりが事実をひっくり返さないようにここで矯正する。プロンプトで
-//   所要時間の既定を変えても LLM の出力は保証できないため、順序の不変条件は
-//   コード側で担保する。
-//
-// ■ どう直すか（後ろの予定を遅らせる。前は動かさない）
-//   後ろの開始が前の開始より早ければ、**前の終了直後から始める**。
-//   終了（＝会計時刻）は事実なので動かさない。
-//
-//   「まず1時間に切る」は入れない。後ろが長いのは夕食などと判断して長く
-//   見積もった結果なので、逆転の後始末のついでに潰すのは筋が悪い（前の終了が
-//   早ければ、長いまま後ろにずらせば収まる）。手数もマジックナンバーも減る。
-//
-//   両方が未確定のときだけ効く。片方が確定済みだと下書きから消えるので、
-//   あとから取り込んだ側が逆転するのは避けられない（許容する）。
-
-export function enforceReceiptOrder(
-  items: EventDraftItem[],
-  // その下書きの会計時刻（分）。分からなければ null＝自分の開始を順序の根拠にする。
-  receiptMinOf: (it: EventDraftItem) => number | null,
-  formatWhen: (date: string, time: string) => string,
-): EventDraftItem[] {
-  const targets = items.filter(isTarget);
-  if (targets.length < 2) return items;
-
-  const byTz = new Map<string, EventDraftItem[]>();
-  for (const it of targets) {
-    const arr = byTz.get(it.tz) ?? [];
-    arr.push(it);
-    byTz.set(it.tz, arr);
-  }
-
-  const fixed = new Map<string, EventDraftItem>();
-  for (const group of byTz.values()) {
-    const order = [...group].sort(
-      (a, b) =>
-        (receiptMinOf(a) ?? startMin(a)) - (receiptMinOf(b) ?? startMin(b)),
-    );
-    const adjusted: EventDraftItem[] = [];
-    for (const it of order) {
-      const prev = adjusted[adjusted.length - 1];
-      let cur = it;
-      if (prev && startMin(cur) < startMin(prev)) {
-        const end = endMin(cur)!;
-        // 前の終了直後から。会計が前後しているので prevEnd <= end のはずだが、
-        // 見積もりが壊れている場合に開始が終了を追い越さないよう抑える。
-        const start = Math.min(endMin(prev)!, end);
-        const at = fromMin(start);
-        cur = {
-          ...it,
-          date: at.date,
-          time: at.time,
-          labelParts: [it.labelParts[0], formatWhen(at.date, at.time)],
-        };
-        fixed.set(it.id, cur);
-      }
-      adjusted.push(cur);
-    }
-  }
-
-  return fixed.size === 0
-    ? items
-    : items.map((it) => fixed.get(it.id) ?? it);
-}
-
 /**
  * 重なった未確定の予定下書きを整える。
  *  - 同じ場所どうし → 1件にまとめる（時間帯は和集合、下書き id は全部持つ）
@@ -177,6 +100,10 @@ export function enforceReceiptOrder(
 export function resolveDraftOverlaps(
   items: EventDraftItem[],
   formatWhen: (date: string, time: string) => string,
+  // その下書きの会計時刻（分）。**重なりを解く時の前後はこれで決める**。
+  // 開始時刻は所要時間の見積もりが入った推測値なので、それで並べると
+  // 見積もりの長さが前後を決めてしまう。分からなければ null＝開始で代用。
+  receiptMinOf: (it: EventDraftItem) => number | null = () => null,
 ): EventDraftItem[] {
   const targets = items.filter(isTarget);
   if (targets.length < 2) return items;
@@ -235,29 +162,28 @@ export function resolveDraftOverlaps(
       }
     }
 
-    // --- 2. 残った（＝場所が違う or 場所不明の）重なりを中点で切る ---
-    merged = merged.sort(byStart);
+    // --- 2. 残った（＝場所が違う or 場所不明の）重なりを解く ---
+    // **先勝ち**: 前の予定は動かさず、後ろの開始を前の終了に合わせる。
+    // 前後は会計時刻で決める（開始は見積もり込みの推測値なので、それで
+    // 並べると「長く見積もられた方が先」になって実際の順番と食い違う）。
+    merged = merged.sort(
+      (a, b) =>
+        (receiptMinOf(a) ?? startMin(a)) - (receiptMinOf(b) ?? startMin(b)),
+    );
     for (let i = 1; i < merged.length; i++) {
       const prev = merged[i - 1];
       const cur = merged[i];
       const pe = endMin(prev)!;
-      const cs = startMin(cur);
-      const ce = endMin(cur)!;
-      if (cs >= pe) continue;
+      if (startMin(cur) >= pe) continue;
+      // 前の終了が後ろの終了より後なら、終了（＝会計時刻という事実）を
+      // 動かさずには解けない。潰れた0分の予定を作るよりそのまま残す。
+      if (pe >= endMin(cur)!) continue;
 
-      const mid = Math.floor((cs + Math.min(pe, ce)) / 2);
-      const pEnd = fromMin(mid);
-      prev.prefill.endDate = pEnd.date === prev.date ? null : pEnd.date;
-      prev.prefill.endTime = pEnd.time;
-
-      const cStart = fromMin(mid);
-      cur.date = cStart.date;
-      cur.time = cStart.time;
+      const at = fromMin(pe);
+      cur.date = at.date;
+      cur.time = at.time;
       // ラベルは「日付 開始時刻」なので、開始が動いたここだけ作り直す。
-      cur.labelParts = [
-        cur.labelParts[0] ?? "",
-        formatWhen(cStart.date, cStart.time),
-      ];
+      cur.labelParts = [cur.labelParts[0] ?? "", formatWhen(at.date, at.time)];
     }
 
     for (const it of merged) result.set(it.id, it);
