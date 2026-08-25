@@ -90,6 +90,83 @@ function joinNotes(a: string | null, b: string | null): string | null {
   return uniq.length > 0 ? uniq.join(" ・ ") : null;
 }
 
+// 会計順の逆転を直す。
+//
+// ■ なぜ要るか
+//   レシート由来の仮予定は、後払いの業態だと「レシート時刻＝終了」で、開始は
+//   所要時間ぶん遡って作られる。この所要時間は LLM の見積もりなので、後の
+//   会計の方が長く見積もられると開始が前の会計より早くなり、**実際の順番と
+//   逆に並ぶ**。
+//
+//   実データ（同じ日・同じ夕方）:
+//     会計 17:12 Village Bottle Shop → 16:12–17:12
+//     会計 17:25 Howzit Brewing      → 15:25–17:25  ← 開始が Village より早い
+//
+//   会計時刻の前後は事実として分かる（同じメールの費用側に入っている）ので、
+//   見積もりが事実をひっくり返さないようにここで矯正する。プロンプトで
+//   所要時間の既定を変えても LLM の出力は保証できないため、順序の不変条件は
+//   コード側で担保する。
+//
+// ■ どう直すか（後ろの予定を遅らせる。前は動かさない）
+//   後ろの開始が前の開始より早ければ、**前の終了直後から始める**。
+//   終了（＝会計時刻）は事実なので動かさない。
+//
+//   「まず1時間に切る」は入れない。後ろが長いのは夕食などと判断して長く
+//   見積もった結果なので、逆転の後始末のついでに潰すのは筋が悪い（前の終了が
+//   早ければ、長いまま後ろにずらせば収まる）。手数もマジックナンバーも減る。
+//
+//   両方が未確定のときだけ効く。片方が確定済みだと下書きから消えるので、
+//   あとから取り込んだ側が逆転するのは避けられない（許容する）。
+
+export function enforceReceiptOrder(
+  items: EventDraftItem[],
+  // その下書きの会計時刻（分）。分からなければ null＝自分の開始を順序の根拠にする。
+  receiptMinOf: (it: EventDraftItem) => number | null,
+  formatWhen: (date: string, time: string) => string,
+): EventDraftItem[] {
+  const targets = items.filter(isTarget);
+  if (targets.length < 2) return items;
+
+  const byTz = new Map<string, EventDraftItem[]>();
+  for (const it of targets) {
+    const arr = byTz.get(it.tz) ?? [];
+    arr.push(it);
+    byTz.set(it.tz, arr);
+  }
+
+  const fixed = new Map<string, EventDraftItem>();
+  for (const group of byTz.values()) {
+    const order = [...group].sort(
+      (a, b) =>
+        (receiptMinOf(a) ?? startMin(a)) - (receiptMinOf(b) ?? startMin(b)),
+    );
+    const adjusted: EventDraftItem[] = [];
+    for (const it of order) {
+      const prev = adjusted[adjusted.length - 1];
+      let cur = it;
+      if (prev && startMin(cur) < startMin(prev)) {
+        const end = endMin(cur)!;
+        // 前の終了直後から。会計が前後しているので prevEnd <= end のはずだが、
+        // 見積もりが壊れている場合に開始が終了を追い越さないよう抑える。
+        const start = Math.min(endMin(prev)!, end);
+        const at = fromMin(start);
+        cur = {
+          ...it,
+          date: at.date,
+          time: at.time,
+          labelParts: [it.labelParts[0], formatWhen(at.date, at.time)],
+        };
+        fixed.set(it.id, cur);
+      }
+      adjusted.push(cur);
+    }
+  }
+
+  return fixed.size === 0
+    ? items
+    : items.map((it) => fixed.get(it.id) ?? it);
+}
+
 /**
  * 重なった未確定の予定下書きを整える。
  *  - 同じ場所どうし → 1件にまとめる（時間帯は和集合、下書き id は全部持つ）
