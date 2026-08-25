@@ -81,9 +81,14 @@ async function TripsSection({ userId }: { userId: string }) {
         />
       </div>
 
-      {trips.length === 0 && proposals.length === 0 ? (
+      {trips.length === 0 && proposals.length === 0 && (
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
-      ) : (
+      )}
+
+      {/* 旅行の候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
+          同じ枠に入れず上に別立てで置く（ui-guidelines「カードや行を縦に
+          並べる時の間隔」）。 */}
+      {proposals.length > 0 && (
         <ul className="space-y-2">
           {proposals.map((p) => (
             <li key={p.emailIds.join(",")}>
@@ -100,11 +105,22 @@ async function TripsSection({ userId }: { userId: string }) {
               />
             </li>
           ))}
+        </ul>
+      )}
+
+      {/* 同種の項目が並ぶ一覧なので、1件ずつ枠＋隙間ではなく一覧全体を1つの枠に
+          して行を区切り線で分ける（費用一覧・受信箱と同じ形）。 */}
+      {trips.length > 0 && (
+        <ul
+          className={`divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10${
+            proposals.length > 0 ? " mt-6" : ""
+          }`}
+        >
           {trips.map((trip) => (
             <li key={trip.id}>
               <Link
                 href={`/trips/${trip.id}`}
-                className="block rounded-md border border-foreground/10 p-4 transition hover:border-foreground/40 hover:bg-foreground/10"
+                className="block p-4 transition hover:bg-foreground/10"
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">

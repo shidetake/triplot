@@ -196,9 +196,16 @@ export default function TripsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
+        renderItem={({ item, index }) => (
           <Pressable
-            style={styles.card}
+            // 一覧全体で1つの枠に見せる。FlatList なので枠を張る親を挟めず、
+            // 行ごとに左右の枠を持たせ、先頭に上辺と上の角丸、末尾に下辺と
+            // 下の角丸を足して1枚の箱にする。間は区切り線だけ。
+            style={[
+              styles.row,
+              index === 0 && styles.rowFirst,
+              index === trips.length - 1 && styles.rowLast,
+            ]}
             onPress={() => router.push(`/trips/${item.id}`)}
           >
             <Text style={styles.cardTitle}>{item.title}</Text>
@@ -249,14 +256,30 @@ export default function TripsScreen() {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: t.background },
-  list: { padding: 16, gap: 8 },
-  card: {
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.1),
-    borderRadius: 6,
+  list: { padding: 16 },
+  // 同種の項目が並ぶ一覧なので、1件ずつ枠＋隙間ではなく一覧全体を1つの枠に
+  // して行を区切り線で分ける（ui-guidelines「行にするかカードにするか」。
+  // 費用一覧・受信箱と同じ形）。
+  row: {
     padding: 16,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderColor: t.fgAlpha(0.1),
   },
-  proposals: { gap: 8, marginBottom: 8 },
+  rowFirst: {
+    borderTopWidth: 1,
+    borderTopLeftRadius: 6,
+    borderTopRightRadius: 6,
+  },
+  rowLast: {
+    borderBottomWidth: 1,
+    borderBottomLeftRadius: 6,
+    borderBottomRightRadius: 6,
+  },
+  // 候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
+  // 境目を空ける（ui-guidelines「カードや行を縦に並べる時の間隔」）。
+  proposals: { gap: 8, marginBottom: 24 },
   // 破線＝「ここに追加できる」（ui-guidelines）。実線にすると既に存在する
   // 旅行に見えてしまう。
   proposalCard: {
