@@ -7,9 +7,9 @@ import { useTheme } from "@/lib/theme";
 // グローバルなトースト。ui-guidelines「フィードバック」節の方針:
 // 結果が見えない成功（コピー等）を画面下に短く出す。どこからでも
 // toast("コピーしました") で呼べる。RN には Base UI Toast 相当が無いので
-// 最小限を自前で持つ（listener のスタック方式。web の standalone manager
-// パターンと同じだが、後述の理由で「今アクティブな画面のどれか」に届ける
-// 必要があるためスタックにしている）。アクションは不要＝スワイプ/ボタンでの
+// 最小限を自前で持つ（web の standalone manager パターンと同じだが、
+// 後述の理由で「今手前にある Toaster」に届ける必要がある）。
+// アクションは不要＝スワイプ/ボタンでの
 // 明示クローズは持たず、一定時間で自動的に消える（ブロッキングしない
 // Alert.alert の代替）。
 //
@@ -22,23 +22,32 @@ import { useTheme } from "@/lib/theme";
 // 直接 <Toaster /> を置く（apps/mobile/src/app/(app)/trips/import.tsx,
 // .../trips/trip-edit.tsx 参照）。
 //
-// toast() は「今どれが手前か」を判定せず、**全ての Toaster に配る**。
-// 手前でない Toaster が描いたぶんは別の view controller の裏に隠れて
-// 見えないだけなので害がなく、逆に「手前を当てにいく」実装は壊れる:
-// 以前は listener をスタックに積んで最後尾＝手前と見なしていたが、
-// ディープリンクで受信箱を直接開くとルートと画面が同時にマウントされ、
-// エフェクトが子→親の順に走るためルートが最後尾になり、トーストが
-// シートの裏に配送されて何も出なかった（マウント順に依存していたのが原因）。
+// 配送先は**マウント順ではなく種類**で決める: シート内の Toaster が1つでも
+// マウントされていれば、その回はシート内だけに配る。シートは常にルートの上に
+// あるので、開いていればそちらが手前だと種類だけで決まる。
+//
+// 「全部に配る」ではない。fitToContents のシートは画面の一部しか覆わないので、
+// ルートのトースト（下寄せ）がシートの外・シートの地の裏に見えてしまい、
+// 同じトーストが2箇所に出る（実機フィードバック）。
+//
+// マウント順を当てにする実装は壊れるので戻さないこと: 以前は listener を
+// スタックに積んで最後尾＝手前と見なしていたが、ディープリンクで受信箱を
+// 直接開くとルートと画面が同時にマウントされ、エフェクトが子→親の順に走る
+// ためルートが最後尾になり、トーストがシートの裏に配送されて何も出なかった。
 
-type Listener = (text: string | null) => void;
+type Listener = { show: (text: string | null) => void; inSheet: boolean };
 const listeners = new Set<Listener>();
 let hideTimer: ReturnType<typeof setTimeout> | null = null;
 
 export function toast(text: string): void {
   if (hideTimer) clearTimeout(hideTimer);
-  for (const fn of listeners) fn(text);
+  const all = [...listeners];
+  const inSheet = all.filter((l) => l.inSheet);
+  // シートが開いていればシート内だけ。開いていなければルート（＝残り全部）。
+  const targets = inSheet.length > 0 ? inSheet : all;
+  for (const l of targets) l.show(text);
   hideTimer = setTimeout(() => {
-    for (const fn of listeners) fn(null);
+    for (const l of targets) l.show(null);
   }, DISPLAY_MS);
 }
 
@@ -60,19 +69,22 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
   const theme = useTheme();
 
   useEffect(() => {
-    const fn: Listener = (text) => {
-      if (text) {
-        setDisplayText(text);
-        setShown(true);
-      } else {
-        setShown(false);
-      }
+    const listener: Listener = {
+      inSheet,
+      show: (text) => {
+        if (text) {
+          setDisplayText(text);
+          setShown(true);
+        } else {
+          setShown(false);
+        }
+      },
     };
-    listeners.add(fn);
+    listeners.add(listener);
     return () => {
-      listeners.delete(fn);
+      listeners.delete(listener);
     };
-  }, []);
+  }, [inSheet]);
 
   // フェードは state を変えたその場ではなく、描画後のこの effect で開始する。
   // toast() と同じ tick で start() すると、Animated.View がまだマウント
@@ -97,9 +109,12 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
       pointerEvents="none"
       style={[
         styles.wrap,
-        // シート内の上端は grabber のすぐ下（シートに status bar は無いので
-        // safe area は足さない）。画面全体のときだけ下端の safe area を避ける。
-        inSheet ? { top: 12 } : { bottom: insets.bottom + 24 },
+        // シート内の上端は grabber の下（シートに status bar は無いので
+        // safe area は足さない）。24 は実測値: grabber はシート上端から
+        // 5pt の位置に高さ 5pt で描かれるので、12 だと下端の 1pt 下に
+        // 詰まって grabber の一部に見えた（実機フィードバック）。
+        // 画面全体のときだけ下端の safe area を避ける。
+        inSheet ? { top: 24 } : { bottom: insets.bottom + 24 },
         { opacity },
       ]}
     >
