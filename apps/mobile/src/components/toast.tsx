@@ -55,12 +55,18 @@ const DISPLAY_MS = 2500;
 const FADE_MS = 200;
 
 // inSheet: この Toaster が native の formSheet ルートの中にあるか。
-// シートの中は下寄せにできない。sheetAllowedDetents:"fitToContents" の
-// シートでは画面の View が「見えているシート」より下まで伸びていて、
-// bottom 基準だと見えない位置に出る（実測: top 基準の probe はシート上端に
-// 出るのに、同時に描いた bottom 基準の probe はどこにも出ない）。
-// そのためシート内は上端に出す。ルート（画面全体）は従来どおり下中央
-// （ui-guidelines「トースト」節）。
+//
+// **シートの中では下寄せが画面に出ない。** 常時表示の bottom 基準の probe を
+// 置いても、シートが中身の高さのときも画面いっぱいのときも、どこにも現れない
+// （同時に描いた top 基準のものはシート上端に出る）。器の View に flex:1 を
+// 与えて高さを確定させても変わらなかったので、「器の高さが 0 だから」でも
+// ない。原因は特定できていないが、**下寄せは使えない**ことは3回測って同じ
+// 結果なので、上端に出す。
+//
+// 位置の既定は本来「画面下中央」（ui-guidelines「トースト」節）で、
+// 上端はこの制約による代替。シートが開いている間はシートが目の前の面なので、
+// その上端に出る帯として読める、という意味では破綻しない。ルート（画面全体）は
+// 従来どおり下中央。
 export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
   const [displayText, setDisplayText] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
