@@ -529,12 +529,18 @@ async function resolveReceiptPlace(
 
 // 抽出本体（LLM 呼び出し）→ マージ判定 → 下書き保存。LLM 失敗時は throw する
 // （リトライ可否の判定は呼び出し側）。
+// 抽出の入口は3つある（受信・再試行・翌月の枠あけ待ちの drain）。上限の判定を
+// 呼び出し側に置くと、入口が増えたときに付け忘れる — 実際、再試行の経路
+// （retryDrain）だけ判定が無く、一度失敗したメールは上限に関係なく抽出され
+// 続けていた（本番で当月 102 件 / 上限 100 件になっていた）。**判定はここ
+// 1箇所に置き、抽出する道は必ずここを通す。**
 async function runExtraction(
   supabase: ServiceClient,
   emailId: string,
   userId: string,
   raw: string,
 ): Promise<void> {
+  if (await holdIfOverQuota(supabase, emailId, userId)) return;
   // 本文＋PDFテキストを作り（これが痩せ版）、許可ホストの明細リンクは fetch して本文に
   // 付加（enrichment）。候補旅行も渡して、抽出と同時にどの旅行か＋明細リンクを推論させる。
   const { subject, text: gatheredText } = await gatherReceiptText(raw, {
@@ -729,21 +735,38 @@ async function monthlyExtractCount(
   return count ?? 0;
 }
 
-// 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限を超えたら
-// 抽出せず over_quota にする（コスト保護）。翌月に枠が空けば reprocessOverQuota が拾う。
+// 当月の枠を使い切っていれば、抽出せず over_quota にして true を返す。
+//
+// 数えて比べるだけなので、**同時に届いた複数通が同じ数を読んで揃って通る**
+// ことはあり得る（読んでから extracted_at が付くまでに間がある）。超過は
+// 同時実行数ぶんに限られ、枠はコストの歯止めであって厳密な残高ではないので
+// （docs/design/billing.md）、ここは許容する。カウンタを持って厳密にする案は
+// 採らない — 実データとカウンタがずれる方が厄介。
+// next_retry_at は消す: 枠切れは時間をおいても解けないので、再試行の列に
+// 残しても毎分空振りするだけ。翌月に reprocessOverQuota が拾う。
+async function holdIfOverQuota(
+  supabase: ServiceClient,
+  emailId: string,
+  userId: string,
+): Promise<boolean> {
+  if ((await monthlyExtractCount(supabase, userId)) < MONTHLY_EMAIL_CAP) {
+    return false;
+  }
+  await supabase
+    .from("inbound_emails")
+    .update({ status: "over_quota", next_retry_at: null })
+    .eq("id", emailId);
+  return true;
+}
+
+// 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限の判定は
+// runExtraction が持つ（入口ごとに書かない）。
 export async function extractInBackground(
   supabase: ServiceClient,
   emailId: string,
   userId: string,
   raw: string,
 ): Promise<void> {
-  if ((await monthlyExtractCount(supabase, userId)) >= MONTHLY_EMAIL_CAP) {
-    await supabase
-      .from("inbound_emails")
-      .update({ status: "over_quota" })
-      .eq("id", emailId);
-    return;
-  }
   await attemptExtraction(supabase, emailId, userId, raw);
 }
 
