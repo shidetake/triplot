@@ -387,8 +387,8 @@ export default async function TripDetailPage({
                   eventDrafts={eventDrafts}
                   afterHeading={
                     eventDrafts.length > 0 && (
-                      <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-                        <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
+                      <div className="rounded-md border border-dashed border-foreground/20 p-4">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           {t("tripDetail.pendingImports", {
                             count: eventDrafts.length,
                           })}
@@ -493,9 +493,17 @@ export default async function TripDetailPage({
                   />
                 </div>
 
+                <ExpenseSummaryView
+                  summary={summary}
+                  settlements={settlements}
+                  members={allMembers}
+                  defaultCurrency={defaultCurrency}
+                  averageRates={averageRates}
+                />
+
                 {importDrafts.length > 0 && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-400/20 dark:bg-amber-400/10">
-                    <div className="flex items-center gap-1.5 text-sm font-medium text-amber-900 dark:text-amber-300">
+                  <div className="rounded-md border border-dashed border-foreground/20 p-4">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {t("tripDetail.pendingImports", {
                         count: importDrafts.length,
                       })}
@@ -540,14 +548,6 @@ export default async function TripDetailPage({
                     </div>
                   </div>
                 )}
-
-                <ExpenseSummaryView
-                  summary={summary}
-                  settlements={settlements}
-                  members={allMembers}
-                  defaultCurrency={defaultCurrency}
-                  averageRates={averageRates}
-                />
 
                 <ExpenseList
                   tripId={tripId}

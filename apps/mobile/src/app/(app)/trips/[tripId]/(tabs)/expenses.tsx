@@ -47,7 +47,7 @@ import { useTripId } from "@/lib/useTripId";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
 // 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（native formSheet ルート
-// trips/[tripId]/expense-form）。メール取り込みの未確定下書きは amber の
+// trips/[tripId]/expense-form）。メール取り込みの未確定下書きは破線の
 // 「未確定の取り込み」ボックスに出し、タップで事前入力済みの確定フォームを
 // 開く（× で破棄）。
 export default function ExpensesTab() {
@@ -162,56 +162,6 @@ export default function ExpensesTab() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 未確定の取り込み（amber）。タップで事前入力済みフォーム、× で破棄。 */}
-        {draftItems.length > 0 && (
-          <View style={styles.draftBox}>
-            <Text style={styles.draftHeading}>
-              {t("tripDetail.pendingImports", { count: draftItems.length })}
-            </Text>
-            <View style={styles.draftList}>
-            {draftItems.map((d, i) => (
-              <View
-                key={d.id}
-                style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
-              >
-                <Pressable
-                  onPress={() =>
-                    router.push(`/trips/${tripId}/expense-form?draftId=${d.id}`)
-                  }
-                  style={styles.draftButton}
-                >
-                  <View style={styles.draftLabelParts}>
-                    {d.labelParts.map((part, i) => (
-                      <View key={i} style={styles.draftLabelPart}>
-                        {i > 0 && <View style={styles.draftDivider} />}
-                        <Text
-                          style={styles.draftLabelText}
-                          numberOfLines={1}
-                        >
-                          {part}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.confirmChip}>
-                    <Text style={styles.confirmChipText}>
-                      {t("common.confirm")}
-                    </Text>
-                  </View>
-                </Pressable>
-                <Pressable
-                  onPress={() => dismissDraft(d.emailId)}
-                  hitSlop={8}
-                  accessibilityLabel={tImport("dismiss")}
-                >
-                  <XIcon size={16} color={theme.subtleForeground} />
-                </Pressable>
-              </View>
-            ))}
-            </View>
-          </View>
-        )}
-
         {/* 集計（自己負担 / private / 合計） */}
         <View style={styles.summaryGrid}>
           <SummaryCell
@@ -262,6 +212,59 @@ export default function ExpensesTab() {
             </Text>
           )}
         </View>
+
+        {/* 未確定の取り込み。タップで事前入力済みフォーム、× で破棄。
+            **確定した費用の一覧のすぐ上に置く**（画面の先頭ではなく）。仮は
+            その兄弟である確定の近くにある方が自然で、旅行一覧の「旅行の候補」
+            と同じ置き方に揃う。見た目も揃えて破線・色なし。 */}
+        {draftItems.length > 0 && (
+          <View style={styles.draftBox}>
+            <Text style={styles.draftHeading}>
+              {t("tripDetail.pendingImports", { count: draftItems.length })}
+            </Text>
+            <View style={styles.draftList}>
+            {draftItems.map((d, i) => (
+              <View
+                key={d.id}
+                style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
+              >
+                <Pressable
+                  onPress={() =>
+                    router.push(`/trips/${tripId}/expense-form?draftId=${d.id}`)
+                  }
+                  style={styles.draftButton}
+                >
+                  <View style={styles.draftLabelParts}>
+                    {d.labelParts.map((part, i) => (
+                      <View key={i} style={styles.draftLabelPart}>
+                        {i > 0 && <View style={styles.draftDivider} />}
+                        <Text
+                          style={styles.draftLabelText}
+                          numberOfLines={1}
+                        >
+                          {part}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  <View style={styles.confirmChip}>
+                    <Text style={styles.confirmChipText}>
+                      {t("common.confirm")}
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => dismissDraft(d.emailId)}
+                  hitSlop={8}
+                  accessibilityLabel={tImport("dismiss")}
+                >
+                  <XIcon size={16} color={theme.subtleForeground} />
+                </Pressable>
+              </View>
+            ))}
+            </View>
+          </View>
+        )}
 
         {/* 一覧（発生順）。行の情報は web の ExpenseRowItem と同じ:
             カテゴリ色ピル・金額・外貨・private 鍵・日時・支払・割勘メンバー・
@@ -422,18 +425,21 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: t.background },
   content: { padding: 16, gap: 8, paddingBottom: 96 },
-  // 未確定の取り込み（warning=amber。web の amber-50/200/900 と同じ）。
+  // 未確定の取り込み。仮のもの（仮費用・仮旅行）は破線の枠で示し、色は付けない。破線＝
+  // 「まだ実体が無い／押すと実体ができる」で、旅行一覧の「旅行の候補」と
+  // 同じ言語に揃える（ui-guidelines「定型部品」の破線ボーダー）。
+  // 確定の一覧とは別のまとまりなので境目は 24px。
   draftBox: {
     borderWidth: 1,
-    borderColor: t.warnBorder,
-    backgroundColor: t.warnBg,
-    borderRadius: 8,
-    padding: 12,
+    borderStyle: "dashed",
+    borderColor: t.fgAlpha(0.2),
+    borderRadius: 6,
+    padding: 16,
     gap: 8,
-    marginBottom: 8,
+    marginBottom: 24,
   },
-  draftHeading: { fontSize: 14, fontWeight: "500", color: t.warnText },
-  // 囲いは群の側（draftBox の琥珀色の箱）が持つので、ここには枠を付けない。
+  draftHeading: { fontSize: 12, color: t.mutedForeground },
+  // 囲いは群の側（draftBox の破線の枠）が持つので、ここには枠を付けない。
   // 付けると枠の中に枠ができて、他の一覧から浮く（ui-guidelines「行にするか
   // カードにするか」の「意味が群に付いているなら囲いを群の側に置く」）。
   draftList: {},
@@ -445,8 +451,7 @@ const makeStyles = (t: Theme) =>
   },
   draftRowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
-    // 琥珀色の地の上なので、区切り線も同系で薄く。
-    borderTopColor: t.warnBorder,
+    borderTopColor: t.fgAlpha(0.1),
   },
   // padding は行（draftRow）が持つ。ここにも付けると二重になって、
   // 店名と日付に使える幅が減り省略が増える。
