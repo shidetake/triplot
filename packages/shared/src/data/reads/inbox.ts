@@ -1,4 +1,6 @@
 import type { DB } from "../client";
+import { MONTHLY_EMAIL_CAP } from "../../import/config";
+import { effectiveEmailCap } from "../../import/emailCap";
 
 // メール取り込み（受信箱）まわりの読み取り。web
 // （apps/web/app/import/page.tsx と trips/[tripId]/page.tsx）から移設
@@ -105,6 +107,18 @@ export async function fetchImportInboxRows(sb: DB, userId: string) {
     .select("id", { count: "exact", head: true })
     .eq("status", "over_quota");
 
+  // 上限は人によって違う（個別上書き。docs/design/billing.md）ので、
+  // クライアントの定数ではなくサーバから実効上限を返す。
+  const { data: capRow } = await sb
+    .from("users")
+    .select("monthly_email_cap_override")
+    .eq("id", userId)
+    .single();
+  const emailCap = effectiveEmailCap(
+    MONTHLY_EMAIL_CAP,
+    capRow?.monthly_email_cap_override,
+  );
+
   // 各メールに合体された子メール（誤マージ確認・split 用）。
   const { data: mergedChildren } =
     emailIds.length > 0
@@ -123,6 +137,7 @@ export async function fetchImportInboxRows(sb: DB, userId: string) {
     errorRows,
     usedThisMonth,
     overQuota,
+    emailCap,
     mergedChildren,
   };
 }

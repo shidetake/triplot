@@ -139,11 +139,11 @@ export function ImportSheet() {
 
       {/* 上限の警告（web の import-inbox と同じ条件・同じ文言）。上限に
           達した時点で出す（保留が実際に発生する前でも）。 */}
-      {((data?.usedThisMonth ?? 0) >= MONTHLY_EMAIL_CAP ||
+      {((data?.usedThisMonth ?? 0) >= (data?.emailCap ?? MONTHLY_EMAIL_CAP) ||
         (data?.overQuota ?? 0) > 0) && (
         <View style={styles.warnBox}>
           <Text style={styles.warnText}>
-            {t("quotaReached", { cap: MONTHLY_EMAIL_CAP })}
+            {t("quotaReached", { cap: data?.emailCap ?? MONTHLY_EMAIL_CAP })}
             {(data?.overQuota ?? 0) > 0
               ? ` ${t("quotaHeld", { over: data?.overQuota ?? 0 })}`
               : ""}
@@ -405,7 +405,7 @@ export function ImportSheet() {
         <Text style={styles.usage}>
           {t("usageCount", {
             used: data.usedThisMonth ?? 0,
-            cap: MONTHLY_EMAIL_CAP,
+            cap: data.emailCap ?? MONTHLY_EMAIL_CAP,
           })}
         </Text>
       )}

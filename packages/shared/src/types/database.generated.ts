@@ -911,6 +911,7 @@ export type Database = {
           import_token: string | null
           is_admin: boolean
           is_anonymous: boolean
+          monthly_email_cap_override: number | null
         }
         Insert: {
           avatar_url?: string | null
@@ -921,6 +922,7 @@ export type Database = {
           import_token?: string | null
           is_admin?: boolean
           is_anonymous?: boolean
+          monthly_email_cap_override?: number | null
         }
         Update: {
           avatar_url?: string | null
@@ -931,6 +933,7 @@ export type Database = {
           import_token?: string | null
           is_admin?: boolean
           is_anonymous?: boolean
+          monthly_email_cap_override?: number | null
         }
         Relationships: []
       }

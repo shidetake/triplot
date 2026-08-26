@@ -3,6 +3,7 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { fetchReceiptLink } from "./fetchLink";
 import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
+import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
@@ -721,6 +722,20 @@ async function attemptExtraction(
   }
 }
 
+// そのユーザの実効上限（docs/design/billing.md）。プランはまだ実装していないので、
+// 「プランの上限」はアプリ側の定数。個別上書きは users の列（手動運用のみ）。
+async function effectiveCapFor(
+  supabase: ServiceClient,
+  userId: string,
+): Promise<number> {
+  const { data } = await supabase
+    .from("users")
+    .select("monthly_email_cap_override")
+    .eq("id", userId)
+    .single();
+  return effectiveEmailCap(MONTHLY_EMAIL_CAP, data?.monthly_email_cap_override);
+}
+
 // 当月の抽出回数（コスト）。確定/合体後も extracted_at は残るので、確定でカウントが
 // 減らない（status ではなく extracted_at で数える）。
 async function monthlyExtractCount(
@@ -749,7 +764,8 @@ async function holdIfOverQuota(
   emailId: string,
   userId: string,
 ): Promise<boolean> {
-  if ((await monthlyExtractCount(supabase, userId)) < MONTHLY_EMAIL_CAP) {
+  const cap = await effectiveCapFor(supabase, userId);
+  if ((await monthlyExtractCount(supabase, userId)) < cap) {
     return false;
   }
   await supabase
@@ -887,7 +903,8 @@ export async function reprocessOverQuota(
     let remaining = remainingByUser.get(row.user_id);
     if (remaining === undefined) {
       remaining =
-        MONTHLY_EMAIL_CAP - (await monthlyExtractCount(supabase, row.user_id));
+        (await effectiveCapFor(supabase, row.user_id)) -
+        (await monthlyExtractCount(supabase, row.user_id));
     }
     if (remaining <= 0) {
       remainingByUser.set(row.user_id, 0);

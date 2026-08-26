@@ -77,6 +77,7 @@ function ImportSheetBody() {
       errorRows: raw.errorRows ?? [],
       usedThisMonth: raw.usedThisMonth ?? 0,
       overQuota: raw.overQuota ?? 0,
+      emailCap: raw.emailCap,
     } satisfies ImportInboxData;
   }, []);
 

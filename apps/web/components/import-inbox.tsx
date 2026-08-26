@@ -17,7 +17,6 @@ import {
 import type { InboxRow } from "@triplot/shared/import/inboxRows";
 import {
   EXTRACT_ERROR_NO_CONTENT,
-  MONTHLY_EMAIL_CAP,
 } from "@triplot/shared/import/config";
 
 import {
@@ -46,6 +45,8 @@ export interface ImportInboxData {
   }[];
   usedThisMonth: number;
   overQuota: number;
+  // 上限は人によって違う（個別上書き）ので、サーバが計算した実効上限を受け取る。
+  emailCap: number;
 }
 
 // 取り込み受信箱の中身。ページ（/import）とヘッダーから開くシートの
@@ -111,6 +112,7 @@ export function ImportInbox({
     errorRows,
     usedThisMonth,
     overQuota,
+    emailCap,
   } = data;
 
   return (
@@ -127,14 +129,14 @@ export function ImportInbox({
       )}
 
       <p className="mt-3 text-xs text-muted-foreground">
-        {t("usageCount", { used: usedThisMonth, cap: MONTHLY_EMAIL_CAP })}
+        {t("usageCount", { used: usedThisMonth, cap: emailCap })}
       </p>
 
       {/* 上限に達した時点で出す（保留が実際に発生する前でも）。保留が出る
           までは何も出ず、突然メールが取り込まれなくなる状態だった。 */}
-      {(usedThisMonth >= MONTHLY_EMAIL_CAP || overQuota > 0) && (
+      {(usedThisMonth >= emailCap || overQuota > 0) && (
         <MessageBox kind="warning" className="mt-3">
-          {t("quotaReached", { cap: MONTHLY_EMAIL_CAP })}
+          {t("quotaReached", { cap: emailCap })}
           {overQuota > 0 ? ` ${t("quotaHeld", { over: overQuota })}` : ""}
         </MessageBox>
       )}
