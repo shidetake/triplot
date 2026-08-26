@@ -488,6 +488,96 @@ describe("deriveEventDraftItems", () => {
     expect(items[0].prefill.autoResolvePlace).toBeNull();
   });
 
+  it("配車の移動は乗車地・降車地を両方とも事前入力する", () => {
+    const candidate = (placeId: string, name: string) => ({
+      placeId,
+      name,
+      formattedAddress: "",
+      lat: 21.3,
+      lng: -157.9,
+      region: "HI",
+      locality: "Honolulu",
+      rating: null,
+      userRatingCount: null,
+      primaryType: null,
+    });
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          email_id: "e-d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({
+              kind: "transit",
+              title: "移動",
+              departLocation: "412 Lewers St, Honolulu, HI 96815, US",
+              arriveLocation: "Daniel K. Inouye International Airport",
+            }),
+            resolvedDeparturePlace: candidate("g-pickup", "412 Lewers St"),
+            resolvedArrivalPlace: candidate("g-hnl", "ダニエル・K・イノウエ国際空港"),
+          },
+        },
+      ],
+      eventCtx,
+    );
+    expect(items[0].prefill.place).toMatchObject({
+      kind: "google",
+      placeId: "g-pickup",
+    });
+    expect(items[0].prefill.endPlace).toMatchObject({
+      kind: "google",
+      placeId: "g-hnl",
+    });
+  });
+
+  it("降車地は解決済みの候補より保存済みの場所を優先する", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          email_id: "e-d1",
+          kind: "event",
+          payload: {
+            ...eventDraft({
+              kind: "transit",
+              title: "移動",
+              departLocation: "412 Lewers St",
+              arriveLocation: "ダニエル・K・イノウエ国際空港",
+            }),
+            resolvedArrivalPlace: {
+              placeId: "g-hnl",
+              name: "ダニエル・K・イノウエ国際空港",
+              formattedAddress: "",
+              lat: 21.3,
+              lng: -157.9,
+              region: "HI",
+              locality: "Honolulu",
+              rating: null,
+              userRatingCount: null,
+              primaryType: null,
+            },
+          },
+        },
+      ],
+      {
+        ...eventCtx,
+        places: [
+          {
+            id: "saved-hnl",
+            name: "ダニエル・K・イノウエ国際空港",
+            formattedAddress: null,
+          },
+        ],
+      },
+    );
+    expect(items[0].prefill.endPlace).toEqual({
+      kind: "saved",
+      id: "saved-hnl",
+      name: "ダニエル・K・イノウエ国際空港",
+    });
+  });
+
   it("transit（未解決フライト）は resolvedNamedPlace を無視する", () => {
     const items = deriveEventDraftItems(
       [

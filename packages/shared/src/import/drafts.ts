@@ -405,16 +405,32 @@ export function deriveEventDraftItems(
       // apps/web/lib/import/process.ts が抽出直後に仕込む）。
       const place =
         savedPlace ??
-        (ev.kind !== "transit" && ev.resolvedNamedPlace
-          ? candidateToDraftPlace(
-              ev.resolvedNamedPlace,
-              guessImportPlaceIcon({
-                category: null,
-                eventTitle: ev.title,
-                merchant: ev.location,
-              }),
-            )
-          : null);
+        (ev.kind === "transit"
+          ? // 便名で引けない移動（配車・タクシー等）の乗車地。空港は
+            // resolvedDeparturePlace をフライト側の分岐で使うので、ここに
+            // 来るのはそれ以外。
+            (ev.resolvedDeparturePlace
+              ? candidateToDraftPlace(ev.resolvedDeparturePlace, null)
+              : null)
+          : ev.resolvedNamedPlace
+            ? candidateToDraftPlace(
+                ev.resolvedNamedPlace,
+                guessImportPlaceIcon({
+                  category: null,
+                  eventTitle: ev.title,
+                  merchant: ev.location,
+                }),
+              )
+            : null);
+      // 移動の到着地（降車地）。出発地と同じ順で、保存済みの場所を最優先。
+      // 空港のように施設名で書かれていれば既にあるその場所に寄る。
+      const endPlaceName = ev.kind === "transit" ? ev.arriveLocation : null;
+      const endPlace = endPlaceName
+        ? (matchSavedPlace(endPlaceName, null, ctx.places) ??
+          (ev.resolvedArrivalPlace
+            ? candidateToDraftPlace(ev.resolvedArrivalPlace, null)
+            : null))
+        : null;
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);
       // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。
@@ -447,7 +463,7 @@ export function deriveEventDraftItems(
             departTz: ev.departTz,
             arriveTz: ev.arriveTz,
             place,
-            endPlace: null,
+            endPlace,
             flightNumber,
             autoResolvePlace:
               place || !placeName

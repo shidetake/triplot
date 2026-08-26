@@ -418,6 +418,39 @@ async function prefetchFlights(
           // best-effort。確定時に通常の検索（手打ちと同じ経路）へフォールバックする。
         }
       }
+      // 便名で引けない移動（配車・タクシー・列車・バス）。空港のような座標の
+      // 既知点が無いので、出発地・到着地の文字列をそれぞれ Google の場所に
+      // 解決する（レストラン等と同じ resolveNamedPlace）。降車地が空港のように
+      // 施設名で書かれていればその場所に寄り、乗車地が住所しか無ければその
+      // 住所の場所になる（寄せられないものを無理に寄せない）。
+      const rideCenter =
+        ev.departLocation || ev.arriveLocation
+          ? await fetchBiasCenterForDate(supabase, tripId, ev.startDate)
+          : null;
+      if (placesApiKey && rideCenter) {
+        const resolveEndpoint = async (name: string | null | undefined) => {
+          if (!name) return null;
+          try {
+            return await resolveNamedPlace(name, null, {
+              apiKey: placesApiKey,
+              biasCenter: rideCenter,
+            });
+          } catch {
+            // best-effort。確定時に手で選べる。
+            return null;
+          }
+        };
+        const departure = await resolveEndpoint(ev.departLocation);
+        const arrival = await resolveEndpoint(ev.arriveLocation);
+        if (departure || arrival) {
+          result.push({
+            ...ev,
+            resolvedDeparturePlace: departure,
+            resolvedArrivalPlace: arrival,
+          });
+          continue;
+        }
+      }
       result.push(ev);
       continue;
     }
