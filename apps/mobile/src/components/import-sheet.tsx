@@ -137,14 +137,16 @@ export function ImportSheet() {
         </View>
       )}
 
-      {/* 上限超過の警告（web の overQuotaWarning と同じ） */}
-      {(data?.overQuota ?? 0) > 0 && (
+      {/* 上限の警告（web の import-inbox と同じ条件・同じ文言）。上限に
+          達した時点で出す（保留が実際に発生する前でも）。 */}
+      {((data?.usedThisMonth ?? 0) >= MONTHLY_EMAIL_CAP ||
+        (data?.overQuota ?? 0) > 0) && (
         <View style={styles.warnBox}>
           <Text style={styles.warnText}>
-            {t("overQuotaWarning", {
-              cap: MONTHLY_EMAIL_CAP,
-              over: data?.overQuota ?? 0,
-            })}
+            {t("quotaReached", { cap: MONTHLY_EMAIL_CAP })}
+            {(data?.overQuota ?? 0) > 0
+              ? ` ${t("quotaHeld", { over: data?.overQuota ?? 0 })}`
+              : ""}
           </Text>
         </View>
       )}

@@ -130,9 +130,12 @@ export function ImportInbox({
         {t("usageCount", { used: usedThisMonth, cap: MONTHLY_EMAIL_CAP })}
       </p>
 
-      {overQuota > 0 && (
+      {/* 上限に達した時点で出す（保留が実際に発生する前でも）。保留が出る
+          までは何も出ず、突然メールが取り込まれなくなる状態だった。 */}
+      {(usedThisMonth >= MONTHLY_EMAIL_CAP || overQuota > 0) && (
         <MessageBox kind="warning" className="mt-3">
-          {t("overQuotaWarning", { cap: MONTHLY_EMAIL_CAP, over: overQuota })}
+          {t("quotaReached", { cap: MONTHLY_EMAIL_CAP })}
+          {overQuota > 0 ? ` ${t("quotaHeld", { over: overQuota })}` : ""}
         </MessageBox>
       )}
 
