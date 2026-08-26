@@ -85,13 +85,18 @@ async function TripsSection({ userId }: { userId: string }) {
         <p className="text-sm text-muted-foreground">{t("empty")}</p>
       )}
 
-      {/* 旅行の候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
-          同じ枠に入れず上に別立てで置く（ui-guidelines「カードや行を縦に
-          並べる時の間隔」）。 */}
+      {/* 旅行の候補（仮旅行）は実在の旅行とは別のまとまりなので、同じ枠に
+          入れず上に別立てで置く。仮であることは破線の器と見出しが群として
+          示すので、中は区切り線だけの行にする（費用の「未確定の取り込み」と
+          同じ形）。 */}
       {proposals.length > 0 && (
-        <ul className="space-y-2">
-          {proposals.map((p) => (
-            <li key={p.emailIds.join(",")}>
+        <div className="rounded-md border border-dashed border-foreground/20 p-4">
+          <div className="text-xs text-muted-foreground">
+            {t("proposal", { count: proposals.length })}
+          </div>
+          <ul className="mt-2 divide-y divide-foreground/10">
+            {proposals.map((p) => (
+              <li key={p.emailIds.join(",")}>
               <TripProposalCard
                 proposal={p}
                 defaultDisplayName={defaultDisplayName}
@@ -103,9 +108,10 @@ async function TripsSection({ userId }: { userId: string }) {
                   end_date: trip.end_date,
                 }))}
               />
-            </li>
-          ))}
-        </ul>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       {/* 同種の項目が並ぶ一覧なので、1件ずつ枠＋隙間ではなく一覧全体を1つの枠に

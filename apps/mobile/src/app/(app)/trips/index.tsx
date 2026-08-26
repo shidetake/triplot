@@ -158,10 +158,14 @@ export default function TripsScreen() {
         ListHeaderComponent={
           proposals.length > 0 ? (
             <View style={styles.proposals}>
-              {proposals.map((p) => (
+              <Text style={styles.proposalHeading}>
+                {t("proposal", { count: proposals.length })}
+              </Text>
+              <View>
+              {proposals.map((p, i) => (
                 <Pressable
                   key={p.emailIds.join(",")}
-                  style={styles.proposalCard}
+                  style={[styles.proposalRow, i > 0 && styles.proposalDivider]}
                   onPress={() =>
                     router.push({
                       pathname: "/trips/new",
@@ -174,7 +178,6 @@ export default function TripsScreen() {
                     })
                   }
                 >
-                  <Text style={styles.proposalLabel}>{t("proposal")}</Text>
                   <Text style={styles.cardTitle}>
                     {p.title ??
                       formatTripDateRange(p.startDate, p.endDate, locale)}
@@ -184,6 +187,7 @@ export default function TripsScreen() {
                   </Text>
                 </Pressable>
               ))}
+              </View>
             </View>
           ) : null
         }
@@ -279,17 +283,26 @@ const makeStyles = (t: Theme) =>
   },
   // 候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
   // 境目を空ける（ui-guidelines「カードや行を縦に並べる時の間隔」）。
-  proposals: { gap: 8, marginBottom: 24 },
-  // 破線＝「ここに追加できる」（ui-guidelines）。実線にすると既に存在する
-  // 旅行に見えてしまう。
-  proposalCard: {
+  // 旅行の候補（仮旅行）。仮のものは破線・色なしで、群の見出し＋区切り線の行
+  // ＝費用の「未確定の取り込み」と同じ形（1件ずつ破線カードにすると、候補が
+  // 増えたとき見出しが件数ぶん繰り返される）。
+  proposals: {
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
     padding: 16,
+    gap: 8,
+    marginBottom: 24,
   },
-  proposalLabel: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
+  proposalHeading: { fontSize: 12, color: t.mutedForeground },
+  proposalRow: { paddingVertical: 10 },
+  proposalDivider: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: t.fgAlpha(0.1),
+  },
+  // 破線＝「ここに追加できる」（ui-guidelines）。実線にすると既に存在する
+  // 旅行に見えてしまう。
   cardTitle: { fontSize: 14, fontWeight: "500", color: t.foreground },
   cardSub: { marginTop: 4, fontSize: 12, color: t.mutedForeground },
   empty: { padding: 24, fontSize: 14, color: t.mutedForeground },

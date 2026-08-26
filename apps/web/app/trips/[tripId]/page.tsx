@@ -399,7 +399,7 @@ export default async function TripDetailPage({
                             {t("tripDetail.importEventHelp")}
                           </HelpTip>
                         </div>
-                        <div className="mt-3 space-y-2">
+                        <div className="mt-2 divide-y divide-foreground/10">
                           {eventDrafts.map((d) => (
                             <EventDraftConfirmButton
                               key={d.id}
@@ -514,7 +514,7 @@ export default async function TripDetailPage({
                         {t("tripDetail.importHelp")}
                       </HelpTip>
                     </div>
-                    <div className="mt-3 space-y-2">
+                    <div className="mt-2 divide-y divide-foreground/10">
                       {importDrafts.map((d) => (
                         <DraftConfirmButton
                           key={d.id}

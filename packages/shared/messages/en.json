@@ -119,7 +119,7 @@
     "empty": "You haven't joined any trips yet.",
     "create": "Create a trip",
     "dateRange": "{start} – {end}",
-    "proposal": "Suggested trip"
+    "proposal": "{count, plural, one {Suggested trip} other {Suggested trips}} ({count})"
   },
   "createTrip": {
     "modeNew": "New",
