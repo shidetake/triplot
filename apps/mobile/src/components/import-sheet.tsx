@@ -303,28 +303,26 @@ export function ImportSheet() {
                   // 変えずに当たり判定だけ広げる（上下の行のピッカーとは
                   // 24pt 離れているので、10 ずつ広げても重ならない）。
                   hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-                  style={[
-                    styles.assignButton,
-                    !assigned && styles.assignButtonWarn,
-                  ]}
+                  style={styles.assignButton}
                 >
-                  <Text
-                    style={[
-                      styles.assignLabel,
-                      !assigned && styles.assignLabelWarn,
-                    ]}
-                    numberOfLines={1}
-                  >
+                  <Text style={styles.assignLabel} numberOfLines={1}>
                     {assigned
                       ? (tripLabels.get(assigned.id) ?? assigned.title)
                       : t("selectTripPrompt")}
                   </Text>
-                  <ChevronIcon
-                    size={14}
-                    rotate={90}
-                    color={assigned ? theme.foreground : theme.warnAccent}
-                  />
+                  <ChevronIcon size={14} rotate={90} color={theme.foreground} />
                 </Pressable>
+                {/* 「要割当」は状態なのでバッジで示す（web の import-inbox と
+                    同じ形・「地図未登録」バッジと同じレシピ）。ピッカー自体を
+                    琥珀にすると、コントロールの色が持つ意味（選択状態）と
+                    ぶつかるうえ、全行が未割当のときに画面が琥珀で埋まる。 */}
+                {!assigned && (
+                  <View style={styles.needsAssignBadge}>
+                    <Text style={styles.needsAssignBadgeText}>
+                      {t("needsAssignment")}
+                    </Text>
+                  </View>
+                )}
                 <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
                   <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
                 </Pressable>
@@ -547,14 +545,20 @@ const makeStyles = (t: Theme) =>
       paddingVertical: 6,
       backgroundColor: t.fgAlpha(0.05),
     },
-    assignButtonWarn: { backgroundColor: t.warnChipBg },
+    // 「要割当」バッジ（web の import-inbox と同じ・「地図未登録」と同じ形）。
+    needsAssignBadge: {
+      borderRadius: 4,
+      backgroundColor: t.warnChipBg,
+      paddingHorizontal: 6,
+      paddingVertical: 1,
+    },
+    needsAssignBadgeText: { fontSize: 11, color: t.warnAccent },
     assignLabel: {
       flexShrink: 1,
       fontSize: 12,
       fontWeight: "500",
       color: t.foreground,
     },
-    assignLabelWarn: { color: t.warnAccent },
     dismissLabel: { fontSize: 12, color: t.mutedForeground },
     // 合体明細（web の <details> 相当）。開閉行は控えめだが、**開けることが
     // 分かる形にする**＝文言だけだとタップできると気付けない（実機

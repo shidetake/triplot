@@ -4,8 +4,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 
-import { ChevronIcon, SaveIcon } from "@/components/icons";
-import { Button } from "@/components/ui/button";
+import { ChevronIcon } from "@/components/icons";
 import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
@@ -120,10 +119,7 @@ export function ImportInbox({
       <p className="mt-3 text-sm text-muted-foreground">{t("description")}</p>
 
       {importAddress && (
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="text-xs text-muted-foreground">
-            {t("forwardLabel")}
-          </span>
+        <div className="mt-4">
           <ImportAddress address={importAddress} />
         </div>
       )}
@@ -265,27 +261,25 @@ export function ImportInbox({
 
                   {/* 旅行の割り当て */}
                   <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <form
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        const tripId = new FormData(e.currentTarget).get(
-                          "trip_id",
-                        );
-                        run(() =>
-                          assignInboundEmailTrip(
-                            createClient(),
-                            row.id,
-                            typeof tripId === "string" && tripId
-                              ? tripId
-                              : null,
-                          ),
-                        );
-                      }}
-                      className="flex items-center gap-2"
-                    >
+                    {/* 1つ選ぶだけで完結する操作なので、選んだ時点で保存する
+                        （保存ボタンを置かない → ui-guidelines「保存ボタンの
+                        要否」）。結果は行の表示（→ ◯◯で確定 / 要割当）が
+                        変わることで見える。 */}
+                    <form className="flex items-center gap-2">
                       <select
                         name="trip_id"
                         defaultValue={row.defaultTripId}
+                        disabled={isPending}
+                        onChange={(e) => {
+                          const tripId = e.currentTarget.value;
+                          run(() =>
+                            assignInboundEmailTrip(
+                              createClient(),
+                              row.id,
+                              tripId || null,
+                            ),
+                          );
+                        }}
                         className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
                       >
                         <option value="">
@@ -299,16 +293,6 @@ export function ImportInbox({
                           </option>
                         ))}
                       </select>
-                      <Button
-                        type="submit"
-                        size="iconSm"
-                        disabled={isPending}
-                        aria-label={tCommon("save")}
-                        title={tCommon("save")}
-                        className="shrink-0"
-                      >
-                        <SaveIcon size={16} />
-                      </Button>
                     </form>
 
                     {row.assignedTripId ? (
@@ -323,7 +307,7 @@ export function ImportInbox({
                         })}
                       </Link>
                     ) : (
-                      <span className="text-xs text-amber-700 dark:text-amber-400">
+                      <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
                         {t("needsAssignment")}
                       </span>
                     )}
