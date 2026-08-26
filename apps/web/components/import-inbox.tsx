@@ -136,8 +136,9 @@ export function ImportInbox({
           までは何も出ず、突然メールが取り込まれなくなる状態だった。 */}
       {(usedThisMonth >= emailCap || overQuota > 0) && (
         <MessageBox kind="warning" className="mt-3">
-          {t("quotaReached", { cap: emailCap })}
-          {overQuota > 0 ? ` ${t("quotaHeld", { over: overQuota })}` : ""}
+          {overQuota > 0
+            ? t("quotaReachedHeld", { cap: emailCap, over: overQuota })
+            : t("quotaReached", { cap: emailCap })}
         </MessageBox>
       )}
 

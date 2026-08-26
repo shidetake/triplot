@@ -137,16 +137,31 @@ export function ImportSheet() {
         </View>
       )}
 
+      {/* 使用量。位置も web の import-inbox と同じ（転送先アドレスの直後・
+          警告の前）。以前はシートのいちばん下にあり、web と揃っていなかった。 */}
+      {data && (
+        <Text style={styles.usage}>
+          {t("usageCount", {
+            used: data.usedThisMonth ?? 0,
+            cap: data.emailCap ?? MONTHLY_EMAIL_CAP,
+          })}
+        </Text>
+      )}
+
       {/* 上限の警告（web の import-inbox と同じ条件・同じ文言）。上限に
           達した時点で出す（保留が実際に発生する前でも）。 */}
       {((data?.usedThisMonth ?? 0) >= (data?.emailCap ?? MONTHLY_EMAIL_CAP) ||
         (data?.overQuota ?? 0) > 0) && (
         <View style={styles.warnBox}>
           <Text style={styles.warnText}>
-            {t("quotaReached", { cap: data?.emailCap ?? MONTHLY_EMAIL_CAP })}
             {(data?.overQuota ?? 0) > 0
-              ? ` ${t("quotaHeld", { over: data?.overQuota ?? 0 })}`
-              : ""}
+              ? t("quotaReachedHeld", {
+                  cap: data?.emailCap ?? MONTHLY_EMAIL_CAP,
+                  over: data?.overQuota ?? 0,
+                })
+              : t("quotaReached", {
+                  cap: data?.emailCap ?? MONTHLY_EMAIL_CAP,
+                })}
           </Text>
         </View>
       )}
@@ -400,15 +415,6 @@ export function ImportSheet() {
         </View>
       )}
 
-      {/* 使用量 */}
-      {data && (
-        <Text style={styles.usage}>
-          {t("usageCount", {
-            used: data.usedThisMonth ?? 0,
-            cap: data.emailCap ?? MONTHLY_EMAIL_CAP,
-          })}
-        </Text>
-      )}
     </View>
   );
 }
@@ -587,5 +593,6 @@ const makeStyles = (t: Theme) =>
       paddingVertical: 2,
     },
     splitLabel: { fontSize: 11, color: t.mutedForeground },
-    usage: { fontSize: 11, color: t.mutedForeground, marginTop: 8 },
+    // web の import-inbox と同じ（text-xs = 12 / mt-3 = 12）。
+    usage: { fontSize: 12, color: t.mutedForeground, marginTop: 12 },
   });
