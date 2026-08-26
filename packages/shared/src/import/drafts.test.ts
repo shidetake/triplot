@@ -578,6 +578,36 @@ describe("deriveEventDraftItems", () => {
     });
   });
 
+  it("降車地が解決できなくても、抽出した文字列を自由入力として残す", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          email_id: "e-d1",
+          kind: "event",
+          payload: eventDraft({
+            kind: "transit",
+            title: "移動",
+            departLocation: "988 Halekauwila St, Honolulu, HI 96814, US",
+            arriveLocation: "2259 Kalakaua Ave, Honolulu, HI 96815, US",
+          }),
+        },
+      ],
+      eventCtx,
+    );
+    // 出発地は autoResolvePlace が受け皿になる（web は自動解決、RN は自由入力）。
+    expect(items[0].prefill.autoResolvePlace).toMatchObject({
+      name: "988 Halekauwila St, Honolulu, HI 96814, US",
+    });
+    // 到着地は受け皿が無く空になっていた。自由入力として残す。
+    expect(items[0].prefill.endPlace).toEqual({
+      kind: "free",
+      name: "2259 Kalakaua Ave, Honolulu, HI 96815, US",
+      lat: null,
+      lng: null,
+    });
+  });
+
   it("transit（未解決フライト）は resolvedNamedPlace を無視する", () => {
     const items = deriveEventDraftItems(
       [

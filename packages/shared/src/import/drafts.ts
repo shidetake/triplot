@@ -424,12 +424,16 @@ export function deriveEventDraftItems(
             : null);
       // 移動の到着地（降車地）。出発地と同じ順で、保存済みの場所を最優先。
       // 空港のように施設名で書かれていれば既にあるその場所に寄る。
+      // どちらにも当たらなければ**抽出した文字列を自由入力として残す**。
+      // 出発地は autoResolvePlace が同じ役目を果たしていて、到着地にだけ
+      // その受け皿が無かったため、解決できないと欄が空になっていた
+      // （メールには書かれているのに到着地が入らない、という実機の報告）。
       const endPlaceName = ev.kind === "transit" ? ev.arriveLocation : null;
-      const endPlace = endPlaceName
+      const endPlace: EventDraftPlacePrefill = endPlaceName
         ? (matchSavedPlace(endPlaceName, null, ctx.places) ??
           (ev.resolvedArrivalPlace
             ? candidateToDraftPlace(ev.resolvedArrivalPlace, null)
-            : null))
+            : { kind: "free", name: endPlaceName, lat: null, lng: null }))
         : null;
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);

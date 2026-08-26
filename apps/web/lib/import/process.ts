@@ -395,8 +395,12 @@ async function prefetchFlights(
   const placesApiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
   const result: StoredEventDraft[] = [];
   for (const ev of events) {
-    if (ev.kind === "transit" && ev.vehicleNumber) {
-      const parsed = parseFlightNumber(ev.vehicleNumber);
+    if (ev.kind === "transit") {
+      // 便名が引ければフライトとして解決する（空港は座標が既知）。引けない
+      // 移動（配車・タクシー・列車・バス）は下の両端解決に落ちる。
+      const parsed = ev.vehicleNumber
+        ? parseFlightNumber(ev.vehicleNumber)
+        : null;
       if (parsed) {
         try {
           const outcome = await lookupFlight(
