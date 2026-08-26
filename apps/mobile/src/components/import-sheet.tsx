@@ -294,6 +294,10 @@ export function ImportSheet() {
                   ここでは割当先を変えるだけで、実際の確定は各旅行の画面で
                   行うため）。 */}
               <View style={styles.actionsRow}>
+                {/* ピッカーとバッジは1つのまとまり（バッジはピッカーの状態を
+                    示すもの）。行全体を space-between にすると、その間に
+                    余白が入って中途半端な位置に浮く。 */}
+                <View style={styles.assignGroup}>
                 <Pressable
                   onPress={() =>
                     router.push(`/trips/import-pick-trip?emailId=${e.id}`)
@@ -323,6 +327,7 @@ export function ImportSheet() {
                     </Text>
                   </View>
                 )}
+                </View>
                 <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
                   <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
                 </Pressable>
@@ -534,6 +539,12 @@ const makeStyles = (t: Theme) =>
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "space-between",
+    },
+    assignGroup: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 1,
     },
     assignButton: {
       flexDirection: "row",
