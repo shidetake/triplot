@@ -161,7 +161,7 @@ export default function TripsScreen() {
               <Text style={styles.proposalHeading}>
                 {t("proposal", { count: proposals.length })}
               </Text>
-              <View>
+              <View style={styles.proposalBox}>
               {proposals.map((p, i) => (
                 <Pressable
                   key={p.emailIds.join(",")}
@@ -283,20 +283,19 @@ const makeStyles = (t: Theme) =>
   },
   // 候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
   // 境目を空ける（ui-guidelines「カードや行を縦に並べる時の間隔」）。
-  // 旅行の候補（仮旅行）。仮のものは破線・色なしで、群の見出し＋区切り線の行
+  // 旅行の候補（仮旅行）。仮のものは破線・色なしで、中は区切り線の行
   // ＝費用の「未確定の取り込み」と同じ形（1件ずつ破線カードにすると、候補が
-  // 増えたとき見出しが件数ぶん繰り返される）。
-  proposals: {
+  // 増えたとき見出しが件数ぶん繰り返される）。見出しは器の外に置く
+  // ＝確定の一覧が「旅行」の見出しの外にあるのと同じ関係。
+  proposals: { marginBottom: 24 },
+  proposalHeading: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
+  proposalBox: {
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
-    padding: 16,
-    gap: 8,
-    marginBottom: 24,
   },
-  proposalHeading: { fontSize: 12, color: t.mutedForeground },
-  proposalRow: { paddingVertical: 10 },
+  proposalRow: { padding: 16 },
   proposalDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.fgAlpha(0.1),

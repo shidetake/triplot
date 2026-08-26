@@ -428,26 +428,26 @@ const makeStyles = (t: Theme) =>
   // 未確定の取り込み。仮のもの（仮費用・仮旅行）は破線の枠で示し、色は付けない。破線＝
   // 「まだ実体が無い／押すと実体ができる」で、旅行一覧の「旅行の候補」と
   // 同じ言語に揃える（ui-guidelines「定型部品」の破線ボーダー）。
+  // 見出しは器の外（確定の一覧が「費用」の見出しの外にあるのと同じ関係）。
   // 確定の一覧とは別のまとまりなので境目は 24px。
-  draftBox: {
+  draftBox: { marginBottom: 24 },
+  draftHeading: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
+  // 破線の器はここ（見出しの外＝行だけを囲う）。
+  // 付けると枠の中に枠ができて、他の一覧から浮く（ui-guidelines「行にするか
+  // カードにするか」の「意味が群に付いているなら囲いを群の側に置く」）。
+  draftList: {
     borderWidth: 1,
     borderStyle: "dashed",
     borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
-    padding: 16,
-    gap: 8,
-    marginBottom: 24,
   },
-  draftHeading: { fontSize: 12, color: t.mutedForeground },
-  // 囲いは群の側（draftBox の破線の枠）が持つので、ここには枠を付けない。
-  // 付けると枠の中に枠ができて、他の一覧から浮く（ui-guidelines「行にするか
-  // カードにするか」の「意味が群に付いているなら囲いを群の側に置く」）。
-  draftList: {},
+  // 左右の余白は行が持つ（区切り線を器の端まで引くため）。
   draftRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingVertical: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   draftRowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,

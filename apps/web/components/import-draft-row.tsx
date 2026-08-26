@@ -89,11 +89,11 @@ export function ImportDraftRow({
 
   return (
     <div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 px-4">
         <button
           type="button"
           onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
-          className="-ml-2 flex min-w-0 flex-1 items-center justify-between gap-2 rounded px-2 py-2.5 text-left text-sm transition hover:bg-foreground/10"
+          className="-ml-2 flex min-w-0 flex-1 items-center justify-between gap-2 rounded px-2 py-3 text-left text-sm transition hover:bg-foreground/10"
         >
           {/* 区切りは縦棒（InlineDivider）。先頭（店名等）は long だと truncate、金額・日付は残す。
               truncateTail=true（予定の日時）は末尾も縮められる＝狭い画面でタイトルを潰さず、

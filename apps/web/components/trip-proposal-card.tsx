@@ -43,7 +43,8 @@ export function TripProposalCard({
         type="button"
         onClick={(e) => setAnchor({ x: e.clientX, y: e.clientY })}
         // 破線の器と見出しは群の側（旅行一覧）が持つので、行には枠を付けない。
-        className="-mx-2 block w-[calc(100%+1rem)] rounded px-2 py-2.5 text-left transition hover:bg-foreground/10"
+        // 確定の旅行の行と同じ p-4。
+        className="block w-full p-4 text-left transition hover:bg-foreground/10"
       >
         <div className="font-medium">{proposal.title ?? range}</div>
         <div className="mt-1 text-sm text-muted-foreground">{range}</div>

@@ -86,15 +86,15 @@ async function TripsSection({ userId }: { userId: string }) {
       )}
 
       {/* 旅行の候補（仮旅行）は実在の旅行とは別のまとまりなので、同じ枠に
-          入れず上に別立てで置く。仮であることは破線の器と見出しが群として
-          示すので、中は区切り線だけの行にする（費用の「未確定の取り込み」と
-          同じ形）。 */}
+          入れず上に別立てで置く。仮であることは破線の器が示し、見出しは
+          その外に置く（確定の一覧が「旅行」の見出しの外にあるのと同じ）。
+          中は区切り線だけの行（費用の「未確定の取り込み」と同じ形）。 */}
       {proposals.length > 0 && (
-        <div className="rounded-md border border-dashed border-foreground/20 p-4">
+        <div>
           <div className="text-xs text-muted-foreground">
             {t("proposal", { count: proposals.length })}
           </div>
-          <ul className="mt-2 divide-y divide-foreground/10">
+          <ul className="mt-1 divide-y divide-foreground/10 rounded-md border border-dashed border-foreground/20">
             {proposals.map((p) => (
               <li key={p.emailIds.join(",")}>
               <TripProposalCard

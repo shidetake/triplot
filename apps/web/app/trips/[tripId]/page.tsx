@@ -387,7 +387,7 @@ export default async function TripDetailPage({
                   eventDrafts={eventDrafts}
                   afterHeading={
                     eventDrafts.length > 0 && (
-                      <div className="rounded-md border border-dashed border-foreground/20 p-4">
+                      <div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           {t("tripDetail.pendingImports", {
                             count: eventDrafts.length,
@@ -399,7 +399,7 @@ export default async function TripDetailPage({
                             {t("tripDetail.importEventHelp")}
                           </HelpTip>
                         </div>
-                        <div className="mt-2 divide-y divide-foreground/10">
+                        <div className="mt-1 divide-y divide-foreground/10 rounded-md border border-dashed border-foreground/20">
                           {eventDrafts.map((d) => (
                             <EventDraftConfirmButton
                               key={d.id}
@@ -502,7 +502,7 @@ export default async function TripDetailPage({
                 />
 
                 {importDrafts.length > 0 && (
-                  <div className="rounded-md border border-dashed border-foreground/20 p-4">
+                  <div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {t("tripDetail.pendingImports", {
                         count: importDrafts.length,
@@ -514,7 +514,7 @@ export default async function TripDetailPage({
                         {t("tripDetail.importHelp")}
                       </HelpTip>
                     </div>
-                    <div className="mt-2 divide-y divide-foreground/10">
+                    <div className="mt-1 divide-y divide-foreground/10 rounded-md border border-dashed border-foreground/20">
                       {importDrafts.map((d) => (
                         <DraftConfirmButton
                           key={d.id}
