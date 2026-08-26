@@ -104,8 +104,8 @@ describe("deriveTripProposals", () => {
       transit("e2", "2026-01-03"),
     ]);
     expect(out.map((p) => [p.startDate, p.endDate])).toEqual([
-      ["2026-01-01", "2026-01-01"],
       ["2026-01-03", "2026-01-03"],
+      ["2026-01-01", "2026-01-01"],
     ]);
   });
 
@@ -152,9 +152,10 @@ describe("deriveTripProposals", () => {
       stay("e2", "2026-01-01", "2026-01-02"),
       transit("e3", "2026-02-10"),
     ]);
+    // 並びは開始日の新しい順（compareTripOrder）。
     expect(out).toHaveLength(2);
-    expect(out[0].endDate).toBe("2026-01-02");
-    expect(out[1].startDate).toBe("2026-02-10");
+    expect(out[0].startDate).toBe("2026-02-10");
+    expect(out[1].endDate).toBe("2026-01-02");
   });
 
   it("名前は宿泊の場所を優先（乗り継ぎの経由地に引っ張られない）", () => {

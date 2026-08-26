@@ -10,6 +10,7 @@
 // 「下書き1行＝1項目」なのに対し、旅行は「複数メールの塊＝1件」になる。
 
 import { addDays } from "../schedule";
+import { compareTripOrder } from "../tripOrder";
 
 import { receiptDate, type StoredEventDraft, type StoredReceipt } from "./drafts";
 
@@ -197,7 +198,13 @@ export function deriveTripProposals(
       transitCount: g.reduce((n, x) => n + x.transit, 0),
       lodgingCount: g.reduce((n, x) => n + x.lodging, 0),
     }))
-    .sort((a, b) => a.startDate.localeCompare(b.startDate));
+    // 確定した旅行と同じ一覧に並ぶので同じ順（開始日の新しい順）。
+    .sort((a, b) =>
+      compareTripOrder(
+        { start: a.startDate, title: a.name },
+        { start: b.startDate, title: b.name },
+      ),
+    );
 }
 
 // 候補から旅行作成フォームに渡す初期値。終了日は宿泊の最終日（＝チェック
