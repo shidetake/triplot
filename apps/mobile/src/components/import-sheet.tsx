@@ -320,13 +320,19 @@ export function ImportSheet() {
                 <View>
                   <Pressable
                     onPress={() => setOpenMerged(mergedOpen ? null : e.id)}
-                    hitSlop={6}
+                    hitSlop={8}
+                    style={styles.mergedToggleRow}
                     accessibilityRole="button"
                     accessibilityState={{ expanded: mergedOpen }}
                   >
                     <Text style={styles.mergedToggle}>
                       {t("mergedSummary", { count: children.length + 1 })}
                     </Text>
+                    <ChevronIcon
+                      size={12}
+                      color={theme.mutedForeground}
+                      rotate={mergedOpen ? 90 : 0}
+                    />
                   </Pressable>
                   {mergedOpen && (
                     <View style={styles.mergedList}>
@@ -542,8 +548,18 @@ const makeStyles = (t: Theme) =>
     },
     assignLabelWarn: { color: t.warnAccent },
     dismissLabel: { fontSize: 12, color: t.mutedForeground },
-    // 合体明細（web の <details> 相当）。開閉行は控えめ、中身は muted の面に置く。
-    mergedToggle: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
+    // 合体明細（web の <details> 相当）。開閉行は控えめだが、**開けることが
+    // 分かる形にする**＝文言だけだとタップできると気付けない（実機
+    // フィードバック）。ChevronIcon を添えて開閉を示し、上下に余白を足して
+    // タップ領域を確保する（hitSlop と合わせて 44pt 以上）。
+    mergedToggleRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 4,
+      alignSelf: "flex-start",
+      paddingVertical: 8,
+    },
+    mergedToggle: { fontSize: 12, color: t.mutedForeground },
     mergedList: { marginTop: 6, gap: 4 },
     mergedRow: {
       flexDirection: "row",

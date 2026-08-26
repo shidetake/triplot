@@ -565,7 +565,7 @@
     "confirmAtTrip": "→ {title}で確定",
     "tripFallback": "旅行",
     "needsAssignment": "要割当",
-    "mergedSummary": "🔗 {count}通を合体（明細）",
+    "mergedSummary": "{count}通を合体",
     "adjustment": "（調整）",
     "split": "分割",
     "copyAddress": "アドレスをコピー",

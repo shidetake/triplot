@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { useTransition } from "react";
 
-import { SaveIcon } from "@/components/icons";
+import { ChevronIcon, SaveIcon } from "@/components/icons";
 import { Button } from "@/components/ui/button";
 import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
@@ -323,10 +323,18 @@ export function ImportInbox({
                     )}
                   </div>
 
+                  {/* 開けることが分かる形にする＝文言だけだとタップできると
+                      気付けない（実機フィードバック）。native の <details> の
+                      既定マーカーは消し、開閉インジケータは ChevronIcon に
+                      する（ui-guidelines「文字記号でなく ChevronIcon」）。 */}
                   {row.children.length > 0 && (
-                    <details className="mt-2 text-sm">
-                      <summary className="cursor-pointer text-muted-foreground">
+                    <details className="group mt-2 text-sm">
+                      <summary className="flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
                         {t("mergedSummary", { count: row.children.length + 1 })}
+                        <ChevronIcon
+                          size={12}
+                          className="transition group-open:rotate-90"
+                        />
                       </summary>
                       <div className="mt-2 space-y-1">
                         {/* このメール自身の元の抽出値（分けられない本体） */}

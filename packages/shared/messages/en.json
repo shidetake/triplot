@@ -565,7 +565,7 @@
     "confirmAtTrip": "→ Confirm in {title}",
     "tripFallback": "trip",
     "needsAssignment": "Needs assignment",
-    "mergedSummary": "🔗 {count} emails merged (details)",
+    "mergedSummary": "{count} emails merged",
     "adjustment": "(adjustment)",
     "split": "Split",
     "copyAddress": "Copy address",
