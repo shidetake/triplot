@@ -347,6 +347,14 @@ export function TodoSection({
           }`}
         />
         {title}
+        {/* 件数は括弧付き（ui-guidelines「見出しに添える件数」）。裸の数字だと
+            見出しの続きに読める。0 のときは出さない — 開けば空のリストと追加欄が
+            見えるので、同じことを二度言うことになる。RN の todos.tsx と同じ形。 */}
+        {ordered.length > 0 && (
+          <span className="font-normal text-subtle-foreground">
+            ({ordered.length})
+          </span>
+        )}
       </button>
 
       {!collapsed && (

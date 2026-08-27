@@ -243,6 +243,10 @@ function TodoSection({
   ) => void;
 }) {
   const t = useTranslations("todo");
+  // common.* は名前空間の外にあるので、todo に絞った t では引けない
+  // （t("common.cancel") が todo.common.cancel を探して見つからず、キーが
+  // そのまま画面に出ていた）。
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
@@ -351,7 +355,7 @@ function TodoSection({
 
   const onDelete = (todo: TodoRow) => {
     Alert.alert(t("deleteTitle"), undefined, [
-      { text: t("common.cancel"), style: "cancel" },
+      { text: tCommon("cancel"), style: "cancel" },
       {
         text: t("deleteAria"),
         style: "destructive",
@@ -375,7 +379,12 @@ function TodoSection({
       >
         <ChevronIcon size={16} color={theme.mutedForeground} rotate={collapsed ? 0 : 90} />
         <Text style={styles.sectionTitle}>{title}</Text>
-        <Text style={styles.sectionCount}>{todos.length}</Text>
+        {/* 件数は括弧付き（ui-guidelines「見出しに添える件数」）。裸の数字だと
+            見出しの続きに読める（「準備 0」）。0 のときは出さない — 開けば空の
+            リストと追加欄が見えるので、同じことを二度言うことになる。 */}
+        {todos.length > 0 && (
+          <Text style={styles.sectionCount}>({todos.length})</Text>
+        )}
       </Pressable>
 
       {!collapsed && (
