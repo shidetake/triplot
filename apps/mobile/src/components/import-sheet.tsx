@@ -1,9 +1,10 @@
 import * as Clipboard from "expo-clipboard";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
+import { inboxRowSummary } from "@triplot/shared/import/inboxRowSummary";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import {
@@ -233,13 +234,12 @@ export function ImportSheet() {
           <View style={styles.listCard}>
           {emails.map((e, i) => {
           const row = rowById.get(e.id);
-          const receipt = row?.receipt ?? null;
-          const events = row?.events ?? [];
-          const summary =
-            receipt?.merchant ||
-            events[0]?.title ||
-            e.subject ||
-            t("noContent");
+          const summary = inboxRowSummary(row, {
+            locale,
+            subject: e.subject,
+            fallbackTitle: t("noContent"),
+            formatAmount: (total, currency) => `${total} ${currency}`,
+          });
           const assigned = trips.find((tr) => tr.id === e.trip_id);
           const children = row?.children ?? [];
           const mergedOpen = openMerged === e.id;
@@ -249,42 +249,23 @@ export function ImportSheet() {
               style={[styles.listRow, i > 0 && styles.listRowDivider]}
             >
               <Text style={styles.emailSummary} numberOfLines={1}>
-                {summary}
+                {summary.title}
               </Text>
-              {/* 抽出できた中身を web の /import と同じ粒度で出す（金額・日付・
-                  カテゴリ・場所／予定は1件ずつタイトルと日時）。割り当て先を
-                  決める判断材料なので、要約だけに削らない。 */}
-              {receipt && (
+              {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・場所）。
+                  カテゴリと予定タイトルは判断に効かないので出さない。組み立ては
+                  shared の inboxRowSummary（web と同じ）。 */}
+              {summary.parts.length > 0 ? (
                 <View style={styles.emailMeta}>
-                  <Text style={styles.metaText}>
-                    {receipt.total} {receipt.currency}
-                  </Text>
-                  <InlineDivider />
-                  <Text style={styles.metaText}>{receipt.date}</Text>
-                  <InlineDivider />
-                  <Text style={styles.metaText}>{receipt.category}</Text>
-                  {receipt.location ? (
-                    <>
-                      <InlineDivider />
+                  {summary.parts.map((part, pi) => (
+                    <Fragment key={pi}>
+                      {pi > 0 && <InlineDivider />}
                       <Text style={styles.metaText} numberOfLines={1}>
-                        {receipt.location}
+                        {part}
                       </Text>
-                    </>
-                  ) : null}
+                    </Fragment>
+                  ))}
                 </View>
-              )}
-              {events.map((ev, i) => (
-                <View key={i} style={styles.emailMeta}>
-                  <Text style={styles.metaText} numberOfLines={1}>
-                    {ev.title || tCommon("untitledEvent")}
-                  </Text>
-                  <InlineDivider />
-                  <Text style={styles.metaText}>
-                    {eventDraftWhenLabel(ev, locale)}
-                  </Text>
-                </View>
-              ))}
-              {!receipt && events.length === 0 && (
+              ) : (
                 <Text style={styles.metaText}>{t("noContent")}</Text>
               )}
 

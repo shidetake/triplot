@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { useTransition } from "react";
+import { Fragment, useTransition } from "react";
 
 import { ChevronIcon } from "@/components/icons";
+import { inboxRowSummary } from "@triplot/shared/import/inboxRowSummary";
 import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
 import { MessageBox } from "@/components/message-box";
 import {
-  eventDraftWhenLabel,
   extractionSummary,
 } from "@triplot/shared/import/draftLabel";
 import type { InboxRow } from "@triplot/shared/import/inboxRows";
@@ -59,7 +59,6 @@ export function ImportInbox({
   onChanged: () => void;
 }) {
   const t = useTranslations("import");
-  const tCommon = useTranslations("common");
   const locale = useLocale();
   const [isPending, startTransition] = useTransition();
 
@@ -217,43 +216,32 @@ export function ImportInbox({
               して行を区切り線で分ける（ui-guidelines「カードや行を縦に並べる時の
               間隔」。費用一覧の ExpenseList と同じ形）。 */}
           <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
-          {rows.map((row) => (
+          {rows.map((row) => {
+            // この画面の仕事は割り当てを決めることだけ（確定は各旅行の画面）。
+            const summary = inboxRowSummary(row, {
+              locale,
+              subject: null,
+              fallbackTitle: t("unknownMerchant"),
+              formatAmount: (total, currency) => `${total} ${currency}`,
+            });
+            return (
             <li key={row.id} className="p-3">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">
-                    {row.receipt?.merchant ||
-                      row.events[0]?.title ||
-                      t("unknownMerchant")}
-                  </div>
-                  {row.receipt && (
+                  <div className="truncate font-medium">{summary.title}</div>
+                  {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・
+                      場所）。カテゴリと予定タイトルは判断に効かないので出さない。
+                      組み立ては shared の inboxRowSummary（RN と同じ）。 */}
+                  {summary.parts.length > 0 ? (
                     <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                      <span>
-                        {row.receipt.total} {row.receipt.currency}
-                      </span>
-                      <InlineDivider />
-                      <span>{row.receipt.date}</span>
-                      <InlineDivider />
-                      <span>{row.receipt.category}</span>
-                      {row.receipt.location ? (
-                        <>
-                          <InlineDivider />
-                          <span>{row.receipt.location}</span>
-                        </>
-                      ) : null}
+                      {summary.parts.map((part, i) => (
+                        <Fragment key={i}>
+                          {i > 0 && <InlineDivider />}
+                          <span>{part}</span>
+                        </Fragment>
+                      ))}
                     </div>
-                  )}
-                  {row.events.map((ev, i) => (
-                    <div
-                      key={i}
-                      className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground"
-                    >
-                      <span>{ev.title || tCommon("untitledEvent")}</span>
-                      <InlineDivider />
-                      <span>{eventDraftWhenLabel(ev, locale)}</span>
-                    </div>
-                  ))}
-                  {!row.receipt && row.events.length === 0 && (
+                  ) : (
                     <div className="mt-1 text-sm text-muted-foreground">
                       {t("noContent")}
                     </div>
@@ -408,7 +396,8 @@ export function ImportInbox({
                 />
               </div>
             </li>
-          ))}
+            );
+          })}
         </ul>
         </>
       )}
