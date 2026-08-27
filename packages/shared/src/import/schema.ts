@@ -27,7 +27,11 @@ export const receiptSchema = z.object({
   merchant: z
     .string()
     .describe(
-      "店舗・サービス名。例: Uber / KAI COFFEE ALOHILANI。不明なら空文字",
+      "店舗・サービス名。例: Uber / KAI COFFEE ALOHILANI。不明なら空文字。" +
+        "カード明細に付く決済代行の接頭辞（'SQ *' = Square、'TST*' = Toast、" +
+        "'PP*' = PayPal 等）は**この merchant からだけ**落として店名だけにする" +
+        "（location には落とさずレシートの表記のまま残すこと）。店名の一部か" +
+        "どうか迷うなら落とさない（欠けるより余分な方がまし）",
     ),
   total: z
     .number()
