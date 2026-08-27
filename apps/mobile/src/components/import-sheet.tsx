@@ -18,7 +18,6 @@ import {
   MONTHLY_EMAIL_CAP,
 } from "@triplot/shared/import/config";
 import {
-  eventDraftWhenLabel,
   extractionSummary,
 } from "@triplot/shared/import/draftLabel";
 import type { Extraction } from "@triplot/shared/import/schema";
