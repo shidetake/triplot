@@ -15,20 +15,26 @@ import type { EventDraft } from "./schema";
 // あった（Uber なら費用のカテゴリ「現地移動」と予定のタイトル「移動」）。
 // カテゴリと予定タイトルは旅行の判断に効かないので落とす。
 //
-// **日付は1つだけ出す。** 以前は費用の日付（カード利用通知の日）と予定の日時
-// （実際に乗った時刻）が両方出ていて、TZ の差で1日ずれることがあった。判断に
-// 一番効くものが食い違って見えるのが一番よくない。予定があればその開始日時
-// （＝実際にそこに居た時刻）、無ければ費用の「使う日」を採る。
+// **日時は1つだけ出す。** 以前は費用の日付と予定の日時が両方出ていて、ずれる
+// ことがあった。判断に一番効くものが食い違って見えるのが一番よくない。
+//
+// 採るのは**費用の「使った日時」**（serviceDate があればそれ、無ければ支払日＋
+// 支払時刻）。**仮予定の開始時刻は使わない** — 後払いの業態では「レシートの時刻
+// から所要時間ぶん遡った時刻」を開始にしているので、実際に払った時刻より前に
+// なる（夕食で 23:06 のレシート → 開始 21:06）。ここに出したいのは実際に使った
+// 時刻なので、遡る前の値を採る。費用が無いメール（予約確認だけ等）のときだけ
+// 予定の開始日時を使う。
 export type InboxRowSummary = {
   title: string;
   // 名前の下に InlineDivider 区切りで並べる（空の項目は入らない）。
   parts: string[];
 };
 
-// 予定から場所の手がかりを取る（transit は到着地→出発地の順。降車地の方が
-// 「どこに居たか」を表す）。
+// 予定から場所の手がかりを取る。**移動は出発地**を採る（到着地ではない）。
+// 到着地だと帰りの便で地元が出てしまい、旅行の判断に効かない。行きも帰りも
+// 出発側に揃えておけば、少なくとも一貫して「そこから動いた場所」を指す。
 function eventPlace(ev: EventDraft): string | null {
-  if (ev.kind === "transit") return ev.arriveLocation || ev.departLocation || null;
+  if (ev.kind === "transit") return ev.departLocation || ev.arriveLocation || null;
   return ev.location || null;
 }
 
@@ -51,15 +57,13 @@ export function inboxRowSummary(
   if (receipt) parts.push(opts.formatAmount(receipt.total, receipt.currency));
 
   const ev = events[0];
-  if (ev) {
+  const when = receipt ? receiptDate(receipt) : null;
+  if (when?.date) {
+    const day = formatDayLabel(when.date, opts.locale);
+    parts.push(when.time ? `${day} ${when.time}` : day);
+  } else if (ev) {
     const day = formatDayLabel(ev.startDate, opts.locale);
     parts.push(ev.startTime ? `${day} ${ev.startTime}` : day);
-  } else if (receipt) {
-    const when = receiptDate(receipt);
-    if (when.date) {
-      const day = formatDayLabel(when.date, opts.locale);
-      parts.push(when.time ? `${day} ${when.time}` : day);
-    }
   }
 
   // 場所が名前と同じなら出さない。店名がそのまま場所になっているだけで、

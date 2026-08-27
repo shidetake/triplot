@@ -65,17 +65,29 @@ describe("inboxRowSummary", () => {
     expect(s.parts.join(" ")).not.toContain("移動");
   });
 
-  it("日付は1つだけ。予定があれば予定の開始（費用の日付とずれても混ぜない）", () => {
-    const s = inboxRowSummary(row({ receipt: receipt(), events: [event()] }), opts);
-    expect(s.parts).toEqual(["20.94 USD", "5/2(土) 15:14"]);
+  it("日時は費用の使った日時。仮予定の開始時刻は使わない（後払いは遡っている）", () => {
+    // 夕食で 23:06 のレシート → 仮予定の開始は 21:06。出したいのは 23:06 の方。
+    const s = inboxRowSummary(
+      row({
+        receipt: receipt({ date: "2026-05-02", time: "23:06" }),
+        events: [event({ startDate: "2026-05-02", startTime: "21:06" })],
+      }),
+      opts,
+    );
+    expect(s.parts).toEqual(["20.94 USD", "5/2(土) 23:06"]);
   });
 
-  it("予定が無ければ費用の使う日", () => {
+  it("使う日（serviceDate）があればそちらを採る", () => {
     const s = inboxRowSummary(
       row({ receipt: receipt({ serviceDate: "2026-04-28" }) }),
       opts,
     );
     expect(s.parts).toEqual(["20.94 USD", "4/28(火)"]);
+  });
+
+  it("費用が無いメールのときだけ予定の開始日時を使う", () => {
+    const s = inboxRowSummary(row({ events: [event()] }), opts);
+    expect(s.parts).toEqual(["5/2(土) 15:14"]);
   });
 
   it("場所は費用のものを優先し、無ければ予定から取る", () => {
@@ -88,14 +100,21 @@ describe("inboxRowSummary", () => {
     );
     expect(withReceiptPlace.parts.at(-1)).toBe("Ala Moana Center");
 
+    // 移動は出発地を採る（到着地だと帰りの便で地元が出てしまう）。
     const fromEvent = inboxRowSummary(
       row({
         receipt: receipt(),
-        events: [event({ kind: "transit", arriveLocation: "HNL 空港" })],
+        events: [
+          event({
+            kind: "transit",
+            departLocation: "412 Lewers St, Honolulu",
+            arriveLocation: "HNL 空港",
+          }),
+        ],
       }),
       opts,
     );
-    expect(fromEvent.parts.at(-1)).toBe("HNL 空港");
+    expect(fromEvent.parts.at(-1)).toBe("412 Lewers St, Honolulu");
   });
 
   it("場所が名前と同じなら出さない（2回言っても判断材料が増えない）", () => {
