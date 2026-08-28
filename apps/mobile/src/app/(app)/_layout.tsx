@@ -46,7 +46,13 @@ export default function AppLayout() {
         options={{
           headerShown: false,
           presentation: "formSheet",
-          sheetAllowedDetents: "fitToContents",
+          // **fitToContents にしない。** 合体の明細を開くなど中身の高さが
+          // 変わると、シートが測り直されてスクロールが先頭に戻る（実測: 同じ
+          // 手順・同じデータで、この1行を fitToContents に戻すと再現する）。
+          // 既に別の行が開いている時だけ戻らないのも、片方が閉じて片方が開き
+          // 高さがほぼ変わらないため。受信箱は下書きの一覧で普段から縦に長く、
+          // 全高で開いても困らない。
+          sheetAllowedDetents: [1],
           sheetGrabberVisible: true,
         }}
       />
