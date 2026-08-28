@@ -31,6 +31,7 @@ function receipt(p: Partial<Receipt>): Receipt {
     time: null,
     category: "飲食",
     location: null,
+    address: null,
     referenceId: null,
     isUpdate: false,
     ...p,
@@ -85,6 +86,7 @@ function eventDraft(p: Partial<EventDraft>): EventDraft {
     departLocation: null,
     arriveLocation: null,
     location: null,
+    address: null,
     referenceId: null,
     isUpdate: false,
     ...p,
@@ -185,7 +187,10 @@ describe("deriveExpenseDraftItems", () => {
           id: "d1",
           email_id: "e-d1",
           kind: "expense",
-          payload: receipt({ merchant: "Yard House", location: "Lewers St" }),
+          payload: receipt({
+            merchant: "Yard House",
+            address: "226 Lewers St, Honolulu, HI",
+          }),
         },
       ],
       expenseCtx,
@@ -193,7 +198,7 @@ describe("deriveExpenseDraftItems", () => {
     expect(items[0].initialPlace).toBeNull();
     expect(items[0].autoResolvePlace).toEqual({
       name: "Yard House",
-      location: "Lewers St",
+      address: "226 Lewers St, Honolulu, HI",
     });
   });
 
@@ -295,7 +300,7 @@ describe("deriveEventDraftItems", () => {
     expect(it1.prefill.place).toBeNull();
     expect(it1.prefill.autoResolvePlace).toEqual({
       name: "成田国際空港",
-      location: null,
+      address: null,
       searchQuery: "成田国際空港 Terminal 1",
     });
     // 便名として解釈できる vehicleNumber は正規形で flightNumber にも入る
@@ -644,7 +649,7 @@ describe("deriveEventDraftItems", () => {
     expect(items[0].prefill.place).toBeNull();
     expect(items[0].prefill.autoResolvePlace).toEqual({
       name: "成田国際空港",
-      location: null,
+      address: null,
       searchQuery: undefined,
     });
   });

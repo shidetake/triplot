@@ -93,12 +93,14 @@ describe("inboxRowSummary", () => {
   it("場所は費用のものを優先し、無ければ予定から取る", () => {
     const withReceiptPlace = inboxRowSummary(
       row({
-        receipt: receipt({ location: "Ala Moana Center" }),
+        receipt: receipt({ address: "1450 Ala Moana Blvd, Honolulu, HI" }),
         events: [event({ arriveLocation: "HNL" })],
       }),
       opts,
     );
-    expect(withReceiptPlace.parts.at(-1)).toBe("Ala Moana Center");
+    expect(withReceiptPlace.parts.at(-1)).toBe(
+      "1450 Ala Moana Blvd, Honolulu, HI",
+    );
 
     // 移動は出発地を採る（到着地だと帰りの便で地元が出てしまう）。
     const fromEvent = inboxRowSummary(
@@ -143,31 +145,19 @@ describe("inboxRowSummary", () => {
     expect(s.parts.at(-1)).toBe("Honolulu");
   });
 
-  // 閾値 0.6 は本番の下書きの実測から。名前が場所に占める割合の分布に谷があり、
-  // 0.76 以上（接頭辞が付いただけ）と 0.40 以下（住所付き）の間が空だった。
-  describe("場所が名前を言い直しているだけなら出さない", () => {
-    const place = (merchant: string, location: string) =>
-      inboxRowSummary(row({ receipt: receipt({ merchant, location }) }), opts)
+  describe("場所は住所から取る", () => {
+    const place = (merchant: string, address: string) =>
+      inboxRowSummary(row({ receipt: receipt({ merchant, address }) }), opts)
         .parts.at(-1);
 
-    it("完全一致（1.00）は出さない", () => {
-      expect(place("THE ROYAL BAKERY", "THE ROYAL BAKERY")).toBe("5/3(日)");
-    });
-
-    it("接頭辞が付いただけ（0.76）は出さない", () => {
-      expect(place("HANA KOA BREWING", "TST* HANA KOA BREWING")).toBe("5/3(日)");
-    });
-
-    it("住所付き（0.26）は出す — 都市名という判断材料がある", () => {
-      expect(
-        place("Howzit Brewing", "Howzit Brewing, 330 Kamani St, Honolulu, HI"),
-      ).toBe("Howzit Brewing, 330 Kamani St, Honolulu, HI");
-    });
-
-    it("名前を含まない場所はそのまま出す", () => {
-      expect(place("SSA - HANAUMA BAY", "Hanauma Bay, Honolulu, HI")).toBe(
-        "Hanauma Bay, Honolulu, HI",
+    it("住所を出す — 都市名という判断材料がある", () => {
+      expect(place("Howzit Brewing", "330 Kamani St, Honolulu, HI")).toBe(
+        "330 Kamani St, Honolulu, HI",
       );
+    });
+
+    it("住所が名前を言い直しているだけなら出さない", () => {
+      expect(place("THE ROYAL BAKERY", "THE ROYAL BAKERY")).toBe("5/3(日)");
     });
   });
 

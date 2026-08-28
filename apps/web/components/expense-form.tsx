@@ -117,7 +117,7 @@ export function ExpenseForm({
   initialNote?: string;
   initialPlace?: PlacePickerInitial;
   // 取り込み用: 場所欄を開いた時に店名を Google 自動解決（高確信なら丸める）。
-  autoResolvePlace?: { name: string; location?: string | null } | null;
+  autoResolvePlace?: { name: string; address?: string | null } | null;
   initialTime?: string;
 }) {
   const locale = useLocale();

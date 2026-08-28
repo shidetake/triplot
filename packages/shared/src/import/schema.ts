@@ -59,17 +59,28 @@ export const receiptSchema = z.object({
   category: z
     .enum(RECEIPT_CATEGORIES)
     .describe("最も近いカテゴリを1つ。判断できなければ「その他」"),
+  // 名前と住所は**別のフィールドで持つ**。1つの文字列に混ぜると「住所が
+  // 入っているか」を長さの比率などで当てるしかなくなり不安定。住所の有無は
+  // 地理バイアス無しで解決できるかの判断に直結するので、構造で持つ。
+  // Google に投げる検索語は両方を繋げる（併記が一番強いのは実測済み）。
   location: z
     .string()
     .nullable()
     .describe(
-      "実際に利用した店舗・施設を Google マップで一意に検索できる文字列。" +
-        "店名と住所が分かるなら両方を書く（例: 'セブンイレブン 大阪府高槻市芥川町1丁目14-1'、" +
-        "'Yard House, 226 Lewers St, Honolulu, HI'）。片方しか分からなければ" +
-        "分かる方だけでよい。店名にチェーンの店舗名・店番が含まれるならそのまま残す" +
+      "実際に利用した店舗・施設の名前（住所は入れない。address に分けて書く）。" +
+        "チェーンの店舗名・店番が含まれるならそのまま残す" +
         "（絞り込みに効く）。無ければ null。運送会社" +
-        "（航空会社・鉄道会社等）のチケット購入では、その会社の支社・本社住所を入れない" +
+        "（航空会社・鉄道会社等）のチケット購入では、その会社の支社・本社を入れない" +
         "（利用者が実際に訪れる場所ではないため）",
+    ),
+  address: z
+    .string()
+    .nullable()
+    .describe(
+      "その店舗・施設の住所（例: '2301 Kalakaua Avenue, Honolulu, HI 96815'、" +
+        "'大阪府高槻市芥川町1丁目14-1'）。レシートに書かれていなければ null。" +
+        "推測で書かない（住所があると地理バイアス無しで地図に照合するため、" +
+        "誤った住所は誤った場所に解決される）",
     ),
   // マージ用（決済元を問わない汎用フィールド）。
   referenceId: z
@@ -175,12 +186,22 @@ export const eventDraftSchema = z.object({
       "transit のみ: 到着地の空港・駅名（departLocation と同じ形式）。出発地ではない。" +
         "transit 以外・不明は null",
     ),
+  // 費用の receipt と同じ理由で、名前と住所を分ける（schema.ts の location の
+  // コメント参照）。
   location: z
     .string()
     .nullable()
     .describe(
-      "timed/allday のみ: 施設・店の場所の手がかり（住所・地名。地図で検索できる形が望ましい）。" +
+      "timed/allday のみ: 施設・店の名前（住所は入れず address に分けて書く）。" +
         "transit は departLocation/arriveLocation を使うのでここは null。無ければ null",
+    ),
+  address: z
+    .string()
+    .nullable()
+    .describe(
+      "timed/allday のみ: その施設・店の住所。メールに書かれていなければ null。" +
+        "推測で書かない（住所があると地理バイアス無しで地図に照合するため、" +
+        "誤った住所は誤った場所に解決される）",
     ),
   referenceId: z
     .string()
@@ -218,6 +239,7 @@ export function extractionGainedDetail(
     if (!b.merchant && a.merchant) return true;
     if (b.total === 0 && a.total !== 0) return true;
     if (!b.location && a.location) return true;
+    if (!b.address && a.address) return true;
     if (!b.referenceId && a.referenceId) return true;
     if (!b.serviceDate && a.serviceDate) return true;
     if (!b.time && a.time) return true;
@@ -301,6 +323,7 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       departLocation: d.departLocation,
       arriveLocation: d.arriveLocation,
       location: null,
+      address: null,
     };
   }
   // timed/allday: 終了 >= 開始（壁時計）を要求。破れば終了を落とす。
@@ -325,5 +348,6 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     departLocation: null,
     arriveLocation: null,
     location: d.location,
+    address: d.address,
   };
 }

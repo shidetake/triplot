@@ -403,11 +403,23 @@ const NAMED_PLACE_MATCH_THRESHOLD = 0.6;
  */
 export async function resolveNamedPlace(
   name: string,
-  location: string | null,
+  // 住所（分かっている時だけ）。名前と住所を別々に持つのは、**住所があるかを
+  // 確実に知るため**。1つの文字列に混ぜると「住所が入っているか」を長さの比率
+  // などで当てるしかなく不安定だった。
+  address: string | null,
   opts: SearchPlacesOptions,
 ): Promise<PlaceCandidate | null> {
   const trimmed = name.trim();
-  if (!trimmed || !opts.biasCenter) return null;
+  const addr = address?.trim() || null;
+  if (!trimmed) return null;
+  // **住所があれば地理バイアスは要らない。** 実測: "Island Vintage Wine Bar,
+  // 2301 Kalakaua Avenue, Honolulu, HI 96815" はバイアス無しでも正しい店に
+  // 解決する。逆に住所の無い "HITEA CAFE" をバイアス無しで引くと京都の店が
+  // 返るので、その場合はバイアスを必須のままにする。
+  //
+  // これが無いと「解決できない → 座標なしの場所ができる → バイアスが作れない」
+  // の循環から抜け出せない（実機で、旅行の場所3件すべてが座標なしになっていた）。
+  if (!addr && !opts.biasCenter) return null;
   try {
     // searchPlaces の既定 languageCode は "ja"（RN の場所検索 UI 向け）だが、
     // merchant/location はメール本文からそのままの言語（英語のレシートが
@@ -415,12 +427,15 @@ export async function resolveNamedPlace(
     // 一致度が実質ゼロになり、実在の正しい候補でも閾値未満で弾いてしまう
     // （実機フィードバック: "Yard House" ⇔ "ヤード ハウス" で不一致）。
     // 英語で応答させ、抽出元の表記に揃える。
-    const candidates = await searchPlaces(trimmed, { ...opts, languageCode: "en" });
+    // 検索語は名前と住所を繋げる（併記が一番一意に決まるのは実測済み）。
+    // 分けて持つのは「住所があるか」を確実に知るためで、問い合わせ方は変えない。
+    const query = addr ? `${trimmed}, ${addr}` : trimmed;
+    const candidates = await searchPlaces(query, { ...opts, languageCode: "en" });
     let best: PlaceCandidate | null = null;
     let bestScore = -1;
     for (const c of candidates.slice(0, 5)) {
       const r = matchPlace(
-        { merchant: trimmed, location },
+        { merchant: trimmed, address: addr },
         [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
         0,
       );

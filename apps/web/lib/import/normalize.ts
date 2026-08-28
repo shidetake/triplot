@@ -21,6 +21,7 @@ export function normalizeReceipt(r: Receipt): Receipt {
     ...r,
     merchant: toHalfWidth(r.merchant),
     location: r.location != null ? toHalfWidth(r.location) : r.location,
+    address: r.address != null ? toHalfWidth(r.address) : r.address,
     referenceId:
       r.referenceId != null ? toHalfWidth(r.referenceId) : r.referenceId,
   };
@@ -33,6 +34,7 @@ export function normalizeEventDraft(d: EventDraft): EventDraft {
     ...d,
     title: toHalfWidth(d.title),
     location: d.location != null ? toHalfWidth(d.location) : d.location,
+    address: d.address != null ? toHalfWidth(d.address) : d.address,
     referenceId:
       d.referenceId != null ? toHalfWidth(d.referenceId) : d.referenceId,
     vehicleNumber:

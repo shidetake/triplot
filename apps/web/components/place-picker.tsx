@@ -40,7 +40,7 @@ async function tryResolvePlace(
   placesLib: PlacesLib,
   sessionToken: google.maps.places.AutocompleteSessionToken,
   input: string,
-  location: string | null,
+  address: string | null,
   biasCenter: LatLng,
 ): Promise<{ resolved: Resolved; name: string } | null> {
   const { suggestions } =
@@ -63,7 +63,7 @@ async function tryResolvePlace(
     const name = p.mainText?.text ?? p.text.text;
     const addr = p.secondaryText?.text ?? "";
     const r = matchPlace(
-      { merchant: input, location },
+      { merchant: input, address },
       [{ id: "g", name, formattedAddress: addr }],
       0,
     );
@@ -179,7 +179,7 @@ export function PlacePicker({
   // 低確信なら素の空港名に留める。
   autoResolve?: {
     name: string;
-    location?: string | null;
+    address?: string | null;
     searchQuery?: string;
   } | null;
 }) {
@@ -305,12 +305,17 @@ export function PlacePicker({
     if (!merchant) return;
     if (!placesLib) return; // placesLib が来るまで待つ（来たら再実行）
     autoResolveTried.current = true;
-    const location = autoResolve?.location ?? null;
+    const address = autoResolve?.address ?? null;
     const searchQuery = autoResolve?.searchQuery?.trim() || null;
-    const attempts =
-      searchQuery && searchQuery !== merchant
-        ? [searchQuery, merchant]
-        : [merchant];
+    // 住所が分かっていれば「店名, 住所」で先に引く。併記が一番一意に決まるのは
+    // 実測済みで、ここは地理バイアスが東京に落ちていることがある（旅行にピンが
+    // 1つも無い場合）ので、なおさら住所が効く。
+    const withAddress = address ? `${merchant}, ${address}` : null;
+    const attempts = [
+      ...(searchQuery && searchQuery !== merchant ? [searchQuery] : []),
+      ...(withAddress ? [withAddress] : []),
+      merchant,
+    ];
     void (async () => {
       if (!tokenRef.current) {
         tokenRef.current = new placesLib.AutocompleteSessionToken();
@@ -322,7 +327,7 @@ export function PlacePicker({
             placesLib,
             sessionToken,
             input,
-            location,
+            address,
             biasCenter,
           );
           if (found) {

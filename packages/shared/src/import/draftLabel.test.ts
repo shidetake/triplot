@@ -30,6 +30,7 @@ function draft(p: Partial<EventDraft>): EventDraft {
     departLocation: null,
     arriveLocation: null,
     location: null,
+    address: null,
     referenceId: null,
     isUpdate: false,
     ...p,

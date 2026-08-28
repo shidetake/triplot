@@ -47,7 +47,7 @@ function jaccard(a: string[], b: string[]): number {
 
 // 1 つの place に対するスコア（0〜1.4 程度）。
 function scorePlace(
-  receipt: { merchant: string; location: string | null },
+  receipt: { merchant: string; address: string | null },
   place: TripPlace,
 ): number {
   const rTok = nameTokens(receipt.merchant);
@@ -71,10 +71,10 @@ function scorePlace(
   }
 
   // 住所シグナル（番地・通り名の共有を加点）。名前より堅い手がかり。
-  if (receipt.location && place.formattedAddress) {
+  if (receipt.address && place.formattedAddress) {
     score +=
       jaccard(
-        nameTokens(receipt.location),
+        nameTokens(receipt.address),
         nameTokens(place.formattedAddress),
       ) * 0.4;
   }
@@ -85,7 +85,7 @@ export type PlaceMatch = { placeId: string; score: number };
 
 // 既存 place 群から最有力候補を返す（閾値未満は null=新規/手動）。
 export function matchPlace(
-  receipt: { merchant: string; location: string | null },
+  receipt: { merchant: string; address: string | null },
   places: TripPlace[],
   threshold = 0.5,
 ): PlaceMatch | null {

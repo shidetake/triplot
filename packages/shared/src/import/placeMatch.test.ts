@@ -29,7 +29,7 @@ describe("nameTokens", () => {
 describe("matchPlace", () => {
   it("表記揺れ（支店名サフィックス付き）でも既存 place に当たる", () => {
     const m = matchPlace(
-      { merchant: "KAI COFFEE ALOHILANI - K", location: null },
+      { merchant: "KAI COFFEE ALOHILANI - K", address: null },
       places,
     );
     expect(m?.placeId).toBe("kai");
@@ -37,7 +37,7 @@ describe("matchPlace", () => {
 
   it("住所が一致するとスコアが上がる", () => {
     const withAddr = matchPlace(
-      { merchant: "Kai Coffee", location: "2490 Kalakaua Ave" },
+      { merchant: "Kai Coffee", address: "2490 Kalakaua Ave" },
       places,
     );
     expect(withAddr?.placeId).toBe("kai");
@@ -45,11 +45,11 @@ describe("matchPlace", () => {
   });
 
   it("無関係な店は null（新規/手動）", () => {
-    expect(matchPlace({ merchant: "Uber", location: null }, places)).toBeNull();
+    expect(matchPlace({ merchant: "Uber", address: null }, places)).toBeNull();
   });
 
   it("正規化後に完全一致なら最有力", () => {
-    const m = matchPlace({ merchant: "yard house", location: null }, places);
+    const m = matchPlace({ merchant: "yard house", address: null }, places);
     expect(m?.placeId).toBe("yard");
   });
 });

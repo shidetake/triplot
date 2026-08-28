@@ -88,7 +88,7 @@ export type EventDraftPlacePrefill =
 // テキストとして使う。
 export type DraftAutoResolvePlace = {
   name: string;
-  location?: string | null;
+  address?: string | null;
   searchQuery?: string;
 } | null;
 
@@ -161,10 +161,10 @@ export type EventDraftItem = {
 // フォールバック）。
 function matchSavedPlace(
   name: string,
-  location: string | null,
+  address: string | null,
   places: TripPlace[],
 ): DraftPlacePrefill {
-  const matched = matchPlace({ merchant: name, location }, places);
+  const matched = matchPlace({ merchant: name, address }, places);
   return matched
     ? {
         kind: "saved",
@@ -255,7 +255,7 @@ export function deriveExpenseDraftItems(
       // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
       // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
       // autoResolvePlace で再度自動解決を試みる）。
-      const savedPlace = matchSavedPlace(r.merchant, r.location, ctx.places);
+      const savedPlace = matchSavedPlace(r.merchant, r.address, ctx.places);
       const place =
         savedPlace ??
         (r.resolvedPlace
@@ -299,7 +299,7 @@ export function deriveExpenseDraftItems(
           initialPlace: place,
           autoResolvePlace: place
             ? null
-            : { name: r.merchant, location: r.location },
+            : { name: r.merchant, address: r.address },
           initialTime: when.time,
         },
       ];
@@ -424,7 +424,9 @@ export function deriveEventDraftItems(
       // （autoResolvePlace.searchQuery は表示・フォールバックには影響しない）。
       const placeName =
         ev.kind === "transit" ? ev.departLocation : (ev.location ?? ev.title);
-      const placeHint = ev.kind === "transit" ? null : ev.title;
+      // 住所は別フィールドで持つ（schema.ts の location/address 参照）。
+      // 保存済みの場所との照合でも、名前より堅い手がかりになる。
+      const placeHint = ev.kind === "transit" ? null : ev.address;
       const savedPlace = placeName
         ? matchSavedPlace(placeName, placeHint, ctx.places)
         : null;
@@ -502,7 +504,7 @@ export function deriveEventDraftItems(
                 ? null
                 : {
                     name: placeName,
-                    location: placeHint,
+                    address: placeHint,
                     searchQuery: ev.departTerminal
                       ? `${placeName} ${ev.departTerminal}`
                       : undefined,

@@ -111,7 +111,7 @@ export type EventFormPrefill = {
   endPlace: PlacePickerInitial;
   autoResolvePlace: {
     name: string;
-    location?: string | null;
+    address?: string | null;
     searchQuery?: string;
   } | null;
   // vehicleNumber が便名として解釈でき、かつ事前解決が見つからなかった時だけ

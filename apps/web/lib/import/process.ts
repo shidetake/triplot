@@ -471,10 +471,12 @@ async function prefetchFlights(
           tripId,
           ev.startDate,
         );
-        if (biasCenter) {
-          const resolved = await resolveNamedPlace(ev.location, null, {
+        // 住所があればバイアスは要らない（resolveNamedPlace 参照）。旅行に
+        // 座標つきの場所が1つも無くても、住所さえ書いてあれば解決できる。
+        if (biasCenter || ev.address) {
+          const resolved = await resolveNamedPlace(ev.location, ev.address, {
             apiKey: placesApiKey,
-            biasCenter,
+            biasCenter: biasCenter ?? undefined,
           });
           if (resolved) {
             result.push({ ...ev, resolvedNamedPlace: resolved });
@@ -580,11 +582,9 @@ async function resolveReceiptPlace(
         : [await fetchBiasCenterForDate(supabase, tripId, date)].filter(
             (b): b is { lat: number; lng: number } => !!b,
           );
-    if (biases.length === 0) return receipt;
-
     let best: { place: PlaceCandidate; km: number } | null = null;
     for (const biasCenter of biases) {
-      const r = await resolveNamedPlace(receipt.merchant, receipt.location, {
+      const r = await resolveNamedPlace(receipt.merchant, receipt.address, {
         apiKey,
         biasCenter,
       });
@@ -592,7 +592,16 @@ async function resolveReceiptPlace(
       const d = distanceKm(biasCenter, { lat: r.lat, lng: r.lng });
       if (!best || d < best.km) best = { place: r, km: d };
     }
-    return best ? { ...receipt, resolvedPlace: best.place } : receipt;
+    if (best) return { ...receipt, resolvedPlace: best.place };
+    // バイアスが作れない旅行（座標つきの場所が1つも無い）でも、住所があれば
+    // バイアス無しで解決できる（resolveNamedPlace 参照）。ここが無いと
+    // 「解決できない → 座標なしの場所が増える → いつまでもバイアスが作れない」
+    // の循環に入る。
+    if (!receipt.address) return receipt;
+    const r = await resolveNamedPlace(receipt.merchant, receipt.address, {
+      apiKey,
+    });
+    return r ? { ...receipt, resolvedPlace: r } : receipt;
   } catch {
     return receipt;
   }

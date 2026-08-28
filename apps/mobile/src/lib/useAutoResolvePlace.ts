@@ -38,7 +38,9 @@ export function useAutoResolvePlace({
   useEffect(() => {
     if (tried.current || !enabled) return;
     const name = autoResolve?.name?.trim();
-    if (!name || !biasCenter || !PLACES_API_KEY) return;
+    // 住所があればバイアスは要らない（resolveNamedPlace 参照）。
+    const address = autoResolve?.address ?? null;
+    if (!name || (!biasCenter && !address) || !PLACES_API_KEY) return;
     tried.current = true;
     let alive = true;
     void (async () => {
@@ -46,7 +48,7 @@ export function useAutoResolvePlace({
       // （同期で呼ぶと連鎖レンダーになる。react-hooks の警告）。
       setResolving(true);
       try {
-        const found = await resolveNamedPlace(name, autoResolve?.location ?? null, {
+        const found = await resolveNamedPlace(name, address, {
           apiKey: PLACES_API_KEY,
           biasCenter,
         });
