@@ -211,14 +211,15 @@ export function ImportSheet() {
             </View>
             {/* 破棄は × に揃える（旅行側の未確定の取り込み・web と同じ）。
                 下書きを退けるだけで実体は消えないので、赤いゴミ箱ではなく
-                中立の × を使う（ui-guidelines「× 閉じるボタン」）。 */}
+                中立の × を使う。位置も右上に揃える。 */}
             <Pressable
               onPress={() => dismiss(e.id)}
-              hitSlop={8}
+              hitSlop={12}
               accessibilityLabel={t("dismiss")}
+              style={styles.dismissCorner}
             >
               <XIcon size={16} color={theme.subtleForeground} />
-              </Pressable>
+            </Pressable>
             </View>
           );
           })}
@@ -311,14 +312,18 @@ export function ImportSheet() {
                   </View>
                 )}
                 </View>
-                <Pressable
-                  onPress={() => dismiss(e.id)}
-                  hitSlop={8}
-                  accessibilityLabel={t("dismiss")}
-                >
-                  <XIcon size={16} color={theme.subtleForeground} />
-                </Pressable>
               </View>
+              {/* × は行の右上に重ねる（ui-guidelines「× 閉じるボタン」。専用の
+                  場所を作らず右上角に置く）。割り当てのピッカーと同じ行に置くと、
+                  ピッカーの操作の一部に見えて位置が中途半端になる。 */}
+              <Pressable
+                onPress={() => dismiss(e.id)}
+                hitSlop={12}
+                accessibilityLabel={t("dismiss")}
+                style={styles.dismissCorner}
+              >
+                <XIcon size={16} color={theme.subtleForeground} />
+              </Pressable>
 
               {/* 合体されたメール（誤マージの確認と分割）。開閉は行タップ
                   （web の <details> と同じ扱い）。本体＝このメール自身の
@@ -425,7 +430,8 @@ const makeStyles = (t: Theme) =>
       borderRadius: 6,
       overflow: "hidden",
     },
-    listRow: { padding: 12, gap: 6 },
+    // × を右上角に絶対配置するので relative（RN の既定）。
+    listRow: { padding: 12, gap: 6, position: "relative" },
     listRowDivider: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.fgAlpha(0.1),
@@ -438,11 +444,10 @@ const makeStyles = (t: Theme) =>
       backgroundColor: t.secondary,
     },
     errorRow: {
-      flexDirection: "row",
-      alignItems: "flex-start",
       gap: 8,
       padding: 12,
       backgroundColor: t.errorBg,
+      position: "relative",
     },
     groupHeading: { fontSize: 12, color: t.mutedForeground },
     description: { fontSize: 12, color: t.mutedForeground },
@@ -514,7 +519,9 @@ const makeStyles = (t: Theme) =>
       padding: 12,
       gap: 6,
     },
-    emailSummary: { fontSize: 14, fontWeight: "500", color: t.foreground },
+    emailSummary: {
+    // 右上の × と重ならないよう逃がす。
+    paddingRight: 24, fontSize: 14, fontWeight: "500", color: t.foreground },
     emailMeta: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -543,6 +550,8 @@ const makeStyles = (t: Theme) =>
       paddingVertical: 6,
       backgroundColor: t.fgAlpha(0.05),
     },
+    // × は行の右上角に重ねる（行を relative にして絶対配置）。
+    dismissCorner: { position: "absolute", top: 12, right: 12 },
     // 「要割当」バッジ（web の import-inbox と同じ・「地図未登録」と同じ形）。
     needsAssignBadge: {
       borderRadius: 4,

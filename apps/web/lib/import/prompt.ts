@@ -69,7 +69,10 @@ export const IMPORT_SYSTEM_PROMPT = [
   // 畳むので、境界は増えない）。
   "配車・タクシー・送迎の利用明細（Uber・Lyft・タクシー等）は、済んだ支払いでも",
   "移動そのものなので、receipt とは別に events に kind 'transit' を1件追加する",
-  "（title は『移動』。乗車地を departLocation、降車地を arriveLocation に、",
+  // title はフライトの区間表記（NRT-HNL）と同じ役割＝「何の移動か」。配車なら
+  // サービス名がそれにあたる。「移動」だけだと情報が無い（場所と時刻は別に出る）。
+  "（title は配車サービス名〔Uber / Lyft / タクシー会社名など〕。分からなければ",
+  "『移動』。乗車地を departLocation、降車地を arriveLocation に、",
   "地図で検索できる形〔施設名が分かれば施設名、住所しか無ければ住所〕でそのまま",
   "入れる。乗車時刻を出発、降車時刻を到着とし、降車時刻がメールに無ければ",
   "所要時間を見積もって埋める。departTz/arriveTz は乗車地・降車地から推定した",
