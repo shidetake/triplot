@@ -14,6 +14,7 @@ import {
 } from "react-native";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import { useTranslations } from "use-intl";
+import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 
 import { firstChar } from "@triplot/shared/memberColors";
 import {
@@ -36,7 +37,6 @@ import {
   HeartIcon,
   LockIcon,
   PlusIcon,
-  TrashIcon,
 } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
 import { ReservationIcon } from "@/components/reservation-icon";
@@ -243,10 +243,6 @@ function TodoSection({
   ) => void;
 }) {
   const t = useTranslations("todo");
-  // common.* は名前空間の外にあるので、todo に絞った t では引けない
-  // （t("common.cancel") が todo.common.cancel を探して見つからず、キーが
-  // そのまま画面に出ていた）。
-  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
@@ -353,20 +349,15 @@ function TodoSection({
     void invalidate();
   };
 
+  // 確認は出さない。削除の確認の要否は**復旧コスト**で決める
+  // （ui-guidelines「削除の確認の要否」）。TODO は1行のテキストで打ち直せば
+  // 済むので安い。スワイプ＋タップの2手で十分に意図的。費用・予定・場所・
+  // 旅行は失うものが大きいので確認を残す。
   const onDelete = (todo: TodoRow) => {
-    Alert.alert(t("deleteTitle"), undefined, [
-      { text: tCommon("cancel"), style: "cancel" },
-      {
-        text: t("deleteAria"),
-        style: "destructive",
-        onPress: () => {
-          void deleteTodo(supabase, todo.id).then((r) => {
-            if (!r.ok) fail(r.error);
-            void invalidate();
-          });
-        },
-      },
-    ]);
+    void deleteTodo(supabase, todo.id).then((r) => {
+      if (!r.ok) fail(r.error);
+      void invalidate();
+    });
   };
 
   const sorted = sortTodos(todos);
@@ -443,7 +434,27 @@ function TodoSection({
           {sorted.map((todo) => {
             const creator = memberById.get(todo.created_by_member_id);
             return (
-              <View key={todo.id} style={styles.row}>
+              <Swipeable
+                key={todo.id}
+                friction={2}
+                rightThreshold={40}
+                // フルスワイプ（一手で消える）は付けない。あれは取り消せる
+                // 前提の仕草で、triplot にアンドゥが無いうちは危ない。
+                // スワイプ＋タップの2手を要求する。
+                overshootRight={false}
+                renderRightActions={() => (
+                  <Pressable
+                    onPress={() => onDelete(todo)}
+                    style={styles.swipeDelete}
+                    accessibilityLabel={t("deleteAria")}
+                  >
+                    <Text style={styles.swipeDeleteLabel}>
+                      {t("deleteAria")}
+                    </Text>
+                  </Pressable>
+                )}
+              >
+              <View style={styles.row}>
                 <Pressable
                   onPress={() =>
                     doneMutation.mutate({ id: todo.id, done: !todo.done })
@@ -537,15 +548,8 @@ function TodoSection({
                   </>
                 )}
 
-                <Pressable
-                  onPress={() => onDelete(todo)}
-                  hitSlop={8}
-                  accessibilityLabel={t("deleteAria")}
-                >
-                  {/* 削除＝destructive 赤（web の TODO 行・カテゴリ管理と同じ） */}
-                  <TrashIcon size={15} color={theme.destructiveText} />
-                </Pressable>
               </View>
+              </Swipeable>
             );
           })}
         </>
@@ -611,7 +615,17 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     gap: 8,
     paddingVertical: 6,
+    // スワイプで下から削除が出るので、行に地色が要る（透明だと透ける）。
+    backgroundColor: t.background,
   },
+  // スワイプで現れる削除。iOS 標準の一覧と同じく赤い面に白文字。
+  swipeDelete: {
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    backgroundColor: t.destructiveText,
+  },
+  swipeDeleteLabel: { fontSize: 14, color: "#fff", fontWeight: "500" },
   checkbox: {
     width: 20,
     height: 20,
