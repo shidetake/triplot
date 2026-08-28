@@ -33,6 +33,7 @@ import {
 import type { Category, ExpenseRow } from "@triplot/shared/tripDerive";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
+import { useAutoResolvePlace } from "@/lib/useAutoResolvePlace";
 import { CurrencyPickerModal } from "./currency-picker";
 import {
   chipDateText,
@@ -163,6 +164,14 @@ export function ExpenseForm({
     if (draft?.autoResolvePlace)
       return { kind: "free", label: draft.autoResolvePlace.name };
     return { kind: "saved", placeId: null };
+  });
+  // 下書き由来の自由入力の場所は、開いた時に Google の場所へ丸める
+  // （web の place-picker の autoResolve と同じ。詳細は useAutoResolvePlace）。
+  const { resolving: resolvingPlace } = useAutoResolvePlace({
+    autoResolve: draft?.autoResolvePlace ?? null,
+    biasCenter,
+    enabled: !isEdit && place.kind === "free",
+    onResolved: setPlace,
   });
   const [note, setNote] = useDraft(
     "note",
@@ -706,7 +715,9 @@ export function ExpenseForm({
         )}
         <SubmitButton
           onPress={() => void submit()}
-          busy={busy}
+          // 場所の自動解決中も送信させない。解決前に保存すると
+          // 自由入力の場所で確定してしまう（useAutoResolvePlace）。
+          busy={busy || resolvingPlace}
           // 必須（価格、通貨が違う時は為替レートも）は * でなく
           // 「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={

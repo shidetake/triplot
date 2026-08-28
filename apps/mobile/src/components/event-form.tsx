@@ -58,6 +58,7 @@ import { PlusIcon, SaveIcon, TrashIcon, ChevronIcon, PlaneIcon } from "./icons";
 import { FlightPicker } from "./flight-picker";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
+import { useAutoResolvePlace } from "@/lib/useAutoResolvePlace";
 import { useClearDraft, useDraft } from "@/components/form-host";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -190,13 +191,23 @@ export function EventForm({
     if (editEvent) return { kind: "saved", placeId: editEvent.startPlaceId };
     // 下書き: 保存済みマッチ／事前解決済みフライトの空港はそれを、無ければ
     // 抽出した場所名を自由入力テキストとして事前入力（RN は Google 自動解決を
-    // 持たないので web の低確信時と同じ自由入力フォールバック）。
+    // 自由入力で置いたものは、開いた時に useAutoResolvePlace が Google の
+    // 場所へ丸める（web の place-picker の autoResolve と同じ）。
     const fromPrefill = draftPlaceToInput(prefill?.place ?? null);
     if (fromPrefill) return fromPrefill;
     if (prefill?.autoResolvePlace)
       return { kind: "free", label: prefill.autoResolvePlace.name };
     return { kind: "saved", placeId: null };
   });
+  // 下書き由来の自由入力の場所を、開いた時に Google の場所へ丸める
+  // （詳細は useAutoResolvePlace）。
+  const { resolving: resolvingPlace } = useAutoResolvePlace({
+    autoResolve: prefill?.autoResolvePlace ?? null,
+    biasCenter,
+    enabled: !editEvent && place.kind === "free",
+    onResolved: setPlace,
+  });
+
   // 到着地。空（placeId=null）なら DB 側で end_place_id は NULL＝出発地と同じ。
   // 事前解決済みフライトがあれば到着空港を事前入力する。
   const [endPlace, setEndPlace] = useDraft<PlaceInput>("endPlace", () => {
@@ -932,7 +943,9 @@ export function EventForm({
         )}
         <SubmitButton
           onPress={() => void submit()}
-          busy={busy}
+          // 場所の自動解決中も送信させない。解決前に保存すると
+          // 自由入力の場所で確定してしまう（useAutoResolvePlace）。
+          busy={busy || resolvingPlace}
           // 必須（タイトル）は * でなく「埋まるまで送信無効」で表現（iOS 方式）。
           disabled={!title.trim()}
           accessibilityLabel={isEdit ? tCommon("save") : tCommon("add")}
