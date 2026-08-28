@@ -4,8 +4,11 @@ import { useTranslations } from "use-intl";
 
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
 import { deriveExpenseDraftItems } from "@triplot/shared/import/drafts";
-import { dominantCenter } from "@triplot/shared/placeMap";
-import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import {
+  buildTripTzTimeline,
+  resolveEventTz,
+} from "@triplot/shared/schedule";
+import { tripBiasCenter } from "@triplot/shared/tripBias";
 import {
   deriveAverageRates,
   deriveCategories,
@@ -87,15 +90,25 @@ export default function ExpenseFormRoute() {
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
   });
 
-  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンが集まる主役
-  // エリアの中心。無ければ無バイアス＝地図タブと違い Tokyo にはフォールバック
-  // しない）。
-  const biasCenter =
-    dominantCenter(
-      (data.placesRaw ?? [])
-        .filter((p) => p.lat != null && p.lng != null)
-        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
-    ) ?? undefined;
+  // 場所欄の Google サジェストの地理バイアス。**その費用の日時に「どこにいたか」**
+  // を旅程から引く（tripBiasCenter）。旅行に1つの中心を持たせると、成田 →
+  // ホノルルと動く旅行で成田の昼食をホノルルで引いて外す。移動が1つも無ければ
+  // 旅行のピンの中心に落ち、それも無ければ無バイアス（地図タブと違い Tokyo には
+  // フォールバックしない）。
+  // 時刻は下書きに無いことがあるので、日付の正午を代表値にする（移動の前後の
+  // どちらに入るかは日単位で決まるので、これで十分）。
+  const biasTarget = defaults?.initialPaidAt
+    ? {
+        at: `${defaults.initialPaidAt}T12:00`,
+        tz: resolveEventTz(defaults.initialPaidAt, null, null, tzTimeline),
+      }
+    : null;
+  const biasCenter = tripBiasCenter({
+    events: scheduleEvents,
+    places: data.placesRaw ?? [],
+    drafts: tripDrafts ?? null,
+    target: biasTarget,
+  });
 
   const editExpense = expenseId
     ? expenses.find((e) => e.id === expenseId)

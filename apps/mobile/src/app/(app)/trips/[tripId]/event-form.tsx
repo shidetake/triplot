@@ -4,8 +4,11 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
 import { deriveEventDraftItems } from "@triplot/shared/import/drafts";
-import { dominantCenter } from "@triplot/shared/placeMap";
-import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import {
+  buildTripTzTimeline,
+  resolveEventTz,
+} from "@triplot/shared/schedule";
+import { tripBiasCenter } from "@triplot/shared/tripBias";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
 import { EventForm } from "@/components/event-form";
@@ -63,20 +66,27 @@ export default function EventFormRoute() {
     reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
   });
 
-  // 場所欄の Google サジェストの地理バイアス（旅行の既存ピンが集まる主役
-  // エリアの中心。無ければ無バイアス＝地図タブと違い Tokyo にはフォールバック
-  // しない）。
-  const biasCenter =
-    dominantCenter(
-      (data.placesRaw ?? [])
-        .filter((p) => p.lat != null && p.lng != null)
-        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
-    ) ?? undefined;
-
   const editEvent = eventId ? events.find((e) => e.id === eventId) : undefined;
   const confirmingDraft = draftId
     ? eventDrafts.find((d) => d.id === draftId)
     : undefined;
+
+  // 場所欄の Google サジェストの地理バイアス。**その予定の日時に「どこにいたか」**
+  // を旅程から引く（tripBiasCenter。費用フォームと同じ）。移動が1つも無ければ
+  // 旅行のピンの中心に落ち、それも無ければ無バイアス（地図タブと違い Tokyo には
+  // フォールバックしない）。
+  const biasDate = editEvent?.startAt.slice(0, 10) ?? confirmingDraft?.date ?? null;
+  const biasCenter = tripBiasCenter({
+    events,
+    places: data.placesRaw ?? [],
+    drafts: tripDrafts ?? null,
+    target: biasDate
+      ? {
+          at: `${biasDate}T12:00`,
+          tz: resolveEventTz(biasDate, null, null, tzTimeline),
+        }
+      : null,
+  });
   // 終日帯の長押しは時刻を持たない（日付だけ）。その場合も slot として渡し、
   // 時刻の既定は EventForm 側（09:00）に任せる。
   const slot = date

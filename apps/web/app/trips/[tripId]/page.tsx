@@ -31,7 +31,8 @@ import { TripDetailTabs } from "@/components/trip-detail-tabs";
 import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { TripDraftsRealtime } from "@/components/trip-drafts-realtime";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
-import { buildTripTzTimeline } from "@triplot/shared/schedule";
+import {
+  resolveEventTz, buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
@@ -40,6 +41,7 @@ import {
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { fetchTripDetailRows } from "@triplot/shared/data/reads/tripDetail";
 import { fetchTripPendingDrafts } from "@triplot/shared/data/reads/inbox";
+import { tripBiasCenter } from "@triplot/shared/tripBias";
 import {
   deriveAverageRates,
   deriveCategories,
@@ -200,6 +202,20 @@ export default async function TripDetailPage({
         .filter((p) => p.lat != null && p.lng != null)
         .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
     ) ?? TOKYO;
+
+  // 下書きの確定フォームだけは、旅行に1つの中心ではなく**その日時どこにいたか**
+  // を旅程から引く（tripBiasCenter。RN の各フォームと同じ）。成田 → ホノルルと
+  // 動く旅行で、成田の昼食をホノルルのバイアスで引いて外すのを避ける。
+  // 旅行に移動もピンも無ければ従来どおり東京に落ちる。
+  const draftBiasCenter = (date: string | null) =>
+    tripBiasCenter({
+      events: scheduleEvents,
+      places,
+      drafts: tripDrafts,
+      target: date
+        ? { at: `${date}T12:00`, tz: resolveEventTz(date, null, null, tzTimeline) }
+        : null,
+    }) ?? TOKYO;
 
   // 招待リンクの絶対URLはサーバ側でヘッダから組む（client で window を
   // 触ると SSR と不一致 / effect-setState になるため）。
@@ -425,7 +441,7 @@ export default async function TripDetailPage({
                                 display_name: m.display_name,
                                 color: m.color,
                               }))}
-                              biasCenter={placesBiasCenter}
+                              biasCenter={draftBiasCenter(d.date)}
                               tzTimeline={tzTimeline}
                             />
                           ))}
@@ -535,7 +551,7 @@ export default async function TripDetailPage({
                           averageRates={averageRates}
                           initialPaidAt={d.initialPaidAt}
                           places={placesForPicker}
-                          biasCenter={placesBiasCenter}
+                          biasCenter={draftBiasCenter(d.initialPaidAt)}
                           tzTimeline={tzTimeline}
                           tripStart={trip.start_date}
                           tripEnd={trip.end_date}
