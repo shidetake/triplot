@@ -29,12 +29,6 @@ export default function InboxRoute() {
     <View>
       <ScrollView
         contentContainerStyle={{ paddingBottom: 24 }}
-        // 一覧の中身が入れ替わっても、いま見ている位置を保つ。取り込みは背景で
-        // 進むので、開いたまま行が増減・並び替えされる。何もしないと先頭に
-        // 戻り、どこを見ていたか分からなくなる（実機フィードバック。「明細を
-        // 開くと戻る」と見えていたが、実測すると開く操作自体は無関係で、
-        // 同時に走った再取得が原因だった）。
-        maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
