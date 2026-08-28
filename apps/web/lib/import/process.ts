@@ -498,6 +498,52 @@ async function prefetchFlights(
 // 成立しない（実機フィードバック: ZIPAIR の受取企業は成田近郊にあり、対象日
 // バイアス〔到着地＝ホノルル〕で検索すると見つからない）。移動そのものの
 // 場所（空港）は resolveAirportPlace が別途 resolvedFlight 経由で解決する。
+// 2点間の距離（km）。移動日にどちらのバイアスの結果を採るかの判定に使う。
+function distanceKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const R = 6371;
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLng = (b.lng - a.lng) * rad;
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+
+// その日が移動日（同じ暦日に出発して到着する移動がある日）なら、その移動の
+// 出発地と到着地の座標を返す。移動日は「どちらのバイアスで引くべきか」が
+// 事前に決まらないので、両方で引いて良い方を採るために使う。
+async function transitDayEndpoints(
+  supabase: ServiceClient,
+  tripId: string | null,
+  date: string | null,
+): Promise<{ lat: number; lng: number }[]> {
+  if (!tripId || !date) return [];
+  const { data: transits } = await supabase
+    .from("events")
+    .select("start_place_id, end_place_id")
+    .eq("trip_id", tripId)
+    .eq("kind", "transit")
+    .gte("start_at", `${date}T00:00:00`)
+    .lte("start_at", `${date}T23:59:59`)
+    .gte("end_at", `${date}T00:00:00`)
+    .lte("end_at", `${date}T23:59:59`);
+  const ids = (transits ?? [])
+    .flatMap((t) => [t.start_place_id, t.end_place_id])
+    .filter((id): id is string => !!id);
+  if (ids.length === 0) return [];
+  const { data: places } = await supabase
+    .from("places")
+    .select("lat, lng")
+    .in("id", ids);
+  return (places ?? [])
+    .filter((p) => p.lat != null && p.lng != null)
+    .map((p) => ({ lat: p.lat as number, lng: p.lng as number }));
+}
+
 async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
@@ -507,22 +553,46 @@ async function resolveReceiptPlace(
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
   if (!apiKey || !receipt.merchant || receipt.category === "渡航")
     return receipt;
+  const date = receipt.serviceDate ?? receipt.date;
   try {
-    const biasCenter = await fetchBiasCenterForDate(
-      supabase,
-      tripId,
-      receipt.serviceDate ?? receipt.date,
-    );
-    if (!biasCenter) return receipt;
-    const resolved = await resolveNamedPlace(
-      receipt.merchant,
-      receipt.location,
-      {
+    // 移動日は候補の空港が2つある。どちらのバイアスで引くべきかは時刻だけでは
+    // 決まらない（成田 19:10 発 → ホノルル 07:25 着の日の 08:30 の朝食は、
+    // 日本時間なら出発前・ハワイ時間なら到着後で、どちらも成立する）。
+    // **両方のバイアスで引いて、バイアス中心に近い結果を採る。** 勝った方の
+    // 経度がそのままタイムゾーンの答えにもなる（drafts.ts の pickTzByLongitude）。
+    //
+    // **一致度で選んではいけない。** 一致度は「名前がどれだけ似ているか」しか
+    // 見ておらず、どちらの土地にいたかを語らない。実測: "THE ROYAL BAKERY" は
+    // 成田バイアスだと埼玉の同名店（名前は完全一致）、ホノルルバイアスだと
+    // Royal Hawaiian Bakery（部分一致）が返り、一致度では埼玉が勝ってしまう。
+    // 距離なら埼玉 56km / ホノルル 11km でホノルルが勝つ。
+    //
+    // 距離が効くのは、**バイアス中心に近い結果＝その土地にその店が実在した**
+    // 証拠だから。逆に 6000km 離れた結果は「バイアスが無視された＝その土地には
+    // 無かった」を意味する。日本側の店もちゃんと日本を選ぶ（実測:
+    // "TULLY'S COFFEE" は成田 0km / ホノルル 6588km で成田が勝つ）。
+    //
+    // 移動日でなければ従来どおり1回。
+    const endpoints = await transitDayEndpoints(supabase, tripId, date);
+    const biases =
+      endpoints.length >= 2
+        ? endpoints
+        : [await fetchBiasCenterForDate(supabase, tripId, date)].filter(
+            (b): b is { lat: number; lng: number } => !!b,
+          );
+    if (biases.length === 0) return receipt;
+
+    let best: { place: PlaceCandidate; km: number } | null = null;
+    for (const biasCenter of biases) {
+      const r = await resolveNamedPlace(receipt.merchant, receipt.location, {
         apiKey,
         biasCenter,
-      },
-    );
-    return resolved ? { ...receipt, resolvedPlace: resolved } : receipt;
+      });
+      if (!r) continue;
+      const d = distanceKm(biasCenter, { lat: r.lat, lng: r.lng });
+      if (!best || d < best.km) best = { place: r, km: d };
+    }
+    return best ? { ...receipt, resolvedPlace: best.place } : receipt;
   } catch {
     return receipt;
   }
