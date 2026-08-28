@@ -23,7 +23,7 @@ import {
 import type { Extraction } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
-import { ChevronIcon, CopyIcon } from "@/components/icons";
+import { ChevronIcon, CopyIcon, XIcon } from "@/components/icons";
 import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
@@ -209,12 +209,15 @@ export function ImportSheet() {
                       : t("errorNoRetry")}
               </Text>
             </View>
+            {/* 破棄は × に揃える（旅行側の未確定の取り込み・web と同じ）。
+                下書きを退けるだけで実体は消えないので、赤いゴミ箱ではなく
+                中立の × を使う（ui-guidelines「× 閉じるボタン」）。 */}
             <Pressable
               onPress={() => dismiss(e.id)}
               hitSlop={8}
               accessibilityLabel={t("dismiss")}
             >
-              <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
+              <XIcon size={16} color={theme.subtleForeground} />
               </Pressable>
             </View>
           );
@@ -308,8 +311,12 @@ export function ImportSheet() {
                   </View>
                 )}
                 </View>
-                <Pressable onPress={() => dismiss(e.id)} hitSlop={8}>
-                  <Text style={styles.dismissLabel}>{t("dismiss")}</Text>
+                <Pressable
+                  onPress={() => dismiss(e.id)}
+                  hitSlop={8}
+                  accessibilityLabel={t("dismiss")}
+                >
+                  <XIcon size={16} color={theme.subtleForeground} />
                 </Pressable>
               </View>
 
@@ -550,7 +557,6 @@ const makeStyles = (t: Theme) =>
       fontWeight: "500",
       color: t.foreground,
     },
-    dismissLabel: { fontSize: 12, color: t.mutedForeground },
     // 合体明細（web の <details> 相当）。開閉行は控えめだが、**開けることが
     // 分かる形にする**＝文言だけだとタップできると気付けない（実機
     // フィードバック）。ChevronIcon を添えて開閉を示し、上下に余白を足して

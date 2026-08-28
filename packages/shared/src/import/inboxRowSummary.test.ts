@@ -117,18 +117,58 @@ describe("inboxRowSummary", () => {
     expect(fromEvent.parts.at(-1)).toBe("412 Lewers St, Honolulu");
   });
 
-  it("場所が名前と同じなら出さない（2回言っても判断材料が増えない）", () => {
+  it("場所は解決済みの都市名を優先する（生の文字列より短く、判断に効く）", () => {
     const s = inboxRowSummary(
       row({
         receipt: receipt({
-          merchant: "THE ROYAL BAKERY",
-          location: "THE ROYAL BAKERY",
+          merchant: "HONOLULU COOKIE CO",
+          // 接頭辞は merchant からだけ落とすので、生の文字列とは一致しない。
+          location: "SQ *HONOLULU COOKIE CO",
+          resolvedPlace: {
+            placeId: "g-1",
+            name: "Honolulu Cookie Company",
+            formattedAddress: "1450 Ala Moana Blvd, Honolulu, HI",
+            lat: 21.29,
+            lng: -157.84,
+            region: "HI",
+            locality: "Honolulu",
+            rating: null,
+            userRatingCount: null,
+            primaryType: null,
+          },
         }),
       }),
       opts,
     );
-    expect(s.title).toBe("THE ROYAL BAKERY");
-    expect(s.parts).toEqual(["20.94 USD", "5/3(日)"]);
+    expect(s.parts.at(-1)).toBe("Honolulu");
+  });
+
+  // 閾値 0.6 は本番の下書きの実測から。名前が場所に占める割合の分布に谷があり、
+  // 0.76 以上（接頭辞が付いただけ）と 0.40 以下（住所付き）の間が空だった。
+  describe("場所が名前を言い直しているだけなら出さない", () => {
+    const place = (merchant: string, location: string) =>
+      inboxRowSummary(row({ receipt: receipt({ merchant, location }) }), opts)
+        .parts.at(-1);
+
+    it("完全一致（1.00）は出さない", () => {
+      expect(place("THE ROYAL BAKERY", "THE ROYAL BAKERY")).toBe("5/3(日)");
+    });
+
+    it("接頭辞が付いただけ（0.76）は出さない", () => {
+      expect(place("HANA KOA BREWING", "TST* HANA KOA BREWING")).toBe("5/3(日)");
+    });
+
+    it("住所付き（0.26）は出す — 都市名という判断材料がある", () => {
+      expect(
+        place("Howzit Brewing", "Howzit Brewing, 330 Kamani St, Honolulu, HI"),
+      ).toBe("Howzit Brewing, 330 Kamani St, Honolulu, HI");
+    });
+
+    it("名前を含まない場所はそのまま出す", () => {
+      expect(place("SSA - HANAUMA BAY", "Hanauma Bay, Honolulu, HI")).toBe(
+        "Hanauma Bay, Honolulu, HI",
+      );
+    });
   });
 
   it("何も取れなければ件名、それも無ければ既定の名前", () => {

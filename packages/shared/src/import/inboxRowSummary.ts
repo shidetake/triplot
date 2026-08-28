@@ -30,12 +30,40 @@ export type InboxRowSummary = {
   parts: string[];
 };
 
+// 場所は**都市名**を優先する。この行で場所に求めているのは「どの旅行か」を
+// 決める手がかりで、それは都市名だから。店名はタイトルに既に出ていて、番地は
+// 判断に効かず、長くて行内で切れる。
+//
+// 解決済みの場所があればその locality（例: "Honolulu"）。解決できていなければ
+// 抽出した生の文字列に落ちる（そのときだけ、タイトルと同じなら出さない
+// — 店名がそのまま場所になっているだけで、2回言っても判断材料が増えない）。
+// 決済代行の接頭辞は merchant からだけ落とすので、生の文字列は
+// "SQ *HONOLULU COOKIE CO" のようにタイトルと完全一致しないことがある。
+
 // 予定から場所の手がかりを取る。**移動は出発地**を採る（到着地ではない）。
 // 到着地だと帰りの便で地元が出てしまい、旅行の判断に効かない。行きも帰りも
 // 出発側に揃えておけば、少なくとも一貫して「そこから動いた場所」を指す。
 function eventPlace(ev: EventDraft): string | null {
   if (ev.kind === "transit") return ev.departLocation || ev.arriveLocation || null;
   return ev.location || null;
+}
+
+// 場所が名前を言い直しているだけなら出さない。
+//
+// 完全一致だけでは足りない: 決済代行の接頭辞は merchant からだけ落とすので、
+// 生の場所は "SQ *HONOLULU COOKIE CO" のように**名前を含むが一致しない**形に
+// なる。かといって「含めば落とす」にすると、住所付きの場所
+// （"Howzit Brewing, 330 Kamani St, Honolulu, HI"）まで消えて都市名を失う。
+//
+// なので**名前が場所のどれだけを占めるか**で決める。本番の下書きを実測すると
+// 分布に谷があり、0.76 以上（"TST* HANA KOA BREWING" 等＝接頭辞が付いただけ）と
+// 0.40 以下（住所付き）の間に1件も無かった。閾値はその空白帯の真ん中を採る。
+const REDUNDANT_PLACE_RATIO = 0.6;
+
+function isRedundantPlace(place: string, title: string): boolean {
+  if (!title) return false;
+  if (!place.toLowerCase().includes(title.toLowerCase())) return false;
+  return title.length / place.length >= REDUNDANT_PLACE_RATIO;
 }
 
 export function inboxRowSummary(
@@ -66,11 +94,9 @@ export function inboxRowSummary(
     parts.push(ev.startTime ? `${day} ${ev.startTime}` : day);
   }
 
-  // 場所が名前と同じなら出さない。店名がそのまま場所になっているだけで、
-  // 2回言っても割り当ての判断材料が増えない（畳んだら目立つようになった）。
-  // 行の構造は変わらない（名前＋メタ1行のまま）ので、行の高さは揃ったまま。
-  const place = receipt?.location || (ev ? eventPlace(ev) : null);
-  if (place && place !== title) parts.push(place);
+  const locality = receipt?.resolvedPlace?.locality ?? null;
+  const place = locality || receipt?.location || (ev ? eventPlace(ev) : null);
+  if (place && !isRedundantPlace(place, title)) parts.push(place);
 
   return { title, parts };
 }
