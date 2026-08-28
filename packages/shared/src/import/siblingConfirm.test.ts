@@ -15,6 +15,7 @@ const expenseDraft = (o: Partial<ExpenseDraftItem> = {}): ExpenseDraftItem => ({
   id: "d1",
   emailId: "e1",
   labelParts: ["Kai Coffee", "12.5 USD", "8/1"],
+  tzDisambig: null,
   initialPrice: 12.5,
   initialCurrency: "USD",
   initialCategoryId: "cat-food",

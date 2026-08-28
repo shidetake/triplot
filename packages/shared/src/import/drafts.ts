@@ -14,6 +14,7 @@ import {
 import type { PlaceCandidate } from "../placesSearch";
 import {
   formatDayLabel,
+  narrowTzByTime,
   pickTzByLongitude,
   resolveExpenseTz,
   type TripTzTimeline,
@@ -103,6 +104,9 @@ export type ExpenseDraftItem = {
   initialCategoryId: string;
   initialPaidAt: string; // "YYYY-MM-DD"
   initialTime?: string; // "HH:MM"（レシートに購入時刻があった時だけ）
+  // 移動日にどちらの TZ で発生したか（出発側/到着側）。曖昧でない日は null。
+  // 費用フォームの初期選択に使う（予定下書きの tzDisambig と同じ契約）。
+  tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
   initialPlace: DraftPlacePrefill;
   autoResolvePlace: DraftAutoResolvePlace;
 };
@@ -218,6 +222,8 @@ export function deriveExpenseDraftItems(
     fallbackCategoryId: string;
     places: TripPlace[];
     unknownMerchantLabel: string;
+    // 移動日のタイムゾーンの初期選択に使う（予定側と同じ）。
+    tzTimeline: TripTzTimeline;
   },
 ): ExpenseDraftItem[] {
   return (drafts ?? [])
@@ -262,10 +268,23 @@ export function deriveExpenseDraftItems(
               }),
             )
           : null);
+      // 移動日のタイムゾーンの初期選択。予定側と同じ2段（経度→時刻）。
+      // ここを持たないと費用フォームは常に先頭候補＝出発側で開き、日本→
+      // ホノルルの移動日に、到着後の支払いが日本時間になる。
+      const tzRes = resolveExpenseTz(when.date, ctx.tzTimeline);
+      const tzPicked =
+        tzRes.kind === "single"
+          ? null
+          : (pickTzByLongitude(tzRes.options, r.resolvedPlace?.lng, when.date) ??
+            narrowTzByTime(tzRes.options, ctx.tzTimeline, when.time)[0] ??
+            tzRes.options[0]);
       return [
         {
           id: d.id,
           emailId: d.email_id,
+          tzDisambig: tzPicked
+            ? { transitId: tzPicked.transitId, side: tzPicked.side }
+            : null,
           // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
           labelParts: [
             r.merchant || ctx.unknownMerchantLabel,
@@ -322,7 +341,14 @@ export function deriveEventDraftItems(
       // 移動日は候補が2つ出る。場所が解決できていれば、その経度から
       // どちら側かを当てて初期選択にする（フォームでは変更できる）。
       // 当てられない時だけ従来どおり先頭候補。
+      // 移動日の候補の選び方は2段。まず場所の経度で当て、当てられなければ
+      // 時刻で成立しない候補を落とす（narrowTzByTime）。どちらも決められない
+      // ときだけ先頭候補（＝出発側）。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
+      const narrowed =
+        res.kind === "single"
+          ? []
+          : narrowTzByTime(res.options, ctx.tzTimeline, ev.startTime);
       const picked =
         res.kind === "single"
           ? null
@@ -330,7 +356,9 @@ export function deriveEventDraftItems(
               res.options,
               ev.resolvedNamedPlace?.lng,
               ev.startDate,
-            ) ?? res.options[0]);
+            ) ??
+            narrowed[0] ??
+            res.options[0]);
       const tz = res.kind === "single" ? res.tz : picked!.tz;
       const tzDisambig = picked
         ? { transitId: picked.transitId, side: picked.side }

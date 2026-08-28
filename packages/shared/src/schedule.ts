@@ -765,6 +765,9 @@ export type TripTzTimeline = {
     arriveDate: string;
     departTz: string;
     arriveTz: string;
+    /** 壁時計 "HH:MM"。移動日の候補を時刻で絞るのに使う（narrowTzByTime）。 */
+    departTime: string;
+    arriveTime: string;
   }[];
 };
 
@@ -780,6 +783,8 @@ export function buildTripTzTimeline(
     arriveDate: parseWall(t.endAt as string).date,
     departTz: t.startTz as string,
     arriveTz: t.endTz as string,
+    departTime: formatMinutes(parseWall(t.startAt).minutes),
+    arriveTime: formatMinutes(parseWall(t.endAt as string).minutes),
   }));
   return { fallbackTz: defaultTimezone ?? "UTC", transits };
 }
@@ -911,6 +916,37 @@ export function resolveExpenseTz(
   if (touched.length === 0) return { kind: "single", tz: currentTz };
   if (touched.length === 1) return { kind: "single", tz: touched[0].tz };
   return { kind: "ambiguous", options: touched };
+}
+
+/**
+ * 移動日の候補を、その時刻では成立しないものを落として絞る。
+ *
+ * 移動日は候補が2つ出る（出発側＝出発地のTZ / 到着側＝到着地のTZ）。既定は
+ * 先頭＝出発側なので、**到着後の支払いが出発地のTZになる**（日本→ホノルルの
+ * 移動日に、到着後の朝食が日本時間になっていた。実機フィードバック）。
+ *
+ * 時刻で消せるものは消す:
+ * - 出発側は「出発より前」でないと成立しない（出発後は機上か到着地にいる）
+ * - 到着側は「到着より後」でないと成立しない
+ *
+ * 例: 成田 19:10 発 → ホノルル 07:25 着の日の 21:00 の夕食は、日本時間なら
+ * 出発済みなので出発側が消え、到着側に決まる。一方 08:30 の朝食はどちらでも
+ * 成立するので絞れない（そこは場所の経度で当てる＝pickTzByLongitude）。
+ *
+ * 絞れない（0個または2個以上残る）ときは元の候補をそのまま返す。
+ */
+export function narrowTzByTime(
+  options: TzCandidate[],
+  tl: TripTzTimeline,
+  time: string | null | undefined,
+): TzCandidate[] {
+  if (!time || options.length < 2) return options;
+  const kept = options.filter((o) => {
+    const t = tl.transits.find((x) => x.transitId === o.transitId);
+    if (!t) return true;
+    return o.side === "depart" ? time <= t.departTime : time >= t.arriveTime;
+  });
+  return kept.length === 1 ? kept : options;
 }
 
 /**

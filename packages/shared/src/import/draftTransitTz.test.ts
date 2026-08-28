@@ -21,6 +21,9 @@ const tzTimeline: TripTzTimeline = {
       arriveDate: "2026-04-28",
       departTz: "Asia/Tokyo",
       arriveTz: "Pacific/Honolulu",
+      // 成田 19:10 発 → ホノルル 07:25 着（同じ暦日に着く）。
+      departTime: "19:10",
+      arriveTime: "07:25",
     },
   ],
 };
@@ -119,13 +122,35 @@ describe("移動日の下書きの TZ", () => {
     expect(item.tz).toBe("Asia/Tokyo");
   });
 
-  it("場所が解決できていなければ先頭候補（出発側）に落ちる", () => {
-    const [item] = deriveEventDraftItems(eventDraft({}), ctx);
+  // 場所が解決できていないときは時刻で絞る（narrowTzByTime）。移動日の候補は
+  // 「出発より前」か「到着より後」でないと成立しないので、片方が消えることがある。
+  it("場所が無くても、時刻が出発後なら到着側に決まる", () => {
+    // 15:12 は成田 19:10 発より前なので出発側も成立し、絞れない → 先頭候補。
+    const [before] = deriveEventDraftItems(eventDraft({}), ctx);
+    expect(before.prefill.tzDisambig).toEqual({
+      transitId: "T1",
+      side: "depart",
+    });
+
+    // 21:00 は日本時間なら出発済みなので出発側が消え、到着側に決まる。
+    const late = eventDraft({});
+    late[0].payload.startTime = "21:00";
+    const [item] = deriveEventDraftItems(late, ctx);
+    expect(item.prefill.tzDisambig).toEqual({
+      transitId: "T1",
+      side: "arrive",
+    });
+    expect(item.tz).toBe("Pacific/Honolulu");
+  });
+
+  it("場所も時刻も決め手が無ければ先頭候補（出発側）に落ちる", () => {
+    const noTime = eventDraft({});
+    noTime[0].payload.startTime = null as unknown as string;
+    const [item] = deriveEventDraftItems(noTime, ctx);
     expect(item.prefill.tzDisambig).toEqual({
       transitId: "T1",
       side: "depart",
     });
-    expect(item.tz).toBe("Asia/Tokyo");
   });
 
   it("移動日でなければ決定を持たない（毎回自動導出）", () => {

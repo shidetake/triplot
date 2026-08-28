@@ -88,6 +88,7 @@ export default function ExpenseFormRoute() {
       formattedAddress: p.formatted_address,
     })),
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
+    tzTimeline,
   });
 
   // 場所欄の Google サジェストの地理バイアス。**その費用の日時に「どこにいたか」**

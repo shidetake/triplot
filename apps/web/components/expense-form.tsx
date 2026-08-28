@@ -75,6 +75,7 @@ export function ExpenseForm({
   places,
   biasCenter, // Google 検索の地理バイアス（既存ピン重心 or 東京）
   tzTimeline, // 旅程から日付→TZ を引くタイムライン（費用の発生TZ推定）
+  initialTzDisambig,
   tripStart, // DatePopover の旅行期間ハイライト用
   tripEnd,
   // 編集モード。指定があると update 経路になり、各フィールドはこの値で
@@ -103,6 +104,8 @@ export function ExpenseForm({
   places: { id: string; name: string }[];
   biasCenter: LatLng;
   tzTimeline: TripTzTimeline;
+  // 取り込みの下書きから開いたときの、移動日のTZの初期選択。
+  initialTzDisambig?: { transitId: string; side: "depart" | "arrive" } | null;
   tripStart: string | null;
   tripEnd: string | null;
   editExpense?: ExpenseRow;
@@ -233,19 +236,31 @@ export function ExpenseForm({
     ? editExpense.tz
     : initResolution.kind === "single"
       ? initResolution.tz
-      : initResolution.options[0].tz;
+      : (initialTzDisambig
+          ? initResolution.options.find(
+              (o) =>
+                o.transitId === initialTzDisambig.transitId &&
+                o.side === initialTzDisambig.side,
+            )
+          : null
+        )?.tz ?? initResolution.options[0].tz;
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
   // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補を選択肢にも反映する
   // （「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
+  // 下書きから開いたときは、下書きが決めた側を初期選択にする（経度→時刻の
+  // 2段。deriveExpenseDraftItems 参照）。これが無いと移動日は常に先頭候補＝
+  // 出発側になり、到着後の支払いが出発地のTZで開く。
   const editDisambig =
-    isEdit && initResolution.kind === "ambiguous"
-      ? editExpense.tzDisambigTransitId && editExpense.tzDisambigSide
-        ? {
-            transitId: editExpense.tzDisambigTransitId,
-            side: editExpense.tzDisambigSide,
-          }
-        : initResolution.options[0]
-      : null;
+    initResolution.kind !== "ambiguous"
+      ? null
+      : isEdit
+        ? editExpense.tzDisambigTransitId && editExpense.tzDisambigSide
+          ? {
+              transitId: editExpense.tzDisambigTransitId,
+              side: editExpense.tzDisambigSide,
+            }
+          : initResolution.options[0]
+        : (initialTzDisambig ?? initResolution.options[0]);
   const [tz, setTzRaw] = useDraft<string>("tz", initTz);
   const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<
     string | null

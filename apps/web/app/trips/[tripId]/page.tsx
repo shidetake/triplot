@@ -303,6 +303,7 @@ export default async function TripDetailPage({
     fallbackCategoryId: initialCategoryId,
     places: placesForMatch,
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
+    tzTimeline,
   });
 
   const eventDrafts = deriveEventDraftItems(tripDrafts, {
@@ -550,6 +551,7 @@ export default async function TripDetailPage({
                           initialCategoryId={d.initialCategoryId}
                           averageRates={averageRates}
                           initialPaidAt={d.initialPaidAt}
+                          initialTzDisambig={d.tzDisambig}
                           places={placesForPicker}
                           biasCenter={draftBiasCenter(d.initialPaidAt)}
                           tzTimeline={tzTimeline}

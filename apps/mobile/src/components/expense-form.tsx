@@ -208,15 +208,20 @@ export function ExpenseForm({
 
   // 費用の発生TZ（乗継日の曖昧解決）。web と同じ契約。
   const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
+  // 下書きから開いたときは、下書きが決めた側を初期選択にする（経度→時刻の
+  // 2段で決めている。deriveExpenseDraftItems 参照）。これが無いと移動日は
+  // 常に先頭候補＝出発側になり、到着後の支払いが出発地のTZで開く。
   const editDisambig =
-    isEdit && initResolution.kind === "ambiguous"
-      ? editExpense.tzDisambigTransitId && editExpense.tzDisambigSide
-        ? {
-            transitId: editExpense.tzDisambigTransitId,
-            side: editExpense.tzDisambigSide,
-          }
-        : initResolution.options[0]
-      : null;
+    initResolution.kind !== "ambiguous"
+      ? null
+      : isEdit
+        ? editExpense.tzDisambigTransitId && editExpense.tzDisambigSide
+          ? {
+              transitId: editExpense.tzDisambigTransitId,
+              side: editExpense.tzDisambigSide,
+            }
+          : initResolution.options[0]
+        : (draft?.tzDisambig ?? initResolution.options[0]);
   const [tzDisambigTransitId, setTzDisambigTransitId] = useState<string | null>(
     editDisambig?.transitId ?? null,
   );

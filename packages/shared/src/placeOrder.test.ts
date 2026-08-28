@@ -23,6 +23,8 @@ const TO_HAWAII: TripTzTimeline = {
       arriveDate: "2026-04-28",
       departTz: "Asia/Tokyo",
       arriveTz: "Pacific/Honolulu",
+    departTime: "00:00",
+    arriveTime: "00:00",
     },
   ],
 };

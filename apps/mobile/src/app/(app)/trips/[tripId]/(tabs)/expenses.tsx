@@ -127,6 +127,7 @@ export default function ExpensesTab() {
       formattedAddress: p.formatted_address,
     })),
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
+    tzTimeline,
   });
 
   // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。

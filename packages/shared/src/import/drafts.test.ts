@@ -100,6 +100,7 @@ const expenseCtx = {
   fallbackCategoryId: "cat-other",
   places,
   unknownMerchantLabel: "不明な店",
+  tzTimeline: { fallbackTz: "Asia/Tokyo", transits: [] },
 };
 
 describe("deriveExpenseDraftItems", () => {
