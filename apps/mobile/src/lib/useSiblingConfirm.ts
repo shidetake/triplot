@@ -45,10 +45,15 @@ export function useSiblingConfirm(
       },
     });
     if (!r.ok) return;
-    const { expenses, events } = r.data;
+    const { expenses, events, needsRateDraftId } = r.data;
     if (expenses > 0 && events > 0) toast(t("import.siblingConfirmedBoth"));
     else if (expenses > 0) toast(t("import.siblingConfirmedExpense"));
     else if (events > 0) toast(t("import.siblingConfirmedEvent"));
+    // **黙って終わらせない。** 為替レートが決められない外貨の費用は作れないが、
+    // それを伝えていなかったので「連動確定が効いていない」ようにしか見えなかった
+    // （実データで USD のレシート 75 件が残っていた）。1件手で確定すれば、その
+    // 実効レートの平均で残りは自動で通るようになる。
+    if (needsRateDraftId) toast(t("import.siblingNeedsRate"));
   };
 
   const dismissSiblings = (emailIds: string[]) =>

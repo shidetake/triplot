@@ -17,6 +17,7 @@
 import type { EventFields } from "../data/events";
 import type { ExpenseFields } from "../data/expenses";
 import type { PlaceInput } from "../data/place";
+import { rateTo } from "../fxRates";
 import type { Currency } from "../types/database";
 
 import {
@@ -110,11 +111,16 @@ export function expenseFieldsFromDraft(
   d: ExpenseDraftItem,
   ctx: ExpenseAutoContext,
 ): ExpenseFields | null {
+  // レートは実績の平均が最優先。**その通貨の1件目だけ**、取り込み時に取って
+  // おいた市場レートで埋める（fxRates.ts）。市場レートよりユーザーの実効レート
+  // （カード手数料込み）の方が実態に近いので、実績ができたらそちらに切り替わる。
   const rate =
     d.initialCurrency === ctx.defaultCurrency
       ? 1
-      : ctx.averageRates[d.initialCurrency];
-  if (rate === undefined) return null;
+      : (ctx.averageRates[d.initialCurrency] ??
+        rateTo(d.fxRates, ctx.defaultCurrency) ??
+        undefined);
+  if (rate === undefined || rate === null) return null;
   return {
     localPrice: d.initialPrice,
     localCurrency: d.initialCurrency,

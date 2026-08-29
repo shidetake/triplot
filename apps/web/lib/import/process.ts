@@ -8,10 +8,12 @@ import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
-import type {
-  StoredEventDraft,
-  StoredReceipt,
+import {
+  receiptDate,
+  type StoredEventDraft,
+  type StoredReceipt,
 } from "@triplot/shared/import/drafts";
+import { fetchFxRates } from "@triplot/shared/fxRates";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import { fetchUnassignedDrafts } from "@triplot/shared/data/reads/inbox";
 import { unassignedBiasCenter } from "@triplot/shared/tripBias";
@@ -613,6 +615,20 @@ async function transitDayEndpoints(
     .map((p) => ({ lat: p.lat as number, lng: p.lng as number }));
 }
 
+// その通貨の1件目を自動で確定できるように、取り込みの時点で為替レートを
+// 取っておく（fxRates.ts のコメント参照）。**旅行がまだ決まっていないことが
+// あるので default_currency では引けない。** レシートの通貨を基準にした表を
+// まるごと持っておき、確定の瞬間に旅行の精算通貨で引く。
+async function attachFxRates(
+  receipt: StoredReceipt | null,
+): Promise<StoredReceipt | null> {
+  if (!receipt || !/^[A-Z]{3}$/.test(receipt.currency ?? "")) return receipt;
+  const { date } = receiptDate(receipt);
+  if (!date) return receipt;
+  const fxRates = await fetchFxRates(receipt.currency, date);
+  return fxRates ? { ...receipt, fxRates } : receipt;
+}
+
 async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
@@ -785,11 +801,13 @@ async function runExtraction(
     // （best-effort、失敗しても抽出自体は続行）。
     const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
     const merged = {
-      receipt: await resolveReceiptPlace(
-        supabase,
-        merge.merged.receipt,
-        tripId,
-        borrowed,
+      receipt: await attachFxRates(
+        await resolveReceiptPlace(
+          supabase,
+          merge.merged.receipt,
+          tripId,
+          borrowed,
+        ),
       ),
       events: await prefetchFlights(
         supabase,
@@ -824,7 +842,9 @@ async function runExtraction(
     // のまま一瞬表示され、その後に店名・金額の行に変わって見えた）。
     const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
     const enriched = {
-      receipt: await resolveReceiptPlace(supabase, receipt, tripId, borrowed),
+      receipt: await attachFxRates(
+        await resolveReceiptPlace(supabase, receipt, tripId, borrowed),
+      ),
       events: await prefetchFlights(supabase, events, tripId, borrowed),
     };
     await replacePendingDrafts(supabase, emailId, enriched);

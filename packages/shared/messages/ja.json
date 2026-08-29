@@ -577,6 +577,7 @@
     "dismissFailed": "破棄に失敗しました: {error}",
     "siblingConfirmedExpense": "費用も一緒に登録しました",
     "siblingConfirmedEvent": "予定も一緒に登録しました",
+    "siblingNeedsRate": "為替レートが決められないため、費用は確定していません。費用を1件手で確定してください。",
     "siblingConfirmedBoth": "費用と予定も一緒に登録しました",
     "dismissDraftBody": "同じメールから出た費用・予定をまとめて破棄します。",
     "newTrip": "新規旅行",

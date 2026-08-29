@@ -11,6 +11,7 @@ import {
   flightTitle,
   parseFlightNumber,
 } from "../flight";
+import type { FxRates } from "../fxRates";
 import type { PlaceCandidate } from "../placesSearch";
 import { deriveTransitTimezones, type PlaceCoords } from "../placeTimezone";
 import {
@@ -59,7 +60,13 @@ export type StoredEventDraft = EventDraft & {
 
 // prefetchFlights と同じ後付けデータ。費用の店名を Google の場所に解決
 // できていれば入る（resolveNamedPlace 参照）。
-export type StoredReceipt = Receipt & { resolvedPlace?: PlaceCandidate | null };
+export type StoredReceipt = Receipt & {
+  resolvedPlace?: PlaceCandidate | null;
+  // 取り込んだ時点で取っておいた為替レート表（fxRates.ts）。その通貨の1件目を
+  // 自動で確定できるようにするためのもので、実績が1件でもできれば以降は
+  // その平均が優先される。
+  fxRates?: FxRates | null;
+};
 
 // 場所の事前入力。web の PlacePickerInitial と同形（saved/google 分岐）。
 // "google" は事前解決できた場所が Google の場所と紐づいた時（resolveAirportPlace/
@@ -113,6 +120,8 @@ export type ExpenseDraftItem = {
   tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
   initialPlace: DraftPlacePrefill;
   autoResolvePlace: DraftAutoResolvePlace;
+  // 取り込み時のレート表（その通貨の1件目のときだけ使う）。
+  fxRates: FxRates | null;
 };
 
 // 予定下書きの事前入力（開始日時・TZ 以外）。web の EventFormPrefill と同形。
@@ -304,6 +313,7 @@ export function deriveExpenseDraftItems(
           autoResolvePlace: place
             ? null
             : { name: r.merchant, address: r.address },
+          fxRates: r.fxRates ?? null,
           initialTime: when.time,
         },
       ];

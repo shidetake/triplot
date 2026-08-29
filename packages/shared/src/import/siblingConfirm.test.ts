@@ -22,6 +22,7 @@ const expenseDraft = (o: Partial<ExpenseDraftItem> = {}): ExpenseDraftItem => ({
   initialPaidAt: "2026-08-01",
   initialPlace: { kind: "saved", id: "p1", name: "Kai Coffee" },
   autoResolvePlace: null,
+  fxRates: null,
   ...o,
 });
 
@@ -204,5 +205,44 @@ describe("placeInputFromDraft", () => {
       kind: "saved",
       placeId: null,
     });
+  });
+});
+
+// レートの決め方。実績の平均が最優先で、その通貨の1件目だけ取り込み時の
+// 市場レートで埋める（fxRates.ts）。これが無いと、外貨の費用は1件も自動で
+// 確定できない（実データで USD のレシート 75 件が黙って残っていた）。
+describe("外貨のレート", () => {
+  const fx = {
+    date: "2026-04-30",
+    base: "USD" as const,
+    rates: { JPY: 156.56 },
+  };
+  const ctx = {
+    defaultCurrency: "JPY" as const,
+    averageRates: {} as Record<string, number>,
+    myMemberId: "m1",
+    activeMemberIds: ["m1"],
+  };
+
+  it("実績が無ければ取り込み時のレートを使う", () => {
+    const f = expenseFieldsFromDraft(
+      expenseDraft({ initialCurrency: "USD", fxRates: fx }),
+      ctx,
+    );
+    expect(f?.rateToDefault).toBe(156.56);
+  });
+
+  it("実績があればそちらが優先（手数料込みの実効レート）", () => {
+    const f = expenseFieldsFromDraft(
+      expenseDraft({ initialCurrency: "USD", fxRates: fx }),
+      { ...ctx, averageRates: { USD: 160 } },
+    );
+    expect(f?.rateToDefault).toBe(160);
+  });
+
+  it("どちらも無ければ作らない（1 で作ると金額が壊れる）", () => {
+    expect(
+      expenseFieldsFromDraft(expenseDraft({ initialCurrency: "USD" }), ctx),
+    ).toBeNull();
   });
 });
