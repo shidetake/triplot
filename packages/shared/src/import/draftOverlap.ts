@@ -1,4 +1,5 @@
 import type { EventDraftItem } from "./drafts";
+import { normalizeMerchant } from "./merchantName";
 
 // 未確定の予定下書きどうしが時間帯で重なったときの後始末。
 //
@@ -42,13 +43,28 @@ function fromMin(total: number): { date: string; time: string } {
   return { date, time: `${pad(Math.floor(mins / 60))}:${pad(mins % 60)}` };
 }
 
-// 場所の同一性。解決できないものは null＝マージの根拠にしない。
+// 場所の同一性。
+//
+// 解決済みの場所（保存済み・Google）が第一。解決できていない時だけ、**店名の
+// 完全一致**に落とす。銀行の利用通知は店名しか持たず（住所も支払時刻も無い）、
+// 地理バイアスが作れない時期に取り込むと場所が解決できない。それでも同じ晩の
+// 同じ店なのは店名で分かるので、団子のまま置いておく理由が無い。
+//
+// **完全一致でしか使わない**（normalizeMerchant 参照）。部分一致にすると
+// "ABC #78" と "ABC #31" が同じ店になる。逆に途中で切れた表記は一致しないが、
+// 取りこぼす方に倒す — 間違ってまとめると元に戻せない。
+//
+// 解決済みと未解決は混ぜない（別のキー空間にする）。同じ店でも片方だけ解決して
+// いる時にまとめると、まとめた1件がどちらの場所を名乗るのかが決まらない。
 function placeKey(item: EventDraftItem): string | null {
   const p = item.prefill.place;
-  if (!p) return null;
-  if (p.kind === "saved") return `saved:${p.id}`;
-  if (p.kind === "google") return `google:${p.placeId}`;
-  return null;
+  if (p?.kind === "saved") return `saved:${p.id}`;
+  if (p?.kind === "google") return `google:${p.placeId}`;
+  if (p) return null;
+  const name = item.prefill.autoResolvePlace?.name;
+  if (!name) return null;
+  const key = normalizeMerchant(name);
+  return key ? `name:${key}` : null;
 }
 
 function startMin(it: EventDraftItem): number {

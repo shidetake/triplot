@@ -14,6 +14,7 @@ function item(
     endDate: string | null;
     title: string;
     place: EventDraftItem["prefill"]["place"];
+    autoResolveName: string;
     kind3: "timed" | "allday" | "transit";
     tz: string;
     note: string | null;
@@ -41,7 +42,9 @@ function item(
       arriveTz: null,
       place: o.place ?? null,
       endPlace: null,
-      autoResolvePlace: null,
+      autoResolvePlace: o.autoResolveName
+        ? { name: o.autoResolveName, address: null }
+        : null,
       flightNumber: null,
     },
   };
@@ -327,5 +330,79 @@ describe("draftToScheduleEvent（見出しと移動日の列）", () => {
     const ev = draftToScheduleEvent(withTz, "m1");
     expect(ev.tzDisambigTransitId).toBe("t1");
     expect(ev.tzDisambigSide).toBe("arrive");
+  });
+});
+
+
+// 銀行の利用通知は店名しか持たない（住所も支払時刻も無い）ので、取り込んだ時期に
+// よっては場所が解決できない。それでも同じ晩の同じ店なのは店名で分かる。
+describe("場所が解決できていない時は店名でまとめる", () => {
+  it("決済代行の接頭辞が付いていても同じ店とみなす", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({
+          id: "a",
+          time: "16:36",
+          endTime: "17:36",
+          title: "バー",
+          autoResolveName: "SQ *HOWZIT BREWING",
+        }),
+        item({
+          id: "b",
+          time: "16:58",
+          endTime: "17:58",
+          title: "飲食",
+          autoResolveName: "HOWZIT BREWING",
+        }),
+      ],
+      fmt,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0].time).toBe("16:36");
+    expect(out[0].prefill.endTime).toBe("17:58");
+    expect(out[0].draftIds.sort()).toEqual(["a", "b"]);
+  });
+
+  it("別の店舗はまとめない", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({
+          id: "a",
+          time: "16:00",
+          endTime: "17:00",
+          autoResolveName: "ABC #78 HAWAII",
+        }),
+        item({
+          id: "b",
+          time: "16:30",
+          endTime: "17:30",
+          autoResolveName: "ABC #31 HAWAII",
+        }),
+      ],
+      fmt,
+    );
+    expect(out).toHaveLength(2);
+  });
+
+  // 片方だけ解決していると、まとめた1件がどちらの場所を名乗るか決まらない。
+  it("解決済みと未解決は混ぜない", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({
+          id: "a",
+          time: "16:00",
+          endTime: "17:00",
+          place: google("P1"),
+        }),
+        item({
+          id: "b",
+          time: "16:30",
+          endTime: "17:30",
+          autoResolveName: "HOWZIT BREWING",
+        }),
+      ],
+      fmt,
+    );
+    expect(out).toHaveLength(2);
   });
 });
