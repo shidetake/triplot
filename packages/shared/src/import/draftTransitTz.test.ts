@@ -287,3 +287,57 @@ describe("TZ の境界が仮予定のフライトのとき", () => {
     expect(dinner.tz).toBe("Asia/Tokyo");
   });
 });
+
+// 移動日はどちら側の TZ か候補が2つ出る。**その移動自身が持っている TZ** が
+// 一番直接的な証拠なので最優先で見る。見ていなかったため、ハワイでの乗車が
+// 移動日の東京側の列に並んでいた（実機で確認）。
+describe("移動日の乗車（配車・タクシー）", () => {
+  function ride(o: { time: string; tz: string }) {
+    return [
+      {
+        id: "r1",
+        email_id: "e-r1",
+        kind: "event",
+        payload: {
+          kind: "transit",
+          title: "Uber",
+          startDate: "2026-04-28",
+          startTime: o.time,
+          endDate: "2026-04-28",
+          endTime: o.time,
+          departTz: o.tz,
+          arriveTz: o.tz,
+          location: null,
+          vehicleNumber: null,
+          referenceId: null,
+        },
+      },
+    ];
+  }
+
+  it("ハワイでの乗車は到着側に付く", () => {
+    // 08:26 は日本時間なら成田 19:10 発より前なので、時刻では出発側も成立する
+    // （＝時刻だけでは決められない）。自分の TZ を見て初めてハワイに決まる。
+    const [item] = deriveEventDraftItems(
+      ride({ time: "08:26", tz: "Pacific/Honolulu" }),
+      ctx,
+    );
+    expect(item.tz).toBe("Pacific/Honolulu");
+    expect(item.prefill.tzDisambig).toEqual({
+      transitId: "T1",
+      side: "arrive",
+    });
+  });
+
+  it("日本での乗車は出発側に付く", () => {
+    const [item] = deriveEventDraftItems(
+      ride({ time: "11:49", tz: "Asia/Tokyo" }),
+      ctx,
+    );
+    expect(item.tz).toBe("Asia/Tokyo");
+    expect(item.prefill.tzDisambig).toEqual({
+      transitId: "T1",
+      side: "depart",
+    });
+  });
+});

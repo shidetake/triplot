@@ -341,13 +341,16 @@ export function deriveEventDraftItems(
       const ev = d.payload as unknown as StoredEventDraft | null;
       if (!ev) return [];
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
-      // 移動日は候補が2つ出る。場所が解決できていれば、その経度から
-      // どちら側かを当てて初期選択にする（フォームでは変更できる）。
-      // 当てられない時だけ従来どおり先頭候補。
-      // 移動日の候補の選び方は2段。まず場所の経度で当て、当てられなければ
-      // 時刻で成立しない候補を落とす（narrowTzByTime）。どちらも決められない
-      // ときだけ先頭候補（＝出発側）。
+      // 移動日は候補が2つ出る。どちら側かを、証拠の強い順に当てる:
+      //
+      //   1. **その移動自身が持っている TZ**（移動の下書きだけ）。抽出が乗降地
+      //      から決めた値で、これ以上直接的な証拠は無い。これを見ていなかった
+      //      ため、ハワイでの乗車が移動日の東京側の列に並んでいた（実機で確認）。
+      //   2. 解決できた場所の経度。移動は出発地、それ以外は場所そのもの。
+      //   3. 時刻で成立しない候補を落とす（narrowTzByTime）。
+      //   4. どれも決められないときだけ先頭候補（＝出発側）。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
+      const ownTz = ev.kind === "transit" ? (ev.departTz ?? ev.arriveTz) : null;
       const narrowed =
         res.kind === "single"
           ? []
@@ -355,9 +358,10 @@ export function deriveEventDraftItems(
       const picked =
         res.kind === "single"
           ? null
-          : (pickTzByLongitude(
+          : ((ownTz ? res.options.find((o) => o.tz === ownTz) : null) ??
+            pickTzByLongitude(
               res.options,
-              ev.resolvedNamedPlace?.lng,
+              ev.resolvedNamedPlace?.lng ?? ev.resolvedDeparturePlace?.lng,
               ev.startDate,
             ) ??
             narrowed[0] ??
