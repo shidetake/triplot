@@ -1,3 +1,4 @@
+import { FUNCTION_MAX_SECONDS } from "@/lib/import/process";
 import type { createServiceClient } from "@/lib/supabase/service";
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
@@ -12,9 +13,10 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 // 実行がロックを握ったままだと、以降 drain が永久に止まる。
 const LEASE = "import_drain";
 
-// 関数の寿命より長く取る。短いと、まだ走っている実行のロックが先に切れて次が
-// 入ってくる（＝ロックが無いのと同じ）。
-const LEASE_TTL_MS = 90_000;
+// **関数の寿命より長く取る。** 短いと、まだ走っている実行のリースが先に切れて次が
+// 入ってくる＝ロックが無いのと同じになる。寿命を伸ばしたらここも連動して伸ばす
+// （FUNCTION_MAX_SECONDS から導いているので、片方だけ動かせない）。
+const LEASE_TTL_MS = FUNCTION_MAX_SECONDS * 1000 + 60_000;
 
 export async function acquireDrainLease(
   supabase: ServiceClient,

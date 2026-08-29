@@ -4,6 +4,7 @@ import { acquireDrainLease, releaseDrainLease } from "@/lib/import/drainLease";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import {
   DRAIN_BUDGET_MS,
+  FUNCTION_MAX_SECONDS,
   reprocessOverQuota,
   retryDueErrors,
 } from "@/lib/import/process";
@@ -14,9 +15,10 @@ import { createServiceClient } from "@/lib/supabase/service";
 // の再抽出」を消化する。**件数では区切らず、時間の予算まで進める**（流量を決めるのは
 // レート制限そのもの）。
 
-// 関数の寿命。時間の予算（DRAIN_BUDGET_MS）は、走り出した1件ぶんの余裕を引いて
-// これより内側に取ってある（内訳は DRAIN_BUDGET_MS のコメント）。
-export const maxDuration = 60;
+// 関数の寿命。**プランの上限そのもの**（Hobby は 1〜300 秒。300 を超える値を書くと
+// デプロイが `invalid_max_duration` で失敗する＝実測済み）。時間の予算
+// （DRAIN_BUDGET_MS）は、走り出した1件ぶんの余裕を引いてこれより内側に取る。
+export const maxDuration = FUNCTION_MAX_SECONDS;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
