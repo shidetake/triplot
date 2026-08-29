@@ -777,7 +777,23 @@ export function buildTripTzTimeline(
   defaultTimezone?: string | null,
 ): TripTzTimeline {
   const transits = sortTransitsByDepartureInstant(
-    events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
+    events.filter(
+      (e) =>
+        e.kind === "transit" &&
+        e.endAt &&
+        e.endTz &&
+        // **TZ が変わらない移動は年表に入れない。** 年表は「境界」の列で、
+        // 各要素が現在の TZ を書き換える。同じ TZ 内の移動（配車・タクシー・
+        // 在来線）は境界を作らないのに、入れると現在の TZ を自分の値で
+        // 上書きしてしまう。
+        //
+        // 上書きが害になるのは、その値が推測だから。取り込みの移動の TZ は
+        // 乗降地から LLM が推定したもので、外すことがあるうえ、取れなければ
+        // 旅行の既定 TZ に落ちる。実データでは、ホノルル滞在中の Uber が
+        // TZ 不明のまま「東京」として年表に入り、**そこから先の日が全部東京に
+        // 戻って**いた（フライトが示した境界が乗車で打ち消された）。
+        e.startTz !== e.endTz,
+    ),
   ).map((t) => ({
     transitId: t.id,
     departDate: parseWall(t.startAt).date,

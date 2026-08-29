@@ -12,6 +12,7 @@ import {
   parseFlightNumber,
 } from "../flight";
 import type { PlaceCandidate } from "../placesSearch";
+import { deriveTransitTimezones, type PlaceCoords } from "../placeTimezone";
 import {
   buildTripTzTimeline,
   formatDayLabel,
@@ -625,11 +626,50 @@ export function deriveEventDraftItemsWithTimeline(
   };
 }
 
+// 下書きの場所から座標を取る（保存済みの場所は id しか持たないので取れない）。
+function coordsOfPrefill(p: EventDraftPlacePrefill): PlaceCoords | null {
+  if (!p || p.kind === "saved") return null;
+  return { lat: p.lat, lng: p.lng };
+}
+
+// 移動の下書きの出発TZ・到着TZ。
+//
+// **prefill の departTz/arriveTz は「上書き」であって実効値ではない。** 空港の
+// ように座標が分かっている端点では、上書きは置かずに座標から導出する規約に
+// なっている（event-form の applyFlight と同じ。上書きを埋めると後から場所を
+// 直しても古い TZ が残るため）。そのまま実効値として読むと**フライトの TZ 境界が
+// 消える** — 実データで、成田→ホノルルの仮予定が両側とも同じ TZ になり、
+// カレンダーの列が東京のままだった。保存時と同じ導出をここでも通す。
+function draftTransitTimezones(d: EventDraftItem): {
+  startTz: string;
+  endTz: string;
+} {
+  const derived = deriveTransitTimezones(
+    coordsOfPrefill(d.prefill.place),
+    coordsOfPrefill(d.prefill.endPlace ?? d.prefill.place),
+  );
+  const dep = d.prefill.departTz ?? derived.startTz;
+  const arr = d.prefill.arriveTz ?? derived.endTz;
+  // **片方しか決められないときは、もう片方に合わせる。** crossesTimezone と
+  // 同じ規約（どちらかが決まらないなら境界にしない）。ここで既定値に落とすと
+  // 幽霊の境界ができる — 実データで、乗車地だけ解決できた Uber が
+  // 「ホノルル → 東京」として年表に入っていた。
+  return { startTz: dep ?? arr ?? d.tz, endTz: arr ?? dep ?? d.tz };
+}
+
 export function draftToScheduleEvent(
   d: EventDraftItem,
   myMemberId: string,
 ): EventRow {
-  const kind3 = d.prefill.kind3;
+  const tzs =
+    d.prefill.kind3 === "transit" ? draftTransitTimezones(d) : null;
+  // **TZ が変わらない移動は境界にしない。** 保存時の規約（crossesTimezone）と
+  // 同じ。抽出は配車・タクシーも kind='transit' で作るが、時差が無い移動を
+  // 境界として扱うと年表の現在 TZ を推測値で上書きしてしまう（実データで、
+  // ホノルル滞在中の Uber が「東京」として入り、そこから先の日が全部東京に
+  // 戻っていた）。
+  const kind3 =
+    tzs && tzs.startTz === tzs.endTz ? "timed" : d.prefill.kind3;
   const { allDay: isAllDay, startAt, endAt } = draftEventTimes(d);
   return {
     id: draftEventId(d.id),
@@ -638,8 +678,8 @@ export function draftToScheduleEvent(
     allDay: kind3 === "allday",
     startAt,
     endAt,
-    startTz: kind3 === "transit" ? (d.prefill.departTz ?? d.tz) : null,
-    endTz: kind3 === "transit" ? (d.prefill.arriveTz ?? d.tz) : null,
+    startTz: kind3 === "transit" ? tzs!.startTz : null,
+    endTz: kind3 === "transit" ? tzs!.endTz : null,
     tzDisambigTransitId: d.prefill.tzDisambig?.transitId ?? null,
     tzDisambigSide: d.prefill.tzDisambig?.side ?? null,
     startPlaceId: null,
