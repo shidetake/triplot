@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { tripBiasCenter } from "./tripBias";
+import { tripBiasCenter, unassignedBiasCenter } from "./tripBias";
 
 const NRT = { lat: 35.772, lng: 140.393 };
 const HNL = { lat: 21.319, lng: -157.922 };
@@ -75,5 +75,64 @@ describe("tripBiasCenter", () => {
     expect(
       tripBiasCenter({ events: [], places: [], drafts: null, target: null }),
     ).toBeUndefined();
+  });
+});
+
+// 旅行が決まっていないメールは、同じ受信箱の未割り当ての下書きからバイアスを
+// 借りる。材料は移動の下書きで、そこから「端点（時刻と座標）」と「TZ の年表」の
+// 両方を取る。
+describe("unassignedBiasCenter", () => {
+  // 成田 19:10 発 → ホノルル 07:25 着（日付変更線を跨ぐので同じ暦日に着く）。
+  const flight = {
+    kind: "event",
+    payload: {
+      kind: "transit",
+      startDate: "2026-04-28",
+      startTime: "19:10",
+      endDate: "2026-04-28",
+      endTime: "07:25",
+      departTz: "Asia/Tokyo",
+      arriveTz: "Pacific/Honolulu",
+      resolvedDeparturePlace: { lat: NRT.lat, lng: NRT.lng },
+      resolvedArrivalPlace: { lat: HNL.lat, lng: HNL.lng },
+    },
+  };
+
+  it("到着後の日はホノルルを借りる", () => {
+    const c = unassignedBiasCenter([flight], {
+      date: "2026-04-30",
+      time: "17:25",
+    });
+    expect(c).toEqual(HNL);
+  });
+
+  it("出発より前の日は成田を借りる", () => {
+    const c = unassignedBiasCenter([flight], {
+      date: "2026-04-27",
+      time: "12:00",
+    });
+    expect(c).toEqual(NRT);
+  });
+
+  it("移動の下書きが無ければ借りられない", () => {
+    const receiptOnly = [
+      { kind: "expense", payload: { date: "2026-04-30", category: "飲食" } },
+    ];
+    expect(
+      unassignedBiasCenter(receiptOnly, { date: "2026-04-30", time: null }),
+    ).toBeUndefined();
+  });
+
+  // 対象日の TZ が分からないと壁時計を絶対時刻に直せず、「まだ移動していない＝
+  // 出発地」に落ちてホノルルのレシートに成田を当ててしまう。TZ の年表も同じ
+  // 移動の下書きから組んでいることを、到着後の日で確かめる（上の1本目が
+  // ホノルルを返すこと自体がその証拠）。
+  it("移動日は候補が2つあり、時刻で絞れなければ出発側に倒れる", () => {
+    // 08:30 は日本時間なら出発前・ハワイ時間なら到着後で、どちらも成立する。
+    const c = unassignedBiasCenter([flight], {
+      date: "2026-04-28",
+      time: "08:30",
+    });
+    expect(c).toEqual(NRT);
   });
 });

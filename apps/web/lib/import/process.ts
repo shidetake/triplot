@@ -13,6 +13,8 @@ import type {
   StoredReceipt,
 } from "@triplot/shared/import/drafts";
 import { dominantCenter } from "@triplot/shared/placeMap";
+import { fetchUnassignedDrafts } from "@triplot/shared/data/reads/inbox";
+import { unassignedBiasCenter } from "@triplot/shared/tripBias";
 import {
   resolveAirportPlace,
   resolveNamedPlace,
@@ -44,6 +46,9 @@ const MERGE_LOOKBACK_DAYS = 30;
 export { EXTRACT_ERROR_NO_CONTENT };
 
 type ServiceClient = ReturnType<typeof createServiceClient>;
+
+// バイアスを借りる材料。中身の判定は shared 側（unassignedBiasCenter）が持つ。
+type BiasDraft = { kind: string; payload: unknown };
 
 // 月初（UTC）の ISO 文字列。
 function monthStartIso(): string {
@@ -370,12 +375,40 @@ async function fetchTripBiasCenter(
 // 点の並びに依存し、対象日と無関係に決まってしまう）。対象日付以前に到着
 // した直近の移動（transit）があれば、その到着地（＝対象日にいるはずの場所）
 // を優先してバイアスにする。無ければ dominantCenter にフォールバックする。
+// 旅行が決まっていない時だけ、同じ受信箱の未割り当ての下書きを取ってくる
+// （バイアスの材料。unassignedBiasCenter 参照）。**1通の抽出につき1回だけ引く** —
+// 場所の解決は費用と予定それぞれで走るので、その都度引くと同じクエリを何度も
+// 投げることになる。
+async function fetchBiasDrafts(
+  supabase: ServiceClient,
+  userId: string,
+  tripId: string | null,
+): Promise<BiasDraft[] | null> {
+  if (tripId) return null;
+  return await fetchUnassignedDrafts(supabase, userId);
+}
+
 async function fetchBiasCenterForDate(
   supabase: ServiceClient,
   tripId: string | null,
   targetDate: string | null,
+  // 旅行が決まっていない時の材料＝**同じ受信箱の未割り当ての下書き**。
+  // 日付の近い未割り当ての下書きは同じ旅行のものである可能性が高いので、
+  // そこから「その日どこにいたか」を借りる（unassignedBiasCenter）。
+  // これが無いと、旅行に割り当てられる前に取り込まれたメールは店名を一切
+  // 解決できない（実データで、旅行未確定のまま取り込んだ Howzit / ALOHA SMASH
+  // が文字列のまま残っていた）。
+  fallback?: { drafts: BiasDraft[] | null; time: string | null },
 ): Promise<{ lat: number; lng: number } | null> {
-  if (!tripId) return null;
+  if (!tripId) {
+    if (!fallback || !targetDate) return null;
+    return (
+      unassignedBiasCenter(fallback.drafts, {
+        date: targetDate,
+        time: fallback.time,
+      }) ?? null
+    );
+  }
   if (targetDate) {
     const { data: transits } = await supabase
       .from("events")
@@ -420,6 +453,7 @@ async function prefetchFlights(
   supabase: ServiceClient,
   events: EventDraft[],
   tripId: string | null,
+  unassignedDrafts: BiasDraft[] | null = null,
 ): Promise<StoredEventDraft[]> {
   const api = createFlightApi(supabase);
   const placesApiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
@@ -459,7 +493,10 @@ async function prefetchFlights(
       // 住所の場所になる（寄せられないものを無理に寄せない）。
       const rideCenter =
         ev.departLocation || ev.arriveLocation
-          ? await fetchBiasCenterForDate(supabase, tripId, ev.startDate)
+          ? await fetchBiasCenterForDate(supabase, tripId, ev.startDate, {
+              drafts: unassignedDrafts,
+              time: ev.startTime,
+            })
           : null;
       if (placesApiKey && rideCenter) {
         const resolveEndpoint = async (name: string | null | undefined) => {
@@ -499,6 +536,7 @@ async function prefetchFlights(
           supabase,
           tripId,
           ev.startDate,
+          { drafts: unassignedDrafts, time: ev.startTime },
         );
         // 住所があればバイアスは要らない（resolveNamedPlace 参照）。旅行に
         // 座標つきの場所が1つも無くても、住所さえ書いてあれば解決できる。
@@ -579,6 +617,7 @@ async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
   tripId: string | null,
+  unassignedDrafts: BiasDraft[] | null = null,
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
@@ -608,9 +647,12 @@ async function resolveReceiptPlace(
     const biases =
       endpoints.length >= 2
         ? endpoints
-        : [await fetchBiasCenterForDate(supabase, tripId, date)].filter(
-            (b): b is { lat: number; lng: number } => !!b,
-          );
+        : [
+            await fetchBiasCenterForDate(supabase, tripId, date, {
+              drafts: unassignedDrafts,
+              time: receipt.time,
+            }),
+          ].filter((b): b is { lat: number; lng: number } => !!b);
     let best: { place: PlaceCandidate; km: number } | null = null;
     for (const biasCenter of biases) {
       const r = await resolveNamedPlace(receipt.merchant, receipt.address, {
@@ -741,13 +783,20 @@ async function runExtraction(
     // resolvedNamedPlace に、費用は resolveReceiptPlace で同様に埋め込む。
     // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
+    const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
     const merged = {
       receipt: await resolveReceiptPlace(
         supabase,
         merge.merged.receipt,
         tripId,
+        borrowed,
       ),
-      events: await prefetchFlights(supabase, merge.merged.events, tripId),
+      events: await prefetchFlights(
+        supabase,
+        merge.merged.events,
+        tripId,
+        borrowed,
+      ),
     };
     await replacePendingDrafts(supabase, merge.targetId, merged);
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
@@ -773,9 +822,10 @@ async function runExtraction(
     // 見えるが中身（店名・金額）はまだ無い」半端な状態が受信箱に表示されて
     // しまう（実機フィードバック: 件名 "Fwd: Receipt from Howzit Brewing #liIG"
     // のまま一瞬表示され、その後に店名・金額の行に変わって見えた）。
+    const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
     const enriched = {
-      receipt: await resolveReceiptPlace(supabase, receipt, tripId),
-      events: await prefetchFlights(supabase, events, tripId),
+      receipt: await resolveReceiptPlace(supabase, receipt, tripId, borrowed),
+      events: await prefetchFlights(supabase, events, tripId, borrowed),
     };
     await replacePendingDrafts(supabase, emailId, enriched);
     // LLM が確信を持って旅行を割り当てたら自動割り当て（受信箱でのクリックを省く）。
