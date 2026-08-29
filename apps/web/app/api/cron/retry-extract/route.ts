@@ -4,7 +4,6 @@ import { acquireDrainLease, releaseDrainLease } from "@/lib/import/drainLease";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import {
   DRAIN_BUDGET_MS,
-  FUNCTION_MAX_SECONDS,
   reprocessOverQuota,
   retryDueErrors,
 } from "@/lib/import/process";
@@ -18,7 +17,12 @@ import { createServiceClient } from "@/lib/supabase/service";
 // 関数の寿命。**プランの上限そのもの**（Hobby は 1〜300 秒。300 を超える値を書くと
 // デプロイが `invalid_max_duration` で失敗する＝実測済み）。時間の予算
 // （DRAIN_BUDGET_MS）は、走り出した1件ぶんの余裕を引いてこれより内側に取る。
-export const maxDuration = FUNCTION_MAX_SECONDS;
+//
+// **リテラルで書くこと。** Next はこの segment config を静的に読むので、import した
+// 定数を入れるとビルドが "Invalid segment configuration export" で落ちる。なので
+// FUNCTION_MAX_SECONDS と同じ値を二重に持つことになる。ズレないように
+// functionDuration.test.ts がこの行と定数を突き合わせている。
+export const maxDuration = 300;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

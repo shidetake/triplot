@@ -231,6 +231,10 @@ export type FailureKind = "rate_limit" | "transient" | "permanent" | "unknown";
 const MAX_RETRIES = 6;
 // 関数の寿命。**プランの上限いっぱい**に取る（Hobby は 300 秒。超えるとデプロイが
 // `invalid_max_duration` で失敗する）。長いほど1回で多く流せる。
+//
+// cron のルートの `export const maxDuration` と同じ値。Next は segment config を
+// 静的に読むので import した定数を書けず、二重に持つしかない（functionDuration.test.ts
+// が突き合わせる）。
 export const FUNCTION_MAX_SECONDS = 300;
 
 // 1 件の抽出に見込む最悪の時間。実測 15〜30 秒（LLM 2 パス＋リンク取得＋場所解決）。
