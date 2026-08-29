@@ -608,6 +608,8 @@
     "creditsPerEmail": "1通あたり {amount}（実測平均）",
     "creditsRemainingEmails": "残り約 {count} 通ぶん",
     "creditsLow": "残高が少なくなっています。入金を検討してください。",
+    "creditsRateLimited": "無料枠のレート制限で {count} 件が取り込み待ちです。有料クレジットを入れると制限が外れます。",
+    "creditsTopUp": "クレジットを購入（Vercel）",
     "creditsUnavailable": "残高を取得できませんでした（AI_GATEWAY_API_KEY 未設定、または照会に失敗）。"
   },
   "feedback": {

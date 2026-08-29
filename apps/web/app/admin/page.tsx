@@ -5,6 +5,7 @@ import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
 import { InlineDivider } from "@/components/inline-divider";
+import { MessageBox } from "@/components/message-box";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
 import { createClient } from "@/lib/supabase/server";
@@ -19,6 +20,12 @@ import { updateFeedbackStatusAction } from "./actions";
 // 残高がこれを下回ったら警告を出す。目安は「上限まで使うユーザー1人の1か月分」
 // （月100通 × 実測 $0.021 ≒ $2）。1人ぶんを切ったら手当てが要る、という線。
 const CREDITS_LOW_USD = 2;
+
+// AI Gateway のクレジット購入（top-up モーダル）。**チーム slug を埋め込まない**
+// — `/d?to=` は Vercel 側でログイン中のチームに解決してくれるリダイレクタなので、
+// この1本でよい（slug を焼き込むと、チームを変えた時に黙って迷子になる）。
+const TOP_UP_URL =
+  "https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dtop-up";
 
 // クレジットは USD 建て。小数が意味を持つ額なので3桁まで見せる。
 function formatUsd(v: number): string {
@@ -58,13 +65,23 @@ export default async function AdminPage() {
   // AI Gateway の残高（診断）。尽きると取り込みが止まり、入金するまで復旧しない
   // ＝運用者が気づける場所が要る。1通あたりの単価は固定値を持たず、
   // 「累計使用額 ÷ 抽出できたメール数」で毎回出す（定数だと実態からずれていく）。
-  const [credits, { count: extractedCount }] = await Promise.all([
-    fetchGatewayCredits(),
-    supabase
-      .from("inbound_emails")
-      .select("id", { count: "exact", head: true })
-      .not("extracted_at", "is", null),
-  ]);
+  //
+  // 残高だけでは足りない。**無料枠のレート制限は残高があっても掛かる**ので、
+  // 「残高は十分なのに取り込みが進まない」が残高の表示からは読み取れない
+  // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
+  const [credits, { count: extractedCount }, { count: rateLimitedCount }] =
+    await Promise.all([
+      fetchGatewayCredits(),
+      supabase
+        .from("inbound_emails")
+        .select("id", { count: "exact", head: true })
+        .not("extracted_at", "is", null),
+      supabase
+        .from("inbound_emails")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "error")
+        .eq("extract_error_kind", "rate_limit"),
+    ]);
   const perEmail =
     credits && extractedCount && extractedCount > 0
       ? credits.totalUsed / extractedCount
@@ -114,9 +131,9 @@ export default async function AdminPage() {
               </p>
             )}
             {credits.balance < CREDITS_LOW_USD && (
-              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300">
+              <MessageBox kind="warning" className="mt-3">
                 {t("creditsLow")}
-              </p>
+              </MessageBox>
             )}
           </>
         ) : (
@@ -124,6 +141,21 @@ export default async function AdminPage() {
             {t("creditsUnavailable")}
           </p>
         )}
+        {rateLimitedCount ? (
+          <MessageBox kind="warning" className="mt-3">
+            {t("creditsRateLimited", { count: rateLimitedCount })}
+          </MessageBox>
+        ) : null}
+        <p className="mt-3 text-sm">
+          <a
+            href={TOP_UP_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:underline"
+          >
+            {t("creditsTopUp")}
+          </a>
+        </p>
       </section>
 
       <section className="mt-10">

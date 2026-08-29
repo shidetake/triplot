@@ -608,6 +608,8 @@
     "creditsPerEmail": "{amount} per email (measured average)",
     "creditsRemainingEmails": "about {count} more emails",
     "creditsLow": "The balance is running low. Consider topping up.",
+    "creditsRateLimited": "{count} emails are waiting because of free-tier rate limits. Paid credits remove the limit.",
+    "creditsTopUp": "Buy credits (Vercel)",
     "creditsUnavailable": "Could not read the balance (AI_GATEWAY_API_KEY not set, or the lookup failed)."
   },
   "feedback": {
