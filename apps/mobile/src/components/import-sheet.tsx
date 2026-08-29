@@ -181,7 +181,9 @@ export function ImportSheet() {
         if (group.length === 0) return null;
         return (
         <View key={headingKey} style={styles.group}>
-          <Text style={styles.groupHeading}>{t(headingKey)}</Text>
+          <Text style={styles.groupHeading}>
+            {t(headingKey, { count: group.length })}
+          </Text>
           <View style={styles.listCard}>
           {group.map((e, i) => {
         // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
@@ -233,7 +235,9 @@ export function ImportSheet() {
         <Text style={styles.empty}>{t("emptyState")}</Text>
       ) : (
         <View style={styles.group}>
-          <Text style={styles.groupHeading}>{t("draftsHeading")}</Text>
+          <Text style={styles.groupHeading}>
+            {t("draftsHeading", { count: emails.length })}
+          </Text>
           <View style={styles.listCard}>
           {emails.map((e, i) => {
           const row = rowById.get(e.id);

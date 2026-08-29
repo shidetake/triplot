@@ -582,9 +582,9 @@
     "newTrip": "新規旅行",
     "newTripHint": "旅行一覧の「旅行の候補」から作成できます",
     "noTripsToAssign": "割り当てられる旅行がまだありません。",
-    "waitingHeading": "取り込み待ち",
-    "draftsHeading": "未確定の取り込み",
-    "failedHeading": "取り込みに失敗"
+    "waitingHeading": "取り込み待ち ({count})",
+    "draftsHeading": "未確定の取り込み ({count})",
+    "failedHeading": "取り込みに失敗 ({count})"
   },
   "admin": {
     "heading": "管理",

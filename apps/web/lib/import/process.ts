@@ -887,6 +887,11 @@ export async function retryDueErrors(
     .not("next_retry_at", "is", null)
     .lte("next_retry_at", new Date().toISOString())
     .order("next_retry_at", { ascending: true })
+    // 同着の時は**受信の早い順**。レート制限に当たると期限の来ている行を全部
+    // 同じ next_retry_at に押し出すので、next_retry_at だけでは全件が同着になり、
+    // 並び順が Postgres の返す順（＝規定なし）に落ちる。実際、本番で 83 件が
+    // 同一の値になっていて、受信順と抽出順が無関係にばらけていた。
+    .order("received_at", { ascending: true })
     .limit(opts.limit ?? 10);
   if (opts.userId) q = q.eq("user_id", opts.userId);
   const { data: rows } = await q;

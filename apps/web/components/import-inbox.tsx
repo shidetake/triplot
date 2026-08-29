@@ -152,7 +152,7 @@ export function ImportInbox({
         return (
         <div key={headingKey}>
           <h3 className="mt-6 text-xs text-muted-foreground">
-            {t(headingKey)}
+            {t(headingKey, { count: group.length })}
           </h3>
           <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
           {group.map((e) => (
@@ -210,7 +210,7 @@ export function ImportInbox({
       ) : (
         <>
           <h3 className="mt-6 text-xs text-muted-foreground">
-            {t("draftsHeading")}
+            {t("draftsHeading", { count: rows.length })}
           </h3>
           {/* 同種の項目が並ぶ一覧は1件ずつ枠と隙間を持たせず、一覧全体を1つの枠に
               して行を区切り線で分ける（ui-guidelines「カードや行を縦に並べる時の
