@@ -64,6 +64,11 @@ function gapDays(a: EmailInfo, b: EmailInfo): number {
 
 // 1通のメールの下書きから、期間・種別・場所の手がかりをまとめる。
 // 旅行の証拠にならないメール（レストランのレシート等）は null。
+//
+// **これは「候補を作るか」と「候補の日程をどこにするか」を決めるルールであって、
+// 「候補に何が属するか」のルールではない。** 属するかは日程で決まる
+// （attachInRange）。レストランのレシート単体では旅行の存在を主張できないが、
+// 移動や宿泊が示した日程の中にあるなら、その旅行のものだと分かる。
 function emailInfo(emailId: string, drafts: ProposalDraft[]): EmailInfo | null {
   let start: string | null = null;
   let end: string | null = null;
@@ -183,7 +188,7 @@ export function deriveTripProposals(
     }
   }
 
-  return groups
+  const proposals = groups
     .map((g) => ({
       emailIds: g.map((x) => x.emailId),
       startDate: g.reduce((m, x) => (x.start < m ? x.start : m), g[0].start),
@@ -205,6 +210,10 @@ export function deriveTripProposals(
         { start: b.startDate, title: b.name },
       ),
     );
+
+  // 日程が決まった後で、その中に入るメールを足す（日程は広げない）。
+  attachInRange(proposals, drafts ?? []);
+  return proposals;
 }
 
 // 候補から旅行作成フォームに渡す初期値。終了日は宿泊の最終日（＝チェック
@@ -221,4 +230,71 @@ export function tripProposalDefaults(p: TripProposal): {
     // 見込んでおく方が編集が少ない。
     endDate: p.endDate === p.startDate ? addDays(p.endDate, 1) : p.endDate,
   };
+}
+
+// 各メールの期間（下書きの種別を問わない）。候補の日程に入るかを見るためのもの。
+function emailSpans(
+  drafts: ProposalDraft[],
+): Map<string, { start: string; end: string }> {
+  const span = new Map<string, { start: string; end: string }>();
+  const add = (emailId: string, from: string, to: string) => {
+    const cur = span.get(emailId);
+    span.set(emailId, {
+      start: cur && cur.start < from ? cur.start : from,
+      end: cur && cur.end > to ? cur.end : to,
+    });
+  };
+  for (const d of drafts) {
+    if (d.kind === "expense") {
+      const r = d.payload as StoredReceipt | null;
+      const when = r ? receiptDate(r) : null;
+      if (when?.date) add(d.emailId, when.date, when.date);
+      continue;
+    }
+    if (d.kind !== "event") continue;
+    const ev = d.payload as StoredEventDraft | null;
+    if (!ev?.startDate) continue;
+    add(d.emailId, ev.startDate, ev.endDate ?? ev.startDate);
+  }
+  return span;
+}
+
+// 候補の日程に入るメールを、その候補に足す。
+//
+// **候補を「作る」のと、候補に「属する」のは別のルール。** 作るかどうかは移動か
+// 宿泊があるかで決める（レストランのレシート単体では旅行を作らない）。属するか
+// どうかは日程で決める — 移動と宿泊が日程を示したなら、その中のレシートはその
+// 旅行のものだと分かる。
+//
+// これが無いと、確定した後もレシートが受信箱に残り、手で1件ずつ割り当てることに
+// なる（実データで、未割り当て 58 件中 57 件が確定した旅行の日程の中にあった）。
+//
+// 日程は移動・宿泊だけから決める（＝ここで足すメールは日程を広げない）。広げると
+// レシート1件で旅行が伸び、候補を「寄せるより分ける方に倒す」方針が崩れる。
+//
+// 重なりで見る（内包ではない）。宿泊のように期間を持つ下書きは端にまたがる。
+// 複数の候補に重なったら、重なりが大きい方＝より確からしい方に付ける。
+function attachInRange(
+  proposals: TripProposal[],
+  drafts: ProposalDraft[],
+): void {
+  const attached = new Set(proposals.flatMap((p) => p.emailIds));
+  for (const [emailId, span] of emailSpans(drafts)) {
+    if (attached.has(emailId)) continue;
+    let best: TripProposal | null = null;
+    let bestOverlap = 0;
+    for (const p of proposals) {
+      if (span.start > p.endDate || span.end < p.startDate) continue;
+      const overlap =
+        dayDiff(
+          span.start > p.startDate ? span.start : p.startDate,
+          span.end < p.endDate ? span.end : p.endDate,
+        ) + 1;
+      if (overlap > bestOverlap) {
+        bestOverlap = overlap;
+        best = p;
+      }
+    }
+    if (best) best.emailIds.push(emailId);
+  }
 }

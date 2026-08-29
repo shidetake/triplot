@@ -36,6 +36,8 @@ export async function createTripAction(
   const clientTz = String(formData.get("client_tz") ?? "").trim();
   // 旅行の候補（仮旅行）から作った時だけ入る。作成後にこのメール群を
   // 新しい旅行へ割り当てる（下書きの確定は旅行画面の通常フロー）。
+  // 候補に何が含まれるかは deriveTripProposals が決める（日程に入る下書きは
+  // 移動・宿泊でなくても候補の一部）。
   const importEmailIds = String(formData.get("import_email_ids") ?? "")
     .split(",")
     .map((s) => s.trim())

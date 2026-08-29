@@ -219,3 +219,83 @@ describe("tripProposalDefaults", () => {
     });
   });
 });
+
+// 「移動か宿泊か」は**候補を作るか**と**日程をどこにするか**のルールで、
+// **候補に何が属するか**のルールではない。日程が決まったら、その中の下書きは
+// 種別を問わずその候補のものになる（確定した時に一緒に連れて行くため）。
+describe("候補に属するもの", () => {
+  // ホテルの予約は終日で複数日にまたがる＝宿泊とみなされ、日程を張る。
+  const stay = (emailId: string, from: string, to: string) => ({
+    emailId,
+    kind: "event",
+    payload: {
+      kind: "allday",
+      startDate: from,
+      endDate: to,
+      resolvedNamedPlace: null,
+    },
+  });
+  const meal = (emailId: string, date: string) => ({
+    emailId,
+    kind: "expense",
+    payload: { date, serviceDate: null, time: null, category: "飲食" },
+  });
+
+  it("日程の中のレシートは候補に入る", () => {
+    const [p] = deriveTripProposals([
+      stay("hotel", "2026-05-01", "2026-05-05"),
+      meal("lunch", "2026-05-03"),
+    ]);
+    expect(p.emailIds.sort()).toEqual(["hotel", "lunch"]);
+    // 日程は移動・宿泊だけで決まる（レシートは日程を広げない）。
+    expect(p.startDate).toBe("2026-05-01");
+    expect(p.endDate).toBe("2026-05-05");
+  });
+
+  it("日程の外のレシートは入らない", () => {
+    const [p] = deriveTripProposals([
+      stay("hotel", "2026-05-01", "2026-05-05"),
+      meal("home", "2026-06-20"),
+    ]);
+    expect(p.emailIds).not.toContain("home");
+  });
+
+  it("レシートだけでは候補ができない（作るルールは変わらない）", () => {
+    expect(deriveTripProposals([meal("lunch", "2026-05-03")])).toEqual([]);
+  });
+
+  // 候補は保存せず、未割り当ての下書き全部から毎回計算し直す。だから
+  // **取り込み順に依存しない**: レストランのレシートが先に届いて（その時点では
+  // 候補が1つも無い）、後からホテルが届いても、その回の計算で日程が決まって
+  // レシートが入る。
+  it("レシートが先に届いていても、後から来た宿泊の候補に入る", () => {
+    const first = deriveTripProposals([meal("lunch", "2026-05-03")]);
+    expect(first).toEqual([]); // レシートだけの時点では候補は無い
+
+    const later = deriveTripProposals([
+      meal("lunch", "2026-05-03"),
+      stay("hotel", "2026-05-01", "2026-05-05"),
+    ]);
+    expect(later[0].emailIds.sort()).toEqual(["hotel", "lunch"]);
+
+    // 並び順を変えても同じ（配列の順にも依存しない）。
+    const reversed = deriveTripProposals([
+      stay("hotel", "2026-05-01", "2026-05-05"),
+      meal("lunch", "2026-05-03"),
+    ]);
+    expect(reversed[0].emailIds.sort()).toEqual(later[0].emailIds.sort());
+  });
+
+  it("候補が2つあれば、日程が重なる方に付く", () => {
+    const ps = deriveTripProposals([
+      stay("mayHotel", "2026-05-01", "2026-05-05"),
+      stay("julyHotel", "2026-07-01", "2026-07-05"),
+      meal("lunch", "2026-07-03"),
+    ]);
+    expect(ps).toHaveLength(2);
+    const july = ps.find((p) => p.startDate === "2026-07-01")!;
+    const may = ps.find((p) => p.startDate === "2026-05-01")!;
+    expect(july.emailIds).toContain("lunch");
+    expect(may.emailIds).not.toContain("lunch");
+  });
+});
