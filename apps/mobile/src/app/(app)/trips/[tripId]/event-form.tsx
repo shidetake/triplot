@@ -3,7 +3,7 @@ import { Alert, ScrollView } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
-import { deriveEventDraftItems } from "@triplot/shared/import/drafts";
+import { deriveEventDraftItemsWithTimeline } from "@triplot/shared/import/drafts";
 import {
   buildTripTzTimeline,
   resolveEventTz,
@@ -53,18 +53,24 @@ export default function EventFormRoute() {
   const trip = data.trip;
 
   const events = deriveScheduleEvents(data.eventsRaw, data.todosRaw);
-  const tzTimeline = buildTripTzTimeline(events, trip.default_timezone);
-  const eventDrafts = deriveEventDraftItems(tripDrafts ?? null, {
-    tzTimeline,
-    places: (data.placesRaw ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      formattedAddress: p.formatted_address,
-    })),
-    locale,
-    untitledLabel: t("common.untitledEvent"),
-    reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
-  });
+  // **カレンダーと同じ導出を使う。** 別々に導出すると、同じ下書きなのに
+  // フォームとカレンダーで TZ や時刻が食い違う（実測: カレンダーが
+  // Pacific/Honolulu、フォームが Asia/Tokyo になっていた）。
+  const { items: eventDrafts, tzTimeline } = deriveEventDraftItemsWithTimeline(
+    tripDrafts ?? null,
+    events,
+    trip.default_timezone,
+    {
+      places: (data.placesRaw ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        formattedAddress: p.formatted_address,
+      })),
+      locale,
+      untitledLabel: t("common.untitledEvent"),
+      reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+    },
+  );
 
   const editEvent = eventId ? events.find((e) => e.id === eventId) : undefined;
   const confirmingDraft = draftId

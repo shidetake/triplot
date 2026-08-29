@@ -18,6 +18,7 @@ import {
   formatDayLabel,
   narrowTzByTime,
   pickTzByLongitude,
+  resolveEventTz,
   resolveExpenseTz,
   type ScheduleEvent,
   type TripTzTimeline,
@@ -29,7 +30,7 @@ import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
-import { resolveDraftOverlaps } from "./draftOverlap";
+import { type FixedBlock, resolveDraftOverlaps } from "./draftOverlap";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
 // email_id は「同じメールから出た費用と予定」を突き合わせるのに要る
@@ -333,6 +334,9 @@ export function deriveEventDraftItems(
     untitledLabel: string;
     // 予約番号のメモ行（例: ref => `予約番号: ${ref}`）。
     reservationRefLabel: (ref: string) => string;
+    // 確定した予定。下書きはこれを避ける（resolveDraftOverlaps の障害物）。
+    // 渡さなければ下書きどうしの重なりだけを見る。
+    events?: ScheduleEvent[];
   },
 ): EventDraftItem[] {
   const items = (drafts ?? [])
@@ -548,12 +552,42 @@ export function deriveEventDraftItems(
 
   // 重なった未確定どうしを整える（同じ場所はまとめ、違う場所は先勝ちで切る）。
   // 派生の最後に一度だけ通す＝web も RN も同じ結果になる。
-  return resolveDraftOverlaps(items, whenLabel, (it) => {
-    const mins = it.emailIds
-      .map((id) => receiptMinByEmail.get(id))
-      .filter((v): v is number => v !== undefined);
-    return mins.length > 0 ? Math.min(...mins) : null;
-  });
+  return resolveDraftOverlaps(
+    items,
+    whenLabel,
+    (it) => {
+      const mins = it.emailIds
+        .map((id) => receiptMinByEmail.get(id))
+        .filter((v): v is number => v !== undefined);
+      return mins.length > 0 ? Math.min(...mins) : null;
+    },
+    fixedBlocks(ctx.events, ctx.tzTimeline),
+  );
+}
+
+// 確定した予定を「動かせない障害物」の形にする。終日と時差移動は他の予定と
+// 重なるのが正常なので外す（宿泊を夕食と重なったからといって切ってはいけない）。
+function fixedBlocks(
+  events: ScheduleEvent[] | undefined,
+  tl: TripTzTimeline,
+): FixedBlock[] {
+  const blocks: FixedBlock[] = [];
+  for (const e of events ?? []) {
+    if (e.kind !== "normal" || e.allDay || !e.endAt) continue;
+    const tz = resolveEventTz(
+      e.startAt.slice(0, 10),
+      e.tzDisambigTransitId ?? null,
+      e.tzDisambigSide ?? null,
+      tl,
+    );
+    blocks.push({
+      tz,
+      startAt: e.startAt,
+      endAt: e.endAt,
+      placeKey: e.startPlaceId ? `saved:${e.startPlaceId}` : null,
+    });
+  }
+  return blocks;
 }
 
 // カレンダー上の疑似イベント id（実イベントと衝突しない）。
@@ -625,7 +659,7 @@ export function deriveEventDraftItemsWithTimeline(
     defaultTimezone,
   );
   return {
-    items: deriveEventDraftItems(drafts, { ...ctx, tzTimeline }),
+    items: deriveEventDraftItems(drafts, { ...ctx, tzTimeline, events }),
     tzTimeline,
   };
 }

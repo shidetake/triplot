@@ -406,3 +406,78 @@ describe("場所が解決できていない時は店名でまとめる", () => {
     expect(out).toHaveLength(2);
   });
 });
+
+// 確定した予定は動かせない障害物。下書きの側を切り詰める。
+//
+// これが無いと、重なった2件の片方を確定した瞬間にもう片方の調整が消える
+// （相手が下書きの集合から抜けて、切る根拠を失う）。実データ: バーと買い物が
+// 16:48 で切られていたのに、バーを確定すると買い物が元の 16:12-17:12 に戻り、
+// 確定したバーと重なった。
+describe("確定した予定を避ける", () => {
+  const fixed = (o: {
+    startAt: string;
+    endAt: string;
+    placeKey?: string | null;
+  }) => ({
+    tz: "Pacific/Honolulu",
+    startAt: o.startAt,
+    endAt: o.endAt,
+    placeKey: o.placeKey ?? null,
+  });
+
+  it("前にはみ出していれば終わりを詰める", () => {
+    const out = resolveDraftOverlaps(
+      [item({ id: "a", time: "16:12", endTime: "17:12", title: "買い物" })],
+      fmt,
+      () => null,
+      [fixed({ startAt: "2026-04-30T16:48", endAt: "2026-04-30T17:58" })],
+    );
+    expect(out[0].time).toBe("16:12");
+    expect(out[0].prefill.endTime).toBe("16:48");
+  });
+
+  it("中から始まっていれば始まりを下げる", () => {
+    const out = resolveDraftOverlaps(
+      [item({ id: "a", time: "17:00", endTime: "18:30", title: "夕食" })],
+      fmt,
+      () => null,
+      [fixed({ startAt: "2026-04-30T16:48", endAt: "2026-04-30T17:58" })],
+    );
+    expect(out[0].time).toBe("17:58");
+    expect(out[0].prefill.endTime).toBe("18:30");
+  });
+
+  it("同じ場所なら触らない（吸収させる手段が無い）", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({
+          id: "a",
+          time: "16:12",
+          endTime: "17:12",
+          place: { kind: "saved", id: "P9", name: "店" },
+        }),
+      ],
+      fmt,
+      () => null,
+      [
+        fixed({
+          startAt: "2026-04-30T16:48",
+          endAt: "2026-04-30T17:58",
+          placeKey: "saved:P9",
+        }),
+      ],
+    );
+    expect(out[0].prefill.endTime).toBe("17:12");
+  });
+
+  it("丸ごと覆われていれば触らない（動かすと消える）", () => {
+    const out = resolveDraftOverlaps(
+      [item({ id: "a", time: "17:00", endTime: "17:30" })],
+      fmt,
+      () => null,
+      [fixed({ startAt: "2026-04-30T16:48", endAt: "2026-04-30T17:58" })],
+    );
+    expect(out[0].time).toBe("17:00");
+    expect(out[0].prefill.endTime).toBe("17:30");
+  });
+});

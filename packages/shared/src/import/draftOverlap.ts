@@ -114,6 +114,20 @@ function joinNotes(a: string | null, b: string | null): string | null {
  *
  * @param formatWhen ラベルの日時部分の作り直し（開始が動いたときだけ使う）
  */
+// 確定した予定＝**動かせない障害物**。
+export type FixedBlock = {
+  tz: string;
+  // 壁時計 "YYYY-MM-DDTHH:MM"（下書き側と同じ土俵で比べるため文字列で受ける）。
+  startAt: string;
+  endAt: string;
+  // 場所（`saved:<id>`）。同じ場所なら触らない。
+  placeKey: string | null;
+};
+
+function blockMin(at: string): number {
+  return toMin(at.slice(0, 10), at.slice(11, 16));
+}
+
 export function resolveDraftOverlaps(
   items: EventDraftItem[],
   formatWhen: (date: string, time: string) => string,
@@ -121,9 +135,13 @@ export function resolveDraftOverlaps(
   // 開始時刻は所要時間の見積もりが入った推測値なので、それで並べると
   // 見積もりの長さが前後を決めてしまう。分からなければ null＝開始で代用。
   receiptMinOf: (it: EventDraftItem) => number | null = () => null,
+  // 確定した予定。下書きはこれを避ける（下書きだけが動く）。
+  fixed: FixedBlock[] = [],
 ): EventDraftItem[] {
   const targets = items.filter(isTarget);
-  if (targets.length < 2) return items;
+  // 下書きが1件でも、確定した予定を避ける必要はある。
+  if (targets.length === 0 || (targets.length < 2 && fixed.length === 0))
+    return items;
 
   // タイムゾーンが違うものを壁時計で比べても意味がないので、tz ごとに独立に処理する。
   const byTz = new Map<string, EventDraftItem[]>();
@@ -212,6 +230,41 @@ export function resolveDraftOverlaps(
       cur.time = at.time;
       // ラベルは「日付 開始時刻」なので、開始が動いたここだけ作り直す。
       cur.labelParts = [cur.labelParts[0] ?? "", formatWhen(at.date, at.time)];
+    }
+
+    // --- 3. 確定した予定を避ける ---
+    //
+    // **下書きだけが動く。** 確定した予定はユーザーが確認済みの本物の時刻なので
+    // 中点で分けず、下書きの側を端まで切り詰める。
+    //
+    // これが無いと、重なった2件の片方を確定した瞬間にもう片方の調整が消える
+    // （相手が下書きの集合から抜けて、切る根拠を失う）。実データ: バーと買い物が
+    // 16:48 で切られていたのに、バーを確定すると買い物が 16:12-17:12 に戻り、
+    // 確定したバーと重なった。
+    const blocks = fixed.filter((f) => f.tz === group[0].tz);
+    for (const it of merged) {
+      for (const b of blocks) {
+        // 同じ場所なら触らない（確定した予定に下書きを吸収させる手段が無い）。
+        if (b.placeKey !== null && b.placeKey === placeKey(it)) continue;
+        const s = startMin(it);
+        const e = endMin(it);
+        const bs = blockMin(b.startAt);
+        const be = blockMin(b.endAt);
+        if (e === null || s >= be || e <= bs) continue;
+        if (s < bs) {
+          // 前にはみ出している → 終わりを確定の開始まで詰める。
+          const at = fromMin(bs);
+          it.prefill.endDate = at.date === it.date ? null : at.date;
+          it.prefill.endTime = at.time;
+        } else if (be < e) {
+          // 中から始まっている → 始まりを確定の終わりまで下げる。
+          const at = fromMin(be);
+          it.date = at.date;
+          it.time = at.time;
+          it.labelParts = [it.labelParts[0] ?? "", formatWhen(at.date, at.time)];
+        }
+        // 丸ごと覆われている（動かすと消える）ときは触らない。
+      }
     }
 
     for (const it of merged) result.set(it.id, it);
