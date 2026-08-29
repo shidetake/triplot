@@ -39,6 +39,21 @@ export type Database = {
   }
   public: {
     Tables: {
+      drain_leases: {
+        Row: {
+          locked_until: string
+          name: string
+        }
+        Insert: {
+          locked_until?: string
+          name: string
+        }
+        Update: {
+          locked_until?: string
+          name?: string
+        }
+        Relationships: []
+      }
       event_participants: {
         Row: {
           event_id: string

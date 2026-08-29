@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { acquireDrainLease, releaseDrainLease } from "@/lib/import/drainLease";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import {
   DRAIN_BUDGET_MS,
@@ -27,14 +28,26 @@ export async function GET(request: Request) {
   }
 
   const supabase = createServiceClient();
-  // **1回で何件処理するかは決めない。進める限り進む。** 流量を決めるのは
-  // レート制限（429 で打ち切り、次の毎分 cron が再挑戦）で、こちらが件数を
-  // 見積もる必要はない。決め打ちの件数は、速い時は無駄に足踏みし、遅い時は
-  // 関数の寿命を超えるだけで、どちらの側にも正しい値が無い。
-  // 2つの drain で1つの締切を共有する（合計がこの時間を超えない）。
-  const deadline = Date.now() + DRAIN_BUDGET_MS;
-  const retry = await retryDueErrors(supabase, { deadline });
-  await reprocessOverQuota(supabase, { deadline });
+
+  // 前の実行がまだ走っていたら、この回は何もしない。重なると同じ行を2回抽出
+  // してしまう（下書きが二重にでき、LLM の料金も月間の枠も二重に減る）。
+  if (!(await acquireDrainLease(supabase))) {
+    return NextResponse.json({ ok: true, skipped: "in progress" });
+  }
+
+  let retry;
+  try {
+    // **1回で何件処理するかは決めない。進める限り進む。** 流量を決めるのは
+    // レート制限（429 で打ち切り、次の毎分 cron が再挑戦）で、こちらが件数を
+    // 見積もる必要はない。決め打ちの件数は、速い時は無駄に足踏みし、遅い時は
+    // 関数の寿命を超えるだけで、どちらの側にも正しい値が無い。
+    // 2つの drain で1つの締切を共有する（合計がこの時間を超えない）。
+    const deadline = Date.now() + DRAIN_BUDGET_MS;
+    retry = await retryDueErrors(supabase, { deadline });
+    await reprocessOverQuota(supabase, { deadline });
+  } finally {
+    await releaseDrainLease(supabase);
+  }
 
   // 失敗した回だけ残高を引いて記録する（毎回は引かない）。狙いは診断で、
   // 「レート制限に張り付いている」のか「クレジットが尽きた」のかを後から
