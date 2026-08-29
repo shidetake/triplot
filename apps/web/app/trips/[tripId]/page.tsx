@@ -58,7 +58,7 @@ import { type KmlPlacemark } from "@triplot/shared/placeKml";
 import { dominantCenter, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import {
-  deriveEventDraftItems,
+  deriveEventDraftItemsWithTimeline,
   deriveExpenseDraftItems,
 } from "@triplot/shared/import/drafts";
 import type { TripPlace } from "@triplot/shared/import/placeMatch";
@@ -306,13 +306,20 @@ export default async function TripDetailPage({
     tzTimeline,
   });
 
-  const eventDrafts = deriveEventDraftItems(tripDrafts, {
-    tzTimeline,
-    places: placesForMatch,
-    locale,
-    untitledLabel: t("common.untitledEvent"),
-    reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
-  });
+  // 未確定の移動も含めた年表で導出する。確定した予定だけの年表で導出すると、
+  // TZ の境界がまだ仮予定のフライトの時にカレンダーの列と食い違う
+  // （deriveEventDraftItemsWithTimeline のコメント参照）。
+  const { items: eventDrafts } = deriveEventDraftItemsWithTimeline(
+    tripDrafts,
+    scheduleEvents,
+    trip.default_timezone,
+    {
+      places: placesForMatch,
+      locale,
+      untitledLabel: t("common.untitledEvent"),
+      reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+    },
+  );
 
   // 旅行のアクションは Provider が state を持ち、共有アイコンはヘッダーに、
   // それ以外はアカウントメニューの「この旅行 ▸」に出す（trip-actions.tsx）。

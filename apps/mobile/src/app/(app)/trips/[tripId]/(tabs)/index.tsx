@@ -3,11 +3,11 @@ import { useLocale, useTranslations } from "use-intl";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
-  deriveEventDraftItems,
+  deriveEventDraftItemsWithTimeline,
   draftIdFromEventId,
   draftToScheduleEvent,
 } from "@triplot/shared/import/drafts";
-import { buildSchedule, buildTripTzTimeline } from "@triplot/shared/schedule";
+import { buildSchedule } from "@triplot/shared/schedule";
 import {
   deriveScheduleEvents,
   type EventRow,
@@ -31,29 +31,31 @@ export default function ScheduleTab() {
   const t = useTranslations();
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, loadError, refetch, isRefetching } =
-    useTripDetail(tripId);
+  const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const { data: tripDrafts } = useTripDrafts(tripId);
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
   const events = data
     ? deriveScheduleEvents(data.eventsRaw, data.todosRaw)
     : [];
-  const tzTimeline = buildTripTzTimeline(
+  // 未確定の移動も含めた年表で導出する（deriveEventDraftItemsWithTimeline の
+  // コメント参照）。確定した予定だけの年表だと、TZ の境界がまだ仮予定の
+  // フライトの時にカレンダーの列と食い違い、ハワイの仮予定が東京の列に並ぶ。
+  const { items: eventDrafts } = deriveEventDraftItemsWithTimeline(
+    tripDrafts ?? null,
     events,
     data?.trip?.default_timezone ?? null,
+    {
+      places: (data?.placesRaw ?? []).map((p) => ({
+        id: p.id,
+        name: p.name,
+        formattedAddress: p.formatted_address,
+      })),
+      locale,
+      untitledLabel: t("common.untitledEvent"),
+      reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+    },
   );
-  const eventDrafts = deriveEventDraftItems(tripDrafts ?? null, {
-    tzTimeline,
-    places: (data?.placesRaw ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      formattedAddress: p.formatted_address,
-    })),
-    locale,
-    untitledLabel: t("common.untitledEvent"),
-    reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
-  });
   const eventsWithDrafts = [
     ...events,
     ...eventDrafts.map((d) => draftToScheduleEvent(d, me?.id ?? "")),
@@ -150,34 +152,39 @@ export default function ScheduleTab() {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  screen: { flex: 1, backgroundColor: t.background },
-  empty: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
-  emptyText: {
-    fontSize: 14,
-    color: t.mutedForeground,
-    textAlign: "center",
-  },
-  fab: {
-    position: "absolute",
-    right: 20,
-    // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
-    // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
-    // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
-    // 確認・タブバー上端は画面下端から実測 約83pt）。タブバーより確実に
-    // 上に出す値へ引き上げる。
-    bottom: 100,
-    // カレンダーのネスト ScrollView にタッチを奪われないよう最前面に上げる。
-    zIndex: 50,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-});
+    screen: { flex: 1, backgroundColor: t.background },
+    empty: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 32,
+    },
+    emptyText: {
+      fontSize: 14,
+      color: t.mutedForeground,
+      textAlign: "center",
+    },
+    fab: {
+      position: "absolute",
+      right: 20,
+      // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
+      // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
+      // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
+      // 確認・タブバー上端は画面下端から実測 約83pt）。タブバーより確実に
+      // 上に出す値へ引き上げる。
+      bottom: 100,
+      // カレンダーのネスト ScrollView にタッチを奪われないよう最前面に上げる。
+      zIndex: 50,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+  });

@@ -13,10 +13,12 @@ import {
 } from "../flight";
 import type { PlaceCandidate } from "../placesSearch";
 import {
+  buildTripTzTimeline,
   formatDayLabel,
   narrowTzByTime,
   pickTzByLongitude,
   resolveExpenseTz,
+  type ScheduleEvent,
   type TripTzTimeline,
 } from "../schedule";
 import type { EventRow } from "../tripDerive";
@@ -585,6 +587,41 @@ export function draftEventTimes(d: EventDraftItem): {
       : d.prefill.endTime
         ? `${endDate}T${d.prefill.endTime}`
         : null,
+  };
+}
+
+// 未確定の移動も含めた TZ の年表を作り、その年表で下書きを導出する。
+//
+// **年表が2つあると、同じ下書きが別の TZ を指す。** 確定した予定だけで年表を
+// 組むと、TZ の境界がまだ仮予定のフライトの時に:
+//   - 下書き側は「境界を知らない年表」で TZ を決める
+//   - カレンダーの列は buildSchedule が「仮予定込みの一覧」で組み直す
+// ことになり、下書きが持つ移動日の選択（tzDisambigTransitId）は列側の年表に
+// 存在しない移動を指す。一致しないので先頭候補＝出発側に落ち、**ハワイの仮予定が
+// 東京の列に並ぶ**（実機で確認）。
+//
+// 年表を1つにすれば食い違わない。2回導出するのは、仮予定の移動そのものを年表に
+// 入れるため（移動の下書きの TZ は payload が持っていて年表に依存しないので、
+// 1回目の結果は2回目と変わらない＝収束する）。
+export function deriveEventDraftItemsWithTimeline(
+  drafts: PendingDraft[] | null,
+  events: ScheduleEvent[],
+  defaultTimezone: string | null | undefined,
+  ctx: Omit<Parameters<typeof deriveEventDraftItems>[1], "tzTimeline">,
+): { items: EventDraftItem[]; tzTimeline: TripTzTimeline } {
+  const confirmed = buildTripTzTimeline(events, defaultTimezone);
+  const pass1 = deriveEventDraftItems(drafts, {
+    ...ctx,
+    tzTimeline: confirmed,
+  });
+  const tzTimeline = buildTripTzTimeline(
+    // カレンダーの列も同じ一覧（確定＋仮）から組まれるので、移動の id が揃う。
+    [...events, ...pass1.map((d) => draftToScheduleEvent(d, ""))],
+    defaultTimezone,
+  );
+  return {
+    items: deriveEventDraftItems(drafts, { ...ctx, tzTimeline }),
+    tzTimeline,
   };
 }
 

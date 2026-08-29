@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveEventDraftItems, draftToScheduleEvent } from "./drafts";
+import {
+  deriveEventDraftItems,
+  deriveEventDraftItemsWithTimeline,
+  draftToScheduleEvent,
+} from "./drafts";
 import { resolveEventTz, type TripTzTimeline } from "../schedule";
 
 // 移動日（同じ暦日に2つの TZ）の下書きについて、
@@ -200,5 +204,86 @@ describe("終日の下書き", () => {
     const [item] = deriveEventDraftItems(alldayDraft(null), ctx);
     const ev = draftToScheduleEvent(item, "m1");
     expect(ev.endAt).toBe("2026-04-28T00:00:00");
+  });
+});
+
+// TZ の境界がまだ**仮予定**のフライトの時、下書きの TZ とカレンダーの列が
+// 食い違っていた。原因は年表が2つあること:
+//   - 下書き側は「確定した予定だけ」の年表で TZ を決める
+//   - カレンダーの列は buildSchedule が「確定＋仮」の一覧で組み直す
+// 下書きが持つ移動日の選択は列側の年表に存在しない移動を指すので、一致せず
+// 先頭候補＝出発側に落ち、ハワイの仮予定が東京の列に並んだ（実機で確認）。
+describe("TZ の境界が仮予定のフライトのとき", () => {
+  const flightDraft = {
+    id: "df",
+    email_id: "e-df",
+    kind: "event",
+    payload: {
+      kind: "transit",
+      title: "NH184",
+      startDate: "2026-04-28",
+      startTime: "19:10",
+      endDate: "2026-04-28",
+      endTime: "07:25",
+      departTz: "Asia/Tokyo",
+      arriveTz: "Pacific/Honolulu",
+      location: null,
+      vehicleNumber: "NH184",
+      referenceId: null,
+    },
+  };
+  // 到着の翌日、ハワイでの夕食。
+  const dinnerDraft = {
+    id: "dd",
+    email_id: "e-dd",
+    kind: "event",
+    payload: {
+      kind: "timed",
+      title: "夕食",
+      startDate: "2026-04-29",
+      startTime: "18:00",
+      endDate: "2026-04-29",
+      endTime: "20:00",
+      departTz: null,
+      arriveTz: null,
+      location: null,
+      vehicleNumber: null,
+      referenceId: null,
+    },
+  };
+
+  it("同じ年表から導けば、仮予定の夕食も到着側（ハワイ）になる", () => {
+    // 確定した予定は1つも無い（フライトもまだ仮予定）。
+    const { items, tzTimeline } = deriveEventDraftItemsWithTimeline(
+      [flightDraft, dinnerDraft],
+      [],
+      "Asia/Tokyo",
+      {
+        places: [],
+        locale: "ja",
+        untitledLabel: "(無題)",
+        reservationRefLabel: (r: string) => `予約番号: ${r}`,
+      },
+    );
+    const dinner = items.find((i) => i.prefill.title === "夕食")!;
+    expect(dinner.tz).toBe("Pacific/Honolulu");
+
+    // カレンダーの列を組む年表にも仮予定のフライトが入っている
+    // （＝列側と同じ年表。ここが揃っていないと列だけ東京になる）。
+    expect(tzTimeline.transits).toHaveLength(1);
+    expect(tzTimeline.transits[0].arriveTz).toBe("Pacific/Honolulu");
+  });
+
+  // 直す前の挙動。確定した予定だけの年表で導出すると、境界を知らないので
+  // 旅行の既定 TZ（東京）のまま＝列と食い違う。差が出ることを固定しておく。
+  it("確定した予定だけの年表だと東京のままになる", () => {
+    const [dinner] = deriveEventDraftItems([dinnerDraft], {
+      tzTimeline: { fallbackTz: "Asia/Tokyo", transits: [] },
+      places: [],
+      locale: "ja",
+      untitledLabel: "(無題)",
+      reservationRefLabel: (r: string) => `予約番号: ${r}`,
+    });
+    expect(dinner.tz).toBe("Asia/Tokyo");
   });
 });
