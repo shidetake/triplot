@@ -413,6 +413,26 @@ describe("buildSchedule: 時差移動の日は等幅2列", () => {
     expect(dates).not.toContain("2026-05-04");
   });
 
+  // 同じ TZ 内の移動（配車・タクシー・在来線）も kind は transit なので、
+  // そのまま書くと「Asia/Tokyo → Asia/Tokyo」という情報ゼロの注記が日付欄に
+  // 並ぶ（実機で確認）。TZ の境界は時差がある時だけ意味を持つ。
+  it("同じタイムゾーン内の移動には TZ の注記を出さない", () => {
+    const ride = ev({
+      id: "ride1",
+      title: "Uber",
+      kind: "transit",
+      startAt: "2026-04-30T18:07:00",
+      startTz: "Pacific/Honolulu",
+      endAt: "2026-04-30T18:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const s = buildSchedule([ride], {
+      tripStart: "2026-04-30",
+      tripEnd: "2026-04-30",
+    });
+    for (const g of s.groups) expect(g.tzNote).toBeNull();
+  });
+
   it("時刻が前進する便（時差が戻らない）は日付を結合せず普通の列にする", () => {
     // HNL(HST)→HND(JST)。出発 5/4 16:20 → 到着 5/5 20:00。
     // 壁時計上は前進（重なり無し）なので2列グループにしない。

@@ -384,6 +384,12 @@ export function buildSchedule(
     let depCol: Column;
     let arrCol: Column;
 
+    // TZ の境界は**時差がある時だけ意味を持つ**。同じ TZ 内の移動（配車・
+    // タクシー・在来線）でも kind は transit なので、そのまま書くと
+    // 「Asia/Tokyo → Asia/Tokyo」のような情報ゼロの注記がカレンダーの
+    // 日付欄に並ぶ（実機で確認）。同じなら出さない。
+    const tzBoundaryNote = startTz === arriveTz ? null : `${startTz} → ${arriveTz}`;
+
     if (wraps) {
       // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため
       // 移動日を出発TZ側／到着TZ側の等幅2列に割る。
@@ -409,7 +415,7 @@ export function buildSchedule(
         key: `t-${t.id}`,
         label,
         // 出発列を使い回すときは前の便の注記が既に出ているので重ねて出さない。
-        tzNote: depReused ? null : `${startTz} → ${arriveTz}`,
+        tzNote: depReused ? null : tzBoundaryNote,
         columns: depReused ? [arrCol] : [depCol, arrCol],
       });
       lastCol = arrCol;
@@ -423,12 +429,7 @@ export function buildSchedule(
       const sameDay = arriveDate === departDate;
       depCol = depReused
         ? lastCol!
-        : pushDay(
-            departDate,
-            startTz,
-            `${startTz} → ${arriveTz}`,
-            sameDay ? 1 : 2,
-          );
+        : pushDay(departDate, startTz, tzBoundaryNote, sameDay ? 1 : 2);
       arrCol = sameDay ? depCol : pushDay(arriveDate, arriveTz);
     }
 
