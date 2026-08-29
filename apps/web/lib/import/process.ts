@@ -229,6 +229,11 @@ async function tryMerge(
 export type FailureKind = "rate_limit" | "transient" | "permanent" | "unknown";
 
 const MAX_RETRIES = 6;
+// 1 回の cron 実行に使ってよい時間。**進める限り進み、時間で止める**ための予算。
+// 毎分の cron より短くしてあるので、実行同士が重なって同じ行を二重に処理する
+// ことも起きない（行を取ってから処理するまでの間に別の実行が同じ行を掴む余地を
+// 作らない）。関数の寿命（maxDuration）より十分内側でもある。
+export const DRAIN_BUDGET_MS = 50_000;
 const RETRY_BASE_MS = 60_000;
 const RETRY_MAX_MS = 6 * 3_600_000;
 
@@ -876,25 +881,24 @@ export type RetryDrainSummary = {
   failed: number;
 };
 
+// 1 回の実行で DB から取ってくる行数。**処理の上限ではなく取得の単位**
+// （raw を丸ごと積むので一度に大量に持たない）。使い切ったら次のページを引く。
+const RETRY_PAGE = 10;
+const OVER_QUOTA_PAGE = 10;
+
 export async function retryDueErrors(
   supabase: ServiceClient,
-  opts: { userId?: string; limit?: number } = {},
+  opts: { userId?: string; deadline?: number } = {},
 ): Promise<RetryDrainSummary> {
-  let q = supabase
-    .from("inbound_emails")
-    .select("id, user_id, raw, retry_count")
-    .eq("status", "error")
-    .not("next_retry_at", "is", null)
-    .lte("next_retry_at", new Date().toISOString())
-    .order("next_retry_at", { ascending: true })
-    // 同着の時は**受信の早い順**。レート制限に当たると期限の来ている行を全部
-    // 同じ next_retry_at に押し出すので、next_retry_at だけでは全件が同着になり、
-    // 並び順が Postgres の返す順（＝規定なし）に落ちる。実際、本番で 83 件が
-    // 同一の値になっていて、受信順と抽出順が無関係にばらけていた。
-    .order("received_at", { ascending: true })
-    .limit(opts.limit ?? 10);
-  if (opts.userId) q = q.eq("user_id", opts.userId);
-  const { data: rows } = await q;
+  // **止まる条件は「件数」ではなく「時間」。** 進める限り進む設計なので、
+  // 何件で止めるかを決める根拠が無い（速い日は N 件で足踏みし、遅い日は
+  // N 件でも関数の寿命を超える）。実際に有限なのは1回の実行に使える時間の方
+  // なので、そちらで区切る。
+  //
+  // 流量そのものはレート制限が決める（429 が来たらその回は打ち切り、次の毎分
+  // cron が同条件で再挑戦する＝制限が調速機）。時間の予算は「関数が返らない」
+  // 「毎分の cron 同士が重なって同じ行を二重に処理する」を防ぐためのもの。
+  const deadline = opts.deadline ?? Date.now() + DRAIN_BUDGET_MS;
 
   const summary: RetryDrainSummary = {
     attempted: 0,
@@ -903,59 +907,89 @@ export async function retryDueErrors(
     failed: 0,
   };
 
-  for (const row of rows ?? []) {
-    if (!row.raw || !row.user_id) continue;
-    const attempt = (row.retry_count ?? 0) + 1;
-    summary.attempted++;
-    try {
-      await runExtraction(supabase, row.id, row.user_id, row.raw);
-      summary.succeeded++;
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : "extract failed";
-      const kind = classifyFailure(e);
+  const page = async () => {
+    let q = supabase
+      .from("inbound_emails")
+      .select("id, user_id, raw, retry_count")
+      .eq("status", "error")
+      // 処理できない行（raw / user_id が無い）は条件から外す。飛ばすだけだと
+      // 状態が変わらないので、引き直すたびに同じ行が返って前に進めなくなる。
+      .not("raw", "is", null)
+      .not("user_id", "is", null)
+      .not("next_retry_at", "is", null)
+      .lte("next_retry_at", new Date().toISOString())
+      .order("next_retry_at", { ascending: true })
+      // 同着の時は**受信の早い順**。レート制限に当たると期限の来ている行を全部
+      // 同じ next_retry_at に押し出すので、next_retry_at だけでは全件が同着になり、
+      // 並び順が Postgres の返す順（＝規定なし）に落ちる。実際、本番で 83 件が
+      // 同一の値になっていて、受信順と抽出順が無関係にばらけていた。
+      .order("received_at", { ascending: true })
+      .limit(RETRY_PAGE);
+    if (opts.userId) q = q.eq("user_id", opts.userId);
+    const { data } = await q;
+    return data ?? [];
+  };
 
-      // レート制限に当たったら、この回はここで終わり。残りを投げても同じ 429 が
-      // 返るだけで、行ごとにバックオフを伸ばす罰を配って回ることになる（以前の
-      // 挙動）。期限の来ている行をまとめて押し出して break すれば、次の毎分 cron が
-      // 同じ条件で再挑戦し、**通る分だけ通る**。制限そのものが調速機になるので、
-      // こちらが流量を推定する必要はない。
-      if (kind === "rate_limit") {
-        const delay = Math.min(
-          parseRetryAfterMs(e) ?? RETRY_BASE_MS,
-          RETRY_MAX_MS,
-        );
-        const until = new Date(Date.now() + delay).toISOString();
+  // 処理した行は status か next_retry_at が動いてこの条件から外れるので、
+  // 引き直せば必ず次に進む（同じ行を無限に拾うことはない）。
+  for (let rows = await page(); rows.length > 0; rows = await page()) {
+    if (Date.now() >= deadline) return summary;
+    for (const row of rows) {
+      if (Date.now() >= deadline) return summary;
+      if (!row.raw || !row.user_id) continue;
+      const attempt = (row.retry_count ?? 0) + 1;
+      summary.attempted++;
+      try {
+        await runExtraction(supabase, row.id, row.user_id, row.raw);
+        summary.succeeded++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "extract failed";
+        const kind = classifyFailure(e);
+
+        // レート制限に当たったら、この回はここで終わり。残りを投げても同じ 429 が
+        // 返るだけで、行ごとにバックオフを伸ばす罰を配って回ることになる（以前の
+        // 挙動）。期限の来ている行をまとめて押し出して break すれば、次の毎分 cron が
+        // 同じ条件で再挑戦し、**通る分だけ通る**。制限そのものが調速機になるので、
+        // こちらが流量を推定する必要はない。
+        if (kind === "rate_limit") {
+          const delay = Math.min(
+            parseRetryAfterMs(e) ?? RETRY_BASE_MS,
+            RETRY_MAX_MS,
+          );
+          const until = new Date(Date.now() + delay).toISOString();
+          await supabase
+            .from("inbound_emails")
+            .update({
+              extract_error: msg,
+              extract_error_kind: "rate_limit",
+              next_retry_at: until,
+            })
+            .eq("status", "error")
+            .not("next_retry_at", "is", null)
+            .lte("next_retry_at", new Date().toISOString());
+          summary.rateLimited = true;
+          return summary;
+        }
+
+        // transient は打ち切らない（障害が続いてもレシートを失わない）。retry_count は
+        // バックオフの指数として使い、6h で頭打ち。最終的な回収は 90 日の expire。
+        // unknown だけは MAX_RETRIES で蓋をする（誤分類の保険）。
+        summary.failed++;
+        const giveUp =
+          kind === "permanent" ||
+          (kind === "unknown" && attempt >= MAX_RETRIES);
         await supabase
           .from("inbound_emails")
           .update({
+            retry_count: attempt,
             extract_error: msg,
-            extract_error_kind: "rate_limit",
-            next_retry_at: until,
+            extract_error_kind: kind,
+            next_retry_at: giveUp
+              ? null
+              : new Date(Date.now() + backoffMs(attempt)).toISOString(),
           })
-          .eq("status", "error")
-          .not("next_retry_at", "is", null)
-          .lte("next_retry_at", new Date().toISOString());
-        summary.rateLimited = true;
-        return summary;
+          .eq("id", row.id);
       }
-
-      // transient は打ち切らない（障害が続いてもレシートを失わない）。retry_count は
-      // バックオフの指数として使い、6h で頭打ち。最終的な回収は 90 日の expire。
-      // unknown だけは MAX_RETRIES で蓋をする（誤分類の保険）。
-      summary.failed++;
-      const giveUp =
-        kind === "permanent" || (kind === "unknown" && attempt >= MAX_RETRIES);
-      await supabase
-        .from("inbound_emails")
-        .update({
-          retry_count: attempt,
-          extract_error: msg,
-          extract_error_kind: kind,
-          next_retry_at: giveUp
-            ? null
-            : new Date(Date.now() + backoffMs(attempt)).toISOString(),
-        })
-        .eq("id", row.id);
     }
   }
   return summary;
@@ -964,38 +998,55 @@ export async function retryDueErrors(
 // 月間上限で保留された over_quota 行を、枠が空いた分だけ抽出する（翌月の自動再抽出）。
 // 枠はユーザ単位で「CAP − 当月抽出数」。月替わりでカウントが 0 に戻ると drain される。
 // retry と同じく Cloudflare の毎分 cron から呼ぶ＝「保留中の抽出を reconcile」する。
-// 1 回の処理件数を絞り、少量ずつ消化してレート制限に優しくする。
+// retry と同じく、止まる条件は件数ではなく時間（DRAIN_BUDGET_MS）。
 export async function reprocessOverQuota(
   supabase: ServiceClient,
-  opts: { limit?: number } = {},
+  opts: { deadline?: number } = {},
 ): Promise<void> {
-  const limit = opts.limit ?? 10;
-  // 候補を多めに取り、ユーザごとの残り枠で絞る（古い順＝受信が早いものから）。
-  const { data: rows } = await supabase
-    .from("inbound_emails")
-    .select("id, user_id, raw")
-    .eq("status", "over_quota")
-    .order("received_at", { ascending: true })
-    .limit(limit * 4);
-  if (!rows || rows.length === 0) return;
-
+  const deadline = opts.deadline ?? Date.now() + DRAIN_BUDGET_MS;
   const remainingByUser = new Map<string, number>();
-  let processed = 0;
-  for (const row of rows) {
-    if (processed >= limit) break;
-    if (!row.raw || !row.user_id) continue;
-    let remaining = remainingByUser.get(row.user_id);
-    if (remaining === undefined) {
-      remaining =
-        (await effectiveCapFor(supabase, row.user_id)) -
-        (await monthlyExtractCount(supabase, row.user_id));
+  // この回はもう進められないもの（枠を使い切ったユーザ・raw が無い行）。
+  // 状態が変わらないので、外さないと同じページを引き続けてしまう。
+  const stuckUsers = new Set<string>();
+  const stuckRows = new Set<string>();
+
+  while (Date.now() < deadline) {
+    // 古い順＝受信が早いものから。
+    const { data: rows } = await supabase
+      .from("inbound_emails")
+      .select("id, user_id, raw")
+      .eq("status", "over_quota")
+      .not("raw", "is", null)
+      .not("user_id", "is", null)
+      .order("received_at", { ascending: true })
+      .limit(OVER_QUOTA_PAGE);
+    const actionable = (rows ?? []).filter(
+      (r) =>
+        r.raw &&
+        r.user_id &&
+        !stuckUsers.has(r.user_id) &&
+        !stuckRows.has(r.id),
+    );
+    if (actionable.length === 0) return;
+
+    for (const row of actionable) {
+      if (Date.now() >= deadline) return;
+      if (!row.raw || !row.user_id) continue;
+      let remaining = remainingByUser.get(row.user_id);
+      if (remaining === undefined) {
+        remaining =
+          (await effectiveCapFor(supabase, row.user_id)) -
+          (await monthlyExtractCount(supabase, row.user_id));
+      }
+      if (remaining <= 0) {
+        remainingByUser.set(row.user_id, 0);
+        stuckUsers.add(row.user_id);
+        continue;
+      }
+      await attemptExtraction(supabase, row.id, row.user_id, row.raw);
+      remainingByUser.set(row.user_id, remaining - 1);
+      // 抽出が失敗した行は over_quota のまま残ることがある（次の回に回す）。
+      stuckRows.add(row.id);
     }
-    if (remaining <= 0) {
-      remainingByUser.set(row.user_id, 0);
-      continue;
-    }
-    await attemptExtraction(supabase, row.id, row.user_id, row.raw);
-    remainingByUser.set(row.user_id, remaining - 1);
-    processed++;
   }
 }

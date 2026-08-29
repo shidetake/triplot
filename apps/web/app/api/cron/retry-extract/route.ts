@@ -1,16 +1,20 @@
 import { NextResponse } from "next/server";
 
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
-import { reprocessOverQuota, retryDueErrors } from "@/lib/import/process";
+import {
+  DRAIN_BUDGET_MS,
+  reprocessOverQuota,
+  retryDueErrors,
+} from "@/lib/import/process";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // 保留中の抽出を reconcile するエンドポイント。Cloudflare の毎分 cron（心拍 Worker）が
 // 叩く。状態は DB が持ち、ここは「期限の来た error の再試行」と「枠の空いた over_quota
-// の再抽出」を少量ずつ消化する（レート制限に優しく、月替わりも数分以内に drain）。
+// の再抽出」を消化する。**件数では区切らず、時間の予算まで進める**（流量を決めるのは
+// レート制限そのもの）。
 
-// 1 回の実行で処理する最大件数（コスト/レート保護）。
-const RETRY_BATCH = 25;
-const OVER_QUOTA_BATCH = 10;
+// 関数の寿命。時間の予算（DRAIN_BUDGET_MS）はこれより内側に取ってある。
+export const maxDuration = 60;
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
@@ -22,8 +26,14 @@ export async function GET(request: Request) {
   }
 
   const supabase = createServiceClient();
-  const retry = await retryDueErrors(supabase, { limit: RETRY_BATCH });
-  await reprocessOverQuota(supabase, { limit: OVER_QUOTA_BATCH });
+  // **1回で何件処理するかは決めない。進める限り進む。** 流量を決めるのは
+  // レート制限（429 で打ち切り、次の毎分 cron が再挑戦）で、こちらが件数を
+  // 見積もる必要はない。決め打ちの件数は、速い時は無駄に足踏みし、遅い時は
+  // 関数の寿命を超えるだけで、どちらの側にも正しい値が無い。
+  // 2つの drain で1つの締切を共有する（合計がこの時間を超えない）。
+  const deadline = Date.now() + DRAIN_BUDGET_MS;
+  const retry = await retryDueErrors(supabase, { deadline });
+  await reprocessOverQuota(supabase, { deadline });
 
   // 失敗した回だけ残高を引いて記録する（毎回は引かない）。狙いは診断で、
   // 「レート制限に張り付いている」のか「クレジットが尽きた」のかを後から
