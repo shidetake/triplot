@@ -13,7 +13,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 // の再抽出」を消化する。**件数では区切らず、時間の予算まで進める**（流量を決めるのは
 // レート制限そのもの）。
 
-// 関数の寿命。時間の予算（DRAIN_BUDGET_MS）はこれより内側に取ってある。
+// 関数の寿命。時間の予算（DRAIN_BUDGET_MS）は、走り出した1件ぶんの余裕を引いて
+// これより内側に取ってある（内訳は DRAIN_BUDGET_MS のコメント）。
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
