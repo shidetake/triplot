@@ -891,6 +891,41 @@ describe("時差の無い移動", () => {
     expect(day("2026-05-01")?.tz).toBe("Pacific/Honolulu");
   });
 
+  // 移動は tz_disambig を持てない（DB の CHECK）。均す時に自分の TZ を捨てると
+  // 移動日の手がかりがゼロになり、先頭候補＝出発側に落ちる（実データ: ホノルル
+  // での Uber を確定すると東京側の列に移った）。
+  it("移動日でも自分の TZ の側の列に置かれる", () => {
+    const flight = ev({
+      id: "f1",
+      title: "NRT-HNL",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const s = buildSchedule(
+      [
+        flight,
+        // 到着後、ホノルルでの乗車。日本時間なら出発前・ハワイ時間なら到着後で
+        // どちらも成立するので、時刻では決まらない。
+        ev({
+          id: "ride",
+          title: "Uber",
+          kind: "transit",
+          startAt: "2026-04-28T14:07:00",
+          startTz: "Pacific/Honolulu",
+          endAt: "2026-04-28T14:31:00",
+          endTz: "Pacific/Honolulu",
+        }),
+      ],
+      { tripStart: "2026-04-28", tripEnd: "2026-04-29" },
+    );
+    const seg = s.timed.find((t) => t.event.id === "ride")!;
+    const col = s.columns.find((c) => c.key === seg.columnKey)!;
+    expect(col.tz).toBe("Pacific/Honolulu");
+  });
+
   it("カレンダーからは消えない（通常の予定として並ぶ）", () => {
     const s = buildSchedule([ride({ tz: "Pacific/Honolulu", date: "2026-04-30" })], {
       tripStart: "2026-04-30",
