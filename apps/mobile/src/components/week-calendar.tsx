@@ -173,16 +173,38 @@ export function WeekCalendar({
   const scrollXRef = useRef(0);
   const scrollYRef = useRef(6 * HOUR_PX); // contentOffset 初期値と同じ
 
-  // 同期は本体→ヘッダの一方向のみ。ヘッダは scrollEnabled=false で自発的に
-  // 動かないので逆方向の同期は不要（以前はヘッダの onScroll から本体へ
-  // scrollTo を返していて、右端バウンス中に「本体→ヘッダ→本体…」の発振＝
-  // バウンドを無限に繰り返す状態になることがあった）。
+  // ヘッダ（日付＋終日バー）と本体は横スクロールを同期する。**どちらを触っても
+  // 動く** — 終日の予定が並ぶ帯は面積が大きく、そこを掴んで横に振るのは自然な
+  // 操作なのに、以前は何も起きなかった（実機フィードバック）。
+  //
+  // 双方向にすると発振する（片方の scrollTo がもう片方の onScroll を呼び、
+  // それがまた scrollTo を返す。右端のバウンス中に止まらなくなる）。**今どちらが
+  // 操作元かを持ち、操作元でない側の onScroll は無視する**ことで断ち切る。
+  // **操作元は「最後に指で触った側」。解除しない。** 一度でも「今は誰も操作元
+  // でない」状態を作ると、そこで両側が同期し合って発振する（慣性やバウンスの
+  // 最中に起きる）。次に反対側を触った時に上書きされるので、解除は要らない。
+  const driver = useRef<"body" | "header">("body");
   const syncFromBody = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (driver.current !== "body") return;
     scrollXRef.current = e.nativeEvent.contentOffset.x;
     headerScroll.current?.scrollTo({
       x: e.nativeEvent.contentOffset.x,
       animated: false,
     });
+  };
+  const syncFromHeader = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (driver.current !== "header") return;
+    scrollXRef.current = e.nativeEvent.contentOffset.x;
+    bodyScroll.current?.scrollTo({
+      x: e.nativeEvent.contentOffset.x,
+      animated: false,
+    });
+  };
+  const dragBody = () => {
+    driver.current = "body";
+  };
+  const dragHeader = () => {
+    driver.current = "header";
   };
 
   // ── 空き枠の長押し→ゴースト→ドラッグ→離して確定（web と同じ UX） ──
@@ -267,7 +289,10 @@ export function WeekCalendar({
         y: scrollYRef.current,
         animated: false,
       });
+      // 自前で動かす時は両方に指示する（onScroll 経由の同期は操作元でない側を
+      // 無視するので、片方だけだとずれる）。
       bodyScroll.current?.scrollTo({ x: scrollXRef.current, animated: false });
+      headerScroll.current?.scrollTo({ x: scrollXRef.current, animated: false });
       // 指は動いていなくても内容が流れる＝指の絶対座標から内容座標を再計算。
       const g = ghostAt(
         pos.x - vp.x - GUTTER + scrollXRef.current,
@@ -497,8 +522,12 @@ export function WeekCalendar({
         <ScrollView
           ref={headerScroll}
           horizontal
-          scrollEnabled={false}
+          // ゴースト（長押しドラッグ）中は本体と同じく止める。
+          scrollEnabled={ghost == null}
           showsHorizontalScrollIndicator={false}
+          onScroll={syncFromHeader}
+          onScrollBeginDrag={dragHeader}
+          scrollEventThrottle={16}
         >
           <View style={{ width: totalW }}>
             {/* 日付ヘッダ行 */}
@@ -648,6 +677,7 @@ export function WeekCalendar({
             showsHorizontalScrollIndicator={false}
             scrollEnabled={ghost == null}
             onScroll={syncFromBody}
+            onScrollBeginDrag={dragBody}
             scrollEventThrottle={16}
           >
             <GestureDetector gesture={ghostPan}>

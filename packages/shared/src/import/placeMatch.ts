@@ -3,6 +3,8 @@
 // 名前だけに頼らず、正規化＋トークン類似に加えて住所シグナルも使う。
 // 最終確定はレビューUI（ここは「最有力候補＋スコア」を返すだけ）。
 
+import { stripPaymentPrefix } from "./merchantName";
+
 export type TripPlace = {
   id: string;
   name: string;
@@ -28,7 +30,9 @@ const NOISE_TOKENS = new Set([
 
 // 文字列 → 正規化トークン列（小文字・記号/店舗番号除去・ノイズ語除去）。
 export function nameTokens(s: string): string[] {
-  return s
+  // 決済代行の接頭辞（"SQ *", "FH* " 等）は店名ではないので、比較に混ぜない。
+  // 混ざると "sq" が1トークンぶんの重みを持ち、一致度が薄まる。
+  return stripPaymentPrefix(s)
     .toLowerCase()
     .replace(/#\s*\d+/g, " ") // 店舗番号 #1234
     .replace(/[^\p{L}\p{N}\s]/gu, " ") // 記号→空白（多言語）
