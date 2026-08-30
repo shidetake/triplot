@@ -575,7 +575,7 @@ export function deriveEventDraftItems(
   );
 }
 
-// 確定した予定を「動かせない障害物」の形にする。終日と時差移動は他の予定と
+// 確定した予定を「動かせない障害物」の形にする。終日（宿泊）は他の予定と
 // 重なるのが正常なので外す（宿泊を夕食と重なったからといって切ってはいけない）。
 function fixedBlocks(
   events: ScheduleEvent[] | undefined,
@@ -583,13 +583,19 @@ function fixedBlocks(
 ): FixedBlock[] {
   const blocks: FixedBlock[] = [];
   for (const e of events ?? []) {
-    if (e.kind !== "normal" || e.allDay || !e.endAt) continue;
-    const tz = resolveEventTz(
-      e.startAt.slice(0, 10),
-      e.tzDisambigTransitId ?? null,
-      e.tzDisambigSide ?? null,
-      tl,
-    );
+    // 宿泊（終日）は他の予定と重なるのが正常なので外す。移動は入れる
+    // （車に乗っている間に店にはいられない）。
+    if (e.allDay || !e.endAt) continue;
+    // 移動は自分の TZ を持つ。通常の予定は旅程から導く。
+    const tz =
+      e.kind === "transit" && e.startTz
+        ? e.startTz
+        : resolveEventTz(
+            e.startAt.slice(0, 10),
+            e.tzDisambigTransitId ?? null,
+            e.tzDisambigSide ?? null,
+            tl,
+          );
     blocks.push({
       tz,
       startAt: e.startAt,

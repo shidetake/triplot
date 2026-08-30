@@ -139,8 +139,25 @@ export function resolveDraftOverlaps(
   fixed: FixedBlock[] = [],
 ): EventDraftItem[] {
   const targets = items.filter(isTarget);
-  // 下書きが1件でも、確定した予定を避ける必要はある。
-  if (targets.length === 0 || (targets.length < 2 && fixed.length === 0))
+  // **未確定の移動も障害物にする。** 移動そのものは動かさない（乗車時刻は
+  // レシートに書いてある事実で、推測ではない）が、通常の予定の見積もりが
+  // 移動の時間に食い込むのは直す — 車に乗っている間にカフェにはいられない。
+  //
+  // 対象を timed に限る規則は、移動＝フライトだった頃のもの（「宿泊と
+  // フライトは他の予定と重なるのが正常」）。配車も移動になった今は、
+  // 重なってよいのは宿泊（allday）だけ。実データで、Kona Coffee の
+  // 10:44-11:14 が Uber の 11:00-11:07 に食い込んでいた。
+  const rideBlocks: FixedBlock[] = items
+    .filter((it) => it.prefill.kind3 === "transit" && it.prefill.endTime)
+    .map((it) => ({
+      tz: it.tz,
+      startAt: `${it.date}T${it.time}`,
+      endAt: `${it.prefill.endDate ?? it.date}T${it.prefill.endTime as string}`,
+      placeKey: placeKey(it),
+    }));
+  const blocksAll = [...fixed, ...rideBlocks];
+  // 下書きが1件でも、確定した予定や移動を避ける必要はある。
+  if (targets.length === 0 || (targets.length < 2 && blocksAll.length === 0))
     return items;
 
   // タイムゾーンが違うものを壁時計で比べても意味がないので、tz ごとに独立に処理する。
@@ -232,7 +249,7 @@ export function resolveDraftOverlaps(
       cur.labelParts = [cur.labelParts[0] ?? "", formatWhen(at.date, at.time)];
     }
 
-    // --- 3. 確定した予定を避ける ---
+    // --- 3. 確定した予定と移動を避ける ---
     //
     // **下書きだけが動く。** 確定した予定はユーザーが確認済みの本物の時刻なので
     // 中点で分けず、下書きの側を端まで切り詰める。
@@ -241,7 +258,7 @@ export function resolveDraftOverlaps(
     // （相手が下書きの集合から抜けて、切る根拠を失う）。実データ: バーと買い物が
     // 16:48 で切られていたのに、バーを確定すると買い物が 16:12-17:12 に戻り、
     // 確定したバーと重なった。
-    const blocks = fixed.filter((f) => f.tz === group[0].tz);
+    const blocks = blocksAll.filter((f) => f.tz === group[0].tz);
     for (const it of merged) {
       for (const b of blocks) {
         // 同じ場所なら触らない（確定した予定に下書きを吸収させる手段が無い）。

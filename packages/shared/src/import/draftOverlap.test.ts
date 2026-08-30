@@ -481,3 +481,44 @@ describe("確定した予定を避ける", () => {
     expect(out[0].prefill.endTime).toBe("17:30");
   });
 });
+
+// 配車・タクシーも「移動」なので、通常の予定の見積もりが食い込んではいけない
+// （車に乗っている間に店にはいられない）。乗車時刻はレシートに書いてある事実で、
+// 推測ではないので動かさない。
+describe("移動を避ける", () => {
+  const ride = (o: { time: string; endTime: string }): EventDraftItem => ({
+    ...item({ id: "ride", time: o.time, endTime: o.endTime, title: "Uber" }),
+    prefill: {
+      ...item({ id: "ride", time: o.time, endTime: o.endTime, title: "Uber" })
+        .prefill,
+      kind3: "transit",
+    },
+  });
+
+  it("移動に食い込む見積もりを切り詰める", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({ id: "cafe", time: "10:44", endTime: "11:14", title: "カフェ" }),
+        ride({ time: "11:00", endTime: "11:07" }),
+      ],
+      fmt,
+    );
+    const cafe = out.find((o) => o.id === "cafe")!;
+    expect(cafe.prefill.endTime).toBe("11:00");
+    // 移動そのものは動かさない。
+    const r = out.find((o) => o.id === "ride")!;
+    expect(r.time).toBe("11:00");
+    expect(r.prefill.endTime).toBe("11:07");
+  });
+
+  it("移動の後ろから始まる予定は前にずらす", () => {
+    const out = resolveDraftOverlaps(
+      [
+        item({ id: "shop", time: "11:03", endTime: "12:03", title: "買い物" }),
+        ride({ time: "11:00", endTime: "11:07" }),
+      ],
+      fmt,
+    );
+    expect(out.find((o) => o.id === "shop")!.time).toBe("11:07");
+  });
+});
