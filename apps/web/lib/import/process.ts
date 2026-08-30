@@ -15,6 +15,7 @@ import {
 } from "@triplot/shared/import/drafts";
 import { fetchFxRates } from "@triplot/shared/fxRates";
 import { dominantCenter } from "@triplot/shared/placeMap";
+import { timezoneOfPlace } from "@triplot/shared/placeTimezone";
 import { fetchUnassignedDrafts } from "@triplot/shared/data/reads/inbox";
 import { unassignedBiasCenter } from "@triplot/shared/tripBias";
 import {
@@ -516,8 +517,21 @@ async function prefetchFlights(
         const departure = await resolveEndpoint(ev.departLocation);
         const arrival = await resolveEndpoint(ev.arriveLocation);
         if (departure || arrival) {
+          // **TZ が空なら、解決できた乗降地の座標から埋める。**
+          //
+          // 抽出は乗降地から TZ を推定する建て付けだが、埋め忘れることがある
+          // （実データ: 乗車地が「ダニエル K イノウエ国際空港」と書けているのに
+          // departTz が null だった）。移動日はこれが「出発側か到着側か」の
+          // 唯一の手がかりになるので、空のままだと先頭候補＝出発側に落ちて
+          // ハワイの乗車が東京の列に並ぶ。
+          //
+          // 座標からの導出は tz-lookup（オフライン表）で、LLM の推測より堅い。
+          const depTz = ev.departTz ?? timezoneOfPlace(departure);
+          const arrTz = ev.arriveTz ?? timezoneOfPlace(arrival ?? departure);
           result.push({
             ...ev,
+            departTz: depTz,
+            arriveTz: arrTz ?? depTz,
             resolvedDeparturePlace: departure,
             resolvedArrivalPlace: arrival,
           });
