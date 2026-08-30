@@ -517,17 +517,18 @@ async function prefetchFlights(
         const departure = await resolveEndpoint(ev.departLocation);
         const arrival = await resolveEndpoint(ev.arriveLocation);
         if (departure || arrival) {
-          // **TZ が空なら、解決できた乗降地の座標から埋める。**
+          // **乗降地の座標から TZ を引き直す。座標が取れた側は座標を優先する。**
           //
-          // 抽出は乗降地から TZ を推定する建て付けだが、埋め忘れることがある
-          // （実データ: 乗車地が「ダニエル K イノウエ国際空港」と書けているのに
-          // departTz が null だった）。移動日はこれが「出発側か到着側か」の
-          // 唯一の手がかりになるので、空のままだと先頭候補＝出発側に落ちて
-          // ハワイの乗車が東京の列に並ぶ。
+          // 抽出も乗降地から TZ を推定するが、埋め忘れることがあるし（実データ:
+          // 乗車地が「ダニエル K イノウエ国際空港」と書けているのに departTz が
+          // null だった）、埋めても推測でしかない。**座標は同じ文字列を Google が
+          // 地理的に解決した結果**で、そこから引く tz-lookup はオフラインの表。
+          // 推測より堅いので、こちらを上に置く。
           //
-          // 座標からの導出は tz-lookup（オフライン表）で、LLM の推測より堅い。
-          const depTz = ev.departTz ?? timezoneOfPlace(departure);
-          const arrTz = ev.arriveTz ?? timezoneOfPlace(arrival ?? departure);
+          // 移動日はこの値が「出発側か到着側か」の唯一の手がかりになる。空だと
+          // 先頭候補＝出発側に落ちて、ハワイの乗車が東京の列に並ぶ。
+          const depTz = timezoneOfPlace(departure) ?? ev.departTz;
+          const arrTz = timezoneOfPlace(arrival ?? departure) ?? ev.arriveTz;
           result.push({
             ...ev,
             departTz: depTz,
