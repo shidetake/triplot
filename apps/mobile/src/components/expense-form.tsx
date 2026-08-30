@@ -175,7 +175,8 @@ export function ExpenseForm({
   });
   const [note, setNote] = useDraft(
     "note",
-    isEdit ? (editExpense.note ?? "") : "",
+    // 取り込みの下書きは「何を買ったか」をメモに持つ（web と同じ）。
+    isEdit ? (editExpense.note ?? "") : (draft?.initialNote ?? ""),
   );
   const [visibility, setVisibility] = useDraft<Visibility>(
     "visibility",

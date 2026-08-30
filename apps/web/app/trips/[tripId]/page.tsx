@@ -567,6 +567,7 @@ export default async function TripDetailPage({
                           initialPrice={d.initialPrice}
                           initialPlace={d.initialPlace}
                           autoResolvePlace={d.autoResolvePlace}
+                          initialNote={d.initialNote ?? undefined}
                           initialTime={d.initialTime}
                         />
                       ))}

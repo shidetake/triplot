@@ -115,6 +115,8 @@ export type ExpenseDraftItem = {
   initialCategoryId: string;
   initialPaidAt: string; // "YYYY-MM-DD"
   initialTime?: string; // "HH:MM"（レシートに購入時刻があった時だけ）
+  // 何を買ったか（費用のメモに入る）。メールに品目が無ければ null。
+  initialNote: string | null;
   // 移動日にどちらの TZ で発生したか（出発側/到着側）。曖昧でない日は null。
   // 費用フォームの初期選択に使う（予定下書きの tzDisambig と同じ契約）。
   tzDisambig: { transitId: string; side: "depart" | "arrive" } | null;
@@ -314,6 +316,7 @@ export function deriveExpenseDraftItems(
             ? null
             : { name: r.merchant, address: r.address },
           fxRates: r.fxRates ?? null,
+          initialNote: r.items ?? null,
           initialTime: when.time,
         },
       ];

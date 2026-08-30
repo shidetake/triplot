@@ -368,7 +368,12 @@ export default function ExpensesTab() {
                     </View>
                   </View>
                   {e.note ? (
-                    <Text style={styles.metaText}>{e.note}</Text>
+                    // 一覧の可変長テキストは1行で止める（ui-guidelines「切り詰め」）。
+                    // 取り込みが入れるメモは1行に収まる長さで書かせているが、
+                    // 手入力は自由なのでここでも止める。
+                    <Text style={styles.metaText} numberOfLines={1}>
+                      {e.note}
+                    </Text>
                   ) : null}
                 </Pressable>
               );

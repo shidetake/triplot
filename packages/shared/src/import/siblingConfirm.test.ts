@@ -23,6 +23,7 @@ const expenseDraft = (o: Partial<ExpenseDraftItem> = {}): ExpenseDraftItem => ({
   initialPlace: { kind: "saved", id: "p1", name: "Kai Coffee" },
   autoResolvePlace: null,
   fxRates: null,
+  initialNote: null,
   ...o,
 });
 

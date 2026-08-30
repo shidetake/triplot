@@ -32,6 +32,7 @@ function receipt(p: Partial<Receipt>): Receipt {
     category: "飲食",
     location: null,
     address: null,
+    items: null,
     referenceId: null,
     isUpdate: false,
     ...p,

@@ -130,7 +130,7 @@ export function expenseFieldsFromDraft(
     visibility: "shared",
     splittable: true,
     splitMemberIds: ctx.activeMemberIds,
-    note: "",
+    note: d.initialNote ?? "",
     paidAt: d.initialPaidAt,
     // 乗継日の選択はフォームの新規作成時と同じく持たない（両方 null＝旅程から
     // 毎回導出）。手で確定した費用と自動で作った費用で結果を変えないため。
