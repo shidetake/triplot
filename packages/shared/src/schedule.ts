@@ -270,7 +270,7 @@ const FULL_DAY_WINDOW = { startMin: 0, endMin: 24 * 60 };
 // ──────────────────────────────────────────────
 
 export function buildSchedule(
-  events: ScheduleEvent[],
+  inputEvents: ScheduleEvent[],
   opts: {
     tripStart?: string | null; // YYYY-MM-DD
     tripEnd?: string | null;
@@ -280,6 +280,22 @@ export function buildSchedule(
   },
 ): Schedule {
   const locale = opts.locale ?? "ja";
+  // **TZ が変わらない移動は、旅程の上では通常の予定として扱う。**
+  //
+  // 配車・タクシー・在来線も種別は「移動」で保存される（ユーザーがそう言って
+  // いるものを勝手に別の種別にしない）。ただし列を作る側では別で、移動は
+  // 「ここから先はこの TZ」という境界として現在の TZ を書き換える。時差の無い
+  // 移動にそれをさせると、**その移動が持つ TZ でその日以降が塗り替えられる**
+  // （実データで、ホノルル滞在中の Uber が「東京」の TZ を持っていて、そこから
+  // 先の日が全部東京の列になった）。
+  //
+  // 境界でない移動をここで通常の予定に均しておけば、列も年表もリボンも
+  // まとめて正しくなる（下流の分岐を1つ1つ直して回らない）。
+  const events = inputEvents.map((e) =>
+    e.kind === "transit" && e.startTz && e.endTz && e.startTz === e.endTz
+      ? { ...e, kind: "normal" as const, startTz: null, endTz: null }
+      : e,
+  );
   // normal/allday 予定は startTz を持たない（旅程から自動導出する）ので、
   // 列配置のたびにこれで実際のTZを解決する。
   const tzTimeline = buildTripTzTimeline(events, opts.defaultTimezone);

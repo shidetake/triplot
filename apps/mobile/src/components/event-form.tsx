@@ -17,7 +17,6 @@ import {
   flightTitle,
 } from "@triplot/shared/flight";
 import {
-  crossesTimezone,
   deriveTransitTimezones,
 } from "@triplot/shared/placeTimezone";
 import {
@@ -520,12 +519,17 @@ export function EventForm({
     setError(null);
 
     const allDay = kind === "allday";
-    // 「移動」でも出発地と到着地で時差が無ければ通常予定として保存する。
-    // 旅程の TZ 境界（transit）は時差があるときだけ意味を持つので、東京→大阪で
-    // 無意味な境界を増やさない。ユーザーには種別の違いを見せない。
-    const isBoundary =
-      kind === "transit" && crossesTimezone(departTz, arriveTz);
-    const submitKind = isBoundary ? "transit" : "normal";
+    // **ユーザーが「移動」と言ったものは移動のまま保存する**（web と同じ）。
+    //
+    // 以前はここで「時差が無ければ通常の予定に降格」していた。旅程に無意味な
+    // 境界を増やさないための措置だったが、ユーザーからは**確定した途端に移動が
+    // 外れる**ように見える（配車の予定がそう報告された）。
+    //
+    // 境界として扱わない方の判断は旅程を組む側（buildSchedule）に移した。
+    // そちらで時差の無い移動を通常の予定に均すので、保存側で種別を変える必要が
+    // 無くなった。
+    const isTransit = kind === "transit";
+    const submitKind = isTransit ? "transit" : "normal";
     // 参加者: all は空配列（web と同じシュガー）、custom は選択分。
     const participantIds = partMode === "all" ? [] : Array.from(participants);
 
@@ -536,7 +540,7 @@ export function EventForm({
     if (kind === "allday") {
       startAt = `${startDate}T00:00`;
       endAt = `${endDate}T00:00`;
-    } else if (isBoundary) {
+    } else if (isTransit) {
       startAt = `${startDate}T${startTime}`;
       endAt = `${endDate}T${endTime}`;
       startTz = departTz;
@@ -556,8 +560,9 @@ export function EventForm({
       endTz,
       // 通常/終日の乗継日曖昧解決（transit は自身のTZを持つので null）。
       // 移動（TZ境界）は自身の実TZを持つので不要。終日も TZ を使わないので持たない。
-      tzDisambigTransitId: isBoundary || allDay ? null : tzDisambigTransitId,
-      tzDisambigSide: isBoundary || allDay ? null : tzDisambigSide,
+      // transit は自身の実TZを持つので不要（DB の CHECK もそれを要求する）。
+      tzDisambigTransitId: isTransit || allDay ? null : tzDisambigTransitId,
+      tzDisambigSide: isTransit || allDay ? null : tzDisambigSide,
       visibility,
       note: note.trim(),
       participantMemberIds: participantIds,

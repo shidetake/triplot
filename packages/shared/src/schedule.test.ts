@@ -846,3 +846,57 @@ describe("dedupeTzCandidates: 同一TZ候補の畳み込み", () => {
     expect(dedupeTzCandidates(options)).toEqual(options);
   });
 });
+
+// 配車・タクシー・在来線も種別は「移動」で保存される（ユーザーが言ったものを
+// 勝手に別の種別にしない）。ただし旅程の上では境界ではないので、列の TZ を
+// その移動の値で塗り替えさせない。
+describe("時差の無い移動", () => {
+  const ride = (o: { tz: string; date: string }) =>
+    ev({
+      id: `r-${o.date}`,
+      title: "Uber",
+      kind: "transit",
+      startAt: `${o.date}T17:58:00`,
+      startTz: o.tz,
+      endAt: `${o.date}T18:32:00`,
+      endTz: o.tz,
+    });
+
+  it("TZ の注記を出さない", () => {
+    const s = buildSchedule([ride({ tz: "Pacific/Honolulu", date: "2026-04-30" })], {
+      tripStart: "2026-04-30",
+      tripEnd: "2026-04-30",
+    });
+    for (const g of s.groups) expect(g.tzNote).toBeNull();
+  });
+
+  // 実データで踏んだ形: ホノルル滞在中の Uber が「東京」の TZ を持っていて、
+  // そこから先の日が全部東京の列になっていた。
+  it("列の TZ を書き換えない（間違った TZ を持っていても）", () => {
+    const flight = ev({
+      id: "f1",
+      title: "NRT-HNL",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const s = buildSchedule(
+      [flight, ride({ tz: "Asia/Tokyo", date: "2026-04-30" })],
+      { tripStart: "2026-04-28", tripEnd: "2026-05-01" },
+    );
+    const day = (d: string) => s.columns.find((c) => c.date === d && c.role === "day");
+    expect(day("2026-04-30")?.tz).toBe("Pacific/Honolulu");
+    expect(day("2026-05-01")?.tz).toBe("Pacific/Honolulu");
+  });
+
+  it("カレンダーからは消えない（通常の予定として並ぶ）", () => {
+    const s = buildSchedule([ride({ tz: "Pacific/Honolulu", date: "2026-04-30" })], {
+      tripStart: "2026-04-30",
+      tripEnd: "2026-04-30",
+    });
+    expect(s.timed.map((t) => t.event.id)).toContain("r-2026-04-30");
+    expect(s.transits).toHaveLength(0);
+  });
+});
