@@ -45,40 +45,49 @@ function jaccard(a: string[], b: string[]): number {
   return inter / (A.size + B.size - inter);
 }
 
-// 1 つの place に対するスコア（0〜1.4 程度）。
-function scorePlace(
-  receipt: { merchant: string; address: string | null },
-  place: TripPlace,
-): number {
-  const rTok = nameTokens(receipt.merchant);
+// a の語が b に全部含まれるか。
+function contains(a: string[], b: string[]): boolean {
+  const B = new Set(b);
+  return a.every((t) => B.has(t));
+}
+
+// 名前だけのスコア（0〜1）。**同じ店かどうかはここで決まる。**
+function scoreName(merchant: string, place: TripPlace): number {
+  const rTok = nameTokens(merchant);
   const pTok = nameTokens(place.name);
   const rNorm = rTok.join(" ");
   const pNorm = pTok.join(" ");
 
-  let score: number;
-  if (rNorm.length > 0 && rNorm === pNorm) {
-    score = 1; // 正規化後に一致
-  } else {
-    score = jaccard(rTok, pTok);
-    // 片方がもう片方を含む（"Kai Coffee" ⊂ "Kai Coffee Alohilani - K"）
-    if (
-      rNorm.length > 0 &&
-      pNorm.length > 0 &&
-      (rNorm.includes(pNorm) || pNorm.includes(rNorm))
-    ) {
-      score = Math.max(score, 0.7);
-    }
-  }
-
-  // 住所シグナル（番地・通り名の共有を加点）。名前より堅い手がかり。
-  if (receipt.address && place.formattedAddress) {
-    score +=
-      jaccard(
-        nameTokens(receipt.address),
-        nameTokens(place.formattedAddress),
-      ) * 0.4;
+  if (rNorm.length > 0 && rNorm === pNorm) return 1; // 正規化後に一致
+  let score = jaccard(rTok, pTok);
+  // 片方の語がもう片方に全部含まれる（"Kai Coffee" ⊂ "Kai Coffee Alohilani - K"）。
+  //
+  // **語の単位で見る。** 文字列の部分一致にすると、短い名前が別の語の内側に
+  // 紛れ込む（実データ: "ALO" が "kai coffee alohilani k" の "alo" に一致して、
+  // Kai Coffee のレシートが ALO の場所に吸い寄せられた。同じ旅行には
+  // "Aloha Tower" もある）。
+  if (rTok.length > 0 && pTok.length > 0 && (contains(rTok, pTok) || contains(pTok, rTok))) {
+    score = Math.max(score, 0.7);
   }
   return score;
+}
+
+// 住所の一致による加点（0〜0.4）。**順位付けにだけ使う。**
+//
+// 住所が言えるのは「同じ建物か」までで、どの店かは言えない。モールやビルなら
+// 全店が同じ番地を持つ。実際、ALO Ala Moana と UNIQLO Ala Moana は同じ
+// 1450 Ala Moana Blvd で、名前の一致が 0.33 しか無いのに住所の加点で閾値
+// ちょうど 0.50 に乗り、**ALO のレシートが UNIQLO の場所に紐づいた**
+// （同じメールから出た費用は ALO に付いたので、片方だけずれて気付きにくい）。
+//
+// なので住所は**資格を与えない**（matchPlace 参照）。名前で候補に残ったものの
+// 中で、どれが一番近いかを決めるのにだけ使う。
+function addressBonus(
+  address: string | null,
+  place: TripPlace,
+): number {
+  if (!address || !place.formattedAddress) return 0;
+  return jaccard(nameTokens(address), nameTokens(place.formattedAddress)) * 0.4;
 }
 
 export type PlaceMatch = { placeId: string; score: number };
@@ -91,8 +100,12 @@ export function matchPlace(
 ): PlaceMatch | null {
   let best: PlaceMatch | null = null;
   for (const p of places) {
-    const score = scorePlace(receipt, p);
+    // **候補に残る資格は名前だけで決める。** 住所で資格を与えると、同じビルの
+    // 別の店に吸い寄せられる（addressBonus のコメント参照）。
+    const name = scoreName(receipt.merchant, p);
+    if (name < threshold) continue;
+    const score = name + addressBonus(receipt.address, p);
     if (!best || score > best.score) best = { placeId: p.id, score };
   }
-  return best && best.score >= threshold ? best : null;
+  return best;
 }
