@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 
+import { isTzBoundary } from "../schedule";
+
 import { draftToScheduleEvent, type EventDraftItem } from "./drafts";
 
 // 仮予定を疑似イベントに変換するときの TZ の決め方。
@@ -74,7 +76,9 @@ describe("移動の仮予定の TZ", () => {
   // 抽出は配車・タクシーも kind='transit' で作るが、保存時は時差が無ければ
   // 通常の予定になる（crossesTimezone）。疑似イベントも同じにしないと、
   // 年表の現在 TZ を推測値で上書きしてしまう。
-  it("時差の無い移動は境界にしない", () => {
+  // **移動は移動のまま。** 種別を書き換えたり、DB に無い形のデータを作ったり
+  // しない。境界として扱うかどうかは「時差があるか」で判定する（isTzBoundary）。
+  it("時差が無くても移動のまま、両側の TZ を持つ", () => {
     const ev = draftToScheduleEvent(
       transitItem({
         place: google("乗車地", HNL),
@@ -82,11 +86,11 @@ describe("移動の仮予定の TZ", () => {
       }),
       "me",
     );
-    expect(ev.kind).toBe("normal");
-    // **TZ は捨てない。** 境界にはしないが「どの TZ にいるか」は持ち続ける
-    // （移動は tz_disambig を持てないので、捨てると移動日の手がかりが消える）。
+    expect(ev.kind).toBe("transit");
     expect(ev.startTz).toBe("Pacific/Honolulu");
     expect(ev.endTz).toBe("Pacific/Honolulu");
+    // 時差が無いので旅程の境界にはならない。
+    expect(isTzBoundary(ev)).toBe(false);
   });
 
   // 片方だけ座標が取れた乗車が「ホノルル → 東京」の幽霊の境界を作っていた
@@ -100,6 +104,9 @@ describe("移動の仮予定の TZ", () => {
       }),
       "me",
     );
-    expect(ev.kind).toBe("normal");
+    // 決められない側を既定 TZ に落とすと「ホノルル → 東京」の幽霊の境界ができる。
+    expect(ev.startTz).toBe("Pacific/Honolulu");
+    expect(ev.endTz).toBe("Pacific/Honolulu");
+    expect(isTzBoundary(ev)).toBe(false);
   });
 });

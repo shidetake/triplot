@@ -258,6 +258,27 @@ export type Schedule = {
   window: { startMin: number; endMin: number };
 };
 
+// 旅程の TZ 境界として扱う移動か。
+//
+// **時差が無ければ境界ではない。** 配車・タクシー・在来線も種別は「移動」だが
+// （ユーザーが移動と言ったものを別の種別にはしない）、出発と到着で TZ が同じなら
+// 「ここから先はこの TZ」という区切りを作らない。境界として扱うと、その移動が
+// 持つ TZ で以降の日が塗り替えられる（実データ: ホノルル滞在中の Uber が「東京」の
+// TZ を持っていて、そこから先の日が全部東京の列になった）。
+//
+// 保存時の規約（crossesTimezone）と同じ判定を、旅程を組む側でも使う。
+export function isTzBoundary(
+  e: ScheduleEvent,
+): e is ScheduleEvent & { endAt: string; startTz: string; endTz: string } {
+  return (
+    e.kind === "transit" &&
+    !!e.startTz &&
+    !!e.endTz &&
+    !!e.endAt &&
+    e.startTz !== e.endTz
+  );
+}
+
 // 表示上の最低高さ（分換算）。レーン重なり判定でも使うため週カレンダー
 // 側のゴースト合流計算と値を共有したいので export する。
 export const MIN_EVENT_MIN = 30;
@@ -292,20 +313,9 @@ export function buildSchedule(
   // 境界でない移動をここで通常の予定に均しておけば、列も年表もリボンも
   // まとめて正しくなる（下流の分岐を1つ1つ直して回らない）。
   // normal/allday 予定は startTz を持たない（旅程から自動導出する）ので、
-  // 列配置のたびにこれで実際のTZを解決する。境界を作らない移動は年表に
-  // 入らないので、均す前の一覧から組んでも結果は同じ。
+  // 列配置のたびにこれで実際のTZを解決する。
   const tzTimeline = buildTripTzTimeline(inputEvents, opts.defaultTimezone);
-  const events = inputEvents.map((e) =>
-    e.kind === "transit" && e.startTz && e.endTz && e.startTz === e.endTz
-      ? // **TZ は持たせたまま、種別だけ通常の予定にする。** 境界に関わる仕事
-        // （年表・列・リボン）からは外れるが、「自分がどの TZ にいるか」は
-        // 捨てない。捨てると移動日の手がかりがゼロになる — 移動は tz_disambig
-        // を持てないので（DB の CHECK。自分の TZ を持つので不要という建て付け）、
-        // 通常の予定としての言い方も無く、先頭候補＝出発側に落ちる（実データ:
-        // ホノルルでの Uber を確定すると東京側の列に移った）。
-        { ...e, kind: "normal" as const }
-      : e,
-  );
+  const events = inputEvents;
 
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
@@ -331,9 +341,8 @@ export function buildSchedule(
 
   // 2) transit を時系列に。出発日でTZが切り替わる
   // 壁時計の文字列比較ではなく実際の絶対時刻順（TZを跨いだ真の出発順）で並べる。
-  const transits = sortTransitsByDepartureInstant(
-    events.filter((e) => e.kind === "transit" && e.endAt && e.endTz),
-  );
+  // 境界を作る移動だけが列を割る。時差の無い移動は下の通常の予定と同じ扱い。
+  const transits = sortTransitsByDepartureInstant(events.filter(isTzBoundary));
 
   const groups: ColumnGroup[] = [];
   // 直近に作った列。同日に連続で乗り継ぐ transit が到着列を再利用できるか判定するため追跡する。
@@ -528,7 +537,7 @@ export function buildSchedule(
   for (const ev of events) {
     if (ev.allDay) continue;
 
-    if (ev.kind === "transit" && ev.endAt && ev.endTz) {
+    if (isTzBoundary(ev)) {
       const dep = parseWall(ev.startAt);
       const arr = parseWall(ev.endAt);
       // 列生成時に確定した乗降列をそのまま使う。colFor の (date,tz) 検索は

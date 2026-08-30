@@ -717,13 +717,7 @@ export function draftToScheduleEvent(
 ): EventRow {
   const tzs =
     d.prefill.kind3 === "transit" ? draftTransitTimezones(d) : null;
-  // **TZ が変わらない移動は境界にしない。** 保存時の規約（crossesTimezone）と
-  // 同じ。抽出は配車・タクシーも kind='transit' で作るが、時差が無い移動を
-  // 境界として扱うと年表の現在 TZ を推測値で上書きしてしまう（実データで、
-  // ホノルル滞在中の Uber が「東京」として入り、そこから先の日が全部東京に
-  // 戻っていた）。
-  const kind3 =
-    tzs && tzs.startTz === tzs.endTz ? "timed" : d.prefill.kind3;
+  const kind3 = d.prefill.kind3;
   const { allDay: isAllDay, startAt, endAt } = draftEventTimes(d);
   return {
     id: draftEventId(d.id),
