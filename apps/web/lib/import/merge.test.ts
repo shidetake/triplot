@@ -149,3 +149,83 @@ describe("selectMergeCandidates", () => {
     expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual(["a"]);
   });
 });
+
+// 候補の順位付け。**判定ではなく、LLM に見せる数件をどう選ぶか**だけを決める。
+// 直す前は「番号一致 or 14日以内」で絞ったあと順不同に切っていて、旅行中の
+// メールは全部通るので実質フィルタが効いていなかった（実データで、同時に未確定の
+// 34件から8件を引いていて、金額が完全一致する店/銀行のペアが12組中11組で
+// 合体できていなかった）。
+describe("selectMergeCandidates の順位付け", () => {
+  const cand = (
+    id: string,
+    o: { total?: number; merchant?: string; date?: string; ref?: string },
+  ): DraftCandidate => ({
+    id,
+    extraction: {
+      receipt: {
+        ...receipt({}),
+        merchant: o.merchant ?? "無関係な店",
+        total: o.total ?? 1,
+        date: o.date ?? "2026-05-01",
+        referenceId: o.ref ?? null,
+      },
+      events: [],
+    },
+  });
+
+  // 銀行の通知（全角・略記・日付が翌日）で届いたつもりの incoming。
+  const incoming = {
+    receipt: {
+      ...receipt({}),
+      merchant: "UNIQLO Ala Moana",
+      total: 62.62,
+      date: "2026-05-02",
+      referenceId: "350930",
+    },
+    events: [],
+  };
+
+  it("金額が完全一致する候補を先頭に出す", () => {
+    const out = selectMergeCandidates(incoming, [
+      cand("noise1", { total: 10, date: "2026-05-02" }),
+      cand("noise2", { total: 20, date: "2026-05-02" }),
+      cand("shop", { total: 62.62, merchant: "UNIQLO", date: "2026-05-01" }),
+    ]);
+    expect(out[0].id).toBe("shop");
+  });
+
+  // チップだけ別メール・Uber の分割請求では金額が一致しない。店名で拾う。
+  it("金額が割れていても店名が似ていれば候補に残る（チップ分割）", () => {
+    const out = selectMergeCandidates(
+      incoming,
+      [
+        cand("noise1", { total: 10, merchant: "無関係な店", date: "2026-05-02" }),
+        cand("noise2", { total: 20, merchant: "別の店", date: "2026-05-02" }),
+        cand("tip", { total: 55.0, merchant: "UNIQLO", date: "2026-05-01" }),
+      ],
+      { max: 1 },
+    );
+    expect(out.map((o) => o.id)).toEqual(["tip"]);
+  });
+
+  it("識別番号の一致が最優先", () => {
+    const out = selectMergeCandidates(incoming, [
+      cand("amount", { total: 62.62, merchant: "UNIQLO", date: "2026-05-01" }),
+      cand("ref", { total: 1, merchant: "別の店", ref: "350930" }),
+    ]);
+    expect(out[0].id).toBe("ref");
+  });
+
+  it("上限を超えたら弱い候補から落ちる", () => {
+    const many = Array.from({ length: 12 }, (_, i) =>
+      cand(`n${i}`, { total: i + 1, date: "2026-05-02" }),
+    );
+    const out = selectMergeCandidates(
+      incoming,
+      [...many, cand("shop", { total: 62.62, merchant: "UNIQLO" })],
+      { max: 3 },
+    );
+    expect(out).toHaveLength(3);
+    expect(out[0].id).toBe("shop");
+  });
+});

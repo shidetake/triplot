@@ -1,6 +1,8 @@
 import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
+import { nameTokens } from "@triplot/shared/import/placeMatch";
+
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
 import {
   type Extraction,
@@ -49,8 +51,79 @@ function extractionRefIds(x: Extraction): string[] {
   return ids.filter((r): r is string => !!r);
 }
 
-// 合体の候補を絞る（LLM に渡す前）: referenceId 一致 or どれかの日付が windowDays 以内。
-// referenceId 一致を優先して先頭に並べる。
+// 合体の候補を選ぶ（LLM に渡す前）。
+//
+// **ここは判定ではなく順位付け。** 合体するかどうかを決めるのは LLM で、ここは
+// 「見せる数件をどう選ぶか」だけを決める。だから証拠は絞らず重ねてよい —
+// 弱い証拠で候補に入れても、間違って合体することにはならない。
+//
+// 直した理由: 絞り込みが「番号一致 **または** 日付が14日以内」だったので、旅行中の
+// メールは全部通ってしまい、実質フィルタが効いていなかった。そのうえ先頭 max 件で
+// 切るので、**順不同の数件**が渡っていた。実データで、同時に未確定のメールが34件
+// ある中から8件を引いていて、店のレシートと銀行の決済通知（金額が完全一致）が
+// 12組中11組で合体できていなかった。
+//
+// 上限は据え置き。候補1件につき本文1,500字＋抽出結果を渡すので、1通の処理コストの
+// 7割前後が候補で占められる（実測: 1通あたり約 $0.0105、候補8件で約14,000トークン）。
+// **効くのは上限ではなく順位付け** — 正解が1〜2位に来れば8件で足りる。
+function amountOf(x: Extraction): { total: number; currency: string } | null {
+  const r = x.receipt;
+  return r && r.total > 0 && r.currency
+    ? { total: r.total, currency: r.currency }
+    : null;
+}
+
+function merchantOf(x: Extraction): string | null {
+  return x.receipt?.merchant?.trim() || null;
+}
+
+// 近さのスコア（大きいほど同一取引らしい）。**強い順に桁を分けて足す**ので、
+// 弱い証拠が強い証拠を覆すことはない。
+function closeness(incoming: Extraction, cand: Extraction): number {
+  let score = 0;
+
+  // 1. 取引/予約の識別番号が一致。単独でほぼ確定。
+  const inRefs = new Set(extractionRefIds(incoming));
+  if (extractionRefIds(cand).some((r) => inRefs.has(r))) score += 1000;
+
+  // 2. 金額と通貨が完全一致。62.62 米ドルが偶然2件並ぶことはまず無い。
+  const a = amountOf(incoming);
+  const b = amountOf(cand);
+  if (a && b && a.currency === b.currency) {
+    if (a.total === b.total) score += 100;
+    // 3. 片方がもう片方の一部（チップだけ別メール・Uber の分割請求）。
+    //    合計が一致する保証は無いので弱い証拠として足すだけ。
+    else if (Math.min(a.total, b.total) / Math.max(a.total, b.total) >= 0.5)
+      score += 10;
+  }
+
+  // 4. 店名が似ている。**金額が割れていても効く**（チップ分割はここで拾う）。
+  //    銀行の通知は全角・略記になりがち（"ＵＮＩＱＬＯ Ａｌａ Ｍｏａｎａ"）なので、
+  //    正規化したトークンの一致度で見る。
+  const im = merchantOf(incoming);
+  const cm = merchantOf(cand);
+  if (im && cm) {
+    const it = nameTokens(im);
+    const ct = nameTokens(cm);
+    const inter = new Set(it).size + new Set(ct).size;
+    if (inter > 0) {
+      const set = new Set(ct);
+      const shared = [...new Set(it)].filter((t) => set.has(t)).length;
+      score += (shared / Math.max(new Set(it).size, set.size)) * 20;
+    }
+  }
+
+  // 5. 日付が近い。同じ日なら +5、離れるほど減る。
+  const inDates = extractionDates(incoming);
+  const gaps = extractionDates(cand).flatMap((cd) =>
+    inDates.map((id) => dayDiff(id, cd)),
+  );
+  const nearest = gaps.length > 0 ? Math.min(...gaps) : Infinity;
+  if (Number.isFinite(nearest)) score += Math.max(0, 5 - nearest);
+
+  return score;
+}
+
 export function selectMergeCandidates(
   incoming: Extraction,
   drafts: DraftCandidate[],
@@ -68,8 +141,10 @@ export function selectMergeCandidates(
     );
   return drafts
     .filter((d) => refMatch(d) || dateNear(d))
-    .sort((a, b) => Number(refMatch(b)) - Number(refMatch(a)))
-    .slice(0, max);
+    .map((d) => ({ d, s: closeness(incoming, d.extraction) }))
+    .sort((x, y) => y.s - x.s)
+    .slice(0, max)
+    .map((x) => x.d);
 }
 
 const mergeDecisionSchema = z.object({
