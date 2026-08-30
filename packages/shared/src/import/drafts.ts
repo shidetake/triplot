@@ -732,8 +732,10 @@ export function draftToScheduleEvent(
     allDay: kind3 === "allday",
     startAt,
     endAt,
-    startTz: kind3 === "transit" ? tzs!.startTz : null,
-    endTz: kind3 === "transit" ? tzs!.endTz : null,
+    // 時差が無くて通常の予定に均した移動も、自分の TZ は持ったままにする
+    // （buildSchedule が配置に使う。確定した予定と同じ持ち方に揃える）。
+    startTz: tzs ? tzs.startTz : null,
+    endTz: tzs ? tzs.endTz : null,
     tzDisambigTransitId: d.prefill.tzDisambig?.transitId ?? null,
     tzDisambigSide: d.prefill.tzDisambig?.side ?? null,
     startPlaceId: null,

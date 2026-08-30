@@ -295,28 +295,18 @@ export function buildSchedule(
   // 列配置のたびにこれで実際のTZを解決する。境界を作らない移動は年表に
   // 入らないので、均す前の一覧から組んでも結果は同じ。
   const tzTimeline = buildTripTzTimeline(inputEvents, opts.defaultTimezone);
-  const events = inputEvents.map((e) => {
-    if (!(e.kind === "transit" && e.startTz && e.endTz && e.startTz === e.endTz))
-      return e;
-    // **均す時に自分の TZ を捨てない。** 移動は tz_disambig を持てない
-    // （DB の CHECK。自分の TZ を持つので不要という建て付け）ので、そのまま
-    // 通常の予定にすると移動日の手がかりがゼロになり、先頭候補＝出発側に
-    // 落ちる（実データ: ホノルルでの Uber を確定すると東京側の列に移った）。
-    // 自分の TZ と一致する候補を選び、それを tz_disambig として引き継ぐ。
-    const r = resolveExpenseTz(parseWall(e.startAt).date, tzTimeline);
-    const match =
-      r.kind === "ambiguous"
-        ? r.options.find((o) => o.tz === e.startTz)
-        : null;
-    return {
-      ...e,
-      kind: "normal" as const,
-      startTz: null,
-      endTz: null,
-      tzDisambigTransitId: match?.transitId ?? e.tzDisambigTransitId ?? null,
-      tzDisambigSide: match?.side ?? e.tzDisambigSide ?? null,
-    };
-  });
+  const events = inputEvents.map((e) =>
+    e.kind === "transit" && e.startTz && e.endTz && e.startTz === e.endTz
+      ? // **TZ は持たせたまま、種別だけ通常の予定にする。** 境界に関わる仕事
+        // （年表・列・リボン）からは外れるが、「自分がどの TZ にいるか」は
+        // 捨てない。捨てると移動日の手がかりがゼロになる — 移動は tz_disambig
+        // を持てないので（DB の CHECK。自分の TZ を持つので不要という建て付け）、
+        // 通常の予定としての言い方も無く、先頭候補＝出発側に落ちる（実データ:
+        // ホノルルでの Uber を確定すると東京側の列に移った）。
+        { ...e, kind: "normal" as const }
+      : e,
+  );
+
   // 1) 表示する日付レンジ（trip 範囲 ∪ イベントが触れる日）
   let rangeStart: string | null = opts.tripStart ?? null;
   let rangeEnd: string | null = opts.tripEnd ?? null;
@@ -584,12 +574,17 @@ export function buildSchedule(
 
     const s = parseWall(ev.startAt);
     const e = ev.endAt ? parseWall(ev.endAt) : null;
-    const evTz = resolveEventTz(
-      s.date,
-      ev.tzDisambigTransitId,
-      ev.tzDisambigSide,
-      tzTimeline,
-    );
+    // 通常の予定は TZ を持たず旅程から導出する。**例外は、時差が無いので通常の
+    // 予定として扱っている移動**（上の均し）。自分の TZ を知っているので、
+    // 導出より本人の申告を採る。
+    const evTz =
+      ev.startTz ??
+      resolveEventTz(
+        s.date,
+        ev.tzDisambigTransitId,
+        ev.tzDisambigSide,
+        tzTimeline,
+      );
 
     if (!e || e.date === s.date) {
       // 同日内

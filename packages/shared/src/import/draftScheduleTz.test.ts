@@ -83,8 +83,10 @@ describe("移動の仮予定の TZ", () => {
       "me",
     );
     expect(ev.kind).toBe("normal");
-    expect(ev.startTz).toBeNull();
-    expect(ev.endTz).toBeNull();
+    // **TZ は捨てない。** 境界にはしないが「どの TZ にいるか」は持ち続ける
+    // （移動は tz_disambig を持てないので、捨てると移動日の手がかりが消える）。
+    expect(ev.startTz).toBe("Pacific/Honolulu");
+    expect(ev.endTz).toBe("Pacific/Honolulu");
   });
 
   // 片方だけ座標が取れた乗車が「ホノルル → 東京」の幽霊の境界を作っていた
