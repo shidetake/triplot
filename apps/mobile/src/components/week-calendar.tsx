@@ -910,7 +910,10 @@ const makeStyles = (t: Theme) =>
     paddingHorizontal: 2,
   },
   dayHeaderLabel: { fontSize: 12, fontWeight: "600", color: t.foreground },
-  tzNote: { fontSize: 9, color: t.mutedForeground },
+  // 日付ラベルと同じく中央揃え（web は親の text-center を継承している）。
+  // alignItems だけでは箱が中央に来るだけで、固定幅の箱の中の文字は左端に
+  // 寄ったままになる。
+  tzNote: { fontSize: 9, color: t.mutedForeground, textAlign: "center" },
   // 時刻＋参加者ドットの行（ドットは右寄せ）。
   timeRow: {
     flexDirection: "row",
