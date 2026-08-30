@@ -1,12 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { RefreshControl, ScrollView, View } from "react-native";
+import { RefreshControl, View } from "react-native";
 
 import { ImportSheet } from "@/components/import-sheet";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { Toaster } from "@/components/toast";
 import { useSession } from "@/lib/session";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 
-// 受信箱（native formSheet ルート）。RefreshControl は ScrollView 直下の
+// 受信箱（native formSheet ルート）。RefreshControl はスクロール器の
 // prop としてしか機能しないため、ここで持って ImportSheet を包む
 // （ImportSheet 自身は同じ queryKey で useQuery しているので、キャッシュ
 // 共有により refetch の結果がそのまま反映される）。
@@ -27,14 +28,13 @@ export default function InboxRoute() {
 
   return (
     <View>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 24 }}
+      <SheetScroll
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
         <ImportSheet />
-      </ScrollView>
+      </SheetScroll>
       <Toaster inSheet />
     </View>
   );

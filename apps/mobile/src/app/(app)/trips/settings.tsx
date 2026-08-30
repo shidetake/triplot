@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { ScrollView } from "react-native";
 
 import { SettingsSheet } from "@/components/settings-sheet";
+import { SheetScroll } from "@/components/sheet-scroll";
 
 // 設定（native formSheet ルート）。フィードバックは兄弟ルートへの
 // router.push（旧 stackBehavior="push" 相当のドリルイン）。
@@ -16,10 +16,7 @@ export default function SettingsRoute() {
   // シートではなく「旅行のナビバー付きの画面」になってしまう（実機で確認）。
   // 一度この設定シートを閉じて旅行詳細に戻し、遷移が落ち着いてから開く。
   return (
-    <ScrollView
-      contentContainerStyle={{ paddingBottom: 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SheetScroll>
       <SettingsSheet
         onDone={() => router.back()}
         onOpenFeedback={() => router.push("/trips/feedback")}
@@ -30,6 +27,6 @@ export default function SettingsRoute() {
             : undefined
         }
       />
-    </ScrollView>
+    </SheetScroll>
   );
 }

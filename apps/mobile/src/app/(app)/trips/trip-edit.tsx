@@ -1,6 +1,7 @@
-import { ScrollView, View } from "react-native";
+import { View } from "react-native";
 
 import { EditTripSheet } from "@/components/edit-trip-sheet";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { Toaster } from "@/components/toast";
 import { useTripIdParam } from "@/lib/useTripIdParam";
 
@@ -13,12 +14,9 @@ export default function EditTripRoute() {
   const tripId = useTripIdParam();
   return (
     <View>
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: 24 }}
-        keyboardShouldPersistTaps="handled"
-      >
+      <SheetScroll>
         <EditTripSheet tripId={tripId} />
-      </ScrollView>
+      </SheetScroll>
       <Toaster inSheet />
     </View>
   );

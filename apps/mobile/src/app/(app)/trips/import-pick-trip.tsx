@@ -1,13 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
@@ -23,6 +16,7 @@ import {
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { CheckIcon } from "@/components/icons";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { SheetTitle } from "@/components/sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -88,12 +82,14 @@ export default function InboxPickTripRoute() {
       return;
     }
     void queryClient.invalidateQueries({ queryKey: ["inbox", userId] });
-    void queryClient.invalidateQueries({ queryKey: ["unassignedDrafts", userId] });
+    void queryClient.invalidateQueries({
+      queryKey: ["unassignedDrafts", userId],
+    });
     router.back();
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.content}>
+    <SheetScroll contentContainerStyle={styles.content}>
       <SheetTitle>{t("selectTripPrompt")}</SheetTitle>
       {proposal && (
         <Pressable
@@ -102,7 +98,10 @@ export default function InboxPickTripRoute() {
         >
           <View style={styles.newTripText}>
             <Text
-              style={[styles.rowLabel, !currentTripId && styles.rowLabelSelected]}
+              style={[
+                styles.rowLabel,
+                !currentTripId && styles.rowLabelSelected,
+              ]}
             >
               {proposal.title
                 ? `${t("newTrip")}: ${proposal.title}`
@@ -139,13 +138,11 @@ export default function InboxPickTripRoute() {
             >
               {tripLabels.get(tr.id) ?? tr.title}
             </Text>
-            {selected && (
-              <CheckIcon size={16} color={theme.mutedForeground} />
-            )}
+            {selected && <CheckIcon size={16} color={theme.mutedForeground} />}
           </Pressable>
         );
       })}
-    </ScrollView>
+    </SheetScroll>
   );
 }
 

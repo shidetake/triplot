@@ -1,8 +1,8 @@
 import { useLocalSearchParams } from "expo-router";
-import { ScrollView } from "react-native";
 
 import { CreateTripSheet } from "@/components/create-trip-sheet";
 import { FormHostProvider } from "@/components/form-host";
+import { SheetScroll } from "@/components/sheet-scroll";
 
 // 旅行作成（native formSheet ルート）。presentation 等の静的オプションは
 // 親 Stack（(app)/_layout.tsx）で宣言する規約。
@@ -26,15 +26,14 @@ export default function NewTripRoute() {
       : undefined;
 
   return (
-    <ScrollView
-      contentContainerStyle={{ paddingBottom: 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SheetScroll>
       <FormHostProvider
-        draftKey={proposal ? `trip:proposal:${proposal.emailIds.join(",")}` : "trip:new"}
+        draftKey={
+          proposal ? `trip:proposal:${proposal.emailIds.join(",")}` : "trip:new"
+        }
       >
         <CreateTripSheet proposal={proposal} />
       </FormHostProvider>
-    </ScrollView>
+    </SheetScroll>
   );
 }
