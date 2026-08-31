@@ -1,8 +1,13 @@
 import { APICallError } from "ai";
 
 import { extractEmail, type TripHint } from "./extract";
+import { acquireExtractLease, releaseExtractLease } from "./drainLease";
 import { fetchReceiptLink } from "./fetchLink";
-import { EXTRACT_MODEL, MONTHLY_EMAIL_CAP } from "./importConfig";
+import {
+  EXTRACT_MODEL,
+  FUNCTION_MAX_SECONDS,
+  MONTHLY_EMAIL_CAP,
+} from "./importConfig";
 import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
 import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
@@ -237,14 +242,6 @@ async function tryMerge(
 export type FailureKind = "rate_limit" | "transient" | "permanent" | "unknown";
 
 const MAX_RETRIES = 6;
-// 関数の寿命。**プランの上限いっぱい**に取る（Hobby は 300 秒。超えるとデプロイが
-// `invalid_max_duration` で失敗する）。長いほど1回で多く流せる。
-//
-// cron のルートの `export const maxDuration` と同じ値。Next は segment config を
-// 静的に読むので import した定数を書けず、二重に持つしかない（functionDuration.test.ts
-// が突き合わせる）。
-export const FUNCTION_MAX_SECONDS = 300;
-
 // 1 件の抽出に見込む最悪の時間。実測 15〜30 秒（LLM 2 パス＋リンク取得＋場所解決）。
 // 多めに取る — 足りないと下の引き算が破れて、関数ごと殺される側に倒れる。
 const WORST_ITEM_MS = 60_000;
@@ -970,13 +967,64 @@ async function holdIfOverQuota(
 
 // 受信メールをバックグラウンドで抽出して下書きを保存する。月間上限の判定は
 // runExtraction が持つ（入口ごとに書かない）。
+//
+// **同じユーザの抽出は直列にする。** 並行に走らせると、同時に処理されたメールは
+// お互いまだ下書きになっていないので**マージの候補として見えない**（同じ取引の
+// レシートと銀行の通知が別々の費用として残る）。レシートをまとめて転送するのは
+// 想定している使い方そのものなので、ここが揃わないと転送のたびに結果が変わる。
+//
+// ロックが取れなかった回は**何もしないで降りる**。メールは既に pending で
+// 保存されているので、いま走っている側のループが拾う。取りこぼしても毎分の
+// cron が pending を掃除する（drainPending）。
 export async function extractInBackground(
   supabase: ServiceClient,
-  emailId: string,
   userId: string,
-  raw: string,
 ): Promise<void> {
-  await attemptExtraction(supabase, emailId, userId, raw);
+  if (!(await acquireExtractLease(supabase, userId))) return;
+  try {
+    await drainPending(supabase, { userId });
+  } finally {
+    await releaseExtractLease(supabase, userId);
+  }
+}
+
+// まだ抽出していないメール（status='pending'）を古い順に1通ずつ処理する。
+// 受信時（そのユーザぶんだけ）と、毎分の cron（全ユーザ）から呼ぶ。
+//
+// **呼び出し側が排他を持っていること。** ここは直列に回すだけで、ロックは見ない。
+export async function drainPending(
+  supabase: ServiceClient,
+  opts: { userId?: string; deadline?: number } = {},
+): Promise<void> {
+  const deadline = opts.deadline ?? Date.now() + DRAIN_BUDGET_MS;
+  // 進められなかった行。状態が変わらないので、外さないと同じページを引き続ける。
+  const stuck = new Set<string>();
+
+  while (Date.now() < deadline) {
+    let q = supabase
+      .from("inbound_emails")
+      .select("id, user_id, raw")
+      .eq("status", "pending")
+      .not("raw", "is", null)
+      .not("user_id", "is", null)
+      .order("received_at", { ascending: true })
+      .limit(PENDING_PAGE);
+    if (opts.userId) q = q.eq("user_id", opts.userId);
+
+    const { data: rows } = await q;
+    const actionable = (rows ?? []).filter(
+      (r) => r.raw && r.user_id && !stuck.has(r.id),
+    );
+    if (actionable.length === 0) return;
+
+    for (const row of actionable) {
+      if (Date.now() >= deadline) return;
+      if (!row.raw || !row.user_id) continue;
+      await attemptExtraction(supabase, row.id, row.user_id, row.raw);
+      // 失敗した行は pending のまま残ることがある（次の回に回す）。
+      stuck.add(row.id);
+    }
+  }
 }
 
 // 期限の来たリトライ対象（status='error' かつ next_retry_at <= now）を再抽出する。
@@ -994,6 +1042,7 @@ export type RetryDrainSummary = {
 // （raw を丸ごと積むので一度に大量に持たない）。使い切ったら次のページを引く。
 const RETRY_PAGE = 10;
 const OVER_QUOTA_PAGE = 10;
+const PENDING_PAGE = 10;
 
 export async function retryDueErrors(
   supabase: ServiceClient,

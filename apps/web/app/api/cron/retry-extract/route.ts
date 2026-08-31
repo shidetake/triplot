@@ -4,15 +4,21 @@ import { acquireDrainLease, releaseDrainLease } from "@/lib/import/drainLease";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import {
   DRAIN_BUDGET_MS,
+  drainPending,
   reprocessOverQuota,
   retryDueErrors,
 } from "@/lib/import/process";
 import { createServiceClient } from "@/lib/supabase/service";
 
 // 保留中の抽出を reconcile するエンドポイント。Cloudflare の毎分 cron（心拍 Worker）が
-// 叩く。状態は DB が持ち、ここは「期限の来た error の再試行」と「枠の空いた over_quota
-// の再抽出」を消化する。**件数では区切らず、時間の予算まで進める**（流量を決めるのは
-// レート制限そのもの）。
+// 叩く。状態は DB が持ち、ここは「まだ抽出していない pending」「期限の来た error の
+// 再試行」「枠の空いた over_quota の再抽出」を消化する。**件数では区切らず、時間の
+// 予算まで進める**（流量を決めるのはレート制限そのもの）。
+//
+// pending を見るのは、受信時の抽出が取りこぼしたぶんの受け皿。受信時は**ユーザ単位の
+// ロックが取れた回だけ**走る（同時に抽出するとマージの候補がお互い見えないため）ので、
+// ロックを取れずに降りた回や、途中で死んだ回の分がここに残る。以前はこの受け皿が
+// 無く、pending のまま誰にも拾われない行が実際に残っていた。
 
 // 関数の寿命。**プランの上限そのもの**（Hobby は 1〜300 秒。300 を超える値を書くと
 // デプロイが `invalid_max_duration` で失敗する＝実測済み）。時間の予算
@@ -47,8 +53,9 @@ export async function GET(request: Request) {
     // レート制限（429 で打ち切り、次の毎分 cron が再挑戦）で、こちらが件数を
     // 見積もる必要はない。決め打ちの件数は、速い時は無駄に足踏みし、遅い時は
     // 関数の寿命を超えるだけで、どちらの側にも正しい値が無い。
-    // 2つの drain で1つの締切を共有する（合計がこの時間を超えない）。
+    // 3つの drain で1つの締切を共有する（合計がこの時間を超えない）。
     const deadline = Date.now() + DRAIN_BUDGET_MS;
+    await drainPending(supabase, { deadline });
     retry = await retryDueErrors(supabase, { deadline });
     await reprocessOverQuota(supabase, { deadline });
   } finally {

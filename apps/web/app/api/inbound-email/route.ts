@@ -57,8 +57,7 @@ export async function POST(request: Request) {
   const subject = decodeMimeWords(
     typeof body.subject === "string" ? body.subject : null,
   );
-  const messageId =
-    typeof body.messageId === "string" ? body.messageId : null;
+  const messageId = typeof body.messageId === "string" ? body.messageId : null;
   const size = typeof body.rawSize === "number" ? body.rawSize : raw.length;
 
   const supabase = createServiceClient();
@@ -100,10 +99,11 @@ export async function POST(request: Request) {
   );
 
   // 本人が特定できたものはレスポンス後にバックグラウンド抽出（Worker は即 200）。
+  // **この行だけを抽出するのではなく、そのユーザの未抽出をまとめて直列に流す。**
+  // ロックが取れなければ何もしない（既に走っている側が拾う）。
   if (userId) {
-    const emailId = inserted.id;
     const uid = userId;
-    after(() => extractInBackground(supabase, emailId, uid, raw));
+    after(() => extractInBackground(supabase, uid));
   }
 
   return NextResponse.json({ ok: true });

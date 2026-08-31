@@ -1128,6 +1128,7 @@ export type Database = {
         Args: { p_token: string; p_trip_id: string }
         Returns: string
       }
+      release_lease: { Args: { p_name: string }; Returns: undefined }
       remove_trip_member: { Args: { p_member_id: string }; Returns: undefined }
       resolve_inbound_draft: {
         Args: {
@@ -1171,6 +1172,10 @@ export type Database = {
       set_place_location: {
         Args: { p_lat: number; p_lng: number; p_place_id: string }
         Returns: undefined
+      }
+      try_acquire_lease: {
+        Args: { p_name: string; p_ttl_seconds: number }
+        Returns: boolean
       }
       unmerge_inbound_email: { Args: { p_id: string }; Returns: undefined }
       update_event: {

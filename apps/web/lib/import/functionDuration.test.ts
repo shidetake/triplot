@@ -2,7 +2,8 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { DRAIN_BUDGET_MS, FUNCTION_MAX_SECONDS } from "./process";
+import { FUNCTION_MAX_SECONDS } from "./importConfig";
+import { DRAIN_BUDGET_MS } from "./process";
 
 // 関数の寿命は2箇所にある。cron のルートの `export const maxDuration`（Next が
 // 静的に読むのでリテラルでないといけない）と、予算の計算に使う
