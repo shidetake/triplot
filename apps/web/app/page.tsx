@@ -79,14 +79,20 @@ export default async function LandingPage() {
         ))}
       </section>
 
-      {/* Google OAuth 確認の要件: プライバシーポリシーへのリンクをホームページに
-          可視で置くこと（App Store の要件も同じ URL で満たす）。 */}
-      <footer className="mt-24 border-t border-foreground/10 pt-6">
+      {/* Google OAuth 確認の要件: プライバシーポリシーと利用規約へのリンクを
+          ホームページに可視で置くこと（App Store の要件も同じ URL で満たす）。 */}
+      <footer className="mt-24 flex items-center gap-4 border-t border-foreground/10 pt-6">
         <Link
           href="/privacy"
           className="text-xs text-muted-foreground transition hover:text-foreground"
         >
           {t("privacy")}
+        </Link>
+        <Link
+          href="/terms"
+          className="text-xs text-muted-foreground transition hover:text-foreground"
+        >
+          {t("terms")}
         </Link>
       </footer>
     </main>

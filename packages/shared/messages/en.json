@@ -152,7 +152,8 @@
     "importBody": "Forward a booking confirmation or a receipt and AI reads it into a draft event or expense. Nothing to retype.",
     "shareTitle": "One link, and you build it together",
     "shareBody": "Send the link to the people coming with you and they can write to it right away. Joining needs no account and no sign-in.",
-    "privacy": "Privacy Policy"
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service"
   },
   "auth": {
     "lastUsed": "Last used",
