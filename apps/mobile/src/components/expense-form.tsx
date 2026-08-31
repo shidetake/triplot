@@ -1,18 +1,17 @@
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
   Alert,
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   View,
 } from "react-native";
 
-// フォーム本体はホスト側の ScrollView がスクロールを持つので、ルートは View
-// （二重スクロール回避）。通貨モーダルの中だけ ScrollView を使う。
+// フォーム本体はホスト側のスクロール器がスクロールを持つので、ルートは View
+// （二重スクロール回避）。通貨・カテゴリのシートの中だけ自前でスクロールする。
 import { useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
@@ -22,6 +21,11 @@ import {
   updateExpense,
   type ExpenseFields,
 } from "@triplot/shared/data/expenses";
+import {
+  CUSTOM_CATEGORY_COLOR,
+  CUSTOM_CATEGORY_ICON,
+  createExpenseCategory,
+} from "@triplot/shared/data/categories";
 import { formatRate } from "@triplot/shared/formatRate";
 import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
@@ -35,22 +39,20 @@ import type { Currency, Visibility } from "@triplot/shared/types/database";
 
 import { useAutoResolvePlace } from "@/lib/useAutoResolvePlace";
 import { CurrencyPickerModal } from "./currency-picker";
-import {
-  chipDateText,
-  InlineNativePicker,
-  PickerChip,
-} from "./datetime-field";
+import { chipDateText, InlineNativePicker, PickerChip } from "./datetime-field";
 import { ColorDisc } from "./color-badge";
 import { PageSheet } from "./page-sheet";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
 import { PlacePicker } from "./place-picker";
+import { SheetScroll } from "./sheet-scroll";
 import { SheetTitle } from "./sheet-title";
 import { SubmitButton } from "./submit-button";
 import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { useClearDraft, useDraft } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
+import { useInvalidateTrip } from "@/lib/useTripDetail";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 type Member = {
@@ -105,6 +107,7 @@ export function ExpenseForm({
 }) {
   const t = useTranslations("expense");
   const tCommon = useTranslations("common");
+  const tCat = useTranslations("categories");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editExpense;
@@ -242,7 +245,8 @@ export function ExpenseForm({
     tzRes.kind === "single"
       ? tzRes.tz
       : (tzRes.options.find(
-          (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+          (o) =>
+            o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
         )?.tz ?? tzRes.options[0].tz);
 
   const onDateChange = (newDate: string) => {
@@ -261,11 +265,11 @@ export function ExpenseForm({
   const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
     "selectedSplits",
     () =>
-    initOnlySelf
-      ? new Set([myMemberId])
-      : isEdit
-        ? new Set(editExpense.split_member_ids)
-        : new Set(members.map((m) => m.id)),
+      initOnlySelf
+        ? new Set([myMemberId])
+        : isEdit
+          ? new Set(editExpense.split_member_ids)
+          : new Set(members.map((m) => m.id)),
   );
   const splitsMatchAll =
     selectedSplits.size === members.length &&
@@ -301,6 +305,38 @@ export function ExpenseForm({
   // 通貨選択（CurrencyPickerModal が主要通貨→全通貨の並びを持つ）。
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [categoryOpen, setCategoryOpen] = useState(false);
+
+  // カテゴリ選択シートの中でカテゴリを足せる（新しいカテゴリが欲しくなるのは
+  // 「選ぼうとしたが当てはまるものが無い」瞬間だけなので、必要になった場所に
+  // 手段を置く）。改名・削除は選ぶことの一部ではないので、ここには置かず
+  // 費用カテゴリ管理のまま → docs/ui-guidelines.md「一覧の行から消せるように
+  // するときの作法」。
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  // 完了キー（onSubmitEditing）とフォーカス外れ（onBlur）が続けて発火するので、
+  // 1 回の追加につき保存を 1 回に抑える（管理シートと同じ理由）。
+  const savingCategoryRef = useRef(false);
+  const invalidateTrip = useInvalidateTrip(tripId);
+
+  const saveNewCategory = () => {
+    if (savingCategoryRef.current) return;
+    const name = newCategoryName.trim();
+    setAddingCategory(false);
+    setNewCategoryName("");
+    if (!name) return;
+    savingCategoryRef.current = true;
+    void createExpenseCategory(supabase, tripId, name).then(async (r) => {
+      savingCategoryRef.current = false;
+      if (!r.ok) {
+        Alert.alert(tCat("saveFailed"));
+        return;
+      }
+      // 一覧が届いてから選ぶ（先に選ぶと、届くまでトリガの表示が空になる）。
+      await invalidateTrip();
+      setCategoryId(r.data.id);
+      setCategoryOpen(false);
+    });
+  };
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -514,9 +550,7 @@ export function ExpenseForm({
           <PickerChip
             text={chipDateText(paidAtDate)}
             active={openPicker === "date"}
-            onPress={() =>
-              setOpenPicker((p) => (p === "date" ? null : "date"))
-            }
+            onPress={() => setOpenPicker((p) => (p === "date" ? null : "date"))}
           />
           {showTime ? (
             <>
@@ -641,8 +675,7 @@ export function ExpenseForm({
           >
             <Text style={styles.disclosureLabel}>
               {t("payer", {
-                name:
-                  members.find((m) => m.id === payer)?.display_name ?? "?",
+                name: members.find((m) => m.id === payer)?.display_name ?? "?",
               })}
             </Text>
             <ChevronIcon
@@ -757,40 +790,83 @@ export function ExpenseForm({
         onClose={() => setCategoryOpen(false)}
         title={t("category")}
       >
-          <ScrollView contentContainerStyle={styles.pickerList}>
-            {sortedCategories.map((c) => (
-              <Pressable
-                key={c.id}
-                onPress={() => {
-                  setCategoryId(c.id);
-                  setCategoryOpen(false);
-                }}
-                style={styles.pickerRow}
-              >
-                <ColorDisc color={c.color} size={20}>
-                  {(glyph) => (
-                    <ExpenseCategoryIcon
-                      icon={c.icon}
-                      size={20}
-                      inset={0.18}
-                      color={glyph}
-                    />
-                  )}
-                </ColorDisc>
-                <Text
-                  style={[
-                    styles.pickerText,
-                    c.id === categoryId && styles.pickerTextOn,
-                  ]}
-                >
-                  {catName(c)}
-                </Text>
-                {c.id === categoryId && (
-                  <CheckIcon size={16} color={theme.foreground} />
+        <SheetScroll contentContainerStyle={styles.pickerList}>
+          {sortedCategories.map((c) => (
+            <Pressable
+              key={c.id}
+              onPress={() => {
+                setCategoryId(c.id);
+                setCategoryOpen(false);
+              }}
+              style={styles.pickerRow}
+            >
+              <ColorDisc color={c.color} size={20}>
+                {(glyph) => (
+                  <ExpenseCategoryIcon
+                    icon={c.icon}
+                    size={20}
+                    inset={0.18}
+                    color={glyph}
+                  />
                 )}
+              </ColorDisc>
+              <Text
+                style={[
+                  styles.pickerText,
+                  c.id === categoryId && styles.pickerTextOn,
+                ]}
+              >
+                {catName(c)}
+              </Text>
+              {c.id === categoryId && (
+                <CheckIcon size={16} color={theme.foreground} />
+              )}
+            </Pressable>
+          ))}
+          {addingCategory ? (
+            <View style={styles.pickerAddRow}>
+              <ColorDisc color={CUSTOM_CATEGORY_COLOR} size={20}>
+                {(glyph) => (
+                  <ExpenseCategoryIcon
+                    icon={CUSTOM_CATEGORY_ICON}
+                    size={20}
+                    inset={0.18}
+                    color={glyph}
+                  />
+                )}
+              </ColorDisc>
+              <TextInput
+                autoFocus
+                value={newCategoryName}
+                onChangeText={setNewCategoryName}
+                placeholder={tCat("nameLabel")}
+                placeholderTextColor={theme.subtleForeground}
+                style={[styles.input, styles.pickerAddInput]}
+                onBlur={saveNewCategory}
+                onSubmitEditing={saveNewCategory}
+                returnKeyType="done"
+              />
+              <Pressable
+                onPress={() => {
+                  setAddingCategory(false);
+                  setNewCategoryName("");
+                }}
+                hitSlop={8}
+                accessibilityLabel={tCommon("cancel")}
+              >
+                <XIcon size={16} color={theme.mutedForeground} />
               </Pressable>
-            ))}
-          </ScrollView>
+            </View>
+          ) : (
+            <Pressable
+              onPress={() => setAddingCategory(true)}
+              style={styles.pickerAddButton}
+            >
+              <PlusIcon size={16} color={theme.mutedForeground} />
+              <Text style={styles.pickerAddLabel}>{tCat("add")}</Text>
+            </Pressable>
+          )}
+        </SheetScroll>
       </PageSheet>
     </View>
   );
@@ -906,4 +982,25 @@ const makeStyles = (t: Theme) =>
     },
     pickerText: { fontSize: 14, color: t.foreground, flex: 1 },
     pickerTextOn: { fontWeight: "700" },
+    // 追加行（費用カテゴリ管理と同形）。破線＝「まだ実体が無い」。
+    pickerAddRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 10,
+    },
+    pickerAddInput: { flex: 1 },
+    pickerAddButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      marginTop: 8,
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      paddingHorizontal: 12,
+      paddingVertical: 10,
+    },
+    pickerAddLabel: { fontSize: 14, color: t.mutedForeground },
   });

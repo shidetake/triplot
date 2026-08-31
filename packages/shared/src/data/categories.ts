@@ -11,11 +11,13 @@ export const CUSTOM_CATEGORY_COLOR = "#3b82f6";
 export const CATEGORY_IN_USE = "category-in-use";
 
 // カスタムカテゴリを末尾（sort_order 最大 + 1）に追加する。
+// 作った id を返す（費用フォームのカテゴリ選択は、追加したものをそのまま
+// 選んで閉じるため。管理シート側は使わない）。
 export async function createExpenseCategory(
   sb: DB,
   tripId: string,
   name: string,
-): Promise<Result<void>> {
+): Promise<Result<{ id: string }>> {
   const { data: maxRow } = await sb
     .from("expense_categories")
     .select("sort_order")
@@ -24,16 +26,20 @@ export async function createExpenseCategory(
     .limit(1)
     .maybeSingle();
 
-  const { error } = await sb.from("expense_categories").insert({
-    trip_id: tripId,
-    name: name.trim(),
-    color: CUSTOM_CATEGORY_COLOR,
-    icon: CUSTOM_CATEGORY_ICON,
-    sort_order: (maxRow?.sort_order ?? 0) + 1,
-    key: null,
-  });
+  const { data, error } = await sb
+    .from("expense_categories")
+    .insert({
+      trip_id: tripId,
+      name: name.trim(),
+      color: CUSTOM_CATEGORY_COLOR,
+      icon: CUSTOM_CATEGORY_ICON,
+      sort_order: (maxRow?.sort_order ?? 0) + 1,
+      key: null,
+    })
+    .select("id")
+    .single();
   if (error) return err(error.message);
-  return ok(undefined);
+  return ok({ id: data.id });
 }
 
 // カテゴリ名を変える。key を null にする＝改名した時点でカスタム扱い
