@@ -29,7 +29,7 @@ describe("nameTokens", () => {
 describe("matchPlace", () => {
   it("表記揺れ（支店名サフィックス付き）でも既存 place に当たる", () => {
     const m = matchPlace(
-      { merchant: "KAI COFFEE ALOHILANI - K", address: null },
+      { name: "KAI COFFEE ALOHILANI - K", address: null },
       places,
     );
     expect(m?.placeId).toBe("kai");
@@ -37,7 +37,7 @@ describe("matchPlace", () => {
 
   it("住所が一致するとスコアが上がる", () => {
     const withAddr = matchPlace(
-      { merchant: "Kai Coffee", address: "2490 Kalakaua Ave" },
+      { name: "Kai Coffee", address: "2490 Kalakaua Ave" },
       places,
     );
     expect(withAddr?.placeId).toBe("kai");
@@ -45,11 +45,11 @@ describe("matchPlace", () => {
   });
 
   it("無関係な店は null（新規/手動）", () => {
-    expect(matchPlace({ merchant: "Uber", address: null }, places)).toBeNull();
+    expect(matchPlace({ name: "Uber", address: null }, places)).toBeNull();
   });
 
   it("正規化後に完全一致なら最有力", () => {
-    const m = matchPlace({ merchant: "yard house", address: null }, places);
+    const m = matchPlace({ name: "yard house", address: null }, places);
     expect(m?.placeId).toBe("yard");
   });
 });
@@ -75,8 +75,7 @@ describe("別の店に吸い寄せられない", () => {
   it("同じビルの住所だけでは一致しない", () => {
     expect(
       matchPlace(
-        {
-          merchant: "Alo Yoga 045 Ala Moana",
+        { name: "Alo Yoga 045 Ala Moana",
           address: "1450 Ala Moana Boulevard Suite 2238 Honolulu, Hawaii 96814",
         },
         mall,
@@ -87,7 +86,7 @@ describe("別の店に吸い寄せられない", () => {
   // "ALO" は "alohilani" の中に文字列として含まれる。語の単位で見ないと当たる。
   it("短い名前が別の語の内側に紛れ込まない", () => {
     expect(
-      matchPlace({ merchant: "ALO", address: null }, mall),
+      matchPlace({ name: "ALO", address: null }, mall),
     ).toBeNull();
   });
 });

@@ -28,6 +28,7 @@ import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
 
 import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
+import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
@@ -179,7 +180,7 @@ function matchSavedPlace(
   address: string | null,
   places: TripPlace[],
 ): DraftPlacePrefill {
-  const matched = matchPlace({ merchant: name, address }, places);
+  const matched = matchPlace({ name, address }, places);
   return matched
     ? {
         kind: "saved",
@@ -270,7 +271,10 @@ export function deriveExpenseDraftItems(
       // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
       // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
       // autoResolvePlace で再度自動解決を試みる）。
-      const savedPlace = matchSavedPlace(r.merchant, r.address, ctx.places);
+      // 場所の名前は location を優先する（receiptPlaceName 参照。merchant は
+      // 請求元なので、予約サイト経由だと代理店の名前になる）。
+      const placeName = receiptPlaceName(r);
+      const savedPlace = matchSavedPlace(placeName, r.address, ctx.places);
       const place =
         savedPlace ??
         (r.resolvedPlace
@@ -279,7 +283,7 @@ export function deriveExpenseDraftItems(
               guessImportPlaceIcon({
                 category: r.category,
                 eventTitle: null,
-                merchant: r.merchant,
+                merchant: placeName,
               }),
             )
           : null);
@@ -314,7 +318,7 @@ export function deriveExpenseDraftItems(
           initialPlace: place,
           autoResolvePlace: place
             ? null
-            : { name: r.merchant, address: r.address },
+            : { name: placeName, address: r.address },
           fxRates: r.fxRates ?? null,
           initialNote: r.items ?? null,
           initialTime: when.time,

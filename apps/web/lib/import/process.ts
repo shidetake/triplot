@@ -3,6 +3,7 @@ import { APICallError } from "ai";
 import { extractEmail, type TripHint } from "./extract";
 import { acquireExtractLease, releaseExtractLease } from "./drainLease";
 import { fetchReceiptLink } from "./fetchLink";
+import { receiptPlaceName } from "@triplot/shared/import/merchantName";
 import {
   EXTRACT_MODEL,
   FUNCTION_MAX_SECONDS,
@@ -649,8 +650,10 @@ async function resolveReceiptPlace(
 ): Promise<StoredReceipt | null> {
   if (!receipt) return null;
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
-  if (!apiKey || !receipt.merchant || receipt.category === "渡航")
-    return receipt;
+  // 地図に載せる場所の名前は location を優先する（receiptPlaceName 参照。
+  // merchant は請求元なので、予約サイト経由だと代理店の名前で引いてしまう）。
+  const placeName = receiptPlaceName(receipt);
+  if (!apiKey || !placeName || receipt.category === "渡航") return receipt;
   const date = receipt.serviceDate ?? receipt.date;
   try {
     // 移動日は候補の空港が2つある。どちらのバイアスで引くべきかは時刻だけでは
@@ -683,7 +686,7 @@ async function resolveReceiptPlace(
           ].filter((b): b is { lat: number; lng: number } => !!b);
     let best: { place: PlaceCandidate; km: number } | null = null;
     for (const biasCenter of biases) {
-      const r = await resolveNamedPlace(receipt.merchant, receipt.address, {
+      const r = await resolveNamedPlace(placeName, receipt.address, {
         apiKey,
         biasCenter,
       });
@@ -697,7 +700,7 @@ async function resolveReceiptPlace(
     // 「解決できない → 座標なしの場所が増える → いつまでもバイアスが作れない」
     // の循環に入る。
     if (!receipt.address) return receipt;
-    const r = await resolveNamedPlace(receipt.merchant, receipt.address, {
+    const r = await resolveNamedPlace(placeName, receipt.address, {
       apiKey,
     });
     return r ? { ...receipt, resolvedPlace: r } : receipt;

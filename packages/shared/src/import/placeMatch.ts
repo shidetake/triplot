@@ -97,8 +97,10 @@ function addressBonus(
 export type PlaceMatch = { placeId: string; score: number };
 
 // 既存 place 群から最有力候補を返す（閾値未満は null=新規/手動）。
+// name は**場所の名前**（receiptPlaceName で決まる）。merchant とは限らない
+// ＝予約サイト経由の予約ではホテル名が来る。
 export function matchPlace(
-  receipt: { merchant: string; address: string | null },
+  target: { name: string; address: string | null },
   places: TripPlace[],
   threshold = 0.5,
 ): PlaceMatch | null {
@@ -106,9 +108,9 @@ export function matchPlace(
   for (const p of places) {
     // **候補に残る資格は名前だけで決める。** 住所で資格を与えると、同じビルの
     // 別の店に吸い寄せられる（addressBonus のコメント参照）。
-    const name = scoreName(receipt.merchant, p);
-    if (name < threshold) continue;
-    const score = name + addressBonus(receipt.address, p);
+    const nameScore = scoreName(target.name, p);
+    if (nameScore < threshold) continue;
+    const score = nameScore + addressBonus(target.address, p);
     if (!best || score > best.score) best = { placeId: p.id, score };
   }
   return best;

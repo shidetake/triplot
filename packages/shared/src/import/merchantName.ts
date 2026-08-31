@@ -42,3 +42,25 @@ export function normalizeMerchant(name: string): string {
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 }
+
+// レシートから「場所の名前」を取る。**location を優先し、無ければ merchant**。
+//
+// 2つある理由は、両者の意味が違うから。merchant は**誰に請求されたか**で、
+// マージの手がかりと受信箱の行の見出しに使う。location は**実際にどこに居たか**で、
+// 地図に載せる場所はこちら。普通の店のレシートでは同じ文字列になるが、
+// 食い違う場面が2つある。
+//
+//   銀行・カード会社の通知  merchant は明細の文字列（"SQ *KONA COFFEE PURVEY"）で
+//                           場所の名前としては使えないが、取引の突き合わせには要る。
+//                           location は書かれていないことが多い（→ merchant に落ちる）
+//   予約サイト経由の予約    merchant は Expedia（請求元）、location はホテル。
+//                           泊まるのはホテルなので、場所はこちらでないといけない
+//
+// 以前は場所の解決が merchant だけを見ていて、Expedia で取ったホテルの費用が
+// 「Expedia」という場所になっていた（実機で発覚）。
+export function receiptPlaceName(r: {
+  merchant: string;
+  location?: string | null;
+}): string {
+  return r.location?.trim() || r.merchant;
+}

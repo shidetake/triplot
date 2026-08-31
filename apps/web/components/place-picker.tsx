@@ -63,7 +63,7 @@ async function tryResolvePlace(
     const name = p.mainText?.text ?? p.text.text;
     const addr = p.secondaryText?.text ?? "";
     const r = matchPlace(
-      { merchant: input, address },
+      { name: input, address },
       [{ id: "g", name, formattedAddress: addr }],
       0,
     );

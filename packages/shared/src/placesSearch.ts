@@ -435,7 +435,7 @@ export async function resolveNamedPlace(
     let bestScore = -1;
     for (const c of candidates.slice(0, 5)) {
       const r = matchPlace(
-        { merchant: trimmed, address: addr },
+        { name: trimmed, address: addr },
         [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
         0,
       );
