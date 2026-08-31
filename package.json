@@ -20,6 +20,7 @@
     "db:types:check": "bash scripts/check-db-types.sh",
     "check:client-boundary": "node scripts/check-client-boundary.mjs",
     "db:push:staging": "bash scripts/db-push-staging.sh",
+    "gmail:forward": "node scripts/forward-gmail.mjs",
     "licenses:generate": "node scripts/gen-licenses.mjs",
     "web:version:generate": "node scripts/gen-web-version.mjs",
     "ios:preview:upload": "node scripts/ios-preview-upload.mjs",
