@@ -18,6 +18,40 @@ function toAirline([iata, icao, en, ja]: (typeof AIRLINES)[number]): Airline {
   return { iata, icao, name: ja ?? en, englishName: en };
 }
 
+/**
+ * 航空会社名から IATA コードを引く（"Delta" → DL）。取り込み（LLM 出力）専用。
+ *
+ * **曖昧なら null。** 誤ったコードを返すと存在しない便を引きに行くので、
+ * 「引けない」より悪い。段は2つ:
+ *
+ *   1. 正式名と完全一致するものが1つだけなら、それ
+ *   2. 先頭1語が一致するものが**少数**なら、その中で一番知名度の高いもの
+ *      （AIRLINES は知名度の降順に並んでいる）
+ *
+ * 2 に上限を置くのは、ブランド名は数件に絞れるのに対し、一般語は絞れないから。
+ * 実測（先頭1語の一致件数）: delta 2 / united 2 / japan 3 に対し **air は 89**。
+ * 上限を超えたら、どれを選んでも当てずっぽうなので諦める。
+ */
+const MAX_FIRST_WORD_CANDIDATES = 3;
+
+export function airlineIataByName(name: string): string | null {
+  const q = name.trim().toLowerCase();
+  if (q.length < 2) return null;
+  const namesOf = (row: (typeof AIRLINES)[number]) =>
+    [row[2], row[3]].filter((n): n is string => !!n).map((n) => n.toLowerCase());
+
+  const exact = AIRLINES.filter((row) => namesOf(row).some((n) => n === q));
+  if (exact.length > 0) return exact.length === 1 ? exact[0][0] : null;
+
+  const byFirstWord = AIRLINES.filter((row) =>
+    namesOf(row).some((n) => n.split(/\s+/)[0] === q),
+  );
+  if (byFirstWord.length === 0) return null;
+  return byFirstWord.length <= MAX_FIRST_WORD_CANDIDATES
+    ? byFirstWord[0][0]
+    : null;
+}
+
 /** IATA コードから引く（"ZG" → ZIPAIR Tokyo）。無ければ null */
 export function airlineByIata(iata: string): Airline | null {
   const key = iata.trim().toUpperCase();

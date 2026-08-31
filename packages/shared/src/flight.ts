@@ -6,6 +6,7 @@
 //
 // 背景（実測にもとづく設計判断）は docs/design/flight-lookup.md。
 
+import { airlineIataByName } from "./airlines";
 import { addDays, parseWall, utcMsToWallClock, wallClockToUtcMs } from "./schedule";
 
 // ────────────────────────────────────────────────
@@ -35,6 +36,26 @@ export function parseFlightNumber(input: string): ParsedFlightNumber | null {
   if (!m) return null;
   const [, airline, digits, suffix] = m;
   return { airline, digits, normalized: `${airline}${digits}${suffix}` };
+}
+
+/**
+ * 便名を、表記ゆれを吸収して正規形にする。取り込み（LLM 出力）専用。
+ *
+ * LLM は同じ便を "DL181" と書くこともあれば "DELTA 181" と書くこともある
+ * （同じ便のほぼ同じメール2通で実際に割れた）。後者は parseFlightNumber が
+ * 弾くので、便の照会も空港の解決も丸ごと落ちて、2つの仮予定の中身が食い違う。
+ * 航空会社名を IATA コードに直してから読み直す。
+ *
+ * **手入力には使わない。** 入力途中の "delta 1" のような文字列まで便名として
+ * 解釈してしまい、航空会社の検索に落ちなくなる。
+ */
+export function resolveFlightNumber(input: string): ParsedFlightNumber | null {
+  const direct = parseFlightNumber(input);
+  if (direct) return direct;
+  const m = input.trim().match(/^(.+?)[ -]*(\d{1,4})([A-Za-z]?)$/);
+  if (!m) return null;
+  const iata = airlineIataByName(m[1]);
+  return iata ? parseFlightNumber(`${iata}${m[2]}${m[3]}`) : null;
 }
 
 /**

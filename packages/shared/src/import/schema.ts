@@ -183,7 +183,11 @@ export const eventDraftSchema = z.object({
     .string()
     .nullable()
     .describe(
-      "transit のみ: 便名・列車番号など交通機関の識別番号（例: NH184、のぞみ23号）。判明すれば入れる。transit 以外・不明は null",
+      "transit のみ: 便名・列車番号など交通機関の識別番号。" +
+        "**航空便は IATA の2文字コード + 数字**（例: NH184、DL181、ZG002）。" +
+        "航空会社名を綴らない（'DELTA 181' ではなく 'DL181'）。" +
+        "列車・バスはそのままの表記でよい（例: のぞみ23号）。" +
+        "判明すれば入れる。transit 以外・不明は null",
     ),
   departTerminal: z
     .string()

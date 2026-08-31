@@ -11,7 +11,10 @@ import {
 } from "./importConfig";
 import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
 import { createFlightApi } from "@triplot/shared/data/flightApi";
-import { parseFlightNumber, type FlightEndpoint } from "@triplot/shared/flight";
+import {
+  resolveFlightNumber,
+  type FlightEndpoint,
+} from "@triplot/shared/flight";
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
@@ -463,8 +466,9 @@ async function prefetchFlights(
     if (ev.kind === "transit") {
       // 便名が引ければフライトとして解決する（空港は座標が既知）。引けない
       // 移動（配車・タクシー・列車・バス）は下の両端解決に落ちる。
+      // LLM の表記ゆれ（"DL181" / "DELTA 181"）を吸収してから読む。
       const parsed = ev.vehicleNumber
-        ? parseFlightNumber(ev.vehicleNumber)
+        ? resolveFlightNumber(ev.vehicleNumber)
         : null;
       if (parsed) {
         try {
