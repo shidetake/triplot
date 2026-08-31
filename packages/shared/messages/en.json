@@ -136,9 +136,23 @@
     "fillAll": "Please fill in all fields."
   },
   "landing": {
-    "tagline": "Plan trips with friends and keep them as memories.",
+    "tagline": "Build a trip with friends, all in one place.",
+    "lead": "The schedule, the places you want to go, what it costs, and what's left to do — everyone travelling can write it together.",
     "openApp": "Open the app →",
-    "joinHint": "If you just want to join without signing in, open the shared link directly."
+    "joinHint": "If you just want to join without signing in, open the shared link directly.",
+    "scheduleTitle": "Schedule",
+    "scheduleBody": "One timeline from departure to arrival home. Flights across time zones still read in local time.",
+    "placesTitle": "Collect the places you want to go on a map",
+    "placesBody": "Candidates and confirmed spots sit on the same map, so you can see how they relate and what order to visit them in.",
+    "expensesTitle": "Expenses",
+    "expensesBody": "Record who paid for what and it works out who owes whom at the end. Foreign currencies go in as they are.",
+    "todosTitle": "To-dos",
+    "todosBody": "Bookings, packing, things to do once you arrive — and who is responsible for each.",
+    "importTitle": "Forward an email and it becomes a draft",
+    "importBody": "Forward a booking confirmation or a receipt and AI reads it into a draft event or expense. Nothing to retype.",
+    "shareTitle": "One link, and you build it together",
+    "shareBody": "Send the link to the people coming with you and they can write to it right away. Joining needs no account and no sign-in.",
+    "privacy": "Privacy Policy"
   },
   "auth": {
     "lastUsed": "Last used",
