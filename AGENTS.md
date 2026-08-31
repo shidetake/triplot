@@ -25,6 +25,7 @@ npm run lint         # eslint
 npx tsc --noEmit     # 型チェック（pre-commit / pre-push でも実行される）
 npm test             # vitest run（一回だけ。純関数のみ・DB に触らない）
 npm run test:db      # 実 DB（staging）に繋ぐテスト。手で走らせる（下記）
+npm run test:seed-emails  # メール取り込みのテストデータを作り直す（下記）
 npm run test:watch   # vitest watch
 npx vitest run lib/settlement.test.ts        # 単一ファイル
 npx vitest run -t "settles greedy"           # テスト名で絞り込み
@@ -55,6 +56,38 @@ skip する。本番を向いていたら例外で止まる）。
 Husky フック:
 - `pre-commit`: lint + tsc
 - `pre-push`: lint + tsc + test
+
+### メール取り込みのテストデータ（`npm run test:seed-emails`）
+
+取り込みの動作確認は、**実際にメールを転送するところからやる**のが一番実物に近い。
+その1往復を1コマンドにしてある。
+
+```bash
+npm run test:seed-emails                 # 受信箱を空にして、ラベルのメールを全部転送し直す
+npm run test:seed-emails -- -n 5         # 5通だけ（軽い確認）
+npm run test:seed-emails -- --dry-run    # 消さない・送らない。対象と件数だけ見る
+npm run test:seed-emails -- --keep-inbox # 受信箱を残して転送だけ
+```
+
+やることは2つ。**本番の受信箱を空にしてから、Gmail の指定ラベルのメールを
+1通ずつ転送する**（まとめて1通にしない。1通=1レシートでないと取り込みの検証に
+ならない）。転送そのものは `scripts/forward-gmail.mjs`（Gmail API を直接叩く
+汎用ツール。単体でも使える）で、`scripts/seed-import-emails.mjs` が手順の側。
+
+- **消すのは転送先アドレス宛の行だけ。** 同じ DB に他ユーザーの受信箱が同居して
+  いるので、テーブルごと `truncate` しない。`inbound_drafts` は cascade で消える。
+  確定済みの予定・費用は旅行側に残る（下書きの FK は `on delete set null`）。
+- **転送済みの記録は毎回捨てる。** 同じメールを何度でも流し直せることが目的なので、
+  記録が残っていると全部スキップされる。`forward-gmail.mjs` を単体で使うときの
+  記録とは別ファイル（`~/.gmail-mcp/seed_state.json`）。
+- 転送先アドレスと Gmail のラベルは gitignore された `apps/web/.env.local` の
+  `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL` から読む。**転送先は
+  知っていれば誰でもその受信箱にメールを流し込めるので、コミットするファイルには
+  書かない。**
+- Gmail の認証は `~/.gmail-mcp/`（`gcp-oauth.keys.json` と `credentials.json`）。
+  切れていればブラウザが開いて再認証する。
+- 転送してから取り込みが終わるまでは cron 次第で時間がかかる。件数の推移は
+  `inbound_emails` の `status` を数えると分かる。
 
 ## アーキテクチャ
 
