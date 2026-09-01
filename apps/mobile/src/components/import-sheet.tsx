@@ -83,26 +83,31 @@ export function ImportSheet() {
 
   // 合体が外れる方向は2つあり、「合体しすぎ」は下の unmerge で戻せるが
   // 「合体しなかった」には手段が無かった。選んだ側の内容が残る。
-  const mergeInto = (parentId: string) => {
+  // まとめる先を選んだあと、金額の扱いを聞く段（同じシートの中で切り替える）。
+  //
+  // **層を増やさない。** 受信箱は formSheet、まとめる先は PageSheet で既に2枚
+  // 重なっている。その上に ActionSheet を出そうとしたら最前面に出られず画面が
+  // 真っ白になった（実機で確認）。ガイドラインの「閉じ終わる前に開く指示は
+  // 捨てられる」と同じ性質の問題。
+  //
+  // セグメントで先にモードを選ばせる案もあったが、**金額が黙って変わる操作**
+  // なので、選んだ相手に対して明示的に答える形にする（モードの取り違えに
+  // 気付けないほうが危ない）。
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+
+  const runMerge = (mode: MergeMode) => {
     const childId = mergeSource;
+    const parentId = mergeTarget;
     setMergeSource(null);
-    if (!childId) return;
-    const run = (mode: MergeMode) => {
-      void mergeInboundEmails(supabase, childId, parentId, mode).then((r) => {
-        if (!r.ok) {
-          Alert.alert(r.error);
-          return;
-        }
-        void refetch();
-      });
-    };
-    // 金額の扱いだけ聞く（重複か合算か）。店名・日付等は選んだ側が主で、
-    // 空いている項目は相手から埋まる＝そこは判断が要らない。
-    Alert.alert(t("mergeModePrompt"), undefined, [
-      { text: tCommon("cancel"), style: "cancel" },
-      { text: t("mergeModeDedupe"), onPress: () => run("dedupe") },
-      { text: t("mergeModeSum"), onPress: () => run("sum") },
-    ]);
+    setMergeTarget(null);
+    if (!childId || !parentId) return;
+    void mergeInboundEmails(supabase, childId, parentId, mode).then((r) => {
+      if (!r.ok) {
+        Alert.alert(r.error);
+        return;
+      }
+      void refetch();
+    });
   };
 
   // 誤って合体されたメールを独立した下書きに戻す。
@@ -269,40 +274,63 @@ export function ImportSheet() {
           ui-guidelines「RN のシートは必ず OS ネイティブのものを使う」の2番）。 */}
       <PageSheet
         visible={mergeSource !== null}
-        onClose={() => setMergeSource(null)}
-        title={t("mergeTargetPrompt")}
+        onClose={() => {
+          setMergeSource(null);
+          setMergeTarget(null);
+        }}
+        // 見出しは段に合わせる（2段目で「まとめる先を選ぶ」のままだと中身と
+        // 食い違う。実機で確認）。
+        title={mergeTarget ? t("mergeModePrompt") : t("mergeTargetPrompt")}
       >
         <SheetScroll contentContainerStyle={styles.mergeList}>
-          <Text style={styles.mergeHint}>{t("mergeTargetHint")}</Text>
-          {emails.filter((x) => x.id !== mergeSource).length === 0 ? (
-            <Text style={styles.mergeHint}>{t("mergeNoTargets")}</Text>
+          {mergeTarget ? (
+            <>
+              {(["dedupe", "sum"] as const).map((mode) => (
+                <Pressable
+                  key={mode}
+                  onPress={() => runMerge(mode)}
+                  style={styles.mergeRow}
+                >
+                  <Text style={styles.mergeRowTitle}>
+                    {t(mode === "dedupe" ? "mergeModeDedupe" : "mergeModeSum")}
+                  </Text>
+                </Pressable>
+              ))}
+            </>
           ) : (
-            emails
-              .filter((x) => x.id !== mergeSource)
-              .map((x) => {
-                // 一覧の行と同じ要約を出す。件名のままだと
-                // 「Fwd: ［ソニー銀行］…」が並んで見分けが付かない（実機で確認）。
-                const sm = inboxRowSummary(rowById.get(x.id), {
-                  locale,
-                  subject: x.subject,
-                  fallbackTitle: t("noContent"),
-                  formatAmount: (total, currency) => `${total} ${currency}`,
-                });
-                return (
-                  <Pressable
-                    key={x.id}
-                    onPress={() => mergeInto(x.id)}
-                    style={styles.mergeRow}
-                  >
-                    <Text style={styles.mergeRowTitle} numberOfLines={1}>
-                      {sm.title}
-                    </Text>
-                    <Text style={styles.mergeRowMeta} numberOfLines={1}>
-                      {sm.parts.join("  ")}
-                    </Text>
-                  </Pressable>
-                );
-              })
+            <>
+              <Text style={styles.mergeHint}>{t("mergeTargetHint")}</Text>
+              {emails.filter((x) => x.id !== mergeSource).length === 0 ? (
+                <Text style={styles.mergeHint}>{t("mergeNoTargets")}</Text>
+              ) : (
+                emails
+                  .filter((x) => x.id !== mergeSource)
+                  .map((x) => {
+                    // 一覧の行と同じ要約を出す。件名のままだと
+                    // 「Fwd: ［ソニー銀行］…」が並んで見分けが付かない（実機で確認）。
+                    const sm = inboxRowSummary(rowById.get(x.id), {
+                      locale,
+                      subject: x.subject,
+                      fallbackTitle: t("noContent"),
+                      formatAmount: (total, currency) => `${total} ${currency}`,
+                    });
+                    return (
+                      <Pressable
+                        key={x.id}
+                        onPress={() => setMergeTarget(x.id)}
+                        style={styles.mergeRow}
+                      >
+                        <Text style={styles.mergeRowTitle} numberOfLines={1}>
+                          {sm.title}
+                        </Text>
+                        <Text style={styles.mergeRowMeta} numberOfLines={1}>
+                          {sm.parts.join("  ")}
+                        </Text>
+                      </Pressable>
+                    );
+                  })
+              )}
+            </>
           )}
         </SheetScroll>
       </PageSheet>
@@ -413,7 +441,10 @@ export function ImportSheet() {
                   「合体しすぎ」は下の分割で戻せるが「合体しなかった」には
                   手段が無かった。選んだ側の内容が残る。 */}
                   <Pressable
-                    onPress={() => setMergeSource(e.id)}
+                    onPress={() => {
+                      setMergeTarget(null);
+                      setMergeSource(e.id);
+                    }}
                     hitSlop={8}
                     style={styles.mergedToggleRow}
                   >
