@@ -604,7 +604,10 @@
     "mergeWith": "他とまとめる",
     "mergeTargetPrompt": "まとめる先を選ぶ",
     "mergeTargetHint": "選んだ取り込みの内容が残り、こちらは畳まれます。",
-    "mergeNoTargets": "まとめられる取り込みがありません。"
+    "mergeNoTargets": "まとめられる取り込みがありません。",
+    "mergeModePrompt": "まとめ方",
+    "mergeModeDedupe": "重複だった（片方を残す）",
+    "mergeModeSum": "合算する（チップ・調整）"
   },
   "admin": {
     "heading": "管理",

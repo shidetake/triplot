@@ -604,7 +604,10 @@
     "mergeWith": "Combine with another",
     "mergeTargetPrompt": "Choose what to combine into",
     "mergeTargetHint": "The chosen one keeps its details; this one is folded into it.",
-    "mergeNoTargets": "There is nothing to combine with."
+    "mergeNoTargets": "There is nothing to combine with.",
+    "mergeModePrompt": "How to combine",
+    "mergeModeDedupe": "Duplicate (keep one)",
+    "mergeModeSum": "Add together (tip or adjustment)"
   },
   "admin": {
     "heading": "Admin",

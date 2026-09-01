@@ -264,17 +264,25 @@ export async function unmergeInboundEmail(
 // 方は unmergeInboundEmail で戻せるが、合体しなかった方には手段が無かった。
 // 実際に外れるのは後者が多い（同じ乗車の4通が2つに分かれたまま残る等）。
 //
-// 中身は組み立て直さない。どちらを残すかを人が選んでいるので判断は済んでおり、
-// ここで LLM を呼ぶと人の決定を機械に決め直させることになる。金額を足したい等は
-// 確定フォームで直せる。
+// **選んだ側を主にし、空いている項目だけ相手から埋める**（上書きはしない）。
+// 店のレシートと銀行の通知は持っている情報が違う（店名・品目・時刻はレシート、
+// 承認番号は銀行）ので、片方を残すだけだと情報が増えず「破棄」とほぼ同じになる。
+//
+// 金額は mode で選ぶ。重複（片方を残す）と合算（チップ・調整を足す。20 + 2 = 22 は
+// よくある形）の両方が要る。合算は決定的な足し算なので LLM は呼ばない
+// （通貨が違う時は足さない — 換算は別の判断）。
+export type MergeMode = "dedupe" | "sum";
+
 export async function mergeInboundEmails(
   sb: DB,
   childId: string,
   parentId: string,
+  mode: MergeMode,
 ): Promise<Result<void>> {
   const { error } = await sb.rpc("merge_inbound_emails", {
     p_child: childId,
     p_parent: parentId,
+    p_mode: mode,
   });
   if (error) return err(error.message);
   return ok(undefined);

@@ -62,6 +62,8 @@ export function ImportInbox({
   // 合体が外れる方向は2つあり、「合体しすぎ」は下の分割で戻せるが
   // 「合体しなかった」には手段が無かった。選んだ側の内容が残る。
   const [mergeSource, setMergeSource] = useState<string | null>(null);
+  // まとめる先を選んだあと、金額の扱い（重複か合算か）を聞く段。
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // 書き込みは shared のデータ関数をブラウザの Supabase クライアントで直接
@@ -310,7 +312,41 @@ export function ImportInbox({
                           <p className="text-xs text-muted-foreground">
                             {t("mergeTargetHint")}
                           </p>
-                          {rows.filter((o) => o.id !== row.id).length === 0 ? (
+                          {mergeTarget ? (
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="w-full text-xs font-medium">
+                                {t("mergeModePrompt")}
+                              </span>
+                              {(["dedupe", "sum"] as const).map((mode) => (
+                                <button
+                                  key={mode}
+                                  type="button"
+                                  disabled={isPending}
+                                  onClick={() => {
+                                    const target = mergeTarget;
+                                    setMergeSource(null);
+                                    setMergeTarget(null);
+                                    run(() =>
+                                      mergeInboundEmails(
+                                        createClient(),
+                                        row.id,
+                                        target,
+                                        mode,
+                                      ),
+                                    );
+                                  }}
+                                  className="rounded border border-foreground/20 px-2 py-1 text-xs transition hover:bg-foreground/10 disabled:opacity-50"
+                                >
+                                  {t(
+                                    mode === "dedupe"
+                                      ? "mergeModeDedupe"
+                                      : "mergeModeSum",
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          ) : rows.filter((o) => o.id !== row.id).length ===
+                            0 ? (
                             <p className="text-xs text-muted-foreground">
                               {t("mergeNoTargets")}
                             </p>
@@ -322,27 +358,21 @@ export function ImportInbox({
                                   key={o.id}
                                   type="button"
                                   disabled={isPending}
-                                  onClick={() => {
-                                    setMergeSource(null);
-                                    run(() =>
-                                      mergeInboundEmails(
-                                        createClient(),
-                                        row.id,
-                                        o.id,
-                                      ),
-                                    );
-                                  }}
+                                  onClick={() => setMergeTarget(o.id)}
                                   className={`${menuItemClass} block truncate text-left`}
                                 >
-                                  {
-                                    inboxRowSummary(o, {
+                                  {(() => {
+                                    // 一覧の行と同じ要約。件名のままだと同じ
+                                    // 差出人の通知が並んで見分けが付かない。
+                                    const sm = inboxRowSummary(o, {
                                       locale,
                                       subject: null,
                                       fallbackTitle: t("unknownMerchant"),
                                       formatAmount: (total, currency) =>
                                         `${total} ${currency}`,
-                                    }).title
-                                  }
+                                    });
+                                    return [sm.title, ...sm.parts].join("  ");
+                                  })()}
                                 </button>
                               ))
                           )}
@@ -350,7 +380,10 @@ export function ImportInbox({
                       ) : (
                         <button
                           type="button"
-                          onClick={() => setMergeSource(row.id)}
+                          onClick={() => {
+                            setMergeTarget(null);
+                            setMergeSource(row.id);
+                          }}
                           className="mt-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
                         >
                           {t("mergeWith")}

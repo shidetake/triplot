@@ -10,6 +10,7 @@ import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import {
   dismissInboundEmail,
   mergeInboundEmails,
+  type MergeMode,
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
@@ -86,13 +87,22 @@ export function ImportSheet() {
     const childId = mergeSource;
     setMergeSource(null);
     if (!childId) return;
-    void mergeInboundEmails(supabase, childId, parentId).then((r) => {
-      if (!r.ok) {
-        Alert.alert(r.error);
-        return;
-      }
-      void refetch();
-    });
+    const run = (mode: MergeMode) => {
+      void mergeInboundEmails(supabase, childId, parentId, mode).then((r) => {
+        if (!r.ok) {
+          Alert.alert(r.error);
+          return;
+        }
+        void refetch();
+      });
+    };
+    // 金額の扱いだけ聞く（重複か合算か）。店名・日付等は選んだ側が主で、
+    // 空いている項目は相手から埋まる＝そこは判断が要らない。
+    Alert.alert(t("mergeModePrompt"), undefined, [
+      { text: tCommon("cancel"), style: "cancel" },
+      { text: t("mergeModeDedupe"), onPress: () => run("dedupe") },
+      { text: t("mergeModeSum"), onPress: () => run("sum") },
+    ]);
   };
 
   // 誤って合体されたメールを独立した下書きに戻す。

@@ -1129,7 +1129,7 @@ export type Database = {
         Returns: string
       }
       merge_inbound_emails: {
-        Args: { p_child: string; p_parent: string }
+        Args: { p_child: string; p_mode?: string; p_parent: string }
         Returns: undefined
       }
       nanoid: { Args: { size?: number }; Returns: string }
