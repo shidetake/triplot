@@ -75,7 +75,21 @@ export async function mimeToText(
 ): Promise<{ subject: string; text: string }> {
   const email = await PostalMime.parse(raw);
   const plain = email.text?.trim() ?? "";
-  let text = pickBodyText(plain, htmlToText(email.html ?? ""));
+  const htmlText = htmlToText(email.html ?? "");
+  let text = pickBodyText(plain, htmlText);
+  // どちらを本文に選んだかを残す。**長さと選択だけで、本文は出さない**
+  // （AI を呼ぶ前なのでトークンも増えない）。
+  // 「HTML だけのメールで本文を取りこぼす」不具合を追った時、選択の記録が
+  // 無いせいで原因の特定に時間がかかった。同じ形が再発したらここだけ見れば済む。
+  console.log(
+    "[import] body",
+    JSON.stringify({
+      subject: email.subject ?? "",
+      plain: plain.length,
+      html: htmlText.length,
+      used: text === plain ? "plain" : "html",
+    }),
+  );
 
   for (const att of email.attachments ?? []) {
     if (att.mimeType !== "application/pdf" || typeof att.content === "string") {

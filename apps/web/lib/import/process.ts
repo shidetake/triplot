@@ -775,10 +775,23 @@ async function runExtraction(
           // **第1パスの成果を失う結果は採らない。** 第2パスも LLM なので揺らぐ。
           // 実際に、ホテルの予約確認メールで第2パスが空を返し、第1パスが
           // 見つけていた宿泊の予定を捨てて恒久エラーになった。
-          if (!extractionLostDetail(firstPass, secondPass)) {
+          const lost = extractionLostDetail(firstPass, secondPass);
+          if (!lost) {
             extractResult = secondPass;
             text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
           }
+          // リンク先を読んだ結果どうしたかを残す（ホストと真偽値だけ。URL も
+          // 本文も出さない）。第2パスが走ったのか・採ったのか・捨てたのかが
+          // 分からず、原因の切り分けを誤った反省から。
+          console.log(
+            "[import] enrich",
+            JSON.stringify({
+              host: new URL(firstPass.detailUrl).hostname,
+              gained: extractionGainedDetail(firstPass, secondPass),
+              lost,
+              adopted: !lost,
+            }),
+          );
         } catch {
           // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
         }
