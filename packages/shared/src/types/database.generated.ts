@@ -39,6 +39,27 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_usage_baseline: {
+        Row: {
+          extracted_since: number
+          id: boolean
+          started_at: string
+          total_used_at_start: number
+        }
+        Insert: {
+          extracted_since?: number
+          id?: boolean
+          started_at?: string
+          total_used_at_start?: number
+        }
+        Update: {
+          extracted_since?: number
+          id?: boolean
+          started_at?: string
+          total_used_at_start?: number
+        }
+        Relationships: []
+      }
       drain_leases: {
         Row: {
           locked_until: string

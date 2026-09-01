@@ -63,28 +63,36 @@ export default async function AdminPage() {
     .order("created_at", { ascending: false });
 
   // AI Gateway の残高（診断）。尽きると取り込みが止まり、入金するまで復旧しない
-  // ＝運用者が気づける場所が要る。1通あたりの単価は固定値を持たず、
-  // 「累計使用額 ÷ 抽出できたメール数」で毎回出す（定数だと実態からずれていく）。
+  // ＝運用者が気づける場所が要る。1通あたりの単価は固定値を持たず実績から出す
+  // （定数だと実態からずれていく）。
+  //
+  // **分母は ai_usage_baseline の累計通数を使う。** 以前は inbound_emails の
+  // 行数を数えていたが、分子（AI Gateway の使用額）が累計なのに分母だけ
+  // 「今残っている行」で、対応していなかった。受信箱を空にすると分母が
+  // リセットされて単価が跳ね上がる（実測: 23通しか残っていない時に
+  // $14.721 ÷ 23 = $0.64。実際は1通1〜2セント）。90日の自動削除でも同じ形で
+  // 徐々に膨らむ。
   //
   // 残高だけでは足りない。**無料枠のレート制限は残高があっても掛かる**ので、
   // 「残高は十分なのに取り込みが進まない」が残高の表示からは読み取れない
   // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
-  const [credits, { count: extractedCount }, { count: rateLimitedCount }] =
+  const [credits, { data: baseline }, { count: rateLimitedCount }] =
     await Promise.all([
       fetchGatewayCredits(),
       supabase
-        .from("inbound_emails")
-        .select("id", { count: "exact", head: true })
-        .not("extracted_at", "is", null),
+        .from("ai_usage_baseline")
+        .select("total_used_at_start, extracted_since")
+        .maybeSingle(),
       supabase
         .from("inbound_emails")
         .select("id", { count: "exact", head: true })
         .eq("status", "error")
         .eq("extract_error_kind", "rate_limit"),
     ]);
+  const since = baseline?.extracted_since ?? 0;
   const perEmail =
-    credits && extractedCount && extractedCount > 0
-      ? credits.totalUsed / extractedCount
+    credits && since > 0
+      ? (credits.totalUsed - Number(baseline?.total_used_at_start ?? 0)) / since
       : null;
   const remainingEmails =
     credits && perEmail && perEmail > 0
