@@ -277,6 +277,38 @@ function wrapBase64(b64Str) {
   return b64Str.match(/.{1,76}/g)?.join("\r\n") || b64Str;
 }
 
+// HTML → プレーンテキスト（転送のプレーン部を作るための最小限の変換）。
+// Gmail の転送は常にプレーンと HTML の両方を入れ、元が HTML しか持たない場合も
+// HTML から起こしたプレーンを付ける。ここが空だと、受け取り側が「転送ヘッダー
+// だけの張りぼて」を本文と誤認する。apps/web の htmlToText と役割は同じだが、
+// あちらは TypeScript でこのスクリプトからは読めないので、必要な分だけ持つ。
+function htmlToPlain(html) {
+  return html
+    .replace(/<(script|style)[\s\S]*?<\/\1>/gi, " ")
+    .replace(
+      /<a\b[^>]*\bhref=["'](https?:\/\/[^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
+      (_m, href, inner) => {
+        const label = inner.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+        if (!label) return ` ${href} `;
+        if (label.includes(href)) return ` ${label} `;
+        return ` ${label} (${href}) `;
+      },
+    )
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/(p|div|tr|li|h[1-6]|table)>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/[ \t]+/g, " ")
+    .replace(/ *\n */g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function buildForwardMime({ from, to, parsedOriginal }) {
   const originalSubject = parsedOriginal.subject || "(no subject)";
   const fwdSubject = originalSubject.startsWith("Fwd:") ? originalSubject : `Fwd: ${originalSubject}`;
@@ -285,8 +317,9 @@ function buildForwardMime({ from, to, parsedOriginal }) {
   const origTo = formatAddress(parsedOriginal.to);
   const origDate = parsedOriginal.date || "";
 
-  // Plain text body
-  const origText = parsedOriginal.text || "";
+  // Plain text body。元が HTML しか持たない場合は HTML から起こす（Gmail と同じ）。
+  const origText =
+    parsedOriginal.text?.trim() || htmlToPlain(parsedOriginal.html || "");
   const textBody = `---------- Forwarded message ---------
 From: ${origFrom}
 Date: ${origDate}
