@@ -46,6 +46,7 @@ import {
   type Extraction,
   type Receipt,
 } from "@triplot/shared/import/schema";
+import type { Json } from "@triplot/shared/types/database";
 import type { createServiceClient } from "@/lib/supabase/service";
 
 // 受信メールの抽出・マージ・自動リトライ（バックグラウンド処理）。route handler から
@@ -168,7 +169,10 @@ async function tryMerge(
   emailId: string,
   extraction: Extraction,
   text: string,
-): Promise<{ targetId: string; merged: Extraction } | null> {
+): Promise<{
+  result: { targetId: string; merged: Extraction } | null;
+  candidates: number;
+}> {
   const since = new Date(
     Date.now() - MERGE_LOOKBACK_DAYS * 86_400_000,
   ).toISOString();
@@ -181,7 +185,7 @@ async function tryMerge(
     .gte("received_at", since);
 
   const candidateIds = (others ?? []).map((o) => o.id);
-  if (candidateIds.length === 0) return null;
+  if (candidateIds.length === 0) return { result: null, candidates: 0 };
 
   // 突き合わせは実効値＝未確定 draft 行（作業状態）で行う。未確定が無いメールは
   // 合体先にならない（確定済みには触らないため）。
@@ -228,8 +232,11 @@ async function tryMerge(
     ];
   });
   const candidates = selectMergeCandidates(extraction, drafts);
-  if (candidates.length === 0) return null;
-  return findMerge(EXTRACT_MODEL, { extraction, text }, candidates);
+  if (candidates.length === 0) return { result: null, candidates: 0 };
+  return {
+    result: await findMerge(EXTRACT_MODEL, { extraction, text }, candidates),
+    candidates: candidates.length,
+  };
 }
 
 // 自動リトライ。失敗を**性質で分けて**扱う（詳細は docs/design/import-flow.md）。
@@ -730,9 +737,17 @@ async function runExtraction(
   if (await holdIfOverQuota(supabase, emailId, userId)) return;
   // 本文＋PDFテキストを作り（これが痩せ版）、許可ホストの明細リンクは fetch して本文に
   // 付加（enrichment）。候補旅行も渡して、抽出と同時にどの旅行か＋明細リンクを推論させる。
-  const { subject, text: gatheredText } = await gatherReceiptText(raw, {
+  const {
+    subject,
+    text: gatheredText,
+    choice,
+  } = await gatherReceiptText(raw, {
     fetchLink: fetchReceiptLink,
   });
+  // 後から原因を追うための診断メモ（migration 20260901120000 のコメント参照）。
+  // 長さ・ホスト名・件数・真偽値だけを積む。本文・URL・金額は入れない。
+  const diag: Record<string, unknown> = { ...choice };
+  const asJson = () => diag as unknown as Json;
   const trips = await fetchTripHints(supabase, userId);
   let text = gatheredText;
   const firstPass = await extractEmail(EXTRACT_MODEL, {
@@ -783,15 +798,13 @@ async function runExtraction(
           // リンク先を読んだ結果どうしたかを残す（ホストと真偽値だけ。URL も
           // 本文も出さない）。第2パスが走ったのか・採ったのか・捨てたのかが
           // 分からず、原因の切り分けを誤った反省から。
-          console.log(
-            "[import] enrich",
-            JSON.stringify({
-              host: new URL(firstPass.detailUrl).hostname,
-              gained: extractionGainedDetail(firstPass, secondPass),
-              lost,
-              adopted: !lost,
-            }),
-          );
+          diag.enrich = {
+            host: new URL(firstPass.detailUrl).hostname,
+            gained: extractionGainedDetail(firstPass, secondPass),
+            lost,
+            adopted: !lost,
+          };
+          console.log("[import] enrich", JSON.stringify(diag.enrich));
         } catch {
           // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
         }
@@ -811,6 +824,7 @@ async function runExtraction(
         status: "error",
         extract_error: EXTRACT_ERROR_NO_CONTENT,
         extracted_at: now,
+        diag: asJson(),
         body_text: null,
         raw: null,
         next_retry_at: null,
@@ -823,7 +837,14 @@ async function runExtraction(
   // 素の extraction（resolvedFlight を混ぜる前）で行う — findMerge は events を
   // まるごと LLM プロンプトに埋め込むので、確定済み相当のフライト詳細（空港
   // 座標等）を混ぜるとマージ判定に無関係なトークンで膨らむだけになる。
-  const merge = await tryMerge(supabase, userId, emailId, extraction, text);
+  const { result: merge, candidates } = await tryMerge(
+    supabase,
+    userId,
+    emailId,
+    extraction,
+    text,
+  );
+  diag.merge = { candidates, merged: merge !== null };
 
   if (merge) {
     // ターゲットの「自分の」extracted は残し、作業状態（pending draft 行）を合体結果で
@@ -863,6 +884,7 @@ async function runExtraction(
         merged_into: merge.targetId,
         extracted: extraction,
         extracted_at: now,
+        diag: asJson(),
         body_text: text,
         raw: null,
         next_retry_at: null,
@@ -893,6 +915,7 @@ async function runExtraction(
         status: "extracted",
         extracted: extraction,
         extracted_at: now,
+        diag: asJson(),
         // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
         body_text: text,
         raw: null,

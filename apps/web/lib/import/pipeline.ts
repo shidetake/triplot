@@ -1,5 +1,5 @@
 import { selectReceiptLinks } from "./links";
-import { mimeToText } from "./text";
+import { mimeToText, type BodyChoice } from "./text";
 
 // 受信レシート（生 MIME）→ 構造化データ、までのオーケストレーション。
 // 本文＋PDF を集め、許可ドメインに一致する明細リンクがあれば fetchLink で取得して
@@ -29,9 +29,9 @@ export function appendLinkText(
 export async function gatherReceiptText(
   raw: string | Uint8Array,
   opts: GatherOptions = {},
-): Promise<{ subject: string; text: string }> {
-  const { subject, text } = await mimeToText(raw);
-  if (!opts.fetchLink) return { subject, text };
+): Promise<{ subject: string; text: string; choice: BodyChoice }> {
+  const { subject, text, choice } = await mimeToText(raw);
+  if (!opts.fetchLink) return { subject, text, choice };
 
   const links = selectReceiptLinks(text).slice(0, opts.maxLinks ?? 2);
   let enriched = text;
@@ -45,5 +45,5 @@ export async function gatherReceiptText(
       // 取得失敗は無視して本文だけで続行
     }
   }
-  return { subject, text: enriched };
+  return { subject, text: enriched, choice };
 }

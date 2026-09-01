@@ -70,9 +70,15 @@ export function pickBodyText(plain: string, htmlText: string): string {
 // 生 MIME → { subject, text }。中身のある方（下記 pickBodyText）を本文にする。
 // 添付の PDF（航空券・ホテル folio 等、金額が本文でなく添付にあるもの）は
 // テキスト化して本文末尾に付加し、LLM が読めるようにする。
+export type BodyChoice = {
+  plain: number;
+  html: number;
+  used: "plain" | "html";
+};
+
 export async function mimeToText(
   raw: string | Uint8Array,
-): Promise<{ subject: string; text: string }> {
+): Promise<{ subject: string; text: string; choice: BodyChoice }> {
   const email = await PostalMime.parse(raw);
   const plain = email.text?.trim() ?? "";
   const htmlText = htmlToText(email.html ?? "");
@@ -105,5 +111,13 @@ export async function mimeToText(
     }
   }
 
-  return { subject: email.subject ?? "", text };
+  return {
+    subject: email.subject ?? "",
+    text,
+    choice: {
+      plain: plain.length,
+      html: htmlText.length,
+      used: text === plain ? "plain" : "html",
+    },
+  };
 }

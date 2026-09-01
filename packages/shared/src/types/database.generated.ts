@@ -483,6 +483,7 @@ export type Database = {
       inbound_emails: {
         Row: {
           body_text: string | null
+          diag: Json | null
           extract_error: string | null
           extract_error_kind: string | null
           extracted: Json | null
@@ -504,6 +505,7 @@ export type Database = {
         }
         Insert: {
           body_text?: string | null
+          diag?: Json | null
           extract_error?: string | null
           extract_error_kind?: string | null
           extracted?: Json | null
@@ -525,6 +527,7 @@ export type Database = {
         }
         Update: {
           body_text?: string | null
+          diag?: Json | null
           extract_error?: string | null
           extract_error_kind?: string | null
           extracted?: Json | null
