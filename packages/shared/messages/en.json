@@ -600,7 +600,11 @@
     "noTripsToAssign": "No trips to assign to yet.",
     "waitingHeading": "Processing ({count})",
     "draftsHeading": "Pending imports ({count})",
-    "failedHeading": "Failed ({count})"
+    "failedHeading": "Failed ({count})",
+    "mergeWith": "Combine with another",
+    "mergeTargetPrompt": "Choose what to combine into",
+    "mergeTargetHint": "The chosen one keeps its details; this one is folded into it.",
+    "mergeNoTargets": "There is nothing to combine with."
   },
   "admin": {
     "heading": "Admin",

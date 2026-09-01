@@ -1128,6 +1128,10 @@ export type Database = {
         Args: { p_display_name: string; p_token: string }
         Returns: string
       }
+      merge_inbound_emails: {
+        Args: { p_child: string; p_parent: string }
+        Returns: undefined
+      }
       nanoid: { Args: { size?: number }; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
       pick_member_color: { Args: { p_trip_id: string }; Returns: number }

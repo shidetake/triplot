@@ -2,25 +2,23 @@
 
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { Fragment, useTransition } from "react";
+import { Fragment, useState, useTransition } from "react";
 
 import { ChevronIcon } from "@/components/icons";
 import { inboxRowSummary } from "@triplot/shared/import/inboxRowSummary";
 import { DismissEmailButton } from "@/components/dismiss-email-button";
 import { ImportAddress } from "@/components/import-address";
 import { InlineDivider } from "@/components/inline-divider";
+import { menuItemClass } from "@/components/menu-item";
 import { MessageBox } from "@/components/message-box";
-import {
-  extractionSummary,
-} from "@triplot/shared/import/draftLabel";
+import { extractionSummary } from "@triplot/shared/import/draftLabel";
 import type { InboxRow } from "@triplot/shared/import/inboxRows";
-import {
-  EXTRACT_ERROR_NO_CONTENT,
-} from "@triplot/shared/import/config";
+import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 
 import {
   assignInboundEmailTrip,
   dismissInboundEmail,
+  mergeInboundEmails,
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { createClient } from "@/lib/supabase/client";
@@ -60,6 +58,10 @@ export function ImportInbox({
 }) {
   const t = useTranslations("import");
   const locale = useLocale();
+  // 手でまとめる先を選んでいる取り込み（null なら選択中でない）。
+  // 合体が外れる方向は2つあり、「合体しすぎ」は下の分割で戻せるが
+  // 「合体しなかった」には手段が無かった。選んだ側の内容が残る。
+  const [mergeSource, setMergeSource] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // 書き込みは shared のデータ関数をブラウザの Supabase クライアントで直接
@@ -150,58 +152,58 @@ export function ImportInbox({
         );
         if (group.length === 0) return null;
         return (
-        <div key={headingKey}>
-          <h3 className="mt-6 text-xs text-muted-foreground">
-            {t(headingKey, { count: group.length })}
-          </h3>
-          <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
-          {group.map((e) => (
-            <li
-              key={e.id}
-              // レート制限は「混んでいて順番待ち」であって失敗ではないので、
-              // 赤い箱にしない（失敗したと誤解させない）。かといって通常の
-              // カードと同じ見た目だと「済んだもの」に見えるので、薄いグレーの
-              // 面で「まだ処理中」を示す。amber は使わない — ガイドラインで
-              // amber は「要対応」の色で、これは放置すれば勝手に完了するため。
-              // 破線も使わない — 「ここに追加できる」の意味で旅行の候補に
-              // 使っており、同じ製品の中で記号が二重の意味を持つのを避ける。
-              className={
-                e.extract_error_kind === "rate_limit"
-                  ? "flex items-start justify-between gap-3 bg-muted/60 p-3"
-                  : "flex items-start justify-between gap-3 bg-red-50/50 p-3 dark:bg-red-400/10"
-              }
-            >
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium text-foreground">
-                  {e.subject || e.sender || t("unknownMerchant")}
-                </div>
-                <div
+          <div key={headingKey}>
+            <h3 className="mt-6 text-xs text-muted-foreground">
+              {t(headingKey, { count: group.length })}
+            </h3>
+            <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
+              {group.map((e) => (
+                <li
+                  key={e.id}
+                  // レート制限は「混んでいて順番待ち」であって失敗ではないので、
+                  // 赤い箱にしない（失敗したと誤解させない）。かといって通常の
+                  // カードと同じ見た目だと「済んだもの」に見えるので、薄いグレーの
+                  // 面で「まだ処理中」を示す。amber は使わない — ガイドラインで
+                  // amber は「要対応」の色で、これは放置すれば勝手に完了するため。
+                  // 破線も使わない — 「ここに追加できる」の意味で旅行の候補に
+                  // 使っており、同じ製品の中で記号が二重の意味を持つのを避ける。
                   className={
                     e.extract_error_kind === "rate_limit"
-                      ? "mt-0.5 text-xs text-muted-foreground"
-                      : "mt-0.5 text-xs text-red-700 dark:text-red-300"
+                      ? "flex items-start justify-between gap-3 bg-muted/60 p-3"
+                      : "flex items-start justify-between gap-3 bg-red-50/50 p-3 dark:bg-red-400/10"
                   }
                 >
-                  {e.extract_error === EXTRACT_ERROR_NO_CONTENT
-                    ? t("errorNoContent")
-                    : e.extract_error_kind === "rate_limit"
-                      ? t("errorRateLimited")
-                      : e.next_retry_at
-                        ? t("errorWillRetry")
-                        : t("errorNoRetry")}
-                </div>
-              </div>
-              <DismissEmailButton
-                id={e.id}
-                onDismiss={(id) =>
-                  run(() => dismissInboundEmail(createClient(), id))
-                }
-                className="h-7 w-7"
-              />
-            </li>
-          ))}
-          </ul>
-        </div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-foreground">
+                      {e.subject || e.sender || t("unknownMerchant")}
+                    </div>
+                    <div
+                      className={
+                        e.extract_error_kind === "rate_limit"
+                          ? "mt-0.5 text-xs text-muted-foreground"
+                          : "mt-0.5 text-xs text-red-700 dark:text-red-300"
+                      }
+                    >
+                      {e.extract_error === EXTRACT_ERROR_NO_CONTENT
+                        ? t("errorNoContent")
+                        : e.extract_error_kind === "rate_limit"
+                          ? t("errorRateLimited")
+                          : e.next_retry_at
+                            ? t("errorWillRetry")
+                            : t("errorNoRetry")}
+                    </div>
+                  </div>
+                  <DismissEmailButton
+                    id={e.id}
+                    onDismiss={(id) =>
+                      run(() => dismissInboundEmail(createClient(), id))
+                    }
+                    className="h-7 w-7"
+                  />
+                </li>
+              ))}
+            </ul>
+          </div>
         );
       })}
 
@@ -216,189 +218,248 @@ export function ImportInbox({
               して行を区切り線で分ける（ui-guidelines「カードや行を縦に並べる時の
               間隔」。費用一覧の ExpenseList と同じ形）。 */}
           <ul className="mt-2 divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10">
-          {rows.map((row) => {
-            // この画面の仕事は割り当てを決めることだけ（確定は各旅行の画面）。
-            const summary = inboxRowSummary(row, {
-              locale,
-              subject: null,
-              fallbackTitle: t("unknownMerchant"),
-              formatAmount: (total, currency) => `${total} ${currency}`,
-            });
-            return (
-            <li key={row.id} className="p-3">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{summary.title}</div>
-                  {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・
+            {rows.map((row) => {
+              // この画面の仕事は割り当てを決めることだけ（確定は各旅行の画面）。
+              const summary = inboxRowSummary(row, {
+                locale,
+                subject: null,
+                fallbackTitle: t("unknownMerchant"),
+                formatAmount: (total, currency) => `${total} ${currency}`,
+              });
+              return (
+                <li key={row.id} className="p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">
+                        {summary.title}
+                      </div>
+                      {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・
                       場所）。カテゴリと予定タイトルは判断に効かないので出さない。
                       組み立ては shared の inboxRowSummary（RN と同じ）。 */}
-                  {summary.parts.length > 0 ? (
-                    <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
-                      {summary.parts.map((part, i) => (
-                        <Fragment key={i}>
-                          {i > 0 && <InlineDivider />}
-                          <span>{part}</span>
-                        </Fragment>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="mt-1 text-sm text-muted-foreground">
-                      {t("noContent")}
-                    </div>
-                  )}
+                      {summary.parts.length > 0 ? (
+                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                          {summary.parts.map((part, i) => (
+                            <Fragment key={i}>
+                              {i > 0 && <InlineDivider />}
+                              <span>{part}</span>
+                            </Fragment>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-1 text-sm text-muted-foreground">
+                          {t("noContent")}
+                        </div>
+                      )}
 
-                  {/* 旅行の割り当て */}
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    {/* 1つ選ぶだけで完結する操作なので、選んだ時点で保存する
+                      {/* 旅行の割り当て */}
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        {/* 1つ選ぶだけで完結する操作なので、選んだ時点で保存する
                         （保存ボタンを置かない → ui-guidelines「保存ボタンの
                         要否」）。結果は行の表示（→ ◯◯で確定 / 要割当）が
                         変わることで見える。 */}
-                    <form className="flex items-center gap-2">
-                      <select
-                        name="trip_id"
-                        defaultValue={row.defaultTripId}
-                        disabled={isPending}
-                        onChange={(e) => {
-                          const tripId = e.currentTarget.value;
-                          run(() =>
-                            assignInboundEmailTrip(
-                              createClient(),
-                              row.id,
-                              tripId || null,
-                            ),
-                          );
-                        }}
-                        className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
-                      >
-                        <option value="">
-                          {wouldBeNewTrip(row.id)
-                            ? t("newTrip")
-                            : t("selectTrip")}
-                        </option>
-                        {trips.map((trip) => (
-                          <option key={trip.id} value={trip.id}>
-                            {tripTitle.get(trip.id) ?? trip.title}
-                          </option>
-                        ))}
-                      </select>
-                    </form>
+                        <form className="flex items-center gap-2">
+                          <select
+                            name="trip_id"
+                            defaultValue={row.defaultTripId}
+                            disabled={isPending}
+                            onChange={(e) => {
+                              const tripId = e.currentTarget.value;
+                              run(() =>
+                                assignInboundEmailTrip(
+                                  createClient(),
+                                  row.id,
+                                  tripId || null,
+                                ),
+                              );
+                            }}
+                            className="rounded-md border border-foreground/20 bg-background px-2 py-1 text-sm focus:border-primary focus:outline-none"
+                          >
+                            <option value="">
+                              {wouldBeNewTrip(row.id)
+                                ? t("newTrip")
+                                : t("selectTrip")}
+                            </option>
+                            {trips.map((trip) => (
+                              <option key={trip.id} value={trip.id}>
+                                {tripTitle.get(trip.id) ?? trip.title}
+                              </option>
+                            ))}
+                          </select>
+                        </form>
 
-                    {row.assignedTripId ? (
-                      <Link
-                        href={`/trips/${row.assignedTripId}`}
-                        className="text-sm font-medium text-foreground underline underline-offset-2"
-                      >
-                        {t("confirmAtTrip", {
-                          title:
-                            tripTitle.get(row.assignedTripId) ??
-                            t("tripFallback"),
-                        })}
-                      </Link>
-                    ) : (
-                      <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
-                        {t("needsAssignment")}
-                      </span>
-                    )}
-                  </div>
+                        {row.assignedTripId ? (
+                          <Link
+                            href={`/trips/${row.assignedTripId}`}
+                            className="text-sm font-medium text-foreground underline underline-offset-2"
+                          >
+                            {t("confirmAtTrip", {
+                              title:
+                                tripTitle.get(row.assignedTripId) ??
+                                t("tripFallback"),
+                            })}
+                          </Link>
+                        ) : (
+                          <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
+                            {t("needsAssignment")}
+                          </span>
+                        )}
+                      </div>
 
-                  {/* 開けることが分かる形にする＝文言だけだとタップできると
+                      {mergeSource === row.id ? (
+                        <div className="mt-2 space-y-1 rounded-md border border-foreground/10 p-2">
+                          <p className="text-xs text-muted-foreground">
+                            {t("mergeTargetHint")}
+                          </p>
+                          {rows.filter((o) => o.id !== row.id).length === 0 ? (
+                            <p className="text-xs text-muted-foreground">
+                              {t("mergeNoTargets")}
+                            </p>
+                          ) : (
+                            rows
+                              .filter((o) => o.id !== row.id)
+                              .map((o) => (
+                                <button
+                                  key={o.id}
+                                  type="button"
+                                  disabled={isPending}
+                                  onClick={() => {
+                                    setMergeSource(null);
+                                    run(() =>
+                                      mergeInboundEmails(
+                                        createClient(),
+                                        row.id,
+                                        o.id,
+                                      ),
+                                    );
+                                  }}
+                                  className={`${menuItemClass} block truncate text-left`}
+                                >
+                                  {
+                                    inboxRowSummary(o, {
+                                      locale,
+                                      subject: null,
+                                      fallbackTitle: t("unknownMerchant"),
+                                      formatAmount: (total, currency) =>
+                                        `${total} ${currency}`,
+                                    }).title
+                                  }
+                                </button>
+                              ))
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setMergeSource(row.id)}
+                          className="mt-2 py-1 text-xs text-muted-foreground transition hover:text-foreground"
+                        >
+                          {t("mergeWith")}
+                        </button>
+                      )}
+
+                      {/* 開けることが分かる形にする＝文言だけだとタップできると
                       気付けない（実機フィードバック）。native の <details> の
                       既定マーカーは消し、開閉インジケータは ChevronIcon に
                       する（ui-guidelines「文字記号でなく ChevronIcon」）。 */}
-                  {row.children.length > 0 && (
-                    <details className="group mt-2 text-sm">
-                      <summary className="flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
-                        {t("mergedSummary", { count: row.children.length + 1 })}
-                        <ChevronIcon
-                          size={12}
-                          className="transition group-open:rotate-90"
-                        />
-                      </summary>
-                      <div className="mt-2 space-y-1">
-                        {/* このメール自身の元の抽出値（分けられない本体） */}
-                        {(() => {
-                          const s = extractionSummary(
-                            row.own,
-                            t("unknownMerchant"),
-                          );
-                          return (
-                            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
-                              <span>{s.title}</span>
-                              {s.amount && (
-                                <>
+                      {row.children.length > 0 && (
+                        <details className="group mt-2 text-sm">
+                          <summary className="flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
+                            {t("mergedSummary", {
+                              count: row.children.length + 1,
+                            })}
+                            <ChevronIcon
+                              size={12}
+                              className="transition group-open:rotate-90"
+                            />
+                          </summary>
+                          <div className="mt-2 space-y-1">
+                            {/* このメール自身の元の抽出値（分けられない本体） */}
+                            {(() => {
+                              const s = extractionSummary(
+                                row.own,
+                                t("unknownMerchant"),
+                              );
+                              return (
+                                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded bg-muted px-2 py-1 text-xs text-muted-foreground">
+                                  <span>{s.title}</span>
+                                  {s.amount && (
+                                    <>
+                                      <InlineDivider />
+                                      <span>{s.amount}</span>
+                                    </>
+                                  )}
                                   <InlineDivider />
-                                  <span>{s.amount}</span>
-                                </>
-                              )}
-                              <InlineDivider />
-                              <span>
-                                {s.date}
-                                {row.own?.receipt?.isUpdate
-                                  ? t("adjustment")
-                                  : ""}
-                              </span>
-                            </div>
-                          );
-                        })()}
-                        {/* 合体された子メール（分けられる） */}
-                        {row.children.map((ch) => {
-                          const s = extractionSummary(
-                            ch.own,
-                            t("unknownMerchant"),
-                          );
-                          return (
-                            <div
-                              key={ch.id}
-                              className="flex items-center justify-between gap-2 rounded bg-muted px-2 py-1"
-                            >
-                              <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                                <span>{s.title}</span>
-                                {s.amount && (
-                                  <>
+                                  <span>
+                                    {s.date}
+                                    {row.own?.receipt?.isUpdate
+                                      ? t("adjustment")
+                                      : ""}
+                                  </span>
+                                </div>
+                              );
+                            })()}
+                            {/* 合体された子メール（分けられる） */}
+                            {row.children.map((ch) => {
+                              const s = extractionSummary(
+                                ch.own,
+                                t("unknownMerchant"),
+                              );
+                              return (
+                                <div
+                                  key={ch.id}
+                                  className="flex items-center justify-between gap-2 rounded bg-muted px-2 py-1"
+                                >
+                                  <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                                    <span>{s.title}</span>
+                                    {s.amount && (
+                                      <>
+                                        <InlineDivider />
+                                        <span>{s.amount}</span>
+                                      </>
+                                    )}
                                     <InlineDivider />
-                                    <span>{s.amount}</span>
-                                  </>
-                                )}
-                                <InlineDivider />
-                                <span>
-                                  {s.date}
-                                  {ch.own?.receipt?.isUpdate
-                                    ? t("adjustment")
-                                    : ""}
-                                </span>
-                              </span>
-                              <button
-                                type="button"
-                                disabled={isPending}
-                                onClick={() =>
-                                  run(() =>
-                                    unmergeInboundEmail(createClient(), ch.id),
-                                  )
-                                }
-                                className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
-                              >
-                                {t("split")}
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </details>
-                  )}
-                </div>
+                                    <span>
+                                      {s.date}
+                                      {ch.own?.receipt?.isUpdate
+                                        ? t("adjustment")
+                                        : ""}
+                                    </span>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    disabled={isPending}
+                                    onClick={() =>
+                                      run(() =>
+                                        unmergeInboundEmail(
+                                          createClient(),
+                                          ch.id,
+                                        ),
+                                      )
+                                    }
+                                    className="shrink-0 rounded border border-foreground/20 px-2 py-0.5 text-xs text-muted-foreground transition hover:bg-foreground/10 disabled:opacity-50"
+                                  >
+                                    {t("split")}
+                                  </button>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </details>
+                      )}
+                    </div>
 
-                <DismissEmailButton
-                  id={row.id}
-                  onDismiss={(id) =>
-                    run(() => dismissInboundEmail(createClient(), id))
-                  }
-                  className="h-8 w-8"
-                />
-              </div>
-            </li>
-            );
-          })}
-        </ul>
+                    <DismissEmailButton
+                      id={row.id}
+                      onDismiss={(id) =>
+                        run(() => dismissInboundEmail(createClient(), id))
+                      }
+                      className="h-8 w-8"
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
         </>
       )}
     </>

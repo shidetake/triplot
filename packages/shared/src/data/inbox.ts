@@ -81,8 +81,16 @@ async function loadSiblingConfirmContext(
     }
   >
 > {
-  const { trip, tripError, members, categoriesRaw, expensesRaw, placesRaw, eventsRaw, todosRaw } =
-    await fetchTripDetailRows(sb, tripId);
+  const {
+    trip,
+    tripError,
+    members,
+    categoriesRaw,
+    expensesRaw,
+    placesRaw,
+    eventsRaw,
+    todosRaw,
+  } = await fetchTripDetailRows(sb, tripId);
   if (tripError || !trip) return err(tripError?.message ?? "trip not found");
 
   const defaultCurrency = trip.default_currency as Currency;
@@ -246,6 +254,28 @@ export async function unmergeInboundEmail(
   id: string,
 ): Promise<Result<void>> {
   const { error } = await sb.rpc("unmerge_inbound_email", { p_id: id });
+  if (error) return err(error.message);
+  return ok(undefined);
+}
+
+// 別々に取り込まれた2件を手でまとめる。**選んだ側（parentId）の内容が残る。**
+//
+// 合体の判断は LLM がやるので外れることがあり、外れ方は2方向ある。合体しすぎた
+// 方は unmergeInboundEmail で戻せるが、合体しなかった方には手段が無かった。
+// 実際に外れるのは後者が多い（同じ乗車の4通が2つに分かれたまま残る等）。
+//
+// 中身は組み立て直さない。どちらを残すかを人が選んでいるので判断は済んでおり、
+// ここで LLM を呼ぶと人の決定を機械に決め直させることになる。金額を足したい等は
+// 確定フォームで直せる。
+export async function mergeInboundEmails(
+  sb: DB,
+  childId: string,
+  parentId: string,
+): Promise<Result<void>> {
+  const { error } = await sb.rpc("merge_inbound_emails", {
+    p_child: childId,
+    p_parent: parentId,
+  });
   if (error) return err(error.message);
   return ok(undefined);
 }

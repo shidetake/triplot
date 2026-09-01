@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { type DraftCandidate, selectMergeCandidates } from "./merge";
-import type { EventDraft, Extraction, Receipt } from "@triplot/shared/import/schema";
+import type {
+  EventDraft,
+  Extraction,
+  Receipt,
+} from "@triplot/shared/import/schema";
 
 function receipt(p: Partial<Receipt>): Receipt {
   return {
@@ -67,7 +71,9 @@ describe("selectMergeCandidates", () => {
         ),
       },
     ];
-    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual(["a"]);
+    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
+      "a",
+    ]);
   });
 
   it("日付が window 内なら候補（referenceId 無しでも）", () => {
@@ -76,21 +82,29 @@ describe("selectMergeCandidates", () => {
       { id: "a", extraction: withReceipt(receipt({ date: "2026-05-05" })) }, // 2日差
       { id: "b", extraction: withReceipt(receipt({ date: "2026-04-01" })) }, // 遠い
     ];
-    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual(["a"]);
+    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
+      "a",
+    ]);
   });
 
-  it("referenceId 一致を先頭に並べる", () => {
-    const incoming = withReceipt(receipt({ date: "2026-05-07", referenceId: "R" }));
+  // 以前は「一致を先頭に並べ、日付が近いだけのものも後ろに付ける」だった。
+  // 番号が一致するなら同じ取引かは事実なので、他を見せる意味がない
+  // （並べると LLM が選び直してブレる）。
+  it("referenceId 一致があれば、日付が近いだけの候補は落とす", () => {
+    const incoming = withReceipt(
+      receipt({ date: "2026-05-07", referenceId: "R" }),
+    );
     const drafts: DraftCandidate[] = [
       { id: "near", extraction: withReceipt(receipt({ date: "2026-05-06" })) },
       {
         id: "ref",
-        extraction: withReceipt(receipt({ date: "2026-05-04", referenceId: "R" })),
+        extraction: withReceipt(
+          receipt({ date: "2026-05-04", referenceId: "R" }),
+        ),
       },
     ];
     expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
       "ref",
-      "near",
     ]);
   });
 
@@ -107,7 +121,11 @@ describe("selectMergeCandidates", () => {
     const incoming: Extraction = {
       receipt: null,
       events: [
-        event({ referenceId: "ABC123", startDate: "2026-08-01", endDate: null }),
+        event({
+          referenceId: "ABC123",
+          startDate: "2026-08-01",
+          endDate: null,
+        }),
       ],
     };
     const drafts: DraftCandidate[] = [
@@ -116,7 +134,11 @@ describe("selectMergeCandidates", () => {
         extraction: {
           receipt: null,
           events: [
-            event({ referenceId: "ABC123", startDate: "2026-06-01", endDate: null }),
+            event({
+              referenceId: "ABC123",
+              startDate: "2026-06-01",
+              endDate: null,
+            }),
           ],
         },
       },
@@ -125,12 +147,18 @@ describe("selectMergeCandidates", () => {
         extraction: {
           receipt: null,
           events: [
-            event({ referenceId: "ZZZ999", startDate: "2026-01-01", endDate: null }),
+            event({
+              referenceId: "ZZZ999",
+              startDate: "2026-01-01",
+              endDate: null,
+            }),
           ],
         },
       },
     ];
-    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual(["a"]);
+    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
+      "a",
+    ]);
   });
 
   it("予定の日付が window 内なら候補（費用の日付が遠くても）", () => {
@@ -147,7 +175,9 @@ describe("selectMergeCandidates", () => {
         },
       },
     ];
-    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual(["a"]);
+    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
+      "a",
+    ]);
   });
 });
 
@@ -200,7 +230,11 @@ describe("selectMergeCandidates の順位付け", () => {
     const out = selectMergeCandidates(
       incoming,
       [
-        cand("noise1", { total: 10, merchant: "無関係な店", date: "2026-05-02" }),
+        cand("noise1", {
+          total: 10,
+          merchant: "無関係な店",
+          date: "2026-05-02",
+        }),
         cand("noise2", { total: 20, merchant: "別の店", date: "2026-05-02" }),
         cand("tip", { total: 55.0, merchant: "UNIQLO", date: "2026-05-01" }),
       ],
@@ -228,5 +262,27 @@ describe("selectMergeCandidates の順位付け", () => {
     );
     expect(out).toHaveLength(3);
     expect(out[0].id).toBe("shop");
+  });
+
+  // 事実で決まるものは LLM に聞かない。承認番号が一致する候補があれば、
+  // 日付が近いだけの候補は見せない（実測: 番号を共有する3通が、走らせる
+  // たびに違うまとまり方をしていた）。
+  it("referenceId が一致する候補があれば、それだけに絞る", () => {
+    const incoming = withReceipt(
+      receipt({ date: "2026-05-07", referenceId: "899402" }),
+    );
+    const drafts: DraftCandidate[] = [
+      {
+        id: "ref",
+        extraction: withReceipt(
+          receipt({ date: "2026-05-05", referenceId: "899402" }),
+        ),
+      },
+      { id: "near1", extraction: withReceipt(receipt({ date: "2026-05-06" })) },
+      { id: "near2", extraction: withReceipt(receipt({ date: "2026-05-07" })) },
+    ];
+    expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
+      "ref",
+    ]);
   });
 });

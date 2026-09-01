@@ -600,7 +600,11 @@
     "noTripsToAssign": "割り当てられる旅行がまだありません。",
     "waitingHeading": "取り込み待ち ({count})",
     "draftsHeading": "未確定の取り込み ({count})",
-    "failedHeading": "取り込みに失敗 ({count})"
+    "failedHeading": "取り込みに失敗 ({count})",
+    "mergeWith": "他とまとめる",
+    "mergeTargetPrompt": "まとめる先を選ぶ",
+    "mergeTargetHint": "選んだ取り込みの内容が残り、こちらは畳まれます。",
+    "mergeNoTargets": "まとめられる取り込みがありません。"
   },
   "admin": {
     "heading": "管理",

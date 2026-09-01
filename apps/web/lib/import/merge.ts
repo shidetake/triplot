@@ -139,8 +139,27 @@ export function selectMergeCandidates(
     extractionDates(d.extraction).some((cd) =>
       inDates.some((id) => dayDiff(id, cd) <= windowDays),
     );
+  // **識別番号が一致するものがあれば、それだけを見せる。**
+  //
+  // 同じ承認番号・予約番号を持つなら、同じ取引かどうかは判断ではなく事実。
+  // それを他の候補と並べて LLM に選ばせると、選ぶたびにブレる（実測: 承認番号
+  // 899402 を共有する3通が、走らせるたびに違うまとまり方をした）。
+  //
+  // 事実で決まるものは LLM に聞かず、**何と合体するか**はここで決める。
+  // ただし**どう合体するか**は判断なので LLM に残す（仮売上に調整額を足すのか、
+  // 既に最終額なので足さないのか、日付はどちらを採るのか）。
+  //
+  // 候補が1件に減るぶん、渡すトークンも減る（1通の処理コストの7割前後が候補）。
+  const byRef = drafts.filter(refMatch);
+  if (byRef.length > 0) {
+    return byRef
+      .map((d) => ({ d, s: closeness(incoming, d.extraction) }))
+      .sort((x, y) => y.s - x.s)
+      .slice(0, max)
+      .map((x) => x.d);
+  }
   return drafts
-    .filter((d) => refMatch(d) || dateNear(d))
+    .filter(dateNear)
     .map((d) => ({ d, s: closeness(incoming, d.extraction) }))
     .sort((x, y) => y.s - x.s)
     .slice(0, max)

@@ -9,17 +9,19 @@ import { inboxRowSummary } from "@triplot/shared/import/inboxRowSummary";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import {
   dismissInboundEmail,
+  mergeInboundEmails,
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { fetchImportInboxRows } from "@triplot/shared/data/reads/inbox";
 import { deriveInboxRows } from "@triplot/shared/import/inboxRows";
+
+import { PageSheet } from "./page-sheet";
+import { SheetScroll } from "./sheet-scroll";
 import {
   EXTRACT_ERROR_NO_CONTENT,
   MONTHLY_EMAIL_CAP,
 } from "@triplot/shared/import/config";
-import {
-  extractionSummary,
-} from "@triplot/shared/import/draftLabel";
+import { extractionSummary } from "@triplot/shared/import/draftLabel";
 import type { Extraction } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
@@ -74,6 +76,24 @@ export function ImportSheet() {
   // 合体された子メールを持つメールの、明細を開いているかどうか。
   // （web は <details>。RN は開閉行＋条件レンダー＝TODO セクションと同じ形）
   const [openMerged, setOpenMerged] = useState<string | null>(null);
+
+  // 手でまとめる先を選んでいる取り込み（null なら選択中でない）。
+  const [mergeSource, setMergeSource] = useState<string | null>(null);
+
+  // 合体が外れる方向は2つあり、「合体しすぎ」は下の unmerge で戻せるが
+  // 「合体しなかった」には手段が無かった。選んだ側の内容が残る。
+  const mergeInto = (parentId: string) => {
+    const childId = mergeSource;
+    setMergeSource(null);
+    if (!childId) return;
+    void mergeInboundEmails(supabase, childId, parentId).then((r) => {
+      if (!r.ok) {
+        Alert.alert(r.error);
+        return;
+      }
+      void refetch();
+    });
+  };
 
   // 誤って合体されたメールを独立した下書きに戻す。
   const unmerge = (childId: string) => {
@@ -171,66 +191,112 @@ export function ImportSheet() {
       {/* 取り込み待ち（順番待ち）と 取り込みに失敗 は別のまとまりにする。
           状態が違うものを1つの枠に入れると、枠の意味（＝ここは1つのまとまり）と
           食い違う。件数はどちらも普段0〜数件なので分けても縦は増えない。 */}
-      {([
-        ["waitingHeading", true],
-        ["failedHeading", false],
-      ] as const).map(([headingKey, wantQueued]) => {
+      {(
+        [
+          ["waitingHeading", true],
+          ["failedHeading", false],
+        ] as const
+      ).map(([headingKey, wantQueued]) => {
         const group = (data?.errorRows ?? []).filter(
           (e) => (e.extract_error_kind === "rate_limit") === wantQueued,
         );
         if (group.length === 0) return null;
         return (
-        <View key={headingKey} style={styles.group}>
-          <Text style={styles.groupHeading}>
-            {t(headingKey, { count: group.length })}
-          </Text>
-          <View style={styles.listCard}>
-          {group.map((e, i) => {
-        // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
-        // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
-        const queued = e.extract_error_kind === "rate_limit";
-        return (
-          <View
-            key={e.id}
-            style={[
-              queued ? styles.queuedRow : styles.errorRow,
-              i > 0 && styles.listRowDivider,
-            ]}
-          >
-            <View style={styles.errorBody}>
-              <Text style={styles.emailSummary} numberOfLines={1}>
-                {e.subject || e.sender || t("unknownMerchant")}
-              </Text>
-              <Text style={queued ? styles.queuedText : styles.errorText}>
-                {e.extract_error === EXTRACT_ERROR_NO_CONTENT
-                  ? t("errorNoContent")
-                  : queued
-                    ? t("errorRateLimited")
-                    : e.next_retry_at
-                      ? t("errorWillRetry")
-                      : t("errorNoRetry")}
-              </Text>
-            </View>
-            {/* 破棄は × に揃える（旅行側の未確定の取り込み・web と同じ）。
+          <View key={headingKey} style={styles.group}>
+            <Text style={styles.groupHeading}>
+              {t(headingKey, { count: group.length })}
+            </Text>
+            <View style={styles.listCard}>
+              {group.map((e, i) => {
+                // レート制限は「混んでいて順番待ち」であって失敗ではないので、赤い箱に
+                // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
+                const queued = e.extract_error_kind === "rate_limit";
+                return (
+                  <View
+                    key={e.id}
+                    style={[
+                      queued ? styles.queuedRow : styles.errorRow,
+                      i > 0 && styles.listRowDivider,
+                    ]}
+                  >
+                    <View style={styles.errorBody}>
+                      <Text style={styles.emailSummary} numberOfLines={1}>
+                        {e.subject || e.sender || t("unknownMerchant")}
+                      </Text>
+                      <Text
+                        style={queued ? styles.queuedText : styles.errorText}
+                      >
+                        {e.extract_error === EXTRACT_ERROR_NO_CONTENT
+                          ? t("errorNoContent")
+                          : queued
+                            ? t("errorRateLimited")
+                            : e.next_retry_at
+                              ? t("errorWillRetry")
+                              : t("errorNoRetry")}
+                      </Text>
+                    </View>
+                    {/* 破棄は × に揃える（旅行側の未確定の取り込み・web と同じ）。
                 下書きを退けるだけで実体は消えないので、赤いゴミ箱ではなく
                 中立の × を使う。位置も右上に揃える。 */}
-            <Pressable
-              onPress={() => dismiss(e.id)}
-              hitSlop={12}
-              accessibilityLabel={t("dismiss")}
-              style={styles.dismissCorner}
-            >
-              <XIcon size={16} color={theme.subtleForeground} />
-            </Pressable>
+                    <Pressable
+                      onPress={() => dismiss(e.id)}
+                      hitSlop={12}
+                      accessibilityLabel={t("dismiss")}
+                      style={styles.dismissCorner}
+                    >
+                      <XIcon size={16} color={theme.subtleForeground} />
+                    </Pressable>
+                  </View>
+                );
+              })}
             </View>
-          );
-          })}
           </View>
-        </View>
         );
       })}
 
       {/* 未確定の下書き */}
+      {/* まとめる先の選択（既に formSheet の中なので PageSheet。
+          ui-guidelines「RN のシートは必ず OS ネイティブのものを使う」の2番）。 */}
+      <PageSheet
+        visible={mergeSource !== null}
+        onClose={() => setMergeSource(null)}
+        title={t("mergeTargetPrompt")}
+      >
+        <SheetScroll contentContainerStyle={styles.mergeList}>
+          <Text style={styles.mergeHint}>{t("mergeTargetHint")}</Text>
+          {emails.filter((x) => x.id !== mergeSource).length === 0 ? (
+            <Text style={styles.mergeHint}>{t("mergeNoTargets")}</Text>
+          ) : (
+            emails
+              .filter((x) => x.id !== mergeSource)
+              .map((x) => {
+                // 一覧の行と同じ要約を出す。件名のままだと
+                // 「Fwd: ［ソニー銀行］…」が並んで見分けが付かない（実機で確認）。
+                const sm = inboxRowSummary(rowById.get(x.id), {
+                  locale,
+                  subject: x.subject,
+                  fallbackTitle: t("noContent"),
+                  formatAmount: (total, currency) => `${total} ${currency}`,
+                });
+                return (
+                  <Pressable
+                    key={x.id}
+                    onPress={() => mergeInto(x.id)}
+                    style={styles.mergeRow}
+                  >
+                    <Text style={styles.mergeRowTitle} numberOfLines={1}>
+                      {sm.title}
+                    </Text>
+                    <Text style={styles.mergeRowMeta} numberOfLines={1}>
+                      {sm.parts.join("  ")}
+                    </Text>
+                  </Pressable>
+                );
+              })
+          )}
+        </SheetScroll>
+      </PageSheet>
+
       {emails.length === 0 ? (
         <Text style={styles.empty}>{t("emptyState")}</Text>
       ) : (
@@ -239,181 +305,198 @@ export function ImportSheet() {
             {t("draftsHeading", { count: emails.length })}
           </Text>
           <View style={styles.listCard}>
-          {emails.map((e, i) => {
-          const row = rowById.get(e.id);
-          const summary = inboxRowSummary(row, {
-            locale,
-            subject: e.subject,
-            fallbackTitle: t("noContent"),
-            formatAmount: (total, currency) => `${total} ${currency}`,
-          });
-          const assigned = trips.find((tr) => tr.id === e.trip_id);
-          const children = row?.children ?? [];
-          const mergedOpen = openMerged === e.id;
-          return (
-            <View
-              key={e.id}
-              style={[styles.listRow, i > 0 && styles.listRowDivider]}
-            >
-              <Text style={styles.emailSummary} numberOfLines={1}>
-                {summary.title}
-              </Text>
-              {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・場所）。
+            {emails.map((e, i) => {
+              const row = rowById.get(e.id);
+              const summary = inboxRowSummary(row, {
+                locale,
+                subject: e.subject,
+                fallbackTitle: t("noContent"),
+                formatAmount: (total, currency) => `${total} ${currency}`,
+              });
+              const assigned = trips.find((tr) => tr.id === e.trip_id);
+              const children = row?.children ?? [];
+              const mergedOpen = openMerged === e.id;
+              return (
+                <View
+                  key={e.id}
+                  style={[styles.listRow, i > 0 && styles.listRowDivider]}
+                >
+                  <Text style={styles.emailSummary} numberOfLines={1}>
+                    {summary.title}
+                  </Text>
+                  {/* 載せるのは旅行の割り当てを決められる分だけ（金額・日時・場所）。
                   カテゴリと予定タイトルは判断に効かないので出さない。組み立ては
                   shared の inboxRowSummary（web と同じ）。 */}
-              {summary.parts.length > 0 ? (
-                <View style={styles.emailMeta}>
-                  {summary.parts.map((part, pi) => (
-                    <Fragment key={pi}>
-                      {pi > 0 && <InlineDivider />}
-                      <Text style={styles.metaText} numberOfLines={1}>
-                        {part}
-                      </Text>
-                    </Fragment>
-                  ))}
-                </View>
-              ) : (
-                <Text style={styles.metaText}>{t("noContent")}</Text>
-              )}
+                  {summary.parts.length > 0 ? (
+                    <View style={styles.emailMeta}>
+                      {summary.parts.map((part, pi) => (
+                        <Fragment key={pi}>
+                          {pi > 0 && <InlineDivider />}
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {part}
+                          </Text>
+                        </Fragment>
+                      ))}
+                    </View>
+                  ) : (
+                    <Text style={styles.metaText}>{t("noContent")}</Text>
+                  )}
 
-              {/* 旅行割当。タップで割当先選択シート（inbox-pick-trip route。他の
+                  {/* 旅行割当。タップで割当先選択シート（inbox-pick-trip route。他の
                   formSheet と同じネイティブの質感）を開いて選び直せる（値＋
                   シェブロンのドロップダウン相当。「確定」の文言は使わない —
                   ここでは割当先を変えるだけで、実際の確定は各旅行の画面で
                   行うため）。 */}
-              <View style={styles.actionsRow}>
-                {/* ピッカーとバッジは1つのまとまり（バッジはピッカーの状態を
+                  <View style={styles.actionsRow}>
+                    {/* ピッカーとバッジは1つのまとまり（バッジはピッカーの状態を
                     示すもの）。行全体を space-between にすると、その間に
                     余白が入って中途半端な位置に浮く。 */}
-                <View style={styles.assignGroup}>
-                <Pressable
-                  onPress={() =>
-                    router.push(`/trips/import-pick-trip?emailId=${e.id}`)
-                  }
-                  // 見た目は 12pt の文字＋上下 6 の padding で約28pt しかなく、
-                  // HIG が求めるタップ対象の最小 44pt に足りない。見た目を
-                  // 変えずに当たり判定だけ広げる（上下の行のピッカーとは
-                  // 24pt 離れているので、10 ずつ広げても重ならない）。
-                  hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
-                  style={styles.assignButton}
-                >
-                  <Text style={styles.assignLabel} numberOfLines={1}>
-                    {assigned
-                      ? (tripLabels.get(assigned.id) ?? assigned.title)
-                      : t("selectTripPrompt")}
-                  </Text>
-                  <ChevronIcon size={14} rotate={90} color={theme.foreground} />
-                </Pressable>
-                {/* 「要割当」は状態なのでバッジで示す（web の import-inbox と
+                    <View style={styles.assignGroup}>
+                      <Pressable
+                        onPress={() =>
+                          router.push(`/trips/import-pick-trip?emailId=${e.id}`)
+                        }
+                        // 見た目は 12pt の文字＋上下 6 の padding で約28pt しかなく、
+                        // HIG が求めるタップ対象の最小 44pt に足りない。見た目を
+                        // 変えずに当たり判定だけ広げる（上下の行のピッカーとは
+                        // 24pt 離れているので、10 ずつ広げても重ならない）。
+                        hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+                        style={styles.assignButton}
+                      >
+                        <Text style={styles.assignLabel} numberOfLines={1}>
+                          {assigned
+                            ? (tripLabels.get(assigned.id) ?? assigned.title)
+                            : t("selectTripPrompt")}
+                        </Text>
+                        <ChevronIcon
+                          size={14}
+                          rotate={90}
+                          color={theme.foreground}
+                        />
+                      </Pressable>
+                      {/* 「要割当」は状態なのでバッジで示す（web の import-inbox と
                     同じ形・「地図未登録」バッジと同じレシピ）。ピッカー自体を
                     琥珀にすると、コントロールの色が持つ意味（選択状態）と
                     ぶつかるうえ、全行が未割当のときに画面が琥珀で埋まる。 */}
-                {!assigned && (
-                  <View style={styles.needsAssignBadge}>
-                    <Text style={styles.needsAssignBadgeText}>
-                      {t("needsAssignment")}
-                    </Text>
+                      {!assigned && (
+                        <View style={styles.needsAssignBadge}>
+                          <Text style={styles.needsAssignBadgeText}>
+                            {t("needsAssignment")}
+                          </Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                )}
-                </View>
-              </View>
-              {/* × は行の右上に重ねる（ui-guidelines「× 閉じるボタン」。専用の
+                  {/* × は行の右上に重ねる（ui-guidelines「× 閉じるボタン」。専用の
                   場所を作らず右上角に置く）。割り当てのピッカーと同じ行に置くと、
                   ピッカーの操作の一部に見えて位置が中途半端になる。 */}
-              <Pressable
-                onPress={() => dismiss(e.id)}
-                hitSlop={12}
-                accessibilityLabel={t("dismiss")}
-                style={styles.dismissCorner}
-              >
-                <XIcon size={16} color={theme.subtleForeground} />
-              </Pressable>
-
-              {/* 合体されたメール（誤マージの確認と分割）。開閉は行タップ
-                  （web の <details> と同じ扱い）。本体＝このメール自身の
-                  抽出値は分割できないので分割ボタンを出さない。 */}
-              {children.length > 0 && (
-                <View>
                   <Pressable
-                    onPress={() => setOpenMerged(mergedOpen ? null : e.id)}
+                    onPress={() => dismiss(e.id)}
+                    hitSlop={12}
+                    accessibilityLabel={t("dismiss")}
+                    style={styles.dismissCorner}
+                  >
+                    <XIcon size={16} color={theme.subtleForeground} />
+                  </Pressable>
+
+                  {/* 手でまとめる。合体の判断は LLM がやるので外れることがあり、
+                  「合体しすぎ」は下の分割で戻せるが「合体しなかった」には
+                  手段が無かった。選んだ側の内容が残る。 */}
+                  <Pressable
+                    onPress={() => setMergeSource(e.id)}
                     hitSlop={8}
                     style={styles.mergedToggleRow}
-                    accessibilityRole="button"
-                    accessibilityState={{ expanded: mergedOpen }}
                   >
-                    <Text style={styles.mergedToggle}>
-                      {t("mergedSummary", { count: children.length + 1 })}
-                    </Text>
-                    <ChevronIcon
-                      size={12}
-                      color={theme.mutedForeground}
-                      rotate={mergedOpen ? 90 : 0}
-                    />
+                    <Text style={styles.mergedToggle}>{t("mergeWith")}</Text>
                   </Pressable>
-                  {mergedOpen && (
-                    <View style={styles.mergedList}>
-                      {[
-                        {
-                          id: null,
-                          own: e.extracted as unknown as Extraction | null,
-                        },
-                        ...children,
-                      ].map((ch, i) => {
-                        const sm = extractionSummary(
-                          ch.own,
-                          t("unknownMerchant"),
-                        );
-                        return (
-                          <View
-                            key={ch.id ?? `own:${i}`}
-                            style={styles.mergedRow}
-                          >
-                            <View style={styles.mergedRowText}>
-                              <Text style={styles.metaText} numberOfLines={1}>
-                                {sm.title}
-                              </Text>
-                              {sm.amount && (
-                                <>
+
+                  {/* 合体されたメール（誤マージの確認と分割）。開閉は行タップ
+                  （web の <details> と同じ扱い）。本体＝このメール自身の
+                  抽出値は分割できないので分割ボタンを出さない。 */}
+                  {children.length > 0 && (
+                    <View>
+                      <Pressable
+                        onPress={() => setOpenMerged(mergedOpen ? null : e.id)}
+                        hitSlop={8}
+                        style={styles.mergedToggleRow}
+                        accessibilityRole="button"
+                        accessibilityState={{ expanded: mergedOpen }}
+                      >
+                        <Text style={styles.mergedToggle}>
+                          {t("mergedSummary", { count: children.length + 1 })}
+                        </Text>
+                        <ChevronIcon
+                          size={12}
+                          color={theme.mutedForeground}
+                          rotate={mergedOpen ? 90 : 0}
+                        />
+                      </Pressable>
+                      {mergedOpen && (
+                        <View style={styles.mergedList}>
+                          {[
+                            {
+                              id: null,
+                              own: e.extracted as unknown as Extraction | null,
+                            },
+                            ...children,
+                          ].map((ch, i) => {
+                            const sm = extractionSummary(
+                              ch.own,
+                              t("unknownMerchant"),
+                            );
+                            return (
+                              <View
+                                key={ch.id ?? `own:${i}`}
+                                style={styles.mergedRow}
+                              >
+                                <View style={styles.mergedRowText}>
+                                  <Text
+                                    style={styles.metaText}
+                                    numberOfLines={1}
+                                  >
+                                    {sm.title}
+                                  </Text>
+                                  {sm.amount && (
+                                    <>
+                                      <InlineDivider />
+                                      <Text style={styles.metaText}>
+                                        {sm.amount}
+                                      </Text>
+                                    </>
+                                  )}
                                   <InlineDivider />
                                   <Text style={styles.metaText}>
-                                    {sm.amount}
+                                    {sm.date}
+                                    {ch.own?.receipt?.isUpdate
+                                      ? t("adjustment")
+                                      : ""}
                                   </Text>
-                                </>
-                              )}
-                              <InlineDivider />
-                              <Text style={styles.metaText}>
-                                {sm.date}
-                                {ch.own?.receipt?.isUpdate
-                                  ? t("adjustment")
-                                  : ""}
-                              </Text>
-                            </View>
-                            {/* 本体（このメール自身）は分けられない。 */}
-                            {ch.id && (
-                              <Pressable
-                                onPress={() => unmerge(ch.id!)}
-                                hitSlop={8}
-                                style={styles.splitButton}
-                              >
-                                <Text style={styles.splitLabel}>
-                                  {t("split")}
-                                </Text>
-                              </Pressable>
-                            )}
-                          </View>
-                        );
-                      })}
+                                </View>
+                                {/* 本体（このメール自身）は分けられない。 */}
+                                {ch.id && (
+                                  <Pressable
+                                    onPress={() => unmerge(ch.id!)}
+                                    hitSlop={8}
+                                    style={styles.splitButton}
+                                  >
+                                    <Text style={styles.splitLabel}>
+                                      {t("split")}
+                                    </Text>
+                                  </Pressable>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      )}
                     </View>
                   )}
                 </View>
-              )}
-            </View>
-          );
-          })}
+              );
+            })}
           </View>
         </View>
       )}
-
     </View>
   );
 }
@@ -524,8 +607,12 @@ const makeStyles = (t: Theme) =>
       gap: 6,
     },
     emailSummary: {
-    // 右上の × と重ならないよう逃がす。
-    paddingRight: 24, fontSize: 14, fontWeight: "500", color: t.foreground },
+      // 右上の × と重ならないよう逃がす。
+      paddingRight: 24,
+      fontSize: 14,
+      fontWeight: "500",
+      color: t.foreground,
+    },
     emailMeta: {
       flexDirection: "row",
       flexWrap: "wrap",
@@ -574,6 +661,19 @@ const makeStyles = (t: Theme) =>
     // 分かる形にする**＝文言だけだとタップできると気付けない（実機
     // フィードバック）。ChevronIcon を添えて開閉を示し、上下に余白を足して
     // タップ領域を確保する（hitSlop と合わせて 44pt 以上）。
+    mergeList: { paddingHorizontal: 16, paddingTop: 4 },
+    mergeHint: {
+      fontSize: 12,
+      color: t.mutedForeground,
+      paddingVertical: 8,
+    },
+    mergeRow: {
+      paddingVertical: 10,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.08),
+    },
+    mergeRowTitle: { fontSize: 14, color: t.foreground },
+    mergeRowMeta: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
     mergedToggleRow: {
       flexDirection: "row",
       alignItems: "center",
