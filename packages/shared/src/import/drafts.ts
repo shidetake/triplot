@@ -9,7 +9,7 @@ import {
   type FlightEndpoint,
   flightTerminalNote,
   flightTitle,
-  parseFlightNumber,
+  resolveFlightNumber,
 } from "../flight";
 import type { FxRates } from "../fxRates";
 import type { PlaceCandidate } from "../placesSearch";
@@ -495,17 +495,22 @@ export function deriveEventDraftItems(
         : null;
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);
+      // 便名は正規形に直してから使う。LLM は同じ便を "DL181" とも
+      // "DELTA 181" とも書くので、生のままだと同じ便の2つの予定が違って見える
+      // うえ、後者はフライト番号機能も起動しない（resolveFlightNumber 参照）。
+      const flight =
+        ev.kind === "transit" && ev.vehicleNumber
+          ? resolveFlightNumber(ev.vehicleNumber)
+          : null;
       // メモ: 便名と予約番号を並べる（どちらか片方だけのときはそれだけ）。
+      // 列車・バスは正規形が無いので生の表記のまま。
       const noteParts = [
-        ev.vehicleNumber,
+        flight?.normalized ?? ev.vehicleNumber,
         ev.referenceId ? ctx.reservationRefLabel(ev.referenceId) : null,
       ].filter((p): p is string => !!p);
-      // vehicleNumber が実際の便名として解釈できる時だけフライト番号機能を
-      // 使えるようにする（列車・バス等は対象外。parseFlightNumber が判定）。
-      const flightNumber =
-        ev.kind === "transit" && ev.vehicleNumber
-          ? (parseFlightNumber(ev.vehicleNumber)?.normalized ?? null)
-          : null;
+      // 便名として解釈できる時だけフライト番号機能を使えるようにする
+      // （列車・バス等は対象外）。
+      const flightNumber = flight?.normalized ?? null;
       return [
         {
           id: d.id,
