@@ -41,6 +41,7 @@ import { type DraftCandidate, findMerge, selectMergeCandidates } from "./merge";
 import { appendLinkText, gatherReceiptText } from "./pipeline";
 import {
   extractionGainedDetail,
+  extractionLostDetail,
   type EventDraft,
   type Extraction,
   type Receipt,
@@ -771,8 +772,13 @@ async function runExtraction(
           if (extractionGainedDetail(firstPass, secondPass)) {
             await recordCandidateLink(supabase, firstPass.detailUrl);
           }
-          extractResult = secondPass;
-          text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
+          // **第1パスの成果を失う結果は採らない。** 第2パスも LLM なので揺らぐ。
+          // 実際に、ホテルの予約確認メールで第2パスが空を返し、第1パスが
+          // 見つけていた宿泊の予定を捨てて恒久エラーになった。
+          if (!extractionLostDetail(firstPass, secondPass)) {
+            extractResult = secondPass;
+            text = enriched; // 痩せ版(body_text)にもリンク先明細を残す（マージ判定の文脈）
+          }
         } catch {
           // 第1パス結果にフォールバック（候補は記録しない＝再抽出できていない）
         }

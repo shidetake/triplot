@@ -281,6 +281,25 @@ export function extractionGainedDetail(
   return false;
 }
 
+// 第2パスが、第1パスの成果を**失って**いるか。
+//
+// enrichment は補うためのものなので、失う結果は採らない。第2パスも LLM なので
+// 揺らぐ。実際に、ホテルの予約確認メールで第2パスが「費用も予定も無い」を返し、
+// 第1パスが見つけていた宿泊の予定を捨てて恒久エラー（no_content）になった
+// （同じメールはそれまで何度も問題なく取り込めていた）。
+//
+// **「増えたか」ではなく「減っていないか」で見る。** 増加を条件にすると、
+// 値の誤りを直しただけの改善（第1パスの金額が違っていて第2パスが正しい等）を
+// 捨てることになる。
+export function extractionLostDetail(
+  before: Extraction,
+  after: Extraction,
+): boolean {
+  if (before.receipt && !after.receipt) return true;
+  if (after.events.length < before.events.length) return true;
+  return false;
+}
+
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HM_RE = /^(\d{1,2}):(\d{2})$/;
 
