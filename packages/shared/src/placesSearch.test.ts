@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { extractRegion, nearestCandidate, type PlaceCandidate } from "./placesSearch";
+import {
+  extractRegion,
+  nearestCandidate,
+  queryLanguageFor,
+  type PlaceCandidate,
+} from "./placesSearch";
 
 function candidate(p: Partial<PlaceCandidate> = {}): PlaceCandidate {
   return {
@@ -68,5 +73,25 @@ describe("nearestCandidate", () => {
 
   it("候補が無ければ null", () => {
     expect(nearestCandidate([], coords)).toBeNull();
+  });
+});
+
+describe("queryLanguageFor", () => {
+  // Google に返させる言語が名前の言語とずれると、実在の正しい候補でも名前の
+  // 一致度が閾値に届かず捨てられる（実データ: 「品川駅」を英語で引くと
+  // "Shinagawa Station" が返り、新幹線の乗降地が両方とも解決できなかった）。
+  it("日本語の名前は日本語で引く", () => {
+    expect(queryLanguageFor("品川駅")).toBe("ja");
+    expect(queryLanguageFor("ダニエル・K・イノウエ国際空港")).toBe("ja");
+    expect(queryLanguageFor("すし")).toBe("ja");
+  });
+
+  it("英語の名前は英語で引く", () => {
+    expect(queryLanguageFor("Yard House")).toBe("en");
+    expect(queryLanguageFor("LEAHI HEALTH")).toBe("en");
+  });
+
+  it("混在は日本語に寄せる", () => {
+    expect(queryLanguageFor("Yard House 品川店")).toBe("ja");
   });
 });

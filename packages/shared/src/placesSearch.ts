@@ -52,6 +52,9 @@ export type SearchPlacesOptions = {
   regionCode?: string;
   // 結果をこの Place Type だけに絞る（例: "airport"）。指定しなければ絞らない。
   includedType?: string;
+  // 住所もバイアスも無いまま解決してよい。呼び出し側が「この名前は固有名だ」と
+  // 分かっている時だけ立てる（移動の乗降地＝駅・空港・港）。
+  allowUnbiased?: boolean;
 };
 
 // Places API (New): places:searchText。FieldMask は最小限（住所成分まで）。
@@ -393,6 +396,15 @@ export async function resolveAirportPlace(
 // 使う純関数で、Google 候補を仮の TripPlace として渡せば同じスコアリングが
 // 使える。
 
+// 抽出された名前の言語。日本語の文字が1つでもあれば "ja"、無ければ "en"。
+// 混在（「Yard House 品川店」）は日本語側に寄せる — Google が日本語で返す
+// 名前の方が元の表記に近い。
+export function queryLanguageFor(name: string): "ja" | "en" {
+  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(name)
+    ? "ja"
+    : "en";
+}
+
 const NAMED_PLACE_MATCH_THRESHOLD = 0.6;
 
 /**
@@ -419,18 +431,29 @@ export async function resolveNamedPlace(
   //
   // これが無いと「解決できない → 座標なしの場所ができる → バイアスが作れない」
   // の循環から抜け出せない（実機で、旅行の場所3件すべてが座標なしになっていた）。
-  if (!addr && !opts.biasCenter) return null;
+  // 例外は、駅・空港・港のような**固有名だと呼び出し側が分かっている**場合
+  // （移動の乗降地）。実測: 「品川駅」「京都駅」はバイアス無しでも一意に決まる。
+  // 旅行の地理バイアスは目的地（ハワイ等）にあるので、国内の駅はむしろ
+  // バイアスがあると引けない。
+  if (!addr && !opts.biasCenter && !opts.allowUnbiased) return null;
   try {
     // searchPlaces の既定 languageCode は "ja"（RN の場所検索 UI 向け）だが、
     // merchant/location はメール本文からそのままの言語（英語のレシートが
     // 多い）で抽出される。日本語名で返ってくると matchPlace のテキスト
     // 一致度が実質ゼロになり、実在の正しい候補でも閾値未満で弾いてしまう
     // （実機フィードバック: "Yard House" ⇔ "ヤード ハウス" で不一致）。
-    // 英語で応答させ、抽出元の表記に揃える。
+    // **応答の言語は抽出された名前の言語に合わせる**（英語固定にしない）。
+    // 名前は元のメールの言語で出てくるので、英語のレシートは英語、日本語の
+    // メールは日本語で返させる。揃っていないと逆向きに同じことが起きる
+    // （実測: 「品川駅」を英語で引くと "Shinagawa Station" が返り、一致度が
+    // 閾値に届かず null。空港も駅も同様に全滅していた）。
     // 検索語は名前と住所を繋げる（併記が一番一意に決まるのは実測済み）。
     // 分けて持つのは「住所があるか」を確実に知るためで、問い合わせ方は変えない。
     const query = addr ? `${trimmed}, ${addr}` : trimmed;
-    const candidates = await searchPlaces(query, { ...opts, languageCode: "en" });
+    const candidates = await searchPlaces(query, {
+      ...opts,
+      languageCode: queryLanguageFor(trimmed),
+    });
     let best: PlaceCandidate | null = null;
     let bestScore = -1;
     for (const c of candidates.slice(0, 5)) {

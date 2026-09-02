@@ -511,13 +511,26 @@ async function prefetchFlights(
               time: ev.startTime,
             })
           : null;
-      if (placesApiKey && rideCenter) {
+      if (placesApiKey && (ev.departLocation || ev.arriveLocation)) {
         const resolveEndpoint = async (name: string | null | undefined) => {
           if (!name) return null;
           try {
+            // まず旅行の地理バイアスで引く（同名の店・停留所の取り違えを防ぐ）。
+            if (rideCenter) {
+              const near = await resolveNamedPlace(name, null, {
+                apiKey: placesApiKey,
+                biasCenter: rideCenter,
+              });
+              if (near) return near;
+            }
+            // 寄らなければ世界全体で引き直す。**乗降地は駅・空港・港のような
+            // 固有名**なので、バイアス無しでも一意に決まる（実測: 「品川駅」
+            // 「京都駅」とも正しい駅が先頭で返る）。バイアスは目的地
+            // （ハワイ等）にあるので、帰国後の国内移動はバイアスがあると
+            // むしろ引けない。旅行に未割り当ての下書きはバイアス自体が無い。
             return await resolveNamedPlace(name, null, {
               apiKey: placesApiKey,
-              biasCenter: rideCenter,
+              allowUnbiased: true,
             });
           } catch {
             // best-effort。確定時に手で選べる。
