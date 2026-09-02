@@ -299,3 +299,30 @@ describe("候補に属するもの", () => {
     expect(may.emailIds).not.toContain("lunch");
   });
 });
+
+describe("既にある旅行の期間に収まる候補は出さない", () => {
+  const hawaii = [{ startDate: "2026-04-28", endDate: "2026-05-05" }];
+
+  // 実例: ハワイ旅行 4/28〜5/5 の最終日 5/5 21:01 の新幹線（品川→京都）が、
+  // 割り当てられずに別の仮旅行として並んだ。その日程の旅行はもうあるので、
+  // 割り当て先が増えるだけで選びづらくなる。
+  it("旅行の最終日の移動は候補にしない", () => {
+    expect(deriveTripProposals([transit("e1", "2026-05-05")], hawaii)).toEqual([]);
+  });
+
+  it("旅行の外の移動は候補にする", () => {
+    expect(deriveTripProposals([transit("e1", "2026-06-01")], hawaii)).toHaveLength(1);
+  });
+
+  it("旅行からはみ出すものは候補にする（延長か別かはこちらで決めない）", () => {
+    const out = deriveTripProposals(
+      [transit("e1", "2026-05-04"), stay("e2", "2026-05-04", "2026-05-08")],
+      hawaii,
+    );
+    expect(out).toHaveLength(1);
+  });
+
+  it("既存の旅行を渡さなければ従来どおり", () => {
+    expect(deriveTripProposals([transit("e1", "2026-05-05")])).toHaveLength(1);
+  });
+});

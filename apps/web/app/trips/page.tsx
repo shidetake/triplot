@@ -50,7 +50,11 @@ async function TripsSection({ userId }: { userId: string }) {
     fetchUnassignedDrafts(supabase, userId),
   ]);
   // まだ作っていない旅行の候補（移動・宿泊の未割り当ての下書きを日付でまとめたもの）。
-  const proposals = deriveTripProposals(unassigned).map((p) => ({
+  // 既にその日程の旅行があるなら候補にしない（tripProposal.ts）。
+  const proposals = deriveTripProposals(
+    unassigned,
+    trips.map((t) => ({ startDate: t.start_date, endDate: t.end_date })),
+  ).map((p) => ({
     ...tripProposalDefaults(p),
     emailIds: p.emailIds,
   }));

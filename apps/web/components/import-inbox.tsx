@@ -29,7 +29,13 @@ import { toast } from "@/components/toast";
 export interface ImportInboxData {
   importAddress: string | null;
   // 旅行の選択肢（id → 表示ラベル。同名の旅行を見分けるため年・日数付き）。
-  trips: { id: string; title: string }[];
+  // 日程は「既にその日程の旅行がある候補は出さない」判定に使う（tripProposal.ts）。
+  trips: {
+    id: string;
+    title: string;
+    start_date: string | null;
+    end_date: string | null;
+  }[];
   tripLabel: Map<string, string>;
   rows: InboxRow[];
   errorRows: {
@@ -100,10 +106,13 @@ export function ImportInbox({
   const wouldBeNewTrip = (rowId: string) => {
     const row = data.rows.find((r) => r.id === rowId);
     if (!row) return false;
-    return deriveTripProposals([
-      ...unassignedDrafts.filter((d) => d.emailId !== rowId),
-      ...draftsOf(row),
-    ]).some((p) => p.emailIds.includes(rowId));
+    return deriveTripProposals(
+      [
+        ...unassignedDrafts.filter((d) => d.emailId !== rowId),
+        ...draftsOf(row),
+      ],
+      trips.map((t) => ({ startDate: t.start_date, endDate: t.end_date })),
+    ).some((p) => p.emailIds.includes(rowId));
   };
 
   const {

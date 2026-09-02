@@ -66,10 +66,10 @@ export default function InboxPickTripRoute() {
   const myDrafts = (data?.draftRows ?? [])
     .filter((d) => d.email_id === emailId)
     .map((d) => ({ emailId, kind: d.kind, payload: d.payload }));
-  const found = deriveTripProposals([
-    ...(unassigned ?? []).filter((d) => d.emailId !== emailId),
-    ...myDrafts,
-  ]).find((p) => p.emailIds.includes(emailId));
+  const found = deriveTripProposals(
+    [...(unassigned ?? []).filter((d) => d.emailId !== emailId), ...myDrafts],
+    trips.map((t) => ({ startDate: t.start_date, endDate: t.end_date })),
+  ).find((p) => p.emailIds.includes(emailId));
   // 日程・名前は旅行一覧の候補カードと同じ導出を通す（生の値を出すと、
   // 「最低1泊を見込む」補正のぶんカードと期間が食い違って見える）。
   const proposal = found ? tripProposalDefaults(found) : null;

@@ -152,8 +152,36 @@ function topWeighted(values: { value: string | null; weight: number }[]): string
  * 別々でも、後から 1/2 の宿泊が入れば両方と1日差で繋がり 1/1〜1/3 の1件に
  * なる（どの順で届いても結果は同じ）。
  */
+// 既に存在する旅行の期間（候補を出さないための材料）。
+export type ExistingTripRange = {
+  startDate: string | null;
+  endDate: string | null;
+};
+
+// 候補の期間が、既にある旅行の期間に**すっぽり収まる**か。
+//
+// 収まるなら新しい旅行を提案しない。その日程の旅行はもうあるので、割り当て先が
+// 増えるだけで選びづらくなる（実例: ハワイ旅行 4/28〜5/5 の中の 5/5 21:01 の
+// 新幹線が、別の仮旅行として並んだ）。
+//
+// **はみ出す場合は提案する。** 5/4〜5/8 のように後ろに伸びるものは、既存の旅行の
+// 延長かもしれないし別の旅行かもしれず、こちらでは決められない。
+function coveredByExistingTrip(
+  p: { startDate: string; endDate: string },
+  trips: ExistingTripRange[],
+): boolean {
+  return trips.some(
+    (t) =>
+      !!t.startDate &&
+      !!t.endDate &&
+      t.startDate <= p.startDate &&
+      p.endDate <= t.endDate,
+  );
+}
+
 export function deriveTripProposals(
   drafts: ProposalDraft[] | null,
+  existingTrips: ExistingTripRange[] = [],
 ): TripProposal[] {
   const byEmail = new Map<string, ProposalDraft[]>();
   for (const d of drafts ?? []) {
@@ -203,6 +231,8 @@ export function deriveTripProposals(
       transitCount: g.reduce((n, x) => n + x.transit, 0),
       lodgingCount: g.reduce((n, x) => n + x.lodging, 0),
     }))
+    // 既にその日程の旅行があるなら候補にしない（上の coveredByExistingTrip）。
+    .filter((p) => !coveredByExistingTrip(p, existingTrips))
     // 確定した旅行と同じ一覧に並ぶので同じ順（開始日の新しい順）。
     .sort((a, b) =>
       compareTripOrder(

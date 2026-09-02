@@ -71,7 +71,11 @@ export default function TripsScreen() {
     queryFn: () => fetchUnassignedDrafts(supabase, userId!),
     enabled: !!userId,
   });
-  const proposals = deriveTripProposals(unassigned ?? null).map((p) => ({
+  // 既にその日程の旅行があるなら候補にしない（tripProposal.ts）。
+  const proposals = deriveTripProposals(
+    unassigned ?? null,
+    trips.map((t) => ({ startDate: t.start_date, endDate: t.end_date })),
+  ).map((p) => ({
     ...tripProposalDefaults(p),
     emailIds: p.emailIds,
   }));
