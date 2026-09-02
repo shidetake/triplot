@@ -131,11 +131,15 @@ export type Receipt = z.infer<typeof receiptSchema>;
 // 時刻は現地の壁時計をそのまま持つ（events の floating time モデルと一致）。
 // timed/allday の TZ は旅程から自動導出されるので持たない（transit のみ）。
 export const eventDraftSchema = z.object({
-  kind: z
-    .enum(["timed", "allday", "transit"])
-    .describe(
-      "予定の種別。transit=タイムゾーンを跨ぐ移動（フライト等）、allday=終日・複数日（宿泊のチェックイン〜チェックアウト等）、timed=時刻のある通常の予定（レストラン予約・アクティビティ等）",
-    ),
+  kind: z.enum(["timed", "allday", "transit"]).describe(
+    // 足すのは否定形1つだけ。allday の側に条件を足すと、範囲の書かれていない
+    // 宿泊（「5月1日 1泊」等）を誤って弾く。時刻の有無でも決まらない
+    // （ホテルの確認メールには「チェックイン 15:00」と書いてある）。
+    "予定の種別。transit=タイムゾーンを跨ぐ移動（フライト等）、" +
+      "allday=終日・複数日（宿泊のチェックイン〜チェックアウト等）、" +
+      "timed=時刻のある通常の予定（レストラン予約・アクティビティ等）。" +
+      "施設名にホテル名が入っていても、1日で終わる予約は timed",
+  ),
   // 見出しに場所の名前を繰り返さない。location に同じ文字列が入るので、
   // カレンダー上で「ザ ロイヤル ハワイアン… ザ ロイヤル ハワイアン…」と
   // 二度読ませることになる（実機で指摘）。宿泊は何をしているかが自明なので
