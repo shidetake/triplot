@@ -396,13 +396,32 @@ export async function resolveAirportPlace(
 // 使う純関数で、Google 候補を仮の TripPlace として渡せば同じスコアリングが
 // 使える。
 
-// 抽出された名前の言語。日本語の文字が1つでもあれば "ja"、無ければ "en"。
-// 混在（「Yard House 品川店」）は日本語側に寄せる — Google が日本語で返す
-// 名前の方が元の表記に近い。
-export function queryLanguageFor(name: string): "ja" | "en" {
-  return /[\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Han}]/u.test(name)
-    ? "ja"
-    : "en";
+// 名前が**どの文字体系で書かれているか**で問い合わせ言語を決める。地名を並べた
+// 一覧ではなく Unicode の Script → 言語という閉じた対応なので、地域が増えても
+// 育てる必要が無い。上から順に見る（日本語は仮名と漢字、韓国語は諺文と漢字を
+// 混ぜて書くので、曖昧でない方を先に置く）。
+const SCRIPT_LANGUAGES: [RegExp, string[]][] = [
+  [/[\p{Script=Hiragana}\p{Script=Katakana}]/u, ["ja"]],
+  [/\p{Script=Hangul}/u, ["ko"]],
+  [/\p{Script=Thai}/u, ["th"]],
+  [/\p{Script=Cyrillic}/u, ["ru"]],
+  [/\p{Script=Arabic}/u, ["ar"]],
+  [/\p{Script=Hebrew}/u, ["he"]],
+  [/\p{Script=Greek}/u, ["el"]],
+  [/\p{Script=Devanagari}/u, ["hi"]],
+  // 漢字だけの名前は日本語と中国語を見分けられない（「東京駅」も「台北車站」も
+  // 漢字だけで書ける）。**曖昧なのはここだけ**なので、外した時に限って引き直す。
+  // 中国語側は zh-TW（繁体字）で引く。素の zh と zh-CN は簡体字で返すので
+  // 繁体字の名前と一致しないが、zh-TW は簡体字の地名も拾える（実測: 「台北車站」
+  // は zh-TW だけ一致、「北京南站」は3つとも一致）。
+  [/\p{Script=Han}/u, ["ja", "zh-TW"]],
+];
+
+// 抽出された名前を Google に問い合わせるときの言語。前から順に試し、名前が
+// 一致した時点で止める。どの文字体系でもなければラテン文字とみなして英語
+// （英語のレシートが最も多い）。
+export function queryLanguagesFor(name: string): string[] {
+  return SCRIPT_LANGUAGES.find(([re]) => re.test(name))?.[1] ?? ["en"];
 }
 
 const NAMED_PLACE_MATCH_THRESHOLD = 0.6;
@@ -450,25 +469,25 @@ export async function resolveNamedPlace(
     // 検索語は名前と住所を繋げる（併記が一番一意に決まるのは実測済み）。
     // 分けて持つのは「住所があるか」を確実に知るためで、問い合わせ方は変えない。
     const query = addr ? `${trimmed}, ${addr}` : trimmed;
-    const candidates = await searchPlaces(query, {
-      ...opts,
-      languageCode: queryLanguageFor(trimmed),
-    });
-    let best: PlaceCandidate | null = null;
-    let bestScore = -1;
-    for (const c of candidates.slice(0, 5)) {
-      const r = matchPlace(
-        { name: trimmed, address: addr },
-        [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
-        0,
-      );
-      const score = r?.score ?? 0;
-      if (score > bestScore) {
-        bestScore = score;
-        best = c;
+    for (const languageCode of queryLanguagesFor(trimmed)) {
+      const candidates = await searchPlaces(query, { ...opts, languageCode });
+      let best: PlaceCandidate | null = null;
+      let bestScore = -1;
+      for (const c of candidates.slice(0, 5)) {
+        const r = matchPlace(
+          { name: trimmed, address: addr },
+          [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
+          0,
+        );
+        const score = r?.score ?? 0;
+        if (score > bestScore) {
+          bestScore = score;
+          best = c;
+        }
       }
+      if (best && bestScore >= NAMED_PLACE_MATCH_THRESHOLD) return best;
     }
-    return best && bestScore >= NAMED_PLACE_MATCH_THRESHOLD ? best : null;
+    return null;
   } catch {
     return null;
   }

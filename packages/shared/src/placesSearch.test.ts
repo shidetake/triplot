@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   extractRegion,
   nearestCandidate,
-  queryLanguageFor,
+  queryLanguagesFor,
   type PlaceCandidate,
 } from "./placesSearch";
 
@@ -76,22 +76,31 @@ describe("nearestCandidate", () => {
   });
 });
 
-describe("queryLanguageFor", () => {
+describe("queryLanguagesFor", () => {
   // Google に返させる言語が名前の言語とずれると、実在の正しい候補でも名前の
   // 一致度が閾値に届かず捨てられる（実データ: 「品川駅」を英語で引くと
   // "Shinagawa Station" が返り、新幹線の乗降地が両方とも解決できなかった）。
-  it("日本語の名前は日本語で引く", () => {
-    expect(queryLanguageFor("品川駅")).toBe("ja");
-    expect(queryLanguageFor("ダニエル・K・イノウエ国際空港")).toBe("ja");
-    expect(queryLanguageFor("すし")).toBe("ja");
+  it("文字体系で言語を決める", () => {
+    expect(queryLanguagesFor("すし")).toEqual(["ja"]);
+    expect(queryLanguagesFor("ダニエル・K・イノウエ国際空港")).toEqual(["ja"]);
+    expect(queryLanguagesFor("서울역")).toEqual(["ko"]);
+    expect(queryLanguagesFor("เซ็นทรัลเวิลด์")).toEqual(["th"]);
+    expect(queryLanguagesFor("Шереметьево")).toEqual(["ru"]);
+    expect(queryLanguagesFor("Πλάκα")).toEqual(["el"]);
   });
 
-  it("英語の名前は英語で引く", () => {
-    expect(queryLanguageFor("Yard House")).toBe("en");
-    expect(queryLanguageFor("LEAHI HEALTH")).toBe("en");
+  it("ラテン文字は英語", () => {
+    expect(queryLanguagesFor("Yard House")).toEqual(["en"]);
+    expect(queryLanguagesFor("LEAHI HEALTH")).toEqual(["en"]);
   });
 
-  it("混在は日本語に寄せる", () => {
-    expect(queryLanguageFor("Yard House 品川店")).toBe("ja");
+  it("漢字だけは日本語と中国語を見分けられないので両方試す", () => {
+    expect(queryLanguagesFor("品川駅")).toEqual(["ja", "zh-TW"]);
+    expect(queryLanguagesFor("台北車站")).toEqual(["ja", "zh-TW"]);
+  });
+
+  it("仮名が1つでもあれば日本語で確定する", () => {
+    expect(queryLanguagesFor("東京ソラマチ")).toEqual(["ja"]);
+    expect(queryLanguagesFor("Yard House 品川店")).toEqual(["ja", "zh-TW"]);
   });
 });
