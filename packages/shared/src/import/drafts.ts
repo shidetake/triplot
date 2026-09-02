@@ -32,6 +32,7 @@ import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
+import { resolveTransportCategory } from "./transportCategory";
 import { type FixedBlock, resolveDraftOverlaps } from "./draftOverlap";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
@@ -264,9 +265,7 @@ export function deriveExpenseDraftItems(
       const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
         ? (r.currency as Currency)
         : ctx.defaultCurrency;
-      const categoryId =
-        ctx.categories.find((c) => c.name === r.category)?.id ??
-        ctx.fallbackCategoryId;
+
       // 保存済みマッチ（ライブ判定）を最優先、無ければ事前解決済みの Google の
       // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
       // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
@@ -297,6 +296,17 @@ export function deriveExpenseDraftItems(
           : (pickTzByLongitude(tzRes.options, r.resolvedPlace?.lng, when.date) ??
             narrowTzByTime(tzRes.options, ctx.tzTimeline, when.time)[0] ??
             tzRes.options[0]);
+      // 移動のカテゴリは旅行全体を見ないと決まらない（resolveTransportCategory）。
+      // ここまで来ると「その費用がどちらの TZ にいた時のものか」が出ているので、
+      // それを使って自国側の移動を渡航に寄せる。
+      const categoryName = resolveTransportCategory(
+        r.category,
+        tzRes.kind === "single" ? tzRes.tz : (tzPicked?.tz ?? null),
+        ctx.tzTimeline,
+      );
+      const categoryId =
+        ctx.categories.find((c) => c.name === categoryName)?.id ??
+        ctx.fallbackCategoryId;
       return [
         {
           id: d.id,

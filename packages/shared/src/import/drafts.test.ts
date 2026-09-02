@@ -107,6 +107,67 @@ const expenseCtx = {
 };
 
 describe("deriveExpenseDraftItems", () => {
+  it("海外旅行の自国側の移動は渡航のカテゴリで開く", () => {
+    // 帰国後の「品川 → 京都」の新幹線。1通のメールからは国内旅行の移動と
+    // 区別が付かないので LLM は現地移動に倒しがちだが、旅行が TZ をまたいで
+    // いれば自国側の移動は行き帰りの一部（resolveTransportCategory）。
+    const ctx = {
+      ...expenseCtx,
+      categories: [
+        ...expenseCtx.categories,
+        { id: "cat-travel", name: "渡航" },
+        { id: "cat-local", name: "現地移動" },
+      ],
+      tzTimeline: {
+        fallbackTz: "Asia/Tokyo",
+        transits: [
+          {
+            transitId: "out",
+            departDate: "2026-05-01",
+            arriveDate: "2026-05-01",
+            departTz: "Asia/Tokyo",
+            arriveTz: "Pacific/Honolulu",
+            departTime: "21:25",
+            arriveTime: "09:40",
+          },
+          {
+            transitId: "back",
+            departDate: "2026-05-05",
+            arriveDate: "2026-05-05",
+            departTz: "Pacific/Honolulu",
+            arriveTz: "Asia/Tokyo",
+            departTime: "11:55",
+            arriveTime: "15:20",
+          },
+        ],
+      },
+    };
+    const shinkansen = receipt({
+      merchant: "JR東海",
+      date: "2026-05-05",
+      time: "18:30",
+      category: "現地移動",
+      currency: "JPY",
+      total: 13850,
+    });
+    const waikiki = receipt({
+      merchant: "Uber",
+      date: "2026-05-03",
+      category: "現地移動",
+    });
+    const items = deriveExpenseDraftItems(
+      [
+        { id: "d1", email_id: "e1", kind: "expense", payload: shinkansen },
+        { id: "d2", email_id: "e2", kind: "expense", payload: waikiki },
+      ],
+      ctx,
+    );
+    const byId = new Map(items.map((i) => [i.id, i.initialCategoryId]));
+    expect(byId.get("d1")).toBe("cat-travel");
+    // 旅行先での移動はそのまま。
+    expect(byId.get("d2")).toBe("cat-local");
+  });
+
   it("使う日の古い順に並べる（同じ日はレシートの時刻順）", () => {
     // 取り込んだ順（inbound_drafts の created_at）ではなく、旅程の順で
     // 並んでほしい。まとめて転送するとメールの到着順は旅程と無関係になる。
