@@ -234,6 +234,12 @@ const MERGE_SYSTEM_PROMPT = [
   "ただし元の下書きが**店/サービス自身のレシートの最終額を既に持っている**なら足さない",
   "（足すと二重計上になる。差額調整はその最終額に含まれているので、合体しても total は",
   "そのまま）。どちらか迷ったら、店のレシートに書かれている総額を信じる。",
+  "【チップ】飲食店では、後からチップぶんの差額調整が別メールで届く。米国のチップは",
+  "会計の 15〜25%（18〜22% が最も多い）なので、**調整額が元の金額のその範囲に当たるなら",
+  "まずチップ**であり、〔元の金額 ＋ チップ〕が最終総額になる。候補の行に『相手の N%』と",
+  "書いてある場合、その割合はこちらが計算した事実なので信用してよい。",
+  "【合体後の total は、元のどれよりも小さくならない】調整額そのものを最終総額にしない。",
+  "例: 元 55.47、調整 11.09（20%＝チップ）→ total は 66.56。11.09 にはならない。",
   "【同じ取引について複数通届く場合】店やサービスは1つの取引について複数のメールを送る",
   "ことがある（最初のレシート・更新版・確定通知）。**件名が同じで金額も同じ**なら同じ取引",
   "として合体してよい。ただし両方に時刻があって食い違う場合は別の取引なので合体しない",
@@ -258,10 +264,23 @@ export async function findMerge(
 ): Promise<{ targetId: string; merged: Extraction } | null> {
   if (candidates.length === 0) return null;
 
+  // 金額の比を**チップの範囲に入った時だけ**添える。
+  //
+  // LLM に割り算をさせない（11.09 ÷ 55.47 のような計算は外しうる）。ただし常に
+  // 数値を並べると雑音になり、決定的な手がかりが埋もれる — 実際、為替レートの表を
+  // 渡していた時に承認番号が埋もれて合体できなかった。**効く時だけ1行**にする。
+  const inTotal = incoming.extraction.receipt?.total ?? null;
+  const tipNote = (c: DraftCandidate): string => {
+    const t = c.extraction.receipt?.total ?? null;
+    if (!inTotal || !t || t <= 0) return "";
+    const ratio = inTotal / t;
+    if (ratio < 0.1 || ratio > 0.3) return "";
+    return `\n  （新しいメールの金額はこの候補の ${(ratio * 100).toFixed(1)}%）`;
+  };
   const candidateLines = candidates
     .map((c) => {
       const body = (c.text ?? "").trim().slice(0, 1500);
-      return `- id=${c.id}: ${JSON.stringify(slim(c.extraction))}${
+      return `- id=${c.id}: ${JSON.stringify(slim(c.extraction))}${tipNote(c)}${
         body ? `\n  本文: ${body}` : ""
       }`;
     })
@@ -285,14 +304,35 @@ export async function findMerge(
   });
 
   if (!object.matchId || !object.merged) return null;
-  if (!candidates.some((c) => c.id === object.matchId)) return null;
+  const target = candidates.find((c) => c.id === object.matchId);
+  if (!target) return null;
+
+  // **合体の結果が、元のどれよりも小さくなってはいけない。** 重複なら大きい方が
+  // 残り、チップ・調整なら足されるので、どちらの解釈でも小さくはならない。
+  // 実測: 55.47 の飲食に 11.09（ちょうど 20%＝チップ）の調整が来た時、合体結果が
+  // 11.09 になった＝調整額が元を丸ごと置き換えていた。プロンプトで直しても
+  // LLM は揺れるので、機械的に弾く。
+  //
+  // 直し方は「大きい方に寄せる」。足すべきだったのか重複だったのかはここでは
+  // 決められないので、**確実に言える下限**に留める（足りない分は手でまとめ直せる）。
+  const merged = object.merged;
+  const floor = Math.max(
+    incoming.extraction.receipt?.total ?? 0,
+    target.extraction.receipt?.total ?? 0,
+  );
+  if (merged.receipt && merged.receipt.total < floor) {
+    console.warn(
+      "[import] merge total below parts",
+      JSON.stringify({ got: merged.receipt.total, floor }),
+    );
+    merged.receipt.total = floor;
+  }
+
   return {
     targetId: object.matchId,
     merged: {
-      receipt: object.merged.receipt
-        ? normalizeReceipt(object.merged.receipt)
-        : null,
-      events: object.merged.events
+      receipt: merged.receipt ? normalizeReceipt(merged.receipt) : null,
+      events: merged.events
         .map(sanitizeEventDraft)
         .filter((d): d is NonNullable<typeof d> => d !== null)
         .map(normalizeEventDraft),
