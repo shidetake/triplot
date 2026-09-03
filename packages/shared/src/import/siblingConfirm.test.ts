@@ -76,9 +76,21 @@ describe("expenseFieldsFromDraft", () => {
   it("退会者は割り勘の既定に入れない", () => {
     const f = expenseFieldsFromDraft(expenseDraft(), {
       ...expenseCtx,
+      activeMemberIds: ["m1", "m2"],
+    });
+    expect(f?.splitMemberIds).toEqual(["m1", "m2"]);
+  });
+
+  it("アクティブメンバーが自分1人だけなら割り勘にしない", () => {
+    // 実データ: 1人旅行の取り込み確定で割り勘UIが出ていた不具合の再現。
+    // フォームの新規作成時は selectedSplits が自分だけになり onlySelf=true
+    // → splittable=false になる。連動確定（フォームを介さない）でも同じ
+    // 結果にならないといけない。
+    const f = expenseFieldsFromDraft(expenseDraft(), {
+      ...expenseCtx,
       activeMemberIds: ["m1"],
     });
-    expect(f?.splitMemberIds).toEqual(["m1"]);
+    expect(f?.splittable).toBe(false);
   });
 });
 

@@ -121,6 +121,13 @@ export function expenseFieldsFromDraft(
         rateTo(d.fxRates, ctx.defaultCurrency) ??
         undefined);
   if (rate === undefined || rate === null) return null;
+  // 割り勘対象は全員が既定（フォームの新規作成時と同じ）。ただし**アクティブ
+  // メンバーが自分1人だけなら、対象が自分1人＝割り勘にならない**。フォームは
+  // これを selectedSplits の導出（onlySelf）で毎回計算しているが、ここは
+  // フォームを介さない自動確定なので、同じ導出を明示的に持つ必要がある
+  // （実データ: 1人旅行の取り込みで確定した費用に割り勘UIが出ていた——
+  // ここが true 固定になっていたため）。
+  const splittable = ctx.activeMemberIds.length > 1;
   return {
     localPrice: d.initialPrice,
     localCurrency: d.initialCurrency,
@@ -128,7 +135,7 @@ export function expenseFieldsFromDraft(
     categoryId: d.initialCategoryId,
     payerMemberId: ctx.myMemberId,
     visibility: "shared",
-    splittable: true,
+    splittable,
     splitMemberIds: ctx.activeMemberIds,
     note: d.initialNote ?? "",
     paidAt: d.initialPaidAt,
