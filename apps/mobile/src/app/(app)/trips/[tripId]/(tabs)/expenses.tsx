@@ -430,7 +430,10 @@ function formatDateTime(iso: string): string {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   screen: { flex: 1, backgroundColor: t.background },
-  content: { padding: 16, gap: 8, paddingBottom: 96 },
+  // FAB は bottom:100 + 高さ56 なので、画面下端から156ptまでを占める。
+  // 96 だとその範囲に食い込み、最後の行が FAB の下に隠れて全部は見えな
+  // かった（実機フィードバック）。FAB の上端を越えるまで余白を取る。
+  content: { padding: 16, gap: 8, paddingBottom: 172 },
   // 未確定の取り込み。仮のもの（仮費用・仮旅行）は破線の枠で示し、色は付けない。破線＝
   // 「まだ実体が無い／押すと実体ができる」で、旅行一覧の「旅行の候補」と
   // 同じ言語に揃える（ui-guidelines「定型部品」の破線ボーダー）。
