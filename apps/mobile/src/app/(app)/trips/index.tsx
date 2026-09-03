@@ -204,18 +204,14 @@ export default function TripsScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
         contentContainerStyle={styles.list}
-        renderItem={({ item, index }) => (
-          <Pressable
-            // 一覧全体で1つの枠に見せる。FlatList なので枠を張る親を挟めず、
-            // 行ごとに左右の枠を持たせ、先頭に上辺と上の角丸、末尾に下辺と
-            // 下の角丸を足して1枚の箱にする。間は区切り線だけ。
-            style={[
-              styles.row,
-              index === 0 && styles.rowFirst,
-              index === trips.length - 1 && styles.rowLast,
-            ]}
-            onPress={() => router.push(`/trips/${item.id}`)}
-          >
+        renderItem={({ item }) => (
+          // カード単位（ui-guidelines「行にするかカードにするか」＝
+          // 「1件ずつが独立した塊として扱われる時はカード」に当たる）。
+          // 1つ1つの旅行は場所・予定・費用・メンバーを抱える別々の文脈への
+          // 入り口で、費用一覧の行のような「同じ文脈の中の同種の明細」とは
+          // 性質が違う（実機フィードバック: 区切り線の一覧だと旅行同士が
+          // 地続きに見えて選びにくかった）。
+          <Pressable style={styles.row} onPress={() => router.push(`/trips/${item.id}`)}>
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardSub}>
               {formatTripDateRange(item.start_date, item.end_date, locale)}
@@ -264,26 +260,14 @@ export default function TripsScreen() {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
   container: { flex: 1, backgroundColor: t.background },
-  list: { padding: 16 },
-  // 同種の項目が並ぶ一覧なので、1件ずつ枠＋隙間ではなく一覧全体を1つの枠に
-  // して行を区切り線で分ける（ui-guidelines「行にするかカードにするか」。
-  // 費用一覧・受信箱と同じ形）。
+  list: { padding: 16, gap: 8 },
+  // カード1枚＝1旅行。理由は renderItem 側のコメント参照。
   row: {
     padding: 16,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderWidth: 1,
+    borderRadius: 8,
     borderColor: t.fgAlpha(0.1),
-  },
-  rowFirst: {
-    borderTopWidth: 1,
-    borderTopLeftRadius: 6,
-    borderTopRightRadius: 6,
-  },
-  rowLast: {
-    borderBottomWidth: 1,
-    borderBottomLeftRadius: 6,
-    borderBottomRightRadius: 6,
+    backgroundColor: t.background,
   },
   // 候補は「まだ存在しない旅行」＝実在の旅行とは別のまとまりなので、
   // 境目を空ける（ui-guidelines「カードや行を縦に並べる時の間隔」）。
