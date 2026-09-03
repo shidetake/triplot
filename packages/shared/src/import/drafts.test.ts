@@ -35,6 +35,7 @@ function receipt(p: Partial<Receipt>): Receipt {
     items: null,
     referenceId: null,
     isUpdate: false,
+    dateIsSettlement: false,
     ...p,
   };
 }
@@ -90,6 +91,7 @@ function eventDraft(p: Partial<EventDraft>): EventDraft {
     address: null,
     referenceId: null,
     isUpdate: false,
+    fromReceipt: false,
     ...p,
   };
 }

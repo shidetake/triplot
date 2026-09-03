@@ -127,6 +127,18 @@ export const receiptSchema = z.object({
     .describe(
       "このメールが既存決済の確定・更新・差額調整の通知（pending→確定、金額の更新/調整など）なら true。新規の購入レシートなら false",
     ),
+  // 日付・時刻の出どころ。銀行・カード会社の通知の日付は自国の計上日で、
+  // 現地の利用日と1日ずれることがある（時差）。合体（マージ）の際、店の
+  // レシート側の日付が常に優先される（後処理・receiptDate.ts）。ここで
+  // 判定するのは「このメール自身が」どちら側かだけで、複数メールを比べる
+  // 判断ではないので迷わない。
+  dateIsSettlement: z
+    .boolean()
+    .describe(
+      "true = このメールの date/time は銀行・カード会社が決済を計上/通知した" +
+        "日時（利用日と1日ずれることがある）。false = 店・サービス自身の" +
+        "レシート/予約確認に書かれた、実際に利用した日時",
+    ),
 });
 
 export type Receipt = z.infer<typeof receiptSchema>;
@@ -259,6 +271,19 @@ export const eventDraftSchema = z.object({
     .describe(
       "既存予約の変更・確定・リマインダーの通知なら true。新規予約の確認なら false",
     ),
+  // 「既に済んだ消費（レシート）から自動生成した仮予定」かどうか。true の時は
+  // startTime/endTime は null のままでよい（アプリが receipt の日時と title
+  // から所要時間の目安で機械的に埋める。所要時間の算出は receiptTiming.ts）。
+  // 判断が要るのは「何をした時間か」（title）だけで、時刻の計算は要らない。
+  fromReceipt: z
+    .boolean()
+    .describe(
+      "true = 既に済んだ消費（店頭レシート・利用明細）から自動生成する仮予定" +
+        "（飲食・土産・衣服・エンタメ・カジノの receipt に対応するもの）。" +
+        "この場合 startTime/endTime は null のままでよい（アプリ側で計算する）。" +
+        "false = メールに書かれた本物の予約・旅程（フライト・宿泊・レストラン" +
+        "予約等）",
+    ),
 });
 
 export type EventDraft = z.infer<typeof eventDraftSchema>;
@@ -390,6 +415,9 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       arriveLocation: d.arriveLocation,
       location: null,
       address: null,
+      // transit は常に本物の移動（フライト・配車等）で、レシート由来の仮予定
+      // には該当しない。LLM が誤って true にしても機械的に false へ戻す。
+      fromReceipt: false,
     };
   }
   // timed/allday: 終了 >= 開始（壁時計）を要求。破れば終了を落とす。
@@ -415,5 +443,6 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     arriveLocation: null,
     location: d.location,
     address: d.address,
+    fromReceipt: d.fromReceipt,
   };
 }

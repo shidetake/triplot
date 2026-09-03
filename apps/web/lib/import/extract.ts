@@ -2,6 +2,7 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
+import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
 import { buildImportPrompt, IMPORT_SYSTEM_PROMPT, type TripHint } from "./prompt";
 import {
   type Extraction,
@@ -62,12 +63,16 @@ export async function extractEmail(
       : null;
   // 店名等の全角ASCIIを半角に正規化（日本語・カタカナは保持）。予定は日付/時刻/TZ の
   // 形式・実在検証も通し、使えない下書きは捨てる。
+  const receipt = object.receipt ? normalizeReceipt(object.receipt) : null;
+  const events = object.events
+    .map(sanitizeEventDraft)
+    .filter((d): d is NonNullable<typeof d> => d !== null)
+    .map(normalizeEventDraft);
   return {
-    receipt: object.receipt ? normalizeReceipt(object.receipt) : null,
-    events: object.events
-      .map(sanitizeEventDraft)
-      .filter((d): d is NonNullable<typeof d> => d !== null)
-      .map(normalizeEventDraft),
+    receipt,
+    // receipt由来の仮予定の時刻は LLM に作らせず、確定した receipt の日時から
+    // 機械的に埋める（merge.ts の findMerge と同じ後処理。prompt.ts 参照）。
+    events: applyReceiptEventTiming(receipt, events),
     tripId,
     detailUrl,
   };

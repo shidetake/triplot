@@ -5,6 +5,10 @@ import { nameTokens } from "@triplot/shared/import/placeMatch";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
 import {
+  applyReceiptEventTiming,
+} from "@triplot/shared/import/receiptTiming";
+import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
+import {
   type Extraction,
   eventDraftSchema,
   receiptSchema,
@@ -341,14 +345,48 @@ export async function findMerge(
     merged.receipt.total = floor;
   }
 
+  // **日付・時刻の出どころは LLM に決めさせない。** 合体のたびに再判断させると、
+  // 候補の生テキスト（銀行の通知本文）が引力になって崩れることがある（実データ:
+  // レシート由来の日付が2回連続で正しく合体されたのに、最終的な下書きは銀行の
+  // 通知日に戻っていた）。target（既存の下書き）と incoming（今回のメール）
+  // それぞれ自身の抽出結果を比べ、レシート由来が銀行の通知に必ず勝つ片方向の
+  // ルールで機械的に決める。
+  if (merged.receipt) {
+    const authoritative = chooseAuthoritativeDate(
+      target.extraction.receipt ?? {
+        date: merged.receipt.date,
+        time: merged.receipt.time,
+        serviceDate: merged.receipt.serviceDate,
+        dateIsSettlement: merged.receipt.dateIsSettlement,
+      },
+      incoming.extraction.receipt ?? {
+        date: merged.receipt.date,
+        time: merged.receipt.time,
+        serviceDate: merged.receipt.serviceDate,
+        dateIsSettlement: merged.receipt.dateIsSettlement,
+      },
+    );
+    merged.receipt.date = authoritative.date;
+    merged.receipt.time = authoritative.time;
+    merged.receipt.serviceDate = authoritative.serviceDate;
+    merged.receipt.dateIsSettlement = authoritative.dateIsSettlement;
+  }
+
+  const normalizedReceipt = merged.receipt
+    ? normalizeReceipt(merged.receipt)
+    : null;
+  const normalizedEvents = merged.events
+    .map(sanitizeEventDraft)
+    .filter((d): d is NonNullable<typeof d> => d !== null)
+    .map(normalizeEventDraft);
+
   return {
     targetId: object.matchId,
     merged: {
-      receipt: merged.receipt ? normalizeReceipt(merged.receipt) : null,
-      events: merged.events
-        .map(sanitizeEventDraft)
-        .filter((d): d is NonNullable<typeof d> => d !== null)
-        .map(normalizeEventDraft),
+      receipt: normalizedReceipt,
+      // receipt由来の仮予定の時刻は、確定した receipt の日時から機械的に
+      // 埋め直す（LLM には startTime/endTime を作らせない。プロンプト参照）。
+      events: applyReceiptEventTiming(normalizedReceipt, normalizedEvents),
     },
   };
 }
