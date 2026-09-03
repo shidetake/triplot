@@ -14,6 +14,12 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { useTranslations } from "use-intl";
 
 import {
+  maxHourPx,
+  minutesAt,
+  zoomAnchoredScrollY,
+  zoomedHourPx,
+} from "@triplot/shared/calendarZoom";
+import {
   eventBlockColors,
   GREEN_HUE,
   pickEventColor,
@@ -40,7 +46,10 @@ const checkMarkSource = require("../../assets/marks/reservation-check.png");
 // week-calendar.tsx と同じ役割分担）。寸法も web に合わせる。
 
 const GUTTER = 44; // 時刻ガター幅
-const HOUR_PX = 30; // 1時間の高さ
+// 1時間の高さ。**縦ピンチで変えられる**（Google カレンダーと同じ）。この値は
+// 既定であり最小＝一番引いた状態で、ここから拡大していく。上限と寄せ直しの
+// 計算は calendarZoom（純関数・テストあり）が持つ。
+const HOUR_PX_MIN = 30;
 const ALLDAY_ROW = 24; // 終日バー1行の高さ
 const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
 const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
@@ -160,18 +169,28 @@ export function WeekCalendar({
   );
   const COL = colWidth(columns.length, containerWidth - GUTTER);
   const totalW = columns.length * COL;
-  const bodyH = 24 * HOUR_PX;
+  // 縦ピンチの倍率は「1時間の高さ」そのもので持つ（描画は全部この値から引く）。
+  const [hourPx, setHourPx] = useState(HOUR_PX_MIN);
+  // ピンチ中は縦スクロールを止める。2本指を広げる動きは UIScrollView も
+  // スクロールとして拾うので、そのままだと寄せ直した位置を上書きされる
+  // （ゴースト中に止めるのと同じ考え方）。scrollTo は止めていても効く。
+  const [pinching, setPinching] = useState(false);
+  // 本体（時間グリッド）の見えている高さ。上限を「6時間ぶんが入る高さ」に
+  // するために要る。測れるまでは既定の3倍を仮に使う。
+  const [bodyViewportH, setBodyViewportH] = useState(0);
+  const zoomMax = maxHourPx(bodyViewportH, HOUR_PX_MIN);
+  const bodyH = 24 * hourPx;
   // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
   // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
   const headerH = groups.some((g) => g.tzNote) ? HEADER_H : HEADER_H_COMPACT;
   const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]));
   const eventById = new Map(events.map((e) => [e.id, e]));
 
-  const y = (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * HOUR_PX;
+  const y = (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * hourPx;
 
   // 現在のスクロール量（auto-scroll と指位置→グリッド座標の変換に使う）。
   const scrollXRef = useRef(0);
-  const scrollYRef = useRef(6 * HOUR_PX); // contentOffset 初期値と同じ
+  const scrollYRef = useRef(6 * HOUR_PX_MIN); // contentOffset 初期値と同じ
 
   // ヘッダ（日付＋終日バー）と本体は横スクロールを同期する。**どちらを触っても
   // 動く** — 終日の予定が並ぶ帯は面積が大きく、そこを掴んで横に振るのは自然な
@@ -235,7 +254,7 @@ export function WeekCalendar({
   // （指で隠れず見やすい）、30分スナップ。
   const ghostAt = useCallback(
     (contentX: number, contentY: number): GhostState => {
-      const raw = (contentY / HOUR_PX) * 60;
+      const raw = (contentY / hourPx) * 60;
       const snapped = Math.max(0, Math.min(1380, Math.round(raw / 30) * 30));
       return {
         columnIndex: Math.max(
@@ -245,7 +264,7 @@ export function WeekCalendar({
         startMin: Math.max(0, snapped - 30),
       };
     },
-    [columns.length, COL],
+    [columns.length, COL, hourPx],
   );
 
   const stopAutoScroll = useCallback(() => {
@@ -348,6 +367,43 @@ export function WeekCalendar({
     dragAbsRef.current = null;
     setGhost(null);
   }, [setGhost, stopAutoScroll]);
+
+  // 縦ピンチで時間の縮尺を変える（Google カレンダーと同じ）。**指の間にある
+  // 時刻を動かさない** — 拡大すると自分が見ていた時間帯が画面外へ流れていく
+  // ので、焦点の時刻を固定してスクロール位置を寄せ直す。
+  //
+  // 2本指なので、1本指のスクロール・長押しドラッグとは指の本数で切り分く。
+  // 縦スクロールとは同時に成立させる（ピンチ中に scrollTo で寄せ直すため）。
+  const pinchStart = useRef({ hourPx: HOUR_PX_MIN, focalMin: 0, focalY: 0 });
+  // ref を渡すのは下の ghostPan と同じ事情（Gesture のビルダーはコールバックを
+  // 保存するだけで、実行はジェスチャーイベント時）。
+  /* eslint-disable react-hooks/refs */
+  const zoomPinch = Gesture.Pinch()
+    .runOnJS(true)
+    .onBegin((e) => {
+      setPinching(true);
+      pinchStart.current = {
+        hourPx,
+        // 焦点は本体ビューポート基準。内容座標に直してから分に戻す。
+        focalMin: minutesAt(scrollYRef.current, e.focalY, hourPx),
+        focalY: e.focalY,
+      };
+    })
+    .onUpdate((e) => {
+      const st = pinchStart.current;
+      const next = zoomedHourPx(st.hourPx, e.scale, HOUR_PX_MIN, zoomMax);
+      setHourPx(next);
+      const y2 = zoomAnchoredScrollY({
+        focalMin: st.focalMin,
+        focalY: st.focalY,
+        hourPx: next,
+        viewportH: bodyViewportH,
+      });
+      scrollYRef.current = y2;
+      verticalScroll.current?.scrollTo({ y: y2, animated: false });
+    })
+    .onFinalize(() => setPinching(false));
+  /* eslint-enable react-hooks/refs */
 
   // 長押しで発動する pan。e.x/e.y はグリッド内容 View 基準＝そのまま内容座標。
   // react-hooks/refs は「ref を触る関数を未知の関数に渡した」ことを render 中
@@ -638,12 +694,18 @@ export function WeekCalendar({
 
       {/* ── 本体（時間グリッド）。縦スクロール。ゴースト中は2軸とも
           スクロールを止めてドラッグに専念させる（web の scroll lock 相当） ── */}
-      <View ref={bodyWrap} style={styles.body} collapsable={false}>
+      <View
+        ref={bodyWrap}
+        style={styles.body}
+        collapsable={false}
+        onLayout={(e) => setBodyViewportH(e.nativeEvent.layout.height)}
+      >
+      <GestureDetector gesture={zoomPinch}>
       <ScrollView
         ref={verticalScroll}
-        contentOffset={{ x: 0, y: 6 * HOUR_PX }}
+        contentOffset={{ x: 0, y: 6 * HOUR_PX_MIN }}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={ghost == null}
+        scrollEnabled={ghost == null && !pinching}
         onScroll={(e) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
         }}
@@ -663,7 +725,7 @@ export function WeekCalendar({
             {Array.from({ length: 24 }, (_, h) => (
               <View
                 key={h}
-                style={[styles.gutterHour, { top: h * HOUR_PX }]}
+                style={[styles.gutterHour, { top: h * hourPx }]}
               >
                 <Text style={styles.gutterLabel}>{h}:00</Text>
               </View>
@@ -686,7 +748,7 @@ export function WeekCalendar({
               {Array.from({ length: 25 }, (_, h) => (
                 <View
                   key={h}
-                  style={[styles.hourLine, { top: h * HOUR_PX, width: totalW }]}
+                  style={[styles.hourLine, { top: h * hourPx, width: totalW }]}
                 />
               ))}
               {/* 列の縦罫線 */}
@@ -893,7 +955,7 @@ export function WeekCalendar({
                           left: ghost.columnIndex * COL + lane * laneW + 1,
                           width: laneW - 2,
                           top: y(ghost.startMin),
-                          height: HOUR_PX,
+                          height: hourPx,
                         },
                       ]}
                     >
@@ -908,6 +970,7 @@ export function WeekCalendar({
           </ScrollView>
         </View>
       </ScrollView>
+      </GestureDetector>
       </View>
     </View>
   );
