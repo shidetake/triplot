@@ -40,7 +40,3 @@ export function zoomAnchoredScrollY(a: {
   return Math.max(0, Math.min(maxScroll, y));
 }
 
-// ビューポート内の高さ → 0時からの分。ピンチ開始時に焦点の時刻を求めるのに使う。
-export function minutesAt(scrollY: number, viewportY: number, hourPx: number) {
-  return ((scrollY + viewportY) / hourPx) * 60;
-}

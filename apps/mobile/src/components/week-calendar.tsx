@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -11,11 +11,15 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+} from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 
 import {
   maxHourPx,
-  minutesAt,
   zoomAnchoredScrollY,
   zoomedHourPx,
 } from "@triplot/shared/calendarZoom";
@@ -171,14 +175,42 @@ export function WeekCalendar({
   const totalW = columns.length * COL;
   // 縦ピンチの倍率は「1時間の高さ」そのもので持つ（描画は全部この値から引く）。
   const [hourPx, setHourPx] = useState(HOUR_PX_MIN);
+  // 本体（時間グリッド）の見えている高さ。上限を「6時間ぶんが入る高さ」に
+  // するために要る。測れるまでは既定の3倍を仮に使う。
+  const [bodyViewportH, setBodyViewportH] = useState(0);
   // ピンチ中は縦スクロールを止める。2本指を広げる動きは UIScrollView も
   // スクロールとして拾うので、そのままだと寄せ直した位置を上書きされる
   // （ゴースト中に止めるのと同じ考え方）。scrollTo は止めていても効く。
   const [pinching, setPinching] = useState(false);
-  // 本体（時間グリッド）の見えている高さ。上限を「6時間ぶんが入る高さ」に
-  // するために要る。測れるまでは既定の3倍を仮に使う。
-  const [bodyViewportH, setBodyViewportH] = useState(0);
-  const zoomMax = maxHourPx(bodyViewportH, HOUR_PX_MIN);
+
+  // **指を動かしている間はレイアウトし直さない。** 毎フレーム hourPx を state に
+  // 書くと、時刻線・全ブロック・ガターを JS スレッドで作り直すことになり、実機で
+  // はっきりカクつく（実機フィードバック）。ピンチ中は UI スレッドの変形
+  // （縦方向の拡大）だけで見せ、**指を離した時に一度だけ**本物の高さに直す。
+  const zoomScale = useSharedValue(1);
+  const zoomTy = useSharedValue(0);
+  // worklet から読む値（JS の state / ref は worklet から触れない）。
+  const hourPxSv = useSharedValue(HOUR_PX_MIN);
+  const scrollYSv = useSharedValue(6 * HOUR_PX_MIN);
+  const zoomMaxSv = useSharedValue(HOUR_PX_MIN * 3);
+  const zStartHourPx = useSharedValue(HOUR_PX_MIN);
+  const zFocalY = useSharedValue(0);
+  const zFocalMin = useSharedValue(0);
+  const zScrollY = useSharedValue(0);
+  const zScale = useSharedValue(1);
+  useEffect(() => {
+    zoomMaxSv.value = maxHourPx(bodyViewportH, HOUR_PX_MIN);
+  }, [bodyViewportH, zoomMaxSv]);
+
+  // 拡大の見せかけ。ブロックの高さも時刻線の間隔もこれで一緒に伸びる。
+  const zoomStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: zoomTy.value }, { scaleY: zoomScale.value }],
+  }));
+  // 中の文字は伸ばさない（逆向きに縮めて元の字面に戻す）。値は全要素で同じなので
+  // スタイルは1つを使い回せる。
+  const zoomTextStyle = useAnimatedStyle(() => ({
+    transform: [{ scaleY: 1 / zoomScale.value }],
+  }));
   const bodyH = 24 * hourPx;
   // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
   // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
@@ -374,36 +406,74 @@ export function WeekCalendar({
   //
   // 2本指なので、1本指のスクロール・長押しドラッグとは指の本数で切り分く。
   // 縦スクロールとは同時に成立させる（ピンチ中に scrollTo で寄せ直すため）。
-  const pinchStart = useRef({ hourPx: HOUR_PX_MIN, focalMin: 0, focalY: 0 });
-  // ref を渡すのは下の ghostPan と同じ事情（Gesture のビルダーはコールバックを
-  // 保存するだけで、実行はジェスチャーイベント時）。
-  /* eslint-disable react-hooks/refs */
+  //
+  // zoomScale/zoomTy/hourPxSv 等は reanimated の SharedValue（ref と同じ可変
+  // コンテナ）で、react-hooks/immutability はまだ区別できないため、この関数の
+  // 中だけ無効化する（places.tsx の applyPickerFocus と同じ対処）。
+  /* eslint-disable react-hooks/immutability */
+  // 指を離した時だけ本物の高さに直す（ここだけ React の再描画が走る）。
+  const commitZoom = useCallback(() => {
+    const next = zoomedHourPx(
+      zStartHourPx.value,
+      zScale.value,
+      HOUR_PX_MIN,
+      zoomMaxSv.value,
+    );
+    const y2 = zoomAnchoredScrollY({
+      focalMin: zFocalMin.value,
+      focalY: zFocalY.value,
+      hourPx: next,
+      viewportH: bodyViewportH,
+    });
+    setHourPx(next);
+    hourPxSv.value = next;
+    scrollYRef.current = y2;
+    scrollYSv.value = y2;
+    verticalScroll.current?.scrollTo({ y: y2, animated: false });
+    zoomScale.value = 1;
+    zoomTy.value = 0;
+    setPinching(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bodyViewportH]);
+  /* eslint-enable react-hooks/immutability */
+
+  // 縦ピンチ。**onUpdate は worklet（UI スレッド）**で、共有値を書き換えるだけ。
+  // 指の間にある時刻を動かさないよう、拡大と同時に平行移動で引き戻す。
+  // runOnJS(commitZoom) は ghostPan と同じ理由で react-hooks/refs も無効化する
+  // （Gesture ビルダーはコールバックを保存するだけで、実行はジェスチャー
+  // イベント時のみ）。
+  /* eslint-disable react-hooks/immutability, react-hooks/refs */
   const zoomPinch = Gesture.Pinch()
-    .runOnJS(true)
     .onBegin((e) => {
-      setPinching(true);
-      pinchStart.current = {
-        hourPx,
-        // 焦点は本体ビューポート基準。内容座標に直してから分に戻す。
-        focalMin: minutesAt(scrollYRef.current, e.focalY, hourPx),
-        focalY: e.focalY,
-      };
+      "worklet";
+      zStartHourPx.value = hourPxSv.value;
+      zFocalY.value = e.focalY;
+      zFocalMin.value =
+        ((scrollYSv.value + e.focalY) / hourPxSv.value) * 60;
+      zScrollY.value = scrollYSv.value;
+      zScale.value = 1;
+      runOnJS(setPinching)(true);
     })
     .onUpdate((e) => {
-      const st = pinchStart.current;
-      const next = zoomedHourPx(st.hourPx, e.scale, HOUR_PX_MIN, zoomMax);
-      setHourPx(next);
-      const y2 = zoomAnchoredScrollY({
-        focalMin: st.focalMin,
-        focalY: st.focalY,
-        hourPx: next,
-        viewportH: bodyViewportH,
-      });
-      scrollYRef.current = y2;
-      verticalScroll.current?.scrollTo({ y: y2, animated: false });
+      "worklet";
+      // 上限・下限で視覚的にも止める（commit と同じ式。確定値は commit 側の
+      // zoomedHourPx が決めるので、ここは見せかけ）。
+      const target = Math.min(
+        zoomMaxSv.value,
+        Math.max(HOUR_PX_MIN, zStartHourPx.value * e.scale),
+      );
+      const s2 = target / zStartHourPx.value;
+      zScale.value = e.scale;
+      zoomScale.value = s2;
+      // 焦点の内容座標（拡大前）。拡大後にここが同じ高さへ来るよう戻す。
+      const y0 = (zFocalMin.value / 60) * zStartHourPx.value;
+      zoomTy.value = zFocalY.value - (y0 * s2 - zScrollY.value);
     })
-    .onFinalize(() => setPinching(false));
-  /* eslint-enable react-hooks/refs */
+    .onFinalize(() => {
+      "worklet";
+      runOnJS(commitZoom)();
+    });
+  /* eslint-enable react-hooks/immutability, react-hooks/refs */
 
   // 長押しで発動する pan。e.x/e.y はグリッド内容 View 基準＝そのまま内容座標。
   // react-hooks/refs は「ref を触る関数を未知の関数に渡した」ことを render 中
@@ -719,16 +789,16 @@ export function WeekCalendar({
         // 24:00 の下に空白が見えてしまう＝実機フィードバックで判明）。
         contentContainerStyle={{ paddingBottom: 83 }}
       >
-        <View style={styles.bodyRow}>
+        <Animated.View style={[styles.bodyRow, zoomStyle]}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
           <View style={{ width: GUTTER, height: bodyH }}>
             {Array.from({ length: 24 }, (_, h) => (
-              <View
+              <Animated.View
                 key={h}
-                style={[styles.gutterHour, { top: h * hourPx }]}
+                style={[styles.gutterHour, { top: h * hourPx }, zoomTextStyle]}
               >
                 <Text style={styles.gutterLabel}>{h}:00</Text>
-              </View>
+              </Animated.View>
             ))}
           </View>
 
@@ -792,42 +862,44 @@ export function WeekCalendar({
                       },
                     ]}
                   >
-                    {/* 開始時刻を先頭に（本家 Google カレンダーと同じ並び）。
-                        先頭でも強調はしない＝見た目は従来の eventTime のまま。
-                        mixed の予定は右肩に参加者ドットを出す（ui-guidelines
-                        「色（メンバー・予定）」）。 */}
-                    <View style={styles.timeRow}>
-                      <Text
-                        style={[styles.eventTime, { color: col.text }]}
-                        numberOfLines={1}
-                      >
-                        {spanLabel(p.event) ?? hhmm(p.topMin)}
-                      </Text>
-                      {col.mixed && participantDots(ev)}
-                    </View>
-                    {draftBadge(ev)}
-                    <Text
-                      style={[styles.eventTitle, { color: col.text }]}
-                      numberOfLines={2}
-                    >
-                      <ReservationMark ev={ev} textColor={col.text} />
-                      {p.event.title}
-                    </Text>
-                    {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
-                        折り返しも行数も制限せずそのまま書く。ブロックは
-                        overflow: hidden なので入らない分はブロックが切る
-                        （上限を決め打ちすると「高さが余っているのに出ない」が
-                        起きる）。 */}
-                    {[placeName(ev.startPlaceId), ev.note]
-                      .filter((x): x is string => Boolean(x))
-                      .map((text, i) => (
+                    <Animated.View style={zoomTextStyle}>
+                      {/* 開始時刻を先頭に（本家 Google カレンダーと同じ並び）。
+                          先頭でも強調はしない＝見た目は従来の eventTime のまま。
+                          mixed の予定は右肩に参加者ドットを出す（ui-guidelines
+                          「色（メンバー・予定）」）。 */}
+                      <View style={styles.timeRow}>
                         <Text
-                          key={i}
-                          style={[styles.eventPlace, { color: col.text }]}
+                          style={[styles.eventTime, { color: col.text }]}
+                          numberOfLines={1}
                         >
-                          {text}
+                          {spanLabel(p.event) ?? hhmm(p.topMin)}
                         </Text>
-                      ))}
+                        {col.mixed && participantDots(ev)}
+                      </View>
+                      {draftBadge(ev)}
+                      <Text
+                        style={[styles.eventTitle, { color: col.text }]}
+                        numberOfLines={2}
+                      >
+                        <ReservationMark ev={ev} textColor={col.text} />
+                        {p.event.title}
+                      </Text>
+                      {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
+                          折り返しも行数も制限せずそのまま書く。ブロックは
+                          overflow: hidden なので入らない分はブロックが切る
+                          （上限を決め打ちすると「高さが余っているのに出ない」が
+                          起きる）。 */}
+                      {[placeName(ev.startPlaceId), ev.note]
+                        .filter((x): x is string => Boolean(x))
+                        .map((text, i) => (
+                          <Text
+                            key={i}
+                            style={[styles.eventPlace, { color: col.text }]}
+                          >
+                            {text}
+                          </Text>
+                        ))}
+                    </Animated.View>
                   </Pressable>
                 );
               })}
@@ -907,34 +979,36 @@ export function WeekCalendar({
                     >
                       {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。
                           mixed は右肩に参加者ドット（web の時差移動と同じ）。 */}
-                      <View style={styles.timeRow}>
-                        <Text
-                          style={[styles.eventTime, { color: col.text }]}
-                          numberOfLines={1}
-                        >
-                          {timeLabel ?? hhmm(part.time)}
-                        </Text>
-                        {col.mixed && participantDots(ev)}
-                      </View>
-                      {draftBadge(ev)}
-                      <Text
-                        style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        <ReservationMark ev={ev} textColor={col.text} />
-                        {t.event.title}
-                      </Text>
-                      {/* 通常の予定と同じく、行数を制限せず書いてブロックに切らせる。 */}
-                      {[pn, ev.note]
-                        .filter((x): x is string => Boolean(x))
-                        .map((text, i) => (
+                      <Animated.View style={zoomTextStyle}>
+                        <View style={styles.timeRow}>
                           <Text
-                            key={i}
-                            style={[styles.eventPlace, { color: col.text }]}
+                            style={[styles.eventTime, { color: col.text }]}
+                            numberOfLines={1}
                           >
-                            {text}
+                            {timeLabel ?? hhmm(part.time)}
                           </Text>
-                        ))}
+                          {col.mixed && participantDots(ev)}
+                        </View>
+                        {draftBadge(ev)}
+                        <Text
+                          style={[styles.eventTitle, { color: col.text }]}
+                          numberOfLines={2}
+                        >
+                          <ReservationMark ev={ev} textColor={col.text} />
+                          {t.event.title}
+                        </Text>
+                        {/* 通常の予定と同じく、行数を制限せず書いてブロックに切らせる。 */}
+                        {[pn, ev.note]
+                          .filter((x): x is string => Boolean(x))
+                          .map((text, i) => (
+                            <Text
+                              key={i}
+                              style={[styles.eventPlace, { color: col.text }]}
+                            >
+                              {text}
+                            </Text>
+                          ))}
+                      </Animated.View>
                     </Pressable>
                   );
                 });
@@ -968,7 +1042,7 @@ export function WeekCalendar({
             </View>
             </GestureDetector>
           </ScrollView>
-        </View>
+        </Animated.View>
       </ScrollView>
       </GestureDetector>
       </View>

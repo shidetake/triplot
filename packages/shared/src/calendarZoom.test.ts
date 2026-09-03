@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 
 import {
   maxHourPx,
-  minutesAt,
   zoomAnchoredScrollY,
   zoomedHourPx,
   ZOOM_MAX_VISIBLE_HOURS,
@@ -77,9 +76,3 @@ describe("zoomAnchoredScrollY", () => {
   });
 });
 
-describe("minutesAt", () => {
-  it("スクロール量と画面内の高さから時刻を出す", () => {
-    // 6時間ぶんスクロールした状態で、画面の上から1時間ぶん下 = 7:00。
-    expect(minutesAt(6 * 30, 30, 30)).toBe(7 * 60);
-  });
-});
