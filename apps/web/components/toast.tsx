@@ -28,7 +28,7 @@ export function toast(text: string, action?: ToastAction): void {
 
 function ToastList() {
   const t = useTranslations("common");
-  const { toasts } = Toast.useToastManager();
+  const { toasts, close } = Toast.useToastManager();
   return toasts.map((toast) => (
     <Toast.Root
       key={toast.id}
@@ -42,7 +42,12 @@ function ToastList() {
         {toast.data ? (
           <Toast.Action
             className="shrink-0 font-medium underline-offset-2 hover:underline"
-            onClick={() => (toast.data as ToastAction).onClick()}
+            // 押したらその場で引っ込める（残っていると二度押せる。RN 側の
+            // toast() も同じく押した時点で消す）。
+            onClick={() => {
+              close(toast.id);
+              (toast.data as ToastAction).onClick();
+            }}
           >
             {(toast.data as ToastAction).label}
           </Toast.Action>

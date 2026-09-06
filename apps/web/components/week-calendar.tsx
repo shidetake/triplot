@@ -17,6 +17,12 @@ import {
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
 import {
+  canMoveEvent,
+  grabOffsetMinutes,
+  movedEventTiming,
+  type MovedTiming,
+} from "@triplot/shared/calendarMove";
+import {
   computeGhostLaneOverrides,
   GHOST_LANE_KEY,
 } from "@triplot/shared/ghostLanes";
@@ -103,6 +109,7 @@ export function WeekCalendar({
   onSlotClick,
   onAllDaySlotClick,
   onEventClick,
+  onEventMove,
   className,
 }: {
   schedule: Schedule;
@@ -128,6 +135,9 @@ export function WeekCalendar({
   // 終日帯の空きを長押し→離して終日予定追加。横ドラッグで日付変更。
   onAllDaySlotClick: (date: string, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
+  // 確定済みの予定を掴んで別の日時へ動かす（RN の週カレンダーと同じ）。
+  // 渡されなければ掴めない（＝押すだけ）。
+  onEventMove?: (event: ScheduleEvent, to: MovedTiming) => void;
   // 呼び出し側で外枠（余白・角丸・高さ）を上書きしたい時に渡す（モバイルタブの全画面化等）。
   className?: string;
 }) {
@@ -392,12 +402,80 @@ export function WeekCalendar({
     }
   }, []);
 
+  // ── 確定済みの予定を掴んで動かす（Google カレンダーと同じ） ──
+  //
+  // マウスと指を **pointer events 1本**で扱う。違うのは「いつ掴んだことに
+  // するか」だけで、マウスは少し動いた時点（クリックと区別が付く）、指は
+  // 長押しが成立した時点（縦スクロールと区別が付く）。掴んだ後の追従・
+  // 端での auto-scroll・確定は共通。
+  //
+  // 空き枠のゴースト（作る側）が touch/pointer で経路を分けているのは、
+  // ページスクロールの止め方が絡むため。こちらは要素の上で始まるので
+  // setPointerCapture で完結する。
+  type MoveState = {
+    // 描画で使うので**イベントそのものを持つ**（ref を描画中に読まない）。
+    event: ScheduleEvent;
+    columnIndex: number;
+    startMin: number;
+    durationMin: number;
+    grabOffset: number;
+  };
+  const [move, setMoveState] = useState<MoveState | null>(null);
+  const moveRef = useRef<MoveState | null>(null);
+  const setMove = useCallback((m: MoveState | null) => {
+    moveRef.current = m;
+    setMoveState(m);
+  }, []);
+  // 掴む前の待ち状態（マウスは動き待ち、指は長押し待ち）。
+  const movePendingRef = useRef<{
+    event: ScheduleEvent;
+    durationMin: number;
+    grabOffset: number;
+    bodyEl: HTMLElement;
+    startX: number;
+    startY: number;
+    timer: ReturnType<typeof setTimeout> | null;
+  } | null>(null);
+  // ドラッグ直後の click を握り潰すための印（掴んで離した所でフォームが
+  // 開いてしまわないように）。
+  const movedRecentlyRef = useRef(false);
+
+  // 指/カーソルの画面座標から置き先を決めて state に反映する。tick からも
+  // 呼ぶので、最新のクロージャを ref に詰め直す（auto-scroll の tickRef と
+  // 同じ手）。
+  const moveToPointerRef = useRef<(x: number, y: number) => void>(() => {});
+  useEffect(() => {
+    moveToPointerRef.current = (clientX, clientY) => {
+      const cur = moveRef.current;
+      const pending = movePendingRef.current;
+      if (!cur || !pending) return;
+      const rect = pending.bodyEl.getBoundingClientRect();
+      // yToMin は 30 分スナップ＋23:00 上限が入っているので使わない
+      // （スナップは掴んだずれを引いた後に掛ける）。
+      const dropMinutes = winStart + ((clientY - rect.top) / HOUR_PX) * 60;
+      const columnIndex = Math.max(
+        0,
+        Math.min(columns.length - 1, Math.floor((clientX - rect.left) / COL)),
+      );
+      const startMin = Math.max(
+        0,
+        Math.min(
+          1440 - Math.min(cur.durationMin, 1440),
+          Math.round((dropMinutes - cur.grabOffset) / 30) * 30,
+        ),
+      );
+      if (columnIndex !== cur.columnIndex || startMin !== cur.startMin) {
+        setMove({ ...cur, columnIndex, startMin });
+      }
+    };
+  });
+
   // ── 端ドラッグで auto-scroll（画面外の時刻/日付へ持っていける） ──
   // ゴースト中はページスクロールを止めているので、画面外に行きたい時は
   // ここで finger 位置 → 端ならカレンダーを継続的に scroll する。ゴースト
   // 位置は finger に追従するよう rAF tick の中で再計算する。
   const dragPosRef = useRef<{ x: number; y: number } | null>(null);
-  const dragModeRef = useRef<"time" | "allday" | null>(null);
+  const dragModeRef = useRef<"time" | "allday" | "move" | null>(null);
   const autoScrollRef = useRef<{
     rafId: number | null;
     vx: number;
@@ -420,7 +498,9 @@ export function WeekCalendar({
       if (st.vy) el.scrollTop += st.vy;
       const pos = dragPosRef.current;
       if (pos) {
-        if (dragModeRef.current === "time") {
+        if (dragModeRef.current === "move") {
+          moveToPointerRef.current(pos.x, pos.y);
+        } else if (dragModeRef.current === "time") {
           const info = longPressInfo.current;
           if (info?.pressFired) {
             const bodyRect = info.bodyEl.getBoundingClientRect();
@@ -487,7 +567,7 @@ export function WeekCalendar({
     // ゴーストがガター裏に潜り込んでから初めて auto-scroll が動いて
     // ガターに被って見える。
     const leftEdge = rect.left + GUTTER + EDGE;
-    if (mode === "time") {
+    if (mode === "time" || mode === "move") {
       // 通常予定は時刻＋日付の両軸を動かせるので、縦/横の両端で反応
       if (clientY < rect.top + EDGE) vy = -SPEED;
       else if (clientY > rect.bottom - EDGE) vy = SPEED;
@@ -514,6 +594,56 @@ export function WeekCalendar({
       st.rafId = null;
     }
   }, []);
+
+  // 掴む（マウスは動き、指は長押しで成立）。
+  const beginMove = useCallback(
+    (clientX: number, clientY: number) => {
+      const pending = movePendingRef.current;
+      if (!pending || moveRef.current) return;
+      dragModeRef.current = "move";
+      dragPosRef.current = { x: clientX, y: clientY };
+      lockPageScroll();
+      setMove({
+        event: pending.event,
+        columnIndex: 0,
+        startMin: 0,
+        durationMin: pending.durationMin,
+        grabOffset: pending.grabOffset,
+      });
+      moveToPointerRef.current(clientX, clientY);
+    },
+    [lockPageScroll, setMove],
+  );
+
+  const endMove = useCallback(
+    (commit: boolean) => {
+      const pending = movePendingRef.current;
+      const m = moveRef.current;
+      if (pending?.timer) clearTimeout(pending.timer);
+      movePendingRef.current = null;
+      setMove(null);
+      dragModeRef.current = null;
+      dragPosRef.current = null;
+      stopAutoScroll();
+      unlockPageScroll();
+      if (!commit || !m || !pending || !onEventMove) return;
+      const col = columns[m.columnIndex];
+      const ev = pending.event;
+      if (!col) return;
+      // 置き先はスナップ済みなので、掴んだずれは 0 で渡す（二重スナップ回避）。
+      const to = movedEventTiming(
+        { startAt: ev.startAt, endAt: ev.endAt },
+        { date: col.date, dropMinutes: m.startMin, grabOffset: 0 },
+      );
+      // 掴んで離しただけ（動いていない）なら click として扱わせる。
+      movedRecentlyRef.current = true;
+      window.setTimeout(() => {
+        movedRecentlyRef.current = false;
+      }, 0);
+      if (to) onEventMove(ev, to);
+    },
+    [columns, onEventMove, setMove, stopAutoScroll, unlockPageScroll],
+  );
 
   // アンマウント時に万一残っていれば後片付け。
   useEffect(() => {
@@ -1191,17 +1321,73 @@ export function WeekCalendar({
               const hov = hoveredEventId === p.event.id;
               const color = colorOf(p.event);
               const app = eventAppearance(color, sel, hov, !!p.event.isDraft);
+              const grabbable = !!onEventMove && canMoveEvent(p.event);
+              // 運んでいる間は元の位置に薄い抜け殻を残す（どこから持って
+              // きたかが分かる。RN と同じ）。
+              const carried = move?.event.id === p.event.id;
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
                   type="button"
                   onClick={(e) => {
                     e.stopPropagation();
+                    // 掴んで動かした直後の click は握り潰す（離した所で
+                    // フォームが開いてしまわないように）。
+                    if (movedRecentlyRef.current) return;
                     onEventClick(p.event.id, { x: e.clientX, y: e.clientY });
                   }}
+                  onPointerDown={(e) => {
+                    if (!grabbable || e.button !== 0) return;
+                    const bodyEl = e.currentTarget
+                      .parentElement as HTMLElement | null;
+                    if (!bodyEl) return;
+                    const rect = bodyEl.getBoundingClientRect();
+                    const grabMinutes =
+                      winStart + ((e.clientY - rect.top) / HOUR_PX) * 60;
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                    movePendingRef.current = {
+                      event: p.event,
+                      durationMin: p.endMin - p.topMin,
+                      grabOffset: grabOffsetMinutes(p.event.startAt, grabMinutes),
+                      bodyEl,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      // 指は長押しで掴む（縦スクロールと区別が付く）。
+                      // マウスは動いた時点で掴む（クリックと区別が付く）。
+                      timer:
+                        e.pointerType === "mouse"
+                          ? null
+                          : setTimeout(
+                              () => beginMove(e.clientX, e.clientY),
+                              500,
+                            ),
+                    };
+                  }}
+                  onPointerMove={(e) => {
+                    const pending = movePendingRef.current;
+                    if (!pending) return;
+                    if (!moveRef.current) {
+                      const far =
+                        Math.abs(e.clientX - pending.startX) > 4 ||
+                        Math.abs(e.clientY - pending.startY) > 4;
+                      if (!far) return;
+                      if (e.pointerType !== "mouse") {
+                        // 長押し前に動いた＝スクロールしたいので掴まない。
+                        if (pending.timer) clearTimeout(pending.timer);
+                        movePendingRef.current = null;
+                        return;
+                      }
+                      beginMove(e.clientX, e.clientY);
+                    }
+                    dragPosRef.current = { x: e.clientX, y: e.clientY };
+                    moveToPointerRef.current(e.clientX, e.clientY);
+                    updateAutoScroll(e.clientX, e.clientY);
+                  }}
+                  onPointerUp={() => endMove(true)}
+                  onPointerCancel={() => endMove(false)}
                   onMouseEnter={() => setHoveredEventId(p.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${isMyEvent(p.event) ? "" : "opacity-50"}`}
+                  className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${grabbable ? "touch-none" : ""} ${carried ? "opacity-30" : isMyEvent(p.event) ? "" : "opacity-50"}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
@@ -1220,6 +1406,35 @@ export function WeekCalendar({
                 </button>
               );
             })}
+
+            {/* 運んでいる予定。指/カーソルに付いてくる本体で、置き先の時刻を
+                出す。抜け殻（元の位置）と違い色は元の予定のまま＝何を運んで
+                いるかが分かる。レーンは考えず列の幅いっぱいに描く（運んでいる
+                間だけの一時的な姿で、置いた後に他の予定と分け合った幅に
+                落ち着く）。 */}
+            {move &&
+              (() => {
+                const ev = move.event;
+                const app = eventAppearance(colorOf(ev), false, false, false);
+                const endMin = move.startMin + move.durationMin;
+                return (
+                  <div
+                    className={`pointer-events-none absolute z-30 overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight shadow-lg ${app.className}`}
+                    style={{
+                      left: move.columnIndex * COL + 1,
+                      width: COL - 2,
+                      top: y(move.startMin),
+                      height: Math.max(y(endMin) - y(move.startMin), MIN_BLOCK) - 1,
+                      ...app.style,
+                    }}
+                  >
+                    <span className="text-[10px] tabular-nums opacity-70">
+                      {hhmm(move.startMin)}
+                    </span>
+                    {blockLabel(ev)}
+                  </div>
+                );
+              })()}
 
             {/* 時差移動：出発列ブロック＋到着列ブロック＋リボン */}
             {(() => {

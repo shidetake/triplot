@@ -10,11 +10,17 @@ import {
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
+import {
+  movedTzDisambig,
+  type MovedTiming,
+} from "@triplot/shared/calendarMove";
+import { moveEvent } from "@triplot/shared/data/events";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
   buildSchedule,
   buildTripTzTimeline,
   formatMinutes,
+  type ScheduleEvent,
 } from "@triplot/shared/schedule";
 import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
 import {
@@ -29,6 +35,7 @@ import { confirmDialog } from "@/components/confirm-dialog";
 import { toEventFormPrefill } from "@/lib/event-form-prefill";
 import { useSiblingConfirm } from "@/lib/import/sibling-confirm";
 import { createClient } from "@/lib/supabase/client";
+import { useUndoable } from "@/lib/undoable";
 import { AddFab } from "./add-fab";
 import { EventForm, type EventFormMode } from "./event-form";
 import { HelpTip } from "./help-tip";
@@ -311,6 +318,35 @@ export function ScheduleSection({
   const t = useTranslations("schedule");
   const tImport = useTranslations("import");
 
+  // 長押し（指）／ドラッグ（マウス）で動かした予定を保存する。
+  //
+  // **確認は挟まず、済ませてから戻せるようにする**（ui-guidelines「確認の要否は
+  // 復旧コストで決める」）。動かした結果は離した瞬間に見えるので、直前に
+  // 「本当に動かしますか」と聞いても答えは分かりきっている。
+  //
+  // 戻す側は動かす前の値の書き戻しで、**乗継当日の選択も掴んだ時の値のまま**
+  // にする（movedTzDisambig を通すと、日をまたいで戻る時に選択が消えたまま
+  // になる。shared/undoable の「逆操作ではなく復元」）。RN 側と同じ形。
+  const runUndoable = useUndoable(router.refresh);
+  const onEventMove = useCallback(
+    (ev: ScheduleEvent, to: MovedTiming) => {
+      const supabase = createClient();
+      runUndoable({
+        apply: () => moveEvent(supabase, ev.id, to, movedTzDisambig(ev, to)),
+        restore: () =>
+          moveEvent(
+            supabase,
+            ev.id,
+            { startAt: ev.startAt, endAt: ev.endAt },
+            { transitId: ev.tzDisambigTransitId, side: ev.tzDisambigSide },
+          ),
+        done: t("moved"),
+        failed: (error) => t("moveFailed", { error }),
+      });
+    },
+    [runUndoable, t],
+  );
+
   // 取り込み下書きの破棄。狭い画面はカレンダー上の疑似ブロックからしか
   // このフォームに来られず、広い画面のバナーにある × を使えないので、
   // フォームの中にも破棄の口を用意する（無いと消せない）。
@@ -391,6 +427,7 @@ export function ScheduleSection({
           onSlotClick={onSlotClick}
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
+          onEventMove={onEventMove}
           className="h-full max-h-none rounded-none border-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border"
         />
       </div>
