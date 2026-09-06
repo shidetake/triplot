@@ -23,6 +23,8 @@ import {
   type StoredReceipt,
 } from "@triplot/shared/import/drafts";
 import { fetchFxRates } from "@triplot/shared/fxRates";
+import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
+import { localizeSettlementTiming } from "@triplot/shared/import/settlementTiming";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import { timezoneOfPlace } from "@triplot/shared/placeTimezone";
 import { fetchUnassignedDrafts } from "@triplot/shared/data/reads/inbox";
@@ -667,6 +669,48 @@ async function attachFxRates(
   return fxRates ? { ...receipt, fxRates } : receipt;
 }
 
+// 銀行・カード会社の決済通知の日付を、買った土地の壁時計に直す
+// （settlementTiming.ts）。**解決できた場所の座標からタイムゾーンを引く。**
+// 旅行のバイアス中心（その日どこにいたはず）では代用しない — 移動日に反対側の
+// 土地を指すことがあり（成田で買ったものをホノルル時間に直してしまう）、
+// 直すつもりで壊す。場所が分からないなら直さない。
+function localizeReceiptDate(receipt: StoredReceipt | null, sentAt: string | null) {
+  if (!receipt) return receipt;
+  const fixed = localizeSettlementTiming(receipt, {
+    sentAt,
+    placeTz: timezoneOfPlace(receipt.resolvedPlace ?? null),
+  });
+  return fixed ? { ...receipt, ...fixed } : receipt;
+}
+
+// 下書きとして保存する直前の作り込み（合体した時としない時で同じ手順を踏む）。
+// 場所の解決 → 決済通知の日付の現地化 → 為替レート、の順。レシート由来の
+// 仮予定の時刻は**現地化のあとに**引き直す（時刻が付くと終日から時間付きに
+// 変わるので、先に計算しておくと古い日付のまま残る）。
+async function enrichForDrafts(
+  supabase: ServiceClient,
+  x: Extraction,
+  tripId: string | null,
+  borrowed: BiasDraft[] | null,
+  sentAt: string | null,
+): Promise<{ receipt: StoredReceipt | null; events: StoredEventDraft[] }> {
+  const receipt = await attachFxRates(
+    localizeReceiptDate(
+      await resolveReceiptPlace(supabase, x.receipt, tripId, borrowed),
+      sentAt,
+    ),
+  );
+  return {
+    receipt,
+    events: await prefetchFlights(
+      supabase,
+      applyReceiptEventTiming(receipt, x.events),
+      tripId,
+      borrowed,
+    ),
+  };
+}
+
 async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
@@ -754,6 +798,7 @@ async function runExtraction(
     subject,
     text: gatheredText,
     choice,
+    sentAt,
   } = await gatherReceiptText(raw, {
     fetchLink: fetchReceiptLink,
   });
@@ -872,22 +917,13 @@ async function runExtraction(
     // 見つからなければ元のまま＝今まで通り確定時に手動検索/自由入力に回る
     // （best-effort、失敗しても抽出自体は続行）。
     const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
-    const merged = {
-      receipt: await attachFxRates(
-        await resolveReceiptPlace(
-          supabase,
-          merge.merged.receipt,
-          tripId,
-          borrowed,
-        ),
-      ),
-      events: await prefetchFlights(
-        supabase,
-        merge.merged.events,
-        tripId,
-        borrowed,
-      ),
-    };
+    const merged = await enrichForDrafts(
+      supabase,
+      merge.merged,
+      tripId,
+      borrowed,
+      sentAt,
+    );
     await replacePendingDrafts(supabase, merge.targetId, merged);
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
     await supabase
@@ -914,12 +950,13 @@ async function runExtraction(
     // しまう（実機フィードバック: 件名 "Fwd: Receipt from Howzit Brewing #liIG"
     // のまま一瞬表示され、その後に店名・金額の行に変わって見えた）。
     const borrowed = await fetchBiasDrafts(supabase, userId, tripId);
-    const enriched = {
-      receipt: await attachFxRates(
-        await resolveReceiptPlace(supabase, receipt, tripId, borrowed),
-      ),
-      events: await prefetchFlights(supabase, events, tripId, borrowed),
-    };
+    const enriched = await enrichForDrafts(
+      supabase,
+      { receipt, events },
+      tripId,
+      borrowed,
+      sentAt,
+    );
     await replacePendingDrafts(supabase, emailId, enriched);
     // LLM が確信を持って旅行を割り当てたら自動割り当て（受信箱でのクリックを省く）。
     await supabase

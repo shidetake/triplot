@@ -358,18 +358,21 @@ export async function findMerge(
         time: merged.receipt.time,
         serviceDate: merged.receipt.serviceDate,
         dateIsSettlement: merged.receipt.dateIsSettlement,
+        settlementTz: merged.receipt.settlementTz,
       },
       incoming.extraction.receipt ?? {
         date: merged.receipt.date,
         time: merged.receipt.time,
         serviceDate: merged.receipt.serviceDate,
         dateIsSettlement: merged.receipt.dateIsSettlement,
+        settlementTz: merged.receipt.settlementTz,
       },
     );
     merged.receipt.date = authoritative.date;
     merged.receipt.time = authoritative.time;
     merged.receipt.serviceDate = authoritative.serviceDate;
     merged.receipt.dateIsSettlement = authoritative.dateIsSettlement;
+    merged.receipt.settlementTz = authoritative.settlementTz ?? null;
   }
 
   const normalizedReceipt = merged.receipt

@@ -48,6 +48,7 @@ function receipt(p: Partial<Receipt> = {}): Receipt {
     referenceId: null,
     isUpdate: false,
     dateIsSettlement: false,
+    settlementTz: null,
     ...p,
   };
 }

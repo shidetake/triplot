@@ -15,6 +15,9 @@ export type DatedReceipt = {
   time: string | null;
   serviceDate: string | null;
   dateIsSettlement: boolean;
+  // 日付とセットで動く（どの暦で書かれた日付かの註記）。日付だけ勝った側の
+  // ものにして註記を置いていくと、別の暦の日付に別の国の註記が付く。
+  settlementTz?: string | null;
 };
 
 // 2つの候補（合体の対象と新しく届いた側）から、日付・時刻の出どころとして

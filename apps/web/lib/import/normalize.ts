@@ -1,4 +1,8 @@
-import type { EventDraft, Receipt } from "@triplot/shared/import/schema";
+import {
+  canonicalTimeZone,
+  type EventDraft,
+  type Receipt,
+} from "@triplot/shared/import/schema";
 
 // 全角 ASCII（Ａ-Ｚ ０-９ ＊ 等 = U+FF01〜U+FF5E）を半角へ、全角スペース(U+3000)を
 // 半角スペースへ。連続スペースは1つに詰める。日本語・カタカナ(U+30xx)は触らない
@@ -59,6 +63,9 @@ export function normalizeReceipt(r: Receipt): Receipt {
       r.referenceId != null ? toHalfWidth(r.referenceId) : r.referenceId,
     items:
       r.items != null ? truncateToWidth(r.items, ITEMS_MAX_WIDTH) : r.items,
+    // LLM の書く TZ 名は幻覚しうるので実在検証＋正規化（JST → Asia/Tokyo）。
+    // 実在しない名前で日付を計算すると例外になるので、ここで null に落とす。
+    settlementTz: r.settlementTz ? canonicalTimeZone(r.settlementTz) : null,
   };
 }
 

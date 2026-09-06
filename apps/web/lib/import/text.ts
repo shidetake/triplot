@@ -1,6 +1,8 @@
 import PostalMime from "postal-mime";
 import { extractText } from "unpdf";
 
+import { emailSentAt } from "@triplot/shared/import/emailSentAt";
+
 // 受信レシートメール → LLM に渡すプレーンテキストへの前処理。
 // MIME パース（postal-mime）は副作用寄りなので薄く包み、HTML→テキスト整形は
 // 純関数に分けてテストする。
@@ -78,7 +80,12 @@ export type BodyChoice = {
 
 export async function mimeToText(
   raw: string | Uint8Array,
-): Promise<{ subject: string; text: string; choice: BodyChoice }> {
+): Promise<{
+  subject: string;
+  text: string;
+  choice: BodyChoice;
+  sentAt: string | null;
+}> {
   const email = await PostalMime.parse(raw);
   const plain = email.text?.trim() ?? "";
   const htmlText = htmlToText(email.html ?? "");
@@ -119,5 +126,9 @@ export async function mimeToText(
       html: htmlText.length,
       used: text === plain ? "plain" : "html",
     },
+    // 元のメールが送られた瞬間（転送ブロックのヘッダー優先）。決済通知の日付を
+    // 現地の壁時計に直すのに使う（emailSentAt / settlementTiming 参照）。
+    // 添付 PDF を足す前の本文で探す — 転送ヘッダーは必ず本文の側にある。
+    sentAt: emailSentAt(email.date, text),
   };
 }

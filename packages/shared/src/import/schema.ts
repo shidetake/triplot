@@ -139,6 +139,20 @@ export const receiptSchema = z.object({
         "日時（利用日と1日ずれることがある）。false = 店・サービス自身の" +
         "レシート/予約確認に書かれた、実際に利用した日時",
     ),
+  // 通知の日付が「どの国の暦で書かれているか」。金額や店名と違い本文には
+  // 書かれていないので、発行元がどこの金融機関か（＝世の中の知識）から答える
+  // 必要がある。ここだけは機械では決められないので LLM に聞く。使い道は
+  // settlementTiming.ts（現地の壁時計に直す）。
+  settlementTz: z
+    .string()
+    .nullable()
+    .describe(
+      "dateIsSettlement が true のときだけ: その date/time が書かれている暦の" +
+        "IANA タイムゾーン名。発行元の金融機関の国で決まる（例: ソニー銀行・" +
+        "三井住友カード等の日本の金融機関 → Asia/Tokyo、韓国の銀行 → Asia/Seoul）。" +
+        "発行元の国が分からない、または dateIsSettlement が false なら null。" +
+        "**利用した場所のタイムゾーンではない**（発行元の側を答える）",
+    ),
 });
 
 export type Receipt = z.infer<typeof receiptSchema>;

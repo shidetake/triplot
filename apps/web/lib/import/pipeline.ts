@@ -29,9 +29,14 @@ export function appendLinkText(
 export async function gatherReceiptText(
   raw: string | Uint8Array,
   opts: GatherOptions = {},
-): Promise<{ subject: string; text: string; choice: BodyChoice }> {
-  const { subject, text, choice } = await mimeToText(raw);
-  if (!opts.fetchLink) return { subject, text, choice };
+): Promise<{
+  subject: string;
+  text: string;
+  choice: BodyChoice;
+  sentAt: string | null;
+}> {
+  const { subject, text, choice, sentAt } = await mimeToText(raw);
+  if (!opts.fetchLink) return { subject, text, choice, sentAt };
 
   const links = selectReceiptLinks(text).slice(0, opts.maxLinks ?? 2);
   let enriched = text;
@@ -45,5 +50,5 @@ export async function gatherReceiptText(
       // 取得失敗は無視して本文だけで続行
     }
   }
-  return { subject, text: enriched, choice };
+  return { subject, text: enriched, choice, sentAt };
 }
