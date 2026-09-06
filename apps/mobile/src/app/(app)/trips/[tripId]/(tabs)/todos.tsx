@@ -13,6 +13,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
+import * as Haptics from "expo-haptics";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import { useTranslations } from "use-intl";
 import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
@@ -641,10 +642,18 @@ function SwipeDelete({
   label: string;
   styles: ReturnType<typeof makeStyles>;
 }) {
+  // 越えた／戻ったを JS 側にまとめて伝える（worklet から呼ぶのは1つだけ）。
+  const armedChanged = (armed: boolean) => {
+    onArmedChange(armed);
+    // 引き切った瞬間に手で知らせる（iOS 標準の一覧と同じ）。**戻した時にも
+    // 鳴らす** — 「もう離しても消えない」も同じくらい知りたい報せなので、
+    // 越えた時だけ鳴らすと片道の案内になる。
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
   useAnimatedReaction(
     () => -translation.value >= fullSwipeAt,
     (next, prev) => {
-      if (next !== prev) runOnJS(onArmedChange)(next);
+      if (next !== prev) runOnJS(armedChanged)(next);
     },
   );
   // 引いたぶんだけ広がる（既定の幅より狭くはならない）。
