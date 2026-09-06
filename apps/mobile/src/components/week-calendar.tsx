@@ -54,6 +54,7 @@ const GUTTER = 44; // 時刻ガター幅
 // 既定であり最小＝一番引いた状態で、ここから拡大していく。上限と寄せ直しの
 // 計算は calendarZoom（純関数・テストあり）が持つ。
 const HOUR_PX_MIN = 30;
+
 const ALLDAY_ROW = 24; // 終日バー1行の高さ
 const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
 const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
@@ -219,6 +220,10 @@ export function WeekCalendar({
   const eventById = new Map(events.map((e) => [e.id, e]));
 
   const y = (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * hourPx;
+
+  // ピンチ確定後に当てるスクロール位置。内容の高さが新しい hourPx で描き直された
+  // 後でないと正しくクランプされないので、描画を挟んでから当てる。
+  const pendingScrollY = useRef<number | null>(null);
 
   // 現在のスクロール量（auto-scroll と指位置→グリッド座標の変換に使う）。
   const scrollXRef = useRef(0);
@@ -429,13 +434,26 @@ export function WeekCalendar({
     hourPxSv.value = next;
     scrollYRef.current = y2;
     scrollYSv.value = y2;
-    verticalScroll.current?.scrollTo({ y: y2, animated: false });
+    // **scrollTo はここで呼ばない。** setHourPx の再描画で内容の高さ
+    // （24 * hourPx）が変わるが、それが反映されるのは描画後。ここで呼ぶと
+    // 拡大時は「まだ短い内容」に対してクランプされ、狙った位置より手前で
+    // 止まる。新しい高さが確定してから当てる（下の useEffect）。
+    pendingScrollY.current = y2;
     zoomScale.value = 1;
     zoomTy.value = 0;
     setPinching(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodyViewportH]);
   /* eslint-enable react-hooks/immutability */
+
+  // hourPx が変わって内容の高さが確定した後に、保留していた位置へ飛ばす。
+  // useEffect は描画の後に走るので、新しい高さでクランプされる。
+  useEffect(() => {
+    const y = pendingScrollY.current;
+    if (y === null) return;
+    pendingScrollY.current = null;
+    verticalScroll.current?.scrollTo({ y, animated: false });
+  }, [hourPx]);
 
   // 縦ピンチ。**onUpdate は worklet（UI スレッド）**で、共有値を書き換えるだけ。
   // 指の間にある時刻を動かさないよう、拡大と同時に平行移動で引き戻す。
@@ -774,11 +792,21 @@ export function WeekCalendar({
       <GestureDetector gesture={zoomPinch}>
       <ScrollView
         ref={verticalScroll}
+        // 初回の表示位置（6時を先頭に）。以後の位置合わせは scrollTo が持つ。
         contentOffset={{ x: 0, y: 6 * HOUR_PX_MIN }}
         showsVerticalScrollIndicator={false}
         scrollEnabled={ghost == null && !pinching}
         onScroll={(e) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
+          // **worklet 側にも渡す。** ピンチ開始時に「今どこを見ているか」を
+          // 読むのはこの共有値で、更新し忘れると初期値（6時の位置）のまま
+          // 固定される＝実際にどこまでスクロールしていても 6時付近を基準に
+          // 計算してしまい、指を離した瞬間にそこへ飛ぶ（拡大後は 8〜9時が
+          // 先頭に見える。実機フィードバックの原因）。
+          // reanimated の SharedValue（ref と同じ可変コンテナ）なので、
+          // react-hooks/immutability の誤検知を抑える（places.tsx と同じ対処）。
+          // eslint-disable-next-line react-hooks/immutability
+          scrollYSv.value = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
         // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は画面下端に重なって
