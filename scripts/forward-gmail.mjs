@@ -250,6 +250,24 @@ function retryAfterMs(err) {
   return Math.max(0, at - Date.now()) + 5_000;
 }
 
+// アクセストークンの寿命は1時間。**時間で測って取り直す。**
+// 以前は「20通ごと」で数えていたが、レート制限で1通に十数分待つと 20 通進む
+// 前に期限が切れる。実測: 制限待ちの最中に切れ、そこから 16 通が連続で
+// 401 Invalid Credentials で恒久失敗した（レート制限ではないので再試行の
+// 対象にもならず、黙って落ちた）。
+const TOKEN_MAX_AGE_MS = 45 * 60_000;
+
+// 401（期限切れ・失効）。レート制限と違い待っても直らないので、取り直して
+// やり直す。
+function isAuthError(err) {
+  const m = String(err?.message ?? "");
+  return (
+    m.includes('"code":401') ||
+    m.includes("UNAUTHENTICATED") ||
+    m.includes("Invalid Credentials")
+  );
+}
+
 // 429 と、Gmail が使う 403 + rateLimitExceeded/RATE_LIMIT_EXCEEDED の両方。
 // メール本文の取得（getRawMessage）でも送信でも同じ形で返る。
 function isRateLimitError(err) {
@@ -523,6 +541,7 @@ Options:
   if (!to) throw new Error("Missing required argument: --to");
 
   let token = await getAccessToken();
+  let tokenAt = Date.now();
   const myEmail = await getMyEmail(token);
 
   console.log(`Authenticated as: ${myEmail}`);
@@ -579,8 +598,10 @@ Options:
     }
 
     try {
-      if (i > 0 && i % 20 === 0) {
+      // 通数ではなく経過時間で取り直す（TOKEN_MAX_AGE_MS のコメント参照）。
+      if (Date.now() - tokenAt > TOKEN_MAX_AGE_MS) {
         token = await getAccessToken();
+        tokenAt = Date.now();
       }
 
       const rawBuffer = await getRawMessage(token, item.id);
@@ -626,6 +647,15 @@ Options:
       //
       // 待ち時間はサーバーの指定に従う（retryAfterMs）。書いていなければ
       // 1分クォータを想定した既定値。
+      // 期限切れは取り直せば通る。待っても直らないので待たずにやり直す。
+      if (isAuthError(err) && attempt < MAX_RATE_LIMIT_RETRIES) {
+        attempt++;
+        console.warn(`${indexLabel} 認証の期限切れ。取り直して再試行`);
+        token = await getAccessToken();
+        tokenAt = Date.now();
+        i--;
+        continue;
+      }
       if (isRateLimitError(err) && attempt < MAX_RATE_LIMIT_RETRIES) {
         const wait = retryAfterMs(err) ?? RATE_LIMIT_WAIT_MS;
         if (wait > RATE_LIMIT_MAX_WAIT_MS) {
