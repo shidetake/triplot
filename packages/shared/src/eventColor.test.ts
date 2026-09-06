@@ -14,6 +14,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "private",
+        participantsEveryone: false,
         participantMemberIds: [],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -26,6 +27,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "private",
+        participantsEveryone: false,
         participantMemberIds: ["m1"],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -34,10 +36,11 @@ describe("pickEventColor", () => {
     ).toEqual({ kind: "private" });
   });
 
-  it("空配列＝全員のシュガー → green", () => {
+  it("全員参加 → green", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: true,
         participantMemberIds: [],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -46,10 +49,26 @@ describe("pickEventColor", () => {
     ).toEqual({ kind: "green" });
   });
 
+  it("『一部の人』なのにリストが空でも、全員には化けない", () => {
+    // 旧実装は空配列を全員参加と解釈したので、参加者の行が消えると2人の
+    // 予定が静かに全員参加へ化けた。今は everyone フラグが事実を持つ。
+    expect(
+      pickEventColor({
+        visibility: "shared",
+        participantsEveryone: false,
+        participantMemberIds: [],
+        activeMemberCount: 3,
+        memberHueById: hues,
+        myMemberId: "m1",
+      }),
+    ).not.toEqual({ kind: "green" });
+  });
+
   it("明示的に全 active member 列挙 → green", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m1", "m2", "m3"],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -62,6 +81,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m2"],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -74,6 +94,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m4"],
         activeMemberCount: 4,
         memberHueById: hues,
@@ -86,6 +107,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m1", "m2"],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -98,6 +120,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m1", "m2"],
         activeMemberCount: 3,
         memberHueById: hues,
@@ -110,6 +133,7 @@ describe("pickEventColor", () => {
     expect(
       pickEventColor({
         visibility: "shared",
+        participantsEveryone: false,
         participantMemberIds: ["m4", "m2"],
         activeMemberCount: 3,
         memberHueById: hues,

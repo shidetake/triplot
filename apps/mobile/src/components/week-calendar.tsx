@@ -570,6 +570,7 @@ export function WeekCalendar({
     if (ev.isDraft) return DRAFT_COLORS;
     const c = pickEventColor({
       visibility: ev.visibility,
+      participantsEveryone: ev.participantsEveryone,
       participantMemberIds: ev.participantMemberIds,
       activeMemberCount,
       memberHueById,

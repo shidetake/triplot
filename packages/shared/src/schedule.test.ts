@@ -43,6 +43,7 @@ function ev(p: Partial<ScheduleEvent> & Pick<ScheduleEvent, "id">): ScheduleEven
     tzDisambigSide: null,
     startPlaceId: null,
     endPlaceId: null,
+    participantsEveryone: true,
     visibility: "shared",
     note: null,
     needsReservation: false,

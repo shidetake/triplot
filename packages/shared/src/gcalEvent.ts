@@ -91,7 +91,7 @@ export function buildCalendarExportEvents(
           .join(" ") || null;
     // 参加者空配列 = 全員参加のシュガー。自分が当事者か全員予定なら mine。
     const mine =
-      e.participantMemberIds.length === 0 ||
+      e.participantsEveryone ||
       e.participantMemberIds.includes(opts.myMemberId);
     // transit は実TZを直接使う。normal/allday は startTz を持たないことが
     // あるので旅程から都度解決する。

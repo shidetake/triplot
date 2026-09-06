@@ -139,6 +139,7 @@ export type RawEvent = {
   visibility: string;
   note: string | null;
   created_by_member_id: string;
+  participants_everyone: boolean;
   event_participants: { member_id: string }[] | null;
 };
 
@@ -239,6 +240,7 @@ export function deriveScheduleEvents(
     createdByMemberId: e.created_by_member_id,
     needsReservation: reservationByEvent.has(e.id),
     reservationDone: reservationByEvent.get(e.id) ?? false,
+    participantsEveryone: e.participants_everyone,
     participantMemberIds: (e.event_participants ?? []).map((p) => p.member_id),
   }));
 }

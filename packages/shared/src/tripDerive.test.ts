@@ -55,6 +55,7 @@ describe("deriveScheduleEvents", () => {
         visibility: "shared",
         note: null,
         created_by_member_id: "m1",
+        participants_everyone: false,
         event_participants: [{ member_id: "m2" }],
       },
     ];
@@ -92,6 +93,7 @@ describe("deriveOrderedExpenses", () => {
           note: null,
           needsReservation: false,
           reservationDone: false,
+          participantsEveryone: true,
           participantMemberIds: [],
         },
       ],

@@ -21,6 +21,11 @@ export type EventFields = {
   tzDisambigSide: "depart" | "arrive" | null;
   visibility: Visibility;
   note: string;
+  // 全員参加かどうかは**事実として持つ**。participantMemberIds が空である
+  // ことから推測しない（0行＝全員、という推測は「まだ書いていない」「バグで
+  // 消えた」と区別が付かず、静かに壊れる。20260906000100 の migration 参照）。
+  // participantsEveryone=true のとき participantMemberIds は無視される。
+  participantsEveryone: boolean;
   participantMemberIds: string[];
   // 出発地と到着地。単一地点の予定（レストランでの食事など）は endPlace を
   // 省く＝DB 側で end_place_id が NULL になり「開始と同じ」を意味する。
@@ -43,7 +48,10 @@ function eventBase(f: EventFields) {
     p_tz_disambig_side: f.tzDisambigSide as unknown as string,
     p_visibility: f.visibility,
     p_note: f.note,
-    p_participant_member_ids: f.participantMemberIds,
+    p_participants_everyone: f.participantsEveryone,
+    p_participant_member_ids: f.participantsEveryone
+      ? []
+      : f.participantMemberIds,
   };
 }
 

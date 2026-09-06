@@ -61,17 +61,17 @@ export async function createTrip(
     return err("errors.tripCopySourceNotFound");
   }
 
-  // shared かつ「全員参加」（participants 無し）の予定だけを対象に。
+  // shared かつ「全員参加」の予定だけを対象に。全員かどうかは
+  // participants_everyone が持つ（参加者の行が無いことから推測しない）。
   const { data: rawEvents } = await sb
     .from("events")
     .select(
-      "title, kind, all_day, start_at, end_at, start_tz, end_tz, start_place_id, end_place_id, visibility, note, event_participants(member_id)",
+      "title, kind, all_day, start_at, end_at, start_tz, end_tz, start_place_id, end_place_id, visibility, note, participants_everyone, event_participants(member_id)",
     )
     .eq("trip_id", sourceTripId);
 
   const shared = (rawEvents ?? []).filter(
-    (e) =>
-      e.visibility === "shared" && (e.event_participants?.length ?? 0) === 0,
+    (e) => e.visibility === "shared" && e.participants_everyone,
   );
 
   // 新旅行の日程へ日付をリマップ（両端優先・真ん中潰し）。

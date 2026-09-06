@@ -476,9 +476,9 @@ export function EventForm({
     if (nd > endDate) setEndDate(nd);
   };
 
-  // 参加者（全員 / 一部）。
-  const initCustom =
-    isEdit && (editEvent?.participantMemberIds.length ?? 0) > 0;
+  // 参加者（全員 / 一部）。全員かどうかは participantsEveryone が持つ
+  // （参加者リストが空であることから推測しない）。
+  const initCustom = isEdit && !(editEvent?.participantsEveryone ?? true);
   const [partMode, setPartMode] = useDraft<"all" | "custom">(
     "partMode",
     initCustom ? "custom" : "all",
@@ -530,8 +530,11 @@ export function EventForm({
     // 無くなった。
     const isTransit = kind === "transit";
     const submitKind = isTransit ? "transit" : "normal";
-    // 参加者: all は空配列（web と同じシュガー）、custom は選択分。
-    const participantIds = partMode === "all" ? [] : Array.from(participants);
+    // 参加者: all なら everyone フラグを立てて配列は空、custom は選択分。
+    const participantsEveryone = partMode === "all";
+    const participantIds = participantsEveryone
+      ? []
+      : Array.from(participants);
 
     let startAt: string;
     let endAt: string | null;
@@ -565,6 +568,7 @@ export function EventForm({
       tzDisambigSide: isTransit || allDay ? null : tzDisambigSide,
       visibility,
       note: note.trim(),
+      participantsEveryone,
       participantMemberIds: participantIds,
       startPlace: place,
       // 移動でなければ到着地は持たない（＝出発地と同じ）。

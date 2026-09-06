@@ -122,7 +122,7 @@ const eventDraft = (
 });
 
 describe("eventFieldsFromDraft", () => {
-  it("通常の予定（参加者は空＝全員のシュガー、実TZは持たない）", () => {
+  it("通常の予定（全員参加で作る。実TZは持たない）", () => {
     expect(eventFieldsFromDraft(eventDraft())).toEqual({
       kind: "normal",
       allDay: false,
@@ -135,6 +135,7 @@ describe("eventFieldsFromDraft", () => {
       tzDisambigSide: null,
       visibility: "shared",
       note: "",
+      participantsEveryone: true,
       participantMemberIds: [],
       startPlace: {
         kind: "free",

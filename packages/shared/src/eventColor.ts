@@ -10,9 +10,9 @@
 //       自分は不参加 → slate（中立）
 //     どちらも右肩に参加者ドットを出す（描画側で自分のドットは除外）。
 //
-// 「全員参加」のシュガー: `participantMemberIds` が空配列の場合、
-// もしくは明示的に全 active member が列挙されている場合の両方を含む。
-// （UI 仕様: フォームの "all" モードは空配列で送られる）
+// 「全員参加」は participantsEveryone が持つ（事実として保存されている）。
+// 明示的に全 active member が列挙されている場合も全員扱いにする
+// ＝「一部の人」を選んだ結果たまたま全員になった、も見た目は同じでよい。
 
 // 「確定／全員」に予約した色相。色相環（OKLCH）上でここだけメンバー色に
 // 使わせず、pick_member_color がここからも距離を取るように割り当てる。
@@ -28,6 +28,7 @@ export type EventColor =
 
 export function pickEventColor(input: {
   visibility: "shared" | "private";
+  participantsEveryone: boolean;
   participantMemberIds: string[];
   activeMemberCount: number;
   memberHueById: Map<string, number | null>;
@@ -35,9 +36,11 @@ export function pickEventColor(input: {
 }): EventColor {
   if (input.visibility === "private") return { kind: "private" };
 
+  if (input.participantsEveryone) return { kind: "green" };
+
   const n = input.participantMemberIds.length;
-  // 全員: 空配列のシュガー、または明示的に全員列挙のどちらも該当
-  if (n === 0 || n === input.activeMemberCount) return { kind: "green" };
+  // 明示的に全員列挙されている場合も見た目は全員参加と同じ。
+  if (n === input.activeMemberCount) return { kind: "green" };
 
   if (n === 1) {
     const hue = input.memberHueById.get(input.participantMemberIds[0]);

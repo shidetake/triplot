@@ -82,6 +82,7 @@ export function eventFieldsFromDraft(d: EventDraftItem): EventFields {
     tzDisambigSide: p.tzDisambig?.side ?? null,
     visibility: "shared",
     note: p.note ?? "",
+    participantsEveryone: true,
     participantMemberIds: [],
     startPlace: placeInputFromDraft(p.place, p.autoResolvePlace),
     // 到着地を持つのは事前解決できた移動だけ。null＝出発地と同じ。

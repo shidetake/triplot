@@ -352,11 +352,12 @@ export function EventForm({
     ev?.note ?? prefill?.note ?? "",
   );
 
-  // 参加者。「全員」モードと「個別」モードの2状態。
-  //  - "all"    = 全員参加（送信時は participant_member_ids を一切送らない）
-  //  - "custom" = 部分集合（選んだメンバーIDだけ hidden input で送る）
-  // 編集モードで既存参加者が居れば最初から custom 開始。
-  const initialCustom = isEdit && (ev?.participantMemberIds.length ?? 0) > 0;
+  // 参加者。「全員」モードと「個別」モードの2状態。どちらであるかは
+  // participants_everyone として明示的に送る（hidden input の有無から
+  // 推測させない。20260906000100 の migration 参照）。
+  //  - "all"    = 全員参加
+  //  - "custom" = 部分集合（選んだメンバーIDを hidden input で送る）
+  const initialCustom = isEdit && !(ev?.participantsEveryone ?? true);
   const [pMode, setPMode] = useDraft<"all" | "custom">(
     "pMode",
     initialCustom ? "custom" : "all",
@@ -1117,6 +1118,11 @@ export function EventForm({
               })}
             </div>
           )}
+          <input
+            type="hidden"
+            name="participants_everyone"
+            value={pMode === "all" ? "1" : "0"}
+          />
           {pMode === "custom" &&
             Array.from(pSelected).map((id) => (
               <input

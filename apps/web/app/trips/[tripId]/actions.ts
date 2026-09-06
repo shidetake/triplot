@@ -683,8 +683,10 @@ type ParsedEvent =
       endPlace: PlaceInput | null;
       visibility: Visibility;
       note: string;
-      // shared 時のみ意味を持つ。空配列 = 全員参加（DB 側で行を作らない）。
-      // private 時はサーバ側で空配列に正規化して送る（クライアントは何送っても無視）。
+      // 全員参加かどうかは事実として持つ（participantMemberIds が空である
+      // ことから推測しない）。private は参加者の概念を持たないので常に true。
+      participantsEveryone: boolean;
+      // participantsEveryone=false のときだけ意味を持つ。
       participantMemberIds: string[];
     };
 
@@ -708,8 +710,12 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
 
   // 参加者は <input type="hidden" name="participant_member_ids" value={memberId}> を
   // 複数本生やす方式で送られる。private は無意味なので空に正規化。
+  // 「全員参加かどうか」は hidden input の有無ではなく participants_everyone
+  // で明示的に受け取る（private は参加者の概念を持たないので常に全員扱い）。
+  const participantsEveryone =
+    visibility !== "shared" || get("participants_everyone") !== "0";
   const participantMemberIds =
-    visibility === "shared"
+    visibility === "shared" && !participantsEveryone
       ? formData
           .getAll("participant_member_ids")
           .map(String)
@@ -757,6 +763,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endPlace,
       visibility,
       note,
+      participantsEveryone,
       participantMemberIds,
     };
   }
@@ -786,6 +793,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endPlace: null,
       visibility,
       note,
+      participantsEveryone,
       participantMemberIds,
     };
   }
@@ -829,6 +837,7 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     endPlace: null,
     visibility,
     note,
+    participantsEveryone,
     participantMemberIds,
   };
 }

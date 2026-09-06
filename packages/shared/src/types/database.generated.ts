@@ -116,6 +116,7 @@ export type Database = {
           id: string
           kind: string
           note: string | null
+          participants_everyone: boolean
           start_at: string
           start_place_id: string | null
           start_tz: string | null
@@ -135,6 +136,7 @@ export type Database = {
           id?: string
           kind?: string
           note?: string | null
+          participants_everyone?: boolean
           start_at: string
           start_place_id?: string | null
           start_tz?: string | null
@@ -154,6 +156,7 @@ export type Database = {
           id?: string
           kind?: string
           note?: string | null
+          participants_everyone?: boolean
           start_at?: string
           start_place_id?: string | null
           start_tz?: string | null
@@ -1006,6 +1009,7 @@ export type Database = {
           p_kind: string
           p_note: string
           p_participant_member_ids: string[]
+          p_participants_everyone: boolean
           p_start_at: string
           p_start_place: Json
           p_start_tz: string
@@ -1216,6 +1220,7 @@ export type Database = {
           p_kind: string
           p_note: string
           p_participant_member_ids: string[]
+          p_participants_everyone: boolean
           p_start_at: string
           p_start_place: Json
           p_start_tz: string

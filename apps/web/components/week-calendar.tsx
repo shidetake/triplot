@@ -133,9 +133,9 @@ export function WeekCalendar({
 }) {
   const tSched = useTranslations("schedule");
   // 自分が「明示参加者リスト」から外れている＝別行動の予定か。
-  // 空配列 = 「全員」のシュガーなので、その場合は自分も含まれる扱い。
+  // 全員参加なら当然自分も含まれる。
   const isMyEvent = (e: ScheduleEvent): boolean => {
-    if (e.participantMemberIds.length === 0) return true;
+    if (e.participantsEveryone) return true;
     return e.participantMemberIds.includes(myMemberId);
   };
 
@@ -143,6 +143,7 @@ export function WeekCalendar({
   const colorOf = (e: ScheduleEvent): EventColor =>
     pickEventColor({
       visibility: e.visibility,
+      participantsEveryone: e.participantsEveryone,
       participantMemberIds: e.participantMemberIds,
       activeMemberCount,
       memberHueById,

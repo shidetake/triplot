@@ -42,6 +42,7 @@ export type ScheduleEvent = {
   reservationDone: boolean;
   // 参加者（部分集合）。空配列 = 「全員」のシュガー（明示メンバー無し）。
   // 1 件以上 = 明示的にその trip_members.id だけが当事者。
+  participantsEveryone: boolean;
   participantMemberIds: string[];
   // メール取り込みの未確定下書き（inbound_drafts）から作った表示専用の疑似イベント。
   // DB には存在しない。カレンダー上は warning(amber)+破線で表示し、タップで

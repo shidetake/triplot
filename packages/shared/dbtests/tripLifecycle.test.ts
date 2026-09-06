@@ -75,6 +75,7 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
         tzDisambigSide: null,
         visibility: "shared",
         note: "",
+        participantsEveryone: true,
         participantMemberIds: [],
         startPlace: { kind: "free", label: "成田国際空港" },
         endPlace: { kind: "free", label: "ホノルル国際空港" },
@@ -101,6 +102,7 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
         tzDisambigSide: "arrive",
         visibility: "shared",
         note: "",
+        participantsEveryone: true,
         participantMemberIds: [],
         startPlace: { kind: "free", label: "どこかの店" },
         endPlace: null,
@@ -152,6 +154,80 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
 
     const { data: left } = await sb.from("trips").select("id").eq("id", tripId);
     expect(left ?? []).toHaveLength(0);
+  });
+
+  // 「全員参加」を参加者テーブルの行が無いことから推測するのをやめ、
+  // participants_everyone として持つようにした（20260906000100）。この形が
+  // 実 DB で本当に効いているかは、RPC を通さないと分からない
+  // （純関数のテストは「フラグを渡せばフラグが返る」ことしか見ていない）。
+  it("全員参加は行の有無ではなくフラグで持つ", async () => {
+    const created = await createTrip(sb, {
+      title: `${DBTEST_PREFIX}participants-${Date.now()}`,
+      startDate: "2027-07-01",
+      endDate: "2027-07-03",
+      displayName: "dbtest",
+      currency: "JPY",
+      clientTz: "Asia/Tokyo",
+    });
+    expect(created.ok, JSON.stringify(created)).toBe(true);
+    if (!created.ok) return;
+    const tripId = created.data.tripId;
+    const me = await myMemberId(sb, tripId, userId);
+
+    const base = {
+      kind: "normal" as const,
+      allDay: false,
+      startAt: "2027-07-01T12:00:00",
+      endAt: "2027-07-01T13:00:00",
+      startTz: null,
+      endTz: null,
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
+      visibility: "shared" as const,
+      note: "",
+      startPlace: { kind: "free" as const, label: "どこか" },
+      endPlace: null,
+    };
+
+    // 全員参加: 参加者の行は作らず、フラグだけが true。
+    const all = await createEvent(
+      sb,
+      tripId,
+      { ...base, title: "全員", participantsEveryone: true, participantMemberIds: [] },
+      false,
+    );
+    expect(all.ok, JSON.stringify(all)).toBe(true);
+
+    // 一部の人: フラグは false で、参加者の行が入る。
+    const some = await createEvent(
+      sb,
+      tripId,
+      { ...base, title: "一部", participantsEveryone: false, participantMemberIds: [me] },
+      false,
+    );
+    expect(some.ok, JSON.stringify(some)).toBe(true);
+
+    const { data: rows } = await sb
+      .from("events")
+      .select("title, participants_everyone, event_participants(member_id)")
+      .eq("trip_id", tripId);
+    const byTitle = new Map((rows ?? []).map((r) => [r.title, r]));
+    expect(byTitle.get("全員")?.participants_everyone).toBe(true);
+    expect(byTitle.get("全員")?.event_participants ?? []).toHaveLength(0);
+    expect(byTitle.get("一部")?.participants_everyone).toBe(false);
+    expect(byTitle.get("一部")?.event_participants ?? []).toHaveLength(1);
+
+    // 「一部の人」なのに誰も居ない、は作らせない（入口で弾く）。
+    const empty = await createEvent(
+      sb,
+      tripId,
+      { ...base, title: "空", participantsEveryone: false, participantMemberIds: [] },
+      false,
+    );
+    expect(empty.ok).toBe(false);
+
+    const deleted = await deleteTrip(sb, tripId, userId);
+    expect(deleted.ok, JSON.stringify(deleted)).toBe(true);
   });
 });
 

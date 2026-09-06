@@ -760,7 +760,8 @@ export function draftToScheduleEvent(
     note: null,
     needsReservation: false,
     reservationDone: false,
-    participantMemberIds: [], // 空 = 全員のシュガー（不参加によるdimを避ける）
+    participantsEveryone: true, // 取り込みの下書きは常に全員参加で作る
+    participantMemberIds: [],
     createdByMemberId: myMemberId,
     isDraft: true,
   };
