@@ -5,10 +5,12 @@ import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
 import { InlineDivider } from "@/components/inline-divider";
+import { AiUsageChart } from "@/components/ai-usage-chart";
 import { MessageBox } from "@/components/message-box";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
 import { createClient } from "@/lib/supabase/server";
+import { createServiceClient } from "@/lib/supabase/service";
 
 import { updateFeedbackStatusAction } from "./actions";
 
@@ -30,6 +32,12 @@ const TOP_UP_URL =
 // クレジットは USD 建て。小数が意味を持つ額なので3桁まで見せる。
 function formatUsd(v: number): string {
   return `$${v.toFixed(3)}`;
+}
+
+// 使用量の推移で遡る期間。ここで求めるのは「いつまで遡るか」だけなので、
+// レンダーの外（サーバで1リクエストに1回）で評価する。
+function usageSinceIso(): string {
+  return new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
 }
 
 export default async function AdminPage() {
@@ -76,19 +84,43 @@ export default async function AdminPage() {
   // 残高だけでは足りない。**無料枠のレート制限は残高があっても掛かる**ので、
   // 「残高は十分なのに取り込みが進まない」が残高の表示からは読み取れない
   // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
-  const [credits, { data: baseline }, { count: rateLimitedCount }] =
-    await Promise.all([
-      fetchGatewayCredits(),
-      supabase
-        .from("ai_usage_baseline")
-        .select("total_used_at_start, extracted_since")
-        .maybeSingle(),
-      supabase
-        .from("inbound_emails")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "error")
-        .eq("extract_error_kind", "rate_limit"),
-    ]);
+  const [
+    credits,
+    { data: baseline },
+    { count: rateLimitedCount },
+    { data: extractedRows },
+  ] = await Promise.all([
+    fetchGatewayCredits(),
+    // **service client で読む。** ai_usage_baseline は RLS が有効なのに
+    // ポリシーが1つも無いので、通常のクライアントからは常に0行になる。
+    // その結果 perEmail が出せず、「1通あたり」「残り何通」「使用量の概算
+    // コスト」がまとめて表示されていなかった（実測: 本番で単価が出るはずの
+    // 値〔$0.020〕があるのに、どれも出ていなかった）。
+    createServiceClient()
+      .from("ai_usage_baseline")
+      .select("total_used_at_start, extracted_since")
+      .maybeSingle(),
+    supabase
+      .from("inbound_emails")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "error")
+      .eq("extract_error_kind", "rate_limit"),
+    // 使用量の推移の材料。**受信箱に残っている行しか数えられない**ので、
+    // 90日の自動削除より前は歯抜けになる（累計額とは別物）。月別12ヶ月ぶんを
+    // 上限に取る。
+    //
+    // **service client を使う。** inbound_emails の RLS は自分のメールしか
+    // 見せない（inbound_emails_select_own）が、ここで見たいのは
+    // **全ユーザーぶんの使用量**（クレジットの累計額と対応させたい）。
+    // ここに来る時点で is_admin は確認済み（上の notFound）。
+    createServiceClient()
+      .from("inbound_emails")
+      .select("extracted_at")
+      .not("extracted_at", "is", null)
+      .gte("extracted_at", usageSinceIso())
+      .order("extracted_at", { ascending: false })
+      .limit(5000),
+  ]);
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
     credits && since > 0
@@ -164,6 +196,19 @@ export default async function AdminPage() {
             {t("creditsTopUp")}
           </a>
         </p>
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">{t("usageHeading")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("usageDescription")}
+        </p>
+        <AiUsageChart
+          extractedAtIso={(extractedRows ?? [])
+            .map((r) => r.extracted_at)
+            .filter((v): v is string => v !== null)}
+          perEmailUsd={perEmail}
+        />
       </section>
 
       <section className="mt-10">

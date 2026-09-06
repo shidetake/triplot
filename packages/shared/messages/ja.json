@@ -633,7 +633,15 @@
     "creditsLow": "残高が少なくなっています。入金を検討してください。",
     "creditsRateLimited": "無料枠のレート制限で {count} 件が取り込み待ちです。有料クレジットを入れると制限が外れます。",
     "creditsTopUp": "クレジットを購入（Vercel）",
-    "creditsUnavailable": "残高を取得できませんでした（AI_GATEWAY_API_KEY 未設定、または照会に失敗）。"
+    "creditsUnavailable": "残高を取得できませんでした（AI_GATEWAY_API_KEY 未設定、または照会に失敗）。",
+    "usageHeading": "LLM の使用量",
+    "usageDescription": "メール取り込みで実際に抽出した通数と、1通あたりの実績単価から出した概算のコスト。受信箱に残っているメールから数えるので、削除した分（90日の自動削除・手動での消去）は含まれない＝上の累計額とは一致しない。",
+    "usageDaily": "日別",
+    "usageWeekly": "週別",
+    "usageMonthly": "月別",
+    "usagePeriodTotal": "この期間",
+    "usageEmails": "{count}通",
+    "usageBreakdown": "内訳を見る"
   },
   "feedback": {
     "menuLink": "フィードバック",
