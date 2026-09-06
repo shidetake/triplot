@@ -226,6 +226,23 @@ async function getRawMessage(token, id) {
   return Buffer.from(data.raw, "base64url");
 }
 
+// Gmail API の 1分あたりクォータ（totalQueryCostPerMinutePerUser）は1分で
+// 回復するので、それより少し長く待つ。
+const RATE_LIMIT_WAIT_MS = 65_000;
+const MAX_RATE_LIMIT_RETRIES = 5;
+
+// 429 と、Gmail が使う 403 + rateLimitExceeded/RATE_LIMIT_EXCEEDED の両方。
+// メール本文の取得（getRawMessage）でも送信でも同じ形で返る。
+function isRateLimitError(err) {
+  const m = String(err?.message ?? "");
+  return (
+    m.includes("rateLimitExceeded") ||
+    m.includes("RATE_LIMIT_EXCEEDED") ||
+    m.includes("Quota exceeded") ||
+    m.includes('"code":429')
+  );
+}
+
 async function sendForwardMessage(token, rawMimeString) {
   const rawBase64Url = Buffer.from(rawMimeString, "utf8").toString("base64url");
   const url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send";
@@ -517,6 +534,10 @@ Options:
   let sentCount = 0;
   let skippedCount = 0;
   let failedCount = 0;
+  // レート制限に当たった時の再試行状態（同じメールを i-- でやり直すので、
+  // 何回目かを覚えておく）。
+  let attempt = 0;
+  let lastIndex = -1;
 
   for (let i = 0; i < detailedMessages.length; i++) {
     if (sentCount >= limit) {
@@ -526,6 +547,11 @@ Options:
 
     const item = detailedMessages[i];
     const indexLabel = `[${i + 1}/${detailedMessages.length}] (ID: ${item.id})`;
+    // 直前のメールで使った再試行回数は持ち越さない。
+    if (lastIndex !== i) {
+      attempt = 0;
+      lastIndex = i;
+    }
 
     if (state.forwardedMessageIds[item.id]) {
       console.log(`${indexLabel} Already forwarded at ${state.forwardedMessageIds[item.id].sentAt}. Skipping.`);
@@ -571,8 +597,27 @@ Options:
         await sleep(600);
       }
     } catch (err) {
+      // **レート制限は「待てば通る」ので、諦めずに待ち直す。**
+      //
+      // Gmail API は 1分あたりのクォータ（totalQueryCostPerMinutePerUser、
+      // 6000ユニット/分）を持つ。100通超をまとめて流すとこれに当たり、枠を
+      // 使い切った瞬間から連続で 403 が返る（実測: 108通中8通が24〜31通目で
+      // 固まって失敗した）。以前はここで1.5秒待って次のメールへ進んでいた
+      // ので、**その通は取り込まれないまま黙って落ちていた**。
+      //
+      // 枠は1分で回復するので、60秒待って同じメールをやり直す。
+      if (isRateLimitError(err) && attempt < MAX_RATE_LIMIT_RETRIES) {
+        attempt++;
+        console.warn(
+          `${indexLabel} レート制限。${RATE_LIMIT_WAIT_MS / 1000}秒待って再試行 (${attempt}/${MAX_RATE_LIMIT_RETRIES})`,
+        );
+        await sleep(RATE_LIMIT_WAIT_MS);
+        i--; // 同じメールをもう一度
+        continue;
+      }
       console.error(`${indexLabel} ERROR:`, err.message);
       failedCount++;
+      attempt = 0;
       await sleep(1500);
     }
   }
