@@ -55,7 +55,7 @@ describe("normalizeReceipt の items 切り詰め", () => {
     category: "飲食",
     location: null,
     address: null,
-    referenceId: null,
+    referenceIds: [],
     isUpdate: false,
     dateIsSettlement: false,
     settlementTz: null,

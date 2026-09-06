@@ -115,12 +115,26 @@ export const receiptSchema = z.object({
         "金額の大きい品目を優先して残す。個数や単価は書かない。" +
         "店名・日付・合計金額は他に出るので書かない",
     ),
-  // マージ用（決済元を問わない汎用フィールド）。
-  referenceId: z
-    .string()
-    .nullable()
+  // 合体の突き合わせ用。**1つ選ばせず、載っているものを全部持つ。**
+  //
+  // 同じ会計に種類の違う番号が並ぶことがあり、どれが「その取引の番号か」は
+  // 相手のメール次第で変わる。店のレシートに「レシート番号 #35lz」と
+  // 「Auth code: 207747」が両方あり、銀行の通知は承認番号 207747 しか知らない、
+  // というのが実例で、LLM に1つ選ばせると4通中3通がレシート番号を選んで
+  // 突き合わせが外れていた（番号が一致した組は5組すべて合体できていたので、
+  // 効き目そのものは確か）。
+  //
+  // どれか1つを当てる判断をやめ、**全部載せて重なりを見る**。人に見せる番号では
+  // ないので数が増えても困らない（予定側の referenceId は「予約番号」として
+  // 画面に出るので、あちらは1つのまま）。
+  referenceIds: z
+    .array(z.string())
     .describe(
-      "取引を識別する番号があれば（承認番号・取引ID・注文番号・確認番号など、決済元・カード会社・サービスを問わない）。無ければ null",
+      "取引を識別しうる番号を**すべて**列挙する（カード決済の承認番号 / auth code、" +
+        "取引ID、注文番号、レシート番号、確認番号など、決済元・カード会社・" +
+        "サービスを問わない）。**どれか1つを選ばない** — 本文に載っているものは" +
+        "全部入れる。件名にレシート番号があり本文に承認番号がある、のように" +
+        "複数あるのが普通。1つも無ければ空配列",
     ),
   isUpdate: z
     .boolean()
@@ -326,7 +340,7 @@ export function extractionGainedDetail(
     if (b.total === 0 && a.total !== 0) return true;
     if (!b.location && a.location) return true;
     if (!b.address && a.address) return true;
-    if (!b.referenceId && a.referenceId) return true;
+    if (a.referenceIds.length > b.referenceIds.length) return true;
     if (!b.serviceDate && a.serviceDate) return true;
     if (!b.time && a.time) return true;
   }

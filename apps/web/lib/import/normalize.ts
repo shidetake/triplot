@@ -59,8 +59,9 @@ export function normalizeReceipt(r: Receipt): Receipt {
     merchant: toHalfWidth(r.merchant),
     location: r.location != null ? toHalfWidth(r.location) : r.location,
     address: r.address != null ? toHalfWidth(r.address) : r.address,
-    referenceId:
-      r.referenceId != null ? toHalfWidth(r.referenceId) : r.referenceId,
+    referenceIds: r.referenceIds
+      .map(toHalfWidth)
+      .filter((x) => x.length > 0),
     items:
       r.items != null ? truncateToWidth(r.items, ITEMS_MAX_WIDTH) : r.items,
     // LLM の書く TZ 名は幻覚しうるので実在検証＋正規化（JST → Asia/Tokyo）。

@@ -31,8 +31,12 @@ const receipt = (over: object = {}) =>
     serviceDate: null,
     time: null,
     location: null,
-    referenceId: null,
+    address: null,
+    items: null,
+    referenceIds: [],
     isUpdate: false,
+    dateIsSettlement: false,
+    settlementTz: null,
     ...over,
   }) as InboxRow["receipt"];
 

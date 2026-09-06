@@ -19,7 +19,7 @@ function receipt(p: Partial<Receipt>): Receipt {
     location: null,
     address: null,
     items: null,
-    referenceId: null,
+    referenceIds: [],
     isUpdate: false,
     dateIsSettlement: false,
     settlementTz: null,
@@ -58,19 +58,19 @@ function withReceipt(r: Receipt): Extraction {
 describe("selectMergeCandidates", () => {
   it("referenceId が一致する下書きを候補にする（日付が離れていても）", () => {
     const incoming = withReceipt(
-      receipt({ date: "2026-05-07", referenceId: "899402" }),
+      receipt({ date: "2026-05-07", referenceIds: ["899402"] }),
     );
     const drafts: DraftCandidate[] = [
       {
         id: "a",
         extraction: withReceipt(
-          receipt({ date: "2026-05-05", referenceId: "899402" }),
+          receipt({ date: "2026-05-05", referenceIds: ["899402"] }),
         ),
       },
       {
         id: "b",
         extraction: withReceipt(
-          receipt({ date: "2026-01-01", referenceId: "000000" }),
+          receipt({ date: "2026-01-01", referenceIds: ["000000"] }),
         ),
       },
     ];
@@ -95,14 +95,14 @@ describe("selectMergeCandidates", () => {
   // （並べると LLM が選び直してブレる）。
   it("referenceId 一致があれば、日付が近いだけの候補は落とす", () => {
     const incoming = withReceipt(
-      receipt({ date: "2026-05-07", referenceId: "R" }),
+      receipt({ date: "2026-05-07", referenceIds: ["R"] }),
     );
     const drafts: DraftCandidate[] = [
       { id: "near", extraction: withReceipt(receipt({ date: "2026-05-06" })) },
       {
         id: "ref",
         extraction: withReceipt(
-          receipt({ date: "2026-05-04", referenceId: "R" }),
+          receipt({ date: "2026-05-04", referenceIds: ["R"] }),
         ),
       },
     ];
@@ -201,7 +201,7 @@ describe("selectMergeCandidates の順位付け", () => {
         merchant: o.merchant ?? "無関係な店",
         total: o.total ?? 1,
         date: o.date ?? "2026-05-01",
-        referenceId: o.ref ?? null,
+        referenceIds: o.ref ? [o.ref] : [],
       },
       events: [],
     },
@@ -214,7 +214,7 @@ describe("selectMergeCandidates の順位付け", () => {
       merchant: "UNIQLO Ala Moana",
       total: 62.62,
       date: "2026-05-02",
-      referenceId: "350930",
+      referenceIds: ["350930"],
     },
     events: [],
   };
@@ -272,13 +272,13 @@ describe("selectMergeCandidates の順位付け", () => {
   // たびに違うまとまり方をしていた）。
   it("referenceId が一致する候補があれば、それだけに絞る", () => {
     const incoming = withReceipt(
-      receipt({ date: "2026-05-07", referenceId: "899402" }),
+      receipt({ date: "2026-05-07", referenceIds: ["899402"] }),
     );
     const drafts: DraftCandidate[] = [
       {
         id: "ref",
         extraction: withReceipt(
-          receipt({ date: "2026-05-05", referenceId: "899402" }),
+          receipt({ date: "2026-05-05", referenceIds: ["899402"] }),
         ),
       },
       { id: "near1", extraction: withReceipt(receipt({ date: "2026-05-06" })) },

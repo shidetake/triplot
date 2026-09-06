@@ -49,7 +49,7 @@ function extractionDates(x: Extraction): string[] {
 // 抽出結果が持つ取引/予約の識別番号たち。
 function extractionRefIds(x: Extraction): string[] {
   const ids: (string | null)[] = [
-    x.receipt?.referenceId ?? null,
+    ...(x.receipt?.referenceIds ?? []),
     ...x.events.map((e) => e.referenceId),
   ];
   return ids.filter((r): r is string => !!r);
@@ -194,7 +194,7 @@ function slim(x: Extraction): Extraction {
           location: r.location,
           address: r.address,
           items: r.items,
-          referenceId: r.referenceId,
+          referenceIds: r.referenceIds,
           isUpdate: r.isUpdate,
         } as Extraction["receipt"])
       : null,
@@ -224,7 +224,7 @@ const MERGE_SYSTEM_PROMPT = [
   "あなたは旅行関連メール（レシート・決済・予約）を突き合わせるアシスタントです。",
   "新しく届いたメール1件と、既存の未確定下書き（複数）が与えられます。新しいメールが",
   "既存のどれかと『現実の同じ1つの取引・同じ予約』を指すかを判定してください。",
-  "判断材料: 取引/予約の識別番号（referenceId）の一致、店名・金額・日付の近さ、",
+  "判断材料: 取引/予約の識別番号（referenceIds / referenceId）の一致、店名・金額・日付の近さ、",
   "pending→確定/金額更新/差額調整の関係、同じ予約のスケジュール変更・リマインダーの関係。",
   "同一なら matchId にその下書きの id、merged に合体後の内容を入れます。合体ルール: ",
   "店名・時刻・場所など詳しい情報は店のレシート側を優先。片方しか無い項目は埋め合わせる。",
@@ -352,6 +352,12 @@ export async function findMerge(
   // それぞれ自身の抽出結果を比べ、レシート由来が銀行の通知に必ず勝つ片方向の
   // ルールで機械的に決める。
   if (merged.receipt) {
+    // 金額が足し合わされたか（＝片方が追加のチップ・差額調整だったか）。
+    // 足したなら取引が起きたのは古い方の日付（chooseAuthoritativeDate 参照）。
+    const summed =
+      merged.receipt.total > floor &&
+      (incoming.extraction.receipt?.total ?? 0) > 0 &&
+      (target.extraction.receipt?.total ?? 0) > 0;
     const authoritative = chooseAuthoritativeDate(
       target.extraction.receipt ?? {
         date: merged.receipt.date,
@@ -367,6 +373,7 @@ export async function findMerge(
         dateIsSettlement: merged.receipt.dateIsSettlement,
         settlementTz: merged.receipt.settlementTz,
       },
+      { summed },
     );
     merged.receipt.date = authoritative.date;
     merged.receipt.time = authoritative.time;

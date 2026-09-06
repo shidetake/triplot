@@ -33,7 +33,7 @@ function receipt(p: Partial<Receipt>): Receipt {
     location: null,
     address: null,
     items: null,
-    referenceId: null,
+    referenceIds: [],
     isUpdate: false,
     dateIsSettlement: false,
     settlementTz: null,

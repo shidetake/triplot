@@ -20,16 +20,33 @@ export type DatedReceipt = {
   settlementTz?: string | null;
 };
 
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 // 2つの候補（合体の対象と新しく届いた側）から、日付・時刻の出どころとして
 // 正しい方を選ぶ。**レシート由来が銀行の通知に勝つ、片方向のルール。**
-// 両方レシート由来／両方通知のみなら、より新しく分かった方（b＝incoming）を
-// 使う——直近の情報のほうが確度が高い（例: 差額調整の通知がレシートの詳細を
-// 補って更新することがある）。
+//
+// `summed` は「合体で金額が足し合わされた」＝片方がもう片方への追加
+// （チップ・差額調整）だった、という意味。**その時は古い方の日付を採る。**
+// 調整は後からしか来ない — 未来の決済を先に調整することはできないので、
+// 取引が起きたのは必ず古い方の日付になる。実データ: 4/30 の飲食が
+// 〔5/1 の利用 67.02 ＋ 5/2 の調整 12.06〕として届き、新しい方を採ったせいで
+// 合体後が 5/2 になっていた。
+//
+// **予約は足し算にならないので、この規則には掛からない**（5/1 に 5/2 の予約を
+// して 5/2 に決済されたなら日付は 5/2 でよく、金額は置き換わって足されない）。
+//
+// 足していない時（重複・更新）は、より新しく分かった方（b＝incoming）を使う
+// ——直近の情報のほうが確度が高い（例: 差額調整の通知がレシートの詳細を補って
+// 更新することがある）。
 export function chooseAuthoritativeDate<T extends DatedReceipt>(
   a: T,
   b: T,
+  opts: { summed?: boolean } = {},
 ): T {
   if (a.dateIsSettlement && !b.dateIsSettlement) return b;
   if (!a.dateIsSettlement && b.dateIsSettlement) return a;
+  if (opts.summed && YMD_RE.test(a.date) && YMD_RE.test(b.date)) {
+    return a.date < b.date ? a : b;
+  }
   return b;
 }
