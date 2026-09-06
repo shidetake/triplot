@@ -1,3 +1,4 @@
+import type { TzDisambig } from "../calendarMove";
 import type { Visibility } from "../types/database";
 import type { DB } from "./client";
 import { type PlaceInput, placeSpec } from "./place";
@@ -110,6 +111,36 @@ export async function updateEvent(
     p_needs: needsReservation,
   });
   if (rErr) return err(rErr.message);
+  return ok(undefined);
+}
+
+// 予定を**動かすだけ**の書き込み（週カレンダーの長押しドラッグ）。
+//
+// updateEvent（update_event RPC）は予定の全項目を受け取るので、日時だけ変えたい
+// 時に使うと、参加者・場所・予約の状態を呼び出し側で組み立て直すことになる。
+// 組み立て漏れがそのまま消失になるので、日時だけを触る細い口をここに置く。
+// 1テーブル1行なので RLS がそのまま効く（deleteEvent と同じ形）。
+//
+// 実効タイムゾーンは旅程から毎回導出するので（resolveEventTz）、日付が変われば
+// 導出も追随する。乗継当日の選択だけは日付に紐づくので、**書く値を呼び出し側が
+// 決めて必ず渡す**（規則そのものは movedTzDisambig が持つ）。省略を許して
+// 「触らない」を既定にすると、元に戻す時に消えたままの選択を書き戻せない。
+export async function moveEvent(
+  sb: DB,
+  eventId: string,
+  to: { startAt: string; endAt: string | null },
+  tzDisambig: TzDisambig,
+): Promise<Result<void>> {
+  const { error } = await sb
+    .from("events")
+    .update({
+      start_at: to.startAt,
+      end_at: to.endAt,
+      tz_disambig_transit_id: tzDisambig.transitId,
+      tz_disambig_side: tzDisambig.side,
+    })
+    .eq("id", eventId);
+  if (error) return err(error.message);
   return ok(undefined);
 }
 

@@ -9,6 +9,11 @@ import {
 } from "@triplot/shared/import/drafts";
 import { buildSchedule } from "@triplot/shared/schedule";
 import {
+  movedTzDisambig,
+  type MovedTiming,
+} from "@triplot/shared/calendarMove";
+import { moveEvent } from "@triplot/shared/data/events";
+import {
   deriveScheduleEvents,
   type EventRow,
 } from "@triplot/shared/tripDerive";
@@ -17,8 +22,14 @@ import { PlusIcon } from "@/components/icons";
 import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
+import { supabase } from "@/lib/supabase";
+import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
-import { useTripDetail, useTripDrafts } from "@/lib/useTripDetail";
+import {
+  useInvalidateTrip,
+  useTripDetail,
+  useTripDrafts,
+} from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
 // 予定タブ（週カレンダー）。レイアウト計算は shared の buildSchedule、描画は
@@ -33,6 +44,8 @@ export default function ScheduleTab() {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
+  const invalidateTrip = useInvalidateTrip(tripId);
+  const runUndoable = useUndoable(invalidateTrip);
   const { data: tripDrafts } = useTripDrafts(tripId);
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
@@ -107,6 +120,36 @@ export default function ScheduleTab() {
     router.push(`/trips/${tripId}/event-form?date=${date}&allDay=1`);
   };
 
+  // 長押し＋ドラッグで動かした予定を保存する。
+  //
+  // **確認は挟まず、済ませてから戻せるようにする**（ui-guidelines「確認の要否は
+  // 復旧コストで決める」）。動かす操作は指を離した瞬間に結果が見えるので、
+  // 直前に「本当に動かしますか」と聞いても答えは分かりきっている。代わりに
+  // 元の日時をトーストに預けて、押せば戻せるようにする。
+  // 長押し＋ドラッグで動かした予定を保存する。
+  //
+  // **確認は挟まず、済ませてから戻せるようにする**（ui-guidelines「確認の要否は
+  // 復旧コストで決める」）。動かした結果は指を離した瞬間に見えるので、直前に
+  // 「本当に動かしますか」と聞いても答えは分かりきっている。
+  //
+  // 戻す側は動かす前の値の書き戻しで、**乗継当日の選択も掴んだ時の値のまま**
+  // にする（movedTzDisambig を通すと、日をまたいで戻る時に選択が消えたまま
+  // になる。shared/undoable の「逆操作ではなく復元」）。
+  const onEventMove = (ev: EventRow, to: MovedTiming) => {
+    runUndoable({
+      apply: () => moveEvent(supabase, ev.id, to, movedTzDisambig(ev, to)),
+      restore: () =>
+        moveEvent(
+          supabase,
+          ev.id,
+          { startAt: ev.startAt, endAt: ev.endAt },
+          { transitId: ev.tzDisambigTransitId, side: ev.tzDisambigSide },
+        ),
+      done: t("schedule.moved"),
+      failed: (error) => t("schedule.moveFailed", { error }),
+    });
+  };
+
   const onEventPress = (ev: EventRow) => {
     const draftId = draftIdFromEventId(ev.id);
     if (draftId) {
@@ -134,6 +177,7 @@ export default function ScheduleTab() {
           myMemberId={me.id}
           placeName={placeName}
           onEventPress={onEventPress}
+          onEventMove={onEventMove}
           onSlotPick={onSlotPick}
           onAllDaySlotPick={onAllDaySlotPick}
         />

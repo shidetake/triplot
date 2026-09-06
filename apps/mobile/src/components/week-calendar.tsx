@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Dimensions,
   Image,
@@ -18,6 +18,12 @@ import Animated, {
 } from "react-native-reanimated";
 import { useTranslations } from "use-intl";
 
+import {
+  canMoveEvent,
+  grabOffsetMinutes,
+  movedEventTiming,
+  type MovedTiming,
+} from "@triplot/shared/calendarMove";
 import {
   maxHourPx,
   zoomAnchoredScrollY,
@@ -143,6 +149,7 @@ export function WeekCalendar({
   myMemberId,
   placeName,
   onEventPress,
+  onEventMove,
   onSlotPick,
   onAllDaySlotPick,
 }: {
@@ -155,6 +162,10 @@ export function WeekCalendar({
   // ブロックに場所名を出す解決関数（web の week-calendar と同じ契約）。
   placeName: (placeId: string | null) => string | null;
   onEventPress: (event: EventRow) => void;
+  // 確定済みの予定を長押し→ドラッグ→離した位置へ動かす（Google カレンダーと
+  // 同じ）。日時の計算は shared の movedEventTiming、動かせる種別の判定は
+  // canMoveEvent が持つ。渡されなければ掴めない（＝押すだけ）。
+  onEventMove?: (event: EventRow, to: MovedTiming) => void;
   // 空き枠の長押し→ゴースト→ドラッグ→離した位置で確定（web と同じ）。
   // date は確定した列の日付、minutes は 0時からの通算分（30分スナップ済み）。
   onSlotPick: (date: string, minutes: number) => void;
@@ -229,10 +240,21 @@ export function WeekCalendar({
   // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
   // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
   const headerH = groups.some((g) => g.tzNote) ? HEADER_H : HEADER_H_COMPACT;
-  const colIndexByKey = new Map(columns.map((c, i) => [c.key, i]));
-  const eventById = new Map(events.map((e) => [e.id, e]));
+  // 掴んだ位置の当たり判定（blockAt）から参照するので、毎描画で作り直さない
+  // ようにしておく（作り直すとジェスチャーのコールバックも毎回作り直しになる）。
+  const colIndexByKey = useMemo(
+    () => new Map(columns.map((c, i) => [c.key, i])),
+    [columns],
+  );
+  const eventById = useMemo(
+    () => new Map(events.map((e) => [e.id, e])),
+    [events],
+  );
 
-  const y = (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * hourPx;
+  const y = useCallback(
+    (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * hourPx,
+    [hourPx],
+  );
 
   // ピンチ確定後に当てるスクロール位置。内容の高さが新しい hourPx で描き直された
   // 後でないと正しくクランプされないので、描画を挟んでから当てる。
@@ -317,6 +339,71 @@ export function WeekCalendar({
     [columns.length, COL, hourPx],
   );
 
+  // ── 確定済みの予定を掴んで動かす ──
+  //
+  // **空き枠のゴーストと同じ1つのジェスチャーで扱う。** 長押しが成立した点が
+  // ブロックの上なら「動かす」、そうでなければ「作る」。ブロック側に別の
+  // ジェスチャーを付けて入れ子にすると、どちらが先に活性化するかを RNGH の
+  // 合成規則に委ねることになる（同じ長押し時間で競合する）。押した場所は
+  // ここで自分で判定できるので、委ねる理由が無い。
+  type MoveState = {
+    eventId: string;
+    // 置き先（列と、その列での開始分）。ドラッグ中の見た目もこれで描く。
+    columnIndex: number;
+    startMin: number;
+    durationMin: number;
+    // 掴んだ点の、予定の開始からのずれ（指に付いてくるようにするため）。
+    grabOffset: number;
+  };
+  const [move, setMoveState] = useState<MoveState | null>(null);
+  const moveRef = useRef<MoveState | null>(null);
+  const setMove = useCallback((m: MoveState | null) => {
+    moveRef.current = m;
+    setMoveState(m);
+  }, []);
+
+  // グリッド内容座標にあるブロック（時刻イベント）を探す。重なっている時は
+  // レーンで左右に分かれているので、矩形の当たり判定で一意に決まる。
+  const blockAt = useCallback(
+    (contentX: number, contentY: number) => {
+      for (const p of timed) {
+        const ci = colIndexByKey.get(p.columnKey);
+        if (ci == null) continue;
+        const laneW = COL / p.laneCount;
+        const left = ci * COL + p.lane * laneW;
+        if (contentX < left || contentX > left + laneW) continue;
+        const top = y(p.topMin);
+        const height = Math.max(MIN_BLOCK, y(p.endMin) - y(p.topMin));
+        if (contentY < top || contentY > top + height) continue;
+        return p;
+      }
+      return null;
+    },
+    [timed, colIndexByKey, COL, y],
+  );
+
+  // 指の位置（内容座標）から置き先を決める。ゴーストと違って **指の位置を
+  // そのまま**使う（掴んだ点が指に付いてくるので、そこから 30 分ずらすと
+  // 掴んだ場所と食い違う）。スナップは movedEventTiming が持つ。
+  const moveAt = useCallback(
+    (m: MoveState, contentX: number, contentY: number): MoveState => {
+      const dropMinutes = (contentY / hourPx) * 60;
+      const columnIndex = Math.max(
+        0,
+        Math.min(columns.length - 1, Math.floor(contentX / COL)),
+      );
+      const startMin = Math.max(
+        0,
+        Math.min(
+          1440 - Math.min(m.durationMin, 1440),
+          Math.round((dropMinutes - m.grabOffset) / 30) * 30,
+        ),
+      );
+      return { ...m, columnIndex, startMin };
+    },
+    [columns.length, COL, hourPx],
+  );
+
   const stopAutoScroll = useCallback(() => {
     if (autoTimer.current) {
       clearInterval(autoTimer.current);
@@ -363,10 +450,17 @@ export function WeekCalendar({
       bodyScroll.current?.scrollTo({ x: scrollXRef.current, animated: false });
       headerScroll.current?.scrollTo({ x: scrollXRef.current, animated: false });
       // 指は動いていなくても内容が流れる＝指の絶対座標から内容座標を再計算。
-      const g = ghostAt(
-        pos.x - vp.x - GUTTER + scrollXRef.current,
-        pos.y - vp.y + scrollYRef.current,
-      );
+      const cx = pos.x - vp.x - GUTTER + scrollXRef.current;
+      const cy = pos.y - vp.y + scrollYRef.current;
+      const moving = moveRef.current;
+      if (moving) {
+        const m = moveAt(moving, cx, cy);
+        if (m.columnIndex !== moving.columnIndex || m.startMin !== moving.startMin) {
+          setMove(m);
+        }
+        return;
+      }
+      const g = ghostAt(cx, cy);
       const cur = ghostRef.current;
       if (
         cur &&
@@ -376,7 +470,7 @@ export function WeekCalendar({
       }
     };
     if (!autoTimer.current) autoTimer.current = setInterval(tick, 16);
-  }, [bodyH, totalW, ghostAt, setGhost, stopAutoScroll]);
+  }, [bodyH, totalW, ghostAt, setGhost, moveAt, setMove, stopAutoScroll]);
 
   // pan のコールバック。ref を触るので useCallback に置く（render 中には
   // 走らない＝React Compiler の ref ルールに沿う）。
@@ -387,13 +481,54 @@ export function WeekCalendar({
         viewportRef.current = { x, y: y2, w, h };
       });
       dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
+      // 掴んだ場所にブロックがあれば「動かす」、無ければ「作る」。
+      const hit = onEventMove ? blockAt(e.x, e.y) : null;
+      const ev = hit ? eventById.get(hit.event.id) : null;
+      if (hit && ev && canMoveEvent(ev)) {
+        const grabMinutes = (e.y / hourPx) * 60;
+        setMove(
+          moveAt(
+            {
+              eventId: ev.id,
+              columnIndex: 0,
+              startMin: hit.topMin,
+              durationMin: hit.endMin - hit.topMin,
+              grabOffset: grabOffsetMinutes(ev.startAt, grabMinutes),
+            },
+            e.x,
+            e.y,
+          ),
+        );
+        return;
+      }
       setGhost(ghostAt(e.x, e.y));
     },
-    [ghostAt, setGhost],
+    [
+      blockAt,
+      eventById,
+      ghostAt,
+      hourPx,
+      moveAt,
+      onEventMove,
+      setGhost,
+      setMove,
+    ],
   );
   const onGhostUpdate = useCallback(
     (e: GhostTouch) => {
       dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
+      const moving = moveRef.current;
+      if (moving) {
+        const m = moveAt(moving, e.x, e.y);
+        if (
+          m.columnIndex !== moving.columnIndex ||
+          m.startMin !== moving.startMin
+        ) {
+          setMove(m);
+        }
+        updateAutoScroll();
+        return;
+      }
       const g = ghostAt(e.x, e.y);
       const cur = ghostRef.current;
       if (
@@ -405,18 +540,35 @@ export function WeekCalendar({
       }
       updateAutoScroll();
     },
-    [ghostAt, setGhost, updateAutoScroll],
+    [ghostAt, moveAt, setGhost, setMove, updateAutoScroll],
   );
   const onGhostEnd = useCallback(() => {
+    const m = moveRef.current;
+    if (m) {
+      const ev = eventById.get(m.eventId);
+      const col = columns[m.columnIndex];
+      if (ev && col && onEventMove) {
+        // 置き先はスナップ済みなので、掴んだずれは 0 として渡す
+        // （二重にスナップさせない）。
+        const to = movedEventTiming(ev, {
+          date: col.date,
+          dropMinutes: m.startMin,
+          grabOffset: 0,
+        });
+        if (to) onEventMove(ev, to);
+      }
+      return;
+    }
     const g = ghostRef.current;
     const col = g ? columns[g.columnIndex] : null;
     if (g && col) onSlotPick(col.date, g.startMin);
-  }, [columns, onSlotPick]);
+  }, [columns, eventById, onEventMove, onSlotPick]);
   const onGhostFinalize = useCallback(() => {
     stopAutoScroll();
     dragAbsRef.current = null;
     setGhost(null);
-  }, [setGhost, stopAutoScroll]);
+    setMove(null);
+  }, [setGhost, setMove, stopAutoScroll]);
 
   // 縦ピンチで時間の縮尺を変える（Google カレンダーと同じ）。**指の間にある
   // 時刻を動かさない** — 拡大すると自分が見ていた時間帯が画面外へ流れていく
@@ -682,7 +834,7 @@ export function WeekCalendar({
           ref={headerScroll}
           horizontal
           // ゴースト（長押しドラッグ）中は本体と同じく止める。
-          scrollEnabled={ghost == null}
+          scrollEnabled={ghost == null && move == null}
           showsHorizontalScrollIndicator={false}
           onScroll={syncFromHeader}
           onScrollBeginDrag={dragHeader}
@@ -809,7 +961,7 @@ export function WeekCalendar({
         // 初回の表示位置（6時を先頭に）。以後の位置合わせは scrollTo が持つ。
         contentOffset={{ x: 0, y: 6 * HOUR_PX_MIN }}
         showsVerticalScrollIndicator={false}
-        scrollEnabled={ghost == null && !pinching}
+        scrollEnabled={ghost == null && move == null && !pinching}
         onScroll={(e) => {
           scrollYRef.current = e.nativeEvent.contentOffset.y;
           // **worklet 側にも渡す。** ピンチ開始時に「今どこを見ているか」を
@@ -850,7 +1002,7 @@ export function WeekCalendar({
             ref={bodyScroll}
             horizontal
             showsHorizontalScrollIndicator={false}
-            scrollEnabled={ghost == null}
+            scrollEnabled={ghost == null && move == null}
             onScroll={syncFromBody}
             onScrollBeginDrag={dragBody}
             scrollEventThrottle={16}
@@ -888,6 +1040,9 @@ export function WeekCalendar({
                 const ov = laneOverrides?.get(p.event.id);
                 const lane = ov?.lane ?? p.lane;
                 const laneW = COL / (ov?.laneCount ?? p.laneCount);
+                // 運んでいる間、元の位置には薄い抜け殻を残す（どこから
+                // 持ってきたかが分かる。Google カレンダーと同じ）。
+                const carried = move?.eventId === p.event.id;
                 return (
                   <Pressable
                     key={p.event.id + p.columnKey}
@@ -901,7 +1056,7 @@ export function WeekCalendar({
                         top,
                         height: height - 1,
                         backgroundColor: col.bg,
-                        opacity: col.dim ? 0.5 : 1,
+                        opacity: carried ? 0.3 : col.dim ? 0.5 : 1,
                       },
                     ]}
                   >
@@ -1056,6 +1211,46 @@ export function WeekCalendar({
                   );
                 });
               })}
+
+              {/* 運んでいる予定。指に付いてくる本体で、置き先の時刻を出す。
+                  抜け殻（元の位置）と違い、色は元の予定のまま＝何を運んで
+                  いるかが分かる。 */}
+              {move &&
+                (() => {
+                  const ev = eventById.get(move.eventId);
+                  if (!ev) return null;
+                  const col = eventColors(ev);
+                  const endMin = move.startMin + move.durationMin;
+                  return (
+                    <View
+                      pointerEvents="none"
+                      style={[
+                        styles.eventBlock,
+                        styles.movingBlock,
+                        {
+                          left: move.columnIndex * COL + 1,
+                          width: COL - 2,
+                          top: y(move.startMin),
+                          height: Math.max(MIN_BLOCK, y(endMin) - y(move.startMin)) - 1,
+                          backgroundColor: col.bg,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[styles.eventTime, { color: col.text }]}
+                        numberOfLines={1}
+                      >
+                        {hhmm(move.startMin)}–{hhmm(Math.min(endMin, 1440))}
+                      </Text>
+                      <Text
+                        style={[styles.eventTitle, { color: col.text }]}
+                        numberOfLines={1}
+                      >
+                        {ev.title}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
               {/* 長押し中のゴースト枠（1時間・半透明。web と同じ見た目） */}
               {ghost &&
@@ -1225,6 +1420,16 @@ const makeStyles = (t: Theme) =>
   eventPlace: { fontSize: 9, opacity: 0.7 },
   // 時刻もタイトルと同じく縮ませない（上から順に読める状態を保つ）。
   eventTime: { fontSize: 9, opacity: 0.7, flexShrink: 0 },
+  // 運んでいる最中の予定。掴んで浮いていることを影で示す（iOS の並べ替えと
+  // 同じ手がかり）。レーンは考えず列の幅いっぱいに描く＝運んでいる間だけの
+  // 一時的な姿で、置いた後に他の予定と分け合った幅に落ち着く。
+  movingBlock: {
+    zIndex: 30,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
   // 長押しゴースト（web の border-slate-400 / bg-slate-100/50 / text-slate-800
   // と同値の焼き込み。web も両モード同色）。
   ghostBlock: {

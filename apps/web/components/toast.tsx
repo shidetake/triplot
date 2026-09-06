@@ -17,8 +17,13 @@ import { CloseIcon } from "@/components/icons";
 // React 外（サーバアクションのコールバック等）からも呼べる standalone manager。
 export const toastManager = Toast.createToastManager();
 
-export function toast(text: string): void {
-  toastManager.add({ title: text });
+// アクション（「元に戻す」等）は任意。取り消せる操作は、確認を挟むより
+// 済ませてから戻せる方が手数が少ない（ui-guidelines「確認の要否は復旧コストで
+// 決める」＝確認とアンドゥは同じ問題への2つの答え）。
+export type ToastAction = { label: string; onClick: () => void };
+
+export function toast(text: string, action?: ToastAction): void {
+  toastManager.add({ title: text, data: action });
 }
 
 function ToastList() {
@@ -34,6 +39,14 @@ function ToastList() {
     >
       <div className="flex items-start gap-2">
         <Toast.Title className="min-w-0 flex-1" />
+        {toast.data ? (
+          <Toast.Action
+            className="shrink-0 font-medium underline-offset-2 hover:underline"
+            onClick={() => (toast.data as ToastAction).onClick()}
+          >
+            {(toast.data as ToastAction).label}
+          </Toast.Action>
+        ) : null}
         <Toast.Close
           aria-label={t("close")}
           title={t("close")}

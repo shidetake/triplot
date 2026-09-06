@@ -40,7 +40,8 @@
     "untitledEvent": "(untitled)",
     "loadError": "Failed to load: {message}",
     "retry": "Retry",
-    "search": "Search"
+    "search": "Search",
+    "undo": "Undo"
   },
   "settings": {
     "heading": "Settings",
@@ -185,7 +186,9 @@
     "eventFormLabel": "Event",
     "noDates": "No dates set for this trip. Add an event and the calendar will appear from that day.",
     "allDayLabel": "All day",
-    "draftBadge": "Draft"
+    "draftBadge": "Draft",
+    "moved": "Event moved",
+    "moveFailed": "Couldn't move the event: {error}"
   },
   "tripActions": {
     "shareAria": "Share",
