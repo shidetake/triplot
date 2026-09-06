@@ -244,6 +244,7 @@ export default function ExpensesTab() {
                 onDelete={() => dismissDraft(d.emailId)}
                 label={tImport("dismiss")}
                 style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
+                measureKey={d.labelParts.join("|")}
               >
                 <Pressable
                   onPress={() =>

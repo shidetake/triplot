@@ -232,6 +232,7 @@ export function ImportSheet() {
                       queued ? styles.queuedRow : styles.errorRow,
                       i > 0 && styles.listRowDivider,
                     ]}
+                    measureKey={`${e.subject ?? ""}|${e.extract_error ?? ""}`}
                   >
                     <View style={styles.errorBody}>
                       <Text style={styles.emailSummary} numberOfLines={1}>
@@ -348,6 +349,7 @@ export function ImportSheet() {
                   onDelete={() => dismiss(e.id)}
                   label={t("dismiss")}
                   style={[styles.listRow, i > 0 && styles.listRowDivider]}
+                  measureKey={`${summary.title}|${summary.parts.join("|")}|${assigned?.id ?? ""}|${mergedOpen}|${children.length}`}
                 >
                   <Text style={styles.emailSummary} numberOfLines={1}>
                     {summary.title}

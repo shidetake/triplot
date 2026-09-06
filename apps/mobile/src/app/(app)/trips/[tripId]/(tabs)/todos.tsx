@@ -444,6 +444,7 @@ function TodoSection({
                 onDelete={() => onDelete(todo)}
                 label={t("deleteAria")}
                 style={styles.row}
+                measureKey={todo.title}
               >
                 <Pressable
                   onPress={() =>
