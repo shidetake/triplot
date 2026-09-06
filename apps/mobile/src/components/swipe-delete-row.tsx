@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Pressable,
   StyleSheet,
@@ -14,6 +14,8 @@ import Animated, {
   runOnJS,
   useAnimatedReaction,
   useAnimatedStyle,
+  useSharedValue,
+  withTiming,
   type SharedValue,
 } from "react-native-reanimated";
 import { type Theme, useThemedStyles } from "@/lib/theme";
@@ -35,6 +37,12 @@ const ACTION_W = 88;
 // 引き切ったと見なす割合（行の幅に対して）。iOS 標準の一覧と同じ感覚。
 const FULL_SWIPE_RATIO = 0.5;
 
+// 畳む時間。跳ね返りより短くして、右へ動く前に見えなくする。
+const COLLAPSE_MS = 140;
+
+// 書き込みが失敗して行が残った時に、畳んだまま閉じ込めないための保険。
+const FAILURE_RESET_MS = 4000;
+
 export function SwipeDeleteRow({
   onDelete,
   label,
@@ -51,18 +59,62 @@ export function SwipeDeleteRow({
   const styles = useThemedStyles(makeStyles);
   // 引き切ったと見なす距離は**行の幅から導く**（画面の広さで手の動きが変わる
   // ので、固定の px だと狭い端末では遠すぎ、広い端末では近すぎる）。測れるまでは
-  // 発動しない（Infinity）。
-  const [rowWidth, setRowWidth] = useState(0);
+  // 発動しない（Infinity）。高さは畳むアニメーションに使う。
+  const [size, setSize] = useState({ w: 0, h: 0 });
   const onLayout = (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    if (w > 0 && w !== rowWidth) setRowWidth(w);
+    const { width, height } = e.nativeEvent.layout;
+    if (width > 0 && (width !== size.w || height !== size.h)) {
+      setSize({ w: width, h: height });
+    }
   };
-  const fullSwipeAt = rowWidth > 0 ? rowWidth * FULL_SWIPE_RATIO : Infinity;
+  const fullSwipeAt = size.w > 0 ? size.w * FULL_SWIPE_RATIO : Infinity;
   // 今引き切っているか。描画には使わないので state ではなく ref
   // （毎フレーム再描画しない）。
   const armedRef = useRef(false);
 
+  // **離した瞬間に行を畳む。**
+  //
+  // Swipeable は指を離すと「開いた位置」（赤い面の幅）へ戻すアニメーションを
+  // 走らせる。引き切った後だと行がいったん**右へ跳ね返ってから**消えるので、
+  // 消えなかったように見える（実機フィードバック）。跳ね返り自体は Swipeable
+  // の中の動きで止められないので、その上から行を畳んで見えなくする。
+  //
+  // 畳むのは書き込みの結果を待たずに行う（消えるはずのものが残っている時間を
+  // 作らない）。失敗して行が残った場合に閉じ込めないよう、一定時間で元に戻す
+  // ——成功していればそれより先に一覧から消えて unmount される。
+  const [removing, setRemoving] = useState(false);
+  const collapse = useSharedValue(1);
+  useEffect(() => {
+    if (!removing) return;
+    const id = setTimeout(() => setRemoving(false), FAILURE_RESET_MS);
+    return () => clearTimeout(id);
+  }, [removing]);
+  // 引き切って消す時は、**赤い面と同じ色の板で行を覆ってから畳む**。
+  //
+  // 指を離すと Swipeable は「開いた位置」へ戻るアニメーションを始める。面の
+  // 幅を固定しても、面の**位置**がずれに追従しているので右へ動くのは止まらない
+  // （実測: 左端が 52px → 136px）。止められない以上、覆って見せない。
+  // 覆うのは引き切った時だけ — タップで消す時は跳ね返りが無く、覆うと逆に
+  // 面が急に広がって見える。
+  const [covering, setCovering] = useState(false);
+  const remove = (cover: boolean) => {
+    setCovering(cover);
+    // 前回の途中から始めない（失敗して戻った行をもう一度消す時）。
+    collapse.value = 1;
+    collapse.value = withTiming(0, { duration: COLLAPSE_MS });
+    setRemoving(true);
+    onDelete();
+  };
+  const collapseStyle = useAnimatedStyle(() =>
+    removing
+      ? { height: size.h * collapse.value, opacity: collapse.value }
+      : {},
+  );
+
   return (
+    // **畳む器は Swipeable の外側**。中に置くと畳むのが行の中身だけになり、
+    // 赤い面は跳ね返りに合わせて縮み続けて「右へ戻った」ように見える。
+    <Animated.View style={[styles.collapser, collapseStyle]}>
     <Swipeable
       // 指に 1:1 で付いてくる（iOS 標準の一覧と同じ）。**追従を鈍らせると
       // 引き切る判定と覆い切る見た目が両立しない**: 指が半分しか効かないので、
@@ -74,7 +126,8 @@ export function SwipeDeleteRow({
       onSwipeableWillOpen={() => {
         if (!armedRef.current) return;
         armedRef.current = false;
-        onDelete();
+        // 引き切った時は面が行を覆ったまま畳む（覆い切った姿のまま消える）。
+        remove(true);
       }}
       renderRightActions={(_progress, translation) => (
         <SwipeAction
@@ -83,7 +136,7 @@ export function SwipeDeleteRow({
           onArmedChange={(armed) => {
             armedRef.current = armed;
           }}
-          onPress={onDelete}
+          onPress={() => remove(false)}
           label={label}
           styles={styles}
         />
@@ -93,6 +146,13 @@ export function SwipeDeleteRow({
         {children}
       </View>
     </Swipeable>
+    {covering && (
+      <View
+        pointerEvents="none"
+        style={[styles.action, StyleSheet.absoluteFill]}
+      />
+    )}
+    </Animated.View>
   );
 }
 
@@ -161,4 +221,6 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
     },
     label: { fontSize: 14, color: "#fff", fontWeight: "500" },
+    // 畳む時に中身をはみ出させない。
+    collapser: { overflow: "hidden" },
   });
