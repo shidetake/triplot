@@ -29,7 +29,8 @@ import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
-import { PlusIcon, XIcon } from "@/components/icons";
+import { PlusIcon } from "@/components/icons";
+import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { ColorBadge } from "@/components/color-badge";
 import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
@@ -225,7 +226,9 @@ export default function ExpensesTab() {
           )}
         </View>
 
-        {/* 未確定の取り込み。タップで事前入力済みフォーム、× で破棄。
+        {/* 未確定の取り込み。タップで事前入力済みフォーム、**左スワイプで破棄**
+            （全行が同じように破棄できる一覧なので、常時表示の × は置かない。
+            ui-guidelines「一覧の行から消せるようにするときの作法」）。
             **確定した費用の一覧のすぐ上に置く**（画面の先頭ではなく）。仮は
             その兄弟である確定の近くにある方が自然で、旅行一覧の「旅行の候補」
             と同じ置き方に揃う。見た目も揃えて破線・色なし。 */}
@@ -236,8 +239,10 @@ export default function ExpensesTab() {
             </Text>
             <View style={styles.draftList}>
             {draftItems.map((d, i) => (
-              <View
+              <SwipeDeleteRow
                 key={d.id}
+                onDelete={() => dismissDraft(d.emailId)}
+                label={tImport("dismiss")}
                 style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
               >
                 <Pressable
@@ -265,14 +270,7 @@ export default function ExpensesTab() {
                     </Text>
                   </View>
                 </Pressable>
-                <Pressable
-                  onPress={() => dismissDraft(d.emailId)}
-                  hitSlop={8}
-                  accessibilityLabel={tImport("dismiss")}
-                >
-                  <XIcon size={16} color={theme.subtleForeground} />
-                </Pressable>
-              </View>
+              </SwipeDeleteRow>
             ))}
             </View>
           </View>
@@ -460,6 +458,8 @@ const makeStyles = (t: Theme) =>
     borderStyle: "dashed",
     borderColor: t.fgAlpha(0.2),
     borderRadius: 6,
+    // スワイプで出る赤い面を器の中に収める（角丸からはみ出さない）。
+    overflow: "hidden",
   },
   // 左右の余白は行が持つ（区切り線を器の端まで引くため）。
   draftRow: {
@@ -468,6 +468,8 @@ const makeStyles = (t: Theme) =>
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
+    // スワイプで下から赤い面が出るので、行に地色が要る（透明だと透ける）。
+    backgroundColor: t.background,
   },
   draftRowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,

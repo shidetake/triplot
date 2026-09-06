@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useMutation } from "@tanstack/react-query";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -11,18 +11,9 @@ import {
   Text,
   TextInput,
   View,
-  type LayoutChangeEvent,
 } from "react-native";
-import * as Haptics from "expo-haptics";
 import { ScreenStack, ScreenStackItem } from "react-native-screens";
 import { useTranslations } from "use-intl";
-import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
-import Animated, {
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  type SharedValue,
-} from "react-native-reanimated";
 
 import { firstChar } from "@triplot/shared/memberColors";
 import {
@@ -48,6 +39,7 @@ import {
   PlusIcon,
 } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
+import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -257,18 +249,6 @@ function TodoSection({
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
   const runUndoable = useUndoable(invalidate);
-  // 引き切ったと見なす距離は**行の幅から導く**（画面の広さで手の動きが変わる
-  // ので、固定の px だと狭い端末では遠すぎ、広い端末では近すぎる）。半分＝
-  // iOS 標準の一覧と同じ感覚。測れるまでは発動しない（Infinity）。
-  const [rowWidth, setRowWidth] = useState(0);
-  const onRowLayout = (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    if (w > 0 && w !== rowWidth) setRowWidth(w);
-  };
-  const fullSwipeAt = rowWidth > 0 ? rowWidth / 2 : Infinity;
-  // 引き切っている行（指を離した時に一手で消す対象）。描画には使わないので
-  // state ではなく ref に持つ（毎フレーム再描画しない）。
-  const armedRef = useRef<Set<string>>(new Set());
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const priorityLabel: Record<TodoPriority, string> = {
@@ -459,42 +439,12 @@ function TodoSection({
           {sorted.map((todo) => {
             const creator = memberById.get(todo.created_by_member_id);
             return (
-              <Swipeable
+              <SwipeDeleteRow
                 key={todo.id}
-                // 指に 1:1 で付いてくる（iOS 標準の一覧と同じ）。以前は 2 に
-                // していたが、**引き切る判定と見た目が両立しない**: 指が
-                // 追従の半分しか動かないので、行を端まで引いても面は行の
-                // 半分までしか広がらない＝「覆い切ったら消える」という
-                // 手がかりが出せない。実測でも、画面端から端まで引いても
-                // 発動しなかった。
-                friction={1}
-                rightThreshold={40}
-                // **左に引き切ると一手で消える**（iOS 標準の一覧と同じ）。
-                // 引き切らずに離せば従来どおり削除ボタンが出て、タップで消す
-                // 2手も残る。一手で消せるのはトーストから元に戻せるからで、
-                // 取り消せない場所には付けない（ui-guidelines「確認を省くなら
-                // 一手で消せないようにする」）。
-                overshootRight
-                onSwipeableWillOpen={() => {
-                  if (!armedRef.current.has(todo.id)) return;
-                  armedRef.current.delete(todo.id);
-                  onDelete(todo);
-                }}
-                renderRightActions={(_progress, translation) => (
-                  <SwipeDelete
-                    translation={translation}
-                    fullSwipeAt={fullSwipeAt}
-                    onArmedChange={(armed) => {
-                      if (armed) armedRef.current.add(todo.id);
-                      else armedRef.current.delete(todo.id);
-                    }}
-                    onPress={() => onDelete(todo)}
-                    label={t("deleteAria")}
-                    styles={styles}
-                  />
-                )}
+                onDelete={() => onDelete(todo)}
+                label={t("deleteAria")}
+                style={styles.row}
               >
-              <View style={styles.row} onLayout={onRowLayout}>
                 <Pressable
                   onPress={() =>
                     doneMutation.mutate({ id: todo.id, done: !todo.done })
@@ -588,8 +538,7 @@ function TodoSection({
                   </>
                 )}
 
-              </View>
-              </Swipeable>
+              </SwipeDeleteRow>
             );
           })}
         </>
@@ -618,58 +567,6 @@ function Avatar({ member }: { member: MemberLite }) {
         {firstChar(member.display_name)}
       </Text>
     </View>
-  );
-}
-
-// スワイプで現れる削除の既定の幅（文字が収まる分）。
-const SWIPE_DELETE_W = 88;
-
-// 引くほど広がり、**引き切ると行を覆う**（iOS 標準の一覧と同じ見た目）。
-// 覆い切ったことが目で分かるので、指を離すと消えることが離す前に伝わる。
-function SwipeDelete({
-  translation,
-  fullSwipeAt,
-  onArmedChange,
-  onPress,
-  label,
-  styles,
-}: {
-  // 行の水平方向のずれ（右から出す＝左スワイプなので負）。
-  translation: SharedValue<number>;
-  fullSwipeAt: number;
-  onArmedChange: (armed: boolean) => void;
-  onPress: () => void;
-  label: string;
-  styles: ReturnType<typeof makeStyles>;
-}) {
-  // 越えた／戻ったを JS 側にまとめて伝える（worklet から呼ぶのは1つだけ）。
-  const armedChanged = (armed: boolean) => {
-    onArmedChange(armed);
-    // 引き切った瞬間に手で知らせる（iOS 標準の一覧と同じ）。**戻した時にも
-    // 鳴らす** — 「もう離しても消えない」も同じくらい知りたい報せなので、
-    // 越えた時だけ鳴らすと片道の案内になる。
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-  };
-  useAnimatedReaction(
-    () => -translation.value >= fullSwipeAt,
-    (next, prev) => {
-      if (next !== prev) runOnJS(armedChanged)(next);
-    },
-  );
-  // 引いたぶんだけ広がる（既定の幅より狭くはならない）。
-  const style = useAnimatedStyle(() => ({
-    width: Math.max(SWIPE_DELETE_W, -translation.value),
-  }));
-  return (
-    <Animated.View style={[styles.swipeDelete, style]}>
-      <Pressable
-        onPress={onPress}
-        style={styles.swipeDeleteHit}
-        accessibilityLabel={label}
-      >
-        <Text style={styles.swipeDeleteLabel}>{label}</Text>
-      </Pressable>
-    </Animated.View>
   );
 }
 
@@ -710,20 +607,6 @@ const makeStyles = (t: Theme) =>
     // スワイプで下から削除が出るので、行に地色が要る（透明だと透ける）。
     backgroundColor: t.background,
   },
-  // スワイプで現れる削除。iOS 標準の一覧と同じく赤い面に白文字。
-  // 引き切って行を覆う時に備え、面は横並び＋文字は左端側に固定する
-  // （面が広がっても文字が画面外へ流れていかない）。
-  swipeDelete: {
-    flexDirection: "row",
-    alignItems: "stretch",
-    backgroundColor: t.destructiveText,
-  },
-  swipeDeleteHit: {
-    width: SWIPE_DELETE_W,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  swipeDeleteLabel: { fontSize: 14, color: "#fff", fontWeight: "500" },
   checkbox: {
     width: 20,
     height: 20,

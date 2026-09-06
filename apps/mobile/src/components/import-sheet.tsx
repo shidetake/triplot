@@ -27,7 +27,8 @@ import { extractionSummary } from "@triplot/shared/import/draftLabel";
 import type { Extraction } from "@triplot/shared/import/schema";
 import { buildImportAddress } from "@triplot/shared/importAddress";
 
-import { ChevronIcon, CopyIcon, XIcon } from "@/components/icons";
+import { ChevronIcon, CopyIcon } from "@/components/icons";
+import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
@@ -223,8 +224,10 @@ export function ImportSheet() {
                 // しない（失敗したと誤解させない）。web の import-inbox と同じ分岐。
                 const queued = e.extract_error_kind === "rate_limit";
                 return (
-                  <View
+                  <SwipeDeleteRow
                     key={e.id}
+                    onDelete={() => dismiss(e.id)}
+                    label={t("dismiss")}
                     style={[
                       queued ? styles.queuedRow : styles.errorRow,
                       i > 0 && styles.listRowDivider,
@@ -246,18 +249,7 @@ export function ImportSheet() {
                               : t("errorNoRetry")}
                       </Text>
                     </View>
-                    {/* 破棄は × に揃える（旅行側の未確定の取り込み・web と同じ）。
-                下書きを退けるだけで実体は消えないので、赤いゴミ箱ではなく
-                中立の × を使う。位置も右上に揃える。 */}
-                    <Pressable
-                      onPress={() => dismiss(e.id)}
-                      hitSlop={12}
-                      accessibilityLabel={t("dismiss")}
-                      style={styles.dismissCorner}
-                    >
-                      <XIcon size={16} color={theme.subtleForeground} />
-                    </Pressable>
-                  </View>
+                  </SwipeDeleteRow>
                 );
               })}
             </View>
@@ -351,8 +343,10 @@ export function ImportSheet() {
               const children = row?.children ?? [];
               const mergedOpen = openMerged === e.id;
               return (
-                <View
+                <SwipeDeleteRow
                   key={e.id}
+                  onDelete={() => dismiss(e.id)}
+                  label={t("dismiss")}
                   style={[styles.listRow, i > 0 && styles.listRowDivider]}
                 >
                   <Text style={styles.emailSummary} numberOfLines={1}>
@@ -421,18 +415,6 @@ export function ImportSheet() {
                       )}
                     </View>
                   </View>
-                  {/* × は行の右上に重ねる（ui-guidelines「× 閉じるボタン」。専用の
-                  場所を作らず右上角に置く）。割り当てのピッカーと同じ行に置くと、
-                  ピッカーの操作の一部に見えて位置が中途半端になる。 */}
-                  <Pressable
-                    onPress={() => dismiss(e.id)}
-                    hitSlop={12}
-                    accessibilityLabel={t("dismiss")}
-                    style={styles.dismissCorner}
-                  >
-                    <XIcon size={16} color={theme.subtleForeground} />
-                  </Pressable>
-
                   {/* 手でまとめる。合体の判断は LLM がやるので外れることがあり、
                   「合体しすぎ」は下の分割で戻せるが「合体しなかった」には
                   手段が無かった。選んだ側の内容が残る。 */}
@@ -528,7 +510,7 @@ export function ImportSheet() {
                       )}
                     </View>
                   )}
-                </View>
+                </SwipeDeleteRow>
               );
             })}
           </View>
@@ -554,8 +536,8 @@ const makeStyles = (t: Theme) =>
       borderRadius: 6,
       overflow: "hidden",
     },
-    // × を右上角に絶対配置するので relative（RN の既定）。
-    listRow: { padding: 12, gap: 6, position: "relative" },
+    // スワイプで下から赤い面が出るので、行に地色が要る（透明だと透ける）。
+    listRow: { padding: 12, gap: 6, backgroundColor: t.background },
     listRowDivider: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.fgAlpha(0.1),
@@ -571,7 +553,6 @@ const makeStyles = (t: Theme) =>
       gap: 8,
       padding: 12,
       backgroundColor: t.errorBg,
-      position: "relative",
     },
     groupHeading: { fontSize: 12, color: t.mutedForeground },
     description: { fontSize: 12, color: t.mutedForeground },
@@ -679,7 +660,6 @@ const makeStyles = (t: Theme) =>
       backgroundColor: t.fgAlpha(0.05),
     },
     // × は行の右上角に重ねる（行を relative にして絶対配置）。
-    dismissCorner: { position: "absolute", top: 12, right: 12 },
     // 「要割当」バッジ（web の import-inbox と同じ・「地図未登録」と同じ形）。
     needsAssignBadge: {
       borderRadius: 4,
