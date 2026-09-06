@@ -34,8 +34,12 @@ export function zoomAnchoredScrollY(a: {
   // 拡大後の1時間の高さ。
   hourPx: number;
   viewportH: number;
+  // 24時の下に足してある余白（タブバーに隠れないぶん）。中身の高さに含まれる
+  // ので、これを入れないと下端付近で実際より手前に切り詰めてしまう。
+  contentPaddingBottom?: number;
 }): number {
-  const maxScroll = Math.max(0, 24 * a.hourPx - a.viewportH);
+  const contentH = 24 * a.hourPx + (a.contentPaddingBottom ?? 0);
+  const maxScroll = Math.max(0, contentH - a.viewportH);
   const y = (a.focalMin / 60) * a.hourPx - a.focalY;
   return Math.max(0, Math.min(maxScroll, y));
 }

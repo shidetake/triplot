@@ -74,5 +74,17 @@ describe("zoomAnchoredScrollY", () => {
     });
     expect(y).toBe(24 * 85 - viewportH);
   });
+
+  it("24時の下の余白ぶんは下端に含める", () => {
+    // 余白を数えないと、実際にはまだスクロールできる位置で切り詰めてしまう。
+    const y = zoomAnchoredScrollY({
+      focalMin: 23 * 60 + 30,
+      focalY: 10,
+      hourPx: 85,
+      viewportH,
+      contentPaddingBottom: 83,
+    });
+    expect(y).toBe(24 * 85 + 83 - viewportH);
+  });
 });
 

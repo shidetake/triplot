@@ -55,6 +55,12 @@ const GUTTER = 44; // 時刻ガター幅
 // 計算は calendarZoom（純関数・テストあり）が持つ。
 const HOUR_PX_MIN = 30;
 
+// 24時の下に足す余白。NativeTabs（浮島タブバー）はレイアウト上の場所を取らず
+// 画面下端に重なるだけなので、これが無いと末尾（21〜24時）がタブバーの下に
+// 隠れて最後までスクロールできない（上端は画面下端から実測 約83pt）。
+const SCROLL_PADDING_BOTTOM = 83;
+const SCROLL_CONTENT_STYLE = { paddingBottom: SCROLL_PADDING_BOTTOM };
+
 const ALLDAY_ROW = 24; // 終日バー1行の高さ
 const HEADER_H = 34; // 日付ヘッダの高さ（TZ注記あり）
 const HEADER_H_COMPACT = 22; // 日付ヘッダの高さ（TZ注記なし＝日付ラベルのみ）
@@ -204,12 +210,19 @@ export function WeekCalendar({
   }, [bodyViewportH, zoomMaxSv]);
 
   // 拡大の見せかけ。ブロックの高さも時刻線の間隔もこれで一緒に伸びる。
+  // **上端を基準に伸ばす。** RN の scaleY は既定で中心基準なので、
+  // transformOrigin を指定しないと拡大の基点がずれ、ピンチ中の見た目と
+  // 指を離した後の実レイアウトが食い違う（実機フィードバック: 離した瞬間に
+  // 位置が飛ぶ）。位置合わせの計算（calendarZoom）は上端基準で書いてある。
   const zoomStyle = useAnimatedStyle(() => ({
+    transformOrigin: "top",
     transform: [{ translateY: zoomTy.value }, { scaleY: zoomScale.value }],
   }));
   // 中の文字は伸ばさない（逆向きに縮めて元の字面に戻す）。値は全要素で同じなので
   // スタイルは1つを使い回せる。
   const zoomTextStyle = useAnimatedStyle(() => ({
+    // 器と同じ上端基準（中心基準だと打ち消しにならず、文字が上下に動く）。
+    transformOrigin: "top",
     transform: [{ scaleY: 1 / zoomScale.value }],
   }));
   const bodyH = 24 * hourPx;
@@ -429,6 +442,7 @@ export function WeekCalendar({
       focalY: zFocalY.value,
       hourPx: next,
       viewportH: bodyViewportH,
+      contentPaddingBottom: SCROLL_PADDING_BOTTOM,
     });
     setHourPx(next);
     hourPxSv.value = next;
@@ -816,7 +830,7 @@ export function WeekCalendar({
         // タブバーの実測高さぶんだけ余白を足す（FAB の bottom:100 と違い、
         // ここは「隙間なくギリギリ」が目的なので実測値そのまま。余分に足すと
         // 24:00 の下に空白が見えてしまう＝実機フィードバックで判明）。
-        contentContainerStyle={{ paddingBottom: 83 }}
+        contentContainerStyle={SCROLL_CONTENT_STYLE}
       >
         <Animated.View style={[styles.bodyRow, zoomStyle]}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
