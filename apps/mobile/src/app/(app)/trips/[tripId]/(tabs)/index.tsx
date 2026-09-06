@@ -16,6 +16,7 @@ import {
 import { PlusIcon } from "@/components/icons";
 import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
+import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail, useTripDrafts } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -170,9 +171,8 @@ const makeStyles = (t: Theme) =>
       // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
       // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
       // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
-      // 確認・タブバー上端は画面下端から実測 約83pt）。タブバーより確実に
-      // 上に出す値へ引き上げる。
-      bottom: 100,
+      // 確認）。タブバーより確実に上に出す値へ引き上げる。
+      bottom: MOBILE_TAB_BAR_TOP + 17,
       // カレンダーのネスト ScrollView にタッチを奪われないよう最前面に上げる。
       zIndex: 50,
       width: 56,

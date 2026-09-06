@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Animated, StyleSheet, Text, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
 import { useTheme } from "@/lib/theme";
 
 // グローバルなトースト。ui-guidelines「フィードバック」節の方針:
@@ -71,7 +71,6 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
   const [displayText, setDisplayText] = useState<string | null>(null);
   const [shown, setShown] = useState(false);
   const [opacity] = useState(() => new Animated.Value(0));
-  const insets = useSafeAreaInsets();
   const theme = useTheme();
 
   useEffect(() => {
@@ -119,8 +118,13 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
         // safe area は足さない）。24 は実測値: grabber はシート上端から
         // 5pt の位置に高さ 5pt で描かれるので、12 だと下端の 1pt 下に
         // 詰まって grabber の一部に見えた（実機フィードバック）。
-        // 画面全体のときだけ下端の safe area を避ける。
-        inSheet ? { top: 24 } : { bottom: insets.bottom + 24 },
+        //
+        // 画面全体のときは、セーフエリアではなくタブバー（iOS 26 Liquid
+        // Glass の浮島。RN の flex の外に浮くので高さを取得できない）を
+        // 避ける。セーフエリア基準（insets.bottom+24）だと画面下から約58pt
+        // になり、タブバー上端の実測約83ptの帯に半端に重なって見た目が悪い
+        // （実機フィードバック）。MOBILE_TAB_BAR_TOP から確実に上へ出す。
+        inSheet ? { top: 24 } : { bottom: MOBILE_TAB_BAR_TOP + 17 },
         { opacity },
       ]}
     >
