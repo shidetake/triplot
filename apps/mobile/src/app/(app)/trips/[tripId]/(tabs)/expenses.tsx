@@ -241,8 +241,13 @@ export default function ExpensesTab() {
             {draftItems.map((d, i) => (
               <SwipeDeleteRow
                 key={d.id}
-                onDelete={() => dismissDraft(d.emailId)}
-                label={tImport("dismiss")}
+                actions={[
+                  {
+                    label: tImport("dismiss"),
+                    destructive: true,
+                    onPress: () => dismissDraft(d.emailId),
+                  },
+                ]}
                 style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
                 measureKey={d.labelParts.join("|")}
               >

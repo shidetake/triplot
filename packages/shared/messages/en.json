@@ -478,7 +478,8 @@
     "locationPermissionBody": "Allow location access in the Settings app.",
     "locationFailed": "Could not get your location",
     "empty": "No places yet.",
-    "deleted": "Place deleted"
+    "deleted": "Place deleted",
+    "hide": "Hide"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

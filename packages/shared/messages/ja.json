@@ -478,7 +478,8 @@
     "locationPermissionBody": "設定アプリで位置情報の利用を許可してください。",
     "locationFailed": "現在地を取得できませんでした",
     "empty": "まだ場所がありません。",
-    "deleted": "場所を削除しました"
+    "deleted": "場所を削除しました",
+    "hide": "非表示"
   },
   "validation": {
     "loginRequired": "ログインが必要です",

@@ -226,8 +226,13 @@ export function ImportSheet() {
                 return (
                   <SwipeDeleteRow
                     key={e.id}
-                    onDelete={() => dismiss(e.id)}
-                    label={t("dismiss")}
+                    actions={[
+                      {
+                        label: t("dismiss"),
+                        destructive: true,
+                        onPress: () => dismiss(e.id),
+                      },
+                    ]}
                     style={[
                       queued ? styles.queuedRow : styles.errorRow,
                       i > 0 && styles.listRowDivider,
@@ -346,8 +351,13 @@ export function ImportSheet() {
               return (
                 <SwipeDeleteRow
                   key={e.id}
-                  onDelete={() => dismiss(e.id)}
-                  label={t("dismiss")}
+                  actions={[
+                    {
+                      label: t("dismiss"),
+                      destructive: true,
+                      onPress: () => dismiss(e.id),
+                    },
+                  ]}
                   style={[styles.listRow, i > 0 && styles.listRowDivider]}
                   measureKey={`${summary.title}|${summary.parts.join("|")}|${assigned?.id ?? ""}|${mergedOpen}|${children.length}`}
                 >

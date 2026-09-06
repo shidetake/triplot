@@ -43,16 +43,25 @@ import {
 // **行の余白はゼロにする**（`listRowInsets`）。既定のままだと SwiftUI の行が
 // 左右にも余白を取り、渡した高さに対して中身が入りきらずに切れる（実測: 高さを
 // 60px 増やしても左右が削られて切れたままだった＝足りないのは高さではなかった）。
+export type SwipeAction = {
+  // ボタンに出す文言。読み上げ名も兼ねる。
+  label: string;
+  onPress: () => void;
+  // 破壊的なら赤くする（`destructive`）。取り消しの効くものは既定の色。
+  destructive?: boolean;
+};
+
 export function SwipeDeleteRow({
-  onDelete,
-  label,
+  actions,
+  enabled = true,
   style,
   measureKey,
   children,
 }: {
-  onDelete: () => void;
-  // 赤いボタンに出す文言（「削除」「破棄」）。読み上げ名も兼ねる。
-  label: string;
+  // 引いて出るボタン。**先頭が引き切った時に実行されるもの**（iOS の作法）。
+  actions: SwipeAction[];
+  // false の間はスワイプを受けない（素の行として描く）。
+  enabled?: boolean;
   // 行の見た目。
   style?: StyleProp<ViewStyle>;
   // 中身の高さが変わりうる時に渡す（変わったら測り直す）。行の内容から作る
@@ -71,7 +80,7 @@ export function SwipeDeleteRow({
     if (h > 0 && h !== height) setMeasured({ key: measureKey, height: h });
   };
 
-  if (height === 0) {
+  if (!enabled || height === 0) {
     return (
       <View style={style} onLayout={onLayout}>
         {children}
@@ -91,10 +100,19 @@ export function SwipeDeleteRow({
           <RNHostView>
             <View style={style}>{children}</View>
           </RNHostView>
+          {/* 引き切った時に実行されるのは**先頭のボタン**。ボタンが増えても
+              先頭は削除に揃える——同じ仕草の結果が行によって変わると、覚えた
+              仕草の価値が無くなる（メールも引き切りは常に同じ操作）。 */}
           <SwipeActions.Actions edge="trailing" allowsFullSwipe>
-            <Button role="destructive" onPress={onDelete}>
-              <Text>{label}</Text>
-            </Button>
+            {actions.map((a) => (
+              <Button
+                key={a.label}
+                role={a.destructive ? "destructive" : undefined}
+                onPress={a.onPress}
+              >
+                <Text>{a.label}</Text>
+              </Button>
+            ))}
           </SwipeActions.Actions>
         </SwipeActions>
       </List>

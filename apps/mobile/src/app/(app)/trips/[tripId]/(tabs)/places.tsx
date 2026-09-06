@@ -75,7 +75,9 @@ import {
   type PlacePrediction,
 } from "@triplot/shared/placesSearch";
 import {
+  deletePlaceReturning,
   dismissPlaceLocation,
+  restorePlace,
   resolvePlaceToGoogle,
   setPlaceLocation,
 } from "@triplot/shared/data/places";
@@ -113,11 +115,13 @@ import {
 } from "@triplot/shared/placeMarker";
 import { CheckIcon, ChevronIcon, FilterIcon, XIcon } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
+import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -388,6 +392,7 @@ export default function PlacesTab() {
   const styles = useThemedStyles(makeStyles);
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
+  const runUndoable = useUndoable(invalidate);
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // react-native-screens の既知の挙動: この画面の裏に formSheet
@@ -1657,6 +1662,32 @@ export default function PlacesTab() {
     ]);
   };
 
+  // スワイプからの非表示は確認を出さない（バッジの × から出す時は文脈が
+  // 薄いので確認を残す）。消しているわけではなく、フィルタの「非表示を表示」
+  // で戻せる。
+  const hideLocation = (p: PlaceRow) => {
+    void dismissPlaceLocation(supabase, p.id).then((r) => {
+      if (!r.ok) {
+        Alert.alert(r.error);
+        return;
+      }
+      void invalidate();
+    });
+  };
+
+  // 一覧から場所を消す。**確認は挟まず、トーストから戻せるようにする**
+  // （ui-guidelines「確認とアンドゥは同じ問題への2つの答え」）。場所は消すと
+  // 予定の出発地・到着地と費用の場所が黙って空になるので、控えにはそれも
+  // 入っている（restorePlace が指し直す）。
+  const removePlace = (p: PlaceRow) => {
+    runUndoable({
+      apply: () => deletePlaceReturning(supabase, p.id),
+      restore: (snapshot) => restorePlace(supabase, snapshot),
+      done: t("deleted"),
+      failed: (error) => t("deleteFailed", { error }),
+    });
+  };
+
   // 一覧シートの表示モード（検索結果 or 通常一覧）。ボタン/検索で開く方式なので
   // 開いた時は中段（detent 1）から見せる。展開すると全画面一覧。
   const listMode = candidates.length > 0 ? "search" : "browse";
@@ -2374,26 +2405,53 @@ export default function PlacesTab() {
                 </>
               }
               renderItem={({ item, index }) => (
-                <SavedPlaceRow
-                  item={item}
-                  index={index}
-                  isSelected={editing?.id === item.id}
-                  isLocating={item.lat == null && item.id === locating?.id}
-                  day={dayByPlaceId.get(item.id)}
-                  area={areaByPlaceId.get(item.id)}
-                  focusProgress={focusProgress}
-                  focusActive={focusActive}
-                  theme={theme}
-                  styles={styles}
-                  t={t}
-                  onStartLocate={() => startLocate(item)}
-                  onCancelLocate={() => {
-                    setLocating(null);
-                    setPinDraft(null);
-                  }}
-                  onPreviewOrEdit={() => previewOrEditPlace(item)}
-                  onDismissLocation={() => dismissLocation(item)}
-                />
+                // **スワイプは通常モードだけ**（選んでいる最中＝スクロール
+                // モードでは受けない）。あのモードは縦に回して選ぶダイヤルで、
+                // 目は地図にある。行への操作は一覧の時だけにする
+                // （docs/design/platform-parity.md）。
+                //
+                // 引き切りは常に削除（先頭のボタン）。地図未登録の行だけ
+                // 非表示を足すが、引き切りの結果は行によって変えない。
+                <SwipeDeleteRow
+                  enabled={editing == null}
+                  measureKey={`${item.name}|${item.lat == null}|${item.location_dismissed}`}
+                  actions={[
+                    {
+                      label: tCommon("delete"),
+                      destructive: true,
+                      onPress: () => removePlace(item),
+                    },
+                    ...(item.lat == null && !item.location_dismissed
+                      ? [
+                          {
+                            label: t("hide"),
+                            onPress: () => hideLocation(item),
+                          },
+                        ]
+                      : []),
+                  ]}
+                >
+                  <SavedPlaceRow
+                    item={item}
+                    index={index}
+                    isSelected={editing?.id === item.id}
+                    isLocating={item.lat == null && item.id === locating?.id}
+                    day={dayByPlaceId.get(item.id)}
+                    area={areaByPlaceId.get(item.id)}
+                    focusProgress={focusProgress}
+                    focusActive={focusActive}
+                    theme={theme}
+                    styles={styles}
+                    t={t}
+                    onStartLocate={() => startLocate(item)}
+                    onCancelLocate={() => {
+                      setLocating(null);
+                      setPinDraft(null);
+                    }}
+                    onPreviewOrEdit={() => previewOrEditPlace(item)}
+                    onDismissLocation={() => dismissLocation(item)}
+                  />
+                </SwipeDeleteRow>
               )}
               ListEmptyComponent={
                 <Text style={styles.empty}>{t("empty")}</Text>

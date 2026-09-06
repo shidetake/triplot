@@ -441,8 +441,13 @@ function TodoSection({
             return (
               <SwipeDeleteRow
                 key={todo.id}
-                onDelete={() => onDelete(todo)}
-                label={t("deleteAria")}
+                actions={[
+                  {
+                    label: t("deleteAria"),
+                    destructive: true,
+                    onPress: () => onDelete(todo),
+                  },
+                ]}
                 style={styles.row}
                 measureKey={todo.title}
               >
