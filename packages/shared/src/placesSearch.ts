@@ -426,6 +426,58 @@ export function queryLanguagesFor(name: string): string[] {
 
 const NAMED_PLACE_MATCH_THRESHOLD = 0.6;
 
+// Places API のテキスト検索が1回に返す件数の上限。これに達している＝Google が
+// 絞り込めなかった、と読む（resolveNamedPlace 参照）。
+const SEARCH_RESULT_LIMIT = 20;
+
+/**
+ * 検索結果から採用する1件を決める（採用しないなら null）。
+ *
+ * **Google が1件に絞り込めたなら、その1件を信じる。** ここでの名前の
+ * 突き合わせは二重チェックになっている——Google のテキスト検索は既に
+ * 「その名前で探した結果」なので、名前の一致は検索の時点で済んでいる。
+ * それを字面で検算すると、**訳語・通称を知らないこちらが必ず負ける**:
+ *
+ *   "UNIQLO Ala Moana"       → ユニクロ アラモアナ店（正解）   一致度 0.00
+ *   "ザ ロイヤル ハワイアン…"  → ロイヤル ハワイアン ホテル（正解）    0.41
+ *   "더 로얄 하와이안…"（韓）   → 더 로열 하와이언…（正解）           0.58
+ *
+ * どれも Google は正解を返しているのに閾値で捨てていた。言語をまたぐときだけ
+ * の問題ではなく（UNIQLO は英語同士）、名前で照合し続ける限り言語ごとの
+ * 対処が無限に要る。
+ *
+ * 逆に **どれを指しているか決められない検索は採用しない**。店名になり得ない
+ * 一般語（"カフェ" "ホテル" "ABC" "Store" 等）は、その語を含む店が街中に
+ * いくつもあるので上限いっぱいの候補が返り、そのほとんどが同点で閾値を
+ * 超える（実測: "ABC" は20件中20件が同点 0.70）。1位を採ると「たまたま
+ * 並び順が上だった店」に紐づく。
+ *
+ * 条件は2つとも要る。片方だけでは切れない: チェーン店は上限まで返るが閾値超え
+ * は1件（"HONOLULU COFFEE - SH" → 20件中1件）、逆に候補が少なくても同点で
+ * 並ぶことはある（"NALU HEALTH BAR AT WAI" は4件中2件）。
+ *
+ * なお保存済みの場所との照合（matchPlace）は別の話で、そちらは今までどおり
+ * 名前でしか資格を与えない（住所で資格を与えると同じビルの別の店に吸い
+ * 寄せられる。placeMatch.ts の addressBonus 参照）。
+ */
+export function pickResolvedPlace(
+  scored: { candidate: PlaceCandidate; score: number }[],
+): PlaceCandidate | null {
+  if (scored.length === 0) return null;
+  if (scored.length === 1) return scored[0].candidate;
+
+  const overThreshold = scored.filter(
+    (x) => x.score >= NAMED_PLACE_MATCH_THRESHOLD,
+  ).length;
+  if (scored.length >= SEARCH_RESULT_LIMIT && overThreshold > 1) return null;
+
+  // **上位5件で切らない。** Google が返す候補の並び順は呼び出しごとに揺れる
+  // ので、正解が6位以下に落ちた回だけ取りこぼしていた（実測:
+  // "SSA - HANAUMA BAY" は候補8件で、10回中2回しか解決しなかった）。
+  const best = scored.reduce((a, b) => (b.score > a.score ? b : a));
+  return best.score >= NAMED_PLACE_MATCH_THRESHOLD ? best.candidate : null;
+}
+
 /**
  * 店名・場所名を Google の場所に解決する。ある程度広い地理バイアス
  * （旅行のピンの重心等、呼び出し側が用意する）の中から上位候補をスコアし、
@@ -471,21 +523,23 @@ export async function resolveNamedPlace(
     const query = addr ? `${trimmed}, ${addr}` : trimmed;
     for (const languageCode of queryLanguagesFor(trimmed)) {
       const candidates = await searchPlaces(query, { ...opts, languageCode });
-      let best: PlaceCandidate | null = null;
-      let bestScore = -1;
-      for (const c of candidates.slice(0, 5)) {
-        const r = matchPlace(
-          { name: trimmed, address: addr },
-          [{ id: c.placeId, name: c.name, formattedAddress: c.formattedAddress }],
-          0,
-        );
-        const score = r?.score ?? 0;
-        if (score > bestScore) {
-          bestScore = score;
-          best = c;
-        }
-      }
-      if (best && bestScore >= NAMED_PLACE_MATCH_THRESHOLD) return best;
+      const scored = candidates.map((c) => ({
+        candidate: c,
+        score:
+          matchPlace(
+            { name: trimmed, address: addr },
+            [
+              {
+                id: c.placeId,
+                name: c.name,
+                formattedAddress: c.formattedAddress,
+              },
+            ],
+            0,
+          )?.score ?? 0,
+      }));
+      const picked = pickResolvedPlace(scored);
+      if (picked) return picked;
     }
     return null;
   } catch {
