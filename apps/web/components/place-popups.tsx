@@ -8,7 +8,6 @@ import {
   useTransition,
 } from "react";
 import { useTranslations } from "next-intl";
-import { toast } from "@/components/toast";
 import { useUndoable } from "@/lib/undoable";
 import { err, ok } from "@triplot/shared/data/result";
 
