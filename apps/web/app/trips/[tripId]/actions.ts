@@ -19,7 +19,9 @@ import {
 import {
   addTripPinOption,
   createPlace,
-  deletePlace,
+  deletePlaceReturning,
+  restorePlace,
+  type PlaceSnapshot,
   dismissPlaceLocation,
   removeTripPinOption,
   resolvePlaceToGoogle,
@@ -447,7 +449,7 @@ export async function updatePlaceAction(
 export async function deletePlaceAction(
   tripId: string,
   placeId: string,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; snapshot?: PlaceSnapshot }> {
   const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
@@ -457,7 +459,28 @@ export async function deletePlaceAction(
     return { error: t("loginRequired") };
   }
 
-  const result = await deletePlace(supabase, placeId);
+  const result = await deletePlaceReturning(supabase, placeId);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null, snapshot: result.data };
+}
+
+export async function restorePlaceAction(
+  tripId: string,
+  snapshot: PlaceSnapshot,
+): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: t("loginRequired") };
+
+  const result = await restorePlace(supabase, snapshot);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

@@ -9,11 +9,13 @@ import {
 } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "@/components/toast";
-import { confirmDialog } from "@/components/confirm-dialog";
+import { useUndoable } from "@/lib/undoable";
+import { err, ok } from "@triplot/shared/data/result";
 
 import {
   createPlaceAction,
   deletePlaceAction,
+  restorePlaceAction,
   type PlaceMutationState,
   setPlaceLocationAction,
   updatePlaceAction,
@@ -524,19 +526,32 @@ export function SavedInfo({
   const noteId = useId();
 
   const [isDeleting, startDelete] = useTransition();
+  // 再取得は各アクションの revalidatePath が行う。
+  const runUndoable = useUndoable(() => {});
 
   useEffect(() => {
     if (state.ok) onDone();
   }, [state.ok, onDone]);
 
-  const onDelete = async () => {
-    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
-    startDelete(async () => {
-      const { error } = await deletePlaceAction(tripId, place.id);
-      if (error) {
-        toast(t("deleteFailed", { error }));
-        return;
-      }
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。
+  //
+  // 場所は消すと**参照も一緒に失う**（予定の出発地・到着地、費用の場所が黙って
+  // 空になる）ので、控えにはそれも入っている。書き戻せば参照ごと戻る。
+  const onDelete = () => {
+    startDelete(() => {
+      runUndoable({
+        apply: async () => {
+          const { error, snapshot } = await deletePlaceAction(tripId, place.id);
+          return error || !snapshot ? err(error ?? "") : ok(snapshot);
+        },
+        restore: async (snapshot) => {
+          const { error } = await restorePlaceAction(tripId, snapshot);
+          return error ? err(error) : ok(undefined);
+        },
+        done: t("deleted"),
+        failed: (error) => t("deleteFailed", { error }),
+      });
       onDone();
     });
   };

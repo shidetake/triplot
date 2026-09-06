@@ -64,6 +64,39 @@ export async function updatePlace(
   return ok(undefined);
 }
 
+// 消した場所の控え（restorePlace にそのまま渡す）。中身は SQL 側が決めるので
+// クライアントは列を知らない＝列や参照元が増えても控え忘れが起きない。
+export type PlaceSnapshot = Record<string, unknown>;
+
+// 消して、元の姿を返す。「元に戻す」から書き戻すために使う。
+//
+// **場所は消すと参照も一緒に失う** — 予定の出発地・到着地と費用の場所は
+// `on delete set null` なので、消した瞬間に黙って空になる。控えには誰が
+// 参照していたかも入っていて、restorePlace が指し直す。
+export async function deletePlaceReturning(
+  sb: DB,
+  placeId: string,
+): Promise<Result<PlaceSnapshot>> {
+  const { data, error } = await sb.rpc("delete_place_returning", {
+    p_id: placeId,
+  });
+  if (error) return err(error.message);
+  return ok(data as PlaceSnapshot);
+}
+
+// deletePlaceReturning が返した控えをそのまま書き戻す（場所そのものだけでなく、
+// 指していた予定・費用の参照も戻る）。
+export async function restorePlace(
+  sb: DB,
+  snapshot: PlaceSnapshot,
+): Promise<Result<void>> {
+  const { error } = await sb.rpc("restore_place", {
+    p_snapshot: snapshot as never,
+  });
+  if (error) return err(error.message);
+  return ok(undefined);
+}
+
 export async function deletePlace(
   sb: DB,
   placeId: string,

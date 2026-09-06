@@ -477,7 +477,8 @@
     "locationUnavailable": "Can't use your location",
     "locationPermissionBody": "Allow location access in the Settings app.",
     "locationFailed": "Could not get your location",
-    "empty": "No places yet."
+    "empty": "No places yet.",
+    "deleted": "Place deleted"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

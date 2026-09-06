@@ -1,6 +1,5 @@
 import { useState } from "react";
 import {
-  Alert,
   Linking,
   Pressable,
   StyleSheet,
@@ -12,7 +11,8 @@ import { useTranslations } from "use-intl";
 
 import {
   createPlace,
-  deletePlace,
+  deletePlaceReturning,
+  restorePlace,
   updatePlace,
 } from "@triplot/shared/data/places";
 import { gmapsUrl } from "@triplot/shared/placeLink";
@@ -27,6 +27,8 @@ import { SheetTitle } from "./sheet-title";
 import { SubmitButton } from "./submit-button";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { supabase } from "@/lib/supabase";
+import { useUndoable } from "@/lib/undoable";
+import { useInvalidateTrip } from "@/lib/useTripDetail";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import Svg, { Path } from "react-native-svg";
 
@@ -61,6 +63,11 @@ export function PlaceForm({
 }) {
   const t = useTranslations("place");
   const tCommon = useTranslations("common");
+  // **元に戻した後も再取得が要る**（消した時は onDone で閉じて親が取り直すが、
+  // 戻すのはフォームが閉じた後に起きるので、こちらから取り直さないと復元した
+  // 場所が画面に出てこない）。
+  const invalidate = useInvalidateTrip(tripId);
+  const runUndoable = useUndoable(invalidate);
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editPlace;
@@ -139,24 +146,21 @@ export function PlaceForm({
     onDone();
   };
 
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。
+  //
+  // 場所は消すと**参照も一緒に失う**（予定の出発地・到着地、費用の場所が黙って
+  // 空になる）ので、控えにはそれも入っている。書き戻せば参照ごと戻る。
   const onDelete = () => {
     if (!editPlace) return;
-    Alert.alert(t("deleteTitle"), undefined, [
-      { text: tCommon("cancel"), style: "cancel" },
-      {
-        text: tCommon("delete"),
-        style: "destructive",
-        onPress: () => {
-          void deletePlace(supabase, editPlace.id).then((r) => {
-            if (!r.ok) {
-              Alert.alert(t("deleteFailed", { error: r.error }));
-              return;
-            }
-            onDone();
-          });
-        },
-      },
-    ]);
+    const id = editPlace.id;
+    runUndoable({
+      apply: () => deletePlaceReturning(supabase, id),
+      restore: (snapshot) => restorePlace(supabase, snapshot),
+      done: t("deleted"),
+      failed: (error) => t("deleteFailed", { error }),
+    });
+    onDone();
   };
 
   return (
