@@ -341,7 +341,8 @@
     "like": "Like",
     "deleteAria": "Delete",
     "addAria": "Add",
-    "placeholderAdd": "Add a to-do"
+    "placeholderAdd": "Add a to-do",
+    "deleted": "To-do deleted"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",
@@ -610,7 +611,8 @@
     "mergeNoTargets": "There is nothing to combine with.",
     "mergeModePrompt": "How to combine",
     "mergeModeDedupe": "Duplicate (keep one)",
-    "mergeModeSum": "Add together (tip or adjustment)"
+    "mergeModeSum": "Add together (tip or adjustment)",
+    "draftDismissed": "Import discarded"
   },
   "admin": {
     "heading": "Admin",

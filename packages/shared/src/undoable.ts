@@ -15,11 +15,15 @@
 
 import type { Result } from "./data/result";
 
-export type Undoable = {
-  // やること。
-  apply: () => Promise<Result<void>>;
+// `T` は「控え」（memento）の型。**やる側が控えを作り、戻す側がそれを受け取る。**
+// 呼び出し側で変数に溜めて閉じ込める形にすると、控え忘れや取り違えが起きる
+// （消す前の姿は消した瞬間にしか手に入らないので、その受け渡しを型で縛る）。
+// 控えが要らない操作（動かす等、元の値が手元にあるもの）は T = void。
+export type Undoable<T = void> = {
+  // やること。戻すのに要る控えを返す。
+  apply: () => Promise<Result<T>>;
   // やる前の状態に戻すこと。**逆操作ではなく、控えておいた値の書き戻し。**
-  restore: () => Promise<Result<void>>;
+  restore: (memento: T) => Promise<Result<void>>;
   // 成功した時にトーストに出す文言（「予定を移動しました」）。
   done: string;
   // 失敗した時にトーストに出す文言。

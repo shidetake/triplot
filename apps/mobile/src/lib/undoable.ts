@@ -17,24 +17,26 @@ import { toast } from "@/components/toast";
 export function useUndoable(refresh: () => Promise<unknown> | unknown) {
   const t = useTranslations();
   return useCallback(
-    (u: Undoable) => {
-      const run = async (
-        step: Undoable["apply"],
-        offerUndo: boolean,
-      ): Promise<void> => {
-        const r = await step();
+    <T,>(u: Undoable<T>) => {
+      const finish = (r: { ok: true } | { ok: false; error: string }) => {
+        if (!r.ok) toast(u.failed(r.error));
+        return r.ok;
+      };
+      const run = async (): Promise<void> => {
+        const r = await u.apply();
         await refresh();
-        if (!r.ok) {
-          toast(u.failed(r.error));
-          return;
-        }
-        if (!offerUndo) return;
+        if (!finish(r)) return;
         toast(u.done, {
           label: t("common.undo"),
-          onPress: () => void run(u.restore, false),
+          onPress: () =>
+            void (async () => {
+              const back = await u.restore(r.data);
+              await refresh();
+              finish(back);
+            })(),
         });
       };
-      void run(u.apply, true);
+      void run();
     },
     [refresh, t],
   );

@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import {
   confirmSiblingDrafts,
   dismissSiblingDrafts,
+  restoreInboundDrafts,
 } from "@triplot/shared/data/inbox";
 
 import { toast } from "@/components/toast";
@@ -52,5 +53,9 @@ export function useSiblingConfirm(tripId: string, myMemberId: string) {
   const dismissSiblings = (emailIds: string[]) =>
     dismissSiblingDrafts(createClient(), emailIds);
 
-  return { confirmSiblings, dismissSiblings };
+  // 破棄を戻す（dismissSiblings が返した下書きの id をそのまま渡す）。
+  const restoreSiblings = (draftIds: string[]) =>
+    restoreInboundDrafts(createClient(), draftIds);
+
+  return { confirmSiblings, dismissSiblings, restoreSiblings };
 }

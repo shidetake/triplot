@@ -1,6 +1,5 @@
 import { router } from "expo-router";
 import {
-  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -36,6 +35,7 @@ import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { LoadError } from "@/components/load-error";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
+import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
 import {
@@ -65,9 +65,16 @@ export default function ExpensesTab() {
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
   const invalidateInbox = useInvalidateInbox();
+  const runUndoable = useUndoable(async () => {
+    await invalidate();
+    await invalidateInbox();
+  });
   // フックは早期 return より前で呼ぶ（下の loadError / データ未着のガードの
   // 後ろに置くと描画ごとにフックの数が変わって落ちる）。
-  const { dismissSiblings } = useSiblingConfirm(tripId, me?.id);
+  const { dismissSiblings, restoreSiblings } = useSiblingConfirm(
+    tripId,
+    me?.id,
+  );
 
   if (loadError) {
     return (
@@ -142,24 +149,17 @@ export default function ExpensesTab() {
   });
 
   // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。
+  //
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。破棄は行を消さず
+  // status を変えるだけなので、控えた id を書き戻せば丸ごと戻る。
   const dismissDraft = (emailId: string) => {
-    Alert.alert(tImport("dismissDraftTitle"), tImport("dismissDraftBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: tImport("dismiss"),
-        style: "destructive",
-        onPress: () => {
-          void dismissSiblings([emailId]).then((r) => {
-            if (!r.ok) {
-              Alert.alert(tImport("dismissFailed", { error: r.error }));
-              return;
-            }
-            void invalidate();
-            void invalidateInbox();
-          });
-        },
-      },
-    ]);
+    runUndoable({
+      apply: () => dismissSiblings([emailId]),
+      restore: (draftIds) => restoreSiblings(draftIds),
+      done: tImport("draftDismissed"),
+      failed: (error) => tImport("dismissFailed", { error }),
+    });
   };
 
   const rateHints = Object.entries(averageRates)

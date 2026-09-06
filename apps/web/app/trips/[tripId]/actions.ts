@@ -38,7 +38,9 @@ import {
 } from "@triplot/shared/data/members";
 import {
   createTodo,
-  deleteTodo,
+  deleteTodoReturning,
+  restoreTodo,
+  type TodoSnapshot,
   setTodoDone,
   toggleTodoLike,
   updateTodo,
@@ -1194,9 +1196,32 @@ export async function updateTodoAction(
   return { error: null };
 }
 
+// 消した姿（snapshot）を返す。「元に戻す」がそれをそのまま書き戻す
+// （@triplot/shared/undoable の「逆操作ではなく復元」）。
 export async function deleteTodoAction(
   tripId: string,
   todoId: string,
+): Promise<{ error: string | null; snapshot?: TodoSnapshot }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: t("loginRequired") };
+
+  const result = await deleteTodoReturning(supabase, todoId);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null, snapshot: result.data };
+}
+
+export async function restoreTodoAction(
+  tripId: string,
+  snapshot: TodoSnapshot,
 ): Promise<{ error: string | null }> {
   const t = await getTranslations("validation");
   const supabase = await createClient();
@@ -1205,7 +1230,7 @@ export async function deleteTodoAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: t("loginRequired") };
 
-  const result = await deleteTodo(supabase, todoId);
+  const result = await restoreTodo(supabase, snapshot);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

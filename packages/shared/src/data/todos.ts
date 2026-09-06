@@ -48,6 +48,36 @@ export async function updateTodo(
   return ok(undefined);
 }
 
+// 消した TODO の控え（restoreTodo にそのまま渡す）。中身は SQL 側が決めるので
+// クライアントは列を知らない＝列が増えても控え忘れが起きない。
+export type TodoSnapshot = Record<string, unknown>;
+
+// 消して、元の姿を返す。「元に戻す」から書き戻すために使う
+// （@triplot/shared/undoable の「逆操作ではなく復元」）。
+export async function deleteTodoReturning(
+  sb: DB,
+  todoId: string,
+): Promise<Result<TodoSnapshot>> {
+  const { data, error } = await sb.rpc("delete_todo_returning", {
+    p_id: todoId,
+  });
+  if (error) return err(error.message);
+  return ok(data as TodoSnapshot);
+}
+
+// deleteTodoReturning が返した控えをそのまま書き戻す（id も created_at も
+// 元のまま＝予定に紐づく予約TODO の参照も、並び順も、いいねも保たれる）。
+export async function restoreTodo(
+  sb: DB,
+  snapshot: TodoSnapshot,
+): Promise<Result<void>> {
+  const { error } = await sb.rpc("restore_todo", {
+    p_snapshot: snapshot as never,
+  });
+  if (error) return err(error.message);
+  return ok(undefined);
+}
+
 export async function deleteTodo(
   sb: DB,
   todoId: string,

@@ -19,7 +19,8 @@ import Swipeable from "react-native-gesture-handler/ReanimatedSwipeable";
 import { firstChar } from "@triplot/shared/memberColors";
 import {
   createTodo,
-  deleteTodo,
+  deleteTodoReturning,
+  restoreTodo,
   setTodoDone,
   toggleTodoLike,
   updateTodo,
@@ -44,6 +45,7 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { avatarStyle } from "@/lib/themeColor";
 import { usePullRefresh } from "@/lib/usePullRefresh";
+import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
@@ -246,6 +248,7 @@ function TodoSection({
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
+  const runUndoable = useUndoable(invalidate);
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const priorityLabel: Record<TodoPriority, string> = {
@@ -349,14 +352,16 @@ function TodoSection({
     void invalidate();
   };
 
-  // 確認は出さない。削除の確認の要否は**復旧コスト**で決める
-  // （ui-guidelines「削除の確認の要否」）。TODO は1行のテキストで打ち直せば
-  // 済むので安い。スワイプ＋タップの2手で十分に意図的。費用・予定・場所・
-  // 旅行は失うものが大きいので確認を残す。
+  // 確認は出さない。**トーストから元に戻せる**ので、確認とアンドゥのどちらか
+  // 一方という規則の「アンドゥ側」を採る（ui-guidelines「確認の要否は復旧
+  // コストで決める」）。消した姿は id も created_at もいいねも丸ごと控えて
+  // あるので、書き戻せば参照も並び順も保たれる。
   const onDelete = (todo: TodoRow) => {
-    void deleteTodo(supabase, todo.id).then((r) => {
-      if (!r.ok) fail(r.error);
-      void invalidate();
+    runUndoable({
+      apply: () => deleteTodoReturning(supabase, todo.id),
+      restore: (snapshot) => restoreTodo(supabase, snapshot),
+      done: t("deleted"),
+      failed: (error) => t("failed", { error }),
     });
   };
 

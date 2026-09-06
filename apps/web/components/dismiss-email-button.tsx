@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 
-import { confirmDialog } from "@/components/confirm-dialog";
 
 import { CloseButton } from "./close-button";
 
@@ -20,10 +19,10 @@ export function DismissEmailButton({
 }) {
   const t = useTranslations("import");
 
-  const onClick = async () => {
-    if (!(await confirmDialog({ title: t("dismissEmailTitle") }))) return;
-    onDismiss(id);
-  };
+  // 確認は挟まない。破棄した直後にトーストから戻せるので、確認とアンドゥの
+  // どちらか一方という規則の「アンドゥ側」を採る（ui-guidelines「確認の要否は
+  // 復旧コストで決める」）。
+  const onClick = () => onDismiss(id);
 
   return (
     <CloseButton label={t("dismiss")} onClick={onClick} className={className} />

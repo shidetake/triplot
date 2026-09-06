@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
-import { confirmDialog } from "@/components/confirm-dialog";
+import { useUndoable } from "@/lib/undoable";
 import { useSiblingConfirm } from "@/lib/import/sibling-confirm";
 import { createClient } from "@/lib/supabase/client";
 
@@ -58,7 +58,8 @@ export function ImportDraftRow({
   const [anchor, setAnchor] = useState<Anchor | null>(null);
   const router = useRouter();
 
-  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+  const runUndoable = useUndoable(router.refresh);
+  const { confirmSiblings, dismissSiblings, restoreSiblings } = useSiblingConfirm(
     tripId,
     myMemberId,
   );
@@ -75,16 +76,15 @@ export function ImportDraftRow({
 
   // 破棄はメール単位（確定と同じ単位）。1通から出た費用と予定は同じ
   // 出来事の別の見え方なので、片方だけ残しても使い道がない。
-  const onDismiss = async () => {
-    if (
-      !(await confirmDialog({
-        title: t("dismissDraftTitle"),
-        body: t("dismissDraftBody"),
-      }))
-    )
-      return;
-    await dismissSiblings(emailIds);
-    router.refresh();
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。
+  const onDismiss = () => {
+    runUndoable({
+      apply: () => dismissSiblings(emailIds),
+      restore: (draftIds) => restoreSiblings(draftIds),
+      done: t("draftDismissed"),
+      failed: (error) => t("dismissFailed", { error }),
+    });
   };
 
   return (

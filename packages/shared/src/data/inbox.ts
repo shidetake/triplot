@@ -227,23 +227,43 @@ export async function confirmSiblingDrafts(
 
 // 破棄も確定と同じ単位（メール）で波及させる。dismiss_inbound_email が
 // そのメールの未確定を全部 dismissed にする（確定済みはそのまま）。
+// 破棄した下書きの id をまとめて返す（「元に戻す」がその分だけ戻す）。
 export async function dismissSiblingDrafts(
   sb: DB,
   emailIds: string[],
-): Promise<Result<void>> {
+): Promise<Result<string[]>> {
+  const dismissed: string[] = [];
   for (const id of emailIds) {
     const r = await dismissInboundEmail(sb, id);
-    if (!r.ok) return r;
+    if (!r.ok) return err(r.error);
+    dismissed.push(...r.data);
   }
-  return ok(undefined);
+  return ok(dismissed);
 }
 
 // メールを破棄する（残っている未確定の下書きを全部 dismissed に。確定済みはそのまま）。
+// **破棄した下書きの id を返す。**「元に戻す」でその分だけ戻すために要る
+// （全部の dismissed を戻すと、以前に自分で破棄したものまで蘇る）。
 export async function dismissInboundEmail(
   sb: DB,
   id: string,
+): Promise<Result<string[]>> {
+  const { data, error } = await sb.rpc("dismiss_inbound_email", { p_id: id });
+  if (error) return err(error.message);
+  return ok((data as string[] | null) ?? []);
+}
+
+// 破棄した下書きを未確定に戻す（メール自体の決着も外して受信箱に戻す）。
+// **メール本文は戻らない** — 全部解決した時点で消しているため（保持の最小化）。
+// 下書きの中身は payload に残っているので、画面で見えるものは全部戻る。
+export async function restoreInboundDrafts(
+  sb: DB,
+  draftIds: string[],
 ): Promise<Result<void>> {
-  const { error } = await sb.rpc("dismiss_inbound_email", { p_id: id });
+  if (draftIds.length === 0) return ok(undefined);
+  const { error } = await sb.rpc("restore_inbound_drafts", {
+    p_ids: draftIds,
+  });
   if (error) return err(error.message);
   return ok(undefined);
 }

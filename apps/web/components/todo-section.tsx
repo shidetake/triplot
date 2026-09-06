@@ -10,13 +10,15 @@ import { useTranslations } from "next-intl";
 import { Select } from "@base-ui/react/select";
 
 import { toast } from "@/components/toast";
+import { useUndoable } from "@/lib/undoable";
 import { menuItemClass } from "./menu-item";
 import { Button } from "@/components/ui/button";
-import { confirmDialog } from "@/components/confirm-dialog";
+import { err, ok } from "@triplot/shared/data/result";
 
 import {
   createTodoAction,
   deleteTodoAction,
+  restoreTodoAction,
   toggleTodoAction,
   toggleTodoLikeAction,
   updateTodoAction,
@@ -195,6 +197,9 @@ export function TodoSection({
     });
   };
   const [isPending, startTransition] = useTransition();
+  // 再取得は各アクションの revalidatePath が行うので、ここでは何もしない
+  // （useUndoable はトーストと復元の手順だけを担う）。
+  const runUndoable = useUndoable(() => {});
   const [optimisticTodos, applyOptimistic] = useOptimistic(
     todos,
     (state, action: OptimisticAction): TodoRow[] => {
@@ -313,12 +318,23 @@ export function TodoSection({
     });
   };
 
-  const onDelete = async (todo: TodoRow) => {
-    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
-    startTransition(async () => {
-      applyOptimistic({ type: "delete", id: todo.id });
-      const { error } = await deleteTodoAction(tripId, todo.id);
-      if (error) toast(t("failed", { error }));
+  // 確認は出さない。**トーストから元に戻せる**ので、確認とアンドゥのどちらか
+  // 一方という規則の「アンドゥ側」を採る（ui-guidelines「確認の要否は復旧
+  // コストで決める」）。消した姿は id も created_at もいいねも丸ごと控えて
+  // あるので、書き戻せば参照も並び順も保たれる。
+  const onDelete = (todo: TodoRow) => {
+    runUndoable({
+      apply: async () => {
+        applyOptimistic({ type: "delete", id: todo.id });
+        const { error, snapshot } = await deleteTodoAction(tripId, todo.id);
+        return error || !snapshot ? err(error ?? "") : ok(snapshot);
+      },
+      restore: async (snapshot) => {
+        const { error } = await restoreTodoAction(tripId, snapshot);
+        return error ? err(error) : ok(undefined);
+      },
+      done: t("deleted"),
+      failed: (error) => t("failed", { error }),
     });
   };
 

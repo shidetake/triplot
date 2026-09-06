@@ -341,7 +341,8 @@
     "like": "いいね",
     "deleteAria": "削除",
     "addAria": "追加",
-    "placeholderAdd": "TODOを追加"
+    "placeholderAdd": "TODOを追加",
+    "deleted": "TODO を削除しました"
   },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",
@@ -610,7 +611,8 @@
     "mergeNoTargets": "まとめられる取り込みがありません。",
     "mergeModePrompt": "まとめ方",
     "mergeModeDedupe": "重複だった（片方を残す）",
-    "mergeModeSum": "合算する（チップ・調整）"
+    "mergeModeSum": "合算する（チップ・調整）",
+    "draftDismissed": "取り込みを破棄しました"
   },
   "admin": {
     "heading": "管理",

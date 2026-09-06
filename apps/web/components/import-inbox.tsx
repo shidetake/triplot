@@ -18,10 +18,12 @@ import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
   assignInboundEmailTrip,
   dismissInboundEmail,
+  restoreInboundDrafts,
   mergeInboundEmails,
   unmergeInboundEmail,
 } from "@triplot/shared/data/inbox";
 import { createClient } from "@/lib/supabase/client";
+import { useUndoable } from "@/lib/undoable";
 import { deriveTripProposals } from "@triplot/shared/import/tripProposal";
 
 import { toast } from "@/components/toast";
@@ -85,6 +87,19 @@ export function ImportInbox({
       onChanged();
     });
   };
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。破棄は行を消さず
+  // status を変えるだけなので、控えた id を書き戻せば丸ごと戻る。
+  const runUndoable = useUndoable(onChanged);
+  const dismissEmail = (id: string) => {
+    runUndoable({
+      apply: () => dismissInboundEmail(createClient(), id),
+      restore: (draftIds) => restoreInboundDrafts(createClient(), draftIds),
+      done: t("draftDismissed"),
+      failed: (error) => t("dismissFailed", { error }),
+    });
+  };
+
   // 「新規旅行」= どの旅行にも割り当てない状態。旅行一覧に候補（仮旅行）として
   // 出る。旅行が1つも無いと、この選択は「旅行を選択」だけの行き止まりになるので
   // その受け皿でもある。空の選択肢を選ぶと割り当てが外れる（＝候補に戻る）ので、
@@ -206,9 +221,7 @@ export function ImportInbox({
                   </div>
                   <DismissEmailButton
                     id={e.id}
-                    onDismiss={(id) =>
-                      run(() => dismissInboundEmail(createClient(), id))
-                    }
+                    onDismiss={dismissEmail}
                     className="h-7 w-7"
                   />
                 </li>
@@ -492,9 +505,7 @@ export function ImportInbox({
 
                     <DismissEmailButton
                       id={row.id}
-                      onDismiss={(id) =>
-                        run(() => dismissInboundEmail(createClient(), id))
-                      }
+                      onDismiss={dismissEmail}
                       className="h-8 w-8"
                     />
                   </div>

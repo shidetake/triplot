@@ -3,6 +3,7 @@ import { useLocale, useTranslations } from "use-intl";
 import {
   confirmSiblingDrafts,
   dismissSiblingDrafts,
+  restoreInboundDrafts,
 } from "@triplot/shared/data/inbox";
 
 import { toast } from "@/components/toast";
@@ -59,6 +60,9 @@ export function useSiblingConfirm(
   const dismissSiblings = (emailIds: string[]) =>
     dismissSiblingDrafts(supabase, emailIds);
 
+  // 破棄を戻す（dismissSiblings が返した下書きの id をそのまま渡す）。
+  const restoreSiblings = (draftIds: string[]) =>
+    restoreInboundDrafts(supabase, draftIds);
 
-  return { confirmSiblings, dismissSiblings };
+  return { confirmSiblings, dismissSiblings, restoreSiblings };
 }

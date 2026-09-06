@@ -9,6 +9,7 @@ import { inboxRowSummary } from "@triplot/shared/import/inboxRowSummary";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 import {
   dismissInboundEmail,
+  restoreInboundDrafts,
   mergeInboundEmails,
   type MergeMode,
   unmergeInboundEmail,
@@ -31,6 +32,7 @@ import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
+import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 
@@ -55,6 +57,7 @@ export function ImportSheet() {
     queryFn: () => fetchImportInboxRows(supabase, userId!),
     enabled: !!userId,
   });
+  const runUndoable = useUndoable(refetch);
 
   const address = data?.importToken
     ? buildImportAddress(data.importToken)
@@ -127,23 +130,16 @@ export function ImportSheet() {
     toast(tCommon("copied"));
   };
 
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え。どちらか一方があればよい」）。破棄は行を消さず
+  // status を変えるだけなので、控えた id を書き戻せば丸ごと戻る。
   const dismiss = (emailId: string) => {
-    Alert.alert(t("dismissEmailTitle"), undefined, [
-      { text: tCommon("cancel"), style: "cancel" },
-      {
-        text: t("dismiss"),
-        style: "destructive",
-        onPress: () => {
-          void dismissInboundEmail(supabase, emailId).then((r) => {
-            if (!r.ok) {
-              Alert.alert(t("dismissFailed", { error: r.error }));
-              return;
-            }
-            void refetch();
-          });
-        },
-      },
-    ]);
+    runUndoable({
+      apply: () => dismissInboundEmail(supabase, emailId),
+      restore: (draftIds) => restoreInboundDrafts(supabase, draftIds),
+      done: t("draftDismissed"),
+      failed: (error) => t("dismissFailed", { error }),
+    });
   };
 
   return (
