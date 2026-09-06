@@ -226,10 +226,29 @@ async function getRawMessage(token, id) {
   return Buffer.from(data.raw, "base64url");
 }
 
-// Gmail API の 1分あたりクォータ（totalQueryCostPerMinutePerUser）は1分で
-// 回復するので、それより少し長く待つ。
+// **待ち時間はサーバーに聞く。** Gmail の 429 には、いつ再開してよいかが
+// 書いてあることがある（"Retry after 2026-09-06T10:33:07.965Z (Mail sending)"）。
+// 当たる制限は1種類ではない — 1分あたりのクォータ
+// （totalQueryCostPerMinutePerUser）は1分で戻るが、送信の制限はもっと長く、
+// 実測で15分先を指定してきた。決め打ちの65秒で叩き続けると、回復する前に
+// 再試行を使い切って全部失敗する（実測: 24通目以降が軒並み落ちた）。
+// 書いていない時だけ、1分クォータを想定した既定値を使う。
 const RATE_LIMIT_WAIT_MS = 65_000;
+// 1回の待ちの上限。これより先を指定されたら諦める（何時間も黙って止まらない）。
+const RATE_LIMIT_MAX_WAIT_MS = 30 * 60_000;
 const MAX_RATE_LIMIT_RETRIES = 5;
+
+// エラー本文の "Retry after <ISO>" から待ち時間（ms）を読む。無ければ null。
+function retryAfterMs(err) {
+  const m = String(err?.message ?? "").match(
+    /Retry after (\d{4}-\d{2}-\d{2}T[\d:.]+Z)/,
+  );
+  if (!m) return null;
+  const at = Date.parse(m[1]);
+  if (!Number.isFinite(at)) return null;
+  // 時計のずれと処理の遅れを見て少し余分に待つ。
+  return Math.max(0, at - Date.now()) + 5_000;
+}
 
 // 429 と、Gmail が使う 403 + rateLimitExceeded/RATE_LIMIT_EXCEEDED の両方。
 // メール本文の取得（getRawMessage）でも送信でも同じ形で返る。
@@ -605,13 +624,22 @@ Options:
       // 固まって失敗した）。以前はここで1.5秒待って次のメールへ進んでいた
       // ので、**その通は取り込まれないまま黙って落ちていた**。
       //
-      // 枠は1分で回復するので、60秒待って同じメールをやり直す。
+      // 待ち時間はサーバーの指定に従う（retryAfterMs）。書いていなければ
+      // 1分クォータを想定した既定値。
       if (isRateLimitError(err) && attempt < MAX_RATE_LIMIT_RETRIES) {
+        const wait = retryAfterMs(err) ?? RATE_LIMIT_WAIT_MS;
+        if (wait > RATE_LIMIT_MAX_WAIT_MS) {
+          console.error(
+            `${indexLabel} ERROR: レート制限の回復まで ${Math.round(wait / 60_000)} 分。長すぎるので中断する`,
+          );
+          failedCount++;
+          break;
+        }
         attempt++;
         console.warn(
-          `${indexLabel} レート制限。${RATE_LIMIT_WAIT_MS / 1000}秒待って再試行 (${attempt}/${MAX_RATE_LIMIT_RETRIES})`,
+          `${indexLabel} レート制限。${Math.round(wait / 1000)}秒待って再試行 (${attempt}/${MAX_RATE_LIMIT_RETRIES})`,
         );
-        await sleep(RATE_LIMIT_WAIT_MS);
+        await sleep(wait);
         i--; // 同じメールをもう一度
         continue;
       }
