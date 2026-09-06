@@ -8,6 +8,8 @@ import {
 
 // ローカル日付で扱う（管理者が見るのは自分の時計での「今日」）。
 const d = (s: string) => new Date(`${s}T12:00:00`);
+// 日別カウンタの1行ぶん。
+const c = (day: string, count = 1) => ({ day, count });
 
 describe("bucketStart", () => {
   it("日別はその日", () => {
@@ -57,7 +59,7 @@ describe("buildUsageBuckets", () => {
 
   it("バケットごとに数え、単価を掛ける", () => {
     const buckets = buildUsageBuckets(
-      [d("2026-09-06"), d("2026-09-06"), d("2026-09-05")],
+      [c("2026-09-06", 2), c("2026-09-05", 1)],
       { now, granularity: "day", bucketCount: 3, perEmailUsd: 0.02 },
     );
     expect(buckets).toEqual([
@@ -80,7 +82,7 @@ describe("buildUsageBuckets", () => {
 
   it("単価が出せなければコストは null（0 にしない）", () => {
     // 0 と「分からない」は別。0 だと「使っていない」に見える。
-    const buckets = buildUsageBuckets([d("2026-09-06")], {
+    const buckets = buildUsageBuckets([c("2026-09-06")], {
       now,
       granularity: "day",
       bucketCount: 1,
@@ -90,12 +92,53 @@ describe("buildUsageBuckets", () => {
   });
 
   it("期間外の抽出は数えない", () => {
-    const buckets = buildUsageBuckets([d("2026-08-01")], {
+    const buckets = buildUsageBuckets([c("2026-08-01")], {
       now,
       granularity: "day",
       bucketCount: 3,
       perEmailUsd: 0.02,
     });
     expect(buckets.every((b) => b.count === 0)).toBe(true);
+  });
+});
+
+describe("日別カウンタの束ね方", () => {
+  it("週別は複数日ぶんを足し合わせる", () => {
+    // 2026-08-31(月)〜09-06(日) が同じ週。
+    const buckets = buildUsageBuckets(
+      [c("2026-08-31", 10), c("2026-09-03", 5), c("2026-09-06", 2)],
+      {
+        now: d("2026-09-06"),
+        granularity: "week",
+        bucketCount: 1,
+        perEmailUsd: 0.02,
+      },
+    );
+    expect(buckets[0]).toEqual({ start: "2026-08-31", count: 17, cost: 0.34 });
+  });
+
+  it("月別も同様", () => {
+    const buckets = buildUsageBuckets(
+      [c("2026-09-01", 3), c("2026-09-30", 4)],
+      {
+        now: d("2026-09-30"),
+        granularity: "month",
+        bucketCount: 1,
+        perEmailUsd: 0.02,
+      },
+    );
+    expect(buckets[0].count).toBe(7);
+  });
+
+  it("日付はローカルとして読む（UTC 扱いで前日にずらさない）", () => {
+    // new Date("2026-09-06") は UTC 0時＝日本時間では 9/6 9:00 だが、
+    // タイムゾーンによっては前日になる。文字列を分解して読む必要がある。
+    const buckets = buildUsageBuckets([c("2026-09-06", 1)], {
+      now: d("2026-09-06"),
+      granularity: "day",
+      bucketCount: 1,
+      perEmailUsd: null,
+    });
+    expect(buckets[0].count).toBe(1);
   });
 });

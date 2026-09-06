@@ -635,7 +635,7 @@
     "creditsTopUp": "Buy credits (Vercel)",
     "creditsUnavailable": "Could not read the balance (AI_GATEWAY_API_KEY not set, or the lookup failed).",
     "usageHeading": "LLM usage",
-    "usageDescription": "Emails actually extracted, with cost estimated from the observed per-email rate. Counted from emails still in the inbox, so deleted ones (90-day cleanup, manual purge) are excluded — this will not match the total above.",
+    "usageDescription": "Emails actually extracted, with cost estimated from the observed per-email rate. The rate is an all-time average, so day-to-day variation is not reflected.",
     "usageDaily": "Daily",
     "usageWeekly": "Weekly",
     "usageMonthly": "Monthly",

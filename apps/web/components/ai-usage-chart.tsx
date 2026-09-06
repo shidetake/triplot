@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import {
   buildUsageBuckets,
+  type DailyCount,
   type UsageGranularity,
 } from "@triplot/shared/aiUsageBuckets";
 
@@ -15,16 +16,16 @@ const BUCKET_COUNT: Record<UsageGranularity, number> = {
   month: 12,
 };
 
-// 管理画面の「LLM 使用量の推移」。抽出日時（サーバから ISO 文字列で渡る）を
-// 日/週/月に束ねて、通数と概算コストを並べる。
+// 管理画面の「LLM 使用量の推移」。日別の抽出通数（ai_usage_daily）を日/週/月に
+// 束ねて、通数と概算コストを並べる。
 //
 // **切り替えはクライアント側の状態**にする。粒度は見た目の都合でしかなく、
 // サーバの再取得を伴わない（元データは同じ抽出日時の一覧）。
 export function AiUsageChart({
-  extractedAtIso,
+  daily,
   perEmailUsd,
 }: {
-  extractedAtIso: string[];
+  daily: DailyCount[];
   perEmailUsd: number | null;
 }) {
   const t = useTranslations("admin");
@@ -33,15 +34,12 @@ export function AiUsageChart({
   // 日付が変わる瞬間にバケットの区切りが動いて表示が揺れる。
   const [now] = useState(() => new Date());
 
-  const buckets = buildUsageBuckets(
-    extractedAtIso.map((s) => new Date(s)),
-    {
-      now,
-      granularity,
-      bucketCount: BUCKET_COUNT[granularity],
-      perEmailUsd,
-    },
-  );
+  const buckets = buildUsageBuckets(daily, {
+    now,
+    granularity,
+    bucketCount: BUCKET_COUNT[granularity],
+    perEmailUsd,
+  });
   const total = buckets.reduce((s, b) => s + b.count, 0);
   const totalCost = perEmailUsd === null ? null : total * perEmailUsd;
   // 棒の高さの基準。全部0のときに 0 で割らない。

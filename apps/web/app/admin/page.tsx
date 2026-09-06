@@ -34,10 +34,13 @@ function formatUsd(v: number): string {
   return `$${v.toFixed(3)}`;
 }
 
-// 使用量の推移で遡る期間。ここで求めるのは「いつまで遡るか」だけなので、
+// 使用量の推移で遡る期間の開始日（YYYY-MM-DD）。ai_usage_daily.day は date 型
+// なので日付で比べる。ここで求めるのは「いつまで遡るか」だけなので、
 // レンダーの外（サーバで1リクエストに1回）で評価する。
-function usageSinceIso(): string {
-  return new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString();
+function usageSinceDay(): string {
+  return new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 10);
 }
 
 export default async function AdminPage() {
@@ -105,21 +108,18 @@ export default async function AdminPage() {
       .select("id", { count: "exact", head: true })
       .eq("status", "error")
       .eq("extract_error_kind", "rate_limit"),
-    // 使用量の推移の材料。**受信箱に残っている行しか数えられない**ので、
-    // 90日の自動削除より前は歯抜けになる（累計額とは別物）。月別12ヶ月ぶんを
-    // 上限に取る。
+    // 使用量の推移の材料。**受信箱ではなく日別カウンタから読む。**
+    // inbound_emails を数えると、行が消えたぶんの履歴ごと消える（90日の自動
+    // 削除、テスト用に受信箱を空にする運用）。実測: 累計331通を抽出している
+    // のに残っていたのは108通で、グラフが「今日しか使っていない」形になった。
     //
-    // **service client を使う。** inbound_emails の RLS は自分のメールしか
-    // 見せない（inbound_emails_select_own）が、ここで見たいのは
-    // **全ユーザーぶんの使用量**（クレジットの累計額と対応させたい）。
-    // ここに来る時点で is_admin は確認済み（上の notFound）。
+    // service client なのは ai_usage_daily が RLS 有効・ポリシー無しのため
+    // （ai_usage_baseline と同じ扱い）。ここに来る時点で is_admin は確認済み。
     createServiceClient()
-      .from("inbound_emails")
-      .select("extracted_at")
-      .not("extracted_at", "is", null)
-      .gte("extracted_at", usageSinceIso())
-      .order("extracted_at", { ascending: false })
-      .limit(5000),
+      .from("ai_usage_daily")
+      .select("day, extracted_count")
+      .gte("day", usageSinceDay())
+      .order("day", { ascending: false }),
   ]);
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
@@ -204,9 +204,10 @@ export default async function AdminPage() {
           {t("usageDescription")}
         </p>
         <AiUsageChart
-          extractedAtIso={(extractedRows ?? [])
-            .map((r) => r.extracted_at)
-            .filter((v): v is string => v !== null)}
+          daily={(extractedRows ?? []).map((r) => ({
+            day: r.day,
+            count: Number(r.extracted_count),
+          }))}
           perEmailUsd={perEmail}
         />
       </section>

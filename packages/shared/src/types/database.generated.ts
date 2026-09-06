@@ -60,6 +60,21 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_daily: {
+        Row: {
+          day: string
+          extracted_count: number
+        }
+        Insert: {
+          day: string
+          extracted_count?: number
+        }
+        Update: {
+          day?: string
+          extracted_count?: number
+        }
+        Relationships: []
+      }
       drain_leases: {
         Row: {
           locked_until: string

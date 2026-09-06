@@ -635,7 +635,7 @@
     "creditsTopUp": "クレジットを購入（Vercel）",
     "creditsUnavailable": "残高を取得できませんでした（AI_GATEWAY_API_KEY 未設定、または照会に失敗）。",
     "usageHeading": "LLM の使用量",
-    "usageDescription": "メール取り込みで実際に抽出した通数と、1通あたりの実績単価から出した概算のコスト。受信箱に残っているメールから数えるので、削除した分（90日の自動削除・手動での消去）は含まれない＝上の累計額とは一致しない。",
+    "usageDescription": "メール取り込みで実際に抽出した通数と、1通あたりの実績単価から出した概算のコスト。単価は全期間の平均なので、日ごとの実際のばらつきは反映されない。",
     "usageDaily": "日別",
     "usageWeekly": "週別",
     "usageMonthly": "月別",

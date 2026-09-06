@@ -51,14 +51,21 @@ export function recentBucketStarts(
   return starts.reverse();
 }
 
+/** 日別の抽出通数（ai_usage_daily の1行ぶん）。day は "YYYY-MM-DD"。 */
+export type DailyCount = { day: string; count: number };
+
 /**
- * 抽出日時の一覧 → バケットごとの通数とコスト。
+ * 日別の抽出通数 → バケットごとの通数とコスト。
+ *
+ * 入力が**日別の集計済みの数**なのは、元の抽出行（inbound_emails）が消えても
+ * 履歴を残すため（ai_usage_daily。90日の自動削除やテスト用の受信箱クリアで
+ * 履歴ごと消えていた）。
  *
  * 抽出が1件も無いバケットも 0 で埋める（歯抜けだと「その日は使わなかった」と
  * 「データが無い」の区別が付かない）。
  */
 export function buildUsageBuckets(
-  extractedAt: Date[],
+  daily: DailyCount[],
   opts: {
     now: Date;
     granularity: UsageGranularity;
@@ -68,9 +75,12 @@ export function buildUsageBuckets(
   },
 ): UsageBucket[] {
   const counts = new Map<string, number>();
-  for (const d of extractedAt) {
-    const key = bucketStart(d, opts.granularity);
-    counts.set(key, (counts.get(key) ?? 0) + 1);
+  for (const { day, count } of daily) {
+    // "YYYY-MM-DD" をローカル日付として読む（new Date("...") は UTC 扱いに
+    // なり、日本時間では前日にずれる）。
+    const [y, m, d] = day.split("-").map(Number);
+    const key = bucketStart(new Date(y, m - 1, d), opts.granularity);
+    counts.set(key, (counts.get(key) ?? 0) + count);
   }
   return recentBucketStarts(opts.now, opts.granularity, opts.bucketCount).map(
     (start) => {
