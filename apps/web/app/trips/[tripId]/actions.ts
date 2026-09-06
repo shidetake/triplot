@@ -144,7 +144,13 @@ export async function createExpenseAction(
       ? tzDisambigSideRaw
       : null;
 
-  const splitMemberIds = formData.getAll("split_member_ids").map(String);
+  // 「全員で割り勘」かどうかは hidden input の有無ではなく split_everyone で
+  // 明示的に受け取る（全員なら具体的な ID を焼き込まない＝後から加わった人も
+  // 自動で含まれる）。
+  const splitEveryone = formData.get("split_everyone") !== "0";
+  const splitMemberIds = splitEveryone
+    ? []
+    : formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
     return { ok: false, error: t("pricePositive") };
@@ -161,7 +167,7 @@ export async function createExpenseAction(
   if (!payerMemberId) {
     return { ok: false, error: t("selectPayer") };
   }
-  if (splittable && splitMemberIds.length === 0) {
+  if (splittable && !splitEveryone && splitMemberIds.length === 0) {
     return { ok: false, error: t("selectSplitTargets") };
   }
 
@@ -178,6 +184,7 @@ export async function createExpenseAction(
     payerMemberId,
     visibility,
     splittable,
+    splitEveryone,
     note,
     paidAt,
     tzDisambigTransitId,
@@ -240,7 +247,13 @@ export async function updateExpenseAction(
     tzDisambigSideRaw === "depart" || tzDisambigSideRaw === "arrive"
       ? tzDisambigSideRaw
       : null;
-  const splitMemberIds = formData.getAll("split_member_ids").map(String);
+  // 「全員で割り勘」かどうかは hidden input の有無ではなく split_everyone で
+  // 明示的に受け取る（全員なら具体的な ID を焼き込まない＝後から加わった人も
+  // 自動で含まれる）。
+  const splitEveryone = formData.get("split_everyone") !== "0";
+  const splitMemberIds = splitEveryone
+    ? []
+    : formData.getAll("split_member_ids").map(String);
 
   if (!Number.isFinite(localPrice) || localPrice <= 0) {
     return { ok: false, error: t("pricePositive") };
@@ -257,7 +270,7 @@ export async function updateExpenseAction(
   if (!payerMemberId) {
     return { ok: false, error: t("selectPayer") };
   }
-  if (splittable && splitMemberIds.length === 0) {
+  if (splittable && !splitEveryone && splitMemberIds.length === 0) {
     return { ok: false, error: t("selectSplitTargets") };
   }
 
@@ -274,6 +287,7 @@ export async function updateExpenseAction(
     payerMemberId,
     visibility,
     splittable,
+    splitEveryone,
     note,
     paidAt,
     tzDisambigTransitId,

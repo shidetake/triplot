@@ -120,6 +120,7 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
       payerMemberId: me,
       visibility: "shared",
       splittable: true,
+      splitEveryone: false,
       splitMemberIds: [me],
       note: "",
       paidAt: "2027-06-01",
@@ -224,6 +225,79 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
       { ...base, title: "空", participantsEveryone: false, participantMemberIds: [] },
       false,
     );
+    expect(empty.ok).toBe(false);
+
+    const deleted = await deleteTrip(sb, tripId, userId);
+    expect(deleted.ok, JSON.stringify(deleted)).toBe(true);
+  });
+
+  // 費用の割り勘も予定の参加者と同じ形にした（20260906000200）。
+  // 「全員」で作った費用が具体的な ID を焼き込まないことを実 DB で確かめる
+  // ——ここが焼き込まれていると、後から旅行に加わった人が割り勘に入らない。
+  it("全員で割り勘は行の有無ではなくフラグで持つ", async () => {
+    const created = await createTrip(sb, {
+      title: `${DBTEST_PREFIX}split-${Date.now()}`,
+      startDate: "2027-08-01",
+      endDate: "2027-08-03",
+      displayName: "dbtest",
+      currency: "JPY",
+      clientTz: "Asia/Tokyo",
+    });
+    expect(created.ok, JSON.stringify(created)).toBe(true);
+    if (!created.ok) return;
+    const tripId = created.data.tripId;
+    const me = await myMemberId(sb, tripId, userId);
+    const categoryId = await firstCategoryId(sb, tripId);
+
+    const base = {
+      localPrice: 1000,
+      localCurrency: "JPY" as const,
+      rateToDefault: 1,
+      categoryId,
+      payerMemberId: me,
+      visibility: "shared" as const,
+      splittable: true,
+      note: "",
+      paidAt: "2027-08-01",
+      tzDisambigTransitId: null,
+      tzDisambigSide: null,
+      place: { kind: "free" as const, label: "どこかの店" },
+    };
+
+    // 全員で割り勘: 対象の行は作らず、フラグだけが true。
+    const all = await createExpense(sb, tripId, {
+      ...base,
+      splitEveryone: true,
+      splitMemberIds: [],
+    });
+    expect(all.ok, JSON.stringify(all)).toBe(true);
+
+    // 一部の人: フラグは false で、対象の行が入る。
+    const some = await createExpense(sb, tripId, {
+      ...base,
+      note: "一部",
+      splitEveryone: false,
+      splitMemberIds: [me],
+    });
+    expect(some.ok, JSON.stringify(some)).toBe(true);
+
+    const { data: rows } = await sb
+      .from("expenses")
+      .select("note, split_everyone, expense_splits(member_id)")
+      .eq("trip_id", tripId);
+    const everyoneRow = (rows ?? []).find((r) => r.note === null);
+    const customRow = (rows ?? []).find((r) => r.note === "一部");
+    expect(everyoneRow?.split_everyone).toBe(true);
+    expect(everyoneRow?.expense_splits ?? []).toHaveLength(0);
+    expect(customRow?.split_everyone).toBe(false);
+    expect(customRow?.expense_splits ?? []).toHaveLength(1);
+
+    // 「一部の人」なのに誰も居ない、は作らせない（入口で弾く）。
+    const empty = await createExpense(sb, tripId, {
+      ...base,
+      splitEveryone: false,
+      splitMemberIds: [],
+    });
     expect(empty.ok).toBe(false);
 
     const deleted = await deleteTrip(sb, tripId, userId);

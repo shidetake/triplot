@@ -230,12 +230,19 @@ export default async function TripDetailPage({
   // Settlement / Summary 用に default_currency に換算済みで渡す
   // 退会者も含める。退会しても払った分・借りた分は消えないので、
   // active だけで精算すると金額が釣り合わなくなる。
+  // 「全員で割り勘」の解決は**アクティブメンバー**で行う（旅行から抜けた人は
+  // 以後の全員に含まれない）。一方、精算の相手一覧は退会者も含む allMembers
+  // ＝払った分・借りた分は抜けても消えないので、そこで絞ると釣り合わない。
+  const activeMemberIds = activeMembers.map((m) => m.id);
   const settlements = calculateSettlements(
-    toSettlementExpenses(expenses),
+    toSettlementExpenses(expenses, activeMemberIds),
     allMembers.map((m) => ({ id: m.id })),
   );
 
-  const summary = calculateExpenseSummary(toSummaryExpenses(expenses), me.id);
+  const summary = calculateExpenseSummary(
+    toSummaryExpenses(expenses, activeMemberIds),
+    me.id,
+  );
 
   // CSV エクスポート用: ID を名前に解決した行。発生順（expenses は既に
   // 発生順に並んでいる）。

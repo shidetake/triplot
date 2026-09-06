@@ -19,7 +19,10 @@ import { PlaceIcon } from "./place-list";
 import { PrivateBadge } from "./private-badge";
 
 // 型の単一の真実は shared 側（RN と共用）。既存 import を壊さないよう re-export。
-import type { ExpenseRow } from "@triplot/shared/tripDerive";
+import {
+  effectiveSplitMemberIds,
+  type ExpenseRow,
+} from "@triplot/shared/tripDerive";
 export type { ExpenseRow };
 
 // 退会者を含む全員が渡る。支払者名と割り勘の対象は退会後も記録として残るので、
@@ -70,6 +73,8 @@ export function ExpenseList({
 }) {
   const t = useTranslations("expense");
   const memberById = new Map(members.map((m) => [m.id, m]));
+  // 「全員で割り勘」は今いる人に解決する（作成時の顔ぶれで固定しない）。
+  const activeMemberIds = members.filter((m) => m.active).map((m) => m.id);
   const categoryById = new Map(categories.map((c) => [c.id, c]));
   const placeNameById = new Map(places.map((p) => [p.id, p.name]));
 
@@ -97,6 +102,7 @@ export function ExpenseList({
               e.place_id ? (placeNameById.get(e.place_id) ?? null) : null
             }
             defaultCurrency={defaultCurrency}
+            activeMemberIds={activeMemberIds}
             onEdit={(anchor) => setEditing({ expense: e, anchor })}
           />
         ))}
@@ -143,10 +149,12 @@ function ExpenseRowItem({
   category,
   placeName,
   defaultCurrency,
+  activeMemberIds,
   onEdit,
 }: {
   expense: ExpenseRow;
   memberById: Map<string, Member>;
+  activeMemberIds: string[];
   category: Category | undefined;
   placeName: string | null;
   defaultCurrency: Currency;
@@ -155,7 +163,7 @@ function ExpenseRowItem({
   const t = useTranslations("expense");
   const payer = memberById.get(expense.payer_member_id);
   const splitMembers = expense.splittable
-    ? expense.split_member_ids
+    ? effectiveSplitMemberIds(expense, activeMemberIds)
         .map((id) => memberById.get(id))
         .filter((m): m is Member => !!m)
     : null;

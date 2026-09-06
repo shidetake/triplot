@@ -129,6 +129,8 @@ export function expenseFieldsFromDraft(
   // （実データ: 1人旅行の取り込みで確定した費用に割り勘UIが出ていた——
   // ここが true 固定になっていたため）。
   const splittable = ctx.activeMemberIds.length > 1;
+  // 「全員」で作る＝後から旅行に加わった人も自動で含まれる。具体的な ID を
+  // 焼き込まない。
   return {
     localPrice: d.initialPrice,
     localCurrency: d.initialCurrency,
@@ -137,7 +139,8 @@ export function expenseFieldsFromDraft(
     payerMemberId: ctx.myMemberId,
     visibility: "shared",
     splittable,
-    splitMemberIds: ctx.activeMemberIds,
+    splitEveryone: true,
+    splitMemberIds: [],
     note: d.initialNote ?? "",
     paidAt: d.initialPaidAt,
     // 乗継日の選択はフォームの新規作成時と同じく持たない（両方 null＝旅程から

@@ -151,9 +151,11 @@ export function ExpenseForm({
   // として復元する。split_member_ids は空で保存されているので、ここで自分を
   // 1人だけ選択した状態にしておく（チップ UI で自分のみ表示）。
   const initOnlySelf = isEdit && !editExpense.splittable;
+  // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
+  // アクティブメンバーに解決する（後から加わった人もここに現れる）。
   const initSplits: Set<string> = initOnlySelf
     ? new Set([myMemberId])
-    : isEdit
+    : isEdit && !editExpense.split_everyone
       ? new Set(editExpense.split_member_ids)
       : new Set(members.map((m) => m.id));
 
@@ -331,15 +333,11 @@ export function ExpenseForm({
   );
 
   // 割り勘対象の "全員 / 一部" モード（event-form の参加者と同じ disclosure）。
-  // 編集時、保存済み split がアクティブメンバーと完全一致なら "all"。
-  // それ以外（subset / 自分のみ）は "custom" でチップ展開した状態で開く。
-  const splitsMatchAll = (() => {
-    if (initSplits.size !== members.length) return false;
-    return members.every((m) => initSplits.has(m.id));
-  })();
+  // 編集時のモードは保存された split_everyone がそのまま決める（選択内容が
+  // たまたま全員と一致するかで推測しない）。
   const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
     "splitMode",
-    isEdit && !splitsMatchAll ? "custom" : "all",
+    isEdit && !editExpense.split_everyone ? "custom" : "all",
   );
 
   // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。平均は丸めて入れる
@@ -391,11 +389,11 @@ export function ExpenseForm({
   const onlySelf =
     selectedSplits.size === 1 && selectedSplits.has(myMemberId);
   const submittedSplittable = visibility === "shared" && !onlySelf;
-  const submittedSplitIds: string[] = !submittedSplittable
+  // 「全員」は具体的な ID を焼き込まない（後から加わった人も含まれるように）。
+  const submittedSplitEveryone = !submittedSplittable || splitMode === "all";
+  const submittedSplitIds: string[] = submittedSplitEveryone
     ? []
-    : splitMode === "all"
-      ? members.map((m) => m.id)
-      : Array.from(selectedSplits);
+    : Array.from(selectedSplits);
 
   // disclosure ラベルは選択状態から決める。
   //  - 全員選択 → "全員"
@@ -774,11 +772,17 @@ export function ExpenseForm({
         </div>
       )}
 
-      {/* 送信用 hidden inputs。"自分のみ" は splittable=false + 空配列、
-          それ以外（全員/一部）は splittable=true + 選択分。 */}
+      {/* 送信用 hidden inputs。"自分のみ" は splittable=false、それ以外は
+          splittable=true。全員かどうかは split_everyone で明示的に送る
+          （ID の有無から推測させない）。 */}
       {submittedSplittable && (
         <input type="hidden" name="splittable" value="on" />
       )}
+      <input
+        type="hidden"
+        name="split_everyone"
+        value={submittedSplitEveryone ? "1" : "0"}
+      />
       {submittedSplitIds.map((id) => (
         <input key={id} type="hidden" name="split_member_ids" value={id} />
       ))}

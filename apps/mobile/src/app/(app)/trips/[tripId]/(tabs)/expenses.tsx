@@ -22,6 +22,7 @@ import {
   deriveExpenseFormDefaults,
   deriveOrderedExpenses,
   deriveScheduleEvents,
+  effectiveSplitMemberIds,
   toSettlementExpenses,
   toSummaryExpenses,
 } from "@triplot/shared/tripDerive";
@@ -101,9 +102,18 @@ export default function ExpensesTab() {
     (data.placesRaw ?? []).map((p) => [p.id, p.name]),
   );
 
-  const summary = calculateExpenseSummary(toSummaryExpenses(expenses), me.id);
+  // 「全員で割り勘」の解決は**アクティブメンバー**で行う（旅行から抜けた人は
+  // 以後の全員に含まれない）。一方、精算の相手一覧は退会者も含む members
+  // ＝払った分・借りた分は抜けても消えないので、そこで絞ると釣り合わない。
+  const activeMemberIds = (data.members ?? [])
+    .filter((m) => m.left_at === null)
+    .map((m) => m.id);
+  const summary = calculateExpenseSummary(
+    toSummaryExpenses(expenses, activeMemberIds),
+    me.id,
+  );
   const settlements = calculateSettlements(
-    toSettlementExpenses(expenses),
+    toSettlementExpenses(expenses, activeMemberIds),
     members.map((m) => ({ id: m.id })),
   );
 
@@ -281,7 +291,7 @@ export default function ExpensesTab() {
               const category = categoryById.get(e.category_id);
               const payer = memberById.get(e.payer_member_id);
               const splitMembers = e.splittable
-                ? e.split_member_ids
+                ? effectiveSplitMemberIds(e, activeMemberIds)
                     .map((id) => memberById.get(id))
                     .filter((m): m is MemberLite => !!m)
                 : null;

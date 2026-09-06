@@ -44,7 +44,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     sb
       .from("expenses")
       .select(
-        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, expense_splits(member_id)",
+        "id, local_price, local_currency, rate_to_default, category_id, visibility, splittable, note, paid_at, tz_disambig_transit_id, tz_disambig_side, created_at, payer_member_id, created_by_member_id, place_id, split_everyone, expense_splits(member_id)",
       )
       .eq("trip_id", tripId)
       // 発生順の確定はアプリ側（resolveEventTz で解決したTZ + paid_at から

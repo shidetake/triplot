@@ -18,6 +18,11 @@ export type ExpenseFields = {
   // 乗継当日の選択。非曖昧な日は null。
   tzDisambigTransitId: string | null;
   tzDisambigSide: "depart" | "arrive" | null;
+  // 「全員で割り勘」かどうかは事実として持つ（splitMemberIds が空である
+  // ことから推測しない。予定の participantsEveryone と同じ形）。true のとき
+  // splitMemberIds は無視され、対象は読み出し時にアクティブメンバーへ解決
+  // される＝後から加わった人も自動で含まれる。
+  splitEveryone: boolean;
   splitMemberIds: string[];
   place: PlaceInput;
 };
@@ -33,7 +38,9 @@ function expenseBase(f: ExpenseFields) {
     p_splittable: f.splittable,
     p_note: f.note, // 空文字は DB 側 nullif で NULL
     p_paid_at: f.paidAt,
-    p_split_member_ids: f.splittable ? f.splitMemberIds : [],
+    p_split_everyone: !f.splittable || f.splitEveryone,
+    p_split_member_ids:
+      f.splittable && !f.splitEveryone ? f.splitMemberIds : [],
     // gen-types は nullable 引数を string にする癖。
     p_tz_disambig_transit_id: f.tzDisambigTransitId as unknown as string,
     p_tz_disambig_side: f.tzDisambigSide as unknown as string,

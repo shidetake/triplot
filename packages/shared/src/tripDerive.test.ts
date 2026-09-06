@@ -7,6 +7,7 @@ import {
   deriveOrderedExpenses,
   deriveScheduleEvents,
   deriveTodos,
+  effectiveSplitMemberIds,
   toSettlementExpenses,
   type ExpenseRow,
   type RawEvent,
@@ -31,6 +32,7 @@ function rawExpense(over: Partial<RawExpense>): RawExpense {
     payer_member_id: "m1",
     created_by_member_id: "m1",
     place_id: null,
+    split_everyone: false,
     expense_splits: [{ member_id: "m1" }],
     ...over,
   };
@@ -201,9 +203,49 @@ describe("deriveAverageRates / toSettlementExpenses", () => {
   });
 
   it("settlement には shared かつ splittable のみ渡す", () => {
-    const s = toSettlementExpenses(expenses);
+    const s = toSettlementExpenses(expenses, ["m1"]);
     expect(s.map((x) => x.id).sort()).toEqual(["u1", "u2"]);
     expect(s[0].amount).toBe(100 * 150);
+  });
+});
+
+describe("effectiveSplitMemberIds", () => {
+  const row = (over: Partial<ExpenseRow>) =>
+    ({
+      splittable: true,
+      split_everyone: true,
+      split_member_ids: [],
+      ...over,
+    }) as ExpenseRow;
+
+  it("『全員』は今いるメンバーに解決する（後から加わった人も入る）", () => {
+    // 作成時は m1・m2 の2人でも、m3 が加わった後に読むと3人で割る。
+    expect(effectiveSplitMemberIds(row({}), ["m1", "m2", "m3"])).toEqual([
+      "m1",
+      "m2",
+      "m3",
+    ]);
+  });
+
+  it("旅行から抜けた人は『全員』から外れる", () => {
+    // アクティブメンバーだけを渡す側の責任。抜けた人は以後の全員に入らない。
+    expect(effectiveSplitMemberIds(row({}), ["m1", "m2"])).toEqual([
+      "m1",
+      "m2",
+    ]);
+  });
+
+  it("『一部の人』は保存された顔ぶれのまま（メンバーが増えても変わらない）", () => {
+    const e = row({ split_everyone: false, split_member_ids: ["m1", "m2"] });
+    expect(effectiveSplitMemberIds(e, ["m1", "m2", "m3"])).toEqual([
+      "m1",
+      "m2",
+    ]);
+  });
+
+  it("割り勘しない費用は対象なし", () => {
+    const e = row({ splittable: false });
+    expect(effectiveSplitMemberIds(e, ["m1", "m2"])).toEqual([]);
   });
 });
 

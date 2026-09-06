@@ -68,6 +68,12 @@ export type ExpenseRow = {
   created_at: string;
   payer_member_id: string;
   created_by_member_id: string;
+  // 「全員で割り勘」かどうかは**事実として持つ**（split_member_ids が空である
+  // ことから推測しない。予定の participants_everyone と同じ形）。true のとき
+  // split_member_ids は空で、実際の対象は「その時点のアクティブメンバー」＝
+  // effectiveSplitMemberIds() で解決する。
+  split_everyone: boolean;
+  // split_everyone=false のときだけ意味を持つ、明示的に選ばれた対象。
   split_member_ids: string[];
   place_id: string | null;
   // 実効TZ（旅程から解決済み。表示・編集フォームの初期値に使う）。
@@ -159,6 +165,7 @@ export type RawExpense = {
   payer_member_id: string;
   created_by_member_id: string;
   place_id: string | null;
+  split_everyone: boolean;
   expense_splits: { member_id: string }[] | null;
 };
 
@@ -273,6 +280,7 @@ export function deriveOrderedExpenses(
         created_at: e.created_at,
         payer_member_id: e.payer_member_id,
         created_by_member_id: e.created_by_member_id,
+        split_everyone: e.split_everyone,
         split_member_ids: (e.expense_splits ?? []).map((s) => s.member_id),
         place_id: e.place_id,
         tz,
@@ -330,9 +338,29 @@ export function deriveAverageRates(
   return averageRates;
 }
 
+// 実際に割り勘の対象になるメンバー。「全員」は**その時点のアクティブメンバー**
+// に解決する（作成時に固定しない）。これにより、後から旅行に加わった人も
+// 「全員で割り勘」の費用に自動で含まれ、旅行から抜けた人は外れる。
+//
+// **退会（アカウント削除）と旅行から抜けるは別物。** アカウントを消しても
+// メンバー行はアクティブのまま残るので人数は変わらない（過去の割り勘の分け前
+// が変わらない）。旅行から抜けるのは「本当にその旅行に参加していない」という
+// 意味なので、そこは計算し直すのが正しい。
+export function effectiveSplitMemberIds(
+  e: Pick<ExpenseRow, "splittable" | "split_everyone" | "split_member_ids">,
+  activeMemberIds: string[],
+): string[] {
+  if (!e.splittable) return [];
+  return e.split_everyone ? activeMemberIds : e.split_member_ids;
+}
+
 // Settlement / Summary 用に default_currency に換算済みで渡す。
+// **activeMemberIds は必須**。「全員で割り勘」の実体はここで解決され、金額の
+// 分母になる。省略できるようにすると、解決し忘れた呼び出しが「全員なのに
+// 0人で割り勘」になって静かに金額が狂う。
 export function toSettlementExpenses(
   expenses: ExpenseRow[],
+  activeMemberIds: string[],
 ): SettlementExpense[] {
   return expenses
     .filter((e) => e.visibility === "shared" && e.splittable)
@@ -340,17 +368,20 @@ export function toSettlementExpenses(
       id: e.id,
       amount: e.local_price * e.rate_to_default,
       payerMemberId: e.payer_member_id,
-      splitMemberIds: e.split_member_ids,
+      splitMemberIds: effectiveSplitMemberIds(e, activeMemberIds),
     }));
 }
 
-export function toSummaryExpenses(expenses: ExpenseRow[]): SummaryExpense[] {
+export function toSummaryExpenses(
+  expenses: ExpenseRow[],
+  activeMemberIds: string[],
+): SummaryExpense[] {
   return expenses.map((e) => ({
     visibility: e.visibility,
     amountInDefault: e.local_price * e.rate_to_default,
     payerMemberId: e.payer_member_id,
     splittable: e.splittable,
-    splitMemberIds: e.split_member_ids,
+    splitMemberIds: effectiveSplitMemberIds(e, activeMemberIds),
     createdByMemberId: e.created_by_member_id,
   }));
 }

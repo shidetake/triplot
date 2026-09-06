@@ -45,7 +45,8 @@ describe("expenseFieldsFromDraft", () => {
       payerMemberId: "m1",
       visibility: "shared",
       splittable: true,
-      splitMemberIds: ["m1", "m2"],
+      splitEveryone: true,
+      splitMemberIds: [],
       note: "",
       paidAt: "2026-08-01",
       tzDisambigTransitId: null,
@@ -73,12 +74,16 @@ describe("expenseFieldsFromDraft", () => {
     ).toBeNull();
   });
 
-  it("退会者は割り勘の既定に入れない", () => {
+  it("『全員』で作る＝具体的な ID を焼き込まない", () => {
+    // 後から旅行に加わった人も「全員」に含まれるようにするため、作成時の
+    // メンバーを列挙して固定しない（解決は読み出し時＝
+    // effectiveSplitMemberIds）。
     const f = expenseFieldsFromDraft(expenseDraft(), {
       ...expenseCtx,
       activeMemberIds: ["m1", "m2"],
     });
-    expect(f?.splitMemberIds).toEqual(["m1", "m2"]);
+    expect(f?.splitEveryone).toBe(true);
+    expect(f?.splitMemberIds).toEqual([]);
   });
 
   it("アクティブメンバーが自分1人だけなら割り勘にしない", () => {

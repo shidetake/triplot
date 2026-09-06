@@ -262,21 +262,25 @@ export function ExpenseForm({
 
   // 割り勘対象（web と同じ導出）。
   const initOnlySelf = isEdit && !editExpense.splittable;
+  // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
+  // アクティブメンバーに解決する（後から加わった人もここに現れる）。
   const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
     "selectedSplits",
     () =>
       initOnlySelf
         ? new Set([myMemberId])
-        : isEdit
+        : isEdit && !editExpense.split_everyone
           ? new Set(editExpense.split_member_ids)
           : new Set(members.map((m) => m.id)),
   );
   const splitsMatchAll =
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
+  // 編集時のモードは保存された split_everyone がそのまま決める（選択内容が
+  // たまたま全員と一致するかで推測しない）。
   const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
     "splitMode",
-    isEdit && !splitsMatchAll ? "custom" : "all",
+    isEdit && !editExpense.split_everyone ? "custom" : "all",
   );
   const toggleSplit = (id: string) => {
     setSelectedSplits((prev) => {
@@ -291,11 +295,9 @@ export function ExpenseForm({
   };
   const onlySelf = selectedSplits.size === 1 && selectedSplits.has(myMemberId);
   const splittable = visibility === "shared" && !onlySelf;
-  const splitIds = !splittable
-    ? []
-    : splitMode === "all"
-      ? members.map((m) => m.id)
-      : Array.from(selectedSplits);
+  // 「全員」は具体的な ID を焼き込まない（後から加わった人も含まれるように）。
+  const splitEveryone = !splittable || splitMode === "all";
+  const splitIds = splitEveryone ? [] : Array.from(selectedSplits);
   const splitLabel = onlySelf
     ? t("splitSelfOnly")
     : splitsMatchAll
@@ -383,6 +385,7 @@ export function ExpenseForm({
       payerMemberId: visibility === "private" ? myMemberId : payer,
       visibility,
       splittable,
+      splitEveryone,
       note: note.trim(),
       paidAt: `${paidAtDate}T${showTime ? paidAtTime : "00:00"}`,
       tzDisambigTransitId,

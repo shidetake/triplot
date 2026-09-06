@@ -288,6 +288,7 @@ export type Database = {
           payer_member_id: string
           place_id: string | null
           rate_to_default: number
+          split_everyone: boolean
           splittable: boolean
           trip_id: string
           tz_disambig_side: string | null
@@ -306,6 +307,7 @@ export type Database = {
           payer_member_id: string
           place_id?: string | null
           rate_to_default: number
+          split_everyone?: boolean
           splittable?: boolean
           trip_id: string
           tz_disambig_side?: string | null
@@ -324,6 +326,7 @@ export type Database = {
           payer_member_id?: string
           place_id?: string | null
           rate_to_default?: number
+          split_everyone?: boolean
           splittable?: boolean
           trip_id?: string
           tz_disambig_side?: string | null
@@ -1031,6 +1034,7 @@ export type Database = {
           p_payer_member_id: string
           p_place: Json
           p_rate_to_default: number
+          p_split_everyone: boolean
           p_split_member_ids: string[]
           p_splittable: boolean
           p_trip_id: string
@@ -1242,6 +1246,7 @@ export type Database = {
           p_payer_member_id: string
           p_place: Json
           p_rate_to_default: number
+          p_split_everyone: boolean
           p_split_member_ids: string[]
           p_splittable: boolean
           p_tz_disambig_side: string
