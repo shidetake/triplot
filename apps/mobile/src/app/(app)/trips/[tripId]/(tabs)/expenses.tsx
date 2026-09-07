@@ -41,6 +41,7 @@ import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { LoadError } from "@/components/load-error";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
 import { supabase } from "@/lib/supabase";
+import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -75,6 +76,9 @@ export default function ExpensesTab() {
     await invalidate();
     await invalidateInbox();
   });
+  // 消した行は、サーバの返事と再取得を待たずに一覧から外す（空の行が残らない
+  // ように）。合計・精算もこの絞った配列から出る。
+  const hide = useOptimisticHide();
   // フックは早期 return より前で呼ぶ（下の loadError / データ未着のガードの
   // 後ろに置くと描画ごとにフックの数が変わって落ちる）。
   const { dismissSiblings, restoreSiblings } = useSiblingConfirm(
@@ -100,7 +104,9 @@ export default function ExpensesTab() {
     scheduleEvents,
     data.trip.default_timezone,
   );
-  const expenses = deriveOrderedExpenses(data.expensesRaw, tzTimeline);
+  const expenses = deriveOrderedExpenses(data.expensesRaw, tzTimeline).filter(
+    (e) => !hide.has(e.id),
+  );
   const averageRates = deriveAverageRates(expenses, defaultCurrency);
   // 退会者も含む全員。支払者名と割り勘の対象は退会後も記録として残るので
   // ここで絞ると支払者が空欄になり、精算の金額も釣り合わなくなる。
@@ -152,18 +158,20 @@ export default function ExpensesTab() {
     })),
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
     tzTimeline,
-  });
+  }).filter((d) => !hide.has(d.emailId));
 
   // 一覧から費用を消す。**確認は挟まず、トーストから戻せるようにする**
   // （ui-guidelines「確認とアンドゥは同じ問題への2つの答え」）。控えには
   // 割り勘の対象と、この費用として確定した取り込みの下書きの紐づけも入っている。
   const removeExpense = (id: string) => {
-    runUndoable({
-      apply: () => deleteExpenseReturning(supabase, id),
-      restore: (snapshot) => restoreExpense(supabase, snapshot),
-      done: t("expense.deleted"),
-      failed: (error) => t("expense.deleteFailed", { error }),
-    });
+    runUndoable(
+      hide.wrap(id, {
+        apply: () => deleteExpenseReturning(supabase, id),
+        restore: (snapshot) => restoreExpense(supabase, snapshot),
+        done: t("expense.deleted"),
+        failed: (error) => t("expense.deleteFailed", { error }),
+      }),
+    );
   };
 
   // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。
@@ -172,12 +180,14 @@ export default function ExpensesTab() {
   // 同じ問題への2つの答え。どちらか一方があればよい」）。破棄は行を消さず
   // status を変えるだけなので、控えた id を書き戻せば丸ごと戻る。
   const dismissDraft = (emailId: string) => {
-    runUndoable({
-      apply: () => dismissSiblings([emailId]),
-      restore: (draftIds) => restoreSiblings(draftIds),
-      done: tImport("draftDismissed"),
-      failed: (error) => tImport("dismissFailed", { error }),
-    });
+    runUndoable(
+      hide.wrap(emailId, {
+        apply: () => dismissSiblings([emailId]),
+        restore: (draftIds) => restoreSiblings(draftIds),
+        done: tImport("draftDismissed"),
+        failed: (error) => tImport("dismissFailed", { error }),
+      }),
+    );
   };
 
   const rateHints = Object.entries(averageRates)

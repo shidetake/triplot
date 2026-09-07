@@ -117,10 +117,11 @@ import { CheckIcon, ChevronIcon, FilterIcon, XIcon } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
 import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { SheetTitle } from "@/components/sheet-title";
-import { toast } from "@/components/toast";
+import { Toaster, toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -393,6 +394,8 @@ export default function PlacesTab() {
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
   const runUndoable = useUndoable(invalidate);
+  // 消した行は再取得を待たずに一覧から外す（optimistic-hide.ts）。
+  const hide = useOptimisticHide();
   const { height: windowHeight } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // react-native-screens の既知の挙動: この画面の裏に formSheet
@@ -629,8 +632,8 @@ export default function PlacesTab() {
       scheduleEvents,
       deriveOrderedExpenses(data.expensesRaw, tzTimeline),
       tzTimeline,
-    );
-  }, [data]);
+    ).filter((p) => !hide.has(p.id));
+  }, [data, hide]);
 
   // 展開した行に出す「◯日目・M/D(曜)」バッジ用。予定/費用のどちらにも
   // 紐づかない場所は日時不明なので Map に含まれず、バッジ無しになる。
@@ -1680,12 +1683,14 @@ export default function PlacesTab() {
   // 予定の出発地・到着地と費用の場所が黙って空になるので、控えにはそれも
   // 入っている（restorePlace が指し直す）。
   const removePlace = (p: PlaceRow) => {
-    runUndoable({
-      apply: () => deletePlaceReturning(supabase, p.id),
-      restore: (snapshot) => restorePlace(supabase, snapshot),
-      done: t("deleted"),
-      failed: (error) => t("deleteFailed", { error }),
-    });
+    runUndoable(
+      hide.wrap(p.id, {
+        apply: () => deletePlaceReturning(supabase, p.id),
+        restore: (snapshot) => restorePlace(supabase, snapshot),
+        done: t("deleted"),
+        failed: (error) => t("deleteFailed", { error }),
+      }),
+    );
   };
 
   // 一覧シートの表示モード（検索結果 or 通常一覧）。ボタン/検索で開く方式なので
@@ -2460,6 +2465,13 @@ export default function PlacesTab() {
               }
             />
           )}
+          {/* このシート専用のトースト。ルートの <Toaster />（app/_layout.tsx）は
+              native の formSheet の裏に回って見えない（実機フィードバック: 場所を
+              消した時の「元に戻す」が一覧シートの下に隠れていた）。器を挟まず
+              FlatList の兄弟として置く＝FlatList が ScreenStackItem 直下のまま
+              なので、native のスクロール検出（行タップがシートのジェスチャに
+              飲まれる問題）に影響しない。 */}
+          <Toaster inSheet />
         </ScreenStackItem>
       )}
 

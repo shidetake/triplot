@@ -45,6 +45,7 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { avatarStyle } from "@/lib/themeColor";
 import { usePullRefresh } from "@/lib/usePullRefresh";
+import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
@@ -249,6 +250,8 @@ function TodoSection({
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
   const runUndoable = useUndoable(invalidate);
+  // 消した行は再取得を待たずに一覧から外す（optimistic-hide.ts）。
+  const hide = useOptimisticHide();
   const memberById = new Map(members.map((m) => [m.id, m]));
 
   const priorityLabel: Record<TodoPriority, string> = {
@@ -357,15 +360,17 @@ function TodoSection({
   // コストで決める」）。消した姿は id も created_at もいいねも丸ごと控えて
   // あるので、書き戻せば参照も並び順も保たれる。
   const onDelete = (todo: TodoRow) => {
-    runUndoable({
-      apply: () => deleteTodoReturning(supabase, todo.id),
-      restore: (snapshot) => restoreTodo(supabase, snapshot),
-      done: t("deleted"),
-      failed: (error) => t("failed", { error }),
-    });
+    runUndoable(
+      hide.wrap(todo.id, {
+        apply: () => deleteTodoReturning(supabase, todo.id),
+        restore: (snapshot) => restoreTodo(supabase, snapshot),
+        done: t("deleted"),
+        failed: (error) => t("failed", { error }),
+      }),
+    );
   };
 
-  const sorted = sortTodos(todos);
+  const sorted = sortTodos(todos).filter((x) => !hide.has(x.id));
 
   return (
     <View style={styles.section}>

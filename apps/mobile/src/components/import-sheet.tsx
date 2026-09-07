@@ -33,6 +33,7 @@ import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { supabase } from "@/lib/supabase";
+import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -59,12 +60,15 @@ export function ImportSheet() {
     enabled: !!userId,
   });
   const runUndoable = useUndoable(refetch);
+  const hide = useOptimisticHide();
 
   const address = data?.importToken
     ? buildImportAddress(data.importToken)
     : null;
   const trips = data?.trips ?? [];
-  const emails = data?.emails ?? [];
+  // 破棄した行は、サーバの返事と再取得を待たずに一覧から外す（空の行が残らない
+  // ように）。件数の見出しもこの絞った配列から出す。
+  const emails = (data?.emails ?? []).filter((e) => !hide.has(e.id));
   // 同名旅行を見分けやすいよう "Hawaii (2026, 7日間)" の形にする
   // （create-trip のコピー元選択と同じ関数。実機フィードバック: 同名の旅行が
   // 複数あると割当先の選択でどちらか分からなくなっていた）。
@@ -135,12 +139,14 @@ export function ImportSheet() {
   // 同じ問題への2つの答え。どちらか一方があればよい」）。破棄は行を消さず
   // status を変えるだけなので、控えた id を書き戻せば丸ごと戻る。
   const dismiss = (emailId: string) => {
-    runUndoable({
-      apply: () => dismissInboundEmail(supabase, emailId),
-      restore: (draftIds) => restoreInboundDrafts(supabase, draftIds),
-      done: t("draftDismissed"),
-      failed: (error) => t("dismissFailed", { error }),
-    });
+    runUndoable(
+      hide.wrap(emailId, {
+        apply: () => dismissInboundEmail(supabase, emailId),
+        restore: (draftIds) => restoreInboundDrafts(supabase, draftIds),
+        done: t("draftDismissed"),
+        failed: (error) => t("dismissFailed", { error }),
+      }),
+    );
   };
 
   return (
@@ -210,7 +216,9 @@ export function ImportSheet() {
         ] as const
       ).map(([headingKey, wantQueued]) => {
         const group = (data?.errorRows ?? []).filter(
-          (e) => (e.extract_error_kind === "rate_limit") === wantQueued,
+          (e) =>
+            (e.extract_error_kind === "rate_limit") === wantQueued &&
+            !hide.has(e.id),
         );
         if (group.length === 0) return null;
         return (
