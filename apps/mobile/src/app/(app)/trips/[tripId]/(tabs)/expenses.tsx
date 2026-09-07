@@ -13,6 +13,10 @@ import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import { calculateSettlements } from "@triplot/shared/settlement";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
+import {
+  deleteExpenseReturning,
+  restoreExpense,
+} from "@triplot/shared/data/expenses";
 import { deriveExpenseDraftItems } from "@triplot/shared/import/drafts";
 import { buildTripTzTimeline } from "@triplot/shared/schedule";
 import {
@@ -36,6 +40,7 @@ import { PrivateBadge } from "@/components/private-badge";
 import { PlaceCategoryIcon } from "@/components/place-category-icon";
 import { LoadError } from "@/components/load-error";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
+import { supabase } from "@/lib/supabase";
 import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -148,6 +153,18 @@ export default function ExpensesTab() {
     unknownMerchantLabel: t("tripDetail.unknownMerchant"),
     tzTimeline,
   });
+
+  // 一覧から費用を消す。**確認は挟まず、トーストから戻せるようにする**
+  // （ui-guidelines「確認とアンドゥは同じ問題への2つの答え」）。控えには
+  // 割り勘の対象と、この費用として確定した取り込みの下書きの紐づけも入っている。
+  const removeExpense = (id: string) => {
+    runUndoable({
+      apply: () => deleteExpenseReturning(supabase, id),
+      restore: (snapshot) => restoreExpense(supabase, snapshot),
+      done: t("expense.deleted"),
+      failed: (error) => t("expense.deleteFailed", { error }),
+    });
+  };
 
   // 破棄は確定と同じくメール単位（同じメールから出た費用・予定をまとめて）。
   //
@@ -306,8 +323,18 @@ export default function ExpensesTab() {
                 ? (placeNameById.get(e.place_id) ?? null)
                 : null;
               return (
-                <Pressable
+                <SwipeDeleteRow
                   key={e.id}
+                  measureKey={`${placeName ?? ""}|${e.note ?? ""}|${splitMembers?.length ?? 0}`}
+                  actions={[
+                    {
+                      label: t("common.delete"),
+                      destructive: true,
+                      onPress: () => removeExpense(e.id),
+                    },
+                  ]}
+                >
+                <Pressable
                   onPress={() =>
                     router.push(
                       `/trips/${tripId}/expense-form?expenseId=${e.id}`,
@@ -391,6 +418,7 @@ export default function ExpensesTab() {
                     </Text>
                   ) : null}
                 </Pressable>
+                </SwipeDeleteRow>
               );
             })}
           </View>

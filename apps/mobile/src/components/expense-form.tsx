@@ -17,7 +17,8 @@ import { useTranslations } from "use-intl";
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
   createExpense,
-  deleteExpense,
+  deleteExpenseReturning,
+  restoreExpense,
   updateExpense,
   type ExpenseFields,
 } from "@triplot/shared/data/expenses";
@@ -52,6 +53,7 @@ import { ToggleChip } from "./toggle-chip";
 import { CompactSegment, VisibilitySegment } from "./visibility-segment";
 import { useClearDraft, useDraft } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
+import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip } from "@/lib/useTripDetail";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
@@ -319,6 +321,9 @@ export function ExpenseForm({
   // 1 回の追加につき保存を 1 回に抑える（管理シートと同じ理由）。
   const savingCategoryRef = useRef(false);
   const invalidateTrip = useInvalidateTrip(tripId);
+  // 元に戻した後も再取得が要る（消した時は onDone で閉じて親が取り直すが、
+  // 戻すのはフォームが閉じた後に起きる）。
+  const runUndoable = useUndoable(invalidateTrip);
 
   const saveNewCategory = () => {
     if (savingCategoryRef.current) return;
@@ -415,25 +420,20 @@ export function ExpenseForm({
     onDone();
   };
 
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え」）。控えには割り勘の対象と、この費用として確定した
+  // 取り込みの下書きの紐づけも入っている。
   const onDelete = () => {
     if (!editExpense) return;
-    Alert.alert(t("deleteTitle"), undefined, [
-      { text: tCommon("cancel"), style: "cancel" },
-      {
-        text: tCommon("delete"),
-        style: "destructive",
-        onPress: () => {
-          void deleteExpense(supabase, editExpense.id).then((r) => {
-            if (!r.ok) {
-              Alert.alert(t("deleteFailed", { error: r.error }));
-              return;
-            }
-            clearDraft(); // 対象が消えたので下書きも破棄
-            onDone();
-          });
-        },
-      },
-    ]);
+    const id = editExpense.id;
+    runUndoable({
+      apply: () => deleteExpenseReturning(supabase, id),
+      restore: (snapshot) => restoreExpense(supabase, snapshot),
+      done: t("deleted"),
+      failed: (error) => t("deleteFailed", { error }),
+    });
+    clearDraft(); // 対象が消えたので下書きも破棄
+    onDone();
   };
 
   return (

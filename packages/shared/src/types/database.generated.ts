@@ -1102,6 +1102,7 @@ export type Database = {
         Returns: string
       }
       delete_account: { Args: never; Returns: undefined }
+      delete_expense_returning: { Args: { p_id: string }; Returns: Json }
       delete_place_returning: { Args: { p_id: string }; Returns: Json }
       delete_todo_returning: { Args: { p_id: string }; Returns: Json }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
@@ -1210,6 +1211,7 @@ export type Database = {
         }
         Returns: string
       }
+      restore_expense: { Args: { p_snapshot: Json }; Returns: undefined }
       restore_inbound_drafts: { Args: { p_ids: string[] }; Returns: undefined }
       restore_place: { Args: { p_snapshot: Json }; Returns: undefined }
       restore_todo: { Args: { p_snapshot: Json }; Returns: undefined }

@@ -43,6 +43,16 @@ import {
 // **行の余白はゼロにする**（`listRowInsets`）。既定のままだと SwiftUI の行が
 // 左右にも余白を取り、渡した高さに対して中身が入りきらずに切れる（実測: 高さを
 // 60px 増やしても左右が削られて切れたままだった＝足りないのは高さではなかった）。
+// 行の最小の高さ。**iOS が描くボタンの方が背の低い行より大きい**ので、これが
+// 無いと、はみ出したボタンが器で切られる（実機フィードバック: 1行の TODO
+// 〔約32pt〕で赤いボタンの下が切れた。2行の行では収まるので気付きにくい）。
+// 44pt は HIG のタップ対象の最小でもある。
+//
+// **器ではなく行そのものに与える。** 器だけ広げると、中身は元の高さのまま上に
+// 寄って下に空きができる（行の側に与えれば、行が持つ alignItems: center が
+// 中身を真ん中に置いてくれる）。
+const MIN_ROW_H = 44;
+
 export type SwipeAction = {
   // ボタンに出す文言。読み上げ名も兼ねる。
   label: string;
@@ -75,6 +85,8 @@ export function SwipeDeleteRow({
   const [measured, setMeasured] = useState({ key: measureKey, height: 0 });
   const height = measured.key === measureKey ? measured.height : 0;
 
+  const minH = { minHeight: MIN_ROW_H };
+
   const onLayout = (e: LayoutChangeEvent) => {
     const h = Math.round(e.nativeEvent.layout.height);
     if (h > 0 && h !== height) setMeasured({ key: measureKey, height: h });
@@ -82,7 +94,7 @@ export function SwipeDeleteRow({
 
   if (!enabled || height === 0) {
     return (
-      <View style={style} onLayout={onLayout}>
+      <View style={[style, minH]} onLayout={onLayout}>
         {children}
       </View>
     );
@@ -98,7 +110,7 @@ export function SwipeDeleteRow({
           ]}
         >
           <RNHostView>
-            <View style={style}>{children}</View>
+            <View style={[style, minH]}>{children}</View>
           </RNHostView>
           {/* 引き切った時に実行されるのは**先頭のボタン**。ボタンが増えても
               先頭は削除に揃える——同じ仕草の結果が行によって変わると、覚えた

@@ -78,6 +78,36 @@ export async function updateExpense(
   return ok(undefined);
 }
 
+// 消した費用の控え（restoreExpense にそのまま渡す）。中身は SQL 側が決める。
+export type ExpenseSnapshot = Record<string, unknown>;
+
+// 消して、元の姿を返す。「元に戻す」から書き戻すために使う。
+//
+// 費用は消すと**ぶら下がっているものが2種類**動く — 割り勘の対象は cascade で
+// 消え、この費用として確定した取り込みの下書きは紐づけが外れる。控えには
+// どちらも入っていて、restoreExpense が戻す。
+export async function deleteExpenseReturning(
+  sb: DB,
+  expenseId: string,
+): Promise<Result<ExpenseSnapshot>> {
+  const { data, error } = await sb.rpc("delete_expense_returning", {
+    p_id: expenseId,
+  });
+  if (error) return err(error.message);
+  return ok(data as ExpenseSnapshot);
+}
+
+export async function restoreExpense(
+  sb: DB,
+  snapshot: ExpenseSnapshot,
+): Promise<Result<void>> {
+  const { error } = await sb.rpc("restore_expense", {
+    p_snapshot: snapshot as never,
+  });
+  if (error) return err(error.message);
+  return ok(undefined);
+}
+
 export async function deleteExpense(
   sb: DB,
   expenseId: string,

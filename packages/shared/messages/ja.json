@@ -323,7 +323,8 @@
       "other": "その他",
       "uncategorized": "未分類"
     },
-    "empty": "まだ費用がありません。"
+    "empty": "まだ費用がありません。",
+    "deleted": "費用を削除しました"
   },
   "todo": {
     "deleteTitle": "このTODOを削除しますか？",

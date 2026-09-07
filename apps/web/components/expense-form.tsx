@@ -10,8 +10,8 @@ import {
   useTransition,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { toast } from "@/components/toast";
-import { confirmDialog } from "@/components/confirm-dialog";
+import { useUndoable } from "@/lib/undoable";
+import { err, ok } from "@triplot/shared/data/result";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
 
@@ -19,6 +19,7 @@ import {
   createExpenseAction,
   type CreateExpenseState,
   deleteExpenseAction,
+  restoreExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
 import { formatRate } from "@triplot/shared/formatRate";
@@ -174,15 +175,27 @@ export function ExpenseForm({
       ? editExpense.created_by_member_id === myMemberId
       : true);
   const [isDeleting, startDelete] = useTransition();
-  const onDelete = async () => {
+  // 再取得は各アクションの revalidatePath が行う。
+  const runUndoable = useUndoable(() => {});
+  // 確認は挟まず、済ませてから戻せるようにする（ui-guidelines「確認とアンドゥは
+  // 同じ問題への2つの答え」）。控えには割り勘の対象と、この費用として確定した
+  // 取り込みの下書きの紐づけも入っている。
+  const onDelete = () => {
     if (!editExpense) return;
-    if (!(await confirmDialog({ title: t("deleteTitle") }))) return;
-    startDelete(async () => {
-      const { error } = await deleteExpenseAction(tripId, editExpense.id);
-      if (error) {
-        toast(t("deleteFailed", { error }));
-        return;
-      }
+    const id = editExpense.id;
+    startDelete(() => {
+      runUndoable({
+        apply: async () => {
+          const { error, snapshot } = await deleteExpenseAction(tripId, id);
+          return error || !snapshot ? err(error ?? "") : ok(snapshot);
+        },
+        restore: async (snapshot) => {
+          const { error } = await restoreExpenseAction(tripId, snapshot);
+          return error ? err(error) : ok(undefined);
+        },
+        done: t("deleted"),
+        failed: (error) => t("deleteFailed", { error }),
+      });
       clearDraft(); // 対象が消えたので下書きも破棄
       onDone?.();
     });

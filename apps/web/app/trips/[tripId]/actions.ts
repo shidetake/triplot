@@ -13,7 +13,9 @@ import {
 } from "@triplot/shared/data/events";
 import {
   createExpense,
-  deleteExpense,
+  deleteExpenseReturning,
+  restoreExpense,
+  type ExpenseSnapshot,
   updateExpense,
 } from "@triplot/shared/data/expenses";
 import {
@@ -311,7 +313,7 @@ export async function updateExpenseAction(
 export async function deleteExpenseAction(
   tripId: string,
   expenseId: string,
-): Promise<{ error: string | null }> {
+): Promise<{ error: string | null; snapshot?: ExpenseSnapshot }> {
   const t = await getTranslations("validation");
   const supabase = await createClient();
   const {
@@ -321,7 +323,28 @@ export async function deleteExpenseAction(
     return { error: t("loginRequired") };
   }
 
-  const result = await deleteExpense(supabase, expenseId);
+  const result = await deleteExpenseReturning(supabase, expenseId);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null, snapshot: result.data };
+}
+
+export async function restoreExpenseAction(
+  tripId: string,
+  snapshot: ExpenseSnapshot,
+): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: t("loginRequired") };
+
+  const result = await restoreExpense(supabase, snapshot);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

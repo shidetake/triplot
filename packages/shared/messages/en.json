@@ -323,7 +323,8 @@
       "other": "Other",
       "uncategorized": "Uncategorized"
     },
-    "empty": "No expenses yet."
+    "empty": "No expenses yet.",
+    "deleted": "Expense deleted"
   },
   "todo": {
     "deleteTitle": "Delete this to-do?",
