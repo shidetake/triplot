@@ -233,8 +233,8 @@ const MERGE_SYSTEM_PROMPT = [
   "【金額 total の扱い】合体後の total は、実際に請求された総額にする。ただし",
   "**差額調整・確定の分を足す計算はこちらで機械的にやる**ので、割合を見てチップか",
   "どうかを当てにいかなくてよい（各メールが『総額』を載せているか『後から足される",
-  "差額』を載せているかは、抽出の時に1通ずつ答えてある）。ここでは分かる範囲で",
-  "素直に埋めればよい。",
+  "差額』を載せているかは抽出の時に1通ずつ答えてあり、答えが無い発行元のために",
+  "割合の網も別に用意してある）。ここでは分かる範囲で素直に埋めればよい。",
   "**元の取引が特定できる時だけ**合体する。特定の根拠は承認番号などの識別番号の一致か、",
   "本文が同じ取引を指していること。**根拠が無いなら合体しない** — 金額が小さいからといって",
   "手近な取引にくっつけてはいけない（別の取引の金額が狂う方がはるかに悪い）。",
@@ -312,15 +312,16 @@ export async function findMerge(
   const merged = object.merged;
   const a = target.extraction.receipt;
   const b = incoming.extraction.receipt;
-  if (merged.receipt && a && b) {
-    const total = mergedTotal(a, b, merged.receipt.total);
-    if (total !== merged.receipt.total) {
-      console.warn(
-        "[import] merge total overridden",
-        JSON.stringify({ llm: merged.receipt.total, used: total }),
-      );
-      merged.receipt.total = total;
-    }
+  const amount =
+    merged.receipt && a && b
+      ? mergedTotal(a, b, merged.receipt.total)
+      : null;
+  if (merged.receipt && amount && amount.total !== merged.receipt.total) {
+    console.warn(
+      "[import] merge total overridden",
+      JSON.stringify({ llm: merged.receipt.total, used: amount.total }),
+    );
+    merged.receipt.total = amount.total;
   }
 
   // **日付・時刻の出どころは LLM に決めさせない。** 合体のたびに再判断させると、
@@ -330,9 +331,8 @@ export async function findMerge(
   // それぞれ自身の抽出結果を比べ、レシート由来が銀行の通知に必ず勝つ片方向の
   // ルールで機械的に決める。
   if (merged.receipt) {
-    // 金額が足し合わされたか（＝片方が追加のチップ・差額調整だったか）。
     // 足したなら取引が起きたのは古い方の日付（chooseAuthoritativeDate 参照）。
-    const summed = !!a?.totalIsDelta !== !!b?.totalIsDelta;
+    const summed = amount?.summed ?? false;
     const authoritative = chooseAuthoritativeDate(
       target.extraction.receipt ?? {
         date: merged.receipt.date,
