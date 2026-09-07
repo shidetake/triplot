@@ -35,9 +35,17 @@ const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 // **予約は足し算にならないので、この規則には掛からない**（5/1 に 5/2 の予約を
 // して 5/2 に決済されたなら日付は 5/2 でよく、金額は置き換わって足されない）。
 //
-// 足していない時（重複・更新）は、より新しく分かった方（b＝incoming）を使う
-// ——直近の情報のほうが確度が高い（例: 差額調整の通知がレシートの詳細を補って
-// 更新することがある）。
+// **銀行の通知どうしの合体は、常に古い方の日付を採る**（足し算になったかに
+// 関わらず）。合体したということは同じ取引なので、先に届いた「利用のお知らせ」
+// が取引の日を持ち、確定・調整の通知は必ずその後にしか来ない。実データ:
+// 同じ承認番号の〔5/2 の利用 50 ＋ 5/4 の確定 5〕が金額の足し算にならず
+// （＝下の summed に掛からず）新しい方を採ってしまい、5/1 の会計が 5/3 に
+// なっていた。
+//
+// **レシートどうしなら、より新しく分かった方（b＝incoming）を使う**——直近の
+// 情報のほうが確度が高い（例: 予約の確認メールを当日の明細が上書きする）。
+// レシートは取引そのものの記録なので、後から届いた方が古い日付を指していても
+// それが訂正である可能性がある。
 export function chooseAuthoritativeDate<T extends DatedReceipt>(
   a: T,
   b: T,
@@ -45,7 +53,8 @@ export function chooseAuthoritativeDate<T extends DatedReceipt>(
 ): T {
   if (a.dateIsSettlement && !b.dateIsSettlement) return b;
   if (!a.dateIsSettlement && b.dateIsSettlement) return a;
-  if (opts.summed && YMD_RE.test(a.date) && YMD_RE.test(b.date)) {
+  const earlierWins = opts.summed || (a.dateIsSettlement && b.dateIsSettlement);
+  if (earlierWins && YMD_RE.test(a.date) && YMD_RE.test(b.date)) {
     return a.date < b.date ? a : b;
   }
   return b;

@@ -23,15 +23,25 @@ describe("chooseAuthoritativeDate", () => {
     expect(chooseAuthoritativeDate(target, incoming)).toBe(incoming);
   });
 
+  // 予約の確認メールを当日の明細が上書きすることがあるので、レシートどうしなら
+  // 後から届いた方を採る。
   it("両方レシート由来なら新しく分かった方（incoming）", () => {
     const target = receipt("2026-04-30", false);
-    const incoming = receipt("2026-04-30", false);
+    const incoming = receipt("2026-05-01", false);
     expect(chooseAuthoritativeDate(target, incoming)).toBe(incoming);
   });
 
-  it("両方通知のみでも新しく分かった方（incoming）", () => {
+  // 実例: 同じ承認番号の〔5/2 の利用 ＋ 5/4 の確定〕。金額が足し算にならず
+  // summed に掛からなかったため、5/1 の会計が 5/3 になっていた。
+  it("両方が銀行の通知なら古い方（確定・調整は利用の後にしか来ない）", () => {
     const target = receipt("2026-05-01", true);
     const incoming = receipt("2026-05-02", true);
+    expect(chooseAuthoritativeDate(target, incoming)).toBe(target);
+  });
+
+  it("両方が銀行の通知なら届いた順に依らず古い方", () => {
+    const target = receipt("2026-05-02", true);
+    const incoming = receipt("2026-05-01", true);
     expect(chooseAuthoritativeDate(target, incoming)).toBe(incoming);
   });
 
@@ -53,13 +63,19 @@ describe("chooseAuthoritativeDate", () => {
     );
   });
 
-  // 予約は足し算にならないのでこの規則に掛からない（5/1 に 5/2 の予約をして
-  // 5/2 に決済されたなら 5/2 でよい）。
-  it("足していないなら日付が離れていても incoming のまま", () => {
-    const target = receipt("2026-05-01", true);
-    const incoming = receipt("2026-05-02", true);
+  it("レシートどうしなら足していない限り incoming のまま", () => {
+    const target = receipt("2026-05-01", false);
+    const incoming = receipt("2026-05-02", false);
     expect(chooseAuthoritativeDate(target, incoming, { summed: false })).toBe(
       incoming,
+    );
+  });
+
+  it("レシートどうしでも足したなら古い方", () => {
+    const target = receipt("2026-05-01", false);
+    const incoming = receipt("2026-05-02", false);
+    expect(chooseAuthoritativeDate(target, incoming, { summed: true })).toBe(
+      target,
     );
   });
 
