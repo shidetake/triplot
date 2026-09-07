@@ -8,12 +8,14 @@ import {
 import {
   Button,
   Host,
+  Image,
   List,
   RNHostView,
   SwipeActions,
-  Text,
 } from "@expo/ui/swift-ui";
+import type { SFSymbol } from "sf-symbols-typescript";
 import {
+  accessibilityLabel,
   listRowInsets,
   listRowSeparator,
   listStyle,
@@ -33,9 +35,17 @@ import {
 //
 // ## 高さを測ってから渡す理由
 //
-// SwiftUI は RN で描いた行の高さを知らない（`Host` / `RNHostView` の
-// `matchContents` はどの組み合わせでも高さ 0 につぶれ、内側で測ると器の高さに
-// 引き伸ばされた値が返る）。なので **RN 側で一度測って `Host` に渡す**。
+// SwiftUI は RN で描いた行の高さを知らない。**RN 側で一度測り、その値を
+// `Host`（RN のレイアウト）と行そのものの `height` の両方に渡す。**
+// `RNHostView matchContents` は「中の RN ビューの実寸を SwiftUI の行の高さに
+// する」ものなので、中身に確かな高さがあって初めて働く（高さを与えずに使うと
+// 0 につぶれる）。
+//
+// **SwiftUI の行にも高さが要る**——ここを渡さないと行は最小の高さ（44pt）に
+// 縮み、はみ出した中身は**描画はされるがタッチを受け取らない**（UIKit は
+// 領域の外を当たり判定から外す）。実測で、取り込みの下書き（130〜167pt）は
+// スワイプが上端付近でしか始まらず、行の中に置いた旅行のピッカーと
+// 「他とまとめる」がどちらも押せなかった。
 //
 // 測る間は素の行をそのまま描く。見た目は同じなので切り替わりは見えないし、
 // 仮に埋め込みが失敗しても行は読める状態で残る。
@@ -43,18 +53,26 @@ import {
 // **行の余白はゼロにする**（`listRowInsets`）。既定のままだと SwiftUI の行が
 // 左右にも余白を取り、渡した高さに対して中身が入りきらずに切れる（実測: 高さを
 // 60px 増やしても左右が削られて切れたままだった＝足りないのは高さではなかった）。
-// 行の最小の高さ。**iOS が描くボタンの方が背の低い行より大きい**ので、これが
-// 無いと、はみ出したボタンが器で切られる（実機フィードバック: 1行の TODO
-// 〔約32pt〕で赤いボタンの下が切れた。2行の行では収まるので気付きにくい）。
-// 44pt は HIG のタップ対象の最小でもある。
 //
-// **器ではなく行そのものに与える。** 器だけ広げると、中身は元の高さのまま上に
-// 寄って下に空きができる（行の側に与えれば、行が持つ alignItems: center が
-// 中身を真ん中に置いてくれる）。
-const MIN_ROW_H = 44;
+// ## ボタンの大きさは iOS が決める（行の高さには追随しない）
+//
+// iOS 26 のスワイプのボタンは、行いっぱいに広がる帯ではなく**中に浮かぶ丸い
+// ボタン**で、実測 47〜50pt から大きくならない（`frame` で行を 300pt にしても
+// 80pt を超えず、RN を挟まない素の SwiftUI の行でも同じだった）。**行が高くても
+// ボタンは中央に置かれる**ので、カードと同じ高さにはできない。
+//
+// 逆に**行が低いとボタンが切られる**ので、行に最小の高さを与える。以前の 44pt
+// （HIG のタップ対象の最小）ではボタン（47pt）が入り切らず、1行の TODO で下が
+// 欠けていた。**器ではなく行そのものに与える**——器だけ広げると、中身は元の
+// 高さのまま上に寄って下に空きができる（行の側に与えれば、行が持つ
+// alignItems: center が中身を真ん中に置いてくれる）。
+const MIN_ROW_H = 56;
 
 export type SwipeAction = {
-  // ボタンに出す文言。読み上げ名も兼ねる。
+  // ボタンに出す SF Symbol。**文言は出さない**（iOS 純正アプリと同じ形。
+  // 「削除」の文字を添える純正の作りは採らない — アイコンだけで通じる）。
+  icon: SFSymbol;
+  // 読み上げ名。画面には出ない。
   label: string;
   onPress: () => void;
   // 破壊的なら赤くする（`destructive`）。取り消しの効くものは既定の色。
@@ -109,8 +127,8 @@ export function SwipeDeleteRow({
             listRowInsets({ top: 0, leading: 0, bottom: 0, trailing: 0 }),
           ]}
         >
-          <RNHostView>
-            <View style={[style, minH]}>{children}</View>
+          <RNHostView matchContents>
+            <View style={[style, minH, { height }]}>{children}</View>
           </RNHostView>
           {/* 引き切った時に実行されるのは**先頭のボタン**。ボタンが増えても
               先頭は削除に揃える——同じ仕草の結果が行によって変わると、覚えた
@@ -120,9 +138,10 @@ export function SwipeDeleteRow({
               <Button
                 key={a.label}
                 role={a.destructive ? "destructive" : undefined}
+                modifiers={[accessibilityLabel(a.label)]}
                 onPress={a.onPress}
               >
-                <Text>{a.label}</Text>
+                <Image systemName={a.icon} />
               </Button>
             ))}
           </SwipeActions.Actions>

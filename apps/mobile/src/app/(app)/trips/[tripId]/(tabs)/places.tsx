@@ -2417,6 +2417,7 @@ export default function PlacesTab() {
                   measureKey={`${item.name}|${item.lat == null}|${item.location_dismissed}`}
                   actions={[
                     {
+                      icon: "trash",
                       label: tCommon("delete"),
                       destructive: true,
                       onPress: () => removePlace(item),
@@ -2424,6 +2425,7 @@ export default function PlacesTab() {
                     ...(item.lat == null && !item.location_dismissed
                       ? [
                           {
+                            icon: "eye.slash" as const,
                             label: t("hide"),
                             onPress: () => hideLocation(item),
                           },

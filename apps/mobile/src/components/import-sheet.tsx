@@ -228,6 +228,7 @@ export function ImportSheet() {
                     key={e.id}
                     actions={[
                       {
+                        icon: "trash",
                         label: t("dismiss"),
                         destructive: true,
                         onPress: () => dismiss(e.id),
@@ -353,6 +354,7 @@ export function ImportSheet() {
                   key={e.id}
                   actions={[
                     {
+                      icon: "trash",
                       label: t("dismiss"),
                       destructive: true,
                       onPress: () => dismiss(e.id),

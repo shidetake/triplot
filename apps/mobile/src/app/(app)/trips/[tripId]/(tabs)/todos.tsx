@@ -443,6 +443,7 @@ function TodoSection({
                 key={todo.id}
                 actions={[
                   {
+                    icon: "trash",
                     label: t("deleteAria"),
                     destructive: true,
                     onPress: () => onDelete(todo),

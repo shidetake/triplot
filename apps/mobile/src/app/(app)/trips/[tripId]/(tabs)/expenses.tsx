@@ -260,6 +260,7 @@ export default function ExpensesTab() {
                 key={d.id}
                 actions={[
                   {
+                    icon: "trash",
                     label: tImport("dismiss"),
                     destructive: true,
                     onPress: () => dismissDraft(d.emailId),
@@ -328,6 +329,7 @@ export default function ExpensesTab() {
                   measureKey={`${placeName ?? ""}|${e.note ?? ""}|${splitMembers?.length ?? 0}`}
                   actions={[
                     {
+                      icon: "trash",
                       label: t("common.delete"),
                       destructive: true,
                       onPress: () => removeExpense(e.id),
