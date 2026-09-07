@@ -8,6 +8,7 @@ import {
   applyReceiptEventTiming,
 } from "@triplot/shared/import/receiptTiming";
 import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
+import { mergedTotal } from "@triplot/shared/import/receiptTotal";
 import {
   type Extraction,
   eventDraftSchema,
@@ -196,6 +197,7 @@ function slim(x: Extraction): Extraction {
           items: r.items,
           referenceIds: r.referenceIds,
           isUpdate: r.isUpdate,
+          totalIsDelta: r.totalIsDelta,
         } as Extraction["receipt"])
       : null,
     events: x.events,
@@ -228,22 +230,14 @@ const MERGE_SYSTEM_PROMPT = [
   "pending→確定/金額更新/差額調整の関係、同じ予約のスケジュール変更・リマインダーの関係。",
   "同一なら matchId にその下書きの id、merged に合体後の内容を入れます。合体ルール: ",
   "店名・時刻・場所など詳しい情報は店のレシート側を優先。片方しか無い項目は埋め合わせる。",
-  "【金額 total の扱い・重要】total は最終的に実際に請求された総額にする。既存取引に対する",
-  "『差額調整・更新（確定）』メールの金額は“調整額（差分）”であって最終総額ではない。",
+  "【金額 total の扱い】合体後の total は、実際に請求された総額にする。ただし",
+  "**差額調整・確定の分を足す計算はこちらで機械的にやる**ので、割合を見てチップか",
+  "どうかを当てにいかなくてよい（各メールが『総額』を載せているか『後から足される",
+  "差額』を載せているかは、抽出の時に1通ずつ答えてある）。ここでは分かる範囲で",
+  "素直に埋めればよい。",
   "**元の取引が特定できる時だけ**合体する。特定の根拠は承認番号などの識別番号の一致か、",
   "本文が同じ取引を指していること。**根拠が無いなら合体しない** — 金額が小さいからといって",
   "手近な取引にくっつけてはいけない（別の取引の金額が狂う方がはるかに悪い）。",
-  "元の取引が**仮売上（オーソリ）の金額**なら〔元の金額 ＋ 差額調整〕が最終総額。",
-  "例: 元の利用 28.98 米ドル、差額調整 +0.07 → total は 29.05。",
-  "ただし元の下書きが**店/サービス自身のレシートの最終額を既に持っている**なら足さない",
-  "（足すと二重計上になる。差額調整はその最終額に含まれているので、合体しても total は",
-  "そのまま）。どちらか迷ったら、店のレシートに書かれている総額を信じる。",
-  "【チップ】飲食店では、後からチップぶんの差額調整が別メールで届く。米国のチップは",
-  "会計の 15〜25%（18〜22% が最も多い）なので、**調整額が元の金額のその範囲に当たるなら",
-  "まずチップ**であり、〔元の金額 ＋ チップ〕が最終総額になる。候補の行に『相手の N%』と",
-  "書いてある場合、その割合はこちらが計算した事実なので信用してよい。",
-  "【合体後の total は、元のどれよりも小さくならない】調整額そのものを最終総額にしない。",
-  "例: 元 55.47、調整 11.09（20%＝チップ）→ total は 66.56。11.09 にはならない。",
   "【同じ取引について複数通届く場合】店やサービスは1つの取引について複数のメールを送る",
   "ことがある（最初のレシート・更新版・確定通知）。**件名が同じで金額も同じ**なら同じ取引",
   "として合体してよい。ただし両方に時刻があって食い違う場合は別の取引なので合体しない",
@@ -313,36 +307,20 @@ export async function findMerge(
 
   // **合体の結果が、元のどれよりも小さくなってはいけない。**
   //
-  // 少額の会計に置く定額のチップ（$5 に $2 など）は、ここでは足せない。実測で
-  // LLM は「ご利用金額**確定**のお知らせ 2.00」を最終額と読んで置き換える
-  // （割合が 40% でチップに見えないうえ、文面が「確定」なので当然ではある）。
-  // プロンプトで「少額なら定額チップ」と教えても3例とも変わらなかったので、
-  // **不確かな指示を残さない**（雑音は決定的な手がかりを埋もれさせる）。
-  //
-  // 機械的に足すのも危ない。**確定額が承認額より小さいのは正常な場合がある**
-  // （$100 で承認して $40 で確定するガソリンスタンド、一部返金）。足すと今度は
-  // 過大計上になる。
-  //
-  // この歯止めがあるので、外れ方は「チップぶん足りない」に収まる（元の金額が
-  // 消えることはない）。足りない分は受信箱の「他とまとめる → 合算する」で直せる。 重複なら大きい方が
-  // 残り、チップ・調整なら足されるので、どちらの解釈でも小さくはならない。
-  // 実測: 55.47 の飲食に 11.09（ちょうど 20%＝チップ）の調整が来た時、合体結果が
-  // 11.09 になった＝調整額が元を丸ごと置き換えていた。プロンプトで直しても
-  // LLM は揺れるので、機械的に弾く。
-  //
-  // 直し方は「大きい方に寄せる」。足すべきだったのか重複だったのかはここでは
-  // 決められないので、**確実に言える下限**に留める（足りない分は手でまとめ直せる）。
+  // 合体後の金額は LLM の答えをそのまま使わない。**足すかどうかは 1通ごとの
+  // 印（totalIsDelta）から機械的に決める**（理由と実データは receiptTotal.ts）。
   const merged = object.merged;
-  const floor = Math.max(
-    incoming.extraction.receipt?.total ?? 0,
-    target.extraction.receipt?.total ?? 0,
-  );
-  if (merged.receipt && merged.receipt.total < floor) {
-    console.warn(
-      "[import] merge total below parts",
-      JSON.stringify({ got: merged.receipt.total, floor }),
-    );
-    merged.receipt.total = floor;
+  const a = target.extraction.receipt;
+  const b = incoming.extraction.receipt;
+  if (merged.receipt && a && b) {
+    const total = mergedTotal(a, b, merged.receipt.total);
+    if (total !== merged.receipt.total) {
+      console.warn(
+        "[import] merge total overridden",
+        JSON.stringify({ llm: merged.receipt.total, used: total }),
+      );
+      merged.receipt.total = total;
+    }
   }
 
   // **日付・時刻の出どころは LLM に決めさせない。** 合体のたびに再判断させると、
@@ -354,10 +332,7 @@ export async function findMerge(
   if (merged.receipt) {
     // 金額が足し合わされたか（＝片方が追加のチップ・差額調整だったか）。
     // 足したなら取引が起きたのは古い方の日付（chooseAuthoritativeDate 参照）。
-    const summed =
-      merged.receipt.total > floor &&
-      (incoming.extraction.receipt?.total ?? 0) > 0 &&
-      (target.extraction.receipt?.total ?? 0) > 0;
+    const summed = !!a?.totalIsDelta !== !!b?.totalIsDelta;
     const authoritative = chooseAuthoritativeDate(
       target.extraction.receipt ?? {
         date: merged.receipt.date,

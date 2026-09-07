@@ -57,6 +57,7 @@ describe("normalizeReceipt の items 切り詰め", () => {
     address: null,
     referenceIds: [],
     isUpdate: false,
+    totalIsDelta: false,
     dateIsSettlement: false,
     settlementTz: null,
     items: null,

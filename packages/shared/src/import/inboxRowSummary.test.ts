@@ -35,6 +35,7 @@ const receipt = (over: object = {}) =>
     items: null,
     referenceIds: [],
     isUpdate: false,
+    totalIsDelta: false,
     dateIsSettlement: false,
     settlementTz: null,
     ...over,
