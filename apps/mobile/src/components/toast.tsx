@@ -2,6 +2,10 @@ import { useEffect, useState } from "react";
 import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
+import {
+  TOAST_MS,
+  TOAST_WITH_ACTION_MS,
+} from "@triplot/shared/toastDuration";
 import { useTheme } from "@/lib/theme";
 
 // グローバルなトースト。ui-guidelines「フィードバック」節の方針:
@@ -63,7 +67,10 @@ export function toast(text: string, action?: ToastAction): void {
       }
     : null;
   for (const l of targets) l.show({ text, action: wrapped });
-  hideTimer = setTimeout(() => hideNow(targets), DISPLAY_MS);
+  hideTimer = setTimeout(
+    () => hideNow(targets),
+    action ? TOAST_WITH_ACTION_MS : TOAST_MS,
+  );
 }
 
 function hideNow(targets: Listener[]): void {
@@ -72,11 +79,6 @@ function hideNow(targets: Listener[]): void {
   for (const l of targets) l.show(null);
 }
 
-// アクション（「元に戻す」）を押す間を与える必要があるので、web の Base UI の
-// 既定（5秒）に合わせる。押させる相手がいるトーストだけ長くする、という
-// 作り分けはしない — 同じ部品が回ごとに違う長さで消えると、消えるまでの間が
-// 読めなくなる。
-const DISPLAY_MS = 5000;
 const FADE_MS = 200;
 
 // inSheet: この Toaster が native の formSheet ルートの中にあるか。
@@ -169,8 +171,15 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
         {displayed.action && (
           <Pressable
             onPress={displayed.action.onPress}
-            // 文字の高さ（14pt）だけでは HIG の 44pt に届かないので広げる。
-            hitSlop={12}
+            // 押せると分かる形にする（下線はリンクの記号なので使わない。
+            // 世の中のトーストの操作はボタンとして描かれる）。面は web と
+            // 同じ「前景色の α 重ね」で、ライト/ダークとも自動で効く。
+            style={[
+              styles.actionButton,
+              { backgroundColor: theme.primaryFgAlpha(0.15) },
+            ]}
+            // 面の高さ（約30pt）でも HIG の 44pt に届かないので広げる。
+            hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={displayed.action.label}
           >
@@ -214,5 +223,13 @@ const styles = StyleSheet.create({
   action: {
     fontSize: 14,
     fontWeight: "500",
+  },
+  // 面の高さぶん行が伸びないよう、上下は詰めて負のマージンで吸収する
+  // （web の -my-1 と同じ）。
+  actionButton: {
+    marginVertical: -4,
+    borderRadius: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
   },
 });

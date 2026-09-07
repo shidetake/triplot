@@ -16,6 +16,8 @@ export const lightTheme = {
   subtleForeground: "#9e9e9e", // --subtle-foreground oklch(0.699) = 38%
   primary: "#171717", // --primary oklch(0.205)
   primaryForeground: "#fafafa", // --primary-foreground oklch(0.985)
+  // primary の面の上に重ねる α（web の bg-primary-foreground/N と同値）。
+  primaryFgAlpha: (a: number) => `rgba(250,250,250,${a})`,
   secondary: "#f5f5f5", // --secondary/--muted/--accent oklch(0.97)
   // 前景色の α 重ね（ボーダー階段・hover/選択面）。
   fgAlpha: (a: number) => `rgba(0,0,0,${a})`,
@@ -55,6 +57,7 @@ export const darkTheme: Theme = {
   subtleForeground: "#424242", // oklch(0.38)
   primary: "#e5e5e5", // .dark --primary oklch(0.922)
   primaryForeground: "#171717",
+  primaryFgAlpha: (a: number) => `rgba(23,23,23,${a})`,
   secondary: "#262626", // oklch(0.269)
   fgAlpha: (a: number) => `rgba(255,255,255,${a})`,
   destructiveText: "#f87171", // red-400

@@ -2,6 +2,10 @@
 
 import { useTranslations } from "next-intl";
 import { Toast } from "@base-ui/react/toast";
+import {
+  TOAST_MS,
+  TOAST_WITH_ACTION_MS,
+} from "@triplot/shared/toastDuration";
 
 import { CloseIcon } from "@/components/icons";
 
@@ -11,8 +15,9 @@ import { CloseIcon } from "@/components/icons";
 //
 // 殻（live region の常設＝SR 告知・自動消滅タイマー・ホバー/フォーカスで一時停止・
 // スワイプ/× で手動クローズ・重ね表示〔最大3〕）は Base UI Toast に委ねる
-// （ui-guidelines「部品の作り方」step2）。表示時間 5s・stack 3 等は Base UI の
-// 既定が世間の慣例どおりなので上書きしない。意匠（primary 配色・下中央）だけ書く。
+// （ui-guidelines「部品の作り方」step2）。stack 3 等は Base UI の既定が世間の
+// 慣例どおりなので上書きしない。意匠（primary 配色・下中央）と、**押させる
+// トーストだけ長くする表示時間**（`toastDuration.ts`）を書く。
 
 // React 外（サーバアクションのコールバック等）からも呼べる standalone manager。
 export const toastManager = Toast.createToastManager();
@@ -23,7 +28,11 @@ export const toastManager = Toast.createToastManager();
 export type ToastAction = { label: string; onClick: () => void };
 
 export function toast(text: string, action?: ToastAction): void {
-  toastManager.add({ title: text, data: action });
+  toastManager.add({
+    title: text,
+    data: action,
+    timeout: action ? TOAST_WITH_ACTION_MS : TOAST_MS,
+  });
 }
 
 function ToastList() {
@@ -41,7 +50,10 @@ function ToastList() {
         <Toast.Title className="min-w-0 flex-1" />
         {toast.data ? (
           <Toast.Action
-            className="shrink-0 font-medium underline-offset-2 hover:underline"
+            // 押せると分かる形にする（下線はリンクの記号なので使わない。
+            // 世の中のトーストの操作はボタンとして描かれる）。面は
+            // 「前景色の α 重ね」の1式で、ライト/ダークとも自動で効く。
+            className="-my-1 shrink-0 rounded bg-primary-foreground/15 px-2 py-1 font-medium transition hover:bg-primary-foreground/25"
             // 押したらその場で引っ込める（残っていると二度押せる。RN 側の
             // toast() も同じく押した時点で消す）。
             onClick={() => {
