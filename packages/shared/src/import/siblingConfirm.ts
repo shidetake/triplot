@@ -17,7 +17,7 @@
 import type { EventFields } from "../data/events";
 import type { ExpenseFields } from "../data/expenses";
 import type { PlaceInput } from "../data/place";
-import { rateTo } from "../fxRates";
+import { initialRate } from "./draftRate";
 import type { Currency } from "../types/database";
 
 import {
@@ -112,16 +112,15 @@ export function expenseFieldsFromDraft(
   d: ExpenseDraftItem,
   ctx: ExpenseAutoContext,
 ): ExpenseFields | null {
-  // レートは実績の平均が最優先。**その通貨の1件目だけ**、取り込み時に取って
-  // おいた市場レートで埋める（fxRates.ts）。市場レートよりユーザーの実効レート
-  // （カード手数料込み）の方が実態に近いので、実績ができたらそちらに切り替わる。
-  const rate =
-    d.initialCurrency === ctx.defaultCurrency
-      ? 1
-      : (ctx.averageRates[d.initialCurrency] ??
-        rateTo(d.fxRates, ctx.defaultCurrency) ??
-        undefined);
-  if (rate === undefined || rate === null) return null;
+  // レートの順序はフォームと共通（draftRate.ts）。決められない時だけ自動で
+  // 作らずフォームに送る。
+  const rate = initialRate({
+    currency: d.initialCurrency,
+    defaultCurrency: ctx.defaultCurrency,
+    averageRates: ctx.averageRates,
+    draft: d,
+  })?.rate;
+  if (rate === undefined) return null;
   // 割り勘対象は全員が既定（フォームの新規作成時と同じ）。ただし**アクティブ
   // メンバーが自分1人だけなら、対象が自分1人＝割り勘にならない**。フォームは
   // これを selectedSplits の導出（onlySelf）で毎回計算しているが、ここは

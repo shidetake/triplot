@@ -23,6 +23,8 @@ import {
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
 import { formatRate } from "@triplot/shared/formatRate";
+import { initialRate } from "@triplot/shared/import/draftRate";
+import type { FxRates } from "@triplot/shared/fxRates";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
   dedupeTzCandidates,
@@ -69,6 +71,7 @@ export function ExpenseForm({
   myMemberId,
   defaultCurrency, // trip のデフォルト通貨。為替レート計算の基準（換算なら 1）
   initialCurrency, // 通貨セレクタの初期値（= 最後に入力した費用の通貨）
+  fxRates,
   categories,
   initialCategoryId, // = 最後に入力した費用のカテゴリ
   averageRates, // { JPY: 1, USD: 平均 } — まだ履歴がない currency は省略
@@ -98,6 +101,8 @@ export function ExpenseForm({
   myMemberId: string;
   defaultCurrency: Currency;
   initialCurrency: Currency;
+  // 取り込みから作る時、取り込み時点で取っておいた市場レート表（draftRate.ts）。
+  fxRates?: FxRates | null;
   categories: Category[];
   initialCategoryId: string;
   averageRates: Partial<Record<Currency, number>>;
@@ -353,14 +358,30 @@ export function ExpenseForm({
     isEdit && !editExpense.split_everyone ? "custom" : "all",
   );
 
-  // レート入力欄。currency 変更時はデフォルト（平均 or 1）に戻す。平均は丸めて入れる
-  // （未変更ならこの値が送信される＝半端な桁を残さない。編集時の保存済み値は実データ
-  // なので丸めずそのまま表示）。
+  // レート入力欄。currency 変更時は初期値に戻す。順序は実績の平均 → 取り込み時の
+  // 市場レート（draftRate.ts。RN と共通）。丸めて入れる（未変更ならこの値が
+  // 送信される＝半端な桁を残さない。編集時の保存済み値は実データなので丸めず
+  // そのまま表示）。
+  const rateOf = (c: Currency) =>
+    initialRate({
+      currency: c,
+      defaultCurrency,
+      averageRates,
+      draft: fxRates ? { initialCurrency, fxRates } : null,
+    });
   const rateFor = (c: Currency): string => {
-    if (c === defaultCurrency) return "1";
-    const avg = averageRates[c];
-    return avg !== undefined ? formatRate(avg) : "";
+    const r = rateOf(c);
+    return r === null ? "" : r.source === "same" ? "1" : formatRate(r.rate);
   };
+  // 値の出どころを一言添える（何も無ければ「1 USD = ? JPY」のガイド）。
+  const rateHint = (r: ReturnType<typeof rateOf>): string =>
+    r === null || r.source === "same"
+      ? t("unknownRate", { from: localCurrency, to: defaultCurrency })
+      : t(r.source === "average" ? "averageRate" : "marketRate", {
+          from: localCurrency,
+          rate: formatRate(r.rate),
+          to: defaultCurrency,
+        });
   const [rateInput, setRateInput] = useDraft<string>("rateInput", () =>
     isEdit ? String(editExpense.rate_to_default) : rateFor(initCurrency),
   );
@@ -488,21 +509,15 @@ export function ExpenseForm({
             value={rateInput}
             onChange={(e) => setRateInput(e.target.value)}
             placeholder={
-              averageRates[localCurrency] !== undefined
-                ? formatRate(averageRates[localCurrency]!)
+              rateOf(localCurrency)
+                ? formatRate(rateOf(localCurrency)!.rate)
                 : t("placeholderRate")
             }
             className="mt-1 block w-full"
           />
-          {averageRates[localCurrency] !== undefined ? (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              {t("averageRate", { from: localCurrency, rate: formatRate(averageRates[localCurrency]!), to: defaultCurrency })}
-            </span>
-          ) : (
-            <span className="mt-1 block text-xs text-muted-foreground">
-              {t("unknownRate", { from: localCurrency, to: defaultCurrency })}
-            </span>
-          )}
+          <span className="mt-1 block text-xs text-muted-foreground">
+            {rateHint(rateOf(localCurrency))}
+          </span>
         </label>
       )}
       {localCurrency === defaultCurrency && (

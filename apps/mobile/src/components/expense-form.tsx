@@ -28,6 +28,7 @@ import {
   createExpenseCategory,
 } from "@triplot/shared/data/categories";
 import { formatRate } from "@triplot/shared/formatRate";
+import { initialRate } from "@triplot/shared/import/draftRate";
 import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
   dedupeTzCandidates,
@@ -129,11 +130,23 @@ export function ExpenseForm({
       ? editExpense.local_currency
       : (draft?.initialCurrency ?? initialCurrency),
   );
+  // 実績の平均 → 取り込み時の市場レート、の順（draftRate.ts。web と共通）。
+  // 値の下に出す注記も同じ判定から作る（分岐をここで書き直さない）。
+  const rateOf = (c: Currency) =>
+    initialRate({ currency: c, defaultCurrency, averageRates, draft });
   const rateFor = (c: Currency): string => {
-    if (c === defaultCurrency) return "1";
-    const avg = averageRates[c];
-    return avg !== undefined ? formatRate(avg) : "";
+    const r = rateOf(c);
+    return r === null ? "" : r.source === "same" ? "1" : formatRate(r.rate);
   };
+  // 値の出どころを一言添える（何も無ければ「1 USD = ? JPY」のガイド）。
+  const rateHint = (r: ReturnType<typeof rateOf>): string =>
+    r === null || r.source === "same"
+      ? t("unknownRate", { from: localCurrency, to: defaultCurrency })
+      : t(r.source === "average" ? "averageRate" : "marketRate", {
+          from: localCurrency,
+          rate: formatRate(r.rate),
+          to: defaultCurrency,
+        });
   const [rateInput, setRateInput] = useDraft("rateInput", () =>
     isEdit ? String(editExpense.rate_to_default) : rateFor(localCurrency),
   );
@@ -480,22 +493,14 @@ export function ExpenseForm({
             onChangeText={setRateInput}
             keyboardType="decimal-pad"
             placeholder={
-              averageRates[localCurrency] !== undefined
-                ? formatRate(averageRates[localCurrency]!)
+              rateOf(localCurrency)
+                ? formatRate(rateOf(localCurrency)!.rate)
                 : t("placeholderRate")
             }
             placeholderTextColor={theme.subtleForeground}
             style={styles.input}
           />
-          <Text style={styles.hint}>
-            {averageRates[localCurrency] !== undefined
-              ? t("averageRate", {
-                  from: localCurrency,
-                  rate: formatRate(averageRates[localCurrency]!),
-                  to: defaultCurrency,
-                })
-              : t("unknownRate", { from: localCurrency, to: defaultCurrency })}
-          </Text>
+          <Text style={styles.hint}>{rateHint(rateOf(localCurrency))}</Text>
         </View>
       )}
 

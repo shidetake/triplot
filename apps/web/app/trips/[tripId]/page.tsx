@@ -561,6 +561,7 @@ export default async function TripDetailPage({
                           myMemberId={me.id}
                           defaultCurrency={defaultCurrency}
                           initialCurrency={d.initialCurrency}
+                          fxRates={d.fxRates}
                           categories={categories}
                           initialCategoryId={d.initialCategoryId}
                           averageRates={averageRates}
