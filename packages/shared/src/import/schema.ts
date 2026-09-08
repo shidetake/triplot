@@ -318,7 +318,7 @@ export const eventDraftSchema = z.object({
     .boolean()
     .describe(
       "true = 既に済んだ消費（店頭レシート・利用明細）から自動生成する仮予定" +
-        "（飲食・土産・衣服・エンタメ・カジノの receipt に対応するもの）。" +
+        "（飲食・土産・衣服・エンタメ・カジノ・その他の receipt に対応するもの）。" +
         "この場合 startTime/endTime は null のままでよい（アプリ側で計算する）。" +
         "false = メールに書かれた本物の予約・旅程（フライト・宿泊・レストラン" +
         "予約等）",
