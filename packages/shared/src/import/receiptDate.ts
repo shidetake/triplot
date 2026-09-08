@@ -18,6 +18,8 @@ export type DatedReceipt = {
   // 日付とセットで動く（どの暦で書かれた日付かの註記）。日付だけ勝った側の
   // ものにして註記を置いていくと、別の暦の日付に別の国の註記が付く。
   settlementTz?: string | null;
+  // 同じくセットで動く（その日付を供給したメールの送信時刻。drafts.ts 参照）。
+  sentAt?: string | null;
 };
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;

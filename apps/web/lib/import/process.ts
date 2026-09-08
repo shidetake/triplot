@@ -674,13 +674,19 @@ async function attachFxRates(
 // 旅行のバイアス中心（その日どこにいたはず）では代用しない — 移動日に反対側の
 // 土地を指すことがあり（成田で買ったものをホノルル時間に直してしまう）、
 // 直すつもりで壊す。場所が分からないなら直さない。
+//
+// **送信時刻は「その日付を供給したメール」のものを使う。** 合体すると日付は
+// 片方のメールから来るので、今処理しているメールの送信時刻とは限らない
+// （drafts.ts の sentAt 参照）。決めた値は控えに残す——場所は後から解決する
+// ことがあり、その時にもう一度ここを通るため。
 function localizeReceiptDate(receipt: StoredReceipt | null, sentAt: string | null) {
   if (!receipt) return receipt;
+  const own = receipt.sentAt ?? sentAt;
   const fixed = localizeSettlementTiming(receipt, {
-    sentAt,
+    sentAt: own,
     placeTz: timezoneOfPlace(receipt.resolvedPlace ?? null),
   });
-  return fixed ? { ...receipt, ...fixed } : receipt;
+  return { ...receipt, ...(fixed ?? {}), sentAt: own };
 }
 
 // 下書きとして保存する直前の作り込み（合体した時としない時で同じ手順を踏む）。
@@ -869,8 +875,14 @@ async function runExtraction(
       }
     }
   }
-  const { receipt, events, tripId } = extractResult;
+  const { receipt: extracted, events, tripId } = extractResult;
   const now = new Date().toISOString();
+  // **送信時刻は抽出した時点で日付に添える。** 以後はこの値が日付と一緒に
+  // 動く（合体で日付が片方から来ても、その出どころの送信時刻が付いてくる。
+  // drafts.ts の sentAt 参照）。
+  const receipt: StoredReceipt | null = extracted
+    ? { ...extracted, sentAt }
+    : null;
   const extraction: Extraction = { receipt, events };
 
   // 費用も予定も見つからなかったメールは恒久エラー（リトライ対象外、受信箱に表示）。

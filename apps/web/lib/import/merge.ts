@@ -9,6 +9,7 @@ import {
 } from "@triplot/shared/import/receiptTiming";
 import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
 import { mergedTotal } from "@triplot/shared/import/receiptTotal";
+import type { StoredReceipt } from "@triplot/shared/import/drafts";
 import {
   type Extraction,
   eventDraftSchema,
@@ -355,6 +356,12 @@ export async function findMerge(
     merged.receipt.serviceDate = authoritative.serviceDate;
     merged.receipt.dateIsSettlement = authoritative.dateIsSettlement;
     merged.receipt.settlementTz = authoritative.settlementTz ?? null;
+    // 送信時刻も日付と一緒に運ぶ（drafts.ts の sentAt 参照）。これが無いと、
+    // 場所が後から解決した時に現地化をやり直せない。
+    // 型の上では抽出結果（zod）に sentAt は無いが、合体先の下書きは保存済みの
+    // payload から読んでいるので実体としては持っている。
+    (merged.receipt as StoredReceipt).sentAt =
+      (authoritative as { sentAt?: string | null }).sentAt ?? null;
   }
 
   const normalizedReceipt = merged.receipt
