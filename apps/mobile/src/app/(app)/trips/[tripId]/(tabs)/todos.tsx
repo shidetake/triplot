@@ -440,7 +440,11 @@ function TodoSection({
             </Pressable>
           </View>
 
-          {/* リスト */}
+          {/* リスト。**行と行の間は空けない** — セクションの gap は見出し・追加欄
+              との間隔のためのもので、行の間にも効くと1件あたり 8pt 増えて
+              一覧が間延びする（実機フィードバック）。iOS 標準のリマインダーも
+              行は詰めて並ぶ。 */}
+          <View style={styles.rows}>
           {sorted.map((todo) => {
             const creator = memberById.get(todo.created_by_member_id);
             return (
@@ -553,6 +557,7 @@ function TodoSection({
               </SwipeDeleteRow>
             );
           })}
+          </View>
         </>
       )}
 
@@ -587,6 +592,7 @@ const makeStyles = (t: Theme) =>
   screen: { flex: 1, backgroundColor: t.background },
   content: { padding: 16, gap: 20, paddingBottom: 48 },
   section: { gap: 8 },
+  rows: { gap: 0 },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontSize: 18, fontWeight: "600", color: t.foreground },
   sectionCount: { fontSize: 12, color: t.subtleForeground },
