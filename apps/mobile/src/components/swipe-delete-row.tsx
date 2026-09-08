@@ -19,6 +19,7 @@ import {
   listRowInsets,
   listRowSeparator,
   listStyle,
+  scrollDisabled,
 } from "@expo/ui/swift-ui/modifiers";
 
 // 一覧の行を左スワイプで消せるようにする器（iOS だけ。web にスワイプは無い）。
@@ -127,7 +128,11 @@ export function SwipeDeleteRow({
 
   return (
     <Host style={{ width: "100%", height }}>
-      <List modifiers={[listStyle("plain")]}>
+      {/* **中でスクロールさせない。** 器は行1つぶんの List なので、中に
+          スクロールする余地は無いはずだが、実機では行が単独で動いて外側の
+          スクロールとぶつかった（実機フィードバック: 受信箱の下書きが1行ずつ
+          スクロールしてしまい操作しづらい。動く行と動かない行があった）。 */}
+      <List modifiers={[listStyle("plain"), scrollDisabled(true)]}>
         <SwipeActions
           modifiers={[
             listRowSeparator("hidden"),
