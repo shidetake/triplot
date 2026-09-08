@@ -2,11 +2,20 @@ import { describe, expect, it } from "vitest";
 
 import { mergedTotal } from "./receiptTotal";
 
-// 印（totalIsDelta）が付いている＝主の経路。
+// 印（totalIsDelta）が付いている＝主の経路。どちらも銀行の決済通知。
 const marked = (total: number, totalIsDelta = false, currency = "USD") => ({
   total,
   currency,
   totalIsDelta,
+  dateIsSettlement: true,
+});
+
+// 店/サービス自身のレシート（総額にチップが含まれている）。
+const receipt = (total: number) => ({
+  total,
+  currency: "USD",
+  totalIsDelta: false,
+  dateIsSettlement: false,
 });
 
 // 印が付かなかった発行元＝下の網の経路。決済通知どうしで、片方が確定・更新。
@@ -72,8 +81,9 @@ describe("mergedTotal — 印が無い時の網（チップの割合）", () => 
   });
 
   it("店のレシートが相手なら足さない（レシートにチップは含まれている）", () => {
-    const receipt = { total: 66.56, currency: "USD", dateIsSettlement: false };
-    expect(mergedTotal(receipt, notice(11.09, true), 66.56).total).toBe(66.56);
+    expect(mergedTotal(receipt(66.56), notice(11.09, true), 66.56).total).toBe(
+      66.56,
+    );
   });
 
   it("どちらも確定でなければ足さない（同じ通知が2回）", () => {
@@ -85,6 +95,23 @@ describe("mergedTotal — 印が無い時の網（チップの割合）", () => 
   it("印が付いていればそちらが勝つ（割合の外でも足す）", () => {
     // 40% でも、メールが差額だと言っているなら足す。
     expect(mergedTotal(marked(100), marked(40, true), 100).total).toBe(140);
+  });
+});
+
+describe("mergedTotal — 店のレシートには足さない", () => {
+  // 実データ: 〔利用 29.32 ＋ 店のレシート 35.18 ＋ 確定 5.86〕。レシートの
+  // 35.18 には既にチップが入っているので、5.86 を足すと二重計上になる。
+  it("印の付いた差額でも、相手が店のレシートなら足さない", () => {
+    expect(mergedTotal(receipt(35.18), marked(5.86, true), 35.18)).toEqual({
+      total: 35.18,
+      summed: false,
+    });
+  });
+
+  it("順番が逆でも足さない", () => {
+    expect(mergedTotal(marked(5.86, true), receipt(35.18), 35.18).total).toBe(
+      35.18,
+    );
   });
 });
 

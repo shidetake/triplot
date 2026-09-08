@@ -61,7 +61,13 @@ export function mergedTotal(
   const floor = Math.max(a.total, b.total);
   const usable = a.currency === b.currency && a.total > 0 && b.total > 0;
 
-  if (usable) {
+  // **足すのは決済通知どうしの時だけ。** 店のレシートの総額にはチップが既に
+  // 含まれているので、そこに差額を足すと二重計上になる（実データ: 店の
+  // レシート 35.18 に確定通知の差額 5.86 を足して 41.04 になっていた。
+  // 正しくは 35.18）。
+  const bothSettlement = !!a.dateIsSettlement && !!b.dateIsSettlement;
+
+  if (usable && bothSettlement) {
     // 印がある側を主にする。片方だけが「差額」なら足す。両方が差額（同じ確定
     // 通知が2回届いた）や両方が総額（重複・更新）は足さない。
     if (!!a.totalIsDelta !== !!b.totalIsDelta) {
@@ -79,12 +85,9 @@ export function mergedTotal(
   return { total: Math.max(llmTotal, floor), summed: false };
 }
 
-// 印が付いていない時の網。**両方が銀行・カード会社の通知**で、**片方だけが
-// 確定・更新**で、その額が相手のチップに当たる割合なら、チップとみなす。
-// 店のレシートが片方にあるなら掛からない（レシートの総額にチップは含まれて
-// いるので、足すと二重計上になる）。
+// 印が付いていない時の網。**片方だけが確定・更新**で、その額が相手のチップに
+// 当たる割合なら、チップとみなす（両方が決済通知であることは呼ぶ側で見ている）。
 function looksLikeTip(a: TotaledReceipt, b: TotaledReceipt): boolean {
-  if (!a.dateIsSettlement || !b.dateIsSettlement) return false;
   if (!!a.isUpdate === !!b.isUpdate) return false;
   const [base, add] = a.isUpdate ? [b, a] : [a, b];
   if (add.total >= base.total) return false;
