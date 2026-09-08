@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { router } from "expo-router";
+
 import { Image, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
@@ -11,6 +11,7 @@ import { InboxIcon } from "@/components/icons";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { pushOnce } from "@/lib/navigate";
 
 // ナビバー右の「受信箱＋アバター」。旅行一覧と旅行詳細の両方に出す
 // （web の AppHeader 右側と同じ。どの画面からでも取り込みとアカウントに
@@ -48,7 +49,7 @@ export function HeaderAccountButtons({ tripId }: { tripId?: string }) {
     <View style={styles.row}>
       <HeaderIconButton
         accessibilityLabel={tHeader("import")}
-        onPress={() => router.push("/trips/import")}
+        onPress={() => pushOnce("/trips/import")}
       >
         <View>
           <InboxIcon size={20} color={theme.mutedForeground} />
@@ -66,7 +67,7 @@ export function HeaderAccountButtons({ tripId }: { tripId?: string }) {
       <HeaderIconButton
         accessibilityLabel={tSettings("heading")}
         onPress={() =>
-          router.push(
+          pushOnce(
             tripId ? `/trips/settings?tripId=${tripId}` : "/trips/settings",
           )
         }

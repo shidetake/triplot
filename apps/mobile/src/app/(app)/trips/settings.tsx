@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from "expo-router";
 
 import { SettingsSheet } from "@/components/settings-sheet";
 import { SheetScroll } from "@/components/sheet-scroll";
+import { pushOnce } from "@/lib/navigate";
 
 // 設定（native formSheet ルート）。フィードバックは兄弟ルートへの
 // router.push（旧 stackBehavior="push" 相当のドリルイン）。
@@ -19,11 +20,11 @@ export default function SettingsRoute() {
     <SheetScroll>
       <SettingsSheet
         onDone={() => router.back()}
-        onOpenFeedback={() => router.push("/trips/feedback")}
-        onOpenAbout={() => router.push("/trips/about")}
+        onOpenFeedback={() => pushOnce("/trips/feedback")}
+        onOpenAbout={() => pushOnce("/trips/about")}
         onOpenTrip={
           tripId
-            ? () => router.push(`/trips/trip-edit?tripId=${tripId}`)
+            ? () => pushOnce(`/trips/trip-edit?tripId=${tripId}`)
             : undefined
         }
       />

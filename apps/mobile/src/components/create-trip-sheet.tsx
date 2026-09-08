@@ -1,5 +1,4 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { router } from "expo-router";
 import { useState } from "react";
 import { StyleSheet, Text, TextInput, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -29,6 +28,7 @@ import { useClearDraft, useDraft } from "@/components/form-host";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
+import { replaceOnce } from "@/lib/navigate";
 
 // 旅行作成（FormSheet の中身）。web の create-trip-form と同じ2モード
 // （新規/過去の旅行をコピー）。成功でシートを閉じ、作成した旅行の詳細へ遷移。
@@ -150,13 +150,13 @@ export function CreateTripSheet({
     }
     void queryClient.invalidateQueries({ queryKey: ["trips", userId] });
     void queryClient.invalidateQueries({ queryKey: ["inbox", userId] });
-    // formSheet（trips/new）を router.back() で先に閉じてから replace すると、
+    // formSheet（trips/new）を router.back() で先に閉じてから replaceOnce すると、
     // 閉じた直後の「trips/index だけ」の状態に対して replace が効いてしまい、
     // trips/index ごと置き換わってスタックが1枚になる（戻るボタンが消える
     // 実機不具合の原因だった）。back() は呼ばず replace だけで formSheet 自身
     // （trips/new）を旅行詳細に置き換える＝ trips/index は下に残る。
     clearDraft(); // 作成済み＝この下書きは用済み
-    router.replace(`/trips/${r.data.tripId}`);
+    replaceOnce(`/trips/${r.data.tripId}`);
   };
 
   return (

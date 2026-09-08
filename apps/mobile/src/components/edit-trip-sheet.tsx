@@ -46,6 +46,7 @@ import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { pushOnce } from "@/lib/navigate";
 
 // 旅行の編集・メンバー・招待・削除（native formSheet ルートの中身）。web の
 // TripActions ＋ members ページの機能を1画面に集約した RN 版。カテゴリ管理・
@@ -449,7 +450,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           web の ⋯ メニューのカテゴリ管理・エクスポートに対応） */}
       <View style={styles.navList}>
         <Pressable
-          onPress={() => router.push(`/trips/trip-categories?tripId=${tripId}`)}
+          onPress={() => pushOnce(`/trips/trip-categories?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <TagIcon size={18} color={theme.mutedForeground} />
@@ -457,7 +458,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
           <ChevronIcon size={16} color={theme.subtleForeground} />
         </Pressable>
         <Pressable
-          onPress={() => router.push(`/trips/trip-export?tripId=${tripId}`)}
+          onPress={() => pushOnce(`/trips/trip-export?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <DownloadIcon size={18} color={theme.mutedForeground} />

@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useEffect, useState } from "react";
 import {
   Alert,
@@ -25,6 +25,7 @@ import { getLastAuthProvider, type AuthProvider } from "@/lib/lastAuthProvider";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { replaceOnce } from "@/lib/navigate";
 
 // 招待リンクからの参加（web の /join/[token] と同じ役割）。認証ゲートの
 // (app) グループの外に置く＝未ログインでも旅行名を見て、その場でサインイン
@@ -82,7 +83,7 @@ export default function JoinScreen() {
       return;
     }
     // 参加後は旅行詳細へ。この画面には戻らせない（リンクは使い終わっている）。
-    router.replace(`/trips/${r.data.tripId}`);
+    replaceOnce(`/trips/${r.data.tripId}`);
   };
 
   // 未ログインからのゲスト参加（匿名サインイン → 参加）。web の joinAsGuest と同じ。
@@ -120,7 +121,7 @@ export default function JoinScreen() {
         <Text style={styles.invalidTitle}>{t("invalidTitle")}</Text>
         <Text style={styles.description}>{t("invalidBody")}</Text>
         <Pressable
-          onPress={() => router.replace("/trips")}
+          onPress={() => replaceOnce("/trips")}
           style={styles.outlineButton}
         >
           <Text style={styles.outlineLabel}>{t("toTop")}</Text>

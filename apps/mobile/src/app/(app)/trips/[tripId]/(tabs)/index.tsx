@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useLocale, useTranslations } from "use-intl";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -31,6 +30,7 @@ import {
   useTripDrafts,
 } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
+import { pushOnce } from "@/lib/navigate";
 
 // 予定タブ（週カレンダー）。レイアウト計算は shared の buildSchedule、描画は
 // WeekCalendar（RN）。予定の追加/編集は native formSheet ルート
@@ -112,12 +112,12 @@ export default function ScheduleTab() {
   const onSlotPick = (date: string, minutes: number) => {
     const h = String(Math.floor(minutes / 60)).padStart(2, "0");
     const m = String(minutes % 60).padStart(2, "0");
-    router.push(`/trips/${tripId}/event-form?date=${date}&time=${h}:${m}`);
+    pushOnce(`/trips/${tripId}/event-form?date=${date}&time=${h}:${m}`);
   };
 
   // 終日帯の長押し→離した日付で終日予定を追加（web と同じ経路。時刻は持たない）。
   const onAllDaySlotPick = (date: string) => {
-    router.push(`/trips/${tripId}/event-form?date=${date}&allDay=1`);
+    pushOnce(`/trips/${tripId}/event-form?date=${date}&allDay=1`);
   };
 
   // 長押し＋ドラッグで動かした予定を保存する。
@@ -153,10 +153,10 @@ export default function ScheduleTab() {
   const onEventPress = (ev: EventRow) => {
     const draftId = draftIdFromEventId(ev.id);
     if (draftId) {
-      router.push(`/trips/${tripId}/event-form?draftId=${draftId}`);
+      pushOnce(`/trips/${tripId}/event-form?draftId=${draftId}`);
       return;
     }
-    router.push(`/trips/${tripId}/event-form?eventId=${ev.id}`);
+    pushOnce(`/trips/${tripId}/event-form?eventId=${ev.id}`);
   };
 
   return (
@@ -185,7 +185,7 @@ export default function ScheduleTab() {
 
       {/* 追加 FAB */}
       <Pressable
-        onPress={() => router.push(`/trips/${tripId}/event-form`)}
+        onPress={() => pushOnce(`/trips/${tripId}/event-form`)}
         style={styles.fab}
         accessibilityLabel={t("event.addAria")}
       >

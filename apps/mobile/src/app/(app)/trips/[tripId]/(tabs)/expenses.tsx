@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+
 import {
   Pressable,
   RefreshControl,
@@ -53,6 +53,7 @@ import {
 } from "@/lib/useTripDetail";
 import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import { useTripId } from "@/lib/useTripId";
+import { pushOnce } from "@/lib/navigate";
 
 // 費用タブ。web の apps/web/app/trips/[tripId]/page.tsx の費用セクション相当。
 // 発生順の一覧 + 集計/精算サマリ + 追加/編集フォーム（native formSheet ルート
@@ -281,7 +282,7 @@ export default function ExpensesTab() {
               >
                 <Pressable
                   onPress={() =>
-                    router.push(`/trips/${tripId}/expense-form?draftId=${d.id}`)
+                    pushOnce(`/trips/${tripId}/expense-form?draftId=${d.id}`)
                   }
                   style={styles.draftButton}
                 >
@@ -348,7 +349,7 @@ export default function ExpensesTab() {
                 >
                 <Pressable
                   onPress={() =>
-                    router.push(
+                    pushOnce(
                       `/trips/${tripId}/expense-form?expenseId=${e.id}`,
                     )
                   }
@@ -443,7 +444,7 @@ export default function ExpensesTab() {
 
       {/* 追加 FAB */}
       <Pressable
-        onPress={() => router.push(`/trips/${tripId}/expense-form`)}
+        onPress={() => pushOnce(`/trips/${tripId}/expense-form`)}
         style={styles.fab}
         accessibilityLabel={tExp("addAria")}
       >

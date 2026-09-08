@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { router, Stack } from "expo-router";
+import { Stack } from "expo-router";
 import {
   FlatList,
   Image,
@@ -33,6 +33,7 @@ import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useSession } from "@/lib/session";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { pushOnce } from "@/lib/navigate";
 
 // 旅行一覧（アプリのホーム）。web の apps/web/app/trips/page.tsx 相当。
 // ヘッダー右に受信箱と設定（アバター）、右下 FAB に旅行作成。取り込み・
@@ -171,7 +172,7 @@ export default function TripsScreen() {
                   key={p.emailIds.join(",")}
                   style={[styles.proposalRow, i > 0 && styles.proposalDivider]}
                   onPress={() =>
-                    router.push({
+                    pushOnce({
                       pathname: "/trips/new",
                       params: {
                         ...(p.title ? { title: p.title } : {}),
@@ -211,7 +212,7 @@ export default function TripsScreen() {
           // 入り口で、費用一覧の行のような「同じ文脈の中の同種の明細」とは
           // 性質が違う（実機フィードバック: 区切り線の一覧だと旅行同士が
           // 地続きに見えて選びにくかった）。
-          <Pressable style={styles.row} onPress={() => router.push(`/trips/${item.id}`)}>
+          <Pressable style={styles.row} onPress={() => pushOnce(`/trips/${item.id}`)}>
             <Text style={styles.cardTitle}>{item.title}</Text>
             <Text style={styles.cardSub}>
               {formatTripDateRange(item.start_date, item.end_date, locale)}
@@ -249,7 +250,7 @@ export default function TripsScreen() {
       <Pressable
         style={styles.fab}
         accessibilityLabel={t("create")}
-        onPress={() => router.push("/trips/new")}
+        onPress={() => pushOnce("/trips/new")}
       >
         <PlusIcon size={24} color={theme.primaryForeground} />
       </Pressable>

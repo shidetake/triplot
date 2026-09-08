@@ -1,4 +1,3 @@
-import { router } from "expo-router";
 import { useState } from "react";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -36,9 +35,10 @@ import {
 } from "@/lib/exportFile";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
+import { pushOnce } from "@/lib/navigate";
 
 // エクスポート（native formSheet ルートの中身）。出力先ごとの3行: 予定
-// （Google カレンダー）は router.push で兄弟ルートへドリルイン、地図（KML）・
+// （Google カレンダー）は pushOnce で兄弟ルートへドリルイン、地図（KML）・
 // 費用（CSV）はその場で生成して共有シートへ（web の ⋯ メニュー > エクスポート
 // のドリルインに対応）。旅行編集からドリルインで開く。
 export function ExportSheet({ tripId }: { tripId: string }) {
@@ -159,7 +159,7 @@ export function ExportSheet({ tripId }: { tripId: string }) {
       {/* カレンダーは Google Sign-In の設定がある環境だけ（トークン取得に必要） */}
       {googleSignInAvailable && (
         <Pressable
-          onPress={() => router.push(`/trips/trip-calendar-export?tripId=${tripId}`)}
+          onPress={() => pushOnce(`/trips/trip-calendar-export?tripId=${tripId}`)}
           style={styles.navRow}
         >
           <CalendarDaysIcon size={18} color={theme.mutedForeground} />

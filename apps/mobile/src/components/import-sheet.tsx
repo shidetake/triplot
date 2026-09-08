@@ -1,6 +1,6 @@
 import * as Clipboard from "expo-clipboard";
 import { Fragment, useState } from "react";
-import { router } from "expo-router";
+
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
@@ -37,6 +37,7 @@ import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
+import { pushOnce } from "@/lib/navigate";
 
 // 受信箱（メール取り込み、FormSheet の中身）。web の /import 相当
 // （M8 スコープ = 割当/破棄/アドレス表示。確定は各旅行の画面で）。
@@ -404,7 +405,7 @@ export function ImportSheet() {
                     <View style={styles.assignGroup}>
                       <Pressable
                         onPress={() =>
-                          router.push(`/trips/import-pick-trip?emailId=${e.id}`)
+                          pushOnce(`/trips/import-pick-trip?emailId=${e.id}`)
                         }
                         // 見た目は 12pt の文字＋上下 6 の padding で約28pt しかなく、
                         // HIG が求めるタップ対象の最小 44pt に足りない。見た目を
