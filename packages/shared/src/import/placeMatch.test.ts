@@ -90,3 +90,22 @@ describe("別の店に吸い寄せられない", () => {
     ).toBeNull();
   });
 });
+
+describe("nameTokens の正規化", () => {
+  // 実データ: ハワイの "Lēʻahi Market" と、カード明細の
+  // "LEAHI MKT BAR T2 G2 HN"。アクセント記号とオキナで1語も一致しなかった。
+  it("ラテン文字のアクセント記号を落とす", () => {
+    expect(nameTokens("Lēʻahi Market")).toEqual(["leahi", "market"]);
+    expect(nameTokens("Café Crème")).toEqual(["cafe", "creme"]);
+  });
+
+  it("アポストロフィは消して繋げる（割らない）", () => {
+    expect(nameTokens("O'Brien's")).toEqual(["obriens"]);
+  });
+
+  // 濁点は U+3099/U+309A でアクセント記号の範囲の外。落とすと別語になる。
+  it("日本語の濁点は落とさない", () => {
+    expect(nameTokens("ガスト")).toEqual(["ガスト"]);
+    expect(nameTokens("バーガーキング")).toEqual(["バーガーキング"]);
+  });
+});
