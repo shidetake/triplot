@@ -39,12 +39,9 @@ export type TotaledReceipt = {
   // その金額が、既存の取引への追加ぶん（差額・調整・後追いのチップ）か。
   // 総額なら false。古い下書きには無いので undefined も総額として扱う。
   totalIsDelta?: boolean;
-  // 割合から推測する時に使う。銀行・カード会社の通知か / 既存決済の確定・更新か。
+  // 下の網に使う。銀行・カード会社の通知か / 既存決済の確定・更新か。
   dateIsSettlement?: boolean;
   isUpdate?: boolean;
-  // 承認番号・取引ID など。**同じ取引だと分かっている時にだけ推測を許す**
-  // ために見る（下の looksLikeTip）。
-  referenceIds?: string[];
 };
 
 // チップとみなす割合の範囲。米国の飲食は 15〜25% が中心で、少額の会計に
@@ -88,26 +85,12 @@ export function mergedTotal(
   return { total: Math.max(llmTotal, floor), summed: false };
 }
 
-// 印が付いていない時の推測。**同じ取引だと分かっていて**、**片方だけが確定・
-// 更新**で、その額が相手のチップに当たる割合なら、チップとみなす（両方が決済
-// 通知であることは呼ぶ側で見ている）。
-//
-// **識別番号の一致を必須にする。** 合体の相手は識別番号で決まることもあれば
-// 日付の近さで決まることもあり、後者は「同じ取引」とまでは言えない。承認番号は
-// 「同じ取引か」には強い答えを出すが、**「その額が差額か総額か」には答えない**
-// （$100 で承認して $40 で確定する発行元でも番号は一致する）。だから足す方向の
-// 根拠にはせず、**推測を許す範囲を狭める方向にだけ使う**。
+// 印が付いていない時の網。**片方だけが確定・更新**で、その額が相手のチップに
+// 当たる割合なら、チップとみなす（両方が決済通知であることは呼ぶ側で見ている）。
 function looksLikeTip(a: TotaledReceipt, b: TotaledReceipt): boolean {
-  if (!sharesReference(a, b)) return false;
   if (!!a.isUpdate === !!b.isUpdate) return false;
   const [base, add] = a.isUpdate ? [b, a] : [a, b];
   if (add.total >= base.total) return false;
   const ratio = add.total / base.total;
   return ratio >= TIP_MIN && ratio <= TIP_MAX;
-}
-
-function sharesReference(a: TotaledReceipt, b: TotaledReceipt): boolean {
-  const A = new Set((a.referenceIds ?? []).map((x) => x.trim()).filter(Boolean));
-  if (A.size === 0) return false;
-  return (b.referenceIds ?? []).some((x) => A.has(x.trim()));
 }

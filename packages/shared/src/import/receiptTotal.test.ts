@@ -18,15 +18,13 @@ const receipt = (total: number) => ({
   dateIsSettlement: false,
 });
 
-// 印が付かなかった発行元＝割合から推測する経路。決済通知どうしで、片方が
-// 確定・更新。承認番号が一致していることが推測の前提。
-const notice = (total: number, isUpdate: boolean, ref = "403106") => ({
+// 印が付かなかった発行元＝下の網の経路。決済通知どうしで、片方が確定・更新。
+const notice = (total: number, isUpdate: boolean) => ({
   total,
   currency: "USD",
   totalIsDelta: false,
   dateIsSettlement: true,
   isUpdate,
-  referenceIds: [ref],
 });
 
 describe("mergedTotal — 印がある時（主）", () => {
@@ -60,18 +58,7 @@ describe("mergedTotal — 印がある時（主）", () => {
   });
 });
 
-describe("mergedTotal — 印が無い時の推測（チップの割合）", () => {
-  it("承認番号が一致しなければ推測しない（日付の近さだけで合体した組）", () => {
-    expect(
-      mergedTotal(notice(55.47, false, "111"), notice(11.09, true, "222"), 11.09),
-    ).toEqual({ total: 55.47, summed: false });
-  });
-
-  it("識別番号を持たない相手とも推測しない", () => {
-    const noRef = { total: 11.09, currency: "USD", dateIsSettlement: true, isUpdate: true };
-    expect(mergedTotal(notice(55.47, false), noRef, 11.09).total).toBe(55.47);
-  });
-
+describe("mergedTotal — 印が無い時の網（チップの割合）", () => {
   it("決済通知どうしで確定の額がチップの割合なら足す", () => {
     // 55.47 の会計に 11.09（20%）。
     expect(mergedTotal(notice(55.47, false), notice(11.09, true), 11.09)).toEqual({
