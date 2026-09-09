@@ -141,7 +141,12 @@ export function expenseFieldsFromDraft(
     splitEveryone: true,
     splitMemberIds: [],
     note: d.initialNote ?? "",
-    paidAt: d.initialPaidAt,
+    // レシートの決済時刻（分かっている時だけ）。フォームを開くと時刻欄が
+    // 開いて入る値と同じで、ここで落とすと同じ日の費用が払った順に並ばない
+    // （費用の並びは paid_at で決まる）。時刻を持たないレシート（銀行の
+    // 通知）と、搭乗日・チェックイン日を日付に採ったもの（receiptDate 参照）
+    // は initialTime を持たないので、根拠の無い時刻は入らない。
+    paidAt: `${d.initialPaidAt}T${d.initialTime ?? "00:00"}`,
     // 乗継日の選択はフォームの新規作成時と同じく持たない（両方 null＝旅程から
     // 毎回導出）。手で確定した費用と自動で作った費用で結果を変えないため。
     tzDisambigTransitId: null,

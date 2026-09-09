@@ -48,11 +48,28 @@ describe("expenseFieldsFromDraft", () => {
       splitEveryone: true,
       splitMemberIds: [],
       note: "",
-      paidAt: "2026-08-01",
+      paidAt: "2026-08-01T00:00",
       tzDisambigTransitId: null,
       tzDisambigSide: null,
       place: { kind: "saved", placeId: "p1" },
     });
+  });
+
+  // 費用の並びは paid_at で決まるので、同じ日の支払いは時刻が無いと順番が
+  // 付かない。レシートの決済時刻はフォームを開けば時刻欄に入る値で、
+  // 連動確定でも同じものが入る。
+  it("レシートに時刻があれば費用にも入れる", () => {
+    const f = expenseFieldsFromDraft(
+      expenseDraft({ initialTime: "18:42" }),
+      expenseCtx,
+    );
+    expect(f?.paidAt).toBe("2026-08-01T18:42");
+  });
+
+  it("時刻が分からないレシートは 00:00（一覧で時刻を出さない）", () => {
+    expect(expenseFieldsFromDraft(expenseDraft(), expenseCtx)?.paidAt).toBe(
+      "2026-08-01T00:00",
+    );
   });
 
   it("精算通貨と同じならレートは 1（履歴が無くても作れる）", () => {
