@@ -173,18 +173,21 @@ export function SwipeDeleteRow({
                 modifiers={[accessibilityLabel(a.label)]}
                 onPress={a.onPress}
               >
-                {/* **アイコンの大きさは指定できない。** 渡した Image は
-                    そのまま描かれず、SwiftUI が記号だけ取り出して UIKit の
-                    スワイプのボタンとして描き直す（Apple のドキュメントにも
-                    「swipe actions に現れるラベルや画像には fill の変種が
-                    自動で適用される」とあり、置き換えていることが分かる）。
+                {/* **アイコンの大きさは指定できない。決めているのは UIKit。**
+                    実行中のビュー階層を覗くと、描いているのは
+                    `_UISwipeActionDynamicButton` で、その UIButtonConfiguration が
+                    `buttonSize=medium` / `preferredSymbolConfigurationForImage=
+                    pointSize=18, weight=Regular, scale=Medium` を持っている。
+                    記号も `trash` ではなく `trash.fill` に差し替わっていて、
+                    渡した Image がそのまま描かれていないことが分かる（Apple の
+                    ドキュメントにも「swipe actions のラベルや画像には fill の
+                    変種が自動で適用される」とある）。
                     そのため大きさを決める手段は全部無視される——実測で
-                    `size`（＝font に変換される）・`imageScale`・`controlSize`・
-                    `font`・`resizable`+`frame`・`labelStyle("iconOnly")` の
-                    どれも効かなかった。
-                    UIKit 側には大きさの指定がある（UIContextualAction.image に
-                    自分で作った UIImage を渡す）が、SwiftUI の swipeActions
-                    からは届かない。
+                    `size`（＝font に変換される）・`imageScale`・`controlSize`
+                    （ボタン・List のどちらに付けても buttonSize は medium の
+                    まま）・`font`・`resizable`+`frame`・`labelStyle("iconOnly")`
+                    のどれも効かなかった。SwiftUI の swipeActions の宣言にも
+                    外観の引数は無い（SDK のインターフェースで確認）。
                     文言を渡すとアイコンは文字に合わせた寸法（14pt）になるが、
                     見えない空白で代用すると**アイコンが中心からずれる**ので
                     採らない。 */}
