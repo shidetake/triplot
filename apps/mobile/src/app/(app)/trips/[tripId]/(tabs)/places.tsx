@@ -3099,10 +3099,6 @@ const makeStyles = (t: Theme) =>
       alignItems: "center",
       gap: 10,
       paddingVertical: 10,
-      // 右端に余白を持たせる。一覧の左右の余白（styles.list）はスワイプの行の
-      // **外側**にあるので、スワイプで行が縮むと「ピンを設定」が角丸の縁の
-      // すぐ隣に来て詰まって見えた（実機フィードバック）。行の内側に持たせる。
-      paddingRight: 12,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
