@@ -1954,15 +1954,20 @@ export default function PlacesTab() {
                 {": "}
                 {t("locatingHintTouch")}
               </Text>
+              {/* モードから抜ける口。× にしない —— × は「オーバーレイを閉じる」
+              印で、この帯はオーバーレイではなくモードの表示なので、押すと
+              ヒントが消えるだけに読めてしまう（モードを抜けられると分から
+              ない）。文言を持つのが世の中の作りでもあり、web の一覧行の
+              「やめる」とも同じ形になる。 */}
               <Pressable
                 onPress={() => {
                   setLocating(null);
                   setPinDraft(null);
                 }}
-                hitSlop={8}
+                hitSlop={12}
                 accessibilityLabel={t("cancelLocate")}
               >
-                <XIcon size={16} color={theme.warnAccent} />
+                <Text style={styles.locatingCancel}>{t("cancelLocate")}</Text>
               </Pressable>
             </View>
           )}
@@ -3167,6 +3172,7 @@ const makeStyles = (t: Theme) =>
       paddingVertical: 8,
     },
     locatingText: { flex: 1, fontSize: 12, color: t.warnText },
+    locatingCancel: { fontSize: 12, fontWeight: "500", color: t.warnAccent },
     placeMeta: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
     empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
   });
