@@ -48,6 +48,7 @@ import { usePullRefresh } from "@/lib/usePullRefresh";
 import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { LIST_ROW_PADDING_H } from "@/lib/layout";
 import { useTripId } from "@/lib/useTripId";
 
 // TODO タブ。web の components/todo-section.tsx 相当（準備/現地の2セクション、
@@ -596,7 +597,10 @@ const makeStyles = (t: Theme) =>
   screen: { flex: 1, backgroundColor: t.background },
   content: { padding: 16, gap: 20, paddingBottom: 48 },
   section: { gap: 8 },
-  rows: { gap: 0 },
+  // **スワイプする一覧は、器の側で器の余白から抜ける。** 行のスタイルに負の
+  // マージンを置いても、それは SwipeDeleteRow の内側なので**灰色を描く SwiftUI の
+  // 行は動かない**（中の RN だけがはみ出す）。抜けるのは Host より外側で行う。
+  rows: { gap: 0, marginHorizontal: -LIST_ROW_PADDING_H },
   sectionHeader: { flexDirection: "row", alignItems: "center", gap: 6 },
   sectionTitle: { fontSize: 18, fontWeight: "600", color: t.foreground },
   sectionCount: { fontSize: 12, color: t.subtleForeground },
@@ -626,6 +630,8 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     gap: 8,
     paddingVertical: 6,
+    // 余白は行が持つ（lib/layout.ts）。抜けるのは上の rows 側。
+    paddingHorizontal: LIST_ROW_PADDING_H,
   },
   checkbox: {
     width: 20,

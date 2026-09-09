@@ -36,6 +36,7 @@ import {
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useTripDetail } from "@/lib/useTripDetail";
 import { pushOnce } from "@/lib/navigate";
+import { LIST_ROW_PADDING_H } from "@/lib/layout";
 
 // エクスポート（native formSheet ルートの中身）。出力先ごとの3行: 予定
 // （Google カレンダー）は pushOnce で兄弟ルートへドリルイン、地図（KML）・
@@ -195,6 +196,10 @@ const makeStyles = (t: Theme) =>
   StyleSheet.create({
     content: { paddingHorizontal: 16 },
     navRow: {
+      // 一覧の行は左右の余白を自分で持つ（lib/layout.ts）。器（content）が
+      // 余白を持っていると区切り線が内側で止まるので、負のマージンで抜ける。
+      marginHorizontal: -LIST_ROW_PADDING_H,
+      paddingHorizontal: LIST_ROW_PADDING_H,
       flexDirection: "row",
       alignItems: "center",
       gap: 10,

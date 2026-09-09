@@ -34,6 +34,7 @@ import { signOut } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
+import { LIST_ROW_PADDING_H } from "@/lib/layout";
 
 // 設定（FormSheet の中身）。デフォルト表示名の変更・フィードバック導線・
 // サインアウト。テーマは RN では OS 追従（設定不要）、言語切替は端末設定準拠。
@@ -388,6 +389,10 @@ const makeStyles = (t: Theme) =>
     disabled: { opacity: 0.5 },
     // iOS 設定流のドリルイン行（edit-trip-sheet の navRow と同形）。
     navList: {
+      // 一覧の行は左右の余白を自分で持つ（lib/layout.ts）。器（content）が
+      // 余白を持っていると区切り線が内側で止まるので、負のマージンで抜ける。
+      marginHorizontal: -LIST_ROW_PADDING_H,
+      paddingHorizontal: LIST_ROW_PADDING_H,
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.fgAlpha(0.08),
     },

@@ -47,6 +47,7 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { pushOnce } from "@/lib/navigate";
+import { LIST_ROW_PADDING_H } from "@/lib/layout";
 
 // 旅行の編集・メンバー・招待・削除（native formSheet ルートの中身）。web の
 // TripActions ＋ members ページの機能を1画面に集約した RN 版。カテゴリ管理・
@@ -510,6 +511,10 @@ const makeStyles = (t: Theme) =>
   dateRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   dateSep: { fontSize: 14, color: t.subtleForeground },
   memberRow: {
+    // 一覧の行は左右の余白を自分で持つ（lib/layout.ts）。器（content）が
+    // 余白を持っていると区切り線が内側で止まるので、負のマージンで抜ける。
+    marginHorizontal: -LIST_ROW_PADDING_H,
+    paddingHorizontal: LIST_ROW_PADDING_H,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
@@ -534,6 +539,10 @@ const makeStyles = (t: Theme) =>
   inviteRow: { flexDirection: "row", gap: 8 },
   // iOS 設定流の行リスト（ドリルイン・アクション）。
   navList: {
+    // 一覧の行は左右の余白を自分で持つ（lib/layout.ts）。器（content）が
+    // 余白を持っていると区切り線が内側で止まるので、負のマージンで抜ける。
+    marginHorizontal: -LIST_ROW_PADDING_H,
+    paddingHorizontal: LIST_ROW_PADDING_H,
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: t.fgAlpha(0.08),
   },

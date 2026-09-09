@@ -124,6 +124,7 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
+import { LIST_ROW_PADDING_H } from "@/lib/layout";
 import { useTripId } from "@/lib/useTripId";
 
 // Google 評価の★（web の place-popups と同じ Material Symbols star 塗り・amber）。
@@ -3038,7 +3039,8 @@ const makeStyles = (t: Theme) =>
     // 見つけてもらう必要がある。地は前景色の α 重ね（web と同値）。
     sheetHeaderClose: {
       position: "absolute",
-      right: 10,
+      // 器の余白を行に移したぶん（16）を足して、見た目の位置を据え置く。
+      right: 26,
       top: 6,
       width: 36,
       height: 36,
@@ -3093,12 +3095,14 @@ const makeStyles = (t: Theme) =>
       color: t.mutedForeground,
       marginLeft: 3,
     },
-    list: { paddingHorizontal: 16, paddingBottom: 24 },
+    // **一覧の左右の余白は器ではなく行が持つ**（docs/ui-guidelines.md）。
+    list: { paddingBottom: 24 },
     placeRow: {
       flexDirection: "row",
       alignItems: "center",
       gap: 10,
       paddingVertical: 10,
+      paddingHorizontal: LIST_ROW_PADDING_H,
       borderBottomWidth: StyleSheet.hairlineWidth,
       borderBottomColor: t.fgAlpha(0.08),
     },
