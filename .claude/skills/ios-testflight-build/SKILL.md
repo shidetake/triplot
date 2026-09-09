@@ -37,11 +37,15 @@ grep -n "Incremented buildNumber\|You can find the build artifacts in" <出力�
 続けて submit:
 
 ```bash
-cd apps/mobile
-npx eas-cli submit --platform ios --path <ipaのパス> --non-interactive
+npm run ios:submit -- apps/mobile/build-<timestamp>.ipa
 ```
 
 - こちらも `run_in_background: true` で実行し、完了を待つ。
+- **`eas submit` を直に叩かない。** このスクリプトは出す前に ipa の中身を検めて、
+  起動に要るフレームワーク（React / ReactNativeDependencies / hermesvm）が欠けて
+  いたら止める。上流の配信が落ちている時、**ビルドは成功するのに起動しない
+  バイナリ**ができるため（AGENTS.md 参照。実際に TestFlight まで出してしまった）。
+- 止まったら回避せず、配信が戻ってからビルドし直す。
 
 ## 完了報告（省略しないこと）
 

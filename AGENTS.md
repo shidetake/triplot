@@ -238,8 +238,14 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   ```bash
   cd apps/mobile
   npx eas-cli build --platform ios --profile production --local --non-interactive
-  npx eas-cli submit --platform ios --path build-<timestamp>.ipa --non-interactive
+  cd ..
+  npm run ios:submit -- apps/mobile/build-<timestamp>.ipa
   ```
+
+  **submit は `npm run ios:submit` を通す**（`eas submit` を直に叩かない）。
+  出す前に ipa の中身を検めて、起動に要るフレームワークが欠けていたら止める
+  （下記「pod install が cmake で落ちる時」の失敗を、出す操作そのもので
+  受け止めるため）。
 
 - **本番（市場リリース）用のビルドはクラウドビルドにする**（`--local` を付けない）。
   ローカルビルドは Mac の状態（Xcode の版・キーチェーン・node_modules への
@@ -251,26 +257,39 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 
 #### `pod install` が `Unable to locate the executable cmake` で落ちる時
 
-**上流のアーティファクト配信が落ちている合図**で、こちらの環境の問題ではない
-（`cmake` は普段要らない）。iOS の Hermes はビルド済みの tarball を落として
-使うが、取得に失敗するとソースからビルドする経路に落ち、そこで `cmake` を
-要求される。`repo1.maven.org` は React Native 用の配信を `repo.reactnative.dev`
-へ 301 で転送していて、**転送先がディレクトリ一覧には出るのにファイル取得は
-404 を返す**状態を実際に踏んだ（2026-09-10）。
+**上流のアーティファクト配信が落ちている合図。待つ。回避してビルドしない。**
 
-同じものが `~/Library/Caches/ReactNative/` に残っているので、それを直接指す。
-バージョンは `apps/mobile/node_modules/react-native/sdks/hermes-engine/version.properties`
-の `HERMES_V1_VERSION_NAME`:
+iOS の Hermes と React Native 本体は**ビルド済みの tarball を落として**使い、
+`cmake` は普段要らない。取得に失敗するとソースからビルドする経路に落ち、
+そこで `cmake` を要求される。実際に踏んだ形（2026-09-10）は、`repo1.maven.org`
+が React Native 用の配信を `repo.reactnative.dev` へ 301 で転送していて、
+**転送先がディレクトリ一覧には出るのにファイル取得は 404 を返す**状態だった。
+数時間で復旧した。
+
+復旧の確認（3つとも 206 が返れば取得できる）:
 
 ```bash
-cd apps/mobile
-HERMES_ENGINE_TARBALL_PATH="$HOME/Library/Caches/ReactNative/hermes-ios-<バージョン>-release.tar.gz" \
-  npx eas-cli build --platform ios --profile production --local --non-interactive
+B=https://repo.reactnative.dev/maven2/com/facebook
+V=$(grep HERMES_V1_VERSION_NAME apps/mobile/node_modules/react-native/sdks/hermes-engine/version.properties | cut -d= -f2)
+R=$(node -p "require('./apps/mobile/node_modules/react-native/package.json').version")
+curl -s -o /dev/null -w "%{http_code}\n" -r 0-10 "$B/hermes/hermes-ios/$V/hermes-ios-$V-hermes-ios-release.tar.gz"
+for a in core dependencies; do
+  curl -s -o /dev/null -w "%{http_code}\n" -r 0-10 \
+    "$B/react/react-native-artifacts/$R/react-native-artifacts-$R-reactnative-$a-release.tar.gz"
+done
 ```
 
-**`cmake` を入れて解決しない。** それだと Hermes が移動し続けるブランチの
-先頭からビルドされ、前のビルドと違うものが入る（再現しない・検証していない
-バイナリになる）。キャッシュの tarball は直前のビルドが使ったものと同じ。
+**`HERMES_ENGINE_TARBALL_PATH` でキャッシュを指す回避策を採らない。** Hermes だけ
+塞いでも React Native 本体は落ちてこないままで、**ビルドは通るのに
+`React.framework` と `ReactNativeDependencies.framework` が入らない**。起動した
+瞬間に落ちるアプリができ、しかもビルドは成功に見える（実際に TestFlight まで
+出してしまった。0.1.0 (210)）。`cmake` を入れるのも駄目で、そちらは Hermes が
+移動し続けるブランチの先頭からビルドされ、前のビルドと違うものが入る。
+
+この失敗は**起動しないと分からない**（ビルドのログにも成果物の名前にも異常が
+出ない）。**`npm run ios:submit` が出す前に ipa を検めて止める**ので、確認を
+別の手順として覚えておく必要は無い——手順として分けると、思い出した時だけ
+実行される＝忘れた時に素通りする。
 
 **ビルドのログを `tail` に通さない。** 失敗の本文が捨てられ、`exit code 0` に
 見える（この件を追う時に実際に一度見落とした）。ファイルに落として全文を残す。
