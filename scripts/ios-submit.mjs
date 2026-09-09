@@ -22,20 +22,26 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-// 欠けたら起動しないもの。Expo 系のフレームワークは欠けても起動はするので
-// ここでは見ない（起動しない＝TestFlight に出す意味が無い、の線で引く）。
-const REQUIRED = [
-  "React.framework",
-  "ReactNativeDependencies.framework",
-  "hermesvm.framework",
-];
+import { verifyIpa } from "./ios-verify-ipa.mjs";
 
 const args = process.argv.slice(2);
+const KNOWN = ["--force", "--check-only"];
+// **知らないフラグは黙って無視しない。** 綴りを外した時に、検証だけのつもりが
+// 本当に submit されてしまう（実際にやった）。
+const unknown = args.filter((a) => a.startsWith("--") && !KNOWN.includes(a));
+if (unknown.length > 0) {
+  console.error(`知らないフラグ: ${unknown.join(" ")}`);
+  console.error(`使えるのは ${KNOWN.join(" / ")}`);
+  process.exit(1);
+}
 const force = args.includes("--force");
+const checkOnly = args.includes("--check-only");
 const ipa = args.find((a) => !a.startsWith("--"));
 
 if (!ipa) {
-  console.error("使い方: npm run ios:submit -- <path-to-ipa> [--force]");
+  console.error(
+    "使い方: npm run ios:submit -- <path-to-ipa> [--check-only] [--force]",
+  );
   process.exit(1);
 }
 if (!fs.existsSync(ipa)) {
@@ -43,33 +49,10 @@ if (!fs.existsSync(ipa)) {
   process.exit(1);
 }
 
-// unzip -l の一覧からフレームワーク名を拾う（展開しない）。
-const listed = spawnSync("unzip", ["-l", ipa], { encoding: "utf8" });
-if (listed.status !== 0) {
-  console.error(`ipa を読めない: ${listed.stderr || listed.status}`);
-  process.exit(1);
-}
-const found = new Set(
-  [...listed.stdout.matchAll(/Frameworks\/([A-Za-z0-9_]+\.framework)/g)].map(
-    (m) => m[1],
-  ),
-);
-const missing = REQUIRED.filter((f) => !found.has(f));
-
-console.log(`同梱フレームワーク: ${found.size} 個`);
-if (missing.length > 0) {
-  console.error("");
-  console.error(`**欠けている: ${missing.join(", ")}**`);
-  console.error("");
-  console.error("これが入っていないアプリは起動した瞬間に落ちる。上流の");
-  console.error("アーティファクト配信が落ちていて、ソースからビルドする経路に");
-  console.error("落ちた時にこうなる（AGENTS.md「pod install が cmake で落ちる時」）。");
-  console.error("");
-  console.error("配信が戻っているか確かめて、戻ってからビルドし直すこと。");
-  console.error("回避してビルドしたものを出さない。");
-  if (!force) process.exit(1);
-  console.error("--force が付いているので続行する。");
-}
+const ok = verifyIpa(ipa);
+if (checkOnly) process.exit(ok ? 0 : 1);
+if (!ok && !force) process.exit(1);
+if (!ok) console.error("--force が付いているので続行する。");
 
 const submit = spawnSync(
   "npx",

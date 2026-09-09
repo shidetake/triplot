@@ -31,6 +31,15 @@ const bannedClassPatterns = [
     msg: "ベタの bg-black は使わない。primary トークン（bg-primary text-primary-foreground）で（design-guidelines「ボタンの配色」）。背景 dim は bg-black/40 を使う。",
   },
   {
+    re: "border-zinc-",
+    msg: "border-zinc-* は使わない。border-foreground/10・/20 など前景色の α 階段で（ui-guidelines「ボーダー色」）。",
+  },
+  {
+    // 状態の dim は 50、色付きブロック内の脇役 fade は 70 の2段だけ。
+    re: "opacity-(40|60)\\b",
+    msg: "opacity は 50（状態の dim）と 70（色付き面の中の脇役）の2段だけ（ui-guidelines「薄くする手段」）。",
+  },
+  {
     re: "rounded-2xl",
     msg: "rounded-2xl は使わない。角丸は rounded / rounded-md / rounded-lg / rounded-full（design-guidelines「角丸」）。",
   },

@@ -17,17 +17,18 @@ description: iOS の動作確認用ビルドを TestFlight に上げる（ロー
 ## 手順
 
 ```bash
-cd apps/mobile
-npx eas-cli build --platform ios --profile production --local --non-interactive
+npm run ios:build
 ```
 
 - 必ず `run_in_background: true` で実行し、完了通知を待つ（数十分かかることがある）。
-- **`--local` を必ず付ける**（TestFlight確認はローカルビルドが既定。クラウドビルドの枠は本番用に温存する）。
+- **`eas-cli` を直に叩かない。** このスクリプトはローカルビルド（クラウドビルドの
+  枠は本番用に温存する）を回し、**ログを全文ファイルに残し**（`| tail` に通すと
+  失敗の本文が捨てられて成功に見える）、できた ipa をその場で検める。
 
-完了したら出力ログを確認する:
+完了したら出力ログを確認する（パスはスクリプトが最初に出す）:
 
 ```bash
-grep -n "Incremented buildNumber\|You can find the build artifacts in" <出力ログのパス>
+grep -n "Incremented buildNumber\|You can find the build artifacts in" <ログのパス>
 ```
 
 - `Incremented buildNumber from X to Y` の **Y がビルド番号**。

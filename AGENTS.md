@@ -54,8 +54,24 @@ skip する。本番を向いていたら例外で止まる）。
   操作が通るか / 最後に消えるかだけを見る（落ちた時に原因を追いやすくする）。
 
 Husky フック:
-- `pre-commit`: lint + tsc
-- `pre-push`: lint + tsc + test
+- `pre-commit`: lint + tsc + **秘密の混入**（`check:no-secrets`）
+- `pre-push`: lint + tsc + test + client-boundary + **本番との型ズレ**
+  （`db:types:check`）+ **staging への migration 当て忘れ**
+  （`check:staging-migrations`）
+
+**規約を文書だけに置かない。** 手順として書くと、思い出した時にしか実行され
+ない＝忘れた時に素通りする。機械が判定できるものは、フックか、その操作を行う
+コマンド自体に埋める（下の一覧）。
+
+| 守りたいこと | どこで止まるか |
+|---|---|
+| 転送先アドレス等をコミットする | `pre-commit`（`check:no-secrets`。値は環境ファイルから読み、ログには出さない） |
+| `database.generated.ts` が実 DB とズレる | `pre-push`（`db:types:check`） |
+| migration を staging に当て忘れる | `pre-push`（`check:staging-migrations`） |
+| クライアント境界を越える import | `pre-push`（`check:client-boundary`） |
+| 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
+| 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
+| 起動しない ipa を TestFlight に出す | `npm run ios:build` / `npm run ios:submit` |
 
 ### メール取り込みのテストデータ（`npm run test:seed-emails`）
 
@@ -236,11 +252,12 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   が余っていてもローカルを使い、枠は本番用に温存する。
 
   ```bash
-  cd apps/mobile
-  npx eas-cli build --platform ios --profile production --local --non-interactive
-  cd ..
+  npm run ios:build
   npm run ios:submit -- apps/mobile/build-<timestamp>.ipa
   ```
+
+  **`eas-cli` を直に叩かない。** `ios:build` はログを全文ファイルに残し
+  （`| tail` に通して失敗を見落とさないため）、できた ipa をその場で検める。
 
   **submit は `npm run ios:submit` を通す**（`eas submit` を直に叩かない）。
   出す前に ipa の中身を検めて、起動に要るフレームワークが欠けていたら止める
