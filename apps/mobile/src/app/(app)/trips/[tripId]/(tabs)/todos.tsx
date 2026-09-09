@@ -513,6 +513,10 @@ function TodoSection({
                     {todo.event_id && <ReservationIcon size={16} />}
                     <Pressable
                       onPress={() => startEdit(todo)}
+                      // 文字の高さ（約20pt）しか押せないと、行の余白を押しても
+                      // 反応しない。行いっぱい（36pt）まで広げる。**上下だけ**
+                      // ——左右に広げるとチェックボックスや優先度と重なる。
+                      hitSlop={{ top: 8, bottom: 8 }}
                       style={styles.titleShrink}
                     >
                       <Text
