@@ -559,8 +559,7 @@ const makeStyles = (t: Theme) =>
       borderRadius: 6,
       overflow: "hidden",
     },
-    // スワイプで下から赤い面が出るので、行に地色が要る（透明だと透ける）。
-    listRow: { padding: 12, gap: 6, backgroundColor: t.background },
+    listRow: { padding: 12, gap: 6 },
     listRowDivider: {
       borderTopWidth: StyleSheet.hairlineWidth,
       borderTopColor: t.fgAlpha(0.1),

@@ -515,8 +515,6 @@ const makeStyles = (t: Theme) =>
     gap: 8,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    // スワイプで下から赤い面が出るので、行に地色が要る（透明だと透ける）。
-    backgroundColor: t.background,
   },
   draftRowDivider: {
     borderTopWidth: StyleSheet.hairlineWidth,

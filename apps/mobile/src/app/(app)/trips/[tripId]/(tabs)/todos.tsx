@@ -626,8 +626,6 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     gap: 8,
     paddingVertical: 6,
-    // スワイプで下から削除が出るので、行に地色が要る（透明だと透ける）。
-    backgroundColor: t.background,
   },
   checkbox: {
     width: 20,
