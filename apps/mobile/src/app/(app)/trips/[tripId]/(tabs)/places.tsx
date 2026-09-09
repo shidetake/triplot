@@ -2430,7 +2430,17 @@ export default function PlacesTab() {
                 // 非表示を足すが、引き切りの結果は行によって変えない。
                 <SwipeDeleteRow
                   enabled={editing == null}
-                  measureKey={`${item.name}|${item.lat == null}|${item.location_dismissed}`}
+                  // 高さに効くものを全部入れる。**選択中の行は膨らむ**（縦の
+                  // 余白が広がり、住所と日程バッジが増える）ので選択も鍵に
+                  // 含める —— 含めないと、選択を解いた後も器が膨らんだ高さの
+                  // まま残り、行の下に空白が居座る（実機で再現）。
+                  measureKey={[
+                    item.name,
+                    item.lat == null,
+                    item.location_dismissed,
+                    editing?.id === item.id,
+                    item.note ? 1 : 0,
+                  ].join("|")}
                   actions={[
                     {
                       icon: "trash",
