@@ -16,6 +16,7 @@ import {
 import type { SFSymbol } from "sf-symbols-typescript";
 import {
   accessibilityLabel,
+  environment,
   listRowInsets,
   listRowSeparator,
   listStyle,
@@ -55,26 +56,30 @@ import {
 // 左右にも余白を取り、渡した高さに対して中身が入りきらずに切れる（実測: 高さを
 // 60px 増やしても左右が削られて切れたままだった＝足りないのは高さではなかった）。
 //
-// ## ボタンの大きさは iOS が決める（行の高さには追随しない）
+// ## ボタンの大きさは行の高さで決まる（行の下限を下げないと大きいまま）
 //
 // iOS 26 のスワイプのボタンは、行いっぱいに広がる帯ではなく**中に浮かぶ丸い
-// ボタン**で、実測 47〜50pt から大きくならない（`frame` で行を 300pt にしても
-// 80pt を超えず、RN を挟まない素の SwiftUI の行でも同じだった）。**行が高くても
-// ボタンは中央に置かれる**ので、カードと同じ高さにはできない。
+// ボタン**で、大きさは「行の高さ − 8pt」（上限 50pt）。ボタン側の modifier
+// （`controlSize`・`imageScale`・`Image` の `size`）はどれも効かない——見た目は
+// 完全に系が握っていて、アイコンの大きさすら変えられない。
 //
-// 逆に**行が低いとボタンが切られる**ので、行に最小の高さを与える。**48pt が
-// 下限**——実測で 48pt の行にはボタン（44pt）が丸ごと収まり、44pt では下が
-// 平らに切れた。ボタンは「行の高さ − 4pt、ただし 50pt まで」で描かれる。
+// **効くのは行の高さの方**。SwiftUI のドキュメントに
+// 「行の高さはこの既定値を下限とし、それ以外は行の中身と行の余白で決まる」と
+// あるとおり、`defaultMinListRowHeight`（既定 44pt）が下限になっている。これを
+// 下げないと、行をいくら低くしても 44pt の行として扱われ、はみ出したボタンが
+// 切られる（実測: 行 44pt でボタンの下が平らに欠けた）。
 //
-// ボタンを小さくして行をもっと詰められないかは試した。`controlSize("mini")`も
-// `imageScale("small")`も効かない（80pt の行でどちらも 50.0pt のまま）＝
-// 大きさを決めているのは SwiftUI の modifier ではない。SwiftUI には
-// `defaultMinListRowHeight` という環境値があるが @expo/ui は公開していない。
+// `@expo/ui` はこの環境値を公開していないので `patches/` で足している。
+// 1 にしているのは「下限を無くす」意味で、実際の高さは下の MIN_ROW_H で決める。
+
+// 行の最小の高さ。**ボタンの都合ではなく、タップ対象の最小（HIG の 44pt）で
+// 決める**。ここが 44pt ならボタンは 36pt で描かれ、iOS 標準のリマインダー
+// （行 43pt・ボタン 35pt）とほぼ同じになる。
 //
 // **器ではなく行そのものに与える。** 器だけ広げると、中身は元の高さのまま上に
 // 寄って下に空きができる（行の側に与えれば、行が持つ alignItems: center が
 // 中身を真ん中に置いてくれる）。
-const MIN_ROW_H = 48;
+const MIN_ROW_H = 44;
 
 export type SwipeAction = {
   // ボタンに出す SF Symbol。**文言は出さない**（iOS 純正アプリと同じ形。
@@ -132,7 +137,13 @@ export function SwipeDeleteRow({
           スクロールする余地は無いはずだが、実機では行が単独で動いて外側の
           スクロールとぶつかった（実機フィードバック: 受信箱の下書きが1行ずつ
           スクロールしてしまい操作しづらい。動く行と動かない行があった）。 */}
-      <List modifiers={[listStyle("plain"), scrollDisabled(true)]}>
+      <List
+        modifiers={[
+          listStyle("plain"),
+          scrollDisabled(true),
+          environment("defaultMinListRowHeight", "1"),
+        ]}
+      >
         <SwipeActions
           modifiers={[
             listRowSeparator("hidden"),

@@ -1,0 +1,39 @@
+diff --git a/node_modules/@expo/ui/build/swift-ui/modifiers/environment.d.ts b/node_modules/@expo/ui/build/swift-ui/modifiers/environment.d.ts
+index ddd1543..2cf0459 100644
+--- a/node_modules/@expo/ui/build/swift-ui/modifiers/environment.d.ts
++++ b/node_modules/@expo/ui/build/swift-ui/modifiers/environment.d.ts
+@@ -11,6 +11,9 @@ export type EnvironmentConfig = {
+ } | {
+     key: 'timeZone';
+     value: string;
++} | {
++    key: 'defaultMinListRowHeight';
++    value: string;
+ };
+ /**
+  * Sets a SwiftUI environment value.
+diff --git a/node_modules/@expo/ui/ios/Modifiers/EnvironmentModifier.swift b/node_modules/@expo/ui/ios/Modifiers/EnvironmentModifier.swift
+index 71e0193..ef89862 100644
+--- a/node_modules/@expo/ui/ios/Modifiers/EnvironmentModifier.swift
++++ b/node_modules/@expo/ui/ios/Modifiers/EnvironmentModifier.swift
+@@ -8,6 +8,7 @@ internal enum EnvironmentKeyType: String, Enumerable {
+   case colorScheme
+   case locale
+   case timeZone
++  case defaultMinListRowHeight
+ }
+ 
+ internal enum EditModeType: String, Enumerable {
+@@ -72,6 +73,12 @@ internal struct EnvironmentModifier: ViewModifier, Record {
+       } else {
+         content
+       }
++    case .defaultMinListRowHeight:
++      if let height = Double(value) {
++        content.environment(\.defaultMinListRowHeight, height)
++      } else {
++        content
++      }
+     }
+   }
+ }
