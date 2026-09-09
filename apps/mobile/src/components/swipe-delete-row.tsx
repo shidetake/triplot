@@ -176,8 +176,11 @@ export function SwipeDeleteRow({
                 {/* **アイコンの大きさは指定できない。決めているのは UIKit。**
                     実行中のビュー階層を覗くと、描いているのは
                     `_UISwipeActionDynamicButton` で、その UIButtonConfiguration が
-                    `buttonSize=medium` / `preferredSymbolConfigurationForImage=
-                    pointSize=18, weight=Regular, scale=Medium` を持っている。
+                    `buttonSize=medium` と、記号の大きさの指定を持っている。
+                    **その指定は文言の有無で変わる**——文言が無いと
+                    `pointSize=18`（絶対値の決め打ち）、文言があると
+                    `textStyle=Footnote`（文字の様式に追従）。だから同じ記号でも
+                    アイコンだけの時は 19.3pt、文言と並ぶ時は 14pt になる。
                     記号も `trash` ではなく `trash.fill` に差し替わっていて、
                     渡した Image がそのまま描かれていないことが分かる（Apple の
                     ドキュメントにも「swipe actions のラベルや画像には fill の
