@@ -22,7 +22,7 @@ describe("gmapsUrl", () => {
     ).toBe("https://www.google.com/maps/search/?api=1&query=35.5,139.5");
   });
 
-  it("地図未登録（座標なし）は名前で検索する", () => {
+  it("位置未設定（座標なし）は名前で検索する", () => {
     expect(
       gmapsUrl({ name: "ホテル A", google_place_id: null, lat: null, lng: null }),
     ).toBe("https://www.google.com/maps/search/?api=1&query=%E3%83%9B%E3%83%86%E3%83%AB%20A");

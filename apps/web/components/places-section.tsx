@@ -188,7 +188,7 @@ export function PlacesSection({
   // 検索結果が出ている間は、一覧シートの中身を候補（検索結果）に差し替える
   // （iOS の listMode = "search" と同じ）。
   const inCandidates = candidates.length > 0;
-  // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
+  // 「位置未設定」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
   // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
   const [showDismissed, setShowDismissed] = useState(false);
   // 地図のピンと一覧の両方を絞り込む（エリア or 日にちのどちらか一方）。
@@ -328,7 +328,7 @@ export function PlacesSection({
     });
   }, []);
 
-  // 「位置を指定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
+  // 「位置を設定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
   // 共通処理: 未確定の場所をタップ/検索で選んだ実在の Google の場所へ寄せる
   // （新しいピンを作るのではなく、既にある場所を優先する）。店名が自由入力と
   // 大きく変わっても、ユーザーが地図上/検索で明示的に選んだ場所を採用する
@@ -354,7 +354,7 @@ export function PlacesSection({
         const ok = await confirmDialog({
           title: t("resolveToTitle", { to: target.name }),
           body: fromName,
-          confirmLabel: tCommon("confirm"),
+          confirmLabel: t("resolveToConfirm"),
           destructive: false,
         });
         if (!ok) return;
@@ -377,12 +377,12 @@ export function PlacesSection({
       })();
       return true;
     },
-    [pendingLocationFor, tripId, t, tCommon],
+    [pendingLocationFor, tripId, t],
   );
 
   // 保存済み/候補を選んだら仮ピン・POI は引っ込める（同時に2つ開かない）。
   // 一覧（ボトムシート）からのタップは地図を見る操作なので、シートも畳む。
-  // 「位置を指定」モード中は、既存の場所を選んでもそのピンを新規に開かず、
+  // 「位置を設定」モード中は、既存の場所を選んでもそのピンを新規に開かず、
   // その場所へ未確定の場所を寄せる（resolveLocatingTo 参照）。
   const selectSaved = useCallback(
     (id: string) => {
@@ -523,7 +523,7 @@ export function PlacesSection({
     [findSavedByGoogleId, clearSearch, selectSaved],
   );
 
-  // 未マップ place を一覧でクリック: 「位置を指定」スコープを開始する。
+  // 未マップ place を一覧でクリック: 「位置を設定」スコープを開始する。
   // 他の選択状態は一旦クリアして、地図に集中させる（シートも畳む＝地図をタップする必要があるため）。
   const startLocate = useCallback(
     (id: string, name: string) => {
@@ -542,8 +542,8 @@ export function PlacesSection({
     setDraft(null);
   }, []);
 
-  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う。座標は付けない
-  // ＝あとで一覧の行からいつでも地図に登録し直せる（一方的な通知の抑制）。
+  // 「位置未設定」バッジの × : 位置を設定せずこのまま使う。座標は付けない
+  // ＝あとで一覧の行からいつでも位置を設定し直せる（一方的な通知の抑制）。
   const dismissLocation = useCallback(
     (id: string) => {
       void (async () => {
@@ -628,7 +628,7 @@ export function PlacesSection({
   }
 
   const draftContent: React.ReactNode = !draft ? null : pendingLocationFor ? (
-    // 「位置を指定」スコープ中の draft は既存 place への location 設定。
+    // 「位置を設定」スコープ中の draft は既存 place への location 設定。
     <LocateInfo
       tripId={tripId}
       placeId={pendingLocationFor.id}

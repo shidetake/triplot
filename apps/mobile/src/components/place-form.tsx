@@ -72,7 +72,7 @@ export function PlaceForm({
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editPlace;
   const name = editPlace?.name ?? candidate?.name ?? "";
-  // 仮ピンは名前を自由入力（web の「ピンを設定」と同じ）。
+  // 仮ピンは名前を自由入力（web の「位置を設定」と同じ）。
   const [pinName, setPinName] = useState("");
 
   const sortedPins = [...pinOptions].sort(

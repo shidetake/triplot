@@ -17,7 +17,7 @@ describe("timezoneOfPlace", () => {
     expect(timezoneOfPlace(HNL)).toBe("Pacific/Honolulu");
   });
 
-  it("座標が無い場所（地図未登録）は決められないので null", () => {
+  it("座標が無い場所（位置未設定）は決められないので null", () => {
     expect(timezoneOfPlace(UNMAPPED)).toBeNull();
     expect(timezoneOfPlace(null)).toBeNull();
     expect(timezoneOfPlace(undefined)).toBeNull();

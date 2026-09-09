@@ -221,7 +221,7 @@ export async function resolvePlaceToGoogle(
   return ok(data as string);
 }
 
-// 「地図未登録」バッジを今後出さないようにする（未確定のまま置いておく）。
+// 「位置未設定」バッジを今後出さないようにする（未確定のまま置いておく）。
 export async function dismissPlaceLocation(
   sb: DB,
   placeId: string,

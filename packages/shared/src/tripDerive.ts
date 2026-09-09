@@ -48,7 +48,7 @@ export type PlaceRow = {
   icon: string;
   created_by_member_id: string;
   created_at: string;
-  // 「地図未登録」バッジをこの場所では出さない（dismiss_place_location）。
+  // 「位置未設定」バッジをこの場所では出さない（dismiss_place_location）。
   location_dismissed: boolean;
 };
 

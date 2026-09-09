@@ -426,7 +426,7 @@ export function ImportSheet() {
                         />
                       </Pressable>
                       {/* 「要割当」は状態なのでバッジで示す（web の import-inbox と
-                    同じ形・「地図未登録」バッジと同じレシピ）。ピッカー自体を
+                    同じ形・「位置未設定」バッジと同じレシピ）。ピッカー自体を
                     琥珀にすると、コントロールの色が持つ意味（選択状態）と
                     ぶつかるうえ、全行が未割当のときに画面が琥珀で埋まる。 */}
                       {!assigned && (
@@ -682,7 +682,7 @@ const makeStyles = (t: Theme) =>
       backgroundColor: t.fgAlpha(0.05),
     },
     // × は行の右上角に重ねる（行を relative にして絶対配置）。
-    // 「要割当」バッジ（web の import-inbox と同じ・「地図未登録」と同じ形）。
+    // 「要割当」バッジ（web の import-inbox と同じ・「位置未設定」と同じ形）。
     needsAssignBadge: {
       borderRadius: 4,
       backgroundColor: t.warnChipBg,

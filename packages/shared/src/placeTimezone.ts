@@ -15,7 +15,7 @@ import tzLookup from "@photostructure/tz-lookup";
 export type PlaceCoords = { lat: number | null; lng: number | null };
 
 /**
- * 場所の IANA タイムゾーン。座標が無い場所（自由入力で作った「地図未登録」の
+ * 場所の IANA タイムゾーン。座標が無い場所（自由入力で作った「位置未設定」の
  * 場所など）は決められないので null を返す＝呼び出し側で TZ を聞く。
  */
 export function timezoneOfPlace(place: PlaceCoords | null | undefined): string | null {

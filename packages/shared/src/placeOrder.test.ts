@@ -293,7 +293,7 @@ describe("sortPlacesByItinerary", () => {
     ]);
   });
 
-  it("群の順序: 地図未登録 → 訪問順 → 日時なし → 候補", () => {
+  it("群の順序: 位置未設定 → 訪問順 → 日時なし → 候補", () => {
     const places = [
       place("cand", { tentative: true }),
       place("dated", {}),

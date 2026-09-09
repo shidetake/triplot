@@ -255,8 +255,8 @@ function SavedPlaceRow({
   onPreviewOrEdit,
   onDismissLocation,
 }: SavedPlaceRowProps) {
-  // タップ時に「位置を指定」モードへ入れるかどうかは座標の有無だけで決める
-  // （破棄済みでも地図に登録し直せるように、行タップ自体は従来どおり）。
+  // タップ時に「位置を設定」モードへ入れるかどうかは座標の有無だけで決める
+  // （破棄済みでも位置を設定し直せるように、行タップ自体は従来どおり）。
   // バッジの表示・非表示だけ location_dismissed で分ける。
   const unmapped = item.lat == null;
   const showUnmappedBadge = unmapped && !item.location_dismissed;
@@ -428,7 +428,7 @@ export default function PlacesTab() {
   // 寄せるだけで表示/非表示は変えないが、ここは「その場所だけ表示」という
   // 明示の要望なので実際に絞り込む）。
   const [placeFilter, setPlaceFilter] = useState<PlaceFilter | null>(null);
-  // 「地図未登録」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
+  // 「位置未設定」を破棄した場所は既定で一覧・地図から隠す（メールのスパム
   // フォルダと同じ考え方: 通常は出さないが、意図的にオンにすれば奥から出せる）。
   const [showDismissed, setShowDismissed] = useState(false);
   // フィルタの選択肢シート。他の一覧/編集フォームと同じ native formSheet
@@ -511,7 +511,7 @@ export default function PlacesTab() {
   const [pinDraft, setPinDraft] = useState<{ lat: number; lng: number } | null>(
     null,
   );
-  // 「位置を指定」モード（web の pendingLocationFor と同じ）: 地図未登録の
+  // 「位置を設定」モード（web の pendingLocationFor と同じ）: 位置未設定の
   // 場所を一覧でタップ → 地図をタップ/長押しでその場所に座標を設定する。
   const [locating, setLocating] = useState<{ id: string; name: string } | null>(
     null,
@@ -1217,7 +1217,7 @@ export default function PlacesTab() {
   };
 
   // 地図長押し: その座標に仮ピンを置き、名前を入力して保存するフォームを開く
-  // （web の「長押しでピンを置く → ピンを設定」と同じ）。
+  // （web の「長押しでピンを置く → 位置を設定」と同じ）。
   const onMapLongPress = (lat: number, lng: number) => {
     setPinDraft({ lat, lng });
     setEditing(null);
@@ -1444,7 +1444,7 @@ export default function PlacesTab() {
     const from = liveFocusIndexRef.current;
     liveFocusIndexRef.current = index;
     const item = filteredPlaces[index];
-    // 地図未登録の行はピッカーで選べない（タップ操作と同じ制約 —
+    // 位置未設定の行はピッカーで選べない（タップ操作と同じ制約 —
     // previewOrEditPlace も未登録の行では呼ばれず startLocate に回る）。
     // 中央に来ても選択は直前のままにする＝地図の赤ピンと選択中の行が
     // 食い違わないようにする。
@@ -1552,7 +1552,7 @@ export default function PlacesTab() {
     openAddCandidate(c);
   };
 
-  // 地図未登録の場所の「位置を指定」モードを開始（web の startLocate と同じ）:
+  // 位置未設定の場所の「位置を設定」モードを開始（web の startLocate と同じ）:
   // 他の選択状態をクリアして地図に集中させ、一覧シートを閉じる（地図をタップ
   // できるようにするため）。
   const startLocate = (p: PlaceRow) => {
@@ -1565,7 +1565,7 @@ export default function PlacesTab() {
     closeSuggestions();
   };
 
-  // 「位置を指定」モード中の地図タップ/長押し: 赤ピンを立てて確定を確認し、
+  // 「位置を設定」モード中の地図タップ/長押し: 赤ピンを立てて確定を確認し、
   // set_place_location RPC で座標を設定する（web の LocateInfo の確定と同じ）。
   const pickLocation = (lat: number, lng: number) => {
     if (!locating) return;
@@ -1580,7 +1580,7 @@ export default function PlacesTab() {
           onPress: () => setPinDraft(null),
         },
         {
-          text: tCommon("confirm"),
+          text: t("setLocationConfirm"),
           onPress: () => {
             void setPlaceLocation(supabase, locating.id, lat, lng).then((r) => {
               setPinDraft(null);
@@ -1597,7 +1597,7 @@ export default function PlacesTab() {
     );
   };
 
-  // 「位置を指定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
+  // 「位置を設定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
   // 共通処理: 未確定の場所をタップ/検索で選んだ実在の Google の場所へ寄せる
   // （タップした座標に新しいピンを作るのではなく、既にある場所を優先する）。
   // 店名が自由入力と大きく変わっても、ユーザーが地図上/検索で明示的に選んだ
@@ -1620,7 +1620,7 @@ export default function PlacesTab() {
     Alert.alert(t("resolveToTitle", { to: target.name }), fromName, [
       { text: tCommon("cancel"), style: "cancel" },
       {
-        text: tCommon("confirm"),
+        text: t("resolveToConfirm"),
         onPress: () => {
           void resolvePlaceToGoogle(supabase, locating.id, {
             googlePlaceId: target.googlePlaceId,
@@ -1645,9 +1645,9 @@ export default function PlacesTab() {
     return true;
   };
 
-  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う（実機フィードバック
+  // 「位置未設定」バッジの × : 位置を設定せずこのまま使う（実機フィードバック
   // 参照）。座標は付けない＝あとで編集フォームの「位置を設定」からいつでも
-  // 地図に登録し直せる（一方的な通知の抑制に過ぎない）。
+  // 設定し直せる（一方的な通知の抑制に過ぎない）。
   const dismissLocation = (p: PlaceRow) => {
     Alert.alert(t("dismissLocationTitle"), t("dismissLocationBody"), [
       { text: tCommon("cancel"), style: "cancel" },
@@ -1785,7 +1785,7 @@ export default function PlacesTab() {
             }}
             // 地図の素のタップ＝入力から離れた合図。キーボードとサジェストを畳む
             // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
-            // 「位置を指定」モード中はタップ座標をその場所の位置として確定に回す
+            // 「位置を設定」モード中はタップ座標をその場所の位置として確定に回す
             // （web の locatingHint「クリック / 長押し」と同じく両ジェスチャ対応）。
             // 何もない場所のタップ（ドラッグ/ピンチでは発火しない＝react-native-maps
             // が move 系ジェスチャと区別済み）は選択解除＝本家マップの「キャンセル」
@@ -1842,7 +1842,7 @@ export default function PlacesTab() {
                     key={`${p.id}:${isEditing ? 1 : 0}`}
                     coordinate={{ latitude: p.lat!, longitude: p.lng! }}
                     onPress={() => {
-                      // 「位置を指定」モード中は、既存ピンを直タップしても
+                      // 「位置を設定」モード中は、既存ピンを直タップしても
                       // そのピンへ寄せる（新しいピンを別に作らない）。
                       if (
                         locating &&
@@ -1946,12 +1946,11 @@ export default function PlacesTab() {
             })}
           </MapView>
 
-          {/* 「位置を指定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
+          {/* 「位置を設定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
           {locating && (
             <View style={styles.locatingBanner}>
               <Text style={styles.locatingText} numberOfLines={2}>
-                {t("setLocation")}{" "}
-                {t("settingLocationFor", { name: locating.name })}
+                {t("locatingFor", { name: locating.name })}
                 {": "}
                 {t("locatingHintTouch")}
               </Text>
@@ -2416,7 +2415,7 @@ export default function PlacesTab() {
                 // 目は地図にある。行への操作は一覧の時だけにする
                 // （docs/design/platform-parity.md）。
                 //
-                // 引き切りは常に削除（先頭のボタン）。地図未登録の行だけ
+                // 引き切りは常に削除（先頭のボタン）。位置未設定の行だけ
                 // 非表示を足すが、引き切りの結果は行によって変えない。
                 <SwipeDeleteRow
                   enabled={editing == null}
@@ -3109,7 +3108,7 @@ const makeStyles = (t: Theme) =>
     placeInfo: { flex: 1 },
     placeNameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
     placeName: { fontSize: 14, color: t.foreground, flexShrink: 1 },
-    // 「地図未登録」バッジ（amber 塗りチップ。web の bg-amber-100 text-amber-700 相当）。
+    // 「位置未設定」バッジ（amber 塗りチップ。web の bg-amber-100 text-amber-700 相当）。
     unmappedBadge: {
       flexDirection: "row",
       alignItems: "center",

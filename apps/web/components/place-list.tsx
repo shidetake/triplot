@@ -75,14 +75,14 @@ export function PlaceList({
   dayByPlaceId: Map<string, VisitDay>;
   areaByPlaceId: Map<string, string | null>;
   locale: string;
-  // 現在「位置を指定」モード中の未マップ place の id（あれば）。
+  // 現在「位置を設定」モード中の未マップ place の id（あれば）。
   // その行は active 表示にして、クリックで取り消しできるようにする。
   locatingId: string | null;
   onSelect: (id: string) => void;
   // 未マップ行をクリックしたとき: 地図で位置を指定するモードを開始する。
   onLocate: (id: string, name: string) => void;
   onCancelLocate: () => void;
-  // 「地図未登録」バッジの × : 地図に登録せずこのまま使う。
+  // 「位置未設定」バッジの × : 位置を設定せずこのまま使う。
   onDismissLocation: (id: string) => void;
 }) {
   const t = useTranslations("place");
@@ -104,7 +104,7 @@ export function PlaceList({
         const statusColor = p.tentative ? "#f59e0b" : "#10b981";
         const isSelected = p.id === selectedId;
         // タップ時の遷移先（位置を指定モード）は座標の有無だけで決める
-        // （破棄済みでもいつでも地図に登録し直せるように、行クリック自体は
+        // （破棄済みでもいつでも位置を設定し直せるように、行クリック自体は
         // 従来どおり）。バッジの表示だけ location_dismissed で分ける。
         const unmapped = p.lat == null;
         const showUnmappedBadge = unmapped && !p.location_dismissed;

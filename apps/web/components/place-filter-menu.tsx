@@ -40,7 +40,7 @@ export function PlaceFilterMenu({
   onChange: (f: PlaceFilter | null) => void;
   areaOptions: AreaFilterOption[];
   dayOptions: DayFilterOption[];
-  // 「地図未登録」を破棄した場所の件数（0 なら選択肢自体を出さない）。
+  // 「位置未設定」を破棄した場所の件数（0 なら選択肢自体を出さない）。
   dismissedCount: number;
   showDismissed: boolean;
   onToggleDismissed: () => void;
