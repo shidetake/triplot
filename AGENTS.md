@@ -249,6 +249,32 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   市場に出ることはない。ビルド番号は `eas.json` の `autoIncrement` が自動で
   上げる（バージョン文字列だけは `app.config.ts` の `version` を手で上げる）。
 
+#### `pod install` が `Unable to locate the executable cmake` で落ちる時
+
+**上流のアーティファクト配信が落ちている合図**で、こちらの環境の問題ではない
+（`cmake` は普段要らない）。iOS の Hermes はビルド済みの tarball を落として
+使うが、取得に失敗するとソースからビルドする経路に落ち、そこで `cmake` を
+要求される。`repo1.maven.org` は React Native 用の配信を `repo.reactnative.dev`
+へ 301 で転送していて、**転送先がディレクトリ一覧には出るのにファイル取得は
+404 を返す**状態を実際に踏んだ（2026-09-10）。
+
+同じものが `~/Library/Caches/ReactNative/` に残っているので、それを直接指す。
+バージョンは `apps/mobile/node_modules/react-native/sdks/hermes-engine/version.properties`
+の `HERMES_V1_VERSION_NAME`:
+
+```bash
+cd apps/mobile
+HERMES_ENGINE_TARBALL_PATH="$HOME/Library/Caches/ReactNative/hermes-ios-<バージョン>-release.tar.gz" \
+  npx eas-cli build --platform ios --profile production --local --non-interactive
+```
+
+**`cmake` を入れて解決しない。** それだと Hermes が移動し続けるブランチの
+先頭からビルドされ、前のビルドと違うものが入る（再現しない・検証していない
+バイナリになる）。キャッシュの tarball は直前のビルドが使ったものと同じ。
+
+**ビルドのログを `tail` に通さない。** 失敗の本文が捨てられ、`exit code 0` に
+見える（この件を追う時に実際に一度見落とした）。ファイルに落として全文を残す。
+
 ローカルビルドには Xcode 26.3 以上 / fastlane / login キーチェーンに Apple WWDR
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
