@@ -1952,26 +1952,29 @@ export default function PlacesTab() {
           {/* 「位置を設定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
           {locating && (
             <View style={styles.locatingBanner}>
-              <Text style={styles.locatingText} numberOfLines={2}>
-                {t("locatingFor", { name: locating.name })}
-                {": "}
-                {t("locatingHintTouch")}
-              </Text>
-              {/* モードから抜ける口。× にしない —— × は「オーバーレイを閉じる」
-              印で、この帯はオーバーレイではなくモードの表示なので、押すと
-              ヒントが消えるだけに読めてしまう（モードを抜けられると分から
-              ない）。文言を持つのが世の中の作りでもあり、web の一覧行の
-              「やめる」とも同じ形になる。 */}
-              <Pressable
-                onPress={() => {
-                  setLocating(null);
-                  setPinDraft(null);
-                }}
-                hitSlop={12}
-                accessibilityLabel={tCommon("cancel")}
-              >
-                <Text style={styles.locatingCancel}>{tCommon("cancel")}</Text>
-              </Pressable>
+              {/* 見出し（対象の名前）と案内を2段に分ける。1段に流すと、名前の
+              長さ次第で案内の末尾が数文字だけ次の行に落ちる（実機で確認）。
+              名前は長くなり得るので切り詰めてよく、案内は切らない。 */}
+              <View style={styles.locatingHead}>
+                <Text style={styles.locatingTitle} numberOfLines={1}>
+                  {t("locatingFor", { name: locating.name })}
+                </Text>
+                {/* モードから抜ける口。× にしない —— × は「オーバーレイを
+                閉じる」印で、この帯はオーバーレイではなくモードの表示なので、
+                押すと案内が消えるだけに読めてしまう（モードを抜けられると
+                分からない）。 */}
+                <Pressable
+                  onPress={() => {
+                    setLocating(null);
+                    setPinDraft(null);
+                  }}
+                  hitSlop={12}
+                  accessibilityLabel={tCommon("cancel")}
+                >
+                  <Text style={styles.locatingCancel}>{tCommon("cancel")}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.locatingText}>{t("locatingHintTouch")}</Text>
             </View>
           )}
 
@@ -3164,9 +3167,7 @@ const makeStyles = (t: Theme) =>
       top: 64,
       left: 12,
       right: 12,
-      flexDirection: "row",
-      alignItems: "center",
-      gap: 8,
+      gap: 2,
       borderWidth: 1,
       borderColor: t.warnBorder,
       backgroundColor: t.warnBg,
@@ -3174,7 +3175,14 @@ const makeStyles = (t: Theme) =>
       paddingHorizontal: 12,
       paddingVertical: 8,
     },
-    locatingText: { flex: 1, fontSize: 12, color: t.warnText },
+    locatingHead: { flexDirection: "row", alignItems: "center", gap: 8 },
+    locatingTitle: {
+      flex: 1,
+      fontSize: 12,
+      fontWeight: "500",
+      color: t.warnText,
+    },
+    locatingText: { fontSize: 12, color: t.warnText },
     locatingCancel: { fontSize: 12, fontWeight: "500", color: t.warnAccent },
     placeMeta: { fontSize: 12, color: t.mutedForeground, marginTop: 2 },
     empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
