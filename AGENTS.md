@@ -53,15 +53,12 @@ skip する。本番を向いていたら例外で止まる）。
 - **中間状態をアサートしない**。値の形は純関数側のテストの仕事で、ここは
   操作が通るか / 最後に消えるかだけを見る（落ちた時に原因を追いやすくする）。
 
-Husky フック:
-- `pre-commit`: lint + tsc + **秘密の混入**（`check:no-secrets`）
-- `pre-push`: lint + tsc + test + client-boundary + **本番との型ズレ**
-  （`db:types:check`）+ **staging への migration 当て忘れ**
-  （`check:staging-migrations`）
+Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test。
+これに下表の判定が乗る。
 
-**規約を文書だけに置かない。** 手順として書くと、思い出した時にしか実行され
-ない＝忘れた時に素通りする。機械が判定できるものは、フックか、その操作を行う
-コマンド自体に埋める（下の一覧）。
+**規約を文書だけに置かない。** 手順として書けば、思い出した時にしか実行され
+ない＝忘れた時に素通りする。機械が判定できるものはフックか、その操作を行う
+コマンド自体に埋める。**下表のものは覚えなくてよい**（外すと止まる）。
 
 | 守りたいこと | どこで止まるか |
 |---|---|
@@ -97,9 +94,8 @@ npm run test:seed-emails -- --keep-inbox # 受信箱を残して転送だけ
   記録が残っていると全部スキップされる。`forward-gmail.mjs` を単体で使うときの
   記録とは別ファイル（`~/.gmail-mcp/seed_state.json`）。
 - 転送先アドレスと Gmail のラベルは gitignore された `apps/web/.env.local` の
-  `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL` から読む。**転送先は
-  知っていれば誰でもその受信箱にメールを流し込めるので、コミットするファイルには
-  書かない。**
+  `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL` から読む（転送先は
+  知っていれば誰でもその受信箱にメールを流し込めるため）。
 - Gmail の認証は `~/.gmail-mcp/`（`gcp-oauth.keys.json` と `credentials.json`）。
   切れていればブラウザが開いて再認証する。
 - 転送してから取り込みが終わるまでは cron 次第で時間がかかる。件数の推移は
@@ -186,7 +182,7 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
 - **`packages/shared/src/types/database.generated.ts`** が単一の真実。`npm run db:types` で実 DB から自動生成する（`apps/web/.env.local` の `SUPABASE_ACCESS_TOKEN` を使う）。**手で編集しない。**
 - `packages/shared/src/types/database.ts` は生成物の re-export + 利便用の union 別名（`Currency` など）だけ。生成型は CHECK 制約を読めず通貨等が `string` になるので、DB 境界（fetch 結果の map、RPC 呼び出し）で `as Currency` 等に絞る。
 - gen-types は DEFAULT 無しの nullable 関数引数を `string` にしてしまう既知の癖がある（`create_trip` の `p_start_date` 等）。その箇所だけ呼び出し側でキャスト。
-- migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。pre-push の `db:types:check` が実 DB とのズレを検出して push を止める（トークンが無い環境ではスキップ）。
+- migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。
 
 ## iOS の実機確認: シミュレータ → preview ビルド → TestFlight
 
@@ -256,13 +252,8 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   npm run ios:submit -- apps/mobile/build-<timestamp>.ipa
   ```
 
-  **`eas-cli` を直に叩かない。** `ios:build` はログを全文ファイルに残し
-  （`| tail` に通して失敗を見落とさないため）、できた ipa をその場で検める。
-
-  **submit は `npm run ios:submit` を通す**（`eas submit` を直に叩かない）。
-  出す前に ipa の中身を検めて、起動に要るフレームワークが欠けていたら止める
-  （下記「pod install が cmake で落ちる時」の失敗を、出す操作そのもので
-  受け止めるため）。
+  **`eas-cli` を直に叩かない。** ログの全文を残すことと、できた ipa を検める
+  ことを、この2つのコマンドが持っている。
 
 - **本番（市場リリース）用のビルドはクラウドビルドにする**（`--local` を付けない）。
   ローカルビルドは Mac の状態（Xcode の版・キーチェーン・node_modules への
@@ -272,44 +263,12 @@ DB を触らないビジネスロジックは `lib/` に純粋関数として置
   市場に出ることはない。ビルド番号は `eas.json` の `autoIncrement` が自動で
   上げる（バージョン文字列だけは `app.config.ts` の `version` を手で上げる）。
 
-#### `pod install` が `Unable to locate the executable cmake` で落ちる時
-
-**上流のアーティファクト配信が落ちている合図。待つ。回避してビルドしない。**
-
-iOS の Hermes と React Native 本体は**ビルド済みの tarball を落として**使い、
-`cmake` は普段要らない。取得に失敗するとソースからビルドする経路に落ち、
-そこで `cmake` を要求される。実際に踏んだ形（2026-09-10）は、`repo1.maven.org`
-が React Native 用の配信を `repo.reactnative.dev` へ 301 で転送していて、
-**転送先がディレクトリ一覧には出るのにファイル取得は 404 を返す**状態だった。
-数時間で復旧した。
-
-復旧の確認（3つとも 206 が返れば取得できる）:
-
-```bash
-B=https://repo.reactnative.dev/maven2/com/facebook
-V=$(grep HERMES_V1_VERSION_NAME apps/mobile/node_modules/react-native/sdks/hermes-engine/version.properties | cut -d= -f2)
-R=$(node -p "require('./apps/mobile/node_modules/react-native/package.json').version")
-curl -s -o /dev/null -w "%{http_code}\n" -r 0-10 "$B/hermes/hermes-ios/$V/hermes-ios-$V-hermes-ios-release.tar.gz"
-for a in core dependencies; do
-  curl -s -o /dev/null -w "%{http_code}\n" -r 0-10 \
-    "$B/react/react-native-artifacts/$R/react-native-artifacts-$R-reactnative-$a-release.tar.gz"
-done
-```
-
-**`HERMES_ENGINE_TARBALL_PATH` でキャッシュを指す回避策を採らない。** Hermes だけ
-塞いでも React Native 本体は落ちてこないままで、**ビルドは通るのに
-`React.framework` と `ReactNativeDependencies.framework` が入らない**。起動した
-瞬間に落ちるアプリができ、しかもビルドは成功に見える（実際に TestFlight まで
-出してしまった。0.1.0 (210)）。`cmake` を入れるのも駄目で、そちらは Hermes が
-移動し続けるブランチの先頭からビルドされ、前のビルドと違うものが入る。
-
-この失敗は**起動しないと分からない**（ビルドのログにも成果物の名前にも異常が
-出ない）。**`npm run ios:submit` が出す前に ipa を検めて止める**ので、確認を
-別の手順として覚えておく必要は無い——手順として分けると、思い出した時だけ
-実行される＝忘れた時に素通りする。
-
-**ビルドのログを `tail` に通さない。** 失敗の本文が捨てられ、`exit code 0` に
-見える（この件を追う時に実際に一度見落とした）。ファイルに落として全文を残す。
+`pod install` が `cmake` を要求して落ちたら、**上流のアーティファクト配信が
+落ちている合図**（Hermes と React Native 本体はビルド済みの tarball を落として
+使うので、普段 `cmake` は要らない）。**回避せず待つ** —— Hermes だけキャッシュで
+塞ぐと React Native 本体はソースからビルドされ、**ビルドは成功するのに起動しない**
+アプリができる（実際に 0.1.0 (210) を出してしまった）。配信の生死は `ios:build` が
+失敗した時に自分で見に行く。
 
 ローカルビルドには Xcode 26.3 以上 / fastlane / login キーチェーンに Apple WWDR
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
@@ -348,8 +307,7 @@ web の入口は OAuth（Google / Apple）だけなので、自動テストや A
   開ける）。ブランチ固定 URL なので Google OAuth に登録できている。
 - **`main` へのマージは確認が済んでから。** これが本番公開そのものなので、
   ユーザーの指示なしに `main` へは入れない。
-- **migration を入れたら staging にも当てる**（下の「staging DB への migration」）。
-  当て忘れるとプレビューだけ古いスキーマで動いて原因不明の不具合に見える。
+- **migration を入れたら staging にも当てる**（`npm run db:push:staging`）。
 
 ```
 feature ブランチ → staging にマージ → プレビュー URL で確認 → main にマージ → 本番
@@ -404,8 +362,7 @@ npm run db:push:staging   # scripts/db-push-staging.sh
 接続文字列は gitignore された `apps/web/.env.staging.local` の
 `SUPABASE_STAGING_DB_URL` から読む。本番は `supabase link` 済みプロジェクトを
 見る従来どおりの経路で、**link を張り替えない**（どちらを触っているかが
-コマンドから自明であること優先）。スクリプトは接続文字列に本番の project ref が
-混ざっていたら止める。
+コマンドから自明であること優先）。
 
 `database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
 本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。

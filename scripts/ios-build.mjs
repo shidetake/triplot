@@ -60,11 +60,48 @@ if (build.status !== 0) {
   console.error("");
   console.error(`ビルドが失敗した（終了コード ${build.status}）。`);
   console.error(`原因はログの全文にある: ${logFile}`);
-  console.error("");
-  console.error("`Unable to locate the executable cmake` が出ていたら、上流の");
-  console.error("アーティファクト配信が落ちている合図。回避せず待つ");
-  console.error("（AGENTS.md「pod install が cmake で落ちる時」）。");
+  // `cmake` が要求されたら、それは上流のアーティファクト配信が落ちている合図
+  // （Hermes と React Native 本体はビルド済みの tarball を落として使うので、
+  // 普段 cmake は要らない）。**その場で配信の生死を見る** —— 調べ方を文書に
+  // 書いておくより、要る瞬間に自分で走らせた方が確実。
+  const log = fs.readFileSync(logFile, "utf8");
+  if (log.includes("Unable to locate the executable `cmake`")) {
+    console.error("");
+    console.error("上流のアーティファクト配信が落ちている合図。生死を見る:");
+    for (const [name, url] of artifactUrls()) {
+      const code = spawnSync(
+        "curl",
+        ["-s", "-o", "/dev/null", "-w", "%{http_code}", "-r", "0-10", url],
+        { encoding: "utf8", timeout: 20_000 },
+      ).stdout?.trim();
+      console.error(`  ${name}: ${code ?? "?"}`);
+    }
+    console.error("");
+    console.error("206 以外が混ざっていたら落ちている。**回避せず待つ**");
+    console.error("（Hermes だけキャッシュで塞ぐと、React Native 本体は");
+    console.error("ソースからビルドされ、起動しないアプリができる）。");
+  }
   process.exit(1);
+}
+
+// Hermes / React Native 本体のビルド済み tarball の在り処。
+function artifactUrls() {
+  const base = "https://repo.reactnative.dev/maven2/com/facebook";
+  const props = fs.readFileSync(
+    path.join(mobile, "node_modules/react-native/sdks/hermes-engine/version.properties"),
+    "utf8",
+  );
+  const hv = props.match(/HERMES_V1_VERSION_NAME=(.+)/)?.[1].trim();
+  const rv = JSON.parse(
+    fs.readFileSync(path.join(mobile, "node_modules/react-native/package.json"), "utf8"),
+  ).version;
+  return [
+    ["hermes", `${base}/hermes/hermes-ios/${hv}/hermes-ios-${hv}-hermes-ios-release.tar.gz`],
+    ...["core", "dependencies"].map((a) => [
+      `rn-${a}`,
+      `${base}/react/react-native-artifacts/${rv}/react-native-artifacts-${rv}-reactnative-${a}-release.tar.gz`,
+    ]),
+  ];
 }
 
 const made = listIpas().filter((f) => !before.has(f));
