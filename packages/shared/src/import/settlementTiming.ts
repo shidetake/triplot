@@ -22,7 +22,12 @@
 // **店のレシートには一切触らない**（dateIsSettlement=false）。店が刷る日時は
 // 最初からその土地の壁時計なので、直す対象が無い。
 
-import { utcMsToWallClock, wallClockToUtcMs } from "../schedule";
+import {
+  tzAtInstant,
+  utcMsToWallClock,
+  wallClockToUtcMs,
+  type TripTzTimeline,
+} from "../schedule";
 
 export type SettlementTiming = {
   date: string;
@@ -73,4 +78,44 @@ function localizeBySendTime(
     return null;
   }
   return utcMsToWallClock(ms, ctx.placeTz);
+}
+
+/**
+ * 場所の座標が分からない時の控え: **旅行の旅程**を土地の代わりにする。
+ *
+ * 上の localizeSettlementTiming は「どの土地の壁時計に直すか」を、解決できた
+ * 場所の座標からしか取れない。カードの明細表記（"WHOLEFDS QUE#10615"）は
+ * 店の名前として引けないので土地が決まらず、日付が発行元の暦のまま残る
+ * ——実データで、ホノルルでの買い物が日本時間の翌日に置かれていた。
+ *
+ * 旅行が「その瞬間どこに居たか」を知っているなら、それが土地の答えになる。
+ * 移動の予定は両端に実タイムゾーンを持つので、瞬間さえあれば移動日でも
+ * 決まる（tzAtInstant）。旅程に移動が1本も無ければ答えは出ない＝直さない。
+ *
+ * **これは読み出しのたびに走る。** 旅程は後から変わるので、取り込み時の値に
+ * 焼き込むと古くなる（通常の予定の実効タイムゾーンを保存しないのと同じ理由。
+ * docs/design/timezone.md の 0 節）。
+ */
+export function localizeSettlementByTrip(
+  r: SettlementTiming & { sentAt?: string | null },
+  timeline: TripTzTimeline,
+): { date: string; time: string | null } | null {
+  const srcTz = r.settlementTz ?? null;
+  if (!r.dateIsSettlement || !srcTz) return null;
+  // 直す前の瞬間。本文に時刻があれば発行元の暦で読み、無ければ通知の送信時刻。
+  // どちらを使ったかに関わらず、その瞬間で居場所を引く。
+  const ms =
+    YMD_RE.test(r.date) && r.time
+      ? wallClockToUtcMs(`${r.date}T${r.time}`, srcTz)
+      : r.sentAt
+        ? Date.parse(r.sentAt)
+        : NaN;
+  const tripTz = tzAtInstant(timeline, ms);
+  if (!tripTz) return null;
+  // 即時性の判定（本文の利用日と送信日の突き合わせ）は本体に任せる。後日届く
+  // 「ご利用金額確定のお知らせ」はそこで落ちる。
+  return localizeSettlementTiming(r, {
+    sentAt: r.sentAt ?? null,
+    placeTz: tripTz,
+  });
 }

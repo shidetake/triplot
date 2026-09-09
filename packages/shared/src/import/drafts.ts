@@ -32,6 +32,8 @@ import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
+import { deriveReceiptEventTiming } from "./receiptTiming";
+import { localizeSettlementByTrip } from "./settlementTiming";
 import { resolveTransportCategory } from "./transportCategory";
 import { type FixedBlock, resolveDraftOverlaps } from "./draftOverlap";
 
@@ -220,6 +222,34 @@ function candidateToDraftPlace(
   };
 }
 
+// **読み出しのたびに、旅程で日付と時刻を引き直す。**
+//
+// 保存されているレシートは取り込んだ時のもので、決済通知の現地化は「店の場所が
+// Google で解決できた時だけ」効いている。解決できなかったもの（カードの明細
+// 表記など）は発行元の暦のまま残るが、旅程を知っていれば直せる
+// （localizeSettlementByTrip）。旅程は後から変わるので、取り込み時に焼き込まず
+// ここで毎回引く（通常の予定の実効タイムゾーンを保存しないのと同じ理由）。
+//
+// 直せない時は保存されている値をそのまま返す＝今までと同じ。
+function localizedReceipt(
+  r: StoredReceipt | null,
+  tzTimeline: TripTzTimeline,
+): StoredReceipt | null {
+  if (!r) return r;
+  const fixed = localizeSettlementByTrip(r, tzTimeline);
+  return fixed ? { ...r, ...fixed } : r;
+}
+
+// レシート由来の仮予定（fromReceipt）の時間帯を、そのレシートの日時から
+// 引き直す。レシートが無い予定（本物の予約・旅程）には触らない。
+function retimedFromReceipt(
+  ev: StoredEventDraft,
+  r: StoredReceipt | undefined,
+): StoredEventDraft {
+  if (!ev.fromReceipt || !r) return ev;
+  return { ...ev, ...deriveReceiptEventTiming(ev.title, r.date, r.time) };
+}
+
 // レシートから、その費用の日付（expenses.paid_at に入る値）を決める。
 //
 // **費用が持てる日付は paid_at ひとつだけ**なので、「支払った日」と「実際に
@@ -252,98 +282,112 @@ export function deriveExpenseDraftItems(
     tzTimeline: TripTzTimeline;
   },
 ): ExpenseDraftItem[] {
-  return (drafts ?? [])
-    .filter((d) => d.kind === "expense")
-    // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
-    // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
-    // 並ぶので旅程と関係ない並びになる。同じ日は時刻順、時刻が無いものは
-    // 同日の先頭。並べる基準は receiptDate()＝実際に費用に入る日付なので、
-    // 確定しても行の位置は変わらない。
-    .sort((a, b) => {
-      const ra = receiptDate(a.payload as unknown as StoredReceipt | null);
-      const rb = receiptDate(b.payload as unknown as StoredReceipt | null);
-      return (
-        ra.date.localeCompare(rb.date) ||
-        (ra.time ?? "").localeCompare(rb.time ?? "")
-      );
-    })
-    .flatMap((d) => {
-      const r = d.payload as unknown as StoredReceipt | null;
-      if (!r) return [];
-      const when = receiptDate(r);
-      const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
-        ? (r.currency as Currency)
-        : ctx.defaultCurrency;
+  return (
+    (drafts ?? [])
+      .filter((d) => d.kind === "expense")
+      .map((d) => ({
+        d,
+        // 並べる前に現地化する。日付が変わるものがあるので、生の値で並べると
+        // 旅程の順にならない。
+        r: localizedReceipt(
+          d.payload as unknown as StoredReceipt | null,
+          ctx.tzTimeline,
+        ),
+      }))
+      // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
+      // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
+      // 並ぶので旅程と関係ない並びになる。同じ日は時刻順、時刻が無いものは
+      // 同日の先頭。並べる基準は receiptDate()＝実際に費用に入る日付なので、
+      // 確定しても行の位置は変わらない。
+      .sort((a, b) => {
+        const ra = receiptDate(a.r);
+        const rb = receiptDate(b.r);
+        return (
+          ra.date.localeCompare(rb.date) ||
+          (ra.time ?? "").localeCompare(rb.time ?? "")
+        );
+      })
+      .flatMap(({ d, r }) => {
+        if (!r) return [];
+        const when = receiptDate(r);
+        const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
+          ? (r.currency as Currency)
+          : ctx.defaultCurrency;
 
-      // 保存済みマッチ（ライブ判定）を最優先、無ければ事前解決済みの Google の
-      // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
-      // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
-      // autoResolvePlace で再度自動解決を試みる）。
-      // 場所の名前は location を優先する（receiptPlaceName 参照。merchant は
-      // 請求元なので、予約サイト経由だと代理店の名前になる）。
-      const placeName = receiptPlaceName(r);
-      const savedPlace = matchSavedPlace(placeName, r.address, ctx.places);
-      const place =
-        savedPlace ??
-        (r.resolvedPlace
-          ? candidateToDraftPlace(
-              r.resolvedPlace,
-              guessImportPlaceIcon({
-                category: r.category,
-                eventTitle: null,
-                merchant: placeName,
-              }),
-            )
-          : null);
-      // 移動日のタイムゾーンの初期選択。予定側と同じ2段（経度→時刻）。
-      // ここを持たないと費用フォームは常に先頭候補＝出発側で開き、日本→
-      // ホノルルの移動日に、到着後の支払いが日本時間になる。
-      const tzRes = resolveExpenseTz(when.date, ctx.tzTimeline);
-      const tzPicked =
-        tzRes.kind === "single"
-          ? null
-          : (pickTzByLongitude(tzRes.options, r.resolvedPlace?.lng, when.date) ??
-            narrowTzByTime(tzRes.options, ctx.tzTimeline, when.time)[0] ??
-            tzRes.options[0]);
-      // 移動のカテゴリは旅行全体を見ないと決まらない（resolveTransportCategory）。
-      // ここまで来ると「その費用がどちらの TZ にいた時のものか」が出ているので、
-      // それを使って自国側の移動を渡航に寄せる。
-      const categoryName = resolveTransportCategory(
-        r.category,
-        tzRes.kind === "single" ? tzRes.tz : (tzPicked?.tz ?? null),
-        ctx.tzTimeline,
-      );
-      const categoryId =
-        ctx.categories.find((c) => c.name === categoryName)?.id ??
-        ctx.fallbackCategoryId;
-      return [
-        {
-          id: d.id,
-          emailId: d.email_id,
-          tzDisambig: tzPicked
-            ? { transitId: tzPicked.transitId, side: tzPicked.side }
-            : null,
-          // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
-          labelParts: [
-            r.merchant || ctx.unknownMerchantLabel,
-            `${r.total} ${r.currency}`,
-            monthDayLabel(when.date),
-          ],
-          initialPrice: r.total,
-          initialCurrency: currency,
-          initialCategoryId: categoryId,
-          initialPaidAt: when.date,
-          // 店名はメモではなく場所へ（低確信は店名のままテキスト場所になる）。
-          initialPlace: place,
-          autoResolvePlace: place
+        // 保存済みマッチ（ライブ判定）を最優先、無ければ事前解決済みの Google の
+        // 場所（resolveNamedPlace 参照。apps/web/lib/import/process.ts が抽出直後
+        // に仕込む）、それも無ければ自由入力テキストのまま（web だけは開いた時に
+        // autoResolvePlace で再度自動解決を試みる）。
+        // 場所の名前は location を優先する（receiptPlaceName 参照。merchant は
+        // 請求元なので、予約サイト経由だと代理店の名前になる）。
+        const placeName = receiptPlaceName(r);
+        const savedPlace = matchSavedPlace(placeName, r.address, ctx.places);
+        const place =
+          savedPlace ??
+          (r.resolvedPlace
+            ? candidateToDraftPlace(
+                r.resolvedPlace,
+                guessImportPlaceIcon({
+                  category: r.category,
+                  eventTitle: null,
+                  merchant: placeName,
+                }),
+              )
+            : null);
+        // 移動日のタイムゾーンの初期選択。予定側と同じ2段（経度→時刻）。
+        // ここを持たないと費用フォームは常に先頭候補＝出発側で開き、日本→
+        // ホノルルの移動日に、到着後の支払いが日本時間になる。
+        const tzRes = resolveExpenseTz(when.date, ctx.tzTimeline);
+        const tzPicked =
+          tzRes.kind === "single"
             ? null
-            : { name: placeName, address: r.address },
-          fxRates: r.fxRates ?? null,
-          initialNote: r.items ?? null,
-          initialTime: when.time,
-        },
-      ];
-    });
+            : (pickTzByLongitude(
+                tzRes.options,
+                r.resolvedPlace?.lng,
+                when.date,
+              ) ??
+              narrowTzByTime(tzRes.options, ctx.tzTimeline, when.time)[0] ??
+              tzRes.options[0]);
+        // 移動のカテゴリは旅行全体を見ないと決まらない（resolveTransportCategory）。
+        // ここまで来ると「その費用がどちらの TZ にいた時のものか」が出ているので、
+        // それを使って自国側の移動を渡航に寄せる。
+        const categoryName = resolveTransportCategory(
+          r.category,
+          tzRes.kind === "single" ? tzRes.tz : (tzPicked?.tz ?? null),
+          ctx.tzTimeline,
+        );
+        const categoryId =
+          ctx.categories.find((c) => c.name === categoryName)?.id ??
+          ctx.fallbackCategoryId;
+        return [
+          {
+            id: d.id,
+            emailId: d.email_id,
+            tzDisambig: tzPicked
+              ? { transitId: tzPicked.transitId, side: tzPicked.side }
+              : null,
+            // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
+            labelParts: [
+              r.merchant || ctx.unknownMerchantLabel,
+              `${r.total} ${r.currency}`,
+              monthDayLabel(when.date),
+            ],
+            initialPrice: r.total,
+            initialCurrency: currency,
+            initialCategoryId: categoryId,
+            initialPaidAt: when.date,
+            // 店名はメモではなく場所へ（低確信は店名のままテキスト場所になる）。
+            initialPlace: place,
+            autoResolvePlace: place
+              ? null
+              : { name: placeName, address: r.address },
+            fxRates: r.fxRates ?? null,
+            initialNote: r.items ?? null,
+            initialTime: when.time,
+          },
+        ];
+      })
+  );
 }
 
 // 事前解決できたフライトの空港を場所の事前入力にする。Google の場所として
@@ -373,13 +417,36 @@ export function deriveEventDraftItems(
     // 確定した予定。下書きはこれを避ける（resolveDraftOverlaps の障害物）。
     // 渡さなければ下書きどうしの重なりだけを見る。
     events?: ScheduleEvent[];
+    // レシートの現地化に使う年表。**確定した予定だけで組んだもの**を渡す
+    // （tzTimeline は未確定の移動も含む——列の位置合わせにはそれが要るが、
+    // 確定すると固定される値の根拠を未確定の下書きに置かないため）。
+    // 省略すると tzTimeline。
+    receiptTzTimeline?: TripTzTimeline;
   },
 ): EventDraftItem[] {
+  // 同じメールから出たレシート（現地化済み）。レシート由来の仮予定は、この
+  // 日時から時間帯を引き直す。
+  const receiptByEmail = new Map<string, StoredReceipt>();
+  for (const d of drafts ?? []) {
+    if (d.kind !== "expense") continue;
+    const r = localizedReceipt(
+      d.payload as unknown as StoredReceipt | null,
+      ctx.receiptTzTimeline ?? ctx.tzTimeline,
+    );
+    if (r) receiptByEmail.set(d.email_id, r);
+  }
+
   const items = (drafts ?? [])
     .filter((d) => d.kind === "event")
     .flatMap((d) => {
-      const ev = d.payload as unknown as StoredEventDraft | null;
-      if (!ev) return [];
+      const stored = d.payload as unknown as StoredEventDraft | null;
+      if (!stored) return [];
+      // **レシート由来の仮予定の時間帯は、保存値を読まずに引き直す。**
+      // 元になるレシートの日時が読み出し時に変わりうる（上の localizedReceipt）
+      // ので、焼き込まれた値のままだと日付だけ直って時間帯が取り残される。
+      // 引き直しは決定的（見出しと日時だけで決まる）なので、レシートが変わって
+      // いなければ保存値と同じ結果になる。
+      const ev = retimedFromReceipt(stored, receiptByEmail.get(d.email_id));
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       // 移動日は候補が2つ出る。どちら側かを、証拠の強い順に当てる:
       //
@@ -486,9 +553,9 @@ export function deriveEventDraftItems(
           ? // 便名で引けない移動（配車・タクシー等）の乗車地。空港は
             // resolvedDeparturePlace をフライト側の分岐で使うので、ここに
             // 来るのはそれ以外。
-            (ev.resolvedDeparturePlace
-              ? candidateToDraftPlace(ev.resolvedDeparturePlace, null)
-              : null)
+            ev.resolvedDeparturePlace
+            ? candidateToDraftPlace(ev.resolvedDeparturePlace, null)
+            : null
           : ev.resolvedNamedPlace
             ? candidateToDraftPlace(
                 ev.resolvedNamedPlace,
@@ -699,6 +766,7 @@ export function deriveEventDraftItemsWithTimeline(
   const pass1 = deriveEventDraftItems(drafts, {
     ...ctx,
     tzTimeline: confirmed,
+    receiptTzTimeline: confirmed,
   });
   const tzTimeline = buildTripTzTimeline(
     // カレンダーの列も同じ一覧（確定＋仮）から組まれるので、移動の id が揃う。
@@ -706,7 +774,13 @@ export function deriveEventDraftItemsWithTimeline(
     defaultTimezone,
   );
   return {
-    items: deriveEventDraftItems(drafts, { ...ctx, tzTimeline, events }),
+    items: deriveEventDraftItems(drafts, {
+      ...ctx,
+      tzTimeline,
+      // レシートの現地化だけは確定した旅程で決める（上の receiptTzTimeline）。
+      receiptTzTimeline: confirmed,
+      events,
+    }),
     tzTimeline,
   };
 }
@@ -746,8 +820,7 @@ export function draftToScheduleEvent(
   d: EventDraftItem,
   myMemberId: string,
 ): EventRow {
-  const tzs =
-    d.prefill.kind3 === "transit" ? draftTransitTimezones(d) : null;
+  const tzs = d.prefill.kind3 === "transit" ? draftTransitTimezones(d) : null;
   const kind3 = d.prefill.kind3;
   const { allDay: isAllDay, startAt, endAt } = draftEventTimes(d);
   return {

@@ -177,14 +177,114 @@ describe("deriveExpenseDraftItems", () => {
     // 並んでほしい。まとめて転送するとメールの到着順は旅程と無関係になる。
     const items = deriveExpenseDraftItems(
       [
-        { id: "d1", email_id: "e1", kind: "expense", payload: receipt({ date: "2026-08-03" }) },
-        { id: "d2", email_id: "e2", kind: "expense", payload: receipt({ date: "2026-08-01", time: "18:00" }) },
-        { id: "d3", email_id: "e3", kind: "expense", payload: receipt({ date: "2026-08-01", time: "09:30" }) },
-        { id: "d4", email_id: "e4", kind: "expense", payload: receipt({ date: "2026-08-01", time: null }) },
+        {
+          id: "d1",
+          email_id: "e1",
+          kind: "expense",
+          payload: receipt({ date: "2026-08-03" }),
+        },
+        {
+          id: "d2",
+          email_id: "e2",
+          kind: "expense",
+          payload: receipt({ date: "2026-08-01", time: "18:00" }),
+        },
+        {
+          id: "d3",
+          email_id: "e3",
+          kind: "expense",
+          payload: receipt({ date: "2026-08-01", time: "09:30" }),
+        },
+        {
+          id: "d4",
+          email_id: "e4",
+          kind: "expense",
+          payload: receipt({ date: "2026-08-01", time: null }),
+        },
       ],
       expenseCtx,
     );
     expect(items.map((i) => i.id)).toEqual(["d4", "d3", "d2", "d1"]);
+  });
+
+  // 決済通知の日付は発行元の暦（日本時間）で、店の場所が Google で引けないと
+  // 現地に直せない。旅程を土地の代わりにする経路（localizeSettlementByTrip）が
+  // 読み出しのたびに効くので、旅行に移動が入った後は日付と時刻が直る。
+  describe("店の場所が分からない決済通知", () => {
+    const wholefds = {
+      id: "d1",
+      email_id: "e1",
+      kind: "expense" as const,
+      payload: receipt({
+        merchant: "WHOLEFDS QUE#10615",
+        total: 114.1,
+        date: "2026-04-29",
+        time: null,
+        dateIsSettlement: true,
+        settlementTz: "Asia/Tokyo",
+        // 送信 = 日本 4/29 10:42 = ホノルル 4/28 15:42。
+        sentAt: "2026-04-29T01:42:13.000Z",
+      } as Partial<Receipt> & { sentAt: string }),
+    };
+    const hawaii = {
+      fallbackTz: "Asia/Tokyo",
+      transits: [
+        {
+          transitId: "t1",
+          departDate: "2026-04-27",
+          departTime: "19:10",
+          departTz: "Asia/Tokyo",
+          arriveDate: "2026-04-28",
+          arriveTime: "07:25",
+          arriveTz: "Pacific/Honolulu",
+        },
+      ],
+    };
+
+    it("旅程に移動が無いうちは発行元の暦のまま（時刻も付かない）", () => {
+      const [item] = deriveExpenseDraftItems([wholefds], expenseCtx);
+      expect(item.initialPaidAt).toBe("2026-04-29");
+      expect(item.initialTime).toBeUndefined();
+    });
+
+    it("移動が入ると、その瞬間に居た土地の日付と時刻になる", () => {
+      const [item] = deriveExpenseDraftItems([wholefds], {
+        ...expenseCtx,
+        tzTimeline: hawaii,
+      });
+      expect(item.initialPaidAt).toBe("2026-04-28");
+      expect(item.initialTime).toBe("15:42");
+    });
+
+    // 同じレシートから出た仮予定も、直した日時から引き直される（終日→時間付き）。
+    it("レシート由来の仮予定も終日から時間付きになる", () => {
+      const drafts = [
+        wholefds,
+        {
+          id: "d2",
+          email_id: "e1",
+          kind: "event" as const,
+          payload: {
+            title: "買い物",
+            kind: "allday",
+            startDate: "2026-04-29",
+            startTime: null,
+            endDate: null,
+            endTime: null,
+            fromReceipt: true,
+          },
+        },
+      ];
+      const [ev] = deriveEventDraftItems(drafts, {
+        ...eventCtx,
+        tzTimeline: hawaii,
+      });
+      expect(ev.prefill.kind3).toBe("timed");
+      expect(ev.date).toBe("2026-04-28");
+      // 買い物 = 30分・会計は最後なので、レシート時刻が終了になる。
+      expect(ev.time).toBe("15:12");
+      expect(ev.prefill.endTime).toBe("15:42");
+    });
   });
 
   it("航空券・宿は支払日でなく使う日（serviceDate）の位置に並ぶ", () => {
@@ -196,10 +296,24 @@ describe("deriveExpenseDraftItems", () => {
           id: "flight",
           email_id: "e1",
           kind: "expense",
-          payload: receipt({ date: "2025-11-28", serviceDate: "2026-05-04", time: "10:15" }),
+          payload: receipt({
+            date: "2025-11-28",
+            serviceDate: "2026-05-04",
+            time: "10:15",
+          }),
         },
-        { id: "d1", email_id: "e2", kind: "expense", payload: receipt({ date: "2026-05-01" }) },
-        { id: "d2", email_id: "e3", kind: "expense", payload: receipt({ date: "2026-05-05" }) },
+        {
+          id: "d1",
+          email_id: "e2",
+          kind: "expense",
+          payload: receipt({ date: "2026-05-01" }),
+        },
+        {
+          id: "d2",
+          email_id: "e3",
+          kind: "expense",
+          payload: receipt({ date: "2026-05-05" }),
+        },
       ],
       expenseCtx,
     );
@@ -313,7 +427,12 @@ describe("deriveExpenseDraftItems", () => {
     const items = deriveExpenseDraftItems(
       [
         { id: "d1", email_id: "e-d1", kind: "event", payload: eventDraft({}) },
-        { id: "d2", email_id: "e-d2", kind: "expense", payload: receipt({ merchant: "" }) },
+        {
+          id: "d2",
+          email_id: "e-d2",
+          kind: "expense",
+          payload: receipt({ merchant: "" }),
+        },
       ],
       expenseCtx,
     );
@@ -587,7 +706,10 @@ describe("deriveEventDraftItems", () => {
               arriveLocation: "Daniel K. Inouye International Airport",
             }),
             resolvedDeparturePlace: candidate("g-pickup", "412 Lewers St"),
-            resolvedArrivalPlace: candidate("g-hnl", "ダニエル・K・イノウエ国際空港"),
+            resolvedArrivalPlace: candidate(
+              "g-hnl",
+              "ダニエル・K・イノウエ国際空港",
+            ),
           },
         },
       ],
@@ -722,7 +844,14 @@ describe("deriveEventDraftItems", () => {
 
   it("タイトル空はフォールバック見出し（prefill.title は空のまま）", () => {
     const items = deriveEventDraftItems(
-      [{ id: "d1", email_id: "e-d1", kind: "event", payload: eventDraft({ title: "" }) }],
+      [
+        {
+          id: "d1",
+          email_id: "e-d1",
+          kind: "event",
+          payload: eventDraft({ title: "" }),
+        },
+      ],
       eventCtx,
     );
     expect(items[0].labelParts[0]).toBe("無題の予定");

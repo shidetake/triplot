@@ -422,7 +422,8 @@ export function buildSchedule(
     // タクシー・在来線）でも kind は transit なので、そのまま書くと
     // 「Asia/Tokyo → Asia/Tokyo」のような情報ゼロの注記がカレンダーの
     // 日付欄に並ぶ（実機で確認）。同じなら出さない。
-    const tzBoundaryNote = startTz === arriveTz ? null : `${startTz} → ${arriveTz}`;
+    const tzBoundaryNote =
+      startTz === arriveTz ? null : `${startTz} → ${arriveTz}`;
 
     if (wraps) {
       // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため
@@ -843,6 +844,43 @@ export function buildTripTzTimeline(
     arriveTime: formatMinutes(parseWall(t.endAt as string).minutes),
   }));
   return { fallbackTz: defaultTimezone ?? "UTC", transits };
+}
+
+/**
+ * **その瞬間、旅行はどのタイムゾーンに居たか。**
+ *
+ * 日付ではなく絶対時刻で引く。移動の予定は両端に実タイムゾーンを持つ＝境界も
+ * 絶対時刻なので、現地の日付が分からなくても「どちら側か」は決まる。移動日
+ * （同じ暦日に2つのタイムゾーンが並ぶ日）が日付では決められないのと対照的で、
+ * 決済通知の送信時刻のように**瞬間しか分かっていない**手がかりはこちらで引く。
+ *
+ * 決められない時は null を返す:
+ *   - 移動が1本も無い（旅行の既定タイムゾーンは作った端末の値＝推測なので、
+ *     居場所の根拠にしない）
+ *   - その瞬間が移動の最中（出発と到着の間）＝どちらの土地でもない
+ */
+export function tzAtInstant(
+  timeline: TripTzTimeline,
+  ms: number,
+): string | null {
+  const transits = timeline.transits;
+  if (transits.length === 0 || !Number.isFinite(ms)) return null;
+  // 最初の出発より前は出発側の土地に居る。
+  let tz = transits[0].departTz;
+  for (const t of transits) {
+    const depart = wallClockToUtcMs(
+      `${t.departDate}T${t.departTime}`,
+      t.departTz,
+    );
+    const arrive = wallClockToUtcMs(
+      `${t.arriveDate}T${t.arriveTime}`,
+      t.arriveTz,
+    );
+    if (ms < depart) return tz;
+    if (ms < arrive) return null;
+    tz = t.arriveTz;
+  }
+  return tz;
 }
 
 /** 乗継日の候補1件。どの乗継の出発側/到着側かという出自を保つ（DB保存用の参照に使う）。 */
