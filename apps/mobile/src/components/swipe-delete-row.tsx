@@ -170,22 +170,26 @@ export function SwipeDeleteRow({
               <Button
                 key={a.label}
                 role={a.destructive ? "destructive" : undefined}
-                // **文言は空白1文字にする。** 見た目はアイコンだけにしたいが、
-                // SwiftUI は**文字が無いとアイコンをボタンいっぱいに拡大する**
-                // （実測: グリフ 19.3pt、上下の余白 4.3pt しか残らず窮屈）。
-                // 文字があると、アイコンは文字に合わせた寸法で描かれる
-                // （14.0pt。iOS 標準のリマインダーと同寸）。空白なら見えないまま
-                // その扱いになる。`labelStyle("iconOnly")` で文字を隠すと、
-                // 系は「文字が無い」と見て拡大に戻るので使えない。
-                //
-                // 大きさを直に指定する手は全部効かない（`Image` の size・
-                // `imageScale`・`controlSize`・`font`・`resizable`+`frame`）。
-                label=" "
-                systemImage={a.icon}
-                // 読み上げ名は空白ではなく本当の文言にする。
                 modifiers={[accessibilityLabel(a.label)]}
                 onPress={a.onPress}
-              />
+              >
+                {/* **アイコンの大きさは指定できない。** 渡した Image は
+                    そのまま描かれず、SwiftUI が記号だけ取り出して UIKit の
+                    スワイプのボタンとして描き直す（Apple のドキュメントにも
+                    「swipe actions に現れるラベルや画像には fill の変種が
+                    自動で適用される」とあり、置き換えていることが分かる）。
+                    そのため大きさを決める手段は全部無視される——実測で
+                    `size`（＝font に変換される）・`imageScale`・`controlSize`・
+                    `font`・`resizable`+`frame`・`labelStyle("iconOnly")` の
+                    どれも効かなかった。
+                    UIKit 側には大きさの指定がある（UIContextualAction.image に
+                    自分で作った UIImage を渡す）が、SwiftUI の swipeActions
+                    からは届かない。
+                    文言を渡すとアイコンは文字に合わせた寸法（14pt）になるが、
+                    見えない空白で代用すると**アイコンが中心からずれる**ので
+                    採らない。 */}
+                <Image systemName={a.icon} />
+              </Button>
             ))}
           </SwipeActions.Actions>
         </SwipeActions>
