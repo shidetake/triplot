@@ -255,6 +255,9 @@ function SavedPlaceRow({
   onPreviewOrEdit,
   onDismissLocation,
 }: SavedPlaceRowProps) {
+  // 中止は共通の「キャンセル」（place 側に専用の文言を持たない）。
+  const tCommon = useTranslations("common");
+
   // タップ時に「位置を設定」モードへ入れるかどうかは座標の有無だけで決める
   // （破棄済みでも位置を設定し直せるように、行タップ自体は従来どおり）。
   // バッジの表示・非表示だけ location_dismissed で分ける。
@@ -372,7 +375,7 @@ function SavedPlaceRow({
         <Text
           style={isLocating ? styles.cancelLocateLabel : styles.setPinLabel}
         >
-          {isLocating ? t("cancelLocate") : t("setPin")}
+          {isLocating ? tCommon("cancel") : t("setPin")}
         </Text>
       ) : (
         // プレビュー中（1タップ目・赤ピン選択）の行だけ、iOS標準の「＞」
@@ -1965,9 +1968,9 @@ export default function PlacesTab() {
                   setPinDraft(null);
                 }}
                 hitSlop={12}
-                accessibilityLabel={t("cancelLocate")}
+                accessibilityLabel={tCommon("cancel")}
               >
-                <Text style={styles.locatingCancel}>{t("cancelLocate")}</Text>
+                <Text style={styles.locatingCancel}>{tCommon("cancel")}</Text>
               </Pressable>
             </View>
           )}

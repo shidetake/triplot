@@ -373,7 +373,6 @@
     "unmapped": "位置未設定",
     "locatingHint": "地図でクリック / 長押しでピンを置くか、上の検索から選んでください",
     "locatingHintTouch": "地図をタップ / 長押しでピンを置くか、上の検索から選んでください",
-    "cancelLocate": "やめる",
     "setPin": "位置を設定",
     "resolveToTitle": "「{to}」にまとめますか？",
     "resolveToConfirm": "まとめる",

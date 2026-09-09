@@ -373,7 +373,6 @@
     "unmapped": "No location",
     "locatingHint": "Click or long-press on the map to place a pin, or search above",
     "locatingHintTouch": "Tap or long-press on the map to place a pin, or search above",
-    "cancelLocate": "Cancel",
     "setPin": "Set location",
     "resolveToTitle": "Merge into \"{to}\"?",
     "resolveToConfirm": "Merge",

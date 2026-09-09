@@ -86,6 +86,7 @@ export function PlaceList({
   onDismissLocation: (id: string) => void;
 }) {
   const t = useTranslations("place");
+  const tCommon = useTranslations("common");
 
   if (places.length === 0) {
     return null;
@@ -212,7 +213,7 @@ export function PlaceList({
                       : "text-blue-600"
                   }`}
                 >
-                  {isLocating ? t("cancelLocate") : t("setPin")}
+                  {isLocating ? tCommon("cancel") : t("setPin")}
                 </span>
               ) : (
                 // 選択中の行にだけ「＞」を出す＝もう1タップで詳細に進めることを
