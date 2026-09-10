@@ -247,6 +247,29 @@ describe("deriveExpenseDraftItems", () => {
       expect(item.initialTime).toBeUndefined();
     });
 
+    // 現地化は保存されている値そのものを書き換えるので、済んだかどうかの印が
+    // 残らない。二度掛けると、既に現地の壁時計になっているものを発行元の暦と
+    // 読んでずらす。実データ: ホノルル 4/29 13:25（取り込み時に現地化済み）が
+    // 4/28 18:25 になった。
+    it("取り込み時に現地化済みのもの（場所が解決できた）は触らない", () => {
+      const done = {
+        ...wholefds,
+        payload: {
+          ...wholefds.payload,
+          // 取り込み時の現地化が入れた値（ホノルルの壁時計）。
+          date: "2026-04-29",
+          time: "13:25",
+          resolvedPlace: { placeId: "p1", name: "Hanauma Bay", lat: 21.269, lng: -157.694 },
+        },
+      };
+      const [item] = deriveExpenseDraftItems([done], {
+        ...expenseCtx,
+        tzTimeline: hawaii,
+      });
+      expect(item.initialPaidAt).toBe("2026-04-29");
+      expect(item.initialTime).toBe("13:25");
+    });
+
     it("移動が入ると、その瞬間に居た土地の日付と時刻になる", () => {
       const [item] = deriveExpenseDraftItems([wholefds], {
         ...expenseCtx,

@@ -13,7 +13,11 @@ import {
 } from "../flight";
 import type { FxRates } from "../fxRates";
 import type { PlaceCandidate } from "../placesSearch";
-import { deriveTransitTimezones, type PlaceCoords } from "../placeTimezone";
+import {
+  deriveTransitTimezones,
+  timezoneOfPlace,
+  type PlaceCoords,
+} from "../placeTimezone";
 import {
   buildTripTzTimeline,
   formatDayLabel,
@@ -247,6 +251,15 @@ function localizedReceipt(
   tzTimeline: TripTzTimeline,
 ): StoredReceipt | null {
   if (!r) return r;
+  // **店の場所が分かっている＝取り込み時に済んでいる。二度掛けない。**
+  // 現地化した結果は保存されている値そのものを書き換える（印は残らない）ので、
+  // 済んだ値をもう一度通すと、既に現地の壁時計になっているものを発行元の暦と
+  // 読んでずらしてしまう。実データ: ホノルル 4/29 13:25（取り込み時に現地化
+  // 済み）が 4/28 18:25 になった。
+  //
+  // ここは「場所が分からなくて現地化できなかったもの」の受け皿なので、
+  // 場所からタイムゾーンが引けるかどうかがそのまま境目になる。
+  if (timezoneOfPlace(r.resolvedPlace ?? null)) return r;
   const fixed = localizeSettlementByTrip(r, tzTimeline);
   return fixed ? { ...r, ...fixed } : r;
 }
