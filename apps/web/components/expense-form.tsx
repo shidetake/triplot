@@ -22,7 +22,7 @@ import {
   restoreExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
-import { formatRate, formatStoredRate } from "@triplot/shared/formatRate";
+import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import type { FxRates } from "@triplot/shared/fxRates";
 import type { LatLng } from "@triplot/shared/placeMap";
@@ -383,9 +383,7 @@ export function ExpenseForm({
           to: defaultCurrency,
         });
   const [rateInput, setRateInput] = useDraft<string>("rateInput", () =>
-    isEdit
-      ? formatStoredRate(editExpense.rate_to_default)
-      : rateFor(initCurrency),
+    isEdit ? String(editExpense.rate_to_default) : rateFor(initCurrency),
   );
 
   const formRef = useRef<HTMLFormElement>(null);

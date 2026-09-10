@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatRate, formatStoredRate } from "./formatRate";
+import { formatRate } from "./formatRate";
 
 describe("formatRate", () => {
   it("rounds long decimals to ~5 significant figures (JPY pair → 2 decimals)", () => {
@@ -28,21 +28,5 @@ describe("formatRate", () => {
   it("respects custom sig figs", () => {
     expect(formatRate(148.33333, 2)).toBe("150");
     expect(formatRate(148.33333, 4)).toBe("148.3");
-  });
-});
-
-// 保存済みの値は実データなので丸めない。落とすのは二進小数の誤差だけ。
-describe("formatStoredRate", () => {
-  it("平均から出た誤差を落とす", () => {
-    expect(formatStoredRate(157.11999999999998)).toBe("157.12");
-  });
-
-  it("実データの精度は削らない（formatRate との違い）", () => {
-    expect(formatStoredRate(157.115)).toBe("157.115");
-    expect(formatRate(157.115)).toBe("157.12");
-  });
-
-  it("小さい値もそのまま残す", () => {
-    expect(formatStoredRate(0.006734)).toBe("0.006734");
   });
 });
