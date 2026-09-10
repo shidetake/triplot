@@ -376,6 +376,62 @@ describe("deriveExpenseDraftItems", () => {
     expect(by["シュノーケリング"]).toBeNull();
   });
 
+  // 搭乗日・利用日を採ったレシートは時刻を捨てている（書いてあるのは購入時刻で、
+  // 搭乗日と組み合わせると実在しない日時になるため）。本当の時刻は同じメールの
+  // 予定が持っているので、そこから借りる。
+  describe("使う日を採ったレシートの時刻", () => {
+    const ride = (o: Partial<EventDraft> = {}) => [
+      {
+        id: "e1",
+        email_id: "m1",
+        kind: "expense" as const,
+        payload: receipt({
+          merchant: "Uber",
+          date: "2026-04-30",
+          time: "17:58", // 購入（決済）時刻
+          serviceDate: "2026-04-30",
+          category: "現地移動",
+        }),
+      },
+      {
+        id: "v1",
+        email_id: "m1",
+        kind: "event" as const,
+        payload: {
+          title: "Uber",
+          kind: "transit",
+          startDate: "2026-04-30",
+          startTime: "18:07",
+          endDate: "2026-04-30",
+          endTime: "18:32",
+          ...o,
+        },
+      },
+    ];
+
+    it("同じメールの予定の開始時刻を借りる（乗車時刻・出発時刻）", () => {
+      const [item] = deriveExpenseDraftItems(ride(), expenseCtx);
+      expect(item.initialPaidAt).toBe("2026-04-30");
+      expect(item.initialTime).toBe("18:07");
+    });
+
+    it("予定が時刻を持たない（宿泊などの終日）なら入れない", () => {
+      const [item] = deriveExpenseDraftItems(
+        ride({ kind: "allday", startTime: null, endTime: null }),
+        expenseCtx,
+      );
+      expect(item.initialTime).toBeUndefined();
+    });
+
+    it("予定の日が違うなら借りない（別の日の時刻を当てない）", () => {
+      const [item] = deriveExpenseDraftItems(
+        ride({ startDate: "2026-05-01" }),
+        expenseCtx,
+      );
+      expect(item.initialTime).toBeUndefined();
+    });
+  });
+
   it("航空券・宿は支払日でなく使う日（serviceDate）の位置に並ぶ", () => {
     // 実データ: 2025-11-28 購入・2026-05-04 搭乗の航空券。支払日で並べると
     // 旅程のずっと手前（一覧の先頭）に飛んでしまう。

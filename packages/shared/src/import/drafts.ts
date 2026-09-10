@@ -268,6 +268,29 @@ function localizedReceipt(
     : { r, tz: null };
 }
 
+// 同じメールの予定が持つ開始時刻を、日付ごとに引けるようにする。
+//
+// 搭乗日・利用日を費用の日付に採ったレシート（receiptDate 参照）は時刻を
+// 捨てている。書いてある時刻は購入時刻で、搭乗日と組み合わせると実在しない
+// 日時になるため。**だが本当の時刻は同じメールの予定が持っている**
+// （フライトなら出発時刻、配車なら乗車時刻）。それを借りて費用に入れる。
+//
+// 借りるのは開始時刻。費用は「その移動そのもの」で、1日の中の位置は出発で
+// 決まる。同じ日に複数あればいちばん早いもの。宿泊は終日で開始時刻を持たない
+// ので、従来どおり時刻なしのまま。
+function eventStartTimes(drafts: PendingDraft[] | null): Map<string, string> {
+  const byKey = new Map<string, string>();
+  for (const d of drafts ?? []) {
+    if (d.kind !== "event") continue;
+    const ev = d.payload as unknown as StoredEventDraft | null;
+    if (!ev?.startDate || !ev.startTime) continue;
+    const key = `${d.email_id}|${ev.startDate}`;
+    const cur = byKey.get(key);
+    if (!cur || ev.startTime < cur) byKey.set(key, ev.startTime);
+  }
+  return byKey;
+}
+
 // レシートの日時 → 0時からの通算分。時刻が無ければ null。
 function wallMin(r: StoredReceipt | undefined): number | null {
   if (!r) return null;
@@ -328,6 +351,7 @@ export function deriveExpenseDraftItems(
     tzTimeline: TripTzTimeline;
   },
 ): ExpenseDraftItem[] {
+  const startTimes = eventStartTimes(drafts);
   return (
     (drafts ?? [])
       .filter((d) => d.kind === "expense")
@@ -338,24 +362,28 @@ export function deriveExpenseDraftItems(
           d.payload as unknown as StoredReceipt | null,
           ctx.tzTimeline,
         );
-        return { d, r, localizedTz: tz };
+        const base = receiptDate(r);
+        // 時刻が無い＝搭乗日・利用日を採ったレシート。同じメールの予定から借りる。
+        const when = base.time
+          ? base
+          : {
+              date: base.date,
+              time: startTimes.get(`${d.email_id}|${base.date}`),
+            };
+        return { d, r, localizedTz: tz, when };
       })
       // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
       // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
       // 並ぶので旅程と関係ない並びになる。同じ日は時刻順、時刻が無いものは
       // 同日の先頭。並べる基準は receiptDate()＝実際に費用に入る日付なので、
       // 確定しても行の位置は変わらない。
-      .sort((a, b) => {
-        const ra = receiptDate(a.r);
-        const rb = receiptDate(b.r);
-        return (
-          ra.date.localeCompare(rb.date) ||
-          (ra.time ?? "").localeCompare(rb.time ?? "")
-        );
-      })
-      .flatMap(({ d, r, localizedTz }) => {
+      .sort(
+        (a, b) =>
+          a.when.date.localeCompare(b.when.date) ||
+          (a.when.time ?? "").localeCompare(b.when.time ?? ""),
+      )
+      .flatMap(({ d, r, localizedTz, when }) => {
         if (!r) return [];
-        const when = receiptDate(r);
         const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
           ? (r.currency as Currency)
           : ctx.defaultCurrency;
