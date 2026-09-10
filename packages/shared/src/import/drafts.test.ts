@@ -376,21 +376,22 @@ describe("deriveExpenseDraftItems", () => {
     expect(by["シュノーケリング"]).toBeNull();
   });
 
-  // 搭乗日・利用日を採ったレシートは時刻を捨てている（書いてあるのは購入時刻で、
+  // 使う日が買った日と違うレシートは時刻を持てない（書いてあるのは購入時刻で、
   // 搭乗日と組み合わせると実在しない日時になるため）。本当の時刻は同じメールの
   // 予定が持っているので、そこから借りる。
-  describe("使う日を採ったレシートの時刻", () => {
+  describe("使う日が買った日と違うレシートの時刻", () => {
+    // 3/1 に買った 4/30 の便。購入時刻 17:58 は 4/30 の時刻ではない。
     const ride = (o: Partial<EventDraft> = {}) => [
       {
         id: "e1",
         email_id: "m1",
         kind: "expense" as const,
         payload: receipt({
-          merchant: "Uber",
-          date: "2026-04-30",
+          merchant: "ZG002",
+          date: "2026-03-01",
           time: "17:58", // 購入（決済）時刻
           serviceDate: "2026-04-30",
-          category: "現地移動",
+          category: "渡航",
         }),
       },
       {
@@ -398,7 +399,7 @@ describe("deriveExpenseDraftItems", () => {
         email_id: "m1",
         kind: "event" as const,
         payload: {
-          title: "Uber",
+          title: "ZG002",
           kind: "transit",
           startDate: "2026-04-30",
           startTime: "18:07",
@@ -418,6 +419,36 @@ describe("deriveExpenseDraftItems", () => {
     it("予定が時刻を持たない（宿泊などの終日）なら入れない", () => {
       const [item] = deriveExpenseDraftItems(
         ride({ kind: "allday", startTime: null, endTime: null }),
+        expenseCtx,
+      );
+      expect(item.initialTime).toBeUndefined();
+    });
+
+    // ここが循環の入口。レシートから作った仮予定は「支払いの瞬間」を伸ばした
+    // だけの写しなので、そこから費用の時刻を借りると、搭乗日と購入時刻を
+    // 組み合わせた実在しない日時が経路を変えて復活する。
+    it("使う日が買った日と同じなら、購入時刻をそのまま使う（借りない）", () => {
+      const same = [
+        {
+          id: "e1",
+          email_id: "m1",
+          kind: "expense" as const,
+          payload: receipt({
+            merchant: "Island Vintage Wine Bar",
+            date: "2026-05-02",
+            time: "20:15",
+            serviceDate: "2026-05-02",
+          }),
+        },
+      ];
+      const [item] = deriveExpenseDraftItems(same, expenseCtx);
+      expect(item.initialPaidAt).toBe("2026-05-02");
+      expect(item.initialTime).toBe("20:15");
+    });
+
+    it("レシートから作った仮予定からは借りない（自分が導いた値を読み返さない）", () => {
+      const [item] = deriveExpenseDraftItems(
+        ride({ kind: "timed", fromReceipt: true }),
         expenseCtx,
       );
       expect(item.initialTime).toBeUndefined();

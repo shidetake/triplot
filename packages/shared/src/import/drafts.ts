@@ -268,12 +268,22 @@ function localizedReceipt(
     : { r, tz: null };
 }
 
-// 同じメールの予定が持つ開始時刻を、日付ごとに引けるようにする。
+// 1通のメールが持つ「時刻の事実」は2つあり、持ち主が違う。
 //
-// 搭乗日・利用日を費用の日付に採ったレシート（receiptDate 参照）は時刻を
-// 捨てている。書いてある時刻は購入時刻で、搭乗日と組み合わせると実在しない
-// 日時になるため。**だが本当の時刻は同じメールの予定が持っている**
-// （フライトなら出発時刻、配車なら乗車時刻）。それを借りて費用に入れる。
+//   支払いの瞬間 … レシートが持つ（date/time）。店のレシート・決済通知。
+//   使う瞬間     … 予約の予定が持つ（startDate/startTime）。搭乗・乗車・入場。
+//
+// この2つから、費用と予定の時刻がそれぞれ決まる:
+//
+//   費用の時刻 = 使う瞬間があればそれ、無ければ支払いの瞬間
+//                （旅程に沿って読める方を採る。receiptDate 参照）
+//   仮予定の時間帯 = 支払いの瞬間から機械的に伸ばす（receiptTiming.ts）
+//
+// **どちらも「事実」から一方向に導く。導いた値を読み返さない。** レシートから
+// 作った仮予定（fromReceipt）は支払いの瞬間の写しなので、そこから費用の時刻を
+// 借りると、支払いの瞬間を使う瞬間として扱うことになる——搭乗日と購入時刻を
+// 組み合わせた実在しない日時が、経路を変えて復活する。だから借りる相手は
+// **予約から作った予定に限る**。
 //
 // 借りるのは開始時刻。費用は「その移動そのもの」で、1日の中の位置は出発で
 // 決まる。同じ日に複数あればいちばん早いもの。宿泊は終日で開始時刻を持たない
@@ -283,6 +293,8 @@ function eventStartTimes(drafts: PendingDraft[] | null): Map<string, string> {
   for (const d of drafts ?? []) {
     if (d.kind !== "event") continue;
     const ev = d.payload as unknown as StoredEventDraft | null;
+    // レシートから作った予定は「支払いの瞬間」の写し＝事実の持ち主ではない。
+    if (ev?.fromReceipt) continue;
     if (!ev?.startDate || !ev.startTime) continue;
     const key = `${d.email_id}|${ev.startDate}`;
     const cur = byKey.get(key);
@@ -332,8 +344,15 @@ export function receiptDate(r: StoredReceipt | null): {
   time: string | undefined;
 } {
   if (!r) return { date: "", time: undefined };
-  if (r.serviceDate) return { date: r.serviceDate, time: undefined };
-  return { date: r.date, time: r.time ?? undefined };
+  // **時刻を捨てるのは、使う日が買った日と違う時だけ。** レシートの時刻は
+  // 購入時刻なので、搭乗日と組み合わせると実在しない日時になる。逆に同じ日
+  // （その場で買ってその場で使う。飲食店の予約、当日券）なら、購入時刻は
+  // その日の実在する時刻なので捨てる理由が無い——実データでも、使う日を持つ
+  // 11件のうち9件は買った日と同じ日だった。
+  if (r.serviceDate && r.serviceDate !== r.date) {
+    return { date: r.serviceDate, time: undefined };
+  }
+  return { date: r.serviceDate ?? r.date, time: r.time ?? undefined };
 }
 
 // 費用下書き（kind="expense"）→ 事前入力。カテゴリは抽出済みのカテゴリ名を
