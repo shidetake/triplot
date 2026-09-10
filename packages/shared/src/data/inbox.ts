@@ -172,10 +172,16 @@ export async function confirmSiblingDrafts(
     .in("email_id", emailIds)
     .eq("status", "pending");
   if (error) return err(error.message);
-  const rest = ((data ?? []) as PendingDraft[]).filter(
-    (d) => !excludeDraftIds.includes(d.id),
-  );
-  if (rest.length === 0) return ok(none);
+  // **事実を引く相手からは外さない。** 除くのは「これから作る対象」からだけで、
+  // 導出の入力からは除かない。1通のメールの下書きは互いを参照して値を決める
+  // （費用は使う日の時刻を予定から借り、レシート由来の仮予定はレシートの日時
+  // から時間帯を引く）ので、確定中のものを入力から抜くと参照先が消える。
+  //
+  // 実データ: 成田エクスプレスの予定を確定したら、相方の費用が乗車時刻
+  // （14:49）を借りられず 0:00 になった。
+  const all = (data ?? []) as PendingDraft[];
+  const willCreate = (id: string) => !excludeDraftIds.includes(id);
+  if (all.filter((d) => willCreate(d.id)).length === 0) return ok(none);
 
   const ctxResult = await loadSiblingConfirmContext(sb, tripId, myMemberId);
   if (!ctxResult.ok) return ctxResult;
@@ -187,7 +193,8 @@ export async function confirmSiblingDrafts(
     needsRateDraftId: null,
   };
 
-  for (const item of deriveExpenseDraftItems(rest, ctx)) {
+  for (const item of deriveExpenseDraftItems(all, ctx)) {
+    if (!willCreate(item.id)) continue;
     const fields = expenseFieldsFromDraft(item, ctx);
     if (!fields) {
       // 為替レートが決められない外貨。1 で作ると金額が壊れるので触らず、
@@ -204,7 +211,8 @@ export async function confirmSiblingDrafts(
     result.expenses += 1;
   }
 
-  for (const item of deriveEventDraftItems(rest, ctx)) {
+  for (const item of deriveEventDraftItems(all, ctx)) {
+    if (!willCreate(item.id)) continue;
     const created = await createEvent(
       sb,
       tripId,
