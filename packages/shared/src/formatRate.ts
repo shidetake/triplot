@@ -11,3 +11,18 @@ export function formatRate(value: number, sigFigs = 5): string {
   if (!Number.isFinite(value)) return "";
   return String(Number(value.toPrecision(sigFigs)));
 }
+
+// 保存済みのレートの表示。**丸めない。桁溢れの見た目だけ落とす。**
+//
+// 保存されている値はユーザーが入れた（あるいは確定した）実データなので、
+// formatRate（5 有効数字）を当てると本当に持っている精度を削ってしまう
+// （157.115 → 157.12）。一方、平均から作った値は二進小数の誤差を引きずって
+// 157.11999999999998 のように出る。これは値ではなく表現の問題なので、
+// 有効数字12桁で正規化して落とす（10進で意味のある桁は全部残る）。
+//
+//   157.11999999999998 → 157.12   （誤差だけ消える）
+//   157.115            → 157.115  （実データはそのまま）
+export function formatStoredRate(value: number): string {
+  if (!Number.isFinite(value)) return "";
+  return String(Number(value.toPrecision(12)));
+}

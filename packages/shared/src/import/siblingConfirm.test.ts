@@ -72,6 +72,16 @@ describe("expenseFieldsFromDraft", () => {
     );
   });
 
+  // フォームは平均を formatRate で丸めて送る。ここが生の平均を保存すると、
+  // 同じ操作なのに 157.11999999999998 のような値が残る。
+  it("平均レートはフォームと同じ丸めを通す", () => {
+    const f = expenseFieldsFromDraft(expenseDraft(), {
+      ...expenseCtx,
+      averageRates: { USD: 157.11999999999998 },
+    });
+    expect(f?.rateToDefault).toBe(157.12);
+  });
+
   it("精算通貨と同じならレートは 1（履歴が無くても作れる）", () => {
     const f = expenseFieldsFromDraft(
       expenseDraft({ initialCurrency: "JPY" }),

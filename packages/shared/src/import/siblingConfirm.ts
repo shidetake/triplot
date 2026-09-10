@@ -17,6 +17,7 @@
 import type { EventFields } from "../data/events";
 import type { ExpenseFields } from "../data/expenses";
 import type { PlaceInput } from "../data/place";
+import { formatRate } from "../formatRate";
 import { initialRate } from "./draftRate";
 import type { Currency } from "../types/database";
 
@@ -133,7 +134,12 @@ export function expenseFieldsFromDraft(
   return {
     localPrice: d.initialPrice,
     localCurrency: d.initialCurrency,
-    rateToDefault: rate,
+    // **フォームが入れるのと同じ丸めを通す。** フォームは平均から作った値を
+    // formatRate で丸めて送る（未変更ならその値が保存される）ので、ここで
+    // 生の平均を保存すると、同じ操作なのに 157.11999999999998 のような値が
+    // 残る——「フォームで何も触らず保存したのと同じ結果になる」という
+    // この経路の約束から外れる。
+    rateToDefault: Number(formatRate(rate)),
     categoryId: d.initialCategoryId,
     payerMemberId: ctx.myMemberId,
     visibility: "shared",

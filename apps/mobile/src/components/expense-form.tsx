@@ -27,7 +27,7 @@ import {
   CUSTOM_CATEGORY_ICON,
   createExpenseCategory,
 } from "@triplot/shared/data/categories";
-import { formatRate } from "@triplot/shared/formatRate";
+import { formatRate, formatStoredRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
@@ -148,7 +148,9 @@ export function ExpenseForm({
           to: defaultCurrency,
         });
   const [rateInput, setRateInput] = useDraft("rateInput", () =>
-    isEdit ? String(editExpense.rate_to_default) : rateFor(localCurrency),
+    isEdit
+      ? formatStoredRate(editExpense.rate_to_default)
+      : rateFor(localCurrency),
   );
   const [categoryId, setCategoryId] = useDraft(
     "categoryId",
