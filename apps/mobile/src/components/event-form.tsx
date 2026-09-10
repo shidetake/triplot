@@ -8,7 +8,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
@@ -113,6 +113,7 @@ export function EventForm({
   onDismissDraft?: () => void;
 }) {
   const t = useTranslations("event");
+  const locale = useLocale();
   const tImport = useTranslations("import");
   const tCommon = useTranslations("common");
   const theme = useTheme();
@@ -725,7 +726,7 @@ export function EventForm({
             <View style={styles.tzSummaryRow}>
               {!tzExpanded && (
                 <Text style={styles.tzSummary}>
-                  {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+                  {tzDisplayLabel(departTz, locale)} → {tzDisplayLabel(arriveTz, locale)}
                 </Text>
               )}
               <View style={tzExpanded ? styles.chevronOpen : undefined}>
@@ -849,7 +850,7 @@ export function EventForm({
             <CompactSegment
               options={dedupeTzCandidates(startTzRes.options).map((opt) => ({
                 key: opt.tz,
-                label: tzDisplayLabel(opt.tz),
+                label: tzDisplayLabel(opt.tz, locale),
               }))}
               value={
                 startTzRes.options.find(

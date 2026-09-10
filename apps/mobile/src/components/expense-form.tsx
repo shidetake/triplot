@@ -12,7 +12,7 @@ import {
 
 // フォーム本体はホスト側のスクロール器がスクロールを持つので、ルートは View
 // （二重スクロール回避）。通貨・カテゴリのシートの中だけ自前でスクロールする。
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import type { PlaceInput } from "@triplot/shared/data/place";
 import {
@@ -110,6 +110,7 @@ export function ExpenseForm({
   onSuccess?: (expenseId?: string) => void;
 }) {
   const t = useTranslations("expense");
+  const locale = useLocale();
   const tCommon = useTranslations("common");
   const tCat = useTranslations("categories");
   const theme = useTheme();
@@ -634,7 +635,7 @@ export function ExpenseForm({
                 options={dedupeTzCandidates(tzRes.options).map((opt) => ({
                   key: opt.tz,
                   // 予定フォーム・web と同じ表示名（「日本」「ハワイ」）。
-                  label: tzDisplayLabel(opt.tz),
+                  label: tzDisplayLabel(opt.tz, locale),
                 }))}
                 value={
                   tzRes.options.find(

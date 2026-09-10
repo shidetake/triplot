@@ -851,7 +851,7 @@ export function EventForm({
             <span className="text-muted-foreground">{t("timezone")}</span>
             {!tzExpanded && (
               <span>
-                {tzDisplayLabel(departTz)} → {tzDisplayLabel(arriveTz)}
+                {tzDisplayLabel(departTz, locale)} → {tzDisplayLabel(arriveTz, locale)}
               </span>
             )}
             <ChevronIcon
@@ -995,7 +995,7 @@ export function EventForm({
                       }
                       onChange={() => selectTz(opt)}
                     />
-                    <span>{tzDisplayLabel(opt.tz)}</span>
+                    <span>{tzDisplayLabel(opt.tz, locale)}</span>
                   </label>
                 ))}
               </div>

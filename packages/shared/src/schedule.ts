@@ -431,7 +431,7 @@ export function buildSchedule(
           // 表現で、ユーザーに見せるものではない（タイムゾーンピッカーと
           // 同じ名前を使う。docs/ui-guidelines.md「タイムゾーンピッカーの
           // 命名ルール」）。
-          `${tzDisplayLabel(startTz)} → ${tzDisplayLabel(arriveTz)}`;
+          `${tzDisplayLabel(startTz, locale)} → ${tzDisplayLabel(arriveTz, locale)}`;
 
     if (wraps) {
       // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため

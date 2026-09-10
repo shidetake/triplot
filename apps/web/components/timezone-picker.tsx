@@ -1,11 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 
 import { Popover } from "@base-ui/react/popover";
 
-import { TZ_GROUPS, tzDisplayLabel } from "@triplot/shared/timezones";
+import {
+  TZ_GROUPS,
+  tzDisplayLabel,
+  tzDisplaySub,
+  tzGroupLabel,
+} from "@triplot/shared/timezones";
 
 import { CheckIcon, ChevronIcon } from "./icons";
 import { inputClass } from "./input-class";
@@ -14,7 +19,8 @@ import { menuItemClass } from "./menu-item";
 import { useMediaQuery } from "./use-media-query";
 
 export function useTzLabel(): (iana: string) => string {
-  return tzDisplayLabel;
+  const locale = useLocale();
+  return (iana) => tzDisplayLabel(iana, locale);
 }
 
 export function TimezonePicker({
@@ -36,7 +42,8 @@ export function TimezonePicker({
   const group = TZ_GROUPS.find((g) => g.label === groupLabel) ?? null;
   const subGroup =
     group?.subGroups.find((sg) => sg.label === subGroupLabel) ?? null;
-  const label = tzDisplayLabel(value);
+  const locale = useLocale();
+  const label = tzDisplayLabel(value, locale);
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -57,7 +64,7 @@ export function TimezonePicker({
             onClick={() => setGroupLabel(g.label)}
             className={`flex items-center justify-between gap-2 ${menuItemClass}`}
           >
-            <span>{g.label}</span>
+            <span>{tzGroupLabel(g, locale)}</span>
             <ChevronIcon
               size={16}
               className="shrink-0 rotate-90 text-subtle-foreground"
@@ -76,7 +83,7 @@ export function TimezonePicker({
               size={16}
               className="-rotate-90 text-muted-foreground"
             />
-            <span>{group.label}</span>
+            <span>{tzGroupLabel(group, locale)}</span>
           </button>
           {group.subGroups.map((sg) => (
             <button
@@ -85,7 +92,7 @@ export function TimezonePicker({
               onClick={() => setSubGroupLabel(sg.label)}
               className={`flex items-center justify-between gap-2 ${menuItemClass}`}
             >
-              <span>{sg.label}</span>
+              <span>{tzGroupLabel(sg, locale)}</span>
               <ChevronIcon
                 size={16}
                 className="shrink-0 rotate-90 text-subtle-foreground"
@@ -105,7 +112,7 @@ export function TimezonePicker({
               size={16}
               className="-rotate-90 text-muted-foreground"
             />
-            <span>{subGroup.label}</span>
+            <span>{tzGroupLabel(subGroup, locale)}</span>
           </button>
           {subGroup.zones.map((zone) => (
             <button
@@ -120,10 +127,12 @@ export function TimezonePicker({
               }`}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate">{zone.name}</span>
-                {zone.sub && (
+                <span className="block truncate">
+                  {tzDisplayLabel(zone.iana, locale)}
+                </span>
+                {tzDisplaySub(zone, locale) && (
                   <span className="block truncate text-xs font-normal text-muted-foreground">
-                    {zone.sub}
+                    {tzDisplaySub(zone, locale)}
                   </span>
                 )}
               </span>

@@ -4,12 +4,14 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import {
   TZ_GROUPS,
   tzDisplayLabel,
+  tzDisplaySub,
+  tzGroupLabel,
   type TzGroup,
   type TzSubGroup,
 } from "@triplot/shared/timezones";
 
 import { CheckIcon, ChevronIcon } from "./icons";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { PageSheet } from "./page-sheet";
@@ -30,6 +32,7 @@ export function TimezonePicker({
 }) {
   const t = useTheme();
   const tEvent = useTranslations("event");
+  const locale = useLocale();
   const styles = useThemedStyles(makeStyles);
   const [open, setOpen] = useState(false);
   const [group, setGroup] = useState<TzGroup | null>(null);
@@ -45,7 +48,7 @@ export function TimezonePicker({
     <>
       <Pressable onPress={() => setOpen(true)} style={styles.trigger}>
         <Text style={styles.triggerText} numberOfLines={1}>
-          {tzDisplayLabel(value)}
+          {tzDisplayLabel(value, locale)}
         </Text>
         <ChevronIcon size={16} color={t.subtleForeground} rotate={90} />
       </Pressable>
@@ -62,18 +65,22 @@ export function TimezonePicker({
             TZ_GROUPS.map((g) => (
               <Row
                 key={g.label}
-                label={g.label}
+                label={tzGroupLabel(g, locale)}
                 onPress={() => setGroup(g)}
                 chevron
               />
             ))
           ) : !subGroup ? (
             <>
-              <Row label={group.label} onPress={() => setGroup(null)} back />
+              <Row
+                label={tzGroupLabel(group, locale)}
+                onPress={() => setGroup(null)}
+                back
+              />
               {group.subGroups.map((sg) => (
                 <Row
                   key={sg.label}
-                  label={sg.label}
+                  label={tzGroupLabel(sg, locale)}
                   onPress={() => setSubGroup(sg)}
                   chevron
                 />
@@ -82,7 +89,7 @@ export function TimezonePicker({
           ) : (
             <>
               <Row
-                label={subGroup.label}
+                label={tzGroupLabel(subGroup, locale)}
                 onPress={() => setSubGroup(null)}
                 back
               />
@@ -96,8 +103,14 @@ export function TimezonePicker({
                   style={styles.zoneRow}
                 >
                   <View style={styles.zoneInfo}>
-                    <Text style={styles.zoneName}>{z.name}</Text>
-                    {z.sub ? <Text style={styles.zoneSub}>{z.sub}</Text> : null}
+                    <Text style={styles.zoneName}>
+                      {tzDisplayLabel(z.iana, locale)}
+                    </Text>
+                    {tzDisplaySub(z, locale) ? (
+                      <Text style={styles.zoneSub}>
+                        {tzDisplaySub(z, locale)}
+                      </Text>
+                    ) : null}
                   </View>
                   {z.iana === value && (
                     <CheckIcon size={16} color={t.mutedForeground} />
