@@ -99,7 +99,7 @@ function localizeBySendTime(
 export function localizeSettlementByTrip(
   r: SettlementTiming & { sentAt?: string | null },
   timeline: TripTzTimeline,
-): { date: string; time: string | null } | null {
+): { date: string; time: string | null; tz: string } | null {
   const srcTz = r.settlementTz ?? null;
   if (!r.dateIsSettlement || !srcTz) return null;
   // 直す前の瞬間。本文に時刻があれば発行元の暦で読み、無ければ通知の送信時刻。
@@ -114,8 +114,14 @@ export function localizeSettlementByTrip(
   if (!tripTz) return null;
   // 即時性の判定（本文の利用日と送信日の突き合わせ）は本体に任せる。後日届く
   // 「ご利用金額確定のお知らせ」はそこで落ちる。
-  return localizeSettlementTiming(r, {
+  const fixed = localizeSettlementTiming(r, {
     sentAt: r.sentAt ?? null,
     placeTz: tripTz,
   });
+  // **どのタイムゾーンで読んだかも返す。** 日付と時刻だけ渡すと、受け取った側が
+  // 移動日にどちら側かを別の手がかりで当て直すことになり、答えが食い違う
+  // （実データ: 4/28 15:42 とホノルルで出した値に、日本のタイムゾーンが
+  // 付いていた。4/28 を選べた根拠がホノルルなのだから、この組み合わせは
+  // ありえない）。
+  return fixed ? { ...fixed, tz: tripTz } : null;
 }

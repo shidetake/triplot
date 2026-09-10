@@ -231,7 +231,9 @@ describe("deriveExpenseDraftItems", () => {
       transits: [
         {
           transitId: "t1",
-          departDate: "2026-04-27",
+          // 実データと同じく、出発も到着も同じ暦日（日本 4/28 19:10 発 →
+          // ホノルル 4/28 07:25 着）。この日は候補が2つ出る。
+          departDate: "2026-04-28",
           departTime: "19:10",
           departTz: "Asia/Tokyo",
           arriveDate: "2026-04-28",
@@ -277,6 +279,19 @@ describe("deriveExpenseDraftItems", () => {
       });
       expect(item.initialPaidAt).toBe("2026-04-28");
       expect(item.initialTime).toBe("15:42");
+    });
+
+    // 日付をホノルルで決めたのに、タイムゾーンだけ別の手がかりで当て直すと
+    // 食い違う（実データ: 4/28 15:42 に日本のタイムゾーンが付いていた。4/28 を
+    // 選べた根拠がホノルルなので、この組み合わせはありえない）。
+    it("移動日でも、現地化が読んだタイムゾーンがそのまま付く", () => {
+      const [item] = deriveExpenseDraftItems([wholefds], {
+        ...expenseCtx,
+        tzTimeline: hawaii,
+      });
+      // 4/28 は到着日＝候補が2つ出る日。到着側（ホノルル）が選ばれる。
+      expect(item.initialPaidAt).toBe("2026-04-28");
+      expect(item.tzDisambig).toEqual({ transitId: "t1", side: "arrive" });
     });
 
     // 同じレシートから出た仮予定も、直した日時から引き直される（終日→時間付き）。

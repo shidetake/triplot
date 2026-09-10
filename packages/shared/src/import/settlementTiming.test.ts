@@ -125,6 +125,8 @@ describe("localizeSettlementByTrip", () => {
     expect(localizeSettlementByTrip(wholefds, timeline)).toEqual({
       date: "2026-04-28",
       time: "15:42",
+      // どのタイムゾーンで読んだかも返す（受け取った側が当て直さないように）。
+      tz: HNL,
     });
   });
 
@@ -136,7 +138,7 @@ describe("localizeSettlementByTrip", () => {
         { ...wholefds, date: "2026-04-29", sentAt: "2026-04-28T18:00:00.000Z" },
         timeline,
       ),
-    ).toEqual({ date: "2026-04-28", time: "08:00" });
+    ).toEqual({ date: "2026-04-28", time: "08:00", tz: HNL });
   });
 
   it("移動が1本も無い旅程では直さない（居場所の根拠が無い）", () => {

@@ -249,8 +249,8 @@ function candidateToDraftPlace(
 function localizedReceipt(
   r: StoredReceipt | null,
   tzTimeline: TripTzTimeline,
-): StoredReceipt | null {
-  if (!r) return r;
+): { r: StoredReceipt | null; tz: string | null } {
+  if (!r) return { r, tz: null };
   // **店の場所が分かっている＝取り込み時に済んでいる。二度掛けない。**
   // 現地化した結果は保存されている値そのものを書き換える（印は残らない）ので、
   // 済んだ値をもう一度通すと、既に現地の壁時計になっているものを発行元の暦と
@@ -259,9 +259,13 @@ function localizedReceipt(
   //
   // ここは「場所が分からなくて現地化できなかったもの」の受け皿なので、
   // 場所からタイムゾーンが引けるかどうかがそのまま境目になる。
-  if (timezoneOfPlace(r.resolvedPlace ?? null)) return r;
+  if (timezoneOfPlace(r.resolvedPlace ?? null)) return { r, tz: null };
   const fixed = localizeSettlementByTrip(r, tzTimeline);
-  return fixed ? { ...r, ...fixed } : r;
+  // **読んだタイムゾーンも一緒に返す。** これを捨てると、移動日にどちら側かを
+  // 受け取った側が別の手がかりで当て直すことになり、日付と食い違う。
+  return fixed
+    ? { r: { ...r, date: fixed.date, time: fixed.time }, tz: fixed.tz }
+    : { r, tz: null };
 }
 
 // レシートの日時 → 0時からの通算分。時刻が無ければ null。
@@ -327,15 +331,15 @@ export function deriveExpenseDraftItems(
   return (
     (drafts ?? [])
       .filter((d) => d.kind === "expense")
-      .map((d) => ({
-        d,
+      .map((d) => {
         // 並べる前に現地化する。日付が変わるものがあるので、生の値で並べると
         // 旅程の順にならない。
-        r: localizedReceipt(
+        const { r, tz } = localizedReceipt(
           d.payload as unknown as StoredReceipt | null,
           ctx.tzTimeline,
-        ),
-      }))
+        );
+        return { d, r, localizedTz: tz };
+      })
       // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
       // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
       // 並ぶので旅程と関係ない並びになる。同じ日は時刻順、時刻が無いものは
@@ -349,7 +353,7 @@ export function deriveExpenseDraftItems(
           (ra.time ?? "").localeCompare(rb.time ?? "")
         );
       })
-      .flatMap(({ d, r }) => {
+      .flatMap(({ d, r, localizedTz }) => {
         if (!r) return [];
         const when = receiptDate(r);
         const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
@@ -383,7 +387,14 @@ export function deriveExpenseDraftItems(
         const tzPicked =
           tzRes.kind === "single"
             ? null
-            : (pickTzByLongitude(
+            : // **現地化がどのタイムゾーンで読んだかが分かっているなら、それが答え。**
+              // 日付をそこで決めた以上、別の手がかりで当て直すと食い違う
+              // （実データ: ホノルルで出した 4/28 15:42 に日本のタイムゾーンが
+              // 付いていた。4/28 を選べた根拠がホノルルなのでありえない）。
+              (localizedTz
+                ? tzRes.options.find((o) => o.tz === localizedTz)
+                : null) ??
+              (pickTzByLongitude(
                 tzRes.options,
                 r.resolvedPlace?.lng,
                 when.date,
@@ -469,13 +480,16 @@ export function deriveEventDraftItems(
   // 同じメールから出たレシート（現地化済み）。レシート由来の仮予定は、この
   // 日時から時間帯を引き直す。
   const receiptByEmail = new Map<string, StoredReceipt>();
+  // 現地化がどのタイムゾーンで読んだか（移動日の候補選びに使う）。
+  const receiptTzByEmail = new Map<string, string>();
   for (const d of drafts ?? []) {
     if (d.kind !== "expense") continue;
-    const r = localizedReceipt(
+    const { r, tz } = localizedReceipt(
       d.payload as unknown as StoredReceipt | null,
       ctx.receiptTzTimeline ?? ctx.tzTimeline,
     );
     if (r) receiptByEmail.set(d.email_id, r);
+    if (tz) receiptTzByEmail.set(d.email_id, tz);
   }
 
   const items = (drafts ?? [])
@@ -499,7 +513,14 @@ export function deriveEventDraftItems(
       //   3. 時刻で成立しない候補を落とす（narrowTzByTime）。
       //   4. どれも決められないときだけ先頭候補（＝出発側）。
       const res = resolveExpenseTz(ev.startDate, ctx.tzTimeline);
-      const ownTz = ev.kind === "transit" ? (ev.departTz ?? ev.arriveTz) : null;
+      // レシート由来の予定は、現地化が読んだタイムゾーンがそのまま答え
+      // （費用側と同じ根拠。移動日でどちら側かを当て直さない）。
+      const ownTz =
+        ev.kind === "transit"
+          ? (ev.departTz ?? ev.arriveTz)
+          : ev.fromReceipt
+            ? (receiptTzByEmail.get(d.email_id) ?? null)
+            : null;
       const narrowed =
         res.kind === "single"
           ? []
