@@ -804,18 +804,16 @@ export function WeekCalendar({
 
   // 取り込み下書き（未確定）だけに付ける小バッジ。色のヒントだけでは
   // 分かりにくいという実機フィードバックを受けて追加（web の draftBadge
-  // と同じ役割）。時刻とタイトルの間に**独立した行**として置く版
-  // （時刻テキストと同じ numberOfLines={1} に同居させると、狭い列で
-  // 「時刻+チップ」が収まらず未確定の文字が切れる実機フィードバックが
-  // あったため、時刻の Text から追い出し、Pressable の直下に単独の
-  // block として置く。alignSelf: flex-start で幅いっぱいに伸びるのを防ぐ）と、
-  // 終日バーのようにタイトルの直前・同じ行に置く版（末尾にスペースを含む。
-  // 入れ子 Text の margin は効かないため文字としてのスペースで区切る）の2つ。
+  // と同じ役割）。
+  //
+  // **開始時刻と同じ行の右端に置く**（1行ぶん縦が空き、その下の場所・メモが
+  // 多く出せる）。以前は独立した行に置いていた——時刻の Text の中に
+  // 同居させると狭い列で「時刻+チップ」が収まらず文字が切れたため。今は
+  // 行を wrap させて逃がすので切れない: 時刻は縮まず（flexShrink: 0）、
+  // 入り切らない時だけチップが次の行に落ちて、以前と同じ見た目に戻る。
   const draftBadge = (ev: EventRow) =>
     ev.isDraft ? (
-      <Text style={[styles.draftBadge, styles.draftBadgeOwnLine]}>
-        {tSched("draftBadge")}
-      </Text>
+      <Text style={styles.draftBadge}>{tSched("draftBadge")}</Text>
     ) : null;
   const draftBadgeLead = (ev: EventRow) =>
     ev.isDraft ? (
@@ -1066,15 +1064,14 @@ export function WeekCalendar({
                           mixed の予定は右肩に参加者ドットを出す（ui-guidelines
                           「色（メンバー・予定）」）。 */}
                       <View style={styles.timeRow}>
-                        <Text
-                          style={[styles.eventTime, { color: col.text }]}
-                          numberOfLines={1}
-                        >
+                        <Text style={[styles.eventTime, { color: col.text }]}>
                           {spanLabel(p.event) ?? hhmm(p.topMin)}
                         </Text>
-                        {col.mixed && participantDots(ev)}
+                        <View style={styles.timeRowRight}>
+                          {col.mixed && participantDots(ev)}
+                          {draftBadge(ev)}
+                        </View>
                       </View>
-                      {draftBadge(ev)}
                       <Text
                         style={[styles.eventTitle, { color: col.text }]}
                         numberOfLines={2}
@@ -1179,15 +1176,14 @@ export function WeekCalendar({
                           mixed は右肩に参加者ドット（web の時差移動と同じ）。 */}
                       <Animated.View style={zoomTextStyle}>
                         <View style={styles.timeRow}>
-                          <Text
-                            style={[styles.eventTime, { color: col.text }]}
-                            numberOfLines={1}
-                          >
+                          <Text style={[styles.eventTime, { color: col.text }]}>
                             {timeLabel ?? hhmm(part.time)}
                           </Text>
-                          {col.mixed && participantDots(ev)}
+                          <View style={styles.timeRowRight}>
+                            {col.mixed && participantDots(ev)}
+                            {draftBadge(ev)}
+                          </View>
                         </View>
-                        {draftBadge(ev)}
                         <Text
                           style={[styles.eventTitle, { color: col.text }]}
                           numberOfLines={2}
@@ -1325,6 +1321,15 @@ const makeStyles = (t: Theme) =>
     alignItems: "center",
     justifyContent: "space-between",
     gap: 2,
+    // 入り切らない時は右側（ドット・未確定チップ）を次の行に逃がす。
+    // 時刻を縮めて切るより、1行増える方がまし。
+    flexWrap: "wrap",
+  },
+  timeRowRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 2,
+    flexShrink: 0,
   },
   dotRow: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
   dot: { width: 6, height: 6, borderRadius: 3 },
@@ -1362,10 +1367,6 @@ const makeStyles = (t: Theme) =>
     borderRadius: 3,
     paddingHorizontal: 3,
   },
-  // 独立行として置く時だけ要る（Pressable の直下では既定 alignItems:
-  // stretch で幅いっぱいに伸びてしまうので、チップの見た目を保つために
-  // 内容幅に戻す）。入れ子 Text（draftBadgeLead 側）では効かないが無害。
-  draftBadgeOwnLine: { alignSelf: "flex-start", marginBottom: 1 },
   body: { flex: 1 },
   bodyRow: { flexDirection: "row" },
   gutterHour: { position: "absolute", right: 4 },

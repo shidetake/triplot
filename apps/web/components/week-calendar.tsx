@@ -721,16 +721,27 @@ export function WeekCalendar({
   const allDayBandH = Math.max(effectiveAllDayRows, 1) * ALLDAY_ROW + 4;
 
   // 取り込み下書き（未確定）の疑似ブロックだけに付ける小バッジ。timed の
-  // blockLabel と transit の3箇所（同一列・出発側・到着側）で共通して使う。
-  // 時刻行に同居させると（狭い列で）「時刻+チップ」がはみ出て文字が切れる
-  // 実機フィードバックがあったため、時刻とタイトルの間の**独立した行**にする
-  // （flex + w-fit で幅いっぱいに伸びず、かつ block 扱いで改行させる）。
+  // **開始時刻と同じ行の右端に置く**（1行ぶん縦が空き、その下の場所・メモが
+  // 多く出せる）。以前は時刻とタイトルの間の独立した行にしていた——時刻行に
+  // 同居させると狭い列で「時刻+チップ」がはみ出て文字が切れたため。今は行を
+  // 折り返して逃がすので切れない: 時刻は縮まず（shrink-0）、入り切らない時
+  // だけチップが次の行に落ちて、以前と同じ見た目に戻る。
   const draftBadge = (ev: ScheduleEvent) =>
     ev.isDraft && (
-      <span className="mb-0.5 flex w-fit items-center whitespace-nowrap rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
+      <span className="flex w-fit items-center whitespace-nowrap rounded-sm bg-amber-400/30 px-1 text-[9px] font-semibold tracking-tight text-amber-900 dark:bg-amber-400/25 dark:text-amber-200">
         {tSched("draftBadge")}
       </span>
     );
+
+  // 時刻行の右側（参加者ドット＋未確定チップ）。入り切らない時はこの塊ごと
+  // 次の行に落ちる。
+  const timeRowRight = (ev: ScheduleEvent, dots: React.ReactNode) =>
+    dots || ev.isDraft ? (
+      <span className="flex shrink-0 items-center gap-1">
+        {dots}
+        {draftBadge(ev)}
+      </span>
+    ) : null;
 
   // 場所→メモの順に、そのまま全部書く。折り返しも行数も制限しない
   // （ブロックが overflow-hidden なので、入らない分はブロックが切る。
@@ -741,7 +752,6 @@ export function WeekCalendar({
     );
     return (
       <>
-        {draftBadge(ev)}
         {/* タイトル・場所・メモはそれぞれ独立した行にして文頭から書く
             （終日バーだけは高さ1行の帯なので1行に並べる）。 */}
         <span className="block font-medium [overflow-wrap:anywhere]">
@@ -1396,11 +1406,14 @@ export function WeekCalendar({
                     ...app.style,
                   }}
                 >
-                  <span className="flex items-center justify-between gap-1">
-                    <span className="text-[10px] tabular-nums opacity-70">
+                  <span className="flex flex-wrap items-center justify-between gap-1">
+                    <span className="shrink-0 text-[10px] tabular-nums opacity-70">
                       {spanLabel(p.event) ?? hhmm(p.topMin)}
                     </span>
-                    {color.kind === "mixed" && participantDots(p.event)}
+                    {timeRowRight(
+                      p.event,
+                      color.kind === "mixed" ? participantDots(p.event) : null,
+                    )}
                   </span>
                   {blockLabel(p.event)}
                 </button>
@@ -1428,8 +1441,11 @@ export function WeekCalendar({
                       ...app.style,
                     }}
                   >
-                    <span className="text-[10px] tabular-nums opacity-70">
-                      {hhmm(move.startMin)}
+                    <span className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="shrink-0 text-[10px] tabular-nums opacity-70">
+                        {hhmm(move.startMin)}
+                      </span>
+                      {timeRowRight(ev, null)}
                     </span>
                     {blockLabel(ev)}
                   </div>
@@ -1490,13 +1506,12 @@ export function WeekCalendar({
                         ...baseStyle,
                       }}
                     >
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="shrink-0 text-[10px] tabular-nums opacity-70">
                           {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                         </span>
-                        {dots}
+                        {timeRowRight(t.event, dots)}
                       </span>
-                      {draftBadge(t.event)}
                       <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
@@ -1552,13 +1567,12 @@ export function WeekCalendar({
                         ...baseStyle,
                       }}
                     >
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="shrink-0 text-[10px] tabular-nums opacity-70">
                           {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                         </span>
-                        {dots}
+                        {timeRowRight(t.event, dots)}
                       </span>
-                      {draftBadge(t.event)}
                       <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
@@ -1598,13 +1612,12 @@ export function WeekCalendar({
                         ...baseStyle,
                       }}
                     >
-                      <span className="flex items-center justify-between gap-1">
-                        <span className="text-[10px] tabular-nums opacity-70">
+                      <span className="flex flex-wrap items-center justify-between gap-1">
+                        <span className="shrink-0 text-[10px] tabular-nums opacity-70">
                           {hhmm(t.departMin)} - {hhmm(t.arriveMin)}
                         </span>
-                        {dots}
+                        {timeRowRight(t.event, dots)}
                       </span>
-                      {draftBadge(t.event)}
                       <span className="block font-medium [overflow-wrap:anywhere]">
                         <ReservationMark ev={t.event} />
                         {t.event.title}
