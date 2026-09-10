@@ -131,10 +131,18 @@ function blockMin(at: string): number {
 export function resolveDraftOverlaps(
   items: EventDraftItem[],
   formatWhen: (date: string, time: string) => string,
-  // その下書きの会計時刻（分）。**重なりを解く時の前後はこれで決める**。
-  // 開始時刻は所要時間の見積もりが入った推測値なので、それで並べると
-  // 見積もりの長さが前後を決めてしまう。分からなければ null＝開始で代用。
-  receiptMinOf: (it: EventDraftItem) => number | null = () => null,
+  // **その予定の中で、推測でない時刻**（EventDraftItem.anchorMin）。重なりを
+  // 解く時の前後はこれで決める。
+  //
+  // 開始時刻で並べてはいけない。レシートから作った仮予定の開始は「夕食なら
+  // 2時間」のような見積もりを引いた値なので、見積もりの長さが前後を決めて
+  // しまう（実データ: 会計 17:12 の Village より、会計 17:25 の Howzit が
+  // 2時間見積もりで 15:25 開始になり、先に並んでいた）。
+  //
+  // 事実の時刻は業態で開始か終了かが入れ替わる（会計が最後なら終了、先払いの
+  // カフェなら開始）ので、端を選ぶのではなく起点の値をそのまま受け取る。
+  // 予約から作った予定は時刻自体が事実なので null＝開始で代用する。
+  anchorMinOf: (it: EventDraftItem) => number | null = () => null,
   // 確定した予定。下書きはこれを避ける（下書きだけが動く）。
   fixed: FixedBlock[] = [],
 ): EventDraftItem[] {
@@ -217,13 +225,13 @@ export function resolveDraftOverlaps(
     // --- 2. 残った（＝場所が違う or 場所不明の）重なりを中点で切る ---
     // 重なり区間の中点で分け、前の終了と後ろの開始をそこに揃える。
     //
-    // **前後は会計時刻で決める。** 開始は所要時間の見積もりが入った推測値なので、
+    // **前後は推測でない時刻で決める。** 開始は所要時間の見積もりが入った値なので、
     // それで並べると「長く見積もられた方が先」になって実際の順番と食い違う
     // （実データ: 会計 17:12 の Village より、会計 17:25 の Howzit が2時間
     // 見積もりで 15:25 開始になっていた）。
     merged = merged.sort(
       (a, b) =>
-        (receiptMinOf(a) ?? startMin(a)) - (receiptMinOf(b) ?? startMin(b)),
+        (anchorMinOf(a) ?? startMin(a)) - (anchorMinOf(b) ?? startMin(b)),
     );
     for (let i = 1; i < merged.length; i++) {
       const prev = merged[i - 1];

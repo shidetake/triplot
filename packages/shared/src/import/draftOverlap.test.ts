@@ -27,6 +27,7 @@ function item(
     id,
     draftIds: [id],
     emailIds: [`e-${id}`],
+    anchorMin: null,
     labelParts: [o.title ?? "夕食", fmt(date, time)],
     date,
     time,

@@ -181,6 +181,17 @@ export type EventDraftItem = {
   date: string; // 開始日
   time: string; // 開始時刻（不明なら "09:00"）
   tz: string; // 旅程から解決した通常予定のTZ（prefill.tzDisambig から導かれる）
+  // **この予定の中で、推測でない唯一の時刻**（0時からの通算分。無ければ null）。
+  //
+  // レシートから作った仮予定は、会計時刻を起点に「夕食なら2時間」のような
+  // 見積もりで前後に伸ばしてある。つまり開始と終了の一方は事実、もう一方は
+  // 推測で、どちらが事実かは業態で入れ替わる（会計が最後なら終了、先払いの
+  // カフェなら開始）。重なりを解く時の前後はこれで決める
+  // （resolveDraftOverlaps）。
+  //
+  // 予約から作った予定（フライト・宿・アクティビティ）は時刻そのものが
+  // メールに書いてある事実なので、ここは null＝開始時刻をそのまま使う。
+  anchorMin: number | null;
   prefill: EventDraftPrefill;
 };
 
@@ -238,6 +249,24 @@ function localizedReceipt(
   if (!r) return r;
   const fixed = localizeSettlementByTrip(r, tzTimeline);
   return fixed ? { ...r, ...fixed } : r;
+}
+
+// レシートの日時 → 0時からの通算分。時刻が無ければ null。
+function wallMin(r: StoredReceipt | undefined): number | null {
+  if (!r) return null;
+  const when = receiptDate(r);
+  if (!when.date || !when.time) return null;
+  const [hh, mm] = when.time.split(":").map(Number);
+  return (
+    Date.UTC(
+      Number(when.date.slice(0, 4)),
+      Number(when.date.slice(5, 7)) - 1,
+      Number(when.date.slice(8, 10)),
+    ) /
+      60000 +
+    hh * 60 +
+    mm
+  );
 }
 
 // レシート由来の仮予定（fromReceipt）の時間帯を、そのレシートの日時から
@@ -497,6 +526,8 @@ export function deriveEventDraftItems(
         const item: EventDraftItem = {
           id: d.id,
           draftIds: [d.id],
+          // フライトの時刻は事実（レシートの見積もりではない）。
+          anchorMin: null,
           emailIds: [d.email_id],
           labelParts: [flightHeadline, eventDraftWhenLabel(ev, ctx.locale)],
           date: depDate ?? ev.startDate,
@@ -606,6 +637,11 @@ export function deriveEventDraftItems(
           date: ev.startDate,
           time: ev.startTime ?? "09:00",
           tz,
+          // レシートから作った予定だけが「推測でない時刻」を持つ。予約から
+          // 作った予定は時刻そのものが事実なので持たせない（開始で並ぶ）。
+          anchorMin: ev.fromReceipt
+            ? wallMin(receiptByEmail.get(d.email_id))
+            : null,
           prefill: {
             kind3: ev.kind,
             tzDisambig,
@@ -638,40 +674,12 @@ export function deriveEventDraftItems(
 
   // 会計時刻はメールの費用側に事実として入っている。同じメールの予定を
   // その時刻で並べれば、実際にどちらが先だったかが分かる。
-  //
-  // **現地化した後のレシートを使う**（上の receiptByEmail）。保存されている
-  // 生の値は発行元の暦のままで、決済通知だと日付ごとずれる。並べ替えの鍵だけ
-  // 生の値で作ると、予定の時刻は現地・鍵は発行元の暦、と食い違う（実データ:
-  // 予定が 4/28 12:34 なのに鍵は 4/29 08:04 で、丸1日ずれていた）。
-  const receiptMinByEmail = new Map<string, number>();
-  for (const [emailId, r] of receiptByEmail) {
-    const when = receiptDate(r);
-    if (!when.date || !when.time) continue;
-    const [hh, mm] = when.time.split(":").map(Number);
-    receiptMinByEmail.set(
-      emailId,
-      Date.UTC(
-        Number(when.date.slice(0, 4)),
-        Number(when.date.slice(5, 7)) - 1,
-        Number(when.date.slice(8, 10)),
-      ) /
-        60000 +
-        hh * 60 +
-        mm,
-    );
-  }
-
   // 重なった未確定どうしを整える（同じ場所はまとめ、違う場所は先勝ちで切る）。
   // 派生の最後に一度だけ通す＝web も RN も同じ結果になる。
   return resolveDraftOverlaps(
     items,
     whenLabel,
-    (it) => {
-      const mins = it.emailIds
-        .map((id) => receiptMinByEmail.get(id))
-        .filter((v): v is number => v !== undefined);
-      return mins.length > 0 ? Math.min(...mins) : null;
-    },
+    (it) => it.anchorMin,
     fixedBlocks(ctx.events, ctx.tzTimeline),
   );
 }

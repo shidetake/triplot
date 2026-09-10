@@ -123,6 +123,7 @@ const eventDraft = (
   draftIds: ["d2"],
   emailIds: ["e1"],
   labelParts: ["夕食", "8/1 18:00"],
+  anchorMin: null,
   date: "2026-08-01",
   time: "18:00",
   tz: "Pacific/Honolulu",

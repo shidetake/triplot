@@ -287,6 +287,57 @@ describe("deriveExpenseDraftItems", () => {
     });
   });
 
+  // 重なりを解く時の前後は「推測でない時刻」で決める（EventDraftItem.anchorMin）。
+  // レシートから作った予定だけがこれを持つ。同じメールから予約の予定も出る
+  // ことがあり（アクティビティの予約＋その決済）、そちらは時刻自体が事実なので
+  // 会計時刻を当ててはいけない。
+  it("予約から作った予定には会計時刻を当てない", () => {
+    const drafts = [
+      {
+        id: "r",
+        email_id: "e1",
+        kind: "expense" as const,
+        payload: receipt({ date: "2026-08-01", time: "18:30" }),
+      },
+      {
+        id: "v1",
+        email_id: "e1",
+        kind: "event" as const,
+        payload: {
+          title: "買い物",
+          kind: "timed",
+          startDate: "2026-08-01",
+          startTime: "18:00",
+          endDate: "2026-08-01",
+          endTime: "18:30",
+          fromReceipt: true,
+        },
+      },
+      {
+        id: "v2",
+        email_id: "e1",
+        kind: "event" as const,
+        payload: {
+          title: "シュノーケリング",
+          kind: "timed",
+          startDate: "2026-08-01",
+          startTime: "10:00",
+          endDate: "2026-08-01",
+          endTime: "12:00",
+          fromReceipt: false,
+        },
+      },
+    ];
+    const by = Object.fromEntries(
+      deriveEventDraftItems(drafts, eventCtx).map((i) => [
+        i.prefill.title,
+        i.anchorMin,
+      ]),
+    );
+    expect(by["買い物"]).not.toBeNull();
+    expect(by["シュノーケリング"]).toBeNull();
+  });
+
   it("航空券・宿は支払日でなく使う日（serviceDate）の位置に並ぶ", () => {
     // 実データ: 2025-11-28 購入・2026-05-04 搭乗の航空券。支払日で並べると
     // 旅程のずっと手前（一覧の先頭）に飛んでしまう。
@@ -864,6 +915,7 @@ describe("draftToScheduleEvent", () => {
     id: "d1",
     draftIds: ["d1"],
     emailIds: ["e-d1"],
+    anchorMin: null,
     labelParts: ["NRT-HNL", "8/1 21:00 → 8/1 09:35"],
     date: "2026-08-01",
     time: "21:00",

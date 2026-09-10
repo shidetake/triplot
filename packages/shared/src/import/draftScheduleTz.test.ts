@@ -22,6 +22,7 @@ function transitItem(o: {
     id: "d1",
     draftIds: ["d1"],
     emailIds: ["e1"],
+    anchorMin: null,
     labelParts: ["移動", "4/28 19:10"],
     date: "2026-04-28",
     time: "19:10",
