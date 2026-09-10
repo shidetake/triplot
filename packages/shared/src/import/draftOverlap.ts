@@ -239,6 +239,18 @@ export function resolveDraftOverlaps(
       // 最優先なので、そこまでは下げない。
       const cut = Math.min(Math.max(mid, startMin(prev)), ce);
 
+      // **切ると片方が長さゼロになるなら、切らない。** 会計時刻の順と壁時計の
+      // 順が食い違う（後から払った方が先に始まっている）と、切る位置が相手の
+      // 端に張り付く。実データ: 買い物 12:34-13:04（会計 13:04）と昼食
+      // 12:00-14:00（会計 14:00）で、買い物が 13:04-13:04 に潰れていた。
+      // 潰れた予定は、カレンダーでは最小の高さで描かれるので見た目には
+      // 気付けず、開いて初めて分かる。
+      //
+      // 重なりを解くのは見やすさのためで、予定を消してよい理由は無い
+      // （下の「丸ごと覆われている時は触らない」と同じ判断）。重なったまま
+      // 置いておく方が、長さの無い予定を作るよりよい。
+      if (cut <= startMin(prev) || cut >= ce) continue;
+
       const at = fromMin(cut);
       prev.prefill.endDate = at.date === prev.date ? null : at.date;
       prev.prefill.endTime = at.time;

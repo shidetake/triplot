@@ -142,9 +142,15 @@ describe("resolveDraftOverlaps", () => {
     expect(by.howzit).toBe("16:18-17:25");
   });
 
-  it("中点が前の開始を追い越す時は、そこまで下げない（順番を崩さない）", () => {
-    // 会計は a(12:10) → b(12:30)。素の中点は 11:50 で a の開始 11:40 より
-    // 手前ではないが、b が大きく前倒しされると中点が a の開始を追い越しうる。
+  it("中点が前の開始を追い越す時は切らない（順番も長さも崩さない）", () => {
+    // 会計は a(12:10) → b(12:30) だが、壁時計では b の方が先に始まっている。
+    // 素の中点 11:15 は a の開始 12:00 より手前＝そこで切ると順番が入れ替わる。
+    // かといって a の開始で止めると a が 12:00-12:00 になり、**長さの無い予定**
+    // ができる（実データ: 13:04-13:04 の「買い物」。カレンダーでは最小の高さで
+    // 描かれるので見た目では気付けず、開いて初めて分かった）。
+    //
+    // 重なりを解くのは見やすさのためで、予定を消してよい理由は無い。切れない
+    // なら重なったまま置く。
     const receiptMin = (it: { id: string }) =>
       it.id === "a" ? 12 * 60 + 10 : 12 * 60 + 30;
     const out = resolveDraftOverlaps(
@@ -158,10 +164,8 @@ describe("resolveDraftOverlaps", () => {
     const by = Object.fromEntries(
       out.map((i) => [i.id, `${i.time}-${i.prefill.endTime}`]),
     );
-    // 素の中点は 11:15 で a の開始 12:00 より手前＝順番が入れ替わる。
-    // そこまで下げず a の開始で止める。
-    expect(by.a).toBe("12:00-12:00");
-    expect(by.b).toBe("12:00-13:00");
+    expect(by.a).toBe("12:00-12:30");
+    expect(by.b).toBe("10:00-13:00");
   });
 
   it("重なっていなければ何もしない", () => {
@@ -520,5 +524,37 @@ describe("移動を避ける", () => {
       fmt,
     );
     expect(out.find((o) => o.id === "shop")!.time).toBe("11:07");
+  });
+});
+
+// 潰れた予定はカレンダーでは最小の高さで描かれるので、見た目では気付けない
+// （実データ: 13:04-13:04 の「買い物」が 13時台の1時間の予定に見えていた）。
+describe("長さがゼロの下書きを作らない", () => {
+  it("会計の順と壁時計の順が食い違っても潰さない（重なりは残す）", () => {
+    // 買い物 12:34-13:04（会計 13:04）と 昼食 12:00-14:00（会計 14:00）。
+    // 会計順では 買い物 → 昼食 だが、壁時計では昼食が先に始まっている。
+    const shopping = item({
+      id: "s",
+      time: "12:34",
+      endTime: "13:04",
+      title: "買い物",
+    });
+    const lunch = item({
+      id: "l",
+      time: "12:00",
+      endTime: "14:00",
+      title: "昼食",
+    });
+    const receiptMin = (it: EventDraftItem) =>
+      it.id === "s" ? 13 * 60 + 4 : 14 * 60;
+    const out = resolveDraftOverlaps([shopping, lunch], fmt, receiptMin);
+    for (const o of out) {
+      expect(o.prefill.endTime).not.toBe(o.time);
+    }
+    // 触っていない＝重なったまま残る。
+    expect(out.map((o) => [o.time, o.prefill.endTime])).toEqual([
+      ["12:34", "13:04"],
+      ["12:00", "14:00"],
+    ]);
   });
 });
