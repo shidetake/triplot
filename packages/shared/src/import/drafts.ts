@@ -638,15 +638,18 @@ export function deriveEventDraftItems(
 
   // 会計時刻はメールの費用側に事実として入っている。同じメールの予定を
   // その時刻で並べれば、実際にどちらが先だったかが分かる。
+  //
+  // **現地化した後のレシートを使う**（上の receiptByEmail）。保存されている
+  // 生の値は発行元の暦のままで、決済通知だと日付ごとずれる。並べ替えの鍵だけ
+  // 生の値で作ると、予定の時刻は現地・鍵は発行元の暦、と食い違う（実データ:
+  // 予定が 4/28 12:34 なのに鍵は 4/29 08:04 で、丸1日ずれていた）。
   const receiptMinByEmail = new Map<string, number>();
-  for (const d of drafts ?? []) {
-    if (d.kind !== "expense") continue;
-    const r = d.payload as unknown as StoredReceipt | null;
+  for (const [emailId, r] of receiptByEmail) {
     const when = receiptDate(r);
     if (!when.date || !when.time) continue;
     const [hh, mm] = when.time.split(":").map(Number);
     receiptMinByEmail.set(
-      d.email_id,
+      emailId,
       Date.UTC(
         Number(when.date.slice(0, 4)),
         Number(when.date.slice(5, 7)) - 1,
