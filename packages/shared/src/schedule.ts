@@ -1,3 +1,5 @@
+import { tzDisplayLabel } from "./timezones";
+
 // 週ビューカレンダーのレイアウト計算（DB を触らない純粋関数）。
 //
 // 設計の肝 — 「壁時計（floating time）」を絶対に守る:
@@ -423,7 +425,13 @@ export function buildSchedule(
     // 「Asia/Tokyo → Asia/Tokyo」のような情報ゼロの注記がカレンダーの
     // 日付欄に並ぶ（実機で確認）。同じなら出さない。
     const tzBoundaryNote =
-      startTz === arriveTz ? null : `${startTz} → ${arriveTz}`;
+      startTz === arriveTz
+        ? null
+        : // 画面に出すのは表示名（「日本 → ハワイ」）。IANA の識別子は内部の
+          // 表現で、ユーザーに見せるものではない（タイムゾーンピッカーと
+          // 同じ名前を使う。docs/ui-guidelines.md「タイムゾーンピッカーの
+          // 命名ルール」）。
+          `${tzDisplayLabel(startTz)} → ${tzDisplayLabel(arriveTz)}`;
 
     if (wraps) {
       // 時差が戻る方向で時刻が重なる便だけ、重なりを正直に見せるため

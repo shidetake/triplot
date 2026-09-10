@@ -459,7 +459,8 @@ describe("buildSchedule: 時差移動の日は等幅2列", () => {
     expect(arr).toMatchObject({ role: "day", tz: "Asia/Tokyo" });
     // 出発日には wraps 便と対称な TZ 変化注記を出す。注記は2列ぶんの幅で見せる。
     const depGroup = s.groups.find((g) => g.key === "d-2026-05-04");
-    expect(depGroup?.tzNote).toBe("Pacific/Honolulu → Asia/Tokyo");
+    // 画面に出すのは表示名（IANA の識別子はユーザーに見せない）。
+    expect(depGroup?.tzNote).toBe("ハワイ → 日本");
     expect(depGroup?.tzNoteSpan).toBe(2);
     // 便自体は出発列→到着列を跨ぐリボンとして残る
     expect(s.transits).toHaveLength(1);

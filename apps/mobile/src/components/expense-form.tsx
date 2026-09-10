@@ -29,6 +29,7 @@ import {
 } from "@triplot/shared/data/categories";
 import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
+import { tzDisplayLabel } from "@triplot/shared/timezones";
 import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
   dedupeTzCandidates,
@@ -632,7 +633,8 @@ export function ExpenseForm({
               <CompactSegment
                 options={dedupeTzCandidates(tzRes.options).map((opt) => ({
                   key: opt.tz,
-                  label: opt.tz,
+                  // 予定フォーム・web と同じ表示名（「日本」「ハワイ」）。
+                  label: tzDisplayLabel(opt.tz),
                 }))}
                 value={
                   tzRes.options.find(
