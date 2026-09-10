@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useRef,
   useCallback,
   useContext,
   useEffect,
@@ -88,12 +89,24 @@ export function useDraft<T>(
     return typeof initial === "function" ? (initial as () => T)() : initial;
   });
 
-  // 値が変わるたびストアへ反映（次回マウント時の初期値になる）。draftKey が無いときは何もしない。
+  // **触った項目だけ保持する。** 初回描画で全項目を書き込むと、開いて閉じた
+  // だけで事前入力がその時の値に固定される。あとから事前入力の元が変わっても
+  // （旅程を確定して仮予定の時刻が決まる等）、開き直すと古い値が復元され、
+  // カレンダーの見た目とフォームの中身が食い違う（実機で確認: カレンダーは
+  // 4/28 15:12 の予定なのに、開くと終日 4/29 のままだった）。
+  //
+  // 保持したいのは「打ちかけの入力」であって「見ただけの初期値」ではない。
+  const touched = useRef(false);
+  const set = useCallback<Dispatch<SetStateAction<T>>>((v) => {
+    touched.current = true;
+    setValue(v);
+  }, []);
+
   useEffect(() => {
-    if (draftKey) writeDraft(draftKey, field, value);
+    if (draftKey && touched.current) writeDraft(draftKey, field, value);
   }, [draftKey, field, value]);
 
-  return [value, setValue];
+  return [value, set];
 }
 
 // 送信／削除に成功したときに呼ぶ。周囲の draftKey の下書きを丸ごと破棄する
