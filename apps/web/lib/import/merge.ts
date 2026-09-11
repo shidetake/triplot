@@ -4,9 +4,7 @@ import { z } from "zod";
 import { nameTokens } from "@triplot/shared/import/placeMatch";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
-import {
-  applyReceiptEventTiming,
-} from "@triplot/shared/import/receiptTiming";
+import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
 import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
 import { mergedTotal } from "@triplot/shared/import/receiptTotal";
 import type { StoredReceipt } from "@triplot/shared/import/drafts";
@@ -49,12 +47,26 @@ function extractionDates(x: Extraction): string[] {
 }
 
 // 抽出結果が持つ取引/予約の識別番号たち。
+//
+// **短すぎるものは識別子として扱わない。** 席番号・人数・通貨の端数のような
+// 数字が紛れ込むと、無関係な取引が「一致」してしまう。実データの識別番号は
+// 承認番号6桁・レシート番号4〜5文字・XMID 20桁で、いずれも4文字以上ある。
+const MIN_REF_ID_LEN = 4;
+
 function extractionRefIds(x: Extraction): string[] {
   const ids: (string | null)[] = [
     ...(x.receipt?.referenceIds ?? []),
     ...x.events.map((e) => e.referenceId),
   ];
-  return ids.filter((r): r is string => !!r);
+  return ids.filter(
+    (r): r is string => !!r && r.trim().length >= MIN_REF_ID_LEN,
+  );
+}
+
+// 同じ識別番号を持つか。**持つなら同じ取引かどうかは判断ではなく事実。**
+function sharesRefId(a: Extraction, b: Extraction): boolean {
+  const ids = new Set(extractionRefIds(a));
+  return extractionRefIds(b).some((r) => ids.has(r));
 }
 
 // 合体の候補を選ぶ（LLM に渡す前）。
@@ -89,8 +101,7 @@ function closeness(incoming: Extraction, cand: Extraction): number {
   let score = 0;
 
   // 1. 取引/予約の識別番号が一致。単独でほぼ確定。
-  const inRefs = new Set(extractionRefIds(incoming));
-  if (extractionRefIds(cand).some((r) => inRefs.has(r))) score += 1000;
+  if (sharesRefId(incoming, cand)) score += 1000;
 
   // 2. 金額と通貨が完全一致。62.62 米ドルが偶然2件並ぶことはまず無い。
   const a = amountOf(incoming);
@@ -138,9 +149,7 @@ export function selectMergeCandidates(
   const windowDays = opts.windowDays ?? 14;
   const max = opts.max ?? 8;
   const inDates = extractionDates(incoming);
-  const inRefs = new Set(extractionRefIds(incoming));
-  const refMatch = (d: DraftCandidate) =>
-    extractionRefIds(d.extraction).some((r) => inRefs.has(r));
+  const refMatch = (d: DraftCandidate) => sharesRefId(incoming, d.extraction);
   const dateNear = (d: DraftCandidate) =>
     extractionDates(d.extraction).some((cd) =>
       inDates.some((id) => dayDiff(id, cd) <= windowDays),
@@ -223,6 +232,18 @@ const mergeDecisionSchema = z.object({
     .describe("matchId がある時の合体後の内容。無ければ null"),
 });
 
+// **識別番号が一致する時の形。** 合体するかどうかは事実として決まっているので、
+// 「しない」を選べないようにする（null を許すと選べてしまう）。
+const forcedMergeSchema = z.object({
+  matchId: z.string().describe("同一取引/予約の既存下書きの id"),
+  merged: z.object({
+    receipt: receiptSchema.nullable().describe("合体後の費用。無ければ null"),
+    events: z
+      .array(eventDraftSchema)
+      .describe("合体後の予定リスト（最新の正しい旅程）。無ければ空配列"),
+  }),
+});
+
 const MERGE_SYSTEM_PROMPT = [
   "あなたは旅行関連メール（レシート・決済・予約）を突き合わせるアシスタントです。",
   "新しく届いたメール1件と、既存の未確定下書き（複数）が与えられます。新しいメールが",
@@ -295,15 +316,44 @@ export async function findMerge(
     candidateLines,
   ].join("\n");
 
-  const { object } = await generateObject({
-    model,
-    schema: mergeDecisionSchema,
-    system: MERGE_SYSTEM_PROMPT,
-    prompt,
-  });
+  // **識別番号が一致するなら、合体するかどうかは聞かない。**
+  //
+  // 同じ承認番号・予約番号を持つなら同じ取引であることは事実で、判断の余地が
+  // 無い（候補を絞る側は既にそう扱っている。selectMergeCandidates 参照）。
+  // 聞くと答えがブレる——実データ: 承認番号 208540 を共有する3通で、店の
+  // レシート(29.65)が銀行の承認通知(25.13)との合体を断り、5分後に同じ番号を
+  // 持つ差額通知(4.52)とは合体した。同じ事実に別の答えが返っている。
+  //
+  // 聞くのは**どう合体するか**だけ（どちらの日付・店名を採るか、予定をどう
+  // まとめるか）。足し算はこの後で機械的に決める（mergedTotal）。
+  const refMatched = candidates.filter((c) =>
+    sharesRefId(incoming.extraction, c.extraction),
+  );
+  const object =
+    refMatched.length > 0
+      ? (
+          await generateObject({
+            model,
+            schema: forcedMergeSchema,
+            system: MERGE_SYSTEM_PROMPT,
+            prompt: `${prompt}\n\n上の候補は新しいメールと同じ識別番号を持つので、同じ取引であることは確定しています。合体しないという選択肢はありません。どれと合体するか（複数あれば最も確からしいもの）と、合体後の内容だけを答えてください。`,
+          })
+        ).object
+      : (
+          await generateObject({
+            model,
+            schema: mergeDecisionSchema,
+            system: MERGE_SYSTEM_PROMPT,
+            prompt,
+          })
+        ).object;
 
   if (!object.matchId || !object.merged) return null;
-  const target = candidates.find((c) => c.id === object.matchId);
+  // 一致した番号を持たない候補を指してきたら、番号が一致する中で最も確からしい
+  // ものに寄せる（候補は closeness の降順に並んでいる）。
+  const target =
+    candidates.find((c) => c.id === object.matchId) ??
+    (refMatched.length > 0 ? refMatched[0] : undefined);
   if (!target) return null;
 
   // **合体の結果が、元のどれよりも小さくなってはいけない。**
@@ -314,9 +364,7 @@ export async function findMerge(
   const a = target.extraction.receipt;
   const b = incoming.extraction.receipt;
   const amount =
-    merged.receipt && a && b
-      ? mergedTotal(a, b, merged.receipt.total)
-      : null;
+    merged.receipt && a && b ? mergedTotal(a, b, merged.receipt.total) : null;
   if (merged.receipt && amount && amount.total !== merged.receipt.total) {
     console.warn(
       "[import] merge total overridden",

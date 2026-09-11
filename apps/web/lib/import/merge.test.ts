@@ -96,20 +96,38 @@ describe("selectMergeCandidates", () => {
   // （並べると LLM が選び直してブレる）。
   it("referenceId 一致があれば、日付が近いだけの候補は落とす", () => {
     const incoming = withReceipt(
-      receipt({ date: "2026-05-07", referenceIds: ["R"] }),
+      receipt({ date: "2026-05-07", referenceIds: ["208540"] }),
     );
     const drafts: DraftCandidate[] = [
       { id: "near", extraction: withReceipt(receipt({ date: "2026-05-06" })) },
       {
         id: "ref",
         extraction: withReceipt(
-          receipt({ date: "2026-05-04", referenceIds: ["R"] }),
+          receipt({ date: "2026-05-04", referenceIds: ["208540"] }),
         ),
       },
     ];
     expect(selectMergeCandidates(incoming, drafts).map((c) => c.id)).toEqual([
       "ref",
     ]);
+  });
+
+  // 席番号・人数のような短い数字が識別番号として拾われることがある。無関係な
+  // 取引が「一致」してしまうので、短すぎるものは識別子として扱わない。
+  it("短すぎる番号は識別番号として使わない", () => {
+    const incoming = withReceipt(
+      receipt({ date: "2026-05-07", referenceIds: ["2"] }),
+    );
+    const drafts: DraftCandidate[] = [
+      {
+        id: "同じ数字だが別の取引",
+        extraction: withReceipt(
+          receipt({ date: "2026-01-01", referenceIds: ["2"] }),
+        ),
+      },
+    ];
+    // 番号一致では拾われない＝日付が離れているので候補から落ちる。
+    expect(selectMergeCandidates(incoming, drafts)).toEqual([]);
   });
 
   it("max で件数を絞る", () => {
