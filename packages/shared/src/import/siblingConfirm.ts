@@ -153,10 +153,13 @@ export function expenseFieldsFromDraft(
     // 通知）と、搭乗日・チェックイン日を日付に採ったもの（receiptDate 参照）
     // は initialTime を持たないので、根拠の無い時刻は入らない。
     paidAt: `${d.initialPaidAt}T${d.initialTime ?? "00:00"}`,
-    // 乗継日の選択はフォームの新規作成時と同じく持たない（両方 null＝旅程から
-    // 毎回導出）。手で確定した費用と自動で作った費用で結果を変えないため。
-    tzDisambigTransitId: null,
-    tzDisambigSide: null,
+    // **移動日にどちら側かは、下書きが出した答えをそのまま持たせる**（予定の側
+    // と同じ。上の eventFieldsFromDraft 参照）。両方 null にすると旅程から
+    // 毎回導出されるが、移動日は日付だけでは決まらないので先頭候補＝出発側に
+    // 落ちる——ハワイでの支払いが日本時間として並ぶ。フォームから確定した時も
+    // この値が送られるので、手と自動で結果が変わることもない。
+    tzDisambigTransitId: d.tzDisambig?.transitId ?? null,
+    tzDisambigSide: d.tzDisambig?.side ?? null,
     place: placeInputFromDraft(d.initialPlace, d.autoResolvePlace),
   };
 }

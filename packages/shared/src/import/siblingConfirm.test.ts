@@ -82,6 +82,23 @@ describe("expenseFieldsFromDraft", () => {
     expect(f?.rateToDefault).toBe(157.12);
   });
 
+  // 移動日は日付だけではどちら側か決まらない。捨てると先頭候補＝出発側に
+  // 落ちて、ハワイでの支払いが日本時間として並ぶ（実データで発生）。
+  it("移動日にどちら側かを持たせる（予定の側と同じ）", () => {
+    const f = expenseFieldsFromDraft(
+      expenseDraft({ tzDisambig: { transitId: "t1", side: "arrive" } }),
+      expenseCtx,
+    );
+    expect(f?.tzDisambigTransitId).toBe("t1");
+    expect(f?.tzDisambigSide).toBe("arrive");
+  });
+
+  it("移動日でなければ持たない（両方 null）", () => {
+    const f = expenseFieldsFromDraft(expenseDraft(), expenseCtx);
+    expect(f?.tzDisambigTransitId).toBeNull();
+    expect(f?.tzDisambigSide).toBeNull();
+  });
+
   it("精算通貨と同じならレートは 1（履歴が無くても作れる）", () => {
     const f = expenseFieldsFromDraft(
       expenseDraft({ initialCurrency: "JPY" }),
