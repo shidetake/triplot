@@ -3,6 +3,8 @@ import { z } from "zod";
 
 import { nameTokens } from "@triplot/shared/import/placeMatch";
 
+import { logUsage } from "./usageLog";
+
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
 import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
 import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
@@ -342,9 +344,20 @@ export async function findMerge(
     if (ratio < 0.1 || ratio > 0.3) return "";
     return `\n  （新しいメールの金額はこの候補の ${(ratio * 100).toFixed(1)}%）`;
   };
+  // **同一が事実として言えるなら、本文は渡さない。**
+  //
+  // 識別番号の一致・同じ施設の同じ期間の宿泊（sharesIdentity）で同一が確定して
+  // いる時、聞くのは「どう合体するか」だけで、「同じ取引か」はもう聞いていない。
+  // 本文はその「同じ取引か」を判断するための材料なので、確定している側では
+  // 読まれずにトークンだけ増やす（候補8件 × 1,500字 ＋ 新着 2,000字）。
+  // 判断に使う値は slim() の構造化データが持っている。
+  const identityMatched = candidates.filter((c) =>
+    sharesIdentity(incoming.extraction, c.extraction),
+  );
+  const certain = identityMatched.length > 0;
   const candidateLines = candidates
     .map((c) => {
-      const body = (c.text ?? "").trim().slice(0, 1500);
+      const body = certain ? "" : (c.text ?? "").trim().slice(0, 1500);
       return `- id=${c.id}: ${JSON.stringify(slim(c.extraction))}${tipNote(c)}${
         body ? `\n  本文: ${body}` : ""
       }`;
@@ -353,9 +366,9 @@ export async function findMerge(
   const prompt = [
     "新しく届いたメールの抽出結果:",
     JSON.stringify(slim(incoming.extraction)),
-    "",
-    "新しいメールの本文（抜粋）:",
-    incoming.text.slice(0, 2000),
+    ...(certain
+      ? []
+      : ["", "新しいメールの本文（抜粋）:", incoming.text.slice(0, 2000)]),
     "",
     "既存の未確定下書き:",
     candidateLines,
@@ -371,27 +384,21 @@ export async function findMerge(
   //
   // 聞くのは**どう合体するか**だけ（どちらの日付・店名を採るか、予定をどう
   // まとめるか）。足し算はこの後で機械的に決める（mergedTotal）。
-  const identityMatched = candidates.filter((c) =>
-    sharesIdentity(incoming.extraction, c.extraction),
-  );
-  const object =
-    identityMatched.length > 0
-      ? (
-          await generateObject({
-            model,
-            schema: forcedMergeSchema,
-            system: MERGE_SYSTEM_PROMPT,
-            prompt: `${prompt}\n\n上の候補は新しいメールと同じ識別番号を持つ、または同じ施設の同じ期間の宿泊なので、同じ取引・同じ予約であることは確定しています。合体しないという選択肢はありません。どれと合体するか（複数あれば最も確からしいもの）と、合体後の内容だけを答えてください。`,
-          })
-        ).object
-      : (
-          await generateObject({
-            model,
-            schema: mergeDecisionSchema,
-            system: MERGE_SYSTEM_PROMPT,
-            prompt,
-          })
-        ).object;
+  const call = certain
+    ? await generateObject({
+        model,
+        schema: forcedMergeSchema,
+        system: MERGE_SYSTEM_PROMPT,
+        prompt: `${prompt}\n\n上の候補は新しいメールと同じ識別番号を持つ、または同じ施設の同じ期間の宿泊なので、同じ取引・同じ予約であることは確定しています。合体しないという選択肢はありません。どれと合体するか（複数あれば最も確からしいもの）と、合体後の内容だけを答えてください。`,
+      })
+    : await generateObject({
+        model,
+        schema: mergeDecisionSchema,
+        system: MERGE_SYSTEM_PROMPT,
+        prompt,
+      });
+  logUsage(certain ? "merge(確定)" : "merge(判断)", call.usage);
+  const object = call.object;
 
   if (!object.matchId || !object.merged) return null;
   // 一致した番号を持たない候補を指してきたら、番号が一致する中で最も確からしい

@@ -2,6 +2,7 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
+import { logUsage } from "./usageLog";
 import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
 import { buildImportPrompt, IMPORT_SYSTEM_PROMPT, type TripHint } from "./prompt";
 import {
@@ -48,12 +49,18 @@ export async function extractEmail(
   input: { subject: string; text: string; trips?: TripHint[] },
 ): Promise<Extraction & { tripId: string | null; detailUrl: string | null }> {
   const trips = input.trips ?? [];
-  const { object } = await generateObject({
+  const { object, usage } = await generateObject({
     model,
     schema: extractionSchema,
+    // **固定の指示を先に、可変の本文を後に置く。** Gemini 2.5 系は先頭が同一の
+    // 入力に自動でキャッシュ割引（75%）を効かせるので、並び順がそのまま単価に
+    // なる。指示とスキーマ説明で約 7,500 トークンあり、最低要件（1,024）を
+    // 大きく超えているので、この並びのままなら毎回効く。プロンプトを書き換えると
+    // その時だけ外れる（壊れるのではなく、割引が乗り直すまで1回ぶん高くなる）。
     system: IMPORT_SYSTEM_PROMPT,
     prompt: buildImportPrompt(input),
   });
+  logUsage("extract", usage);
   // 幻覚 id を弾く（候補に無い id は無効として未割当に）。
   const tripId = trips.some((t) => t.id === object.tripId) ? object.tripId : null;
   // 幻覚 URL を弾く（本文に実在する URL のみ採用）。
