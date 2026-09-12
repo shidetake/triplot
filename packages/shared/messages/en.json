@@ -188,7 +188,9 @@
     "allDayLabel": "All day",
     "draftBadge": "Draft",
     "moved": "Event moved",
-    "moveFailed": "Couldn't move the event: {error}"
+    "moveFailed": "Couldn't move the event: {error}",
+    "viewAs": "{name}'s time",
+    "viewAsAria": "Whose time to view"
   },
   "tripActions": {
     "shareAria": "Share",

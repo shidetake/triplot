@@ -143,6 +143,7 @@ const reservationMarkStyle = { width: 12, height: 12, marginRight: 2 };
 
 export function WeekCalendar({
   schedule,
+  viewerLabel = null,
   events,
   memberHueById,
   activeMemberCount,
@@ -154,6 +155,8 @@ export function WeekCalendar({
   onAllDaySlotPick,
 }: {
   schedule: Schedule;
+  // 年表が分かれている日の日付欄に添える「誰の時間か」（web と同じ）。
+  viewerLabel?: string | null;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
   events: EventRow[];
   memberHueById: Map<string, number | null>;
@@ -239,7 +242,9 @@ export function WeekCalendar({
   const bodyH = 24 * hourPx;
   // TZ注記が無い週は、注記ぶんの高さを空けておく必要が無いので薄くする
   // （前進する便の注記があるときだけ広げる。日付ラベルだけの週は詰める）。
-  const headerH = groups.some((g) => g.tzNote) ? HEADER_H : HEADER_H_COMPACT;
+  const headerH = groups.some((g) => g.tzNote || (g.diverged && viewerLabel))
+    ? HEADER_H
+    : HEADER_H_COMPACT;
   // 掴んだ位置の当たり判定（blockAt）から参照するので、毎描画で作り直さない
   // ようにしておく（作り直すとジェスチャーのコールバックも毎回作り直しになる）。
   const colIndexByKey = useMemo(
@@ -851,7 +856,7 @@ export function WeekCalendar({
                     <Text style={styles.dayHeaderLabel} numberOfLines={1}>
                       {g.label}
                     </Text>
-                    {g.tzNote ? (
+                    {(g.tzNote ?? (g.diverged ? viewerLabel : null)) ? (
                       // 前進する便（日付を結合しない）は注記だけ出発日＋到着日の
                       // 2列ぶんの幅で見せる（web と同じ。列自体は結合しない）。
                       // dayHeaderCell の alignItems:center を上書きして左端
@@ -867,7 +872,7 @@ export function WeekCalendar({
                         ]}
                         numberOfLines={2}
                       >
-                        {g.tzNote}
+                        {g.tzNote ?? viewerLabel}
                       </Text>
                     ) : null}
                   </View>

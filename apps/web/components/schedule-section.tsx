@@ -43,6 +43,7 @@ import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { useMediaQuery } from "./use-media-query";
+import { inputClass } from "./input-class";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
 import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
@@ -122,6 +123,8 @@ export function ScheduleSection({
 }) {
   const locale = useLocale();
   const router = useRouter();
+  const t = useTranslations("schedule");
+  const tImport = useTranslations("import");
 
   // 予定タブが今表示中か。カレンダー本体は狭い画面で position:fixed の
   // 全画面ブリードにしているが、他タブ表示中（display:none）は document 側の
@@ -158,6 +161,10 @@ export function ScheduleSection({
     [members],
   );
   const [open, setOpen] = useState<OpenForm | null>(null);
+  // 誰の年表でカレンダーを描くか（既定は自分）。年表は人ごとなので、別行動
+  // している期間は見る人によって列の時間帯が違う。切り替えは年表が分かれて
+  // いる旅行でだけ出す（移動日の TZ 選択を移動日にだけ出すのと同じ作法）。
+  const [viewerId, setViewerId] = useState(myMemberId);
   // PC ドラッグで作成中の可変長ゴースト。form 表示中も枠を残したいので
   // ScheduleSection で保持し、closeForm で同期的に消す。
   const [pcDrag, setPcDrag] = useState<PcDragRender | null>(null);
@@ -182,9 +189,36 @@ export function ScheduleSection({
         tripEnd,
         locale,
         defaultTimezone: initialTz,
+        viewerMemberId: viewerId,
+        memberIds: activeMembers.map((m) => m.id),
       }),
-    [eventsWithDrafts, tripStart, tripEnd, locale, initialTz],
+    [
+      eventsWithDrafts,
+      tripStart,
+      tripEnd,
+      locale,
+      initialTz,
+      viewerId,
+      activeMembers,
+    ],
   );
+  const hasDivergence = schedule.groups.some((g) => g.diverged);
+  const viewerName = members.find((m) => m.id === viewerId)?.display_name ?? "";
+  const viewerSelect = hasDivergence ? (
+    <select
+      value={viewerId}
+      onChange={(e) => setViewerId(e.target.value)}
+      aria-label={t("viewAsAria")}
+      title={t("viewAsAria")}
+      className={`${inputClass} h-8 w-auto text-xs`}
+    >
+      {activeMembers.map((m) => (
+        <option key={m.id} value={m.id}>
+          {t("viewAs", { name: m.display_name })}
+        </option>
+      ))}
+    </select>
+  ) : null;
 
   const tzTimeline = useMemo(
     () => buildTripTzTimeline(events, initialTz),
@@ -315,8 +349,6 @@ export function ScheduleSection({
     [router, draftIdsOf, emailIdsOf, confirmSiblings],
   );
 
-  const t = useTranslations("schedule");
-  const tImport = useTranslations("import");
 
   // 長押し（指）／ドラッグ（マウス）で動かした予定を保存する。
   //
@@ -387,6 +419,7 @@ export function ScheduleSection({
       <div className="hidden items-center justify-between gap-2 md:flex">
         <h2 className="text-lg font-semibold">{t("heading")}</h2>
         <div className="flex items-center gap-3">
+          {viewerSelect}
           <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
             {t("addHelp")}
           </HelpTip>
@@ -412,11 +445,18 @@ export function ScheduleSection({
           ラッパーだけで完結させる（lib/mobileTabChrome.ts）。広い画面は static
           に戻り元通りページ内の1コンポーネント。 */}
       <div
-        className="fixed inset-x-0 md:static md:inset-auto"
+        className="fixed inset-x-0 flex flex-col md:static md:inset-auto"
         style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
       >
+        {/* 狭い画面は見出し行が無いので、切り替えはカレンダーの直上に出す。 */}
+        {viewerSelect && (
+          <div className="flex shrink-0 justify-end px-4 py-1 md:hidden">
+            {viewerSelect}
+          </div>
+        )}
         <WeekCalendar
           schedule={schedule}
+          viewerLabel={hasDivergence ? t("viewAs", { name: viewerName }) : null}
           placeName={placeName}
           selectedEventId={selectedEventId}
           myMemberId={myMemberId}
@@ -428,7 +468,7 @@ export function ScheduleSection({
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
           onEventMove={onEventMove}
-          className="h-full max-h-none rounded-none border-0 md:h-auto md:max-h-[70vh] md:rounded-md md:border"
+          className="min-h-0 flex-1 max-h-none rounded-none border-0 md:h-auto md:flex-none md:max-h-[70vh] md:rounded-md md:border"
         />
       </div>
 

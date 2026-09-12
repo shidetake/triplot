@@ -1067,3 +1067,115 @@ describe("timelineFor: 年表は人ごと（乗った移動だけを並べる）
     expect(s.timed.find((t) => t.event.id === "lunch-b")).toBeDefined();
   });
 });
+
+// 段階3: カレンダーは見ている人の年表で描く。列はその人が乗った移動から組み、
+// 別の時間帯にいる人の予定と、その人が乗っていない移動は絶対時刻から写す。
+describe("buildSchedule: 見ている人の年表で描く（viewerMemberId）", () => {
+  const flightA = ev({
+    id: "fa",
+    title: "A の便",
+    kind: "transit",
+    startAt: "2026-04-27T19:10:00",
+    startTz: "Asia/Tokyo",
+    endAt: "2026-04-27T08:30:00",
+    endTz: "Pacific/Honolulu",
+    participantsEveryone: false,
+    participantMemberIds: ["a"],
+  });
+  const flightB = ev({
+    id: "fb",
+    title: "B の便",
+    kind: "transit",
+    startAt: "2026-04-29T19:10:00",
+    startTz: "Asia/Tokyo",
+    endAt: "2026-04-29T08:30:00",
+    endTz: "Pacific/Honolulu",
+    participantsEveryone: false,
+    participantMemberIds: ["b"],
+  });
+  const back = ev({
+    id: "back",
+    kind: "transit",
+    startAt: "2026-05-03T12:00:00",
+    startTz: "Pacific/Honolulu",
+    endAt: "2026-05-04T16:00:00",
+    endTz: "Asia/Tokyo",
+  });
+  // 4/28 12:00 東京の B だけの昼食（A はもうホノルル）。
+  const lunchB = ev({
+    id: "lunch-b",
+    startAt: "2026-04-28T12:00:00",
+    endAt: "2026-04-28T13:00:00",
+    startTz: null,
+    participantsEveryone: false,
+    participantMemberIds: ["b"],
+  });
+  const all = [flightA, flightB, back, lunchB];
+  const opts = { tripStart: "2026-04-27", tripEnd: "2026-05-04", memberIds: ["a", "b"] };
+
+  it("列は見ている人が乗った移動だけで割る", () => {
+    const sa = buildSchedule(all, { ...opts, viewerMemberId: "a" });
+    const sb = buildSchedule(all, { ...opts, viewerMemberId: "b" });
+    const tzOf = (s: ReturnType<typeof buildSchedule>, d: string) =>
+      s.columns.filter((c) => c.date === d).map((c) => c.tz);
+    // A: 4/27 に飛ぶ。4/28 以降はホノルル。
+    expect(tzOf(sa, "2026-04-27")).toEqual(["Asia/Tokyo", "Pacific/Honolulu"]);
+    expect(tzOf(sa, "2026-04-28")).toEqual(["Pacific/Honolulu"]);
+    expect(tzOf(sa, "2026-04-29")).toEqual(["Pacific/Honolulu"]);
+    // B: 4/29 に飛ぶ。4/28 はまだ東京。
+    expect(tzOf(sb, "2026-04-27")).toEqual(["Asia/Tokyo"]);
+    expect(tzOf(sb, "2026-04-28")).toEqual(["Asia/Tokyo"]);
+    expect(tzOf(sb, "2026-04-29")).toEqual(["Asia/Tokyo", "Pacific/Honolulu"]);
+  });
+
+  it("別の時間帯にいる人の予定は、絶対時刻を自分の壁時計に直して置く", () => {
+    // B の東京 4/28 12:00 の昼食は、A（ホノルル）では 4/27 17:00。
+    const sa = buildSchedule(all, { ...opts, viewerMemberId: "a" });
+    const placed = sa.timed.find((t) => t.event.id === "lunch-b")!;
+    const col = sa.columns.find((c) => c.key === placed.columnKey)!;
+    expect(col.date).toBe("2026-04-27");
+    expect(col.tz).toBe("Pacific/Honolulu");
+    expect(placed.topMin).toBe(17 * 60);
+    // B 自身の画面では壁時計のまま。
+    const sb = buildSchedule(all, { ...opts, viewerMemberId: "b" });
+    const placedB = sb.timed.find((t) => t.event.id === "lunch-b")!;
+    const colB = sb.columns.find((c) => c.key === placedB.columnKey)!;
+    expect(colB.date).toBe("2026-04-28");
+    expect(placedB.topMin).toBe(12 * 60);
+  });
+
+  it("乗っていない移動は列を割らず、自分の列に写して描く", () => {
+    // B の便（東京 4/29 19:10 発 → ホノルル 4/29 08:30 着）は、A の
+    // ホノルルの列では 4/29 00:10 → 08:30 の1区間。
+    const sa = buildSchedule(all, { ...opts, viewerMemberId: "a" });
+    const ribbon = sa.transits.find((t) => t.event.id === "fb")!;
+    const dep = sa.columns.find((c) => c.key === ribbon.departColumnKey)!;
+    const arr = sa.columns.find((c) => c.key === ribbon.arriveColumnKey)!;
+    expect(dep.key).toBe(arr.key);
+    expect(dep.date).toBe("2026-04-29");
+    expect(ribbon.departMin).toBe(10);
+    expect(ribbon.arriveMin).toBe(8 * 60 + 30);
+  });
+
+  it("年表が分かれている日だけ diverged が立つ", () => {
+    const sa = buildSchedule(all, { ...opts, viewerMemberId: "a" });
+    const byDate = new Map(sa.groups.map((g) => [g.columns[0].date, g.diverged]));
+    // 4/27 は A の移動日＝東京にも居られる（B と共通）。4/28 は A ホノルル・
+    // B 東京で分かれる。4/29 は B の移動日で共通の時間帯（ホノルル）がある。
+    // 4/30 以降は全員ホノルル。
+    expect(byDate.get("2026-04-27")).toBe(false);
+    expect(byDate.get("2026-04-28")).toBe(true);
+    expect(byDate.get("2026-04-29")).toBe(false);
+    expect(byDate.get("2026-04-30")).toBe(false);
+  });
+
+  it("viewerMemberId を渡さなければ従来どおり旅行全体の年表で組む", () => {
+    const s = buildSchedule(all, { tripStart: "2026-04-27", tripEnd: "2026-05-04" });
+    // 4/29 は B の便で列が割れる（旅行全体の年表には全員の移動が入る）。
+    expect(s.columns.filter((c) => c.date === "2026-04-29").map((c) => c.tz)).toEqual([
+      "Asia/Tokyo",
+      "Pacific/Honolulu",
+    ]);
+    expect(s.groups.every((g) => g.diverged === false)).toBe(true);
+  });
+});

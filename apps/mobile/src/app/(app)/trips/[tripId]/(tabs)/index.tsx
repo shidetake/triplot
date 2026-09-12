@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useLocale, useTranslations } from "use-intl";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -18,6 +19,7 @@ import {
 } from "@triplot/shared/tripDerive";
 
 import { PlusIcon } from "@/components/icons";
+import { CompactSegment } from "@/components/visibility-segment";
 import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
@@ -47,6 +49,10 @@ export default function ScheduleTab() {
   const invalidateTrip = useInvalidateTrip(tripId);
   const runUndoable = useUndoable(invalidateTrip);
   const { data: tripDrafts } = useTripDrafts(tripId);
+  // 誰の年表でカレンダーを描くか（既定は自分。web と同じ）。null は「自分」
+  // ＝me が取れるまでの間も自分で描く。
+  const [viewerOverride, setViewerOverride] = useState<string | null>(null);
+  const viewerId = viewerOverride ?? me?.id ?? null;
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
   const events = data
@@ -76,14 +82,20 @@ export default function ScheduleTab() {
     ...events,
     ...eventDrafts.map((d) => draftToScheduleEvent(d, me?.id ?? "")),
   ];
+  const activeMembers = (data?.members ?? []).filter((m) => m.left_at === null);
   const schedule = data?.trip
     ? buildSchedule(eventsWithDrafts, {
         tripStart: data.trip.start_date,
         tripEnd: data.trip.end_date,
         locale,
         defaultTimezone: data.trip.default_timezone,
+        viewerMemberId: viewerId,
+        memberIds: activeMembers.map((m) => m.id),
       })
     : null;
+  const hasDivergence = schedule?.groups.some((g) => g.diverged) ?? false;
+  const viewerName =
+    activeMembers.find((m) => m.id === viewerId)?.display_name ?? "";
 
   if (loadError) {
     return (
@@ -99,9 +111,7 @@ export default function ScheduleTab() {
   const memberHueById = new Map(
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
-  const activeMemberCount = (data.members ?? []).filter(
-    (m) => m.left_at === null,
-  ).length;
+  const activeMemberCount = activeMembers.length;
   // ブロックに場所名を出す（web の schedule-section.placeName と同じ解決）。
   const placeNameById = new Map(
     (data.placesRaw ?? []).map((p) => [p.id, p.name]),
@@ -171,18 +181,39 @@ export default function ScheduleTab() {
           </Text>
         </View>
       ) : (
-        <WeekCalendar
-          schedule={schedule}
-          events={eventsWithDrafts}
-          memberHueById={memberHueById}
-          activeMemberCount={activeMemberCount}
-          myMemberId={me.id}
-          placeName={placeName}
-          onEventPress={onEventPress}
-          onEventMove={onEventMove}
-          onSlotPick={onSlotPick}
-          onAllDaySlotPick={onAllDaySlotPick}
-        />
+        <>
+          {/* 年表が分かれている旅行でだけ「誰の時間で見るか」を出す
+              （web の見出し行のセレクトと同じ。少数の排他選択は RN では
+              セグメント）。 */}
+          {hasDivergence && (
+            <View style={styles.viewerRow}>
+              <CompactSegment
+                options={activeMembers.map((m) => ({
+                  key: m.id,
+                  label: t("schedule.viewAs", { name: m.display_name }),
+                }))}
+                value={viewerId ?? ""}
+                onChange={setViewerOverride}
+                grow
+              />
+            </View>
+          )}
+          <WeekCalendar
+            schedule={schedule}
+            viewerLabel={
+              hasDivergence ? t("schedule.viewAs", { name: viewerName }) : null
+            }
+            events={eventsWithDrafts}
+            memberHueById={memberHueById}
+            activeMemberCount={activeMemberCount}
+            myMemberId={me.id}
+            placeName={placeName}
+            onEventPress={onEventPress}
+            onEventMove={onEventMove}
+            onSlotPick={onSlotPick}
+            onAllDaySlotPick={onAllDaySlotPick}
+          />
+        </>
       )}
 
       {/* 追加 FAB */}
@@ -200,6 +231,7 @@ export default function ScheduleTab() {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.background },
+    viewerRow: { paddingHorizontal: 16, paddingVertical: 8 },
     empty: {
       flex: 1,
       alignItems: "center",

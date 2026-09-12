@@ -216,6 +216,12 @@ export type ColumnGroup = {
    * 日付列を結合しないが、注記だけは出発日＋到着日の2列に跨げるよう 2 にする。
    */
   tzNoteSpan?: number;
+  /**
+   * この日、メンバーの年表が分かれているか（同じ時間帯に居られる人が全員では
+   * ない）。分かれている日だけ「誰の時間で見ているか」を添える。
+   * buildSchedule に memberIds を渡した時だけ判定する（渡さなければ false）。
+   */
+  diverged: boolean;
   columns: Column[];
 };
 
@@ -301,6 +307,15 @@ export function buildSchedule(
     locale?: string;
     /** 旅程に transit が1つも無い旅行の唯一の拠り所（trips.default_timezone） */
     defaultTimezone?: string | null;
+    /**
+     * **誰の年表で列を組むか。** 年表は人ごと（timelineFor）なので、列（日付と
+     * その日の時間帯）は見ている人の年表から組む。省略すると旅行全体（全員ぶんの
+     * 移動の和＝従来どおり）。見ている人が乗っていない移動や、別の時間帯にいる
+     * 人の予定は、絶対時刻を見ている人の壁時計に直して置く。
+     */
+    viewerMemberId?: string | null;
+    /** 旅行のアクティブメンバー。年表が分かれている日（diverged）の判定に使う。 */
+    memberIds?: readonly string[];
   },
 ): Schedule {
   const locale = opts.locale ?? "ja";
@@ -345,7 +360,15 @@ export function buildSchedule(
   // 2) transit を時系列に。出発日でTZが切り替わる
   // 壁時計の文字列比較ではなく実際の絶対時刻順（TZを跨いだ真の出発順）で並べる。
   // 境界を作る移動だけが列を割る。時差の無い移動は下の通常の予定と同じ扱い。
-  const transits = sortTransitsByDepartureInstant(events.filter(isTzBoundary));
+  // 列を組む移動は**見ている人の年表**のもの（timelineFor）。他の人だけの
+  // 移動は列を割らず、下で絶対時刻からこの人の列に写す。
+  const viewerTl = opts.viewerMemberId
+    ? timelineFor(tzTimeline, [opts.viewerMemberId])
+    : tzTimeline;
+  const viewerTransitIds = new Set(viewerTl.transits.map((t) => t.transitId));
+  const transits = sortTransitsByDepartureInstant(
+    events.filter(isTzBoundary).filter((t) => viewerTransitIds.has(t.id)),
+  );
 
   const groups: ColumnGroup[] = [];
   // 直近に作った列。同日に連続で乗り継ぐ transit が到着列を再利用できるか判定するため追跡する。
@@ -373,6 +396,7 @@ export function buildSchedule(
       label: formatDayLabel(date, locale),
       tzNote,
       tzNoteSpan,
+      diverged: false,
       columns: [col],
     });
     lastCol = col;
@@ -382,7 +406,7 @@ export function buildSchedule(
   // 普通の日の「現在TZ」は旅程から導出する:
   //  - 最初の時差移動より前 → その移動の出発TZ
   //  - 時差移動が無ければ → trips.default_timezone（tzTimeline.fallbackTz）
-  const firstTz = tzTimeline.fallbackTz;
+  const firstTz = viewerTl.fallbackTz;
 
   let cursor = rangeStart;
   // transit の startTz は DB 制約で必ず非null。
@@ -459,6 +483,7 @@ export function buildSchedule(
         label,
         // 出発列を使い回すときは前の便の注記が既に出ているので重ねて出さない。
         tzNote: depReused ? null : tzBoundaryNote,
+        diverged: false,
         columns: depReused ? [arrCol] : [depCol, arrCol],
       });
       lastCol = arrCol;
@@ -490,10 +515,102 @@ export function buildSchedule(
 
   const columns = groups.flatMap((g) => g.columns);
 
+  // 年表が分かれている日。各メンバーがその日に居られる時間帯の集合（移動日は
+  // 出発側と到着側の両方）を取り、全員に共通の時間帯が無ければ分かれている。
+  // 「同じ時間帯 ≠ 同じ場所」なので合流の判定には使わない。ここで要るのは
+  // 「別の時間帯にいる人がいる」という向きだけで、それは確実に言える。
+  if (opts.memberIds && opts.memberIds.length > 1) {
+    const memberTls = opts.memberIds.map((m) => timelineFor(tzTimeline, [m]));
+    const divergedOn = (date: string): boolean => {
+      const sets = memberTls.map((tl) => {
+        const r = resolveExpenseTz(date, tl);
+        return new Set<string>(
+          r.kind === "single" ? [r.tz] : r.options.map((o) => o.tz),
+        );
+      });
+      return !Array.from(sets[0]).some((tz) => sets.every((s) => s.has(tz)));
+    };
+    for (const g of groups) {
+      g.diverged = g.columns.some((c) => divergedOn(c.date));
+    }
+  }
+
   // 日付＋TZ → 列。普通日/transit列いずれにも当たるよう (date,tz) で引く
   const colFor = (date: string, tz: string): Column | undefined =>
     columns.find((c) => c.date === date && c.tz === tz) ??
     columns.find((c) => c.date === date); // TZ未一致でも日付一致なら拾う保険
+
+  // 絶対時刻 → 見ている人の列。別の時間帯にいる人の予定・見ている人が乗って
+  // いない移動は壁時計では置けない（その時間帯の列が無い）ので、絶対時刻に
+  // 直してからこの人の列に写す。各列の絶対時刻の範囲は「その日の 0:00〜24:00
+  // をその列の TZ で読んだもの」。移動日の2列は範囲が重なるので、出発前は
+  // 出発側・到着後は到着側・機内は出発側に倒す。
+  const colRange = new Map(
+    columns.map((c) => [
+      c.key,
+      {
+        start: wallClockToUtcMs(`${c.date}T00:00`, c.tz),
+        end: wallClockToUtcMs(`${addDays(c.date, 1)}T00:00`, c.tz),
+      },
+    ]),
+  );
+  const departAtCol = new Map<string, number>();
+  const arriveAtCol = new Map<string, number>();
+  for (const t of transits) {
+    const keys = transitColumnKeys.get(t.id)!;
+    departAtCol.set(keys.dep, wallClockToUtcMs(t.startAt, t.startTz as string));
+    arriveAtCol.set(
+      keys.arr,
+      wallClockToUtcMs(t.endAt as string, t.endTz as string),
+    );
+  }
+  const colAtInstant = (ms: number): Column | undefined => {
+    const cands = columns.filter((c) => {
+      const r = colRange.get(c.key)!;
+      return ms >= r.start && ms < r.end;
+    });
+    if (cands.length <= 1) return cands[0];
+    const after = cands.find((c) => {
+      const a = arriveAtCol.get(c.key);
+      return a != null && ms >= a;
+    });
+    if (after) return after;
+    const before = cands.find((c) => {
+      const d = departAtCol.get(c.key);
+      return d != null && ms < d;
+    });
+    return before ?? cands[0];
+  };
+  // その列の TZ で読んだ 0:00 からの通算分。列の範囲内の絶対時刻に限る。
+  const minutesIn = (ms: number, col: Column): number =>
+    parseWall(utcMsToWallClock(ms, col.tz)).minutes;
+  // [startMs, endMs) を見ている人の列に写して区間に割る。列の境界（その列の
+  // 24:00）で切り、続きは次の列へ。列が無い時刻（範囲外）は捨てる。
+  const placeByInstant = (
+    startMs: number,
+    endMs: number,
+    push: (columnKey: string, topMin: number, endMin: number) => void,
+  ) => {
+    let ms = startMs;
+    for (let guard = 0; ms < endMs && guard < 64; guard++) {
+      const col = colAtInstant(ms);
+      if (!col) break;
+      const r = colRange.get(col.key)!;
+      const segEnd = Math.min(endMs, r.end);
+      push(
+        col.key,
+        minutesIn(ms, col),
+        segEnd === r.end ? 24 * 60 : minutesIn(segEnd, col),
+      );
+      ms = segEnd;
+    }
+  };
+  // その予定は見ている人と同じ時間の流れに乗っているか（見ている人が参加者
+  // なら同じ年表＝壁時計のまま置ける）。
+  const sharesViewerFrame = (ev: ScheduleEvent): boolean =>
+    opts.viewerMemberId == null ||
+    ev.participantsEveryone ||
+    ev.participantMemberIds.includes(opts.viewerMemberId);
 
   // 3) 時刻イベント・時差移動の配置（重なりはレーン分割）。
   // 通常予定と時差移動は別々の見た目だが、同じ列・同じ時間帯を取り合う点は
@@ -552,22 +669,37 @@ export function buildSchedule(
       const arr = parseWall(ev.endAt);
       // 列生成時に確定した乗降列をそのまま使う。colFor の (date,tz) 検索は
       // 同日に複数列あると最初に見つかった列を誤って拾うことがあるため使わない。
-      const keys = transitColumnKeys.get(ev.id);
-      if (keys) {
+      let keys = transitColumnKeys.get(ev.id);
+      let depMin = dep.minutes;
+      let arrMin = arr.minutes;
+      if (!keys) {
+        // 見ている人が乗っていない移動。列を割っていないので、出発と到着の
+        // 絶対時刻をこの人の列に写す（例: 自分がハワイにいる日の、友達の
+        // 東京 19:10 発は、ハワイの列の 0:10 に出る）。
+        const depMs = wallClockToUtcMs(ev.startAt, ev.startTz);
+        const arrMs = wallClockToUtcMs(ev.endAt, ev.endTz);
+        const depCol = colAtInstant(depMs);
+        const arrCol = colAtInstant(arrMs);
+        if (!depCol || !arrCol) continue;
+        keys = { dep: depCol.key, arr: arrCol.key };
+        depMin = minutesIn(depMs, depCol);
+        arrMin = minutesIn(arrMs, arrCol);
+      }
+      {
         transitMeta.set(ev.id, {
           event: ev,
           departColumnKey: keys.dep,
-          departMin: dep.minutes,
+          departMin: depMin,
           arriveColumnKey: keys.arr,
-          arriveMin: arr.minutes,
+          arriveMin: arrMin,
         });
         if (keys.dep === keys.arr) {
           timedRaw.push({
             kind: "transit-single",
             transitId: ev.id,
             columnKey: keys.dep,
-            topMin: dep.minutes,
-            endMin: arr.minutes,
+            topMin: depMin,
+            endMin: arrMin,
           });
         } else {
           // 出発側ブロックは出発時刻〜その日の終わりまで、到着側ブロックは
@@ -576,7 +708,7 @@ export function buildSchedule(
             kind: "transit-dep",
             transitId: ev.id,
             columnKey: keys.dep,
-            topMin: dep.minutes,
+            topMin: depMin,
             endMin: 24 * 60,
           });
           timedRaw.push({
@@ -584,7 +716,7 @@ export function buildSchedule(
             transitId: ev.id,
             columnKey: keys.arr,
             topMin: 0,
-            endMin: arr.minutes,
+            endMin: arrMin,
           });
         }
       }
@@ -608,6 +740,24 @@ export function buildSchedule(
         ev.tzDisambigSide,
         timelineForEvent(tzTimeline, ev),
       );
+
+    // 見ている人の列にその時間帯が無い＝別の時間帯にいる人の予定。絶対時刻に
+    // 直してこの人の列に写す（同じ流れに乗っている予定は、列の TZ が形式上
+    // 違っても壁時計のまま置く＝従来どおり。同日に時刻が進む便の到着側など）。
+    const exact = columns.some((c) => c.date === s.date && c.tz === evTz);
+    if (!exact && !sharesViewerFrame(ev)) {
+      const startMs = wallClockToUtcMs(ev.startAt, evTz);
+      const endMs = e
+        ? Math.max(wallClockToUtcMs(ev.endAt as string, evTz), startMs)
+        : startMs;
+      placeByInstant(
+        startMs,
+        endMs > startMs ? endMs : startMs + DEFAULT_DURATION_MIN * 60_000,
+        (columnKey, topMin, endMin) =>
+          timedRaw.push({ kind: "event", event: ev, columnKey, topMin, endMin }),
+      );
+      continue;
+    }
 
     if (!e || e.date === s.date) {
       // 同日内

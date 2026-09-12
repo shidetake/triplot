@@ -188,7 +188,9 @@
     "allDayLabel": "終日",
     "draftBadge": "未確定",
     "moved": "予定を移動しました",
-    "moveFailed": "移動できませんでした: {error}"
+    "moveFailed": "移動できませんでした: {error}",
+    "viewAs": "{name}の時間",
+    "viewAsAria": "誰の時間で見るか"
   },
   "tripActions": {
     "shareAria": "共有",

@@ -99,6 +99,7 @@ function spanLabel(ev: {
 
 export function WeekCalendar({
   schedule,
+  viewerLabel = null,
   placeName,
   selectedEventId,
   myMemberId,
@@ -113,6 +114,9 @@ export function WeekCalendar({
   className,
 }: {
   schedule: Schedule;
+  // 年表が分かれている日の日付欄に添える「誰の時間か」（例:「A の時間」）。
+  // 分かれていない旅行では null。
+  viewerLabel?: string | null;
   placeName: (placeId: string | null) => string | null;
   selectedEventId: string | null;
   // 自分が participants に含まれない予定（=別行動）を薄く描くために必要。
@@ -800,9 +804,10 @@ export function WeekCalendar({
                 <div className="text-xs font-medium text-foreground">
                   {g.label}
                 </div>
-                {g.tzNote && (
+                {(g.tzNote ?? (g.diverged ? viewerLabel : null)) && (
                   // 前進する便は注記だけ出発日＋到着日の2列ぶんの幅で見せる
                   // （列は結合しない）。狭い時は2行まで折り返す。
+                  // 年表が分かれている日は、注記が無ければ「誰の時間か」を出す。
                   <div
                     className="line-clamp-2 text-[10px] leading-tight text-muted-foreground"
                     // 親の px-1（左右 4px）の内側に置かれるので、span*COL ぴったり
@@ -812,7 +817,7 @@ export function WeekCalendar({
                       width: (g.tzNoteSpan ?? g.columns.length) * COL - 8,
                     }}
                   >
-                    {g.tzNote}
+                    {g.tzNote ?? viewerLabel}
                   </div>
                 )}
               </div>
