@@ -174,18 +174,26 @@ export async function confirmSiblingDrafts(
 
   const { data, error } = await sb
     .from("inbound_drafts")
-    .select("id, email_id, kind, payload")
-    .in("email_id", emailIds)
-    .eq("status", "pending");
+    .select("id, email_id, kind, payload, status")
+    .in("email_id", emailIds);
   if (error) return err(error.message);
   // **事実を引く相手からは外さない。** 除くのは「これから作る対象」からだけで、
   // 導出の入力からは除かない。1通のメールの下書きは互いを参照して値を決める
   // （費用は使う日の時刻を予定から借り、レシート由来の仮予定はレシートの日時
   // から時間帯を引く）ので、確定中のものを入力から抜くと参照先が消える。
   //
+  // **status='pending' で絞ってはいけない。** 呼び出し側は「今まさに確定した
+  // 側」を先に confirmed にしてからここを呼ぶ（同一トランザクションではない）
+  // ので、その時点でもう pending ではない。status で絞ると事実の出どころが
+  // クエリの時点で消えてしまい、上のコメントが守ろうとした「入力からは除かない」
+  // が効かなくなる。だから email が一致する行を全部取り、pending か
+  // excludeDraftIds（今確定した側）かで生かす。
+  //
   // 実データ: 成田エクスプレスの予定を確定したら、相方の費用が乗車時刻
   // （14:49）を借りられず 0:00 になった。
-  const all = (data ?? []) as PendingDraft[];
+  const all = (data ?? []).filter(
+    (d) => d.status === "pending" || excludeDraftIds.includes(d.id),
+  ) as PendingDraft[];
   const willCreate = (id: string) => !excludeDraftIds.includes(id);
   if (all.filter((d) => willCreate(d.id)).length === 0) return ok(none);
 

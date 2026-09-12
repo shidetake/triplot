@@ -264,8 +264,17 @@ function localizedReceipt(
   const fixed = localizeSettlementByTrip(r, tzTimeline);
   // **読んだタイムゾーンも一緒に返す。** これを捨てると、移動日にどちら側かを
   // 受け取った側が別の手がかりで当て直すことになり、日付と食い違う。
+  // serviceDate は date の写しだった時だけ一緒に直る（settlementTiming.ts 参照）。
   return fixed
-    ? { r: { ...r, date: fixed.date, time: fixed.time }, tz: fixed.tz }
+    ? {
+        r: {
+          ...r,
+          date: fixed.date,
+          time: fixed.time,
+          ...(fixed.serviceDate ? { serviceDate: fixed.serviceDate } : {}),
+        },
+        tz: fixed.tz,
+      }
     : { r, tz: null };
 }
 

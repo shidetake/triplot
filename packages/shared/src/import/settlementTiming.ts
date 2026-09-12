@@ -36,6 +36,9 @@ export type SettlementTiming = {
   // 通知の日付が書かれている暦のタイムゾーン（発行元の国）。抽出時に LLM が
   // 発行元・言語から答える。分からなければ null＝直さない。
   settlementTz?: string | null;
+  // 「実際に使う日」が支払日と別にある時だけ入る（航空券の搭乗日等。
+  // drafts.ts の receiptDate 参照）。店頭購入等で該当しなければ null/undefined。
+  serviceDate?: string | null;
 };
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -49,7 +52,7 @@ const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function localizeSettlementTiming(
   r: SettlementTiming,
   ctx: { sentAt: string | null; placeTz: string | null },
-): { date: string; time: string | null } | null {
+): { date: string; time: string | null; serviceDate?: string } | null {
   const srcTz = r.settlementTz ?? null;
   if (!r.dateIsSettlement || !srcTz || !ctx.placeTz) return null;
 
@@ -63,7 +66,22 @@ export function localizeSettlementTiming(
   if (!wall) return null;
 
   const fixed = { date: wall.slice(0, 10), time: wall.slice(11, 16) };
-  return fixed.date === r.date && fixed.time === r.time ? null : fixed;
+  if (fixed.date === r.date && fixed.time === r.time) return null;
+  // **serviceDate は date の写しだった時だけ一緒に直す。** 店頭購入は
+  // 「支払った瞬間＝使った瞬間」なので、抽出時に serviceDate が date と
+  // 同じ値で入っていることがある（本来 null であるべきだが、そう抽出されて
+  // しまうことがある）。date だけ現地化すると、この2つが日を跨いで食い違い、
+  // 「使う日が別にある」と誤判定されて時刻が捨てられる（drafts.ts の
+  // receiptDate 参照）。serviceDate が最初から date と別の値（搭乗日・
+  // チェックイン日等、本当に使う日が違う場合）なら触らない。
+  //
+  // 実データ: ホノルルの衣料品店の決済通知（date/serviceDate とも
+  // 2026-04-29、settlementTz=Asia/Tokyo）が、date だけ現地化されて
+  // 2026-04-28 20:36 になり、serviceDate（2026-04-29 のまま）と食い違って
+  // 時刻を失っていた。
+  return r.serviceDate && r.serviceDate === r.date
+    ? { ...fixed, serviceDate: fixed.date }
+    : fixed;
 }
 
 function localizeBySendTime(
@@ -99,7 +117,7 @@ function localizeBySendTime(
 export function localizeSettlementByTrip(
   r: SettlementTiming & { sentAt?: string | null },
   timeline: TripTzTimeline,
-): { date: string; time: string | null; tz: string } | null {
+): { date: string; time: string | null; serviceDate?: string; tz: string } | null {
   const srcTz = r.settlementTz ?? null;
   if (!r.dateIsSettlement || !srcTz) return null;
   // 直す前の瞬間。本文に時刻があれば発行元の暦で読み、無ければ通知の送信時刻。

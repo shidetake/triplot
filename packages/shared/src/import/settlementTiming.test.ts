@@ -88,6 +88,30 @@ describe("localizeSettlementTiming", () => {
       }),
     ).toEqual({ date: "2026-04-29", time: "11:38" });
   });
+
+  // 実データ: ホノルルの衣料品店の決済通知（date/serviceDate とも 2026-04-29）が
+  // date だけ現地化されて 2026-04-28 になり、serviceDate（2026-04-29 のまま）と
+  // 食い違って「使う日が別にある」と誤判定され、時刻を失っていた（drafts.ts の
+  // receiptDate 参照）。
+  it("serviceDate が date の写しなら、date と一緒に直る", () => {
+    expect(
+      localizeSettlementTiming(
+        { ...sony, time: "11:38", serviceDate: "2026-04-29" },
+        { sentAt: null, placeTz: HNL },
+      ),
+    ).toEqual({ date: "2026-04-28", time: "16:38", serviceDate: "2026-04-28" });
+  });
+
+  // 航空券の搭乗日等、本当に支払日と別の日を指す serviceDate は触らない
+  // （店頭購入とは違い、date の現地化と無関係に成立している値のため）。
+  it("serviceDate が date と元から別の日なら触らない", () => {
+    expect(
+      localizeSettlementTiming(
+        { ...sony, time: "11:38", serviceDate: "2026-05-10" },
+        { sentAt: null, placeTz: HNL },
+      ),
+    ).toEqual({ date: "2026-04-28", time: "16:38" });
+  });
 });
 
 // 旅程を土地の代わりにする経路（店の場所が Google で引けなかった時の控え）。
