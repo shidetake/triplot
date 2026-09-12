@@ -429,6 +429,26 @@ export function PlaceMap({
     [places],
   );
 
+  // Google の既定（zIndex 未指定）は「画面上の垂直位置（＝緯度）が低いほど手前」
+  // という静的なルールで、ズームや中心からの距離では動的に調整されない
+  // （@types/google.maps の AdvancedMarkerElementOptions.zIndex のコメント
+  // 参照）。**その既定と見た目を変えないため、zIndex 自体は緯度から作る**
+  // （-lat。緯度が低いほど値が大きく＝手前になり、既定と同じ結果になる）。
+  //
+  // ただし緯度が完全に同値の2点（実例: 英語表記とローカル表記で別々の Google
+  // Place として登録され、座標まで一致した「Hanauma Bay」「ハナウマ湾」）は、
+  // 既定ルールにとっても引き分けで、その解決方法は規定されていない。ここだけ
+  // Google 任せにすると重なり順が描画のたびに入れ替わってチラつく（不具合に
+  // 見える）。id の昇順という安定した順位を、実際の緯度差より十分小さい
+  // 微小値として足し、**引き分けのときだけ**常に同じピンが勝つようにする
+  // （通常の緯度差を上書きしない程度に十分小さい値）。
+  const tieBreakRankById = useMemo(() => {
+    const ids = mappedPlaces.map((p) => p.id).sort();
+    // "Map" は @vis.gl/react-google-maps の <Map> コンポーネントに
+    // シャドウされているので、組み込みの Map は globalThis 経由で使う。
+    return new globalThis.Map<string, number>(ids.map((id, i) => [id, i]));
+  }, [mappedPlaces]);
+
   // 保存済みピンをエリアでクラスタリング（検索中はチップを出さない）。
   const clusters = useMemo<Cluster[]>(
     () =>
@@ -616,6 +636,14 @@ export function PlaceMap({
                   position={{ lat: p.lat, lng: p.lng }}
                   title={p.name}
                   onClick={() => onSelectSaved(p.id)}
+                  zIndex={
+                    isSel
+                      ? 1e6
+                      : // -1000 は候補ピン（CandidateMarkers の 10/100）より必ず
+                        // 下に置くための下駄。緯度は ±90 の範囲なので南半球でも
+                        // 候補ピンを追い越さない。
+                        -p.lat - 1000 + (tieBreakRankById.get(p.id) ?? 0) * 1e-9
+                  }
                 >
                   {isSel ? (
                     <RedPin />
@@ -669,6 +697,11 @@ export function PlaceMap({
           {mapId && draft && (
             <AdvancedMarker
               position={draft}
+              // 他のピンと混在させる以上 zIndex は全マーカーで統一する必要がある
+              // （AdvancedMarkerElementOptions.zIndex のコメント: 一部だけ指定
+              // すると見た目が不安定になる、という注意書きの通り）。ドラッグ中の
+              // 仮ピンは常に最前面でよい。
+              zIndex={1e7}
               draggable
               onDragEnd={(e) => {
                 // ドラッグ離し直後に来るマップ click（特に PC）が
