@@ -32,6 +32,11 @@ import {
   timelineFor,
   type TzCandidate,
 } from "@triplot/shared/schedule";
+import {
+  formatTzGroups,
+  splitParticipants,
+  transitConnectionIssues,
+} from "@triplot/shared/timelineIssues";
 import type { EventDraftItem } from "@triplot/shared/import/drafts";
 import type { EventRow } from "@triplot/shared/tripDerive";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
@@ -478,6 +483,41 @@ export function EventForm({
     }
   };
 
+  // 移動の参加者の付け忘れの兆候（timelineIssues.ts。web と同じ）。入力に
+  // 合わせて毎回判定し、該当箇所の近くに amber で出す。止めない。
+  const memberName = (id: string) =>
+    members.find((m) => m.id === id)?.display_name ?? "";
+  const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
+  const participantIds =
+    partMode === "all" ? members.map((m) => m.id) : Array.from(participants);
+  const splitWarning =
+    kind !== "transit" && participantIds.length > 1
+      ? splitParticipants(
+          tzTimeline,
+          participantIds,
+          { date: startDate, time: kind === "timed" ? startTime : null },
+          tzDisambigTransitId && tzDisambigSide
+            ? { transitId: tzDisambigTransitId, side: tzDisambigSide }
+            : null,
+        )
+      : null;
+  const transitWarnings =
+    kind === "transit"
+      ? transitConnectionIssues(
+          tzTimeline,
+          {
+            transitId: editEvent?.id ?? "__new__",
+            departAt: `${startDate}T${startTime}`,
+            arriveAt: `${endDate}T${endTime}`,
+            departTz,
+            arriveTz,
+            participantsEveryone: partMode === "all",
+            participantMemberIds: participantIds,
+          },
+          members.map((m) => m.id),
+        )
+      : [];
+
   // 通常予定: 開始を動かすと長さ（日付込み）を保って終了が追従する（web の
   // moveStart と同じ）。TZ の再解決は日付が実際に変わったときだけ — 時刻だけの
   // 調整で毎回呼び直すと、乗継日で手動選択した側が黙って既定に巻き戻るため。
@@ -780,6 +820,18 @@ export function EventForm({
               </View>
             </View>
           )}
+          {transitWarnings.map((w) => (
+            <View key={`${w.memberId}-${w.side}`} style={styles.warnBox}>
+              <Text style={styles.warnText}>
+                {t(
+                  w.side === "before"
+                    ? "disconnectedBefore"
+                    : "disconnectedAfter",
+                  { name: memberName(w.memberId), tz: tzLabel(w.tz) },
+                )}
+              </Text>
+            </View>
+          ))}
         </>
       )}
 
@@ -961,6 +1013,19 @@ export function EventForm({
               ))}
             </View>
           )}
+          {splitWarning && (
+            <View style={[styles.warnBox, styles.warnBoxBelow]}>
+              <Text style={styles.warnText}>
+                {t("splitParticipants", {
+                  groups: formatTzGroups(splitWarning, {
+                    tzLabel,
+                    memberName,
+                    locale,
+                  }),
+                })}
+              </Text>
+            </View>
+          )}
         </View>
       )}
 
@@ -1046,6 +1111,17 @@ const makeStyles = (t: Theme) =>
     segText: { fontSize: 12, fontWeight: "500", color: t.mutedForeground },
     segTextOn: { color: t.primaryForeground },
     hint: { fontSize: 12, color: t.mutedForeground },
+    // 付け忘れの警告（amber。web の MessageBox kind="warning" dense と同段）。
+    warnBox: {
+      borderWidth: 1,
+      borderColor: t.warnBorder,
+      backgroundColor: t.warnBg,
+      borderRadius: 4,
+      padding: 8,
+      marginTop: 8,
+    },
+    warnBoxBelow: { marginTop: 6 },
+    warnText: { fontSize: 12, color: t.warnText },
     label: {
       fontSize: 14,
       fontWeight: "500",

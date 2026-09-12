@@ -39,6 +39,11 @@ import {
   type TripTzTimeline,
   type TzCandidate,
 } from "@triplot/shared/schedule";
+import {
+  formatTzGroups,
+  splitParticipants,
+  transitConnectionIssues,
+} from "@triplot/shared/timelineIssues";
 import type { Visibility } from "@triplot/shared/types/database";
 import { parseYmd, formatYmd } from "@triplot/shared/ymd";
 
@@ -524,6 +529,25 @@ export function EventForm({
     }
   };
 
+  // 移動の参加者の付け忘れの兆候（timelineIssues.ts）。入力に合わせて毎回
+  // 判定し、該当箇所の近くに amber で出す。止めない（意図的な場合もある）。
+  const memberName = (id: string) =>
+    members.find((m) => m.id === id)?.display_name ?? "";
+  const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
+  const participantIds =
+    pMode === "all" ? members.map((m) => m.id) : Array.from(pSelected);
+  const splitWarning =
+    kind3 !== "transit" && participantIds.length > 1
+      ? splitParticipants(
+          tzTimeline,
+          participantIds,
+          { date: sDate, time: kind3 === "timed" ? sTime : null },
+          tzDisambigTransitId && tzDisambigSide
+            ? { transitId: tzDisambigTransitId, side: tzDisambigSide }
+            : null,
+        )
+      : null;
+
   // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
   const transitArriveInit = minToDt(initSMin + 60);
@@ -570,6 +594,22 @@ export function EventForm({
   const departTz = departTzOverride || derivedTz.startTz || departTzInit;
   const arriveTz =
     arriveTzOverride || derivedTz.endTz || prefill?.arriveTz || endTzInit;
+  const transitWarnings =
+    kind3 === "transit"
+      ? transitConnectionIssues(
+          tzTimeline,
+          {
+            transitId: ev?.id ?? "__new__",
+            departAt: `${departDate}T${departTime}`,
+            arriveAt: `${arriveDate}T${arriveTime}`,
+            departTz,
+            arriveTz,
+            participantsEveryone: pMode === "all",
+            participantMemberIds: participantIds,
+          },
+          members.map((m) => m.id),
+        )
+      : [];
   const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
   const [alldayEnd, setAlldayEnd] = useDraft(
     "alldayEnd",
@@ -910,6 +950,14 @@ export function EventForm({
               </label>
             </div>
           )}
+          {transitWarnings.map((w) => (
+            <MessageBox key={`${w.memberId}-${w.side}`} kind="warning" dense>
+              {t(
+                w.side === "before" ? "disconnectedBefore" : "disconnectedAfter",
+                { name: memberName(w.memberId), tz: tzLabel(w.tz) },
+              )}
+            </MessageBox>
+          ))}
         </div>
       )}
 
@@ -1147,6 +1195,17 @@ export function EventForm({
                 );
               })}
             </div>
+          )}
+          {splitWarning && (
+            <MessageBox kind="warning" dense className="mt-1.5">
+              {t("splitParticipants", {
+                groups: formatTzGroups(splitWarning, {
+                  tzLabel,
+                  memberName,
+                  locale,
+                }),
+              })}
+            </MessageBox>
           )}
           <input
             type="hidden"

@@ -39,6 +39,7 @@ import {
 } from "./icons";
 import { menuItemClass } from "./menu-item";
 import { TripCategoriesPanel, TripSettings } from "./trip-settings";
+import type { TimelineIssue } from "@triplot/shared/timelineIssues";
 import type { Currency } from "@triplot/shared/types/database";
 import { Button } from "@/components/ui/button";
 
@@ -78,6 +79,8 @@ type TripActionsCtx = {
   members: TripMember[];
   myMemberId: string;
   categories: TripCategory[];
+  // 移動の参加者の付け忘れの兆候（旅行の設定の「確認が必要 (N)」）。
+  timelineIssues: TimelineIssue[];
   menuView: "main" | "export";
   setMenuView: (v: "main" | "export") => void;
   openShare: (anchor: Anchor) => void;
@@ -128,6 +131,7 @@ export function TripActionsProvider({
   members,
   myMemberId,
   categories,
+  timelineIssues,
 }: {
   children: ReactNode;
   tripId: string;
@@ -148,6 +152,7 @@ export function TripActionsProvider({
   members: TripMember[];
   myMemberId: string;
   categories: TripCategory[];
+  timelineIssues: TimelineIssue[];
 }) {
   // ⋯ メニューの表示段階。export を選ぶとエクスポート先の選択に切り替わる
   // （ドリルイン式。Base UI Menu の closeOnClick=false で枠内ビューを切り替える）。
@@ -302,6 +307,7 @@ export function TripActionsProvider({
         members,
         myMemberId,
         categories,
+        timelineIssues,
         menuView,
         setMenuView,
         openShare,

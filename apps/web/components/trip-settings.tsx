@@ -1,6 +1,9 @@
 "use client";
 
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
+
+import { formatTzGroups } from "@triplot/shared/timelineIssues";
+import { tzDisplayLabel } from "@triplot/shared/timezones";
 
 import { Button } from "@/components/ui/button";
 import { CategoryManagementList } from "./category-management-list";
@@ -8,6 +11,7 @@ import { EditTripForm } from "./edit-trip-form";
 import { DownloadIcon, TagIcon, TrashIcon } from "./icons";
 import { MembersManagementList } from "./members-management-list";
 import { menuItemClass } from "./menu-item";
+import { MessageBox } from "./message-box";
 import { useTripActions } from "./trip-actions";
 
 // 旅行の設定を1枚にまとめたシート（iOS の「旅行を編集」シートと同形）。
@@ -19,6 +23,7 @@ import { useTripActions } from "./trip-actions";
 // （この上にもう1枚重ねる）。
 export function TripSettings() {
   const t = useTranslations();
+  const locale = useLocale();
   const {
     tripId,
     iAmAdmin,
@@ -30,6 +35,7 @@ export function TripSettings() {
     hasExpenses,
     members,
     myMemberId,
+    timelineIssues,
     openShare,
     openCategories,
     openExport,
@@ -38,6 +44,9 @@ export function TripSettings() {
   } = useTripActions();
 
   const rowClass = `flex w-full items-center gap-2 ${menuItemClass}`;
+  const memberName = (id: string) =>
+    members.find((m) => m.id === id)?.display_name ?? "";
+  const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
 
   return (
     // 幅とスクロールは器（FormPopover / NarrowSheet）が持つ。中身が幅を指定すると
@@ -53,6 +62,46 @@ export function TripSettings() {
         hasExpenses={hasExpenses}
         onDone={closeEdit}
       />
+
+      {/* 移動の参加者の付け忘れの兆候（timelineIssues.ts）。知らせるだけで
+          止めない（意図的な場合もある）。amber＝進めるが知っておくべき。 */}
+      {timelineIssues.length > 0 && (
+        <section className="space-y-2 px-4 pb-4">
+          <h3 className="text-sm font-semibold">
+            {t("tripActions.needsReview")}{" "}
+            <span className="text-subtle-foreground">
+              ({timelineIssues.length})
+            </span>
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {t("tripActions.needsReviewHint")}
+          </p>
+          <ul className="space-y-1">
+            {timelineIssues.map((issue, i) => (
+              <li key={i}>
+                <MessageBox kind="warning" dense>
+                  {issue.kind === "disconnected"
+                    ? t("tripActions.issueDisconnected", {
+                        name: memberName(issue.memberId),
+                        prev: issue.prev.title,
+                        prevTz: tzLabel(issue.prev.arriveTz),
+                        next: issue.next.title,
+                        nextTz: tzLabel(issue.next.departTz),
+                      })
+                    : t("tripActions.issueSplit", {
+                        title: issue.title,
+                        groups: formatTzGroups(issue.groups, {
+                          tzLabel,
+                          memberName,
+                          locale,
+                        }),
+                      })}
+                </MessageBox>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="space-y-2 px-4 pb-4">
         <h3 className="text-sm font-semibold">{t("members.heading")}</h3>

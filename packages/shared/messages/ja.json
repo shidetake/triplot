@@ -225,7 +225,11 @@
     "regenerateCopied": "新しいリンクを作成してコピーしました",
     "manageCategories": "費用カテゴリ管理",
     "shareLink": "共有リンクを送る",
-    "thisTrip": "この旅行"
+    "thisTrip": "この旅行",
+    "needsReview": "確認が必要",
+    "needsReviewHint": "移動の参加者の付け忘れかもしれません。意図どおりならこのままで構いません。",
+    "issueDisconnected": "{name}: 「{prev}」は{prevTz}に着き、「{next}」は{nextTz}から発ちます",
+    "issueSplit": "「{title}」の参加者が別の時間帯にいます: {groups}"
   },
   "event": {
     "addAria": "予定を追加",
@@ -279,7 +283,10 @@
     "flightHours": "{h}時間{m}分",
     "flightApply": "この便を使う",
     "flightMissingTimes": "時刻が分からない部分は手で入れてください",
-    "timezonePickerTitle": "タイムゾーンを選択"
+    "timezonePickerTitle": "タイムゾーンを選択",
+    "splitParticipants": "参加者がこの時刻に別の時間帯にいます: {groups}",
+    "disconnectedBefore": "{name}の前の移動は{tz}に着いていて、この出発地と繋がっていません",
+    "disconnectedAfter": "{name}の次の移動は{tz}から発っていて、この到着地と繋がっていません"
   },
   "expense": {
     "price": "価格",

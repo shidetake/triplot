@@ -225,7 +225,11 @@
     "regenerateCopied": "New link created and copied",
     "manageCategories": "Manage Expense Categories",
     "shareLink": "Send invite link",
-    "thisTrip": "This trip"
+    "thisTrip": "This trip",
+    "needsReview": "Needs review",
+    "needsReviewHint": "These may be transits missing participants. If they are intended, leave them as they are.",
+    "issueDisconnected": "{name}: “{prev}” arrives in {prevTz}, but “{next}” departs from {nextTz}",
+    "issueSplit": "Participants of “{title}” are in different timezones: {groups}"
   },
   "event": {
     "addAria": "Add event",
@@ -279,7 +283,10 @@
     "flightHours": "{h}h {m}m",
     "flightApply": "Use this flight",
     "flightMissingTimes": "Fill in the missing times by hand",
-    "timezonePickerTitle": "Select a time zone"
+    "timezonePickerTitle": "Select a time zone",
+    "splitParticipants": "Participants are in different timezones at this time: {groups}",
+    "disconnectedBefore": "{name}'s previous transit arrives in {tz}, which does not connect to this departure",
+    "disconnectedAfter": "{name}'s next transit departs from {tz}, which does not connect to this arrival"
   },
   "expense": {
     "price": "Amount",

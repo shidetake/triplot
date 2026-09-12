@@ -36,6 +36,7 @@ import {
   resolveEventTz,
   timelineFor,
 } from "@triplot/shared/schedule";
+import { detectTimelineIssues } from "@triplot/shared/timelineIssues";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
@@ -336,6 +337,14 @@ export default async function TripDetailPage({
     },
   );
 
+  // 移動の参加者の付け忘れの兆候（timelineIssues.ts）。保存せず毎回導出し、
+  // 旅行の設定の「確認が必要 (N)」に出す。
+  const timelineIssues = detectTimelineIssues(
+    scheduleEvents,
+    activeMembers.map((m) => m.id),
+    trip.default_timezone,
+  );
+
   // 旅行のアクションは Provider が state を持ち、共有アイコンはヘッダーに、
   // それ以外はアカウントメニューの「この旅行 ▸」に出す（trip-actions.tsx）。
   const tripActions = (
@@ -358,6 +367,7 @@ export default async function TripDetailPage({
       }))}
       myMemberId={me.id}
       categories={categories}
+      timelineIssues={timelineIssues}
     >
       <AppHeader
         trip={{

@@ -9,7 +9,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useTranslations } from "use-intl";
+import { useLocale, useTranslations } from "use-intl";
 
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { regenerateTripInvite } from "@triplot/shared/data/invites";
@@ -18,6 +18,12 @@ import {
   updateMyMemberName,
 } from "@triplot/shared/data/members";
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
+import {
+  detectTimelineIssues,
+  formatTzGroups,
+} from "@triplot/shared/timelineIssues";
+import { tzDisplayLabel } from "@triplot/shared/timezones";
+import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
 import { CurrencyPickerModal, CurrencyPickerTrigger } from "@/components/currency-picker";
@@ -56,6 +62,7 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const t = useTranslations();
+  const locale = useLocale();
   const { session } = useSession();
   const { data, me, refetch } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
@@ -85,6 +92,17 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
   // 管理対象は今この旅行にいる人だけ（退会者は既に外れている）。
   const members = (data.members ?? []).filter((m) => m.left_at === null);
   const hasExpenses = (data.expensesRaw ?? []).length > 0;
+
+  // 移動の参加者の付け忘れの兆候（timelineIssues.ts。web の旅行の設定と同じ）。
+  // 保存せず毎回導出し、知らせるだけで止めない。
+  const timelineIssues = detectTimelineIssues(
+    deriveScheduleEvents(data.eventsRaw, data.todosRaw),
+    members.map((m) => m.id),
+    trip.default_timezone,
+  );
+  const memberName = (id: string) =>
+    members.find((m) => m.id === id)?.display_name ?? "";
+  const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
 
   // 旅行情報（タイトル・日程・通貨）に変更がある時だけ保存を有効に
   // （web の「変更がある時だけ保存ボタンを有効」規約）。
@@ -351,6 +369,40 @@ export function EditTripSheet({ tripId }: { tripId: string }) {
 
       {error && <Text style={styles.error}>{t(error)}</Text>}
 
+      {timelineIssues.length > 0 && (
+        <View>
+          <Text style={styles.sectionTitle}>
+            {t("tripActions.needsReview")}{" "}
+            <Text style={styles.sectionCount}>({timelineIssues.length})</Text>
+          </Text>
+          <Text style={styles.hint}>{t("tripActions.needsReviewHint")}</Text>
+          <View style={styles.warnList}>
+            {timelineIssues.map((issue, i) => (
+              <View key={i} style={styles.warnBox}>
+                <Text style={styles.warnText}>
+                  {issue.kind === "disconnected"
+                    ? t("tripActions.issueDisconnected", {
+                        name: memberName(issue.memberId),
+                        prev: issue.prev.title,
+                        prevTz: tzLabel(issue.prev.arriveTz),
+                        next: issue.next.title,
+                        nextTz: tzLabel(issue.next.departTz),
+                      })
+                    : t("tripActions.issueSplit", {
+                        title: issue.title,
+                        groups: formatTzGroups(issue.groups, {
+                          tzLabel,
+                          memberName,
+                          locale,
+                        }),
+                      })}
+                </Text>
+              </View>
+            ))}
+          </View>
+        </View>
+      )}
+
       {/* メンバー */}
       <View>
         <Text style={styles.sectionTitle}>{t("members.heading")}</Text>
@@ -497,6 +549,17 @@ const makeStyles = (t: Theme) =>
   label: { fontSize: 14, fontWeight: "500", marginBottom: 4, color: t.foreground },
   sectionTitle: { fontSize: 18, fontWeight: "600", marginBottom: 8, color: t.foreground },
   hint: { fontSize: 12, color: t.mutedForeground, marginBottom: 8 },
+  sectionCount: { color: t.subtleForeground },
+  // 付け忘れの警告（amber。web の MessageBox kind="warning" dense と同段）。
+  warnList: { gap: 4 },
+  warnBox: {
+    borderWidth: 1,
+    borderColor: t.warnBorder,
+    backgroundColor: t.warnBg,
+    borderRadius: 4,
+    padding: 8,
+  },
+  warnText: { fontSize: 12, color: t.warnText },
   warn: { fontSize: 11, color: t.warnAccent, marginTop: 6 },
   input: {
     height: 36,
