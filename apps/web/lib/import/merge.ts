@@ -69,6 +69,45 @@ function sharesRefId(a: Extraction, b: Extraction): boolean {
   return extractionRefIds(b).some((r) => ids.has(r));
 }
 
+// 滞在（宿泊）の同一性キー: 正規化した施設名 + チェックイン + チェックアウト。
+// 施設名か日付が欠けているものは同一性を主張できないので鍵を作らない。
+function stayKeys(x: Extraction): string[] {
+  return x.events
+    .filter((e) => e.kind === "allday" && !e.fromReceipt)
+    .map((e) => {
+      const name = nameTokens(e.location ?? e.title ?? "").join(" ");
+      return name && e.startDate && e.endDate
+        ? `${name}|${e.startDate}|${e.endDate}`
+        : "";
+    })
+    .filter((k) => k.length > 0);
+}
+
+// **同じ施設・同じ期間の宿泊は、同じ予約と見てよい。**
+//
+// 宿泊の確認メールは同じ内容が複数回届く（実データ: Marriott の
+// "Your ... Stay at The Royal Hawa HNLLC" が本文まで同一の2通）。費用を伴わない
+// 予定だけのメールは、金額も店名も一致材料にならないので closeness がほぼ日付
+// しか見られず、LLM に渡す前の順位付けで埋もれて合体されなかった（実データ:
+// 同じ宿泊が3件の仮予定になった）。
+//
+// **ただし識別番号が両方にあって食い違うなら別の予約**（同じホテルの同じ日程で
+// 2部屋取る等）。番号は事実なので、名前と日付の一致より優先して否定に使う。
+function sharesSameStay(a: Extraction, b: Extraction): boolean {
+  const keys = new Set(stayKeys(a));
+  if (keys.size === 0) return false;
+  if (!stayKeys(b).some((k) => keys.has(k))) return false;
+  const idsA = extractionRefIds(a);
+  const idsB = extractionRefIds(b);
+  if (idsA.length > 0 && idsB.length > 0 && !sharesRefId(a, b)) return false;
+  return true;
+}
+
+// 同じ取引・同じ予約であることが**判断ではなく事実**として言えるか。
+function sharesIdentity(a: Extraction, b: Extraction): boolean {
+  return sharesRefId(a, b) || sharesSameStay(a, b);
+}
+
 // 合体の候補を選ぶ（LLM に渡す前）。
 //
 // **ここは判定ではなく順位付け。** 合体するかどうかを決めるのは LLM で、ここは
@@ -102,6 +141,11 @@ function closeness(incoming: Extraction, cand: Extraction): number {
 
   // 1. 取引/予約の識別番号が一致。単独でほぼ確定。
   if (sharesRefId(incoming, cand)) score += 1000;
+
+  // 1'. 同じ施設・同じ期間の宿泊（sharesSameStay 参照）。番号と同じく事実なので
+  //     同じ桁に置く。費用を伴わない予定だけのメールは下の証拠が効かないので、
+  //     ここで拾わないと日付の近さ（最大 +5）だけで他の候補に埋もれる。
+  if (sharesSameStay(incoming, cand)) score += 1000;
 
   // 2. 金額と通貨が完全一致。62.62 米ドルが偶然2件並ぶことはまず無い。
   const a = amountOf(incoming);
@@ -149,12 +193,13 @@ export function selectMergeCandidates(
   const windowDays = opts.windowDays ?? 14;
   const max = opts.max ?? 8;
   const inDates = extractionDates(incoming);
-  const refMatch = (d: DraftCandidate) => sharesRefId(incoming, d.extraction);
+  const idMatch = (d: DraftCandidate) => sharesIdentity(incoming, d.extraction);
   const dateNear = (d: DraftCandidate) =>
     extractionDates(d.extraction).some((cd) =>
       inDates.some((id) => dayDiff(id, cd) <= windowDays),
     );
-  // **識別番号が一致するものがあれば、それだけを見せる。**
+  // **同一が事実として言えるものがあれば、それだけを見せる**（識別番号の一致、
+  // または同じ施設・同じ期間の宿泊。sharesIdentity 参照）。
   //
   // 同じ承認番号・予約番号を持つなら、同じ取引かどうかは判断ではなく事実。
   // それを他の候補と並べて LLM に選ばせると、選ぶたびにブレる（実測: 承認番号
@@ -165,9 +210,9 @@ export function selectMergeCandidates(
   // 既に最終額なので足さないのか、日付はどちらを採るのか）。
   //
   // 候補が1件に減るぶん、渡すトークンも減る（1通の処理コストの7割前後が候補）。
-  const byRef = drafts.filter(refMatch);
-  if (byRef.length > 0) {
-    return byRef
+  const byIdentity = drafts.filter(idMatch);
+  if (byIdentity.length > 0) {
+    return byIdentity
       .map((d) => ({ d, s: closeness(incoming, d.extraction) }))
       .sort((x, y) => y.s - x.s)
       .slice(0, max)
@@ -326,17 +371,17 @@ export async function findMerge(
   //
   // 聞くのは**どう合体するか**だけ（どちらの日付・店名を採るか、予定をどう
   // まとめるか）。足し算はこの後で機械的に決める（mergedTotal）。
-  const refMatched = candidates.filter((c) =>
-    sharesRefId(incoming.extraction, c.extraction),
+  const identityMatched = candidates.filter((c) =>
+    sharesIdentity(incoming.extraction, c.extraction),
   );
   const object =
-    refMatched.length > 0
+    identityMatched.length > 0
       ? (
           await generateObject({
             model,
             schema: forcedMergeSchema,
             system: MERGE_SYSTEM_PROMPT,
-            prompt: `${prompt}\n\n上の候補は新しいメールと同じ識別番号を持つので、同じ取引であることは確定しています。合体しないという選択肢はありません。どれと合体するか（複数あれば最も確からしいもの）と、合体後の内容だけを答えてください。`,
+            prompt: `${prompt}\n\n上の候補は新しいメールと同じ識別番号を持つ、または同じ施設の同じ期間の宿泊なので、同じ取引・同じ予約であることは確定しています。合体しないという選択肢はありません。どれと合体するか（複数あれば最も確からしいもの）と、合体後の内容だけを答えてください。`,
           })
         ).object
       : (
@@ -353,7 +398,7 @@ export async function findMerge(
   // ものに寄せる（候補は closeness の降順に並んでいる）。
   const target =
     candidates.find((c) => c.id === object.matchId) ??
-    (refMatched.length > 0 ? refMatched[0] : undefined);
+    (identityMatched.length > 0 ? identityMatched[0] : undefined);
   if (!target) return null;
 
   // **合体の結果が、元のどれよりも小さくなってはいけない。**

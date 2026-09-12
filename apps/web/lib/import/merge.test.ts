@@ -308,3 +308,93 @@ describe("selectMergeCandidates の順位付け", () => {
     ]);
   });
 });
+
+// 宿泊の確認メールは同じ内容が何度も届く（実データ: Marriott の同一本文が2通）。
+// 費用を伴わない予定だけのメールは金額も店名も一致材料にならず、日付の近さ
+// （最大 +5）だけでは他の候補に埋もれて合体できなかった。同じ施設・同じ期間は
+// 事実として同一に寄せる（sharesSameStay）。
+describe("selectMergeCandidates: 宿泊の同一判定", () => {
+  const stay = (p: Partial<EventDraft> = {}): Extraction => ({
+    receipt: null,
+    events: [
+      event({
+        kind: "allday",
+        title: "宿泊",
+        location: "The Royal Hawa HNLLC",
+        startDate: "2026-04-28",
+        startTime: null,
+        endDate: "2026-05-04",
+        endTime: null,
+        departTz: null,
+        arriveTz: null,
+        ...p,
+      }),
+    ],
+  });
+
+  it("同じ施設・同じ期間の宿泊だけに絞る（日付が近いだけの候補は外す）", () => {
+    const drafts: DraftCandidate[] = [
+      { id: "same-stay", extraction: stay() },
+      { id: "near", extraction: withReceipt(receipt({ date: "2026-04-28" })) },
+    ];
+    expect(selectMergeCandidates(stay(), drafts).map((c) => c.id)).toEqual([
+      "same-stay",
+    ]);
+  });
+
+  it("施設が違えば同一にしない", () => {
+    const drafts: DraftCandidate[] = [
+      { id: "other-hotel", extraction: stay({ location: "Hilton Hawaiian Village" }) },
+    ];
+    expect(selectMergeCandidates(stay(), drafts).map((c) => c.id)).toEqual([
+      "other-hotel",
+    ]);
+    // 候補には残るが「事実として同一」ではないので、日付一致の経路で拾われている。
+    expect(
+      selectMergeCandidates(stay(), [
+        { id: "other-hotel", extraction: stay({ location: "Hilton Hawaiian Village" }) },
+        { id: "same-stay", extraction: stay() },
+      ]).map((c) => c.id),
+    ).toEqual(["same-stay"]);
+  });
+
+  it("期間が違えば同一にしない", () => {
+    expect(
+      selectMergeCandidates(stay(), [
+        { id: "other-dates", extraction: stay({ endDate: "2026-05-02" }) },
+        { id: "same-stay", extraction: stay() },
+      ]).map((c) => c.id),
+    ).toEqual(["same-stay"]);
+  });
+
+  // 同じホテルの同じ日程でも、番号が両方にあって食い違うなら別の予約（2部屋等）。
+  it("識別番号が両方にあって食い違えば同一にしない", () => {
+    const a = stay({ referenceId: "73254210136276" });
+    const b = stay({ referenceId: "99999999999999" });
+    expect(
+      selectMergeCandidates(a, [{ id: "other-room", extraction: b }]).map(
+        (c) => c.id,
+      ),
+    ).toEqual(["other-room"]);
+    // 片方だけ番号を持つ場合は食い違いではないので、同一として扱う。
+    const c = stay();
+    expect(
+      selectMergeCandidates(a, [
+        { id: "no-ref", extraction: c },
+        { id: "other-room", extraction: b },
+      ]).map((x) => x.id),
+    ).toEqual(["no-ref"]);
+  });
+
+  // レシート由来の仮予定（fromReceipt）は「その日その店にいた」という別物なので、
+  // 施設名と日付がたまたま揃っても宿泊の同一判定には使わない。
+  it("レシート由来の仮予定は宿泊の同一判定に使わない", () => {
+    const fromReceipt = stay({ fromReceipt: true });
+    expect(
+      selectMergeCandidates(fromReceipt, [
+        { id: "also-receipt", extraction: stay({ fromReceipt: true }) },
+      ]).map((c) => c.id),
+    ).toEqual(["also-receipt"]);
+  });
+});
+

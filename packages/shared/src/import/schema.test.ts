@@ -141,6 +141,47 @@ describe("sanitizeEventDraft", () => {
     expect(sanitizeEventDraft(draft({ startTime: null }))?.kind).toBe("allday");
   });
 
+  // レシート由来の仮予定の時刻は、この後アプリ側がレシートの日時と title の
+  // 所要時間目安から入れる（receiptTiming）。抽出の時点で時刻が空なのは正常な
+  // 途中状態で、終日ではない。判断ではなく事実なのでここで決める
+  // （実データ: 43件中3件が allday で来ていた）。
+  it("レシート由来の仮予定は、時刻が無くても timed のまま", () => {
+    expect(
+      sanitizeEventDraft(draft({ fromReceipt: true, startTime: null }))?.kind,
+    ).toBe("timed");
+  });
+
+  it("レシート由来の仮予定が allday で来ても timed に直す", () => {
+    const d = sanitizeEventDraft(
+      draft({
+        kind: "allday",
+        fromReceipt: true,
+        title: "買い物",
+        startTime: null,
+        endDate: null,
+      }),
+    );
+    expect(d?.kind).toBe("timed");
+    expect(d?.fromReceipt).toBe(true);
+  });
+
+  // transit だけは別（レシート由来ではありえないので false に戻す既存の規則が勝つ）。
+  it("transit は fromReceipt を false に戻したうえで種別を保つ", () => {
+    const d = sanitizeEventDraft(
+      draft({
+        kind: "transit",
+        fromReceipt: true,
+        startTime: "19:10",
+        endDate: "2026-08-01",
+        endTime: "21:30",
+        departTz: "Asia/Tokyo",
+        arriveTz: "Asia/Tokyo",
+      }),
+    );
+    expect(d?.kind).toBe("transit");
+    expect(d?.fromReceipt).toBe(false);
+  });
+
   it("allday は時刻を持たない", () => {
     const d = sanitizeEventDraft(
       draft({
