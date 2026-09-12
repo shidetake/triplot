@@ -35,8 +35,11 @@ const DURATION_MINUTES: Record<string, number> = {
 };
 const DEFAULT_DURATION_MINUTES = 60;
 
+// kind は "timed" 固定（allday にはならない）。レシート由来の仮予定は常に
+// timed という決定を型で縛る——「時刻が無ければ allday」という後退を、次に
+// 誰かがここを触った時にコンパイラが弾けるようにする。
 export type ReceiptEventTiming = {
-  kind: "timed" | "allday";
+  kind: "timed";
   startDate: string;
   startTime: string | null;
   endDate: string | null;
@@ -45,7 +48,15 @@ export type ReceiptEventTiming = {
 
 // receiptDate/receiptTime は正規化済みのレシートの date/time（後処理の日付
 // 修正が済んでいる前提）。receiptTime が無い（銀行の通知等、時刻を持たない）
-// 時は、根拠の無い時間帯を作らない — allday のまま日付だけ置く。
+// 時は、根拠の無い時間帯を作らない — startTime/endTime は null のまま日付だけ
+// 置く。
+//
+// **kind は timed のまま変えない。** レシート由来の仮予定は「1日の中の出来事
+// として捉える予定」で定義され（schema.ts 参照）、それは時刻が分かるかとは
+// 別の話。以前はここで allday に落としていて、sanitizeEventDraft が
+// fromReceipt を見て一度 timed に決めた直後にこの関数が上書きし、時刻の無い
+// レシート（銀行の通知等）由来の仮予定が結局 allday で保存されていた
+// （実データ: 108通中2通で再現）。
 export function deriveReceiptEventTiming(
   title: string,
   receiptDate: string,
@@ -53,7 +64,7 @@ export function deriveReceiptEventTiming(
 ): ReceiptEventTiming {
   if (!receiptTime) {
     return {
-      kind: "allday",
+      kind: "timed",
       startDate: receiptDate,
       startTime: null,
       endDate: null,
