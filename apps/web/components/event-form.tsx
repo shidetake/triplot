@@ -34,6 +34,7 @@ import {
   formatMinutes,
   resolveEventTz,
   resolveExpenseTz,
+  timelineFor,
   type ScheduleEvent,
   type TripTzTimeline,
   type TzCandidate,
@@ -366,18 +367,13 @@ export function EventForm({
     if (initialCustom) return new Set(ev!.participantMemberIds);
     return new Set(members.map((m) => m.id));
   });
-  const toggleParticipant = (id: string) => {
-    setPSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        // 最後の1人を残す（0 人になると意味不明な予定になる）
-        if (next.size > 1) next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
+  // 予定の TZ は**その予定の参加者の年表**で引く（timelineFor 参照）。旅行
+  // 全体の年表だと、別行動している人の移動まで候補に混ざる。全員参加なら
+  // 旅行全体の年表と同じ。
+  const participantTimeline = useMemo(
+    () => timelineFor(tzTimeline, pMode === "all" ? null : Array.from(pSelected)),
+    [tzTimeline, pMode, pSelected],
+  );
 
   const [isDeleting, startDelete] = useTransition();
 
@@ -405,7 +401,7 @@ export function EventForm({
         splitWall(ev!.startAt).date,
         ev!.tzDisambigTransitId,
         ev!.tzDisambigSide,
-        tzTimeline,
+        participantTimeline,
       )
     : formMode.tz;
   const endTzInit = isEdit ? (ev!.endTz ?? defaultTz) : defaultTz;
@@ -436,7 +432,10 @@ export function EventForm({
   // 旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
   // tz = 表示用の実効値、tzDisambig* = 保存する選択（乗継日
   // 以外は両方 null のまま＝毎回自動導出）。
-  const startResolution = resolveExpenseTz(startInit.date, tzTimeline);
+  const startResolution = resolveExpenseTz(
+    startInit.date,
+    participantTimeline,
+  );
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
   // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補をラジオにも
   // 反映する（「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
@@ -484,10 +483,46 @@ export function EventForm({
     setTzDisambigSide(c.side);
   };
   const tzRes = useMemo(
-    () => resolveExpenseTz(sDate, tzTimeline),
-    [sDate, tzTimeline],
+    () => resolveExpenseTz(sDate, participantTimeline),
+    [sDate, participantTimeline],
   );
-  const multiTz = tzTimeline.transits.length > 0;
+  const multiTz = participantTimeline.transits.length > 0;
+
+  // 参加者が変わると年表も変わる（別行動していれば移動日の候補が違う）。
+  // 選んでいた側がまだ候補にあれば保ち、無ければ日付を変えた時と同じ既定に戻す。
+  const reresolveTz = (memberIds: string[] | null) => {
+    const r = resolveExpenseTz(sDate, timelineFor(tzTimeline, memberIds));
+    if (r.kind === "single") {
+      setTzRaw(r.tz);
+      setTzDisambigTransitId(null);
+      setTzDisambigSide(null);
+      return;
+    }
+    const kept = r.options.find(
+      (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+    );
+    selectTz(kept ?? r.options[0]);
+  };
+  const toggleParticipant = (id: string) => {
+    const next = new Set(pSelected);
+    if (next.has(id)) {
+      // 最後の1人を残す（0 人になると意味不明な予定になる）
+      if (next.size > 1) next.delete(id);
+    } else {
+      next.add(id);
+    }
+    setPSelected(next);
+    reresolveTz(Array.from(next));
+  };
+  const setParticipantsMode = (mode: "all" | "custom") => {
+    setPMode(mode);
+    if (mode === "all") {
+      setPSelected(new Set(members.map((m) => m.id)));
+      reresolveTz(null);
+    } else {
+      reresolveTz(Array.from(pSelected));
+    }
+  };
 
   // 時差移動の到着の既定（新規時）。通常イベントと同様、出発の1時間後。
   // 出発フィールドは uncontrolled なので初期値だけ合わせる（"とりあえず"の既定）。
@@ -555,7 +590,7 @@ export function EventForm({
     setEDate(ne.date);
     setETime(ne.time);
     if (dateChanged) {
-      const r = resolveExpenseTz(nd, tzTimeline);
+      const r = resolveExpenseTz(nd, participantTimeline);
       if (r.kind === "single") {
         setTzRaw(r.tz);
         setTzDisambigTransitId(null);
@@ -1082,12 +1117,7 @@ export function EventForm({
           <button
             type="button"
             onClick={() => {
-              if (pMode === "all") {
-                setPMode("custom");
-              } else {
-                setPMode("all");
-                setPSelected(new Set(members.map((m) => m.id)));
-              }
+              setParticipantsMode(pMode === "all" ? "custom" : "all");
             }}
             aria-expanded={pMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"

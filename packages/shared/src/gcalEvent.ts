@@ -1,6 +1,7 @@
 import {
   eventEndPlaceId,
   resolveEventTz,
+  timelineForEvent,
   type ScheduleEvent,
   type TripTzTimeline,
 } from "./schedule";
@@ -94,7 +95,8 @@ export function buildCalendarExportEvents(
       e.participantsEveryone ||
       e.participantMemberIds.includes(opts.myMemberId);
     // transit は実TZを直接使う。normal/allday は startTz を持たないことが
-    // あるので旅程から都度解決する。
+    // あるので旅程から都度解決する。年表はその予定の参加者のもの
+    // （timelineFor 参照）。
     const startTz =
       e.kind === "transit"
         ? (e.startTz as string)
@@ -102,7 +104,7 @@ export function buildCalendarExportEvents(
             e.startAt.slice(0, 10),
             e.tzDisambigTransitId,
             e.tzDisambigSide,
-            opts.tzTimeline,
+            timelineForEvent(opts.tzTimeline, e),
           );
     const endTz = e.kind === "transit" ? (e.endTz as string) : startTz;
     return {

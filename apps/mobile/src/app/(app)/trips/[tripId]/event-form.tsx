@@ -6,6 +6,7 @@ import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
 import { deriveEventDraftItemsWithTimeline } from "@triplot/shared/import/drafts";
 import {
   resolveEventTz,
+  timelineFor,
 } from "@triplot/shared/schedule";
 import { tripBiasCenter } from "@triplot/shared/tripBias";
 import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
@@ -68,6 +69,8 @@ export default function EventFormRoute() {
       locale,
       untitledLabel: t("common.untitledEvent"),
       reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+      // 下書きは転送した本人のもの＝自分の年表で導出する。
+      myMemberId: me.id,
     },
   );
 
@@ -81,14 +84,21 @@ export default function EventFormRoute() {
   // 旅行のピンの中心に落ち、それも無ければ無バイアス（地図タブと違い Tokyo には
   // フォールバックしない）。
   const biasDate = editEvent?.startAt.slice(0, 10) ?? confirmingDraft?.date ?? null;
+  // 居場所は探している本人＝自分のもの（年表を自分の移動に絞る。timelineFor）。
   const biasCenter = tripBiasCenter({
     events,
     places: data.placesRaw ?? [],
     drafts: tripDrafts ?? null,
+    memberId: me.id,
     target: biasDate
       ? {
           at: `${biasDate}T12:00`,
-          tz: resolveEventTz(biasDate, null, null, tzTimeline),
+          tz: resolveEventTz(
+            biasDate,
+            null,
+            null,
+            timelineFor(tzTimeline, [me.id]),
+          ),
         }
       : null,
   });

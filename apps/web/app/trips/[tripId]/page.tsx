@@ -32,7 +32,10 @@ import { RefreshOnFocus } from "@/components/refresh-on-focus";
 import { TripDraftsRealtime } from "@/components/trip-drafts-realtime";
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import {
-  resolveEventTz, buildTripTzTimeline } from "@triplot/shared/schedule";
+  buildTripTzTimeline,
+  resolveEventTz,
+  timelineFor,
+} from "@triplot/shared/schedule";
 import {
   earliestVisitByPlace,
   sortPlacesByItinerary,
@@ -207,13 +210,16 @@ export default async function TripDetailPage({
   // を旅程から引く（tripBiasCenter。RN の各フォームと同じ）。成田 → ホノルルと
   // 動く旅行で、成田の昼食をホノルルのバイアスで引いて外すのを避ける。
   // 旅行に移動もピンも無ければ従来どおり東京に落ちる。
+  // 居場所は探している本人＝自分のもの（年表を自分の移動に絞る。timelineFor）。
+  const myTimeline = timelineFor(tzTimeline, [me.id]);
   const draftBiasCenter = (date: string | null) =>
     tripBiasCenter({
       events: scheduleEvents,
       places,
       drafts: tripDrafts,
+      memberId: me.id,
       target: date
-        ? { at: `${date}T12:00`, tz: resolveEventTz(date, null, null, tzTimeline) }
+        ? { at: `${date}T12:00`, tz: resolveEventTz(date, null, null, myTimeline) }
         : null,
     }) ?? TOKYO;
 
@@ -325,6 +331,8 @@ export default async function TripDetailPage({
       locale,
       untitledLabel: t("common.untitledEvent"),
       reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+      // 下書きは転送した本人のもの＝自分の年表で導出する。
+      myMemberId: me.id,
     },
   );
 

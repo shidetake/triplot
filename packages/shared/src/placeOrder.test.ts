@@ -25,6 +25,8 @@ const TO_HAWAII: TripTzTimeline = {
       arriveTz: "Pacific/Honolulu",
     departTime: "00:00",
     arriveTime: "00:00",
+    participantsEveryone: true,
+    participantMemberIds: [],
     },
   ],
 };
@@ -58,6 +60,8 @@ function event(
     endTz: null,
     tzDisambigTransitId: null,
     tzDisambigSide: null,
+    participantsEveryone: true,
+    participantMemberIds: [],
     startPlaceId: placeId,
     endPlaceId,
   };
@@ -77,6 +81,8 @@ function allDayEvent(
     endTz: null,
     tzDisambigTransitId: null,
     tzDisambigSide: null,
+    participantsEveryone: true,
+    participantMemberIds: [],
     startPlaceId: placeId,
     endPlaceId: null,
   };
@@ -129,6 +135,8 @@ describe("earliestVisitByPlace", () => {
           endTz: "Pacific/Honolulu",
           tzDisambigTransitId: null,
           tzDisambigSide: null,
+          participantsEveryone: true,
+          participantMemberIds: [],
           startPlaceId: "nrt",
           endPlaceId: "hnl",
         },
@@ -181,6 +189,8 @@ describe("earliestVisitByPlace", () => {
       endTz: "Pacific/Honolulu",
       tzDisambigTransitId: null,
       tzDisambigSide: null,
+      participantsEveryone: true,
+      participantMemberIds: [],
       startPlaceId: "hnd",
       endPlaceId: null,
     };
@@ -202,6 +212,8 @@ describe("earliestVisitByPlace", () => {
       endTz: "Pacific/Honolulu",
       tzDisambigTransitId: null,
       tzDisambigSide: null,
+      participantsEveryone: true,
+      participantMemberIds: [],
       startPlaceId: "nrt",
       endPlaceId: "hnl",
     };
@@ -256,6 +268,8 @@ describe("visitDayByPlace", () => {
           endTz: "Pacific/Honolulu",
           tzDisambigTransitId: null,
           tzDisambigSide: null,
+          participantsEveryone: true,
+          participantMemberIds: [],
           startPlaceId: "nrt",
           endPlaceId: "hnl",
         },

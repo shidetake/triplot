@@ -5,7 +5,11 @@ import {
   deriveEventDraftItemsWithTimeline,
   draftToScheduleEvent,
 } from "./drafts";
-import { resolveEventTz, type TripTzTimeline } from "../schedule";
+import {
+  resolveEventTz,
+  type ScheduleEvent,
+  type TripTzTimeline,
+} from "../schedule";
 
 // 移動日（同じ暦日に2つの TZ）の下書きについて、
 //   「どちらの TZ を選んだか」＝ prefill.tzDisambig が唯一の決定で、
@@ -28,6 +32,8 @@ const tzTimeline: TripTzTimeline = {
       // 成田 19:10 発 → ホノルル 07:25 着（同じ暦日に着く）。
       departTime: "19:10",
       arriveTime: "07:25",
+      participantsEveryone: true,
+      participantMemberIds: [],
     },
   ],
 };
@@ -263,6 +269,7 @@ describe("TZ の境界が仮予定のフライトのとき", () => {
         locale: "ja",
         untitledLabel: "(無題)",
         reservationRefLabel: (r: string) => `予約番号: ${r}`,
+        myMemberId: null,
       },
     );
     const dinner = items.find((i) => i.prefill.title === "夕食")!;
@@ -339,5 +346,75 @@ describe("移動日の乗車（配車・タクシー）", () => {
       transitId: "T1",
       side: "depart",
     });
+  });
+});
+
+// 取り込みの下書きは転送した本人のもの。年表も本人のもので引く（timelineFor）。
+// 別行動している人のフライトが確定していても、自分が乗っていなければ自分の
+// 下書きの TZ はそれに引きずられない。
+describe("下書きの TZ は自分の年表で決まる", () => {
+  const othersFlight: ScheduleEvent = {
+    id: "f-other",
+    title: "NH184",
+    kind: "transit",
+    allDay: false,
+    startAt: "2026-04-28T19:10:00",
+    endAt: "2026-04-28T07:25:00",
+    startTz: "Asia/Tokyo",
+    endTz: "Pacific/Honolulu",
+    tzDisambigTransitId: null,
+    tzDisambigSide: null,
+    startPlaceId: null,
+    endPlaceId: null,
+    visibility: "shared",
+    note: null,
+    needsReservation: false,
+    reservationDone: false,
+    participantsEveryone: false,
+    participantMemberIds: ["other"],
+  };
+  const dinner = {
+    id: "dd",
+    email_id: "e-dd",
+    kind: "event",
+    payload: {
+      kind: "timed",
+      title: "夕食",
+      startDate: "2026-04-29",
+      startTime: "18:00",
+      endDate: "2026-04-29",
+      endTime: "20:00",
+      departTz: null,
+      arriveTz: null,
+      location: null,
+      vehicleNumber: null,
+      referenceId: null,
+    },
+  };
+  const base = {
+    places: [],
+    locale: "ja",
+    untitledLabel: "(無題)",
+    reservationRefLabel: (r: string) => `予約番号: ${r}`,
+  };
+
+  it("他人だけの移動なら、自分の下書きは東京のまま", () => {
+    const { items } = deriveEventDraftItemsWithTimeline(
+      [dinner],
+      [othersFlight],
+      "Asia/Tokyo",
+      { ...base, myMemberId: "me" },
+    );
+    expect(items[0].tz).toBe("Asia/Tokyo");
+  });
+
+  it("自分も乗っている移動なら、その先の下書きはハワイ", () => {
+    const { items } = deriveEventDraftItemsWithTimeline(
+      [dinner],
+      [{ ...othersFlight, participantMemberIds: ["other", "me"] }],
+      "Asia/Tokyo",
+      { ...base, myMemberId: "me" },
+    );
+    expect(items[0].tz).toBe("Pacific/Honolulu");
   });
 });

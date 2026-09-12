@@ -18,6 +18,8 @@ const transitEvent = {
   endTz: "Pacific/Honolulu",
   startPlaceId: "p-nrt",
   endPlaceId: "p-hnl",
+  participantsEveryone: true,
+  participantMemberIds: [],
 };
 
 const transitDraft = {

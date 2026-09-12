@@ -21,6 +21,7 @@ import {
   eventEndPlaceId,
   resolveEventTz,
   resolveExpenseTz,
+  timelineForEvent,
   utcMsToWallClock,
   wallClockToUtcMs,
   type ScheduleEvent,
@@ -49,6 +50,9 @@ export type OrderableEvent = Pick<
   | "tzDisambigSide"
   | "startPlaceId"
   | "endPlaceId"
+  // 予定の TZ はその予定の参加者の年表で解決する（timelineFor 参照）。
+  | "participantsEveryone"
+  | "participantMemberIds"
 >;
 
 // ExpenseRow の部分集合。tz は deriveOrderedExpenses が解決済みで持っている
@@ -89,8 +93,10 @@ function earliestVisitDetailByPlace(
     // 側＝到着側のTZを採る。単日の終日予定は対象外（今まで通り初日扱い）。
     const startDate = e.startAt.slice(0, 10);
     const endDate = e.endAt ? e.endAt.slice(0, 10) : startDate;
+    // 予定の TZ はその予定の参加者の年表で引く（旅行全体ではなく）。
+    const ownTimeline = timelineForEvent(tzTimeline, e);
     if (e.allDay && endDate > startDate) {
-      const resolution = resolveExpenseTz(startDate, tzTimeline);
+      const resolution = resolveExpenseTz(startDate, ownTimeline);
       const tz =
         resolution.kind === "single"
           ? resolution.tz
@@ -112,7 +118,7 @@ function earliestVisitDetailByPlace(
             e.startAt.slice(0, 10),
             e.tzDisambigTransitId,
             e.tzDisambigSide,
-            tzTimeline,
+            ownTimeline,
           );
     // 出発地には出発時刻、到着地には到着時刻を当てる（移動の到着空港が
     // 出発時刻で並ぶとおかしいため）。到着時刻が無ければ出発時刻で代用。

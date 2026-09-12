@@ -129,6 +129,47 @@ describe("deriveOrderedExpenses", () => {
     expect(rows[1].tz).toBe("Pacific/Honolulu");
   });
 
+  it("費用の TZ は支払った人の年表で決まる（別行動でも払った人の居場所）", () => {
+    // m1 だけが 5/1 に東京→ホノルルへ飛ぶ。m2 はまだ東京にいる。
+    const tl = buildTripTzTimeline(
+      [
+        {
+          id: "t1",
+          title: "NRT-HNL",
+          kind: "transit" as const,
+          allDay: false,
+          startAt: "2026-05-01T11:00",
+          endAt: "2026-05-01T00:00",
+          startTz: "Asia/Tokyo",
+          endTz: "Pacific/Honolulu",
+          tzDisambigTransitId: null,
+          tzDisambigSide: null,
+          startPlaceId: null,
+          endPlaceId: null,
+          visibility: "shared" as const,
+          note: null,
+          needsReservation: false,
+          reservationDone: false,
+          participantsEveryone: false,
+          participantMemberIds: ["m1"],
+        },
+      ],
+      "Asia/Tokyo",
+    );
+    const rows = deriveOrderedExpenses(
+      [
+        rawExpense({ id: "m1-pays", paid_at: "2026-05-02T09:00", payer_member_id: "m1" }),
+        rawExpense({ id: "m2-pays", paid_at: "2026-05-02T09:00", payer_member_id: "m2" }),
+      ],
+      tl,
+    );
+    const byId = new Map(rows.map((r) => [r.id, r]));
+    expect(byId.get("m1-pays")!.tz).toBe("Pacific/Honolulu");
+    expect(byId.get("m2-pays")!.tz).toBe("Asia/Tokyo");
+    // 東京 09:00 の方がホノルル 09:00 より先に起きている。
+    expect(rows.map((r) => r.id)).toEqual(["m2-pays", "m1-pays"]);
+  });
+
   it("同時刻は作成順で安定させる", () => {
     const tl = buildTripTzTimeline([], "Asia/Tokyo");
     const rows = deriveOrderedExpenses(

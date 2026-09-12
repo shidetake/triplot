@@ -20,6 +20,7 @@ import {
 } from "../placeTimezone";
 import {
   buildTripTzTimeline,
+  timelineFor,
   formatDayLabel,
   narrowTzByTime,
   pickTzByLongitude,
@@ -508,6 +509,7 @@ function draftPlaceFromFlightEndpoint(
 export function deriveEventDraftItems(
   drafts: PendingDraft[] | null,
   ctx: {
+    // 転送した本人＝自分の年表（timelineFor で絞ったもの）。
     tzTimeline: TripTzTimeline;
     places: TripPlace[];
     locale: string;
@@ -848,17 +850,27 @@ export function draftEventTimes(d: EventDraftItem): {
 // 年表を1つにすれば食い違わない。2回導出するのは、仮予定の移動そのものを年表に
 // 入れるため（移動の下書きの TZ は payload が持っていて年表に依存しないので、
 // 1回目の結果は2回目と変わらない＝収束する）。
+//
+// **下書きの導出に使う年表は転送した本人＝自分のもの**（timelineFor 参照）。
+// レシートは自分の買い物で、予約は自分が取ったもの。旅行全体の年表で引くと、
+// 別行動している人の移動に引きずられて日付や時間帯がずれる。返す tzTimeline は
+// 旅行全体（全員ぶん）のもの＝呼び出し側がフォームで参加者ごとに絞る。
 export function deriveEventDraftItemsWithTimeline(
   drafts: PendingDraft[] | null,
   events: ScheduleEvent[],
   defaultTimezone: string | null | undefined,
-  ctx: Omit<Parameters<typeof deriveEventDraftItems>[1], "tzTimeline">,
+  ctx: Omit<Parameters<typeof deriveEventDraftItems>[1], "tzTimeline"> & {
+    myMemberId: string | null;
+  },
 ): { items: EventDraftItem[]; tzTimeline: TripTzTimeline } {
+  const { myMemberId, ...rest } = ctx;
+  const mine = (tl: TripTzTimeline) =>
+    timelineFor(tl, myMemberId ? [myMemberId] : null);
   const confirmed = buildTripTzTimeline(events, defaultTimezone);
   const pass1 = deriveEventDraftItems(drafts, {
-    ...ctx,
-    tzTimeline: confirmed,
-    receiptTzTimeline: confirmed,
+    ...rest,
+    tzTimeline: mine(confirmed),
+    receiptTzTimeline: mine(confirmed),
   });
   const tzTimeline = buildTripTzTimeline(
     // カレンダーの列も同じ一覧（確定＋仮）から組まれるので、移動の id が揃う。
@@ -867,10 +879,10 @@ export function deriveEventDraftItemsWithTimeline(
   );
   return {
     items: deriveEventDraftItems(drafts, {
-      ...ctx,
-      tzTimeline,
+      ...rest,
+      tzTimeline: mine(tzTimeline),
       // レシートの現地化だけは確定した旅程で決める（上の receiptTzTimeline）。
-      receiptTzTimeline: confirmed,
+      receiptTzTimeline: mine(confirmed),
       events,
     }),
     tzTimeline,

@@ -51,11 +51,23 @@ function legsFromEvents(
     | "endTz"
     | "startPlaceId"
     | "endPlaceId"
+    | "participantsEveryone"
+    | "participantMemberIds"
   >[],
   places: PlacePoint[],
+  // 誰の居場所か。探している本人の乗った移動だけを端点にする（年表を人ごとに
+  // 絞るのと同じ。schedule.ts の timelineFor 参照）。null なら全員ぶん。
+  memberId: string | null,
 ): TransitLeg[] {
   return events
-    .filter((e) => e.kind === "transit" && e.endAt)
+    .filter(
+      (e) =>
+        e.kind === "transit" &&
+        e.endAt &&
+        (memberId == null ||
+          e.participantsEveryone ||
+          e.participantMemberIds.includes(memberId)),
+    )
     .map((e) => ({
       departAt: e.startAt,
       arriveAt: e.endAt as string,
@@ -103,9 +115,11 @@ export function tripBiasCenter(input: {
   drafts: DraftLike[] | null;
   // 対象の壁時計とタイムゾーン（費用なら使った日時、予定なら開始）。
   target: { at: string; tz: string | null } | null;
+  // 誰の居場所か（＝探している本人）。省略すると全員ぶんの移動から引く。
+  memberId?: string | null;
 }): LatLng | undefined {
   const legs = [
-    ...legsFromEvents(input.events, input.places),
+    ...legsFromEvents(input.events, input.places, input.memberId ?? null),
     ...legsFromDrafts(input.drafts),
   ];
   const here = whereAt(legs, input.target);
@@ -173,6 +187,9 @@ function tzFromLegs(
       arriveTz: l.arriveTz as string,
       departTime: l.departAt.slice(11, 16),
       arriveTime: l.arriveAt.slice(11, 16),
+      // 下書きの移動はまだ参加者を持たない（確定時に付く）ので全員扱い。
+      participantsEveryone: true,
+      participantMemberIds: [],
     }))
     .sort((a, b) => a.departDate.localeCompare(b.departDate));
   if (transits.length === 0) return null;

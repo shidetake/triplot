@@ -7,6 +7,7 @@ import { deriveExpenseDraftItems } from "@triplot/shared/import/drafts";
 import {
   buildTripTzTimeline,
   resolveEventTz,
+  timelineFor,
 } from "@triplot/shared/schedule";
 import { tripBiasCenter } from "@triplot/shared/tripBias";
 import {
@@ -101,13 +102,20 @@ export default function ExpenseFormRoute() {
   const biasTarget = defaults?.initialPaidAt
     ? {
         at: `${defaults.initialPaidAt}T12:00`,
-        tz: resolveEventTz(defaults.initialPaidAt, null, null, tzTimeline),
+        // 居場所は探している本人＝自分のもの（年表を自分の移動に絞る。timelineFor）。
+        tz: resolveEventTz(
+          defaults.initialPaidAt,
+          null,
+          null,
+          timelineFor(tzTimeline, [me.id]),
+        ),
       }
     : null;
   const biasCenter = tripBiasCenter({
     events: scheduleEvents,
     places: data.placesRaw ?? [],
     drafts: tripDrafts ?? null,
+    memberId: me.id,
     target: biasTarget,
   });
 

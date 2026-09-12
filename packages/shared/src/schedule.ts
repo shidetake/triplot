@@ -596,13 +596,17 @@ export function buildSchedule(
     // 通常の予定は TZ を持たず旅程から導出する。**例外は、時差が無いので通常の
     // 予定として扱っている移動**（上の均し）。自分の TZ を知っているので、
     // 導出より本人の申告を採る。
+    //
+    // 導出に使う年表は**その予定の参加者のもの**（timelineFor 参照）。列の
+    // 並びは旅行全体の移動から組んでいるが、予定がどの時間帯にいるかは、その
+    // 予定に出る人がどの移動に乗ったかで決まる。
     const evTz =
       ev.startTz ??
       resolveEventTz(
         s.date,
         ev.tzDisambigTransitId,
         ev.tzDisambigSide,
-        tzTimeline,
+        timelineForEvent(tzTimeline, ev),
       );
 
     if (!e || e.date === s.date) {
@@ -817,6 +821,13 @@ export type TripTzTimeline = {
     /** 壁時計 "HH:MM"。移動日の候補を時刻で絞るのに使う（narrowTzByTime）。 */
     departTime: string;
     arriveTime: string;
+    /**
+     * その移動に乗った人（ScheduleEvent の参加者そのまま）。年表を人ごとに
+     * 絞る（timelineFor）ための唯一の材料で、「誰がどの移動に乗ったか」以外の
+     * 状態は持たない。
+     */
+    participantsEveryone: boolean;
+    participantMemberIds: string[];
   }[];
 };
 
@@ -850,8 +861,60 @@ export function buildTripTzTimeline(
     arriveTz: t.endTz as string,
     departTime: formatMinutes(parseWall(t.startAt).minutes),
     arriveTime: formatMinutes(parseWall(t.endAt as string).minutes),
+    participantsEveryone: t.participantsEveryone,
+    participantMemberIds: t.participantMemberIds,
   }));
   return { fallbackTz: defaultTimezone ?? "UTC", transits };
+}
+
+/**
+ * **年表は人ごとにある。** 旅行に1本ではなく、その人が乗った移動だけを並べた
+ * ものがその人の年表。途中で合流・離脱する旅行では同じ瞬間に別の時間帯にいる
+ * 人がいるので、「旅行がどこにいたか」は問いとして成立せず、「誰が」を添えて
+ * 初めて答えが決まる。
+ *
+ * 事実は移動の参加者が持っている（新しいテーブルは無い）ので、旅行全体の年表
+ * （buildTripTzTimeline＝全員ぶんの移動の和）から都度絞る。全員参加の移動しか
+ * 無い旅行では誰の年表も同じ＝絞っても変わらない。
+ *
+ * 誰の年表を使うかは対象で決まる:
+ *
+ * | 対象 | 使う年表 |
+ * |---|---|
+ * | 予定 | その予定の参加者（timelineForEvent） |
+ * | 費用 | 支払った人（どこで払ったかは払った人の居場所） |
+ * | 取り込みの現地化 | 転送した本人＝自分 |
+ * | 場所の検索の地理バイアス | 探している本人＝自分 |
+ *
+ * `memberIds` が null（＝全員）なら絞らない。複数人を渡したときは**その誰かが
+ * 乗った移動**を全部残す（和）。同じ予定に入っている人は同じ場所にいるはずなの
+ * で、各自を連れてきた移動をまとめて並べればその予定の年表になる。食い違う
+ * （別の土地にいる人が同じ予定に入っている）のは参加者の付け忘れで、年表の側
+ * では判定しない。
+ *
+ * 絞った結果が元と同じなら同じオブジェクトを返す（React のメモ化が効くように）。
+ */
+export function timelineFor(
+  tl: TripTzTimeline,
+  memberIds: readonly string[] | null | undefined,
+): TripTzTimeline {
+  if (memberIds == null || memberIds.length === 0) return tl;
+  const transits = tl.transits.filter(
+    (t) =>
+      t.participantsEveryone ||
+      t.participantMemberIds.some((id) => memberIds.includes(id)),
+  );
+  return transits.length === tl.transits.length
+    ? tl
+    : { fallbackTz: tl.fallbackTz, transits };
+}
+
+/** その予定の参加者の年表（timelineFor 参照）。全員参加なら旅行全体の年表。 */
+export function timelineForEvent(
+  tl: TripTzTimeline,
+  e: Pick<ScheduleEvent, "participantsEveryone" | "participantMemberIds">,
+): TripTzTimeline {
+  return e.participantsEveryone ? tl : timelineFor(tl, e.participantMemberIds);
 }
 
 /**

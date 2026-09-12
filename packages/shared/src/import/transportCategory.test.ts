@@ -15,6 +15,8 @@ const abroad: TripTzTimeline = {
       arriveTz: "Pacific/Honolulu",
       departTime: "21:25",
       arriveTime: "09:40",
+      participantsEveryone: true,
+      participantMemberIds: [],
     },
     {
       transitId: "back",
@@ -24,6 +26,8 @@ const abroad: TripTzTimeline = {
       arriveTz: "Asia/Tokyo",
       departTime: "11:55",
       arriveTime: "15:20",
+      participantsEveryone: true,
+      participantMemberIds: [],
     },
   ],
 };

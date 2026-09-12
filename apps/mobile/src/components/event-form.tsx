@@ -29,6 +29,7 @@ import {
   buildTripTzTimeline,
   dedupeTzCandidates,
   resolveExpenseTz,
+  timelineFor,
   type TzCandidate,
 } from "@triplot/shared/schedule";
 import type { EventDraftItem } from "@triplot/shared/import/drafts";
@@ -383,7 +384,29 @@ export function EventForm({
     setTzOverride((o) => ({ ...o, start: tz }));
   const setArriveTz = (tz: string) => setTzOverride((o) => ({ ...o, end: tz }));
 
-  const initResolution = resolveExpenseTz(initDate, tzTimeline);
+  // 参加者（全員 / 一部）。全員かどうかは participantsEveryone が持つ
+  // （参加者リストが空であることから推測しない）。
+  const initCustom = isEdit && !(editEvent?.participantsEveryone ?? true);
+  const [partMode, setPartMode] = useDraft<"all" | "custom">(
+    "partMode",
+    initCustom ? "custom" : "all",
+  );
+  const [participants, setParticipants] = useDraft<Set<string>>(
+    "participants",
+    () => new Set(editEvent?.participantMemberIds ?? []),
+  );
+  // 予定の TZ は**その予定の参加者の年表**で引く（timelineFor 参照。web と
+  // 同じ）。旅行全体の年表だと、別行動している人の移動まで候補に混ざる。
+  const participantTimeline = useMemo(
+    () =>
+      timelineFor(
+        tzTimeline,
+        partMode === "all" ? null : Array.from(participants),
+      ),
+    [tzTimeline, partMode, participants],
+  );
+
+  const initResolution = resolveExpenseTz(initDate, participantTimeline);
   // 新規作成時の既定選択。取り込み下書きは場所からどちら側かを当てて
   // prefill.tzDisambig に入れてあるので、それを最優先で使う（TZ の決定は
   // そこが唯一の源で、カレンダーの列も同じ値から決まる）。当たらなければ
@@ -405,22 +428,53 @@ export function EventForm({
     "depart" | "arrive" | null
   >(editEvent?.tzDisambigSide ?? initDisambig?.side ?? null);
   const startTzRes = useMemo(
-    () => resolveExpenseTz(startDate, tzTimeline),
-    [startDate, tzTimeline],
+    () => resolveExpenseTz(startDate, participantTimeline),
+    [startDate, participantTimeline],
   );
-  const multiTz = tzTimeline.transits.length > 0;
+  const multiTz = participantTimeline.transits.length > 0;
   const selectTz = (c: TzCandidate) => {
     setTzDisambigTransitId(c.transitId);
     setTzDisambigSide(c.side);
   };
   const onStartDateChange = (nd: string) => {
     setStartDate(nd);
-    const r = resolveExpenseTz(nd, tzTimeline);
+    const r = resolveExpenseTz(nd, participantTimeline);
     if (r.kind === "single") {
       setTzDisambigTransitId(null);
       setTzDisambigSide(null);
     } else {
       selectTz(r.options[0]);
+    }
+  };
+  // 参加者が変わると年表も変わる（別行動していれば移動日の候補が違う）。
+  // 選んでいた側がまだ候補にあれば保ち、無ければ日付を変えた時と同じ既定に戻す。
+  const reresolveTz = (memberIds: string[] | null) => {
+    const r = resolveExpenseTz(startDate, timelineFor(tzTimeline, memberIds));
+    if (r.kind === "single") {
+      setTzDisambigTransitId(null);
+      setTzDisambigSide(null);
+      return;
+    }
+    const kept = r.options.find(
+      (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+    );
+    selectTz(kept ?? r.options[0]);
+  };
+  const toggleParticipant = (id: string) => {
+    const next = new Set(participants);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setParticipants(next);
+    reresolveTz(Array.from(next));
+  };
+  const setParticipantsMode = (mode: "all" | "custom") => {
+    setPartMode(mode);
+    if (mode === "all") {
+      reresolveTz(null);
+    } else {
+      const next = new Set([myMemberId]);
+      setParticipants(next);
+      reresolveTz(Array.from(next));
     }
   };
 
@@ -475,26 +529,6 @@ export function EventForm({
   const moveAlldayStart = (nd: string) => {
     onStartDateChange(nd);
     if (nd > endDate) setEndDate(nd);
-  };
-
-  // 参加者（全員 / 一部）。全員かどうかは participantsEveryone が持つ
-  // （参加者リストが空であることから推測しない）。
-  const initCustom = isEdit && !(editEvent?.participantsEveryone ?? true);
-  const [partMode, setPartMode] = useDraft<"all" | "custom">(
-    "partMode",
-    initCustom ? "custom" : "all",
-  );
-  const [participants, setParticipants] = useDraft<Set<string>>(
-    "participants",
-    () => new Set(editEvent?.participantMemberIds ?? []),
-  );
-  const toggleParticipant = (id: string) => {
-    setParticipants((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
   };
 
   const canDelete =
@@ -902,10 +936,9 @@ export function EventForm({
       {members.length > 1 && (
         <View>
           <Pressable
-            onPress={() => {
-              setPartMode((m) => (m === "all" ? "custom" : "all"));
-              if (partMode === "all") setParticipants(new Set([myMemberId]));
-            }}
+            onPress={() =>
+              setParticipantsMode(partMode === "all" ? "custom" : "all")
+            }
             style={styles.disclosure}
           >
             <Text style={styles.disclosureLabel}>

@@ -105,6 +105,8 @@ describe("localizeSettlementByTrip", () => {
         departTz: "Asia/Tokyo",
         arriveDate: "2026-04-28",
         arriveTime: "07:25",
+        participantsEveryone: true,
+        participantMemberIds: [],
         arriveTz: HNL,
       },
       {
@@ -114,6 +116,8 @@ describe("localizeSettlementByTrip", () => {
         departTz: HNL,
         arriveDate: "2026-05-06",
         arriveTime: "17:40",
+        participantsEveryone: true,
+        participantMemberIds: [],
         arriveTz: "Asia/Tokyo",
       },
     ],

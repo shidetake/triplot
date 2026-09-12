@@ -9,7 +9,11 @@ import {
   type ExpenseAutoContext,
   expenseFieldsFromDraft,
 } from "../import/siblingConfirm";
-import { buildTripTzTimeline, type TripTzTimeline } from "../schedule";
+import {
+  buildTripTzTimeline,
+  timelineFor,
+  type TripTzTimeline,
+} from "../schedule";
 import {
   deriveAverageRates,
   deriveCategories,
@@ -123,7 +127,9 @@ async function loadSiblingConfirmContext(
       name: p.name,
       formattedAddress: p.formatted_address,
     })),
-    tzTimeline,
+    // 取り込みの下書きは転送した本人のもの＝自分の年表で導出する
+    // （timelineFor 参照。費用の並びは上で支払った人ごとに解決済み）。
+    tzTimeline: timelineFor(tzTimeline, [myMemberId]),
   });
 }
 

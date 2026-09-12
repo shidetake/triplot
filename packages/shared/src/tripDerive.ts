@@ -1,6 +1,7 @@
 import type { SummaryExpense } from "./expenseSummary";
 import {
   resolveEventTz,
+  timelineFor,
   wallClockToUtcMs,
   type ScheduleEvent,
   type TripTzTimeline,
@@ -255,6 +256,9 @@ export function deriveScheduleEvents(
 // 発生順（古い→新しい、新しいものが下）は保存済みキャッシュを持たず、都度
 // resolveEventTz で解決したTZ + paid_at（壁時計）から絶対時刻を算出して
 // 決める（乗継の追加・編集に自動追従する）。同時刻は作成順で安定させる。
+//
+// 解決に使う年表は**支払った人のもの**（timelineFor 参照）。どこで払ったかは
+// 払った人の居場所で決まる。渡す tzTimeline は旅行全体（全員ぶん）のもの。
 export function deriveOrderedExpenses(
   expensesRaw: RawExpense[] | null,
   tzTimeline: TripTzTimeline,
@@ -265,7 +269,7 @@ export function deriveOrderedExpenses(
         e.paid_at.slice(0, 10),
         e.tz_disambig_transit_id,
         e.tz_disambig_side as "depart" | "arrive" | null,
-        tzTimeline,
+        timelineFor(tzTimeline, [e.payer_member_id]),
       );
       const row: ExpenseRow = {
         id: e.id,

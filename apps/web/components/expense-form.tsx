@@ -29,6 +29,7 @@ import type { LatLng } from "@triplot/shared/placeMap";
 import {
   dedupeTzCandidates,
   resolveExpenseTz,
+  timelineFor,
   type TripTzTimeline,
   type TzCandidate,
 } from "@triplot/shared/schedule";
@@ -238,6 +239,11 @@ export function ExpenseForm({
   );
   // 開閉トグルは純粋な表示状態なので保持しない（毎回畳んで開く）。
   const [payerOpen, setPayerOpen] = useState<boolean>(false);
+  // 年表は人ごと（timelineFor 参照）。費用の TZ は支払った人の年表で引く。
+  const payerTimeline = useMemo(
+    () => timelineFor(tzTimeline, [payer]),
+    [tzTimeline, payer],
+  );
   const [paidAtDate, setPaidAtDate] = useDraft<string>(
     "paidAtDate",
     initPaidAtDate,
@@ -251,7 +257,7 @@ export function ExpenseForm({
   // 費用の発生TZ。編集時は保存値（page.tsx で解決済み）、新規は日付から旅程
   // 推測（乗継日は出発側を既定にして、下の選択肢でユーザが変えられる）。
   // tzDisambig* = 保存する選択（乗継日以外は両方 null のまま＝毎回自動導出）。
-  const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
+  const initResolution = resolveExpenseTz(initPaidAtDate, payerTimeline);
   const initTz = isEdit
     ? editExpense.tz
     : initResolution.kind === "single"
@@ -295,15 +301,15 @@ export function ExpenseForm({
   };
   // 今選ばれている日付に対する解決結果（single か 乗継日 ambiguous か）。
   const tzRes = useMemo(
-    () => resolveExpenseTz(paidAtDate, tzTimeline),
-    [paidAtDate, tzTimeline],
+    () => resolveExpenseTz(paidAtDate, payerTimeline),
+    [paidAtDate, payerTimeline],
   );
-  const multiTz = tzTimeline.transits.length > 0;
+  const multiTz = payerTimeline.transits.length > 0;
 
   const onDateChange = (newDate: string) => {
     setPaidAtDate(newDate);
     // 日付が変わったら TZ も推測し直す（乗継日は出発側を既定）。
-    const r = resolveExpenseTz(newDate, tzTimeline);
+    const r = resolveExpenseTz(newDate, payerTimeline);
     if (r.kind === "single") {
       setTzRaw(r.tz);
       setTzDisambigTransitId(null);
@@ -311,6 +317,22 @@ export function ExpenseForm({
     } else {
       selectTz(r.options[0]);
     }
+  };
+  // 払った人が変わると年表も変わる（別行動していれば移動日の候補が違う）。
+  // 選んでいた側がまだ候補にあれば保ち、無ければ日付を変えた時と同じ既定に戻す。
+  const choosePayer = (id: string) => {
+    setPayer(id);
+    const r = resolveExpenseTz(paidAtDate, timelineFor(tzTimeline, [id]));
+    if (r.kind === "single") {
+      setTzRaw(r.tz);
+      setTzDisambigTransitId(null);
+      setTzDisambigSide(null);
+      return;
+    }
+    const kept = r.options.find(
+      (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+    );
+    selectTz(kept ?? r.options[0]);
   };
 
   // 「＋ 時刻を指定」を押した直後に時刻 input にフォーカス＆ピッカーを開く
@@ -745,7 +767,7 @@ export function ExpenseForm({
                   key={m.id}
                   on={m.id === payer}
                   hue={m.color}
-                  onClick={() => setPayer(m.id)}
+                  onClick={() => choosePayer(m.id)}
                 >
                   {m.display_name}
                 </ToggleChip>

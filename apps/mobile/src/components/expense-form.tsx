@@ -34,6 +34,7 @@ import type { ExpenseDraftItem } from "@triplot/shared/import/drafts";
 import {
   dedupeTzCandidates,
   resolveExpenseTz,
+  timelineFor,
   type TripTzTimeline,
   type TzCandidate,
 } from "@triplot/shared/schedule";
@@ -207,6 +208,11 @@ export function ExpenseForm({
     isEdit ? editExpense.payer_member_id : myMemberId,
   );
   const [payerOpen, setPayerOpen] = useState(false);
+  // 年表は人ごと（timelineFor 参照）。費用の TZ は支払った人の年表で引く。
+  const payerTimeline = useMemo(
+    () => timelineFor(tzTimeline, [payer]),
+    [tzTimeline, payer],
+  );
 
   // 日付と時刻。時刻は「指定したい人だけ」展開するトグル（未展開は 00:00 送信
   // ＝一覧で時刻非表示。web と同じ）。
@@ -228,7 +234,7 @@ export function ExpenseForm({
   const [openPicker, setOpenPicker] = useState<"date" | "time" | null>(null);
 
   // 費用の発生TZ（乗継日の曖昧解決）。web と同じ契約。
-  const initResolution = resolveExpenseTz(initPaidAtDate, tzTimeline);
+  const initResolution = resolveExpenseTz(initPaidAtDate, payerTimeline);
   // 下書きから開いたときは、下書きが決めた側を初期選択にする（経度→時刻の
   // 2段で決めている。deriveExpenseDraftItems 参照）。これが無いと移動日は
   // 常に先頭候補＝出発側になり、到着後の支払いが出発地のTZで開く。
@@ -254,10 +260,10 @@ export function ExpenseForm({
     setTzDisambigSide(c.side);
   };
   const tzRes = useMemo(
-    () => resolveExpenseTz(paidAtDate, tzTimeline),
-    [paidAtDate, tzTimeline],
+    () => resolveExpenseTz(paidAtDate, payerTimeline),
+    [paidAtDate, payerTimeline],
   );
-  const multiTz = tzTimeline.transits.length > 0;
+  const multiTz = payerTimeline.transits.length > 0;
   const currentTz =
     tzRes.kind === "single"
       ? tzRes.tz
@@ -268,13 +274,28 @@ export function ExpenseForm({
 
   const onDateChange = (newDate: string) => {
     setPaidAtDate(newDate);
-    const r = resolveExpenseTz(newDate, tzTimeline);
+    const r = resolveExpenseTz(newDate, payerTimeline);
     if (r.kind === "single") {
       setTzDisambigTransitId(null);
       setTzDisambigSide(null);
     } else {
       selectTz(r.options[0]);
     }
+  };
+  // 払った人が変わると年表も変わる（別行動していれば移動日の候補が違う）。
+  // 選んでいた側がまだ候補にあれば保ち、無ければ日付を変えた時と同じ既定に戻す。
+  const choosePayer = (id: string) => {
+    setPayer(id);
+    const r = resolveExpenseTz(paidAtDate, timelineFor(tzTimeline, [id]));
+    if (r.kind === "single") {
+      setTzDisambigTransitId(null);
+      setTzDisambigSide(null);
+      return;
+    }
+    const kept = r.options.find(
+      (o) => o.transitId === tzDisambigTransitId && o.side === tzDisambigSide,
+    );
+    selectTz(kept ?? r.options[0]);
   };
 
   // 割り勘対象（web と同じ導出）。
@@ -703,7 +724,7 @@ export function ExpenseForm({
                   on={m.id === payer}
                   hue={m.color}
                   label={m.display_name}
-                  onPress={() => setPayer(m.id)}
+                  onPress={() => choosePayer(m.id)}
                 />
               ))}
             </View>

@@ -10,6 +10,8 @@ import {
   parseWall,
   resolveEventTz,
   resolveExpenseTz,
+  timelineFor,
+  timelineForEvent,
   type ScheduleEvent,
 } from "./schedule";
 
@@ -935,5 +937,133 @@ describe("時差の無い移動", () => {
     });
     expect(s.timed.map((t) => t.event.id)).toContain("r-2026-04-30");
     expect(s.transits).toHaveLength(0);
+  });
+});
+
+// 年表は旅行に1本ではなく人ごと。途中で合流・離脱する旅行では、同じ瞬間に
+// 別の時間帯にいる人がいるので、「誰の」を添えて初めて TZ が決まる。
+describe("timelineFor: 年表は人ごと（乗った移動だけを並べる）", () => {
+  // A だけが 4/27 に東京→ホノルルへ飛び、B は 4/29 に飛んで合流する。
+  // 帰りは全員一緒。
+  const flightA = ev({
+    id: "fa",
+    kind: "transit",
+    startAt: "2026-04-27T19:10:00",
+    startTz: "Asia/Tokyo",
+    endAt: "2026-04-27T08:30:00",
+    endTz: "Pacific/Honolulu",
+    participantsEveryone: false,
+    participantMemberIds: ["a"],
+  });
+  const flightB = ev({
+    id: "fb",
+    kind: "transit",
+    startAt: "2026-04-29T19:10:00",
+    startTz: "Asia/Tokyo",
+    endAt: "2026-04-29T08:30:00",
+    endTz: "Pacific/Honolulu",
+    participantsEveryone: false,
+    participantMemberIds: ["b"],
+  });
+  const back = ev({
+    id: "back",
+    kind: "transit",
+    startAt: "2026-05-03T12:00:00",
+    startTz: "Pacific/Honolulu",
+    endAt: "2026-05-04T16:00:00",
+    endTz: "Asia/Tokyo",
+  });
+  const tl = buildTripTzTimeline([flightA, flightB, back], "Asia/Tokyo");
+
+  it("旅行全体の年表は全員ぶんの移動の和", () => {
+    expect(tl.transits.map((t) => t.transitId)).toEqual(["fa", "fb", "back"]);
+  });
+
+  it("その人が乗った移動と全員参加の移動だけが残る", () => {
+    expect(timelineFor(tl, ["a"]).transits.map((t) => t.transitId)).toEqual([
+      "fa",
+      "back",
+    ]);
+    expect(timelineFor(tl, ["b"]).transits.map((t) => t.transitId)).toEqual([
+      "fb",
+      "back",
+    ]);
+  });
+
+  it("誰も指定しなければ絞らない（null・空とも旅行全体）", () => {
+    expect(timelineFor(tl, null)).toBe(tl);
+    expect(timelineFor(tl, [])).toBe(tl);
+  });
+
+  it("複数人なら、その誰かが乗った移動を全部残す（和）", () => {
+    expect(
+      timelineFor(tl, ["a", "b"]).transits.map((t) => t.transitId),
+    ).toEqual(["fa", "fb", "back"]);
+  });
+
+  it("絞っても変わらない時は同じオブジェクトを返す（メモ化が効くように）", () => {
+    const all = buildTripTzTimeline([back], "Asia/Tokyo");
+    expect(timelineFor(all, ["a"])).toBe(all);
+    expect(timelineFor(tl, ["a", "b"])).toBe(tl);
+  });
+
+  it("旅行全体では移動日でも、その人にとっては普通の日（候補は1つ）", () => {
+    // 4/27 は A の移動日。B はまだ東京にいるので曖昧にならない。
+    expect(resolveExpenseTz("2026-04-27", tl).kind).toBe("ambiguous");
+    expect(resolveExpenseTz("2026-04-27", timelineFor(tl, ["b"]))).toEqual({
+      kind: "single",
+      tz: "Asia/Tokyo",
+    });
+    // 4/28 は A はホノルル、B はまだ東京。旅行全体の年表だと B もホノルルに
+    // 飛ばされる（これが人ごとにする理由）。
+    expect(resolveEventTz("2026-04-28", null, null, tl)).toBe(
+      "Pacific/Honolulu",
+    );
+    expect(
+      resolveEventTz("2026-04-28", null, null, timelineFor(tl, ["b"])),
+    ).toBe("Asia/Tokyo");
+    expect(
+      resolveEventTz("2026-04-28", null, null, timelineFor(tl, ["a"])),
+    ).toBe("Pacific/Honolulu");
+  });
+
+  it("timelineForEvent: 全員参加の予定は旅行全体、一部参加はその人たちの年表", () => {
+    expect(timelineForEvent(tl, ev({ id: "x" }))).toBe(tl);
+    expect(
+      timelineForEvent(
+        tl,
+        ev({ id: "x", participantsEveryone: false, participantMemberIds: ["b"] }),
+      ).transits.map((t) => t.transitId),
+    ).toEqual(["fb", "back"]);
+  });
+
+  it("buildSchedule: 予定の TZ はその予定の参加者の年表で決まる", () => {
+    // 4/28 の B だけの昼食は、B の年表（まだ東京）で解決される。
+    const lunchB = ev({
+      id: "lunch-b",
+      startAt: "2026-04-28T12:00:00",
+      startTz: null,
+      participantsEveryone: false,
+      participantMemberIds: ["b"],
+    });
+    const lunchA = ev({
+      id: "lunch-a",
+      startAt: "2026-04-28T12:00:00",
+      startTz: null,
+      participantsEveryone: false,
+      participantMemberIds: ["a"],
+    });
+    const s = buildSchedule([flightA, flightB, back, lunchA, lunchB], {
+      tripStart: "2026-04-27",
+      tripEnd: "2026-05-04",
+    });
+    // 列は旅行全体の移動から組まれる（4/28 はホノルルの列）。A の昼食は
+    // その列に、B の昼食は東京の列が無いので日付一致の列に置かれる（今は
+    // 見る人の年表で列を組んでいない＝BACKLOG 18 の段階3）。
+    const placedA = s.timed.find((t) => t.event.id === "lunch-a")!;
+    expect(s.columns.find((c) => c.key === placedA.columnKey)!.tz).toBe(
+      "Pacific/Honolulu",
+    );
+    expect(s.timed.find((t) => t.event.id === "lunch-b")).toBeDefined();
   });
 });

@@ -68,6 +68,8 @@ export default function ScheduleTab() {
       locale,
       untitledLabel: t("common.untitledEvent"),
       reservationRefLabel: (ref) => t("tripDetail.reservationRefNote", { ref }),
+      // 下書きは転送した本人のもの＝自分の年表で導出する。
+      myMemberId: me?.id ?? null,
     },
   );
   const eventsWithDrafts = [
