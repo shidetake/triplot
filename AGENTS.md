@@ -25,7 +25,8 @@ npm run lint         # eslint
 npx tsc --noEmit     # 型チェック（pre-commit / pre-push でも実行される）
 npm test             # vitest run（一回だけ。純関数のみ・DB に触らない）
 npm run test:db      # 実 DB（staging）に繋ぐテスト。手で走らせる（下記）
-npm run test:seed-emails  # メール取り込みのテストデータを作り直す（下記）
+npm run test:seed-emails -- --set <組>  # メール取り込みのテストデータを作り直す（下記）
+npm run test:import-status  # 取り込みの結果を見る（状態の内訳・合体の残骸）
 npm run test:watch   # vitest watch
 npx vitest run lib/settlement.test.ts        # 単一ファイル
 npx vitest run -t "settles greedy"           # テスト名で絞り込み
@@ -76,11 +77,17 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 その1往復を1コマンドにしてある。
 
 ```bash
-npm run test:seed-emails                 # 受信箱を空にして、ラベルのメールを全部転送し直す
-npm run test:seed-emails -- -n 5         # 5通だけ（軽い確認）
-npm run test:seed-emails -- --dry-run    # 消さない・送らない。対象と件数だけ見る
-npm run test:seed-emails -- --keep-inbox # 受信箱を残して転送だけ
+npm run test:seed-emails -- --set la            # 受信箱を空にして、その組を全部転送し直す
+npm run test:seed-emails -- --set hawaii -n 5   # 5通だけ（軽い確認）
+npm run test:seed-emails -- --set la --dry-run  # 消さない・送らない。対象と件数だけ見る
+npm run test:seed-emails -- --set la --keep-inbox # 受信箱を残して転送だけ
+npm run test:import-status                      # 取り込みの結果を見る（下記）
 ```
+
+**どの組を送るかは必ず選ぶ。まとめて全部は送らない。** 受信箱は毎回空にしてから
+転送するので、組を跨いで送ると「今どの旅行を見ているか」が混ざる。2つ流したい時は
+2回叩く。組は `apps/web/.env.local` に1行足すと増える
+（`TRIPLOT_TEST_GMAIL_LABEL_<組の名前>=<Gmail のラベル>`）。
 
 やることは2つ。**本番の受信箱を空にしてから、Gmail の指定ラベルのメールを
 1通ずつ転送する**（まとめて1通にしない。1通=1レシートでないと取り込みの検証に
@@ -94,12 +101,23 @@ npm run test:seed-emails -- --keep-inbox # 受信箱を残して転送だけ
   記録が残っていると全部スキップされる。`forward-gmail.mjs` を単体で使うときの
   記録とは別ファイル（`~/.gmail-mcp/seed_state.json`）。
 - 転送先アドレスと Gmail のラベルは gitignore された `apps/web/.env.local` の
-  `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL` から読む（転送先は
+  `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL_*` から読む（転送先は
   知っていれば誰でもその受信箱にメールを流し込めるため）。
 - Gmail の認証は `~/.gmail-mcp/`（`gcp-oauth.keys.json` と `credentials.json`）。
   切れていればブラウザが開いて再認証する。
 - 転送してから取り込みが終わるまでは cron 次第で時間がかかる。件数の推移は
   `inbound_emails` の `status` を数えると分かる。
+
+### 取り込みの結果を見る（`npm run test:import-status`）
+
+流し直したあとの確認はこのコマンドで行う。**手で SQL を書いて数えない** —— 手順に
+すると、書いた人が覚えている項目しか見ない。見落としたくないものが増えたら
+`scripts/import-status.mjs` に足す。
+
+今見ているもの: メールの状態の内訳（取り込み待ち・抽出済み・合体済み・確定済み・
+失敗）、未確定の下書きの件数、**合体で吸収された側に下書きが残っていないか**。
+最後のものは吸収された側が下書きを持たない設計に反する状態で、再発するかを
+毎回見ている。
 
 ## アーキテクチャ
 

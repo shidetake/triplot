@@ -43,6 +43,33 @@ function readEnv(name) {
   return undefined;
 }
 
+// 転送するメールの組（旅行ごと）。**環境ファイルに1行足すだけで増やせる**ように、
+// キーの接頭辞で拾う。
+//
+//   TRIPLOT_TEST_GMAIL_LABEL_HAWAII=2026-04-28-hawaii
+//   TRIPLOT_TEST_GMAIL_LABEL_LA=2025-04-26 LA
+//
+// ラベルは各自の Gmail のもので、環境ファイル（gitignore 済み）に置く。
+const LABEL_PREFIX = "TRIPLOT_TEST_GMAIL_LABEL_";
+
+function readLabelSets() {
+  const sets = new Map();
+  const add = (key, value) => {
+    if (!key.startsWith(LABEL_PREFIX)) return;
+    const name = key.slice(LABEL_PREFIX.length).toLowerCase();
+    const v = value.replace(/^"|"$/g, "").trim();
+    if (name && v && !sets.has(name)) sets.set(name, v);
+  };
+  for (const [k, v] of Object.entries(process.env)) add(k, v ?? "");
+  if (fs.existsSync(ENV_FILE)) {
+    for (const line of fs.readFileSync(ENV_FILE, "utf8").split("\n")) {
+      const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+      if (m) add(m[1], m[2]);
+    }
+  }
+  return sets;
+}
+
 function run(cmd, args, opts = {}) {
   const r = spawnSync(cmd, args, { stdio: "inherit", cwd: ROOT, ...opts });
   if (r.status !== 0) process.exit(r.status ?? 1);
@@ -76,6 +103,7 @@ function dbQuery(sql) {
 const { values } = parseArgs({
   options: {
     to: { type: "string" },
+    set: { type: "string", short: "s" },
     label: { type: "string" },
     limit: { type: "string", short: "n" },
     "keep-inbox": { type: "boolean", default: false },
@@ -84,34 +112,58 @@ const { values } = parseArgs({
   },
 });
 
+const sets = readLabelSets();
+const setNames = [...sets.keys()].sort();
+
 if (values.help) {
   console.log(`
-メール取り込みのテストデータを作り直す（受信箱を空にしてから全部転送し直す）
+メール取り込みのテストデータを作り直す（受信箱を空にしてから、選んだ組を転送し直す）
 
-  npm run test:seed-emails                 受信箱を空にして全部転送
-  npm run test:seed-emails -- -n 5         5通だけ（動作確認用）
-  npm run test:seed-emails -- --dry-run    転送せず、対象と件数だけ出す
-  npm run test:seed-emails -- --keep-inbox 受信箱を消さずに転送だけ
+  npm run test:seed-emails -- --set la          LA の組を転送
+  npm run test:seed-emails -- --set hawaii -n 5 5通だけ（動作確認用）
+  npm run test:seed-emails -- --set la --dry-run   転送せず、対象と件数だけ出す
+  npm run test:seed-emails -- --set la --keep-inbox 受信箱を消さずに転送だけ
 
+  --set <name>     どの組を転送するか（下記）。**必ず選ぶ**
   --to <address>   転送先（既定: .env.local の TRIPLOT_RECEIPTS_ADDRESS）
-  --label <label>  Gmail のラベル（既定: .env.local の TRIPLOT_TEST_GMAIL_LABEL）
+  --label <label>  Gmail のラベルを直接指定（--set の代わり）
+
+  選べる組: ${setNames.length > 0 ? setNames.join(" / ") : "（未設定）"}
+
+  組は ${ENV_FILE} に1行足すと増える:
+    ${LABEL_PREFIX}<組の名前>=<Gmail のラベル>
 `);
   process.exit(0);
 }
 
 const to = values.to ?? readEnv("TRIPLOT_RECEIPTS_ADDRESS");
-const label = values.label ?? readEnv("TRIPLOT_TEST_GMAIL_LABEL");
 const dryRun = values["dry-run"];
+
+// **まとめて全部は送らない。** 受信箱は毎回空にしてから転送するので、組を
+// 跨いで送ると「今どの旅行を見ているか」が混ざる。2つ流したい時は2回叩く。
+let label = values.label ?? null;
+if (!label) {
+  const name = values.set?.toLowerCase();
+  if (!name) {
+    console.error(
+      setNames.length > 0
+        ? `どの組を転送するか選んでください: --set ${setNames.join(" | ")}`
+        : `転送する組が設定されていません。${ENV_FILE} に ${LABEL_PREFIX}<組の名前>=<Gmail のラベル> を足してください。`,
+    );
+    process.exit(1);
+  }
+  label = sets.get(name) ?? null;
+  if (!label) {
+    console.error(
+      `そんな組はありません: ${name}\n選べる組: ${setNames.join(" | ") || "（未設定）"}`,
+    );
+    process.exit(1);
+  }
+}
 
 if (!to) {
   console.error(
     `転送先が分かりません。${ENV_FILE} に TRIPLOT_RECEIPTS_ADDRESS を書くか --to で渡してください。`,
-  );
-  process.exit(1);
-}
-if (!label) {
-  console.error(
-    `Gmail のラベルが分かりません。${ENV_FILE} に TRIPLOT_TEST_GMAIL_LABEL を書くか --label で渡してください。`,
   );
   process.exit(1);
 }
