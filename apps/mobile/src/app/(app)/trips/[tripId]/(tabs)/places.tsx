@@ -1066,6 +1066,7 @@ export default function PlacesTab() {
         apiKey: PLACES_API_KEY,
         iosBundleId: BUNDLE_ID,
         sessionToken: sessionTokenRef.current ?? undefined,
+        withRatings: true,
       });
       sessionTokenRef.current = null; // セッション終了
       if (!c) return;
@@ -1122,6 +1123,8 @@ export default function PlacesTab() {
         apiKey: PLACES_API_KEY,
         iosBundleId: BUNDLE_ID,
         biasCenter: bias ?? undefined,
+        // 候補一覧と候補ピンに評価点を出すので、ここは取る（placeFields 参照）。
+        withRatings: true,
       });
       setCandidates(results);
       if (results[0]) {

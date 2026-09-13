@@ -55,7 +55,27 @@ export type SearchPlacesOptions = {
   // 住所もバイアスも無いまま解決してよい。呼び出し側が「この名前は固有名だ」と
   // 分かっている時だけ立てる（移動の乗降地＝駅・空港・港）。
   allowUnbiased?: boolean;
+  // **評価点とレビュー件数も取る。** Places API は要求したフィールドで料金の段が
+  // 変わり、この2つは上の段に入る。使うのは人が場所を選ぶ画面（候補一覧・候補
+  // ピン）だけで、取り込みの自動解決では見ても保存してもいないので、既定は取らない。
+  withRatings?: boolean;
 };
+
+// 取る項目。評価点まわりだけ料金の段が上がるので、要る時だけ足す。
+function placeFields(withRatings: boolean, prefix: string): string {
+  const base = [
+    "id",
+    "displayName",
+    "formattedAddress",
+    "location",
+    "addressComponents",
+    "primaryType",
+  ];
+  const fields = withRatings
+    ? [...base, "rating", "userRatingCount"]
+    : base;
+  return fields.map((f) => `${prefix}${f}`).join(",");
+}
 
 // Places API (New): places:searchText。FieldMask は最小限（住所成分まで）。
 export async function searchPlaces(
@@ -68,16 +88,7 @@ export async function searchPlaces(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Goog-Api-Key": opts.apiKey,
-    "X-Goog-FieldMask": [
-      "places.id",
-      "places.displayName",
-      "places.formattedAddress",
-      "places.location",
-      "places.addressComponents",
-      "places.rating",
-      "places.userRatingCount",
-      "places.primaryType",
-    ].join(","),
+    "X-Goog-FieldMask": placeFields(opts.withRatings ?? false, "places."),
   };
   if (opts.iosBundleId) {
     headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
@@ -227,16 +238,7 @@ export async function fetchPlaceDetails(
 ): Promise<PlaceCandidate | null> {
   const headers: Record<string, string> = {
     "X-Goog-Api-Key": opts.apiKey,
-    "X-Goog-FieldMask": [
-      "id",
-      "displayName",
-      "formattedAddress",
-      "location",
-      "addressComponents",
-      "rating",
-      "userRatingCount",
-      "primaryType",
-    ].join(","),
+    "X-Goog-FieldMask": placeFields(opts.withRatings ?? false, ""),
   };
   if (opts.iosBundleId) {
     headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
