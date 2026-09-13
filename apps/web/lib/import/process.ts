@@ -1021,6 +1021,9 @@ async function runExtraction(
         merged_into: merge.targetId,
         extracted: extraction,
         extracted_at: now,
+        // 成功したので前の試行の失敗の印を消す（上の分岐と同じ）。
+        extract_error: null,
+        extract_error_kind: null,
         diag: asJson(),
         body_text: text,
         raw: null,
@@ -1053,6 +1056,11 @@ async function runExtraction(
         status: "extracted",
         extracted: extraction,
         extracted_at: now,
+        // **前の試行の失敗の印を消す。** 消さないと、状態は「抽出済み」なのに
+        // 失敗の印だけが残り、中身が入っているのに失敗として表示される
+        // （実データ: 奈良バイクシェアのメール）。
+        extract_error: null,
+        extract_error_kind: null,
         diag: asJson(),
         // 痩せ版を保持し、丸ごと MIME は捨てる（保持最小化）。
         body_text: text,
