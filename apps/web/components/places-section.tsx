@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 
 import { APIProvider } from "@vis.gl/react-google-maps";
@@ -107,6 +107,29 @@ export function PlacesSection({
   // px snapPoint（viewport 下端起点）と二重に効く問題を抱えていた。浮島
   // ボタンから開く形にして bottom:0 に戻したので、その問題ごと無くなった。
   const { top: chromeTopPx, viewportHeight } = useMobileChromeMargins();
+  // **地図は見えるまで読み込まない。** Google の地図は表示1回ごとに課金される。
+  // タブは非表示でもマウントされたまま（CSS の hidden で切り替える）なので、
+  // 場所タブを一度も開かない人のぶんまで毎回読み込んでいた。広い画面では
+  // 全タブが縦に並ぶので、そこまでスクロールしない人も同じ。
+  //
+  // 見えたら二度と外さない（外して戻すと読み込み直しになり逆効果）。少し手前
+  // から読み始めるので、スクロールして着いた時にはもう出ている。
+  const mapBoxRef = useRef<HTMLDivElement | null>(null);
+  const [mapSeen, setMapSeen] = useState(false);
+  useEffect(() => {
+    if (mapSeen) return;
+    const el = mapBoxRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setMapSeen(true);
+      },
+      { rootMargin: "200px" },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [mapSeen]);
+
   const [placesSheetOpen, setPlacesSheetOpen] = useState(false);
   // 中身の実測高（一覧の中身＋見出し帯）。届くまでは概算で組む。
   const [listContentH, setListContentH] = useState(0);
@@ -698,6 +721,7 @@ export function PlacesSection({
         </div>
 
         <div
+          ref={mapBoxRef}
           className="fixed inset-x-0 md:static md:inset-auto"
           style={{
             top: MOBILE_TAB_TOP_OFFSET,
@@ -709,34 +733,40 @@ export function PlacesSection({
           // した瞬間に閉じてしまうという実機フィードバック）。閉じたい時は
           // シートを下にドラッグする。
         >
-          <PlaceMap
-            places={visiblePlaces}
-            memberHueById={memberHueById}
-            candidates={candidates}
-            selected={selected}
-            draft={draft}
-            poi={poi}
-            onSelectSaved={selectSaved}
-            onSelectCandidate={selectCandidate}
-            onCloseInfo={closeInfo}
-            onDismissSelection={dismissSelection}
-            onCloseList={
-              showPlacesSheet && placesSheetOpen
-                ? () => setPlacesSheetOpen(false)
-                : undefined
-            }
-            // 保存済みの場所は2タップ目まで詳細シートを出さない（候補・POI は
-            // 選択＝詳細なのでそのまま出す）。
-            infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
-            onMapTap={onMapTap}
-            onDraftMove={onDraftMove}
-            onCloseDraft={closeDraft}
-            onPoiSelect={showPoi}
-            infoContent={infoContent}
-            draftContent={draftContent}
-            locating={!!pendingLocationFor}
-            className="h-full w-full rounded-none border-0 md:h-[32rem] md:rounded-md md:border md:border-foreground/10"
-          />
+          {mapSeen ? (
+            <PlaceMap
+              places={visiblePlaces}
+              memberHueById={memberHueById}
+              candidates={candidates}
+              selected={selected}
+              draft={draft}
+              poi={poi}
+              onSelectSaved={selectSaved}
+              onSelectCandidate={selectCandidate}
+              onCloseInfo={closeInfo}
+              onDismissSelection={dismissSelection}
+              onCloseList={
+                showPlacesSheet && placesSheetOpen
+                  ? () => setPlacesSheetOpen(false)
+                  : undefined
+              }
+              // 保存済みの場所は2タップ目まで詳細シートを出さない（候補・POI は
+              // 選択＝詳細なのでそのまま出す）。
+              infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
+              onMapTap={onMapTap}
+              onDraftMove={onDraftMove}
+              onCloseDraft={closeDraft}
+              onPoiSelect={showPoi}
+              infoContent={infoContent}
+              draftContent={draftContent}
+              locating={!!pendingLocationFor}
+              className="h-full w-full rounded-none border-0 md:h-[32rem] md:rounded-md md:border md:border-foreground/10"
+            />
+          ) : (
+            // 読み込む前の場所取り（地図と同じ大きさの面）。すぐ差し替わる
+            // ので注記は出さない（ui-guidelines「処理中」の閾値）。
+            <div className="h-full w-full bg-muted" />
+          )}
         </div>
 
         {/* 場所一覧のボトムシート。狭い画面かつ場所タブが表示中の時だけ描画する
