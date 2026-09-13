@@ -1,4 +1,5 @@
 import { addDays, formatMinutes, parseWall } from "../schedule";
+import { receiptDate, type ReceiptWhen } from "./receiptDate";
 import type { EventDraft, Receipt } from "./schema";
 
 // レシート由来の仮予定（飲食・土産・衣服・エンタメ・カジノの「既に済んだ消費」を
@@ -46,8 +47,19 @@ export type ReceiptEventTiming = {
   endTime: string | null;
 };
 
-// receiptDate/receiptTime は正規化済みのレシートの date/time（後処理の日付
-// 修正が済んでいる前提）。receiptTime が無い（銀行の通知等、時刻を持たない）
+// 受け取るのはレシートそのもの（正規化済み＝後処理の日付修正が済んでいる
+// 前提）。**日付と時刻は receiptDate で決める。** 前売券・航空券のように
+// 「買った日」と「使う日」が離れるレシートは、仮予定を置くべきなのは使う日で、
+// 買った日ではない（実データ: 4/18 に買った Diamond Head の入場券の仮予定が
+// 4/18 に置かれていた。費用の側は使う日＝5/2 に出ていたので、同じレシートの
+// 費用と予定が別の日に並んでいた）。
+//
+// **日付の決め方を引数で渡さない**のは、取り込み時（applyReceiptEventTiming）と
+// 表示時（drafts.ts の retimedFromReceipt）の2箇所から呼ばれるため。
+// 別々に渡す形にすると、片方だけ直して食い違う（同じ形の不具合を kind で
+// 一度やっている）。
+//
+// 時刻が無い（銀行の通知等、時刻を持たない／使う日を採って購入時刻を捨てた）
 // 時は、根拠の無い時間帯を作らない — startTime/endTime は null のまま日付だけ
 // 置く。
 //
@@ -59,20 +71,20 @@ export type ReceiptEventTiming = {
 // （実データ: 108通中2通で再現）。
 export function deriveReceiptEventTiming(
   title: string,
-  receiptDate: string,
-  receiptTime: string | null,
+  receipt: ReceiptWhen,
 ): ReceiptEventTiming {
-  if (!receiptTime) {
+  const { date, time } = receiptDate(receipt);
+  if (!time) {
     return {
       kind: "timed",
-      startDate: receiptDate,
+      startDate: date,
       startTime: null,
       endDate: null,
       endTime: null,
     };
   }
   const duration = DURATION_MINUTES[title] ?? DEFAULT_DURATION_MINUTES;
-  const anchor = parseWall(`${receiptDate}T${receiptTime}`).minutes;
+  const anchor = parseWall(`${date}T${time}`).minutes;
   const [aMin, bMin] = START_ANCHORED_TITLES.has(title)
     ? [anchor, anchor + duration]
     : [anchor - duration, anchor];
@@ -81,7 +93,7 @@ export function deriveReceiptEventTiming(
     // 日をまたぐ場合、通算分は 0〜1439 に折り返し、日付側に繰り上げ/繰り下げる。
     const dayShift = Math.floor(min / 1440);
     const wrapped = ((min % 1440) + 1440) % 1440;
-    return { date: addDays(receiptDate, dayShift), time: formatMinutes(wrapped) };
+    return { date: addDays(date, dayShift), time: formatMinutes(wrapped) };
   };
   const start = at(aMin);
   const end = at(bMin);
@@ -103,7 +115,7 @@ export function applyReceiptEventTiming(
   if (!receipt) return events;
   return events.map((e) => {
     if (!e.fromReceipt) return e;
-    const timing = deriveReceiptEventTiming(e.title, receipt.date, receipt.time);
+    const timing = deriveReceiptEventTiming(e.title, receipt);
     return { ...e, ...timing };
   });
 }

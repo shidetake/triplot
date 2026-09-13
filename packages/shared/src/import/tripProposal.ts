@@ -12,7 +12,8 @@
 import { addDays } from "../schedule";
 import { compareTripOrder } from "../tripOrder";
 
-import { receiptDate, type StoredEventDraft, type StoredReceipt } from "./drafts";
+import { type StoredEventDraft, type StoredReceipt } from "./drafts";
+import { receiptDate } from "./receiptDate";
 
 // 未割り当ての下書き1行（fetchUnassignedDrafts の結果の構造的部分型）。
 export type ProposalDraft = {

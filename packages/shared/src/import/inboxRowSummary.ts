@@ -1,6 +1,7 @@
 import { formatDayLabel } from "../schedule";
 
-import { receiptDate, type StoredReceipt } from "./drafts";
+import { type StoredReceipt } from "./drafts";
+import { receiptDate } from "./receiptDate";
 import type { InboxRow } from "./inboxRows";
 import type { EventDraft } from "./schema";
 

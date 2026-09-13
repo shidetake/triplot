@@ -18,10 +18,10 @@ import {
 import { lookupFlight } from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
-  receiptDate,
   type StoredEventDraft,
   type StoredReceipt,
 } from "@triplot/shared/import/drafts";
+import { receiptDate } from "@triplot/shared/import/receiptDate";
 import { fetchFxRates } from "@triplot/shared/fxRates";
 import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
 import { localizeSettlementTiming } from "@triplot/shared/import/settlementTiming";

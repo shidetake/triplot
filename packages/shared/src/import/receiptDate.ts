@@ -10,6 +10,39 @@
 // 通知か」という1通単位の判定で、そこだけは抽出時に LLM に一度だけ聞く
 // （receiptSchema.dateIsSettlement）。
 
+// 「このレシートはいつの出来事か」を決めるのに要る最小の形。費用の日付
+// （receiptDate）も、レシート由来の仮予定の時間帯（receiptTiming.ts）も
+// この3つだけで決まる。
+export type ReceiptWhen = {
+  date: string;
+  time?: string | null;
+  serviceDate?: string | null;
+};
+
+// レシートから、その出来事の日付と時刻を決める。費用の日付（expenses.paid_at
+// に入る値）も、レシート由来の仮予定を置く日も、ここが単一の真実。
+//
+// **費用が持てる日付は paid_at ひとつだけ**なので、「支払った日」と「実際に
+// 使う日」が離れるもの（航空券は数か月前に購入、宿は退室日に決済、観光地の
+// 前売券は行く前に購入）はどちらか一方しか残せない。旅程に沿って読める方を
+// 採り、serviceDate（搭乗日・チェックイン日・利用日）があればそれを採る。
+//
+// **時刻を捨てるのは、使う日が買った日と違う時だけ。** レシートの時刻は
+// 購入時刻なので、使う日と組み合わせると実在しない日時になる。逆に同じ日
+// （その場で買ってその場で使う。飲食店の予約、当日券）なら、購入時刻は
+// その日の実在する時刻なので捨てる理由が無い——実データでも、使う日を持つ
+// 11件のうち9件は買った日と同じ日だった。
+export function receiptDate(r: ReceiptWhen | null): {
+  date: string;
+  time: string | undefined;
+} {
+  if (!r) return { date: "", time: undefined };
+  if (r.serviceDate && r.serviceDate !== r.date) {
+    return { date: r.serviceDate, time: undefined };
+  }
+  return { date: r.serviceDate ?? r.date, time: r.time ?? undefined };
+}
+
 export type DatedReceipt = {
   date: string;
   time: string | null;

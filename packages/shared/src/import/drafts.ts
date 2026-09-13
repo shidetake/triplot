@@ -37,6 +37,7 @@ import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
+import { receiptDate } from "./receiptDate";
 import { deriveReceiptEventTiming } from "./receiptTiming";
 import { localizeSettlementByTrip } from "./settlementTiming";
 import { resolveTransportCategory } from "./transportCategory";
@@ -338,32 +339,9 @@ function retimedFromReceipt(
   r: StoredReceipt | undefined,
 ): StoredEventDraft {
   if (!ev.fromReceipt || !r) return ev;
-  return { ...ev, ...deriveReceiptEventTiming(ev.title, r.date, r.time) };
+  return { ...ev, ...deriveReceiptEventTiming(ev.title, r) };
 }
 
-// レシートから、その費用の日付（expenses.paid_at に入る値）を決める。
-//
-// **費用が持てる日付は paid_at ひとつだけ**なので、「支払った日」と「実際に
-// 使う日」が離れるもの（航空券は数か月前に購入、宿は退室日に決済）は
-// どちらか一方しか残せない。旅程に沿って読める方を採り、serviceDate
-// （搭乗日・チェックイン日）があればそれを費用の日付にする。
-// serviceDate を使うときは time を捨てる — time はレシートの購入時刻なので、
-// 搭乗日と組み合わせると実在しない日時になる。
-export function receiptDate(r: StoredReceipt | null): {
-  date: string;
-  time: string | undefined;
-} {
-  if (!r) return { date: "", time: undefined };
-  // **時刻を捨てるのは、使う日が買った日と違う時だけ。** レシートの時刻は
-  // 購入時刻なので、搭乗日と組み合わせると実在しない日時になる。逆に同じ日
-  // （その場で買ってその場で使う。飲食店の予約、当日券）なら、購入時刻は
-  // その日の実在する時刻なので捨てる理由が無い——実データでも、使う日を持つ
-  // 11件のうち9件は買った日と同じ日だった。
-  if (r.serviceDate && r.serviceDate !== r.date) {
-    return { date: r.serviceDate, time: undefined };
-  }
-  return { date: r.serviceDate ?? r.date, time: r.time ?? undefined };
-}
 
 // 費用下書き（kind="expense"）→ 事前入力。カテゴリは抽出済みのカテゴリ名を
 // その旅行の expense_categories に名前で対応づけ、無ければ fallback
