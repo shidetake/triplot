@@ -375,7 +375,7 @@ export function deriveExpenseDraftItems(
         // 持つ開始時刻をここで借りる。
         const m = receiptMoment(r, siblings.get(d.email_id) ?? []);
         const when = { date: m.date, time: m.time ?? undefined };
-        return { d, r, localizedTz: tz, when };
+        return { d, r, localizedTz: tz, when, moment: m };
       })
       // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
       // （inbound_drafts.created_at）だと、まとめて転送したメールの到着順で
@@ -387,7 +387,7 @@ export function deriveExpenseDraftItems(
           a.when.date.localeCompare(b.when.date) ||
           (a.when.time ?? "").localeCompare(b.when.time ?? ""),
       )
-      .flatMap(({ d, r, localizedTz, when }) => {
+      .flatMap(({ d, r, localizedTz, when, moment: m }) => {
         if (!r) return [];
         const currency: Currency = /^[A-Z]{3}$/.test(r.currency ?? "")
           ? (r.currency as Currency)
@@ -427,6 +427,11 @@ export function deriveExpenseDraftItems(
               (localizedTz
                 ? tzRes.options.find((o) => o.tz === localizedTz)
                 : null) ??
+              // **同じメールの移動の予定が持つタイムゾーン。** 乗降地から決まった
+              // 値で、店名を Google に引いて得た経度より強い（実データ: ホノルル
+              // 空港からの Uber が、店名 "Uber" の解決で出た東京の座標のせいで
+              // 日本時間の列に並んでいた。予定の側は同じ根拠を既に見ている）。
+              (m.tz ? tzRes.options.find((o) => o.tz === m.tz) : null) ??
               (pickTzByLongitude(
                 tzRes.options,
                 r.resolvedPlace?.lng,

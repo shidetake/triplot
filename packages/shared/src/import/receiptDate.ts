@@ -43,12 +43,36 @@ export function receiptDate(r: ReceiptWhen | null): {
   return { date: r.serviceDate ?? r.date, time: r.time ?? undefined };
 }
 
-// 借りる相手＝同じメールから出た予定の、時刻の持ち主としての最小の形。
+// 借りる相手＝同じメールから出た予定の、事実の持ち主としての最小の形。
+// 時刻だけでなく**タイムゾーンもここから借りる**。移動の予定が持つ TZ は乗降地
+// から決まった値で、店名を Google に引いて得た経度より強い証拠になる。
 export type SiblingEventWhen = {
   startDate?: string | null;
   startTime?: string | null;
   fromReceipt?: boolean | null;
+  departTz?: string | null;
+  arriveTz?: string | null;
+  // 便名から引き直した実際の時刻。**予定の側はこちらを表示に使う**ので、
+  // 借りる側も同じものを見ないと数分ずれる（実データ: メールに 16:30 と書かれた
+  // 便が実際には 16:20 発で、予定は 16:20・費用は 16:30 になっていた）。
+  resolvedFlight?: {
+    departure?: { scheduledLocal?: string | null } | null;
+  } | null;
 };
+
+// その予定が実際に始まる瞬間（便名から引き直せていればそちらが事実）。
+function siblingStart(
+  ev: SiblingEventWhen,
+): { date: string; time: string } | null {
+  const local = ev.resolvedFlight?.departure?.scheduledLocal;
+  if (local && local.length >= 16) {
+    return { date: local.slice(0, 10), time: local.slice(11, 16) };
+  }
+  if (ev.startDate && ev.startTime) {
+    return { date: ev.startDate, time: ev.startTime };
+  }
+  return null;
+}
 
 // レシートが指す「出来事の瞬間」。**仮費用の日時も仮予定の起点もこれ1つで
 // 決まる。**
@@ -68,6 +92,9 @@ export type ReceiptMoment = {
   date: string;
   time: string | null;
   kind: MomentKind | null;
+  // その日の移動の予定が持っていたタイムゾーン（あれば）。移動日にどちら側の
+  // 土地に居たかの答えで、**予定と費用が同じものを見るためにここで返す**。
+  tz: string | null;
 };
 
 export function receiptMoment(
@@ -75,27 +102,39 @@ export function receiptMoment(
   siblings: readonly SiblingEventWhen[] = [],
 ): ReceiptMoment {
   const base = receiptDate(r);
-  if (!base.date) return { date: "", time: null, kind: null };
-  if (base.time) return { date: base.date, time: base.time, kind: "payment" };
-  // 時刻が無い＝使う日を採って購入時刻を捨てた／通知がそもそも時刻を持たない。
-  // **本当の時刻は同じメールの予約の予定が持っている**（搭乗・乗車・入場）。
+  if (!base.date) return { date: "", time: null, kind: null, tz: null };
+
+  // **その日の「予約から作った予定」が持っている事実を拾う。** 時刻もタイム
+  // ゾーンもここから来る。レシートから作った仮予定は支払いの瞬間の写しなので
+  // 相手にしない（そこから借りると導いた値を読み返すことになり、実在しない
+  // 日時が経路を変えて復活する）。
   //
-  // 借りる相手は予約から作った予定に限る。レシートから作った仮予定は支払いの
-  // 瞬間の写しなので、そこから借りると導いた値を読み返すことになり、実在しない
-  // 日時が経路を変えて復活する。
-  //
-  // 借りるのは開始時刻で、同じ日に複数あればいちばん早いもの。宿泊は終日で
-  // 開始時刻を持たないので借りる相手にならない。
-  let borrowed: string | null = null;
+  // 同じ日に複数あればいちばん早いもの。宿泊は終日で開始時刻を持たないので
+  // 相手にならない。
+  let start: string | null = null;
+  let tz: string | null = null;
   for (const ev of siblings) {
     if (ev.fromReceipt) continue;
-    if (!ev.startDate || !ev.startTime) continue;
-    if (ev.startDate !== base.date) continue;
-    if (!borrowed || ev.startTime < borrowed) borrowed = ev.startTime;
+    const s = siblingStart(ev);
+    if (!s || s.date !== base.date) continue;
+    if (!start || s.time < start) {
+      start = s.time;
+      // 移動の予定だけが実タイムゾーンを持つ（乗降地から決まった値）。
+      tz = ev.departTz ?? ev.arriveTz ?? null;
+    }
   }
-  return borrowed
-    ? { date: base.date, time: borrowed, kind: "start" }
-    : { date: base.date, time: null, kind: null };
+
+  // レシート自身が時刻を持っているなら、それが支払いの瞬間。**タイムゾーンは
+  // それでも予定から借りる** — 時刻は支払いの記録に書いてあるが、どちらの土地に
+  // 居たかは書かれていないため（実データ: ホノルル空港からの Uber が、店名を
+  // Google に引いて出た東京の座標のせいで日本時間として並んでいた。同じメール
+  // の乗車の予定はハワイを持っていた）。
+  if (base.time) {
+    return { date: base.date, time: base.time, kind: "payment", tz };
+  }
+  return start
+    ? { date: base.date, time: start, kind: "start", tz }
+    : { date: base.date, time: null, kind: null, tz };
 }
 
 export type DatedReceipt = {

@@ -19,7 +19,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
 
   it("使う日が別で、同じメールに予約があるなら、両方がその開始時刻を起点にする", () => {
     const m = receiptMoment(ticket, [reservation]);
-    expect(m).toEqual({ date: "2026-05-02", time: "13:00", kind: "start" });
+    expect(m).toEqual({ date: "2026-05-02", time: "13:00", kind: "start", tz: null });
 
     // 予定は起点から所要時間ぶん**前に**伸ばす（入場時刻から滞在が始まる）。
     const t = deriveReceiptEventTiming("観光", ticket, [reservation]);
@@ -30,7 +30,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
 
   it("借りる相手が無ければ、両方とも時刻を持たない（片方だけ持たない、が起きない）", () => {
     const m = receiptMoment(ticket, []);
-    expect(m).toEqual({ date: "2026-05-02", time: null, kind: null });
+    expect(m).toEqual({ date: "2026-05-02", time: null, kind: null, tz: null });
 
     const t = deriveReceiptEventTiming("観光", ticket, []);
     expect(t.startDate).toBe(m.date);
@@ -51,10 +51,58 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
   it("同じ日に買って使ったなら、支払いの瞬間が両方の起点になる", () => {
     const dinner = { date: "2026-05-01", time: "23:06", serviceDate: null };
     const m = receiptMoment(dinner, []);
-    expect(m).toEqual({ date: "2026-05-01", time: "23:06", kind: "payment" });
+    expect(m).toEqual({ date: "2026-05-01", time: "23:06", kind: "payment", tz: null });
 
     const t = deriveReceiptEventTiming("夕食", dinner, []);
     expect(t.startTime).toBe("21:06");
     expect(t.endTime).toBe(m.time);
+  });
+
+  // 実データ: ホノルル空港からの Uber。レシートは自分の支払時刻（08:26）を
+  // 持つので時刻は借りないが、**どちらの土地に居たかはレシートに書かれていない**。
+  // 同じメールの乗車の予定がハワイを持っているので、そこから借りる。店名 "Uber"
+  // を Google に引くと東京の座標が返り、経度で当てると日本時間になっていた。
+  it("レシートが時刻を持っていても、タイムゾーンは同じメールの移動から借りる", () => {
+    const m = receiptMoment(
+      { date: "2026-04-28", time: "08:26", serviceDate: null },
+      [
+        {
+          startDate: "2026-04-28",
+          startTime: "08:32",
+          fromReceipt: false,
+          departTz: "Pacific/Honolulu",
+          arriveTz: "Pacific/Honolulu",
+        },
+      ],
+    );
+    expect(m).toEqual({
+      date: "2026-04-28",
+      time: "08:26",
+      kind: "payment",
+      tz: "Pacific/Honolulu",
+    });
+  });
+
+  // 実データ: メールには 16:30 発と書かれていたが、便名から引き直すと 16:20 発。
+  // 予定の側は引き直した時刻を表示するので、借りる側も同じものを見ないと
+  // 予定 16:20・費用 16:30 と数分ずれる。
+  it("便名から引き直した時刻があれば、そちらを起点にする", () => {
+    const m = receiptMoment(
+      { date: "2026-04-18", time: null, serviceDate: "2026-05-04" },
+      [
+        {
+          startDate: "2026-05-04",
+          startTime: "16:30",
+          fromReceipt: false,
+          departTz: "Pacific/Honolulu",
+          resolvedFlight: {
+            departure: { scheduledLocal: "2026-05-04T16:20" },
+          },
+        },
+      ],
+    );
+    expect(m.time).toBe("16:20");
+    expect(m.kind).toBe("start");
+    expect(m.tz).toBe("Pacific/Honolulu");
   });
 });
