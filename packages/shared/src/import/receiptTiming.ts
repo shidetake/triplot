@@ -1,5 +1,9 @@
 import { addDays, formatMinutes, parseWall } from "../schedule";
-import { receiptDate, type ReceiptWhen } from "./receiptDate";
+import {
+  receiptMoment,
+  type ReceiptWhen,
+  type SiblingEventWhen,
+} from "./receiptDate";
 import type { EventDraft, Receipt } from "./schema";
 
 // レシート由来の仮予定（飲食・土産・衣服・エンタメ・カジノの「既に済んだ消費」を
@@ -72,8 +76,12 @@ export type ReceiptEventTiming = {
 export function deriveReceiptEventTiming(
   title: string,
   receipt: ReceiptWhen,
+  // 同じメールから出た予定。時刻を持たないレシートは、予約の予定が持つ開始
+  // 時刻を借りる（receiptMoment）。費用の側と同じ関数を通るので、両者の起点が
+  // 食い違うことは無い。
+  siblings: readonly SiblingEventWhen[] = [],
 ): ReceiptEventTiming {
-  const { date, time } = receiptDate(receipt);
+  const { date, time, kind } = receiptMoment(receipt, siblings);
   if (!time) {
     return {
       kind: "timed",
@@ -85,7 +93,10 @@ export function deriveReceiptEventTiming(
   }
   const duration = DURATION_MINUTES[title] ?? DEFAULT_DURATION_MINUTES;
   const anchor = parseWall(`${date}T${time}`).minutes;
-  const [aMin, bMin] = START_ANCHORED_TITLES.has(title)
+  // 予約から借りた開始時刻は、そこから滞在が始まる（入場・乗車）。支払いの
+  // 瞬間だけが業態で前後に分かれる。
+  const forward = kind === "start" || START_ANCHORED_TITLES.has(title);
+  const [aMin, bMin] = forward
     ? [anchor, anchor + duration]
     : [anchor - duration, anchor];
 
@@ -115,7 +126,7 @@ export function applyReceiptEventTiming(
   if (!receipt) return events;
   return events.map((e) => {
     if (!e.fromReceipt) return e;
-    const timing = deriveReceiptEventTiming(e.title, receipt);
+    const timing = deriveReceiptEventTiming(e.title, receipt, events);
     return { ...e, ...timing };
   });
 }

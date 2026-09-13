@@ -37,7 +37,7 @@ import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
-import { receiptDate } from "./receiptDate";
+import { receiptDate, receiptMoment } from "./receiptDate";
 import { deriveReceiptEventTiming } from "./receiptTiming";
 import { localizeSettlementByTrip } from "./settlementTiming";
 import { resolveTransportCategory } from "./transportCategory";
@@ -299,19 +299,19 @@ function localizedReceipt(
 // 借りるのは開始時刻。費用は「その移動そのもの」で、1日の中の位置は出発で
 // 決まる。同じ日に複数あればいちばん早いもの。宿泊は終日で開始時刻を持たない
 // ので、従来どおり時刻なしのまま。
-function eventStartTimes(drafts: PendingDraft[] | null): Map<string, string> {
-  const byKey = new Map<string, string>();
+function eventsByEmail(
+  drafts: PendingDraft[] | null,
+): Map<string, StoredEventDraft[]> {
+  const byEmail = new Map<string, StoredEventDraft[]>();
   for (const d of drafts ?? []) {
     if (d.kind !== "event") continue;
     const ev = d.payload as unknown as StoredEventDraft | null;
-    // レシートから作った予定は「支払いの瞬間」の写し＝事実の持ち主ではない。
-    if (ev?.fromReceipt) continue;
-    if (!ev?.startDate || !ev.startTime) continue;
-    const key = `${d.email_id}|${ev.startDate}`;
-    const cur = byKey.get(key);
-    if (!cur || ev.startTime < cur) byKey.set(key, ev.startTime);
+    if (!ev) continue;
+    const arr = byEmail.get(d.email_id) ?? [];
+    arr.push(ev);
+    byEmail.set(d.email_id, arr);
   }
-  return byKey;
+  return byEmail;
 }
 
 // レシートの日時 → 0時からの通算分。時刻が無ければ null。
@@ -337,9 +337,10 @@ function wallMin(r: StoredReceipt | undefined): number | null {
 function retimedFromReceipt(
   ev: StoredEventDraft,
   r: StoredReceipt | undefined,
+  siblings: readonly StoredEventDraft[] = [],
 ): StoredEventDraft {
   if (!ev.fromReceipt || !r) return ev;
-  return { ...ev, ...deriveReceiptEventTiming(ev.title, r) };
+  return { ...ev, ...deriveReceiptEventTiming(ev.title, r, siblings) };
 }
 
 
@@ -358,7 +359,7 @@ export function deriveExpenseDraftItems(
     tzTimeline: TripTzTimeline;
   },
 ): ExpenseDraftItem[] {
-  const startTimes = eventStartTimes(drafts);
+  const siblings = eventsByEmail(drafts);
   return (
     (drafts ?? [])
       .filter((d) => d.kind === "expense")
@@ -369,14 +370,11 @@ export function deriveExpenseDraftItems(
           d.payload as unknown as StoredReceipt | null,
           ctx.tzTimeline,
         );
-        const base = receiptDate(r);
-        // 時刻が無い＝搭乗日・利用日を採ったレシート。同じメールの予定から借りる。
-        const when = base.time
-          ? base
-          : {
-              date: base.date,
-              time: startTimes.get(`${d.email_id}|${base.date}`),
-            };
+        // **仮予定と同じ関数で決める。** 時刻が無いレシート（使う日を採って
+        // 購入時刻を捨てた／通知が時刻を持たない）は、同じメールの予約の予定が
+        // 持つ開始時刻をここで借りる。
+        const m = receiptMoment(r, siblings.get(d.email_id) ?? []);
+        const when = { date: m.date, time: m.time ?? undefined };
         return { d, r, localizedTz: tz, when };
       })
       // 旅程の順（＝その費用の日付の古い順）。取り込んだ順
@@ -528,6 +526,10 @@ export function deriveEventDraftItems(
     if (tz) receiptTzByEmail.set(d.email_id, tz);
   }
 
+  // 時刻を持たないレシートが開始時刻を借りる相手（同じメールの予約の予定）。
+  // 費用の側と同じ関数（receiptMoment）に渡すので、起点が食い違うことは無い。
+  const siblingEvents = eventsByEmail(drafts);
+
   const items = (drafts ?? [])
     .filter((d) => d.kind === "event")
     .flatMap((d) => {
@@ -538,7 +540,11 @@ export function deriveEventDraftItems(
       // ので、焼き込まれた値のままだと日付だけ直って時間帯が取り残される。
       // 引き直しは決定的（見出しと日時だけで決まる）なので、レシートが変わって
       // いなければ保存値と同じ結果になる。
-      const ev = retimedFromReceipt(stored, receiptByEmail.get(d.email_id));
+      const ev = retimedFromReceipt(
+        stored,
+        receiptByEmail.get(d.email_id),
+        siblingEvents.get(d.email_id) ?? [],
+      );
       // 通常予定のTZは旅程から解決（乗継日は先頭候補。フォームのラジオで選び直せる）。
       // 移動日は候補が2つ出る。どちら側かを、証拠の強い順に当てる:
       //

@@ -43,6 +43,61 @@ export function receiptDate(r: ReceiptWhen | null): {
   return { date: r.serviceDate ?? r.date, time: r.time ?? undefined };
 }
 
+// 借りる相手＝同じメールから出た予定の、時刻の持ち主としての最小の形。
+export type SiblingEventWhen = {
+  startDate?: string | null;
+  startTime?: string | null;
+  fromReceipt?: boolean | null;
+};
+
+// レシートが指す「出来事の瞬間」。**仮費用の日時も仮予定の起点もこれ1つで
+// 決まる。**
+//
+// 以前は費用と予定が別々にこれを決めていて、費用側だけが2つ多く規則を持って
+// いた（使う日の優先と、予約の予定からの時刻の借用）。同じ事実から出発して
+// いるのに片方だけ正解する状態で、実データでは Diamond Head の入場券が
+// 費用 5/2 13:00・仮予定 4/18 と別の日に並んだ。**経路が2本あることが原因**
+// なので、1本にして、予定側は起点を所要時間で伸ばすだけにする。
+//
+// kind は「その時刻が何の瞬間か」。伸ばす向きが変わる:
+//   payment … 支払いの瞬間。業態で前後が決まる（会計は最後、カフェは先払い）
+//   start   … 予約の開始の瞬間。前に伸ばす（入場時刻から滞在が始まる）
+//   null    … 時刻が分からない。根拠の無い時間帯を作らない
+export type MomentKind = "payment" | "start";
+export type ReceiptMoment = {
+  date: string;
+  time: string | null;
+  kind: MomentKind | null;
+};
+
+export function receiptMoment(
+  r: ReceiptWhen | null,
+  siblings: readonly SiblingEventWhen[] = [],
+): ReceiptMoment {
+  const base = receiptDate(r);
+  if (!base.date) return { date: "", time: null, kind: null };
+  if (base.time) return { date: base.date, time: base.time, kind: "payment" };
+  // 時刻が無い＝使う日を採って購入時刻を捨てた／通知がそもそも時刻を持たない。
+  // **本当の時刻は同じメールの予約の予定が持っている**（搭乗・乗車・入場）。
+  //
+  // 借りる相手は予約から作った予定に限る。レシートから作った仮予定は支払いの
+  // 瞬間の写しなので、そこから借りると導いた値を読み返すことになり、実在しない
+  // 日時が経路を変えて復活する。
+  //
+  // 借りるのは開始時刻で、同じ日に複数あればいちばん早いもの。宿泊は終日で
+  // 開始時刻を持たないので借りる相手にならない。
+  let borrowed: string | null = null;
+  for (const ev of siblings) {
+    if (ev.fromReceipt) continue;
+    if (!ev.startDate || !ev.startTime) continue;
+    if (ev.startDate !== base.date) continue;
+    if (!borrowed || ev.startTime < borrowed) borrowed = ev.startTime;
+  }
+  return borrowed
+    ? { date: base.date, time: borrowed, kind: "start" }
+    : { date: base.date, time: null, kind: null };
+}
+
 export type DatedReceipt = {
   date: string;
   time: string | null;
