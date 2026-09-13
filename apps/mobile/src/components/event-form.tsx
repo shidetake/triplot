@@ -992,6 +992,9 @@ export function EventForm({
               setParticipantsMode(partMode === "all" ? "custom" : "all")
             }
             style={styles.disclosure}
+            // 文字の高さぶんしか押せないと届きにくい（ui-guidelines
+            // 「開けるものは開けると分かる形にする」）。
+            hitSlop={{ top: 10, bottom: 10 }}
           >
             <Text style={styles.disclosureLabel}>
               {t("participants")}:{" "}
@@ -999,6 +1002,11 @@ export function EventForm({
                 ? t("participantsAll")
                 : t("participantsSome")}
             </Text>
+            {/* 開けると分かる形にする。閉じているとき右向き、開いたら下向き
+                （ui-guidelines。タイムゾーンの行と同じ）。 */}
+            <View style={partMode === "custom" ? styles.chevronOpen : undefined}>
+              <ChevronIcon size={16} color={theme.mutedForeground} />
+            </View>
           </Pressable>
           {partMode === "custom" && (
             <View style={styles.chipWrap}>
@@ -1193,11 +1201,13 @@ const makeStyles = (t: Theme) =>
       justifyContent: "space-between",
     },
     optionPair: { flexDirection: "row", alignItems: "center", gap: 8 },
-    disclosure: { flexDirection: "row", alignItems: "center" },
+    disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
+    // **フォームのフィールドラベルは高濃度**（ui-guidelines「テキスト色の階層」）。
+    // 周りのラベルと同じにする——同じ役目なのに色が違うと、こちらだけ別物に見える。
     disclosureLabel: {
       fontSize: 14,
       fontWeight: "500",
-      color: t.mutedForeground,
+      color: t.foreground,
     },
     chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
     footer: { flexDirection: "row", gap: 8, marginTop: 4 },

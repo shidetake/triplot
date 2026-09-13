@@ -704,16 +704,18 @@ export function ExpenseForm({
           <Pressable
             onPress={() => setPayerOpen((v) => !v)}
             style={styles.disclosure}
+            hitSlop={{ top: 10, bottom: 10 }}
           >
             <Text style={styles.disclosureLabel}>
               {t("payer", {
                 name: members.find((m) => m.id === payer)?.display_name ?? "?",
               })}
             </Text>
+            {/* 閉じているとき右向き、開いたら下向き（ui-guidelines）。 */}
             <ChevronIcon
               size={16}
-              color={theme.subtleForeground}
-              rotate={payerOpen ? -90 : 90}
+              color={theme.mutedForeground}
+              rotate={payerOpen ? 90 : 0}
             />
           </Pressable>
           {payerOpen && (
@@ -745,16 +747,18 @@ export function ExpenseForm({
               }
             }}
             style={styles.disclosure}
+            hitSlop={{ top: 10, bottom: 10 }}
           >
             <Text style={styles.disclosureLabel}>
               {t("splitTargets", {
                 label: splitMode === "all" ? t("splitAll") : splitLabel,
               })}
             </Text>
+            {/* 閉じているとき右向き、開いたら下向き（ui-guidelines）。 */}
             <ChevronIcon
               size={16}
-              color={theme.subtleForeground}
-              rotate={splitMode === "all" ? 90 : -90}
+              color={theme.mutedForeground}
+              rotate={splitMode === "custom" ? 90 : 0}
             />
           </Pressable>
           {splitMode === "custom" && (
@@ -975,10 +979,12 @@ const makeStyles = (t: Theme) =>
     },
     inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
     disclosure: { flexDirection: "row", alignItems: "center", gap: 4 },
+    // **フォームのフィールドラベルは高濃度**（ui-guidelines「テキスト色の階層」）。
+    // 周りのラベルと同じにする——同じ役目なのに色が違うと、こちらだけ別物に見える。
     disclosureLabel: {
       fontSize: 14,
       fontWeight: "500",
-      color: t.mutedForeground,
+      color: t.foreground,
     },
     chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 6 },
     footer: { flexDirection: "row", gap: 8, marginTop: 8 },
