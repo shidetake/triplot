@@ -907,7 +907,12 @@ describe("deriveEventDraftItems", () => {
     });
   });
 
-  it("降車地は解決済みの候補より保存済みの場所を優先する", () => {
+  // **Google で引けたらそれを使う。** 保存済みとの名前の照合は受け皿に置く
+  // （placeMatch.ts 参照）。広い名前が具体的な店を飲み込む方向に外れるため
+  // （実データ: 地名「Waikiki」が「Hula Grill Waikiki」を飲み込んだ）。
+  // 同じ場所に寄せる目的は、確定時に同じ Google の場所 ID の行を再利用する
+  // ことで達成される。
+  it("降車地は保存済みの場所より解決済みの候補を優先する", () => {
     const items = deriveEventDraftItems(
       [
         {
@@ -934,6 +939,40 @@ describe("deriveEventDraftItems", () => {
               primaryType: null,
             },
           },
+        },
+      ],
+      {
+        ...eventCtx,
+        places: [
+          {
+            id: "saved-hnl",
+            name: "ダニエル・K・イノウエ国際空港",
+            formattedAddress: null,
+          },
+        ],
+      },
+    );
+    expect(items[0].prefill.endPlace).toMatchObject({
+      kind: "google",
+      placeId: "g-hnl",
+    });
+  });
+
+  // 受け皿の側。カードの明細表記のように Google で引けない名前は、ここでしか
+  // 既存の場所に寄せられない。
+  it("降車地が Google で引けなければ、保存済みの場所に寄せる", () => {
+    const items = deriveEventDraftItems(
+      [
+        {
+          id: "d1",
+          email_id: "e-d1",
+          kind: "event",
+          payload: eventDraft({
+            kind: "transit",
+            title: "移動",
+            departLocation: "412 Lewers St",
+            arriveLocation: "ダニエル・K・イノウエ国際空港",
+          }),
         },
       ],
       {

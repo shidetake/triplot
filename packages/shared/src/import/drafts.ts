@@ -400,9 +400,7 @@ export function deriveExpenseDraftItems(
         // 場所の名前は location を優先する（receiptPlaceName 参照。merchant は
         // 請求元なので、予約サイト経由だと代理店の名前になる）。
         const placeName = receiptPlaceName(r);
-        const savedPlace = matchSavedPlace(placeName, r.address, ctx.places);
         const place =
-          savedPlace ??
           (r.resolvedPlace
             ? candidateToDraftPlace(
                 r.resolvedPlace,
@@ -412,7 +410,7 @@ export function deriveExpenseDraftItems(
                   merchant: placeName,
                 }),
               )
-            : null);
+            : null) ?? matchSavedPlace(placeName, r.address, ctx.places);
         // 移動日のタイムゾーンの初期選択。予定側と同じ2段（経度→時刻）。
         // ここを持たないと費用フォームは常に先頭候補＝出発側で開き、日本→
         // ホノルルの移動日に、到着後の支払いが日本時間になる。
@@ -656,11 +654,9 @@ export function deriveEventDraftItems(
       const savedPlace = placeName
         ? matchSavedPlace(placeName, placeHint, ctx.places)
         : null;
-      // 保存済みマッチ（ライブ判定）を最優先、無ければ通常予定（transit 以外）で
-      // 事前解決済みの Google の場所（resolveNamedPlace 参照。
-      // apps/web/lib/import/process.ts が抽出直後に仕込む）。
+      // **Google で引けた場所が最優先。** 保存済みとの名前の照合はその受け皿
+      // （matchSavedPlace のコメント参照）。
       const place =
-        savedPlace ??
         (ev.kind === "transit"
           ? // 便名で引けない移動（配車・タクシー等）の乗車地。空港は
             // resolvedDeparturePlace をフライト側の分岐で使うので、ここに
@@ -677,8 +673,8 @@ export function deriveEventDraftItems(
                   merchant: ev.location,
                 }),
               )
-            : null);
-      // 移動の到着地（降車地）。出発地と同じ順で、保存済みの場所を最優先。
+            : null) ?? savedPlace;
+      // 移動の到着地（降車地）。出発地と同じ順で、Google で引けた場所を最優先。
       // 空港のように施設名で書かれていれば既にあるその場所に寄る。
       // どちらにも当たらなければ**抽出した文字列を自由入力として残す**。
       // 出発地は autoResolvePlace が同じ役目を果たしていて、到着地にだけ
@@ -686,10 +682,15 @@ export function deriveEventDraftItems(
       // （メールには書かれているのに到着地が入らない、という実機の報告）。
       const endPlaceName = ev.kind === "transit" ? ev.arriveLocation : null;
       const endPlace: EventDraftPlacePrefill = endPlaceName
-        ? (matchSavedPlace(endPlaceName, null, ctx.places) ??
-          (ev.resolvedArrivalPlace
+        ? ((ev.resolvedArrivalPlace
             ? candidateToDraftPlace(ev.resolvedArrivalPlace, null)
-            : { kind: "free", name: endPlaceName, lat: null, lng: null }))
+            : null) ??
+          matchSavedPlace(endPlaceName, null, ctx.places) ?? {
+            kind: "free",
+            name: endPlaceName,
+            lat: null,
+            lng: null,
+          })
         : null;
       const title = ev.title || ctx.untitledLabel;
       const whenLabel = eventDraftWhenLabel(ev, ctx.locale);
