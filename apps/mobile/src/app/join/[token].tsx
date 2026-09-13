@@ -14,6 +14,7 @@ import { useTranslations } from "use-intl";
 
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { joinTripViaInvite, peekInvite } from "@triplot/shared/data/invites";
+import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import {
@@ -59,14 +60,22 @@ export default function JoinScreen() {
     enabled: !!token,
   });
 
-  // 表示名の初期値。web と同じく full_name → name の順で拾う（Google は両方
-  // 入るが Apple は full_name のみ）。匿名セッションは何も持たないので空。
+  // 表示名の初期値は**アカウントの既定表示名**（users.display_name）。設定画面が
+  // 「旅行に参加するときのデフォルト表示名」と説明しているのはこの値で、旅行作成
+  // シートの初期値とも揃う（web の参加ページと同じ順序）。
+  const signedIn = !!session && !session.user.is_anonymous;
+  const { data: profile, isLoading: profileLoading } = useQuery({
+    queryKey: ["profile", session?.user.id],
+    queryFn: () => fetchUserProfile(supabase, session!.user.id),
+    enabled: signedIn,
+  });
+  // 既定表示名が空の時だけ、サインインの情報から full_name → name の順で拾う
+  // （Google は両方入るが Apple は full_name のみ）。匿名セッションは何も持たない。
   const meta = session?.user.user_metadata as
-    | { full_name?: string; name?: string }
-    | undefined;
-  const defaultName = session?.user.is_anonymous
-    ? ""
-    : (meta?.full_name ?? meta?.name ?? "");
+    { full_name?: string; name?: string } | undefined;
+  const defaultName = signedIn
+    ? profile?.display_name?.trim() || (meta?.full_name ?? meta?.name ?? "")
+    : "";
   const [name, setName] = useState<string | null>(null);
   const vName = name ?? defaultName;
   const [busy, setBusy] = useState(false);
@@ -113,7 +122,10 @@ export default function JoinScreen() {
     }
   };
 
-  if (isLoading || sessionLoading) return <View style={styles.screen} />;
+  // 既定表示名が届く前に描くと、入力欄の名前が後から書き換わる。
+  if (isLoading || sessionLoading || (signedIn && profileLoading)) {
+    return <View style={styles.screen} />;
+  }
 
   if (!title) {
     return (

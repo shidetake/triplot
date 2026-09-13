@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { peekInvite } from "@triplot/shared/data/invites";
+import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
 
@@ -44,9 +45,16 @@ export default async function JoinPage({
     );
   }
 
-  // 表示名の初期値。app-header と同じく full_name → name の順で拾う
-  // （Google は両方入るが Apple は full_name のみ）。
+  // 表示名の初期値は**アカウントの既定表示名**（users.display_name）。設定画面が
+  // 「旅行に参加するときのデフォルト表示名」と説明しているのはこの値で、旅行作成
+  // フォームの初期値とも揃う。まだ何も入っていない時だけ、サインインの情報から
+  // full_name → name の順で拾う（Google は両方入るが Apple は full_name のみ）。
+  const profile =
+    user && !user.is_anonymous
+      ? await fetchUserProfile(supabase, user.id)
+      : null;
   const defaultName =
+    profile?.display_name?.trim() ||
     (!user?.is_anonymous &&
       ((user?.user_metadata?.full_name as string | undefined) ??
         (user?.user_metadata?.name as string | undefined) ??
