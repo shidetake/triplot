@@ -615,23 +615,41 @@ export function WeekCalendar({
     // **scrollTo はここで呼ばない。** setHourPx の再描画で内容の高さ
     // （24 * hourPx）が変わるが、それが反映されるのは描画後。ここで呼ぶと
     // 拡大時は「まだ短い内容」に対してクランプされ、狙った位置より手前で
-    // 止まる。新しい高さが確定してから当てる（下の useEffect）。
+    // 止まる。新しい高さが確定してから当てる（下の applyPendingScroll）。
     pendingScrollY.current = y2;
+    // **見えている場所を動かさないまま、実体だけ入れ替える。**
+    //
+    // 指を離した瞬間に変形を消すと、実際の高さが新しくなるのは再描画の後なので、
+    // その間に「古い高さ・変形なし」の絵が1枚出る。さらに位置合わせ（scrollTo）は
+    // もう1つ後なので、「新しい高さ・古い位置」も挟まる。この2枚がちらつきの
+    // 正体（実機フィードバック）。
+    //
+    // 新しい高さは今見えている絵と同じ倍率なので、**ずれているのは位置だけ**。
+    // その差だけ content を動かしておけば、見た目は指を離す前と同じままになる。
+    // 位置合わせが実際に当たった時（下の onContentSizeChange）に 0 へ戻す。
     zoomScale.value = 1;
-    zoomTy.value = 0;
+    zoomTy.value = -(y2 - scrollYRef.current);
     setPinching(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodyViewportH]);
   /* eslint-enable react-hooks/immutability */
 
-  // hourPx が変わって内容の高さが確定した後に、保留していた位置へ飛ばす。
-  // useEffect は描画の後に走るので、新しい高さでクランプされる。
-  useEffect(() => {
+  // 保留していた位置へ飛ばす。**内容の高さが実際に変わった合図で当てる**
+  // （onContentSizeChange）。useEffect だと再描画の直後には走るが、ネイティブ側の
+  // 内容の高さがまだ古いことがあり、拡大時は短い内容に対してクランプされて
+  // 狙った位置より手前で止まる。
+  //
+  // 当てると同時に、commitZoom で入れておいた「ずれ打ち消し」を戻す。位置と
+  // 変形が同じ回で入れ替わるので、途中の絵が出ない。
+  const applyPendingScroll = useCallback(() => {
     const y = pendingScrollY.current;
     if (y === null) return;
     pendingScrollY.current = null;
     verticalScroll.current?.scrollTo({ y, animated: false });
-  }, [hourPx]);
+    // eslint-disable-next-line react-hooks/immutability
+    zoomTy.value = 0;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 縦ピンチ。**onUpdate は worklet（UI スレッド）**で、共有値を書き換えるだけ。
   // 指の間にある時刻を動かさないよう、拡大と同時に平行移動で引き戻す。
@@ -988,6 +1006,7 @@ export function WeekCalendar({
           scrollYSv.value = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
+        onContentSizeChange={applyPendingScroll}
         // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は画面下端に重なって
         // 浮くだけでレイアウト上の余白を確保しない（index.tsx の FAB と同じ
         // 事情。タブバー上端は画面下端から実測 約83pt）。末尾（21〜24時）が
