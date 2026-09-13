@@ -10,16 +10,26 @@ type ServiceClient = ReturnType<typeof createServiceClient>;
 // リース（期限つき）なので、実行が途中で死んでも自動で解ける。死んだ実行が
 // ロックを握ったままだと、以降そのロックが永久に取れなくなる。
 //
-// 排他が要る所は2つある。
+// 排他が要る所は3つある。
 //
-//   drain（毎分の cron）    重なると同じ行を2回抽出してしまう
-//                           （下書きが二重にでき、料金も月間の枠も二重に減る）
+//   drain（毎分の cron）    cron 同士が重ならないように
 //   抽出（ユーザ単位）      同時に抽出すると、お互いがまだ下書きになっていない
 //                           ので**マージの候補として見えない**（同じ取引の
 //                           レシートと利用通知が別々の費用として残る）
+//   抽出（メール単位）      **同じ1通を2回抽出しない。** 取り込みの入口は
+//                           「受信した瞬間」と「毎分の cron」の2つあり、
+//                           拾ってから状態が変わるまでの間はどちらからも
+//                           「未処理」に見える。実データ: 奈良バイクシェアの
+//                           メールが両方から抽出され、片方は何も作らず
+//                           （失敗を記録）、片方は予定を作った（成功を記録）。
+//                           LLM も場所の検索もそのぶん無駄に呼んでいた。
 //
-// 後者がユーザ単位なのは、マージが同じユーザの下書きの中でしか起きないから。
-// 全体で1つにすると無関係なユーザ同士が待ち合わせる。
+// ユーザ単位なのは、マージが同じユーザの下書きの中でしか起きないから。全体で
+// 1つにすると無関係なユーザ同士が待ち合わせる。
+//
+// **鍵は守る対象と同じ所に置く。** 以前は「呼び出し側が排他を持つ」という約束に
+// していたが、入口が増えた時に守られなくなった（cron はユーザ単位の鍵を取らずに
+// 同じ列へ入っていた）。今は抽出する関数自身が取る。
 
 const DRAIN_LEASE = "import_drain";
 
@@ -59,3 +69,13 @@ export const acquireExtractLease = (supabase: ServiceClient, userId: string) =>
 
 export const releaseExtractLease = (supabase: ServiceClient, userId: string) =>
   release(supabase, extractLeaseName(userId));
+
+// メール単位の抽出ロック。1通を2回抽出しないためのもので、ユーザ単位の鍵とは
+// 別の名前空間。
+const emailLeaseName = (emailId: string) => `email:${emailId}`;
+
+export const acquireEmailLease = (supabase: ServiceClient, emailId: string) =>
+  acquire(supabase, emailLeaseName(emailId));
+
+export const releaseEmailLease = (supabase: ServiceClient, emailId: string) =>
+  release(supabase, emailLeaseName(emailId));

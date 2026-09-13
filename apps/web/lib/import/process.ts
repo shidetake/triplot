@@ -1,7 +1,12 @@
 import { APICallError } from "ai";
 
 import { extractEmail, type TripHint } from "./extract";
-import { acquireExtractLease, releaseExtractLease } from "./drainLease";
+import {
+  acquireEmailLease,
+  acquireExtractLease,
+  releaseEmailLease,
+  releaseExtractLease,
+} from "./drainLease";
 import { fetchReceiptLink } from "./fetchLink";
 import { receiptPlaceName } from "@triplot/shared/import/merchantName";
 import {
@@ -1062,7 +1067,36 @@ async function runExtraction(
 // 初回の抽出試行（runExtraction を try/catch でくるむ）。失敗時はレート制限等の
 // 一時的失敗だけ next_retry_at を立てて自動リトライ対象にし、恒久失敗は null で残す。
 // 受信時の extractInBackground と over_quota の drain で共有する。
+//
+// **排他はここで取る。** 取り込みの入口は「受信した瞬間」と「毎分の cron」の
+// 2つあり、行は拾ってから状態が変わるまで（＝LLM と場所の解決が終わるまで）
+// どちらからも「未処理」に見える。以前は入口側が鍵を持つ約束だったが、cron は
+// ユーザ単位の鍵を取らずに同じ列へ入っていた（drainLease.ts 参照）。
+//
+// 2つ取る。**メール単位**は同じ1通を2回抽出しないため。**ユーザ単位**は同じ人の
+// 抽出を同時に走らせないため（走らせるとお互いの下書きが見えず、同じ取引の
+// レシートと利用通知が別々の費用として残る）。取れなければ黙って降りる——
+// 他方が処理しているので、待つ意味がない。
 async function attemptExtraction(
+  supabase: ServiceClient,
+  emailId: string,
+  userId: string,
+  raw: string,
+): Promise<void> {
+  if (!(await acquireExtractLease(supabase, userId))) return;
+  if (!(await acquireEmailLease(supabase, emailId))) {
+    await releaseExtractLease(supabase, userId);
+    return;
+  }
+  try {
+    await attemptExtractionLocked(supabase, emailId, userId, raw);
+  } finally {
+    await releaseEmailLease(supabase, emailId);
+    await releaseExtractLease(supabase, userId);
+  }
+}
+
+async function attemptExtractionLocked(
   supabase: ServiceClient,
   emailId: string,
   userId: string,
@@ -1162,18 +1196,16 @@ export async function extractInBackground(
   supabase: ServiceClient,
   userId: string,
 ): Promise<void> {
-  if (!(await acquireExtractLease(supabase, userId))) return;
-  try {
-    await drainPending(supabase, { userId });
-  } finally {
-    await releaseExtractLease(supabase, userId);
-  }
+  // **鍵はここでは取らない**（attemptExtraction が1通ごとに取る）。ここで
+  // 抱えると、内側で同じ鍵を取りにいって自分で自分を弾く。
+  await drainPending(supabase, { userId });
 }
 
 // まだ抽出していないメール（status='pending'）を古い順に1通ずつ処理する。
 // 受信時（そのユーザぶんだけ）と、毎分の cron（全ユーザ）から呼ぶ。
 //
-// **呼び出し側が排他を持っていること。** ここは直列に回すだけで、ロックは見ない。
+// **排他は1通ごとに attemptExtraction が取る。** ここは直列に回すだけ。入口が
+// 2つある（受信時・毎分の cron）ので、呼び出し側の約束にすると守られない。
 export async function drainPending(
   supabase: ServiceClient,
   opts: { userId?: string; deadline?: number } = {},
@@ -1278,6 +1310,13 @@ export async function retryDueErrors(
       if (Date.now() >= deadline) return summary;
       if (!row.raw || !row.user_id) continue;
       const attempt = (row.retry_count ?? 0) + 1;
+      // 再試行もほかの入口と同じ鍵を取る（attemptExtraction と同じ理由。
+      // drainLease.ts 参照）。取れなければ他が処理中なので飛ばす。
+      if (!(await acquireExtractLease(supabase, row.user_id))) continue;
+      if (!(await acquireEmailLease(supabase, row.id))) {
+        await releaseExtractLease(supabase, row.user_id);
+        continue;
+      }
       summary.attempted++;
       try {
         await runExtraction(supabase, row.id, row.user_id, row.raw);
@@ -1329,6 +1368,9 @@ export async function retryDueErrors(
               : new Date(Date.now() + backoffMs(attempt)).toISOString(),
           })
           .eq("id", row.id);
+      } finally {
+        await releaseEmailLease(supabase, row.id);
+        await releaseExtractLease(supabase, row.user_id);
       }
     }
   }
