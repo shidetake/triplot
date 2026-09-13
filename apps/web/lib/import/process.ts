@@ -354,8 +354,8 @@ async function resolveFlightPlaces(flight: {
   const apiKey = process.env.GOOGLE_PLACES_SERVER_API_KEY;
   if (!apiKey) return { departure: null, arrival: null };
   const [departure, arrival] = await Promise.all([
-    resolveAirportPlace(flight.departure, { apiKey }),
-    resolveAirportPlace(flight.arrival, { apiKey }),
+    resolveAirportPlaceCached(flight.departure, { apiKey }),
+    resolveAirportPlaceCached(flight.arrival, { apiKey }),
   ]);
   return { departure, arrival };
 }
@@ -519,7 +519,7 @@ async function prefetchFlights(
           try {
             // まず旅行の地理バイアスで引く（同名の店・停留所の取り違えを防ぐ）。
             if (rideCenter) {
-              const near = await resolveNamedPlace(name, null, {
+              const near = await resolveNamedPlaceCached(name, null, {
                 apiKey: placesApiKey,
                 biasCenter: rideCenter,
               });
@@ -530,7 +530,7 @@ async function prefetchFlights(
             // 「京都駅」とも正しい駅が先頭で返る）。バイアスは目的地
             // （ハワイ等）にあるので、帰国後の国内移動はバイアスがあると
             // むしろ引けない。旅行に未割り当ての下書きはバイアス自体が無い。
-            return await resolveNamedPlace(name, null, {
+            return await resolveNamedPlaceCached(name, null, {
               apiKey: placesApiKey,
               allowUnbiased: true,
             });
@@ -583,7 +583,7 @@ async function prefetchFlights(
         // 住所があればバイアスは要らない（resolveNamedPlace 参照）。旅行に
         // 座標つきの場所が1つも無くても、住所さえ書いてあれば解決できる。
         if (biasCenter || ev.address) {
-          const resolved = await resolveNamedPlace(ev.location, ev.address, {
+          const resolved = await resolveNamedPlaceCached(ev.location, ev.address, {
             apiKey: placesApiKey,
             biasCenter: biasCenter ?? undefined,
           });
@@ -717,6 +717,61 @@ async function enrichForDrafts(
   };
 }
 
+// 同じ名前を何度も Google に引かない。
+//
+// 取り込みは1通ずつ独立に場所を引くので、同じ店が何度でも引かれる。実測
+// （108通・1回の流し直し）: 引いた回数 81 に対し名前の種類は 27 で、**3分の2が
+// 重複**だった（Uber が12通、ABC ストアや Honolulu Coffee も複数通）。Places API
+// は引くたびに課金されるので、そのまま費用になる。
+//
+// 鍵には**答えが変わりうるものを全部入れる**（名前・住所・言語・種別の絞り込み・
+// 地理バイアス）。バイアスは 0.5 度（およそ 55km）の升目に丸める——バイアスは
+// 「近いものを上位に」の手がかりでしかなく、この粒度なら東京とホノルルを取り
+// 違えることはない。日ごとに少しずつ違う中心が同じ升目に入るので、重複が拾える。
+//
+// 1回のドレインで複数通を処理する（drainPending の while ループ）ので、プロセス内
+// に持つだけで効く。インスタンスが温かい間は次の起動にも効く。取り込みの
+// 実行中しか生きない値なので、上限を決めて溢れたら捨てる。
+const PLACE_CACHE_MAX = 500;
+const placeCache = new Map<string, PlaceCandidate | null>();
+
+function biasBucket(c?: { lat: number; lng: number }): string {
+  if (!c) return "-";
+  const r = (n: number) => Math.round(n * 2) / 2;
+  return `${r(c.lat)},${r(c.lng)}`;
+}
+
+async function resolveNamedPlaceCached(
+  name: string,
+  address: string | null,
+  opts: Parameters<typeof resolveNamedPlace>[2],
+): Promise<PlaceCandidate | null> {
+  const key = [
+    name.trim().toLowerCase(),
+    (address ?? "").trim().toLowerCase(),
+    opts.languageCode ?? "",
+    opts.includedType ?? "",
+    opts.allowUnbiased ? "unbiased" : biasBucket(opts.biasCenter),
+  ].join("|");
+  if (placeCache.has(key)) return placeCache.get(key) ?? null;
+  const r = await resolveNamedPlace(name, address, opts);
+  if (placeCache.size >= PLACE_CACHE_MAX) placeCache.clear();
+  placeCache.set(key, r);
+  return r;
+}
+
+async function resolveAirportPlaceCached(
+  endpoint: Parameters<typeof resolveAirportPlace>[0],
+  opts: Parameters<typeof resolveAirportPlace>[1],
+): Promise<PlaceCandidate | null> {
+  const key = `airport|${endpoint.name ?? ""}|${endpoint.lat ?? ""},${endpoint.lng ?? ""}`;
+  if (placeCache.has(key)) return placeCache.get(key) ?? null;
+  const r = await resolveAirportPlace(endpoint, opts);
+  if (placeCache.size >= PLACE_CACHE_MAX) placeCache.clear();
+  placeCache.set(key, r);
+  return r;
+}
+
 async function resolveReceiptPlace(
   supabase: ServiceClient,
   receipt: Receipt | null,
@@ -761,7 +816,7 @@ async function resolveReceiptPlace(
           ].filter((b): b is { lat: number; lng: number } => !!b);
     let best: { place: PlaceCandidate; km: number } | null = null;
     for (const biasCenter of biases) {
-      const r = await resolveNamedPlace(placeName, receipt.address, {
+      const r = await resolveNamedPlaceCached(placeName, receipt.address, {
         apiKey,
         biasCenter,
       });
@@ -775,7 +830,7 @@ async function resolveReceiptPlace(
     // 「解決できない → 座標なしの場所が増える → いつまでもバイアスが作れない」
     // の循環に入る。
     if (!receipt.address) return receipt;
-    const r = await resolveNamedPlace(placeName, receipt.address, {
+    const r = await resolveNamedPlaceCached(placeName, receipt.address, {
       apiKey,
     });
     return r ? { ...receipt, resolvedPlace: r } : receipt;
