@@ -992,6 +992,22 @@ async function runExtraction(
       sentAt,
     );
     await replacePendingDrafts(supabase, merge.targetId, merged);
+    // **吸収される側の下書きを消す。** 中身は合体先に入ったので、こちらに残って
+    // いると同じ予約が2行あることになる。
+    //
+    // この経路では下書きを作らないので普通は何も無い。**無いはずのものが実際に
+    // 残っていた**（実データ: Diamond Head の予約確認メールが、5回の流し直しの
+    // うち2回、吸収された側なのに下書きを1件持っていた）。このメールは親の3秒
+    // 後に届くので、親がまだ抽出されていないうちに1度処理されて単体の下書きを
+    // 作り、その後もう一度処理されて合体した、という形に見える。
+    //
+    // どう入り込んだかに関わらず、ここで消せば「吸収された側は下書きを持たない」
+    // が事実になる。確定済みは触らない（旅行側に実体があるため）。
+    await supabase
+      .from("inbound_drafts")
+      .delete()
+      .eq("email_id", emailId)
+      .eq("status", "pending");
     // 来たメールは merged として畳む（draft 行は作らない）。本文(body_text)は自分の行に残す。
     await supabase
       .from("inbound_emails")
