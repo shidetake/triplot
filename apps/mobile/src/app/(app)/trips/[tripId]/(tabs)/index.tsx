@@ -9,6 +9,10 @@ import {
 } from "@triplot/shared/import/drafts";
 import { buildSchedule } from "@triplot/shared/schedule";
 import {
+  HOUR_PX_MIN,
+  minEventMinutes,
+} from "@triplot/shared/calendarZoom";
+import {
   movedTzDisambig,
   type MovedTiming,
 } from "@triplot/shared/calendarMove";
@@ -52,6 +56,10 @@ export default function ScheduleTab() {
   // 誰の年表でカレンダーを描くか（既定は自分。web と同じ）。null は「自分」
   // ＝me が取れるまでの間も自分で描く。
   const [viewerOverride, setViewerOverride] = useState<string | null>(null);
+  // 週カレンダーの縮尺（1時間あたりの px）。**重なりの判定に使うので画面側でも
+  // 持つ**（カレンダーが持つのは描画のため、ここは組み立てのため）。ピンチが
+  // 確定した時だけ更新される。
+  const [hourPx, setHourPx] = useState(HOUR_PX_MIN);
   const viewerId = viewerOverride ?? me?.id ?? null;
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
@@ -91,6 +99,9 @@ export default function ScheduleTab() {
         defaultTimezone: data.trip.default_timezone,
         viewerMemberId: viewerId,
         memberIds: activeMembers.map((m) => m.id),
+        // **重なりの判定は今の縮尺で行う。** 拡大すると同じ15pxが表す分数が
+        // 小さくなり、隙間の空いた予定は2列に分かれなくなる。
+        minEventMin: minEventMinutes(hourPx),
       })
     : null;
   const hasDivergence = schedule?.groups.some((g) => g.diverged) ?? false;
@@ -199,6 +210,7 @@ export default function ScheduleTab() {
             </View>
           )}
           <WeekCalendar
+            onHourPxChange={setHourPx}
             schedule={schedule}
             viewerLabel={
               hasDivergence ? t("schedule.viewAs", { name: viewerName }) : null

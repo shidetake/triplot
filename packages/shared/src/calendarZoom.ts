@@ -6,6 +6,9 @@
 // px で上限を持つと端末の高さによって見える範囲が変わる。
 export const ZOOM_MAX_VISIBLE_HOURS = 6;
 
+// 一番縮めた時の1時間の高さ（px）。縮尺の下限で、既定の表示でもある。
+export const HOUR_PX_MIN = 30;
+
 // 画面の高さから、1時間の高さの上限を導く。まだ測れていない（0）ときは
 // 既定の3倍を仮に使う（iPhone 16 Pro の実測がおよそこの倍率）。
 export function maxHourPx(viewportH: number, minHourPx: number): number {
@@ -44,3 +47,20 @@ export function zoomAnchoredScrollY(a: {
   return Math.max(0, Math.min(maxScroll, y));
 }
 
+// 予定ブロックの**見た目の最低の高さ（px）**。短い予定でも見出しが読める高さを
+// 確保するためのもので、schedule.ts はこれを分に直した値で重なりを判定する。
+//
+// 値は既定の縮尺（1時間30px）で30分ぶん＝15px。ここを起点に、拡大したら必要な
+// 分数は小さくなる（下の minEventMinutes）。
+export const MIN_EVENT_PX = 15;
+
+// 今の縮尺で、最低の高さが何分に相当するか。
+//
+// **最低の高さはピクセルの話なので、縮尺で変わる。** 分で固定すると、拡大して
+// 実際には隙間が空いている2つの予定が「重なっている」と判定され続け、2列に
+// 分かれたままになる（実機フィードバック）。1時間が90pxまで拡大されていれば、
+// 15px は10分ぶんでしかない。
+export function minEventMinutes(hourPx: number): number {
+  if (hourPx <= 0) return 30;
+  return Math.max(1, Math.round((MIN_EVENT_PX / hourPx) * 60));
+}

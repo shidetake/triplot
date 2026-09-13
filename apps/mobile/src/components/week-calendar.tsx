@@ -25,9 +25,11 @@ import {
   type MovedTiming,
 } from "@triplot/shared/calendarMove";
 import {
+  HOUR_PX_MIN,
   maxHourPx,
   zoomAnchoredScrollY,
   zoomedHourPx,
+  minEventMinutes,
 } from "@triplot/shared/calendarZoom";
 import {
   eventBlockColors,
@@ -59,7 +61,6 @@ const GUTTER = 44; // 時刻ガター幅
 // 1時間の高さ。**縦ピンチで変えられる**（Google カレンダーと同じ）。この値は
 // 既定であり最小＝一番引いた状態で、ここから拡大していく。上限と寄せ直しの
 // 計算は calendarZoom（純関数・テストあり）が持つ。
-const HOUR_PX_MIN = 30;
 
 // 24時の下に足す余白。NativeTabs（浮島タブバー）はレイアウト上の場所を取らず
 // 画面下端に重なるだけなので、これが無いと末尾（21〜24時）がタブバーの下に
@@ -153,6 +154,7 @@ export function WeekCalendar({
   onEventMove,
   onSlotPick,
   onAllDaySlotPick,
+  onHourPxChange,
 }: {
   schedule: Schedule;
   // 年表が分かれている日の日付欄に添える「誰の時間か」（web と同じ）。
@@ -174,6 +176,10 @@ export function WeekCalendar({
   onSlotPick: (date: string, minutes: number) => void;
   // 終日帯の長押し→横ドラッグ→離した日付で終日予定を追加（web と同じ）。
   onAllDaySlotPick?: (date: string) => void;
+  // ピンチで縮尺が確定した時に呼ぶ（1時間あたりの px）。**重なりの判定は縮尺で
+  // 変わる**ので、レイアウトを組む側（画面）が今の縮尺を知る必要がある
+  // （calendarZoom.ts の minEventMinutes）。指を動かしている間は呼ばない。
+  onHourPxChange?: (hourPx: number) => void;
 }) {
   const t = useTheme();
   const styles = useThemedStyles(makeStyles);
@@ -602,6 +608,7 @@ export function WeekCalendar({
       contentPaddingBottom: SCROLL_PADDING_BOTTOM,
     });
     setHourPx(next);
+    onHourPxChange?.(next);
     hourPxSv.value = next;
     scrollYRef.current = y2;
     scrollYSv.value = y2;
@@ -730,6 +737,8 @@ export function WeekCalendar({
 
   // ゴーストが既存予定と重なるときのレーン引き直し（shared・web と共用）。
   const ghostColKey = ghost ? columns[ghost.columnIndex]?.key : undefined;
+  // ゴーストの合流も本体と同じ最低の高さで判定する（別々だとゴーストの周りだけ
+  // 列の分かれ方が変わる）。
   const laneOverrides = computeGhostLaneOverrides(
     ghost && ghostColKey
       ? {
@@ -740,6 +749,7 @@ export function WeekCalendar({
       : null,
     timed,
     transits,
+    minEventMinutes(hourPx),
   );
 
   // 取り込み下書き（未確定）の見た目。まだ実データが無く参加者/公開範囲が

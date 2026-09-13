@@ -27,6 +27,9 @@ export function computeGhostLaneOverrides(
   ghost: GhostTarget | null,
   timed: PlacedEvent[],
   transits: PlacedTransit[],
+  // 重なりの判定に使う最低の高さ（分換算）。schedule.ts と同じ値を渡す
+  // ——別々の値で判定すると、ゴーストの周りだけ列の分かれ方が変わる。
+  minEventMin: number = MIN_EVENT_MIN,
 ): Map<string, LaneOverride> | null {
   if (!ghost) return null;
   const ghostColKey = ghost.columnKey;
@@ -68,7 +71,7 @@ export function computeGhostLaneOverrides(
       const laneEnds: number[] = [];
       const assigned: { e: Entry; lane: number }[] = [];
       for (const e of others) {
-        const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
+        const dispEnd = Math.max(e.endMin, e.topMin + minEventMin);
         let lane = laneEnds.findIndex((ee) => ee <= e.topMin);
         if (lane === -1) {
           lane = laneEnds.length;
@@ -88,7 +91,7 @@ export function computeGhostLaneOverrides(
     clusterEnd = -1;
   };
   for (const e of entries) {
-    const dispEnd = Math.max(e.endMin, e.topMin + MIN_EVENT_MIN);
+    const dispEnd = Math.max(e.endMin, e.topMin + minEventMin);
     if (cluster.length === 0 || e.topMin < clusterEnd) {
       cluster.push(e);
       clusterEnd = Math.max(clusterEnd, dispEnd);

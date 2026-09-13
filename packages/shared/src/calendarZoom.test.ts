@@ -5,6 +5,8 @@ import {
   zoomAnchoredScrollY,
   zoomedHourPx,
   ZOOM_MAX_VISIBLE_HOURS,
+  minEventMinutes,
+  HOUR_PX_MIN,
 } from "./calendarZoom";
 
 const MIN = 30;
@@ -88,3 +90,20 @@ describe("zoomAnchoredScrollY", () => {
   });
 });
 
+
+// **最低の高さはピクセルの話なので、縮尺で変わる。** 分で固定すると、拡大して
+// 実際には隙間が空いている2つの予定が「重なっている」と判定され続け、2列に
+// 分かれたままになる（実機フィードバック）。
+describe("minEventMinutes", () => {
+  it("既定の縮尺では30分（従来の値）", () => {
+    expect(minEventMinutes(HOUR_PX_MIN)).toBe(30);
+  });
+
+  it("3倍に拡大すると10分でよくなる", () => {
+    expect(minEventMinutes(HOUR_PX_MIN * 3)).toBe(10);
+  });
+
+  it("縮尺が測れていなくても壊れない", () => {
+    expect(minEventMinutes(0)).toBe(30);
+  });
+});

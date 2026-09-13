@@ -288,8 +288,10 @@ export function isTzBoundary(
   );
 }
 
-// 表示上の最低高さ（分換算）。レーン重なり判定でも使うため週カレンダー
-// 側のゴースト合流計算と値を共有したいので export する。
+// 表示上の最低高さ（分換算）の既定。**縮尺を持たない呼び出し側のための値**で、
+// 既定の縮尺（1時間30px）で15px に相当する。拡大できる画面は今の縮尺から
+// 計算した値を渡す（calendarZoom.ts の minEventMinutes）。
+// レーン重なり判定でも使うため、ゴースト合流計算と値を共有できるよう export する。
 export const MIN_EVENT_MIN = 30;
 const DEFAULT_DURATION_MIN = 60; // end が無い時刻イベントの既定長
 // 縦軸は常に 0:00〜24:00 固定（添付図と同じ。予定に応じて伸縮させない）。
@@ -316,9 +318,16 @@ export function buildSchedule(
     viewerMemberId?: string | null;
     /** 旅行のアクティブメンバー。年表が分かれている日（diverged）の判定に使う。 */
     memberIds?: readonly string[];
+    /**
+     * 予定ブロックの最低の高さ（分換算）。**重なりの判定はこの高さで行う**ので、
+     * 拡大できる画面は今の縮尺から出した値を渡す（calendarZoom.ts の
+     * minEventMinutes）。省略すると既定の縮尺の値。
+     */
+    minEventMin?: number;
   },
 ): Schedule {
   const locale = opts.locale ?? "ja";
+  const minEventMin = opts.minEventMin ?? MIN_EVENT_MIN;
   // **TZ が変わらない移動は、旅程の上では通常の予定として扱う。**
   //
   // 配車・タクシー・在来線も種別は「移動」で保存される（ユーザーがそう言って
@@ -822,7 +831,7 @@ export function buildSchedule(
       const laneEnds: number[] = [];
       const assigned: { p: Segment; lane: number }[] = [];
       for (const p of cluster) {
-        const dispEnd = Math.max(p.endMin, p.topMin + MIN_EVENT_MIN);
+        const dispEnd = Math.max(p.endMin, p.topMin + minEventMin);
         let lane = laneEnds.findIndex((e) => e <= p.topMin);
         if (lane === -1) {
           lane = laneEnds.length;
@@ -869,7 +878,7 @@ export function buildSchedule(
       clusterEnd = -1;
     };
     for (const p of arr) {
-      const dispEnd = Math.max(p.endMin, p.topMin + MIN_EVENT_MIN);
+      const dispEnd = Math.max(p.endMin, p.topMin + minEventMin);
       if (cluster.length === 0 || p.topMin < clusterEnd) {
         cluster.push(p);
         clusterEnd = Math.max(clusterEnd, dispEnd);

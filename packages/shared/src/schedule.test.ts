@@ -1179,3 +1179,46 @@ describe("buildSchedule: 見ている人の年表で描く（viewerMemberId）",
     expect(s.groups.every((g) => g.diverged === false)).toBe(true);
   });
 });
+
+// 実機フィードバック: 拡大すると隙間が空いて見えるのに、2列に分かれたままだった。
+// 重なりの判定に使う最低の高さが分で固定されていたため。
+describe("重なりの判定は縮尺で変わる", () => {
+  const ev = (id: string, start: string, end: string) => ({
+    id,
+    title: id,
+    kind: "normal" as const,
+    allDay: false,
+    startAt: `2026-04-28T${start}`,
+    endAt: `2026-04-28T${end}`,
+    startTz: null,
+    endTz: null,
+    tzDisambigTransitId: null,
+    tzDisambigSide: null,
+    startPlaceId: null,
+    endPlaceId: null,
+    visibility: "shared" as const,
+    note: null,
+    needsReservation: false,
+    reservationDone: false,
+    participantsEveryone: true,
+    participantMemberIds: [] as string[],
+  });
+  // 5分の予定（18:50-18:55）と、その20分後に始まる予定。実際には隙間がある。
+  // 短い予定は最低の高さまで引き伸ばして描かれるので、その高さ次第でぶつかる。
+  const events = [ev("a", "18:50", "18:55"), ev("b", "19:15", "19:45")];
+  const opts = {
+    tripStart: "2026-04-28",
+    tripEnd: "2026-04-28",
+    defaultTimezone: "Pacific/Honolulu",
+  };
+
+  it("縮めた時は2列（最低の高さが30分ぶんあり、ぶつかる）", () => {
+    const s = buildSchedule(events, { ...opts, minEventMin: 30 });
+    expect(s.timed.map((p) => p.laneCount)).toEqual([2, 2]);
+  });
+
+  it("拡大した時は1列（最低の高さが10分ぶんになり、隙間が残る）", () => {
+    const s = buildSchedule(events, { ...opts, minEventMin: 10 });
+    expect(s.timed.map((p) => p.laneCount)).toEqual([1, 1]);
+  });
+});
