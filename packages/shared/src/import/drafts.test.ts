@@ -93,7 +93,7 @@ function eventDraft(p: Partial<EventDraft>): EventDraft {
     address: null,
     referenceId: null,
     isUpdate: false,
-    fromReceipt: false,
+    timeFromReceipt: false,
     ...p,
   };
 }
@@ -269,7 +269,7 @@ describe("deriveExpenseDraftItems", () => {
           // （StoredReceipt.tz 参照）。
           date: "2026-04-29",
           time: "13:25",
-          tz: "Pacific/Honolulu",
+          writtenTz: "Pacific/Honolulu",
           resolvedPlace: { placeId: "p1", name: "Hanauma Bay", lat: 21.269, lng: -157.694 },
         },
       };
@@ -318,7 +318,7 @@ describe("deriveExpenseDraftItems", () => {
             startTime: null,
             endDate: null,
             endTime: null,
-            fromReceipt: true,
+            timeFromReceipt: true,
           },
         },
       ];
@@ -357,7 +357,7 @@ describe("deriveExpenseDraftItems", () => {
           startTime: "18:00",
           endDate: "2026-08-01",
           endTime: "18:30",
-          fromReceipt: true,
+          timeFromReceipt: true,
         },
       },
       {
@@ -371,7 +371,7 @@ describe("deriveExpenseDraftItems", () => {
           startTime: "10:00",
           endDate: "2026-08-01",
           endTime: "12:00",
-          fromReceipt: false,
+          timeFromReceipt: false,
         },
       },
     ];
@@ -457,7 +457,7 @@ describe("deriveExpenseDraftItems", () => {
 
     it("レシートから作った仮予定からは借りない（自分が導いた値を読み返さない）", () => {
       const [item] = deriveExpenseDraftItems(
-        ride({ kind: "timed", fromReceipt: true }),
+        ride({ kind: "timed", timeFromReceipt: true }),
         expenseCtx,
       );
       expect(item.initialTime).toBeUndefined();

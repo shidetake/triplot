@@ -47,7 +47,7 @@ function event(p: Partial<EventDraft>): EventDraft {
     address: null,
     referenceId: null,
     isUpdate: false,
-    fromReceipt: false,
+    timeFromReceipt: false,
     ...p,
   };
 }
@@ -386,13 +386,13 @@ describe("selectMergeCandidates: 宿泊の同一判定", () => {
     ).toEqual(["no-ref"]);
   });
 
-  // レシート由来の仮予定（fromReceipt）は「その日その店にいた」という別物なので、
+  // レシート由来の仮予定（timeFromReceipt）は「その日その店にいた」という別物なので、
   // 施設名と日付がたまたま揃っても宿泊の同一判定には使わない。
   it("レシート由来の仮予定は宿泊の同一判定に使わない", () => {
-    const fromReceipt = stay({ fromReceipt: true });
+    const timeFromReceipt = stay({ timeFromReceipt: true });
     expect(
-      selectMergeCandidates(fromReceipt, [
-        { id: "also-receipt", extraction: stay({ fromReceipt: true }) },
+      selectMergeCandidates(timeFromReceipt, [
+        { id: "also-receipt", extraction: stay({ timeFromReceipt: true }) },
       ]).map((c) => c.id),
     ).toEqual(["also-receipt"]);
   });

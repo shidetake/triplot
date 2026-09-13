@@ -126,7 +126,7 @@ export const IMPORT_SYSTEM_PROMPT = [
   // （所要時間も receiptTiming が 30 分を持っている）。
   "カテゴリが飲食・土産・衣服・エンタメ・カジノ（＝その場に滞在して過ごした性質の",
   "支払い）か、その他（＝業態が読めなかったもの）なら、receipt とは別に events にも",
-  "対応する予定を1件追加する（kind 'timed'、fromReceipt は true）。**それ以外は対象外",
+  "対応する予定を1件追加する（kind 'timed'、timeFromReceipt は true）。**それ以外は対象外",
   "——events には追加しない。**渡航・宿泊・現地移動（乗り物での移動）は、既に上の",
   "transit/allday の指示で予定を作っているのでここでは重複させない。通信・医療は",
   "そもそも『その場に滞在した』と言えないので対象外。",
@@ -139,7 +139,7 @@ export const IMPORT_SYSTEM_PROMPT = [
   "カテゴリが その他 ＝業態が読めなかった時は、title を『買い物』にする。",
   "**この予定の startTime/endTime は null のままでよい**（アプリ側が receipt の",
   "日時と title の所要時間目安から機械的に計算する。ここで時刻を計算しないこと）。",
-  "startDate だけレシートの日付を入れる。fromReceipt はこの自動生成の仮予定にだけ",
+  "startDate だけレシートの日付を入れる。timeFromReceipt はこの自動生成の仮予定にだけ",
   "true を付け、本物の予約・旅程には false。",
   "このレシート由来の仮予定は『予約』ではなく『会計記録』なので、予定側の referenceId",
   "にはレシートの取引番号・注文番号・承認番号を入れない（null のまま）。メールに来店",

@@ -49,7 +49,7 @@ export function receiptDate(r: ReceiptWhen | null): {
 export type SiblingEventWhen = {
   startDate?: string | null;
   startTime?: string | null;
-  fromReceipt?: boolean | null;
+  timeFromReceipt?: boolean | null;
   departTz?: string | null;
   arriveTz?: string | null;
   // 便名から引き直した実際の時刻。**予定の側はこちらを表示に使う**ので、
@@ -114,7 +114,7 @@ export function receiptMoment(
   let start: string | null = null;
   let tz: string | null = null;
   for (const ev of siblings) {
-    if (ev.fromReceipt) continue;
+    if (ev.timeFromReceipt) continue;
     const s = siblingStart(ev);
     if (!s || s.date !== base.date) continue;
     if (!start || s.time < start) {

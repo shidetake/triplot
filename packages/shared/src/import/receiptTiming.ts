@@ -70,7 +70,7 @@ export type ReceiptEventTiming = {
 // **kind は timed のまま変えない。** レシート由来の仮予定は「1日の中の出来事
 // として捉える予定」で定義され（schema.ts 参照）、それは時刻が分かるかとは
 // 別の話。以前はここで allday に落としていて、sanitizeEventDraft が
-// fromReceipt を見て一度 timed に決めた直後にこの関数が上書きし、時刻の無い
+// timeFromReceipt を見て一度 timed に決めた直後にこの関数が上書きし、時刻の無い
 // レシート（銀行の通知等）由来の仮予定が結局 allday で保存されていた
 // （実データ: 108通中2通で再現）。
 export function deriveReceiptEventTiming(
@@ -117,16 +117,40 @@ export function deriveReceiptEventTiming(
   };
 }
 
-// receipt由来の仮予定（fromReceipt=true）の時刻を、確定した receipt の日時
-// から機械的に埋め直す。他の予定（本物の予約・旅程）には触らない。
+// **時間帯をレシートから作る対象かどうかは、印ではなく観察で決める。**
+//
+// 印（timeFromReceipt）は LLM が付けるもので、同じメールでも付いたり付かなかったり
+// する。実データ: カードの利用通知から作られた「Snorkel Rentals at Hanauma Bay」が、
+// ある回は決済時刻を開始に写した時間付きの予定、別の回は印の無い終日の予定になった。
+// メールの中身は変わっていない。
+//
+// 印が無くても、**自分の時刻を持たない予定は時刻の出どころがレシートしかない**。
+// そこは判断ではなく事実なので、こちらで決める。
+//
+// 移動は対象外——年表の境界になる予定で、種別を降ろすと境界が消える。宿泊のように
+// 複数日にまたがる終日の予定も対象外で、1時間の枠にしてはいけない。
+function takesTimeFromReceipt(e: EventDraft): boolean {
+  if (e.kind === "transit") return false;
+  if (e.timeFromReceipt) return true;
+  // 自分の時刻を持っている＝メールに書かれた事実。触らない。
+  if (e.startTime) return false;
+  if (e.endDate && e.endDate !== e.startDate) return false;
+  return true;
+}
+
+// 対象の予定の時間帯を、確定した receipt の日時から機械的に埋め直す。
+// **埋めたものには印を立てる**——伸ばした時間帯の片端は見積もりなので、後段が
+// それを事実として読み返さないようにする（重なりの解き方・時刻の借り先）。
 export function applyReceiptEventTiming(
   receipt: Receipt | null,
   events: EventDraft[],
 ): EventDraft[] {
   if (!receipt) return events;
   return events.map((e) => {
-    if (!e.fromReceipt) return e;
+    if (!takesTimeFromReceipt(e)) return e;
     const timing = deriveReceiptEventTiming(e.title, receipt, events);
-    return { ...e, ...timing };
+    return { ...e, ...timing, timeFromReceipt: true };
   });
 }
+
+export { takesTimeFromReceipt };

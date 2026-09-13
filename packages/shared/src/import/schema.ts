@@ -315,18 +315,25 @@ export const eventDraftSchema = z.object({
     .describe(
       "既存予約の変更・確定・リマインダーの通知なら true。新規予約の確認なら false",
     ),
-  // 「既に済んだ消費（レシート）から自動生成した仮予定」かどうか。true の時は
-  // startTime/endTime は null のままでよい（アプリが receipt の日時と title
-  // から所要時間の目安で機械的に埋める。所要時間の算出は receiptTiming.ts）。
-  // 判断が要るのは「何をした時間か」（title）だけで、時刻の計算は要らない。
-  fromReceipt: z
+  // **この予定の時間帯を、レシートの支払い時刻から作ったか。**
+  //
+  // メールに書かれている時刻には2種類ある。予約メールの「14:49 発」は事実なので
+  // そのまま使う。カードの利用通知の「18:02」は支払った瞬間でしかなく、何時から
+  // 何時までそこに居たかは書かれていないので、業態ごとの所要時間で前後に伸ばして
+  // 時間帯を作る（receiptTiming.ts）。この印は後者であることを表す。
+  //
+  // **印が無くても、自分の時刻を持たない予定は後者になる**（時刻の出どころが
+  // レシートしかないため）。その時はアプリ側がこの印を立てる＝ここは LLM の
+  // 申告だけで決まる値ではない。印が要るのは、伸ばした時間帯の片端が見積もり
+  // だと後段が知るため（重なりの解き方・時刻の借り先から外す判断）。
+  timeFromReceipt: z
     .boolean()
     .describe(
-      "true = 既に済んだ消費（店頭レシート・利用明細）から自動生成する仮予定" +
-        "（飲食・土産・衣服・エンタメ・カジノ・その他の receipt に対応するもの）。" +
-        "この場合 startTime/endTime は null のままでよい（アプリ側で計算する）。" +
-        "false = メールに書かれた本物の予約・旅程（フライト・宿泊・レストラン" +
-        "予約等）",
+      "true = 時間帯をレシートの支払い時刻から作る予定（飲食・土産・衣服・" +
+        "エンタメ・カジノ・その他の receipt に対応する仮予定）。この場合" +
+        " startTime/endTime は null のままでよい（アプリ側で計算する）。" +
+        "false = メールに開始時刻が書かれている本物の予約・旅程（フライト・" +
+        "宿泊・レストラン予約等）",
     ),
 });
 
@@ -418,7 +425,7 @@ export function canonicalTimeZone(tz: string): string | null {
 //  - 時刻/TZ は形式・実在を検証し、不正は null に落とす（フォームで人が直す）
 //  - kind の整合を補正: transit は到着（日時）が揃わなければ timed/allday に降格、
 //    timed は開始時刻が無ければ allday に降格。allday は時刻を持たない。
-//    **ただしレシート由来の仮予定（fromReceipt）は時刻がまだ入らないだけなので
+//    **ただしレシート由来の仮予定（timeFromReceipt）は時刻がまだ入らないだけなので
 //    つねに timed に寄せる**（降格の対象外）
 //  - transit 以外は TZ・便名・ターミナル・出発/到着地を持たない（events の参照化モデルと一致）
 //    ／ transit は逆に汎用 location を持たない（departLocation/arriveLocation を使う）
@@ -444,9 +451,9 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
   // で来ていた）。
   //
   // transit はこの規則の外。移動は常に本物の移動で、レシート由来ではありえない
-  // （下で fromReceipt を false に戻す）。誤って立った印の側に合わせて種別を
+  // （下で timeFromReceipt を false に戻す）。誤って立った印の側に合わせて種別を
   // 降ろすと、移動が移動でなくなる。
-  if (kind !== "transit" && d.fromReceipt) {
+  if (kind !== "transit" && d.timeFromReceipt) {
     kind = "timed";
   } else if (kind === "timed" && !startTime) {
     // レシート由来でない予定は、開始時刻が無ければ時刻の単位で置けないので終日扱い。
@@ -477,7 +484,7 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       address: null,
       // transit は常に本物の移動（フライト・配車等）で、レシート由来の仮予定
       // には該当しない。LLM が誤って true にしても機械的に false へ戻す。
-      fromReceipt: false,
+      timeFromReceipt: false,
     };
   }
   // timed/allday: 終了 >= 開始（壁時計）を要求。破れば終了を落とす。
@@ -503,6 +510,6 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
     arriveLocation: null,
     location: d.location,
     address: d.address,
-    fromReceipt: d.fromReceipt,
+    timeFromReceipt: d.timeFromReceipt,
   };
 }

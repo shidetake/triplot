@@ -38,7 +38,10 @@ import { matchPlace, type TripPlace } from "./placeMatch";
 import { guessImportPlaceIcon } from "./placeIconGuess";
 import type { EventDraft, Receipt } from "./schema";
 import { receiptDate, receiptMoment } from "./receiptDate";
-import { deriveReceiptEventTiming } from "./receiptTiming";
+import {
+  deriveReceiptEventTiming,
+  takesTimeFromReceipt,
+} from "./receiptTiming";
 import { localizeSettlementByTrip } from "./settlementTiming";
 import { resolveTransportCategory } from "./transportCategory";
 import { type FixedBlock, resolveDraftOverlaps } from "./draftOverlap";
@@ -97,7 +100,7 @@ export type StoredReceipt = Receipt & {
   // なのでこの値を持って、**現地化は「この瞬間をその土地の壁時計で表す」操作**
   // にする。すでにその土地で書かれていれば何もしない＝何度通しても同じ。
   // null は「どの暦か分からない」（店のレシートで場所が解決できていない等）。
-  tz?: string | null;
+  writtenTz?: string | null;
   // 取り込んだ時点で取っておいた為替レート表（fxRates.ts）。その通貨の1件目を
   // 自動で確定できるようにするためのもので、実績が1件でもできれば以降は
   // その平均が優先される。
@@ -274,7 +277,7 @@ function localizedReceipt(
   // ここは「取り込み時に現地化できなかったもの」の受け皿なので、済んだものは
   // 通さない。二度通すと、既に現地の壁時計になっているものを発行元の暦と読んで
   // ずらしてしまう（StoredReceipt.tz 参照）。
-  if (r.tz) return { r, tz: r.tz };
+  if (r.writtenTz) return { r, tz: r.writtenTz };
   const fixed = localizeSettlementByTrip(r, tzTimeline);
   // **読んだタイムゾーンも一緒に返す。** これを捨てると、移動日にどちら側かを
   // 受け取った側が別の手がかりで当て直すことになり、日付と食い違う。
@@ -285,9 +288,10 @@ function localizedReceipt(
           ...r,
           date: fixed.date,
           time: fixed.time,
+          writtenTz: fixed.writtenTz,
           ...(fixed.serviceDate ? { serviceDate: fixed.serviceDate } : {}),
         },
-        tz: fixed.tz,
+        tz: fixed.writtenTz,
       }
     : { r, tz: null };
 }
@@ -304,7 +308,7 @@ function localizedReceipt(
 //   仮予定の時間帯 = 支払いの瞬間から機械的に伸ばす（receiptTiming.ts）
 //
 // **どちらも「事実」から一方向に導く。導いた値を読み返さない。** レシートから
-// 作った仮予定（fromReceipt）は支払いの瞬間の写しなので、そこから費用の時刻を
+// 作った仮予定（timeFromReceipt）は支払いの瞬間の写しなので、そこから費用の時刻を
 // 借りると、支払いの瞬間を使う瞬間として扱うことになる——搭乗日と購入時刻を
 // 組み合わせた実在しない日時が、経路を変えて復活する。だから借りる相手は
 // **予約から作った予定に限る**。
@@ -345,15 +349,21 @@ function wallMin(r: StoredReceipt | undefined): number | null {
   );
 }
 
-// レシート由来の仮予定（fromReceipt）の時間帯を、そのレシートの日時から
+// レシート由来の仮予定（timeFromReceipt）の時間帯を、そのレシートの日時から
 // 引き直す。レシートが無い予定（本物の予約・旅程）には触らない。
 function retimedFromReceipt(
   ev: StoredEventDraft,
   r: StoredReceipt | undefined,
   siblings: readonly StoredEventDraft[] = [],
 ): StoredEventDraft {
-  if (!ev.fromReceipt || !r) return ev;
-  return { ...ev, ...deriveReceiptEventTiming(ev.title, r, siblings) };
+  // 対象かどうかの判定は取り込み時と同じ（takesTimeFromReceipt）。2箇所で別々に
+  // 決めると片方だけ直して食い違う。
+  if (!r || !takesTimeFromReceipt(ev)) return ev;
+  return {
+    ...ev,
+    ...deriveReceiptEventTiming(ev.title, r, siblings),
+    timeFromReceipt: true,
+  };
 }
 
 
@@ -576,7 +586,7 @@ export function deriveEventDraftItems(
       const ownTz =
         ev.kind === "transit"
           ? (ev.departTz ?? ev.arriveTz)
-          : ev.fromReceipt
+          : ev.timeFromReceipt
             ? (receiptTzByEmail.get(d.email_id) ?? null)
             : null;
       const narrowed =
@@ -734,7 +744,7 @@ export function deriveEventDraftItems(
           tz,
           // レシートから作った予定だけが「推測でない時刻」を持つ。予約から
           // 作った予定は時刻そのものが事実なので持たせない（開始で並ぶ）。
-          anchorMin: ev.fromReceipt
+          anchorMin: ev.timeFromReceipt
             ? wallMin(receiptByEmail.get(d.email_id))
             : null,
           prefill: {

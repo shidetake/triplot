@@ -33,7 +33,7 @@ function draft(p: Partial<EventDraft>): EventDraft {
     address: null,
     referenceId: null,
     isUpdate: false,
-    fromReceipt: false,
+    timeFromReceipt: false,
     ...p,
   };
 }

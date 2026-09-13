@@ -14,7 +14,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
   const reservation = {
     startDate: "2026-05-02",
     startTime: "13:00",
-    fromReceipt: false,
+    timeFromReceipt: false,
   };
 
   it("使う日が別で、同じメールに予約があるなら、両方がその開始時刻を起点にする", () => {
@@ -41,7 +41,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
   // 読み返すことになる（実在しない日時が経路を変えて復活する）。
   it("借りる相手はレシート由来の仮予定を含まない", () => {
     const m = receiptMoment(ticket, [
-      { startDate: "2026-05-02", startTime: "09:00", fromReceipt: true },
+      { startDate: "2026-05-02", startTime: "09:00", timeFromReceipt: true },
     ]);
     expect(m.time).toBeNull();
   });
@@ -69,7 +69,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
         {
           startDate: "2026-04-28",
           startTime: "08:32",
-          fromReceipt: false,
+          timeFromReceipt: false,
           departTz: "Pacific/Honolulu",
           arriveTz: "Pacific/Honolulu",
         },
@@ -93,7 +93,7 @@ describe("仮費用と仮予定の起点は必ず一致する", () => {
         {
           startDate: "2026-05-04",
           startTime: "16:30",
-          fromReceipt: false,
+          timeFromReceipt: false,
           departTz: "Pacific/Honolulu",
           resolvedFlight: {
             departure: { scheduledLocal: "2026-05-04T16:20" },

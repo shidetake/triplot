@@ -28,7 +28,7 @@ function draft(p: Partial<EventDraft>): EventDraft {
     address: null,
     referenceId: null,
     isUpdate: false,
-    fromReceipt: false,
+    timeFromReceipt: false,
     ...p,
   };
 }
@@ -147,7 +147,7 @@ describe("sanitizeEventDraft", () => {
   // （実データ: 43件中3件が allday で来ていた）。
   it("レシート由来の仮予定は、時刻が無くても timed のまま", () => {
     expect(
-      sanitizeEventDraft(draft({ fromReceipt: true, startTime: null }))?.kind,
+      sanitizeEventDraft(draft({ timeFromReceipt: true, startTime: null }))?.kind,
     ).toBe("timed");
   });
 
@@ -155,22 +155,22 @@ describe("sanitizeEventDraft", () => {
     const d = sanitizeEventDraft(
       draft({
         kind: "allday",
-        fromReceipt: true,
+        timeFromReceipt: true,
         title: "買い物",
         startTime: null,
         endDate: null,
       }),
     );
     expect(d?.kind).toBe("timed");
-    expect(d?.fromReceipt).toBe(true);
+    expect(d?.timeFromReceipt).toBe(true);
   });
 
   // transit だけは別（レシート由来ではありえないので false に戻す既存の規則が勝つ）。
-  it("transit は fromReceipt を false に戻したうえで種別を保つ", () => {
+  it("transit は timeFromReceipt を false に戻したうえで種別を保つ", () => {
     const d = sanitizeEventDraft(
       draft({
         kind: "transit",
-        fromReceipt: true,
+        timeFromReceipt: true,
         startTime: "19:10",
         endDate: "2026-08-01",
         endTime: "21:30",
@@ -179,7 +179,7 @@ describe("sanitizeEventDraft", () => {
       }),
     );
     expect(d?.kind).toBe("transit");
-    expect(d?.fromReceipt).toBe(false);
+    expect(d?.timeFromReceipt).toBe(false);
   });
 
   it("allday は時刻を持たない", () => {

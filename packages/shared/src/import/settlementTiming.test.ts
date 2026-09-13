@@ -23,7 +23,7 @@ describe("localizeSettlementTiming", () => {
         sentAt: "2026-04-29T02:38:23.000Z",
         placeTz: HNL,
       }),
-    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
+    ).toEqual({ date: "2026-04-28", time: "16:38", writtenTz: HNL });
   });
 
   it("本文に日時があればそれを発行元の暦で読んで直す（送信時刻は要らない）", () => {
@@ -32,7 +32,7 @@ describe("localizeSettlementTiming", () => {
         { ...sony, time: "11:38" },
         { sentAt: null, placeTz: HNL },
       ),
-    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
+    ).toEqual({ date: "2026-04-28", time: "16:38", writtenTz: HNL });
   });
 
   // 後日まとめて届く「ご利用金額確定のお知らせ」や、何か月も経ってからの転送。
@@ -86,7 +86,7 @@ describe("localizeSettlementTiming", () => {
         sentAt: "2026-04-29T02:38:23.000Z",
         placeTz: "Asia/Tokyo",
       }),
-    ).toEqual({ date: "2026-04-29", time: "11:38", tz: "Asia/Tokyo" });
+    ).toEqual({ date: "2026-04-29", time: "11:38", writtenTz: "Asia/Tokyo" });
   });
 
   // 実データ: ホノルルの衣料品店の決済通知（date/serviceDate とも 2026-04-29）が
@@ -103,7 +103,7 @@ describe("localizeSettlementTiming", () => {
       date: "2026-04-28",
       time: "16:38",
       serviceDate: "2026-04-28",
-      tz: HNL,
+      writtenTz: HNL,
     });
   });
 
@@ -115,7 +115,7 @@ describe("localizeSettlementTiming", () => {
         { ...sony, time: "11:38", serviceDate: "2026-05-10" },
         { sentAt: null, placeTz: HNL },
       ),
-    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
+    ).toEqual({ date: "2026-04-28", time: "16:38", writtenTz: HNL });
   });
 });
 
@@ -140,7 +140,7 @@ describe("現地化は何度通しても同じ（冪等）", () => {
     expect(localizeSettlementTiming(star, ctx)).toEqual({
       date: "2026-05-01",
       time: "18:02",
-      tz: HNL,
+      writtenTz: HNL,
     });
   });
 
@@ -148,7 +148,7 @@ describe("現地化は何度通しても同じ（冪等）", () => {
     const once = localizeSettlementTiming(star, ctx);
     expect(once).not.toBeNull();
     const twice = localizeSettlementTiming(
-      { ...star, ...(once as { date: string; time: string; tz: string }) },
+      { ...star, ...(once as { date: string; time: string; writtenTz: string }) },
       ctx,
     );
     expect(twice).toBeNull();
@@ -159,13 +159,13 @@ describe("現地化は何度通しても同じ（冪等）", () => {
   it("行き先が変われば、記録された暦から数え直す", () => {
     const once = localizeSettlementTiming(star, ctx);
     const moved = localizeSettlementTiming(
-      { ...star, ...(once as { date: string; time: string; tz: string }) },
+      { ...star, ...(once as { date: string; time: string; writtenTz: string }) },
       { sentAt: ctx.sentAt, placeTz: "Asia/Tokyo" },
     );
     expect(moved).toEqual({
       date: "2026-05-02",
       time: "13:02",
-      tz: "Asia/Tokyo",
+      writtenTz: "Asia/Tokyo",
     });
   });
 });
@@ -210,7 +210,7 @@ describe("localizeSettlementByTrip", () => {
       date: "2026-04-28",
       time: "15:42",
       // どのタイムゾーンで読んだかも返す（受け取った側が当て直さないように）。
-      tz: HNL,
+      writtenTz: HNL,
     });
   });
 
@@ -222,7 +222,7 @@ describe("localizeSettlementByTrip", () => {
         { ...wholefds, date: "2026-04-29", sentAt: "2026-04-28T18:00:00.000Z" },
         timeline,
       ),
-    ).toEqual({ date: "2026-04-28", time: "08:00", tz: HNL });
+    ).toEqual({ date: "2026-04-28", time: "08:00", writtenTz: HNL });
   });
 
   it("移動が1本も無い旅程では直さない（居場所の根拠が無い）", () => {

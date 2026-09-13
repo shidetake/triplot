@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveReceiptEventTiming } from "./receiptTiming";
+import {
+  applyReceiptEventTiming,
+  deriveReceiptEventTiming,
+} from "./receiptTiming";
 
 // レシートの最小形（日付・時刻・使う日）。使う日を持たないレシートが既定。
 const r = (date: string, time: string | null, serviceDate: string | null = null) => ({
@@ -50,7 +53,7 @@ describe("deriveReceiptEventTiming", () => {
   // レシート由来の仮予定は常に timed（schema.ts の定義参照）。時刻が無くても
   // 終日には落とさない——根拠の無い時間帯を「作らない」のと、種別を「timed の
   // まま保つ」のは別の話。以前はここで allday に落としていて、
-  // sanitizeEventDraft が fromReceipt を見て一度 timed に決めた直後にこの
+  // sanitizeEventDraft が timeFromReceipt を見て一度 timed に決めた直後にこの
   // 関数が上書きしていた（実データ: 銀行の通知など時刻を持たないレシート由来
   // の仮予定が 108通中2通、結局 allday で保存されていた）。
   it("レシートに時刻が無くても timed のまま、時刻だけ作らない", () => {
@@ -86,5 +89,63 @@ describe("deriveReceiptEventTiming", () => {
     expect(t.startDate).toBe("2026-05-02");
     expect(t.startTime).toBe("13:34");
     expect(t.endTime).toBe("14:34");
+  });
+});
+
+// **対象かどうかは印ではなく観察で決める。** 印（timeFromReceipt）は LLM が付ける
+// もので、同じメールでも付いたり付かなかったりする。実データ: カードの利用通知から
+// 作られた「Snorkel Rentals at Hanauma Bay」が、ある回は決済時刻を開始に写した時間
+// 付きの予定、別の回は印の無い終日の予定になった（メールの中身は変わっていない）。
+describe("applyReceiptEventTiming の対象", () => {
+  const receipt = {
+    date: "2026-04-29",
+    time: "10:07",
+    serviceDate: null,
+  } as never;
+  const ev = (over: Record<string, unknown>) =>
+    ({
+      kind: "timed",
+      title: "観光",
+      startDate: "2026-04-29",
+      startTime: null,
+      endDate: null,
+      endTime: null,
+      timeFromReceipt: false,
+      ...over,
+    }) as never;
+
+  it("自分の時刻を持たない予定は、印が無くてもレシートから作る", () => {
+    const [out] = applyReceiptEventTiming(receipt, [
+      ev({ kind: "allday", title: "Snorkel Rentals at Hanauma Bay" }),
+    ]) as unknown as Record<string, unknown>[];
+    expect(out.startTime).toBe("09:07");
+    expect(out.endTime).toBe("10:07");
+    expect(out.kind).toBe("timed");
+    // 片端は見積もりなので、事実として読み返されないよう印を立てる。
+    expect(out.timeFromReceipt).toBe(true);
+  });
+
+  it("自分の時刻を持つ予定には触らない（メールに書かれた事実）", () => {
+    const [out] = applyReceiptEventTiming(receipt, [
+      ev({ title: "Diamond Head State Monument", startTime: "13:00", endTime: "14:00" }),
+    ]) as unknown as Record<string, unknown>[];
+    expect(out.startTime).toBe("13:00");
+    expect(out.timeFromReceipt).toBe(false);
+  });
+
+  it("複数日にまたがる終日（宿泊）は1時間の枠にしない", () => {
+    const [out] = applyReceiptEventTiming(receipt, [
+      ev({ kind: "allday", title: "宿泊", endDate: "2026-05-04" }),
+    ]) as unknown as Record<string, unknown>[];
+    expect(out.startTime).toBeNull();
+    expect(out.kind).toBe("allday");
+  });
+
+  it("移動は対象外（年表の境界なので種別を降ろさない）", () => {
+    const [out] = applyReceiptEventTiming(receipt, [
+      ev({ kind: "transit", title: "Uber" }),
+    ]) as unknown as Record<string, unknown>[];
+    expect(out.kind).toBe("transit");
+    expect(out.startTime).toBeNull();
   });
 });
