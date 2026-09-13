@@ -456,6 +456,11 @@ export async function findMerge(
     merged.receipt.serviceDate = authoritative.serviceDate;
     merged.receipt.dateIsSettlement = authoritative.dateIsSettlement;
     merged.receipt.settlementTz = authoritative.settlementTz ?? null;
+    // **どの暦で書かれた日付かも一緒に運ぶ。** これを落とすと、すでに現地化
+    // されている値が「まだ直していない値」に見え、合体のたびにもう一度
+    // 現地化されてずれる（StoredReceipt.tz 参照）。
+    (merged.receipt as StoredReceipt).tz =
+      (authoritative as { tz?: string | null }).tz ?? null;
     // 送信時刻も日付と一緒に運ぶ（drafts.ts の sentAt 参照）。これが無いと、
     // 場所が後から解決した時に現地化をやり直せない。
     // 型の上では抽出結果（zod）に sentAt は無いが、合体先の下書きは保存済みの

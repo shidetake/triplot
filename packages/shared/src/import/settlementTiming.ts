@@ -39,6 +39,10 @@ export type SettlementTiming = {
   // 「実際に使う日」が支払日と別にある時だけ入る（航空券の搭乗日等。
   // drafts.ts の receiptDate 参照）。店頭購入等で該当しなければ null/undefined。
   serviceDate?: string | null;
+  // **この date/time がどの土地の壁時計で書かれているか**（drafts.ts の
+  // StoredReceipt.tz 参照）。これが目的地と同じなら直す必要は無い＝何度通しても
+  // 同じ結果になる。null は「分からない」で、その時は settlementTz を頼る。
+  tz?: string | null;
 };
 
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -52,9 +56,23 @@ const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
 export function localizeSettlementTiming(
   r: SettlementTiming,
   ctx: { sentAt: string | null; placeTz: string | null },
-): { date: string; time: string | null; serviceDate?: string } | null {
-  const srcTz = r.settlementTz ?? null;
+): {
+  date: string;
+  time: string | null;
+  serviceDate?: string;
+  tz: string;
+} | null {
+  // **どの暦で書かれているかは、書かれている値の側が持つ。** 現地化は「この
+  // 瞬間をその土地の壁時計で表す」操作なので、すでにその土地で書かれていれば
+  // 何もしない。これが無いと、合体のたびに直した値をもう一度直してずれる
+  // （drafts.ts の StoredReceipt.tz にある実データの例）。
+  const srcTz = r.tz ?? r.settlementTz ?? null;
   if (!r.dateIsSettlement || !srcTz || !ctx.placeTz) return null;
+  // **すでにその土地の壁時計だと分かっているなら、やることは無い。** 判定に使う
+  // のは記録された暦であって、発行元の暦ではない——国内利用（発行元と同じ土地）
+  // でも、まだ記録が無いなら通す必要がある。時刻の無い通知に送信時刻から時刻を
+  // 付けるのは変換ではなく、欠けている情報を補う操作だから。
+  if (r.tz && r.tz === ctx.placeTz) return null;
 
   const wall =
     YMD_RE.test(r.date) && r.time
@@ -65,8 +83,11 @@ export function localizeSettlementTiming(
       : localizeBySendTime(r.date, srcTz, ctx);
   if (!wall) return null;
 
-  const fixed = { date: wall.slice(0, 10), time: wall.slice(11, 16) };
-  if (fixed.date === r.date && fixed.time === r.time) return null;
+  const fixed = {
+    date: wall.slice(0, 10),
+    time: wall.slice(11, 16),
+    tz: ctx.placeTz,
+  };
   // **serviceDate は date の写しだった時だけ一緒に直す。** 店頭購入は
   // 「支払った瞬間＝使った瞬間」なので、抽出時に serviceDate が date と
   // 同じ値で入っていることがある（本来 null であるべきだが、そう抽出されて
@@ -118,7 +139,8 @@ export function localizeSettlementByTrip(
   r: SettlementTiming & { sentAt?: string | null },
   timeline: TripTzTimeline,
 ): { date: string; time: string | null; serviceDate?: string; tz: string } | null {
-  const srcTz = r.settlementTz ?? null;
+  // 暦の出どころは本体と同じ順（すでに現地化済みならその土地）。
+  const srcTz = r.tz ?? r.settlementTz ?? null;
   if (!r.dateIsSettlement || !srcTz) return null;
   // 直す前の瞬間。本文に時刻があれば発行元の暦で読み、無ければ通知の送信時刻。
   // どちらを使ったかに関わらず、その瞬間で居場所を引く。
@@ -136,10 +158,10 @@ export function localizeSettlementByTrip(
     sentAt: r.sentAt ?? null,
     placeTz: tripTz,
   });
-  // **どのタイムゾーンで読んだかも返す。** 日付と時刻だけ渡すと、受け取った側が
-  // 移動日にどちら側かを別の手がかりで当て直すことになり、答えが食い違う
-  // （実データ: 4/28 15:42 とホノルルで出した値に、日本のタイムゾーンが
+  // **どのタイムゾーンで読んだかも一緒に返る**（fixed.tz）。日付と時刻だけ渡すと、
+  // 受け取った側が移動日にどちら側かを別の手がかりで当て直すことになり、答えが
+  // 食い違う（実データ: 4/28 15:42 とホノルルで出した値に、日本のタイムゾーンが
   // 付いていた。4/28 を選べた根拠がホノルルなのだから、この組み合わせは
   // ありえない）。
-  return fixed ? { ...fixed, tz: tripTz } : null;
+  return fixed;
 }

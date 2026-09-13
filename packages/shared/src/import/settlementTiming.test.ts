@@ -23,7 +23,7 @@ describe("localizeSettlementTiming", () => {
         sentAt: "2026-04-29T02:38:23.000Z",
         placeTz: HNL,
       }),
-    ).toEqual({ date: "2026-04-28", time: "16:38" });
+    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
   });
 
   it("本文に日時があればそれを発行元の暦で読んで直す（送信時刻は要らない）", () => {
@@ -32,7 +32,7 @@ describe("localizeSettlementTiming", () => {
         { ...sony, time: "11:38" },
         { sentAt: null, placeTz: HNL },
       ),
-    ).toEqual({ date: "2026-04-28", time: "16:38" });
+    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
   });
 
   // 後日まとめて届く「ご利用金額確定のお知らせ」や、何か月も経ってからの転送。
@@ -86,7 +86,7 @@ describe("localizeSettlementTiming", () => {
         sentAt: "2026-04-29T02:38:23.000Z",
         placeTz: "Asia/Tokyo",
       }),
-    ).toEqual({ date: "2026-04-29", time: "11:38" });
+    ).toEqual({ date: "2026-04-29", time: "11:38", tz: "Asia/Tokyo" });
   });
 
   // 実データ: ホノルルの衣料品店の決済通知（date/serviceDate とも 2026-04-29）が
@@ -99,7 +99,12 @@ describe("localizeSettlementTiming", () => {
         { ...sony, time: "11:38", serviceDate: "2026-04-29" },
         { sentAt: null, placeTz: HNL },
       ),
-    ).toEqual({ date: "2026-04-28", time: "16:38", serviceDate: "2026-04-28" });
+    ).toEqual({
+      date: "2026-04-28",
+      time: "16:38",
+      serviceDate: "2026-04-28",
+      tz: HNL,
+    });
   });
 
   // 航空券の搭乗日等、本当に支払日と別の日を指す serviceDate は触らない
@@ -110,7 +115,58 @@ describe("localizeSettlementTiming", () => {
         { ...sony, time: "11:38", serviceDate: "2026-05-10" },
         { sentAt: null, placeTz: HNL },
       ),
-    ).toEqual({ date: "2026-04-28", time: "16:38" });
+    ).toEqual({ date: "2026-04-28", time: "16:38", tz: HNL });
+  });
+});
+
+// **同じ処理を2回通しても動かない。** レシートの日時はアプリの外から来る
+// 「実際に起きた瞬間」で、銀行は自国の暦で書く。壁時計だけを持つと、直した後の値
+// と直す前の値が見分けられず、合体のたびにもう一度直してずれる。
+//
+// 実データ: ソニー銀行の「ご利用のお知らせ」（日本の暦で 5/2、時刻なし）が送信
+// 時刻からホノルルの 5/1 18:02 になった後、「金額確定のお知らせ」と合体した際に
+// もう一度現地化され、5/1 18:02 を日本時間として読み直して 4/30 23:02 になった。
+// 19時間＝日本とハワイの時差ぶん余計にずれている。
+describe("現地化は何度通しても同じ（冪等）", () => {
+  const star = {
+    date: "2026-05-02",
+    time: null,
+    dateIsSettlement: true,
+    settlementTz: "Asia/Tokyo",
+  };
+  const ctx = { sentAt: "2026-05-02T04:02:24.000Z", placeTz: HNL };
+
+  it("1回目で現地の壁時計になり、どの土地の暦かが値に残る", () => {
+    expect(localizeSettlementTiming(star, ctx)).toEqual({
+      date: "2026-05-01",
+      time: "18:02",
+      tz: HNL,
+    });
+  });
+
+  it("2回目は何もしない（1回目の結果を発行元の暦と読み直さない）", () => {
+    const once = localizeSettlementTiming(star, ctx);
+    expect(once).not.toBeNull();
+    const twice = localizeSettlementTiming(
+      { ...star, ...(once as { date: string; time: string; tz: string }) },
+      ctx,
+    );
+    expect(twice).toBeNull();
+  });
+
+  // 場所が後から別の土地に解決し直された時は、記録された暦から読んで直す
+  // （生の発行元の暦からではない）。
+  it("行き先が変われば、記録された暦から数え直す", () => {
+    const once = localizeSettlementTiming(star, ctx);
+    const moved = localizeSettlementTiming(
+      { ...star, ...(once as { date: string; time: string; tz: string }) },
+      { sentAt: ctx.sentAt, placeTz: "Asia/Tokyo" },
+    );
+    expect(moved).toEqual({
+      date: "2026-05-02",
+      time: "13:02",
+      tz: "Asia/Tokyo",
+    });
   });
 });
 

@@ -38,7 +38,7 @@ describe("場所が後から解決した時の現地化", () => {
         sentAt: a.sentAt,
         placeTz: "Pacific/Honolulu",
       }),
-    ).toEqual({ date: "2026-04-30", time: "16:55" });
+    ).toEqual({ date: "2026-04-30", time: "16:55", tz: "Pacific/Honolulu" });
   });
 
   it("今処理しているメール（確定）の送信時刻では直せない", () => {
