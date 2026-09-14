@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslations } from "use-intl";
 
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
@@ -49,6 +50,10 @@ export default function JoinScreen() {
   const styles = useThemedStyles(makeStyles);
   const theme = useTheme();
   const { session, isLoading: sessionLoading } = useSession();
+  // この画面はナビヘッダーを出さない（ルート直下・認証ゲートの外）ので、
+  // 中身が status bar とダイナミックアイランドの下に潜る。上端の余白は
+  // 自分で持つ（ヘッダーを出す画面は OS がやってくれるぶん）。
+  const insets = useSafeAreaInsets();
   const [lastAuthProvider, setLastAuthProvider] = useState<AuthProvider | null>(
     null,
   );
@@ -148,7 +153,7 @@ export default function JoinScreen() {
   return (
     <ScrollView
       style={styles.screen}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 24 }]}
       keyboardShouldPersistTaps="handled"
     >
       <Text style={styles.invitedTo}>{t("invitedTo")}</Text>
