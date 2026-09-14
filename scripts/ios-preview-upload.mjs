@@ -19,7 +19,7 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { put } from "@vercel/blob";
+import { del, list, put } from "@vercel/blob";
 
 if (!process.env.BLOB_READ_WRITE_TOKEN) {
   const envLocalPath = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".env.local");
@@ -29,6 +29,34 @@ if (!process.env.BLOB_READ_WRITE_TOKEN) {
   } catch {
     // .env.local が無ければ後段の @vercel/blob 側のエラーに任せる
   }
+}
+
+// **古いビルドは残さない。** 1回 17MB ほどあるので、上げっぱなしだと保存先の
+// 上限（Hobby プランは 1GB）に当たってアップロードが失敗する——実際に当てた。
+// 手順として「たまに消す」と書いても思い出した時しか実行されないので、上げる
+// コマンド自体に埋める（AGENTS.md「機械が判定できるものはコマンドに埋める」）。
+//
+// 残すのは直近 KEEP 回ぶん。1回のビルドは ios-preview/<時刻>/ の下に ipa と
+// manifest の2つを置くので、**時刻の単位でまとめてから**古い順に消す。
+const KEEP = 3;
+
+async function pruneOldBuilds() {
+  const { blobs } = await list({ limit: 1000 });
+  const builds = new Map();
+  for (const b of blobs) {
+    const m = b.pathname.match(/^ios-preview\/(\d+)\//);
+    if (!m) continue;
+    const key = m[1];
+    if (!builds.has(key)) builds.set(key, []);
+    builds.get(key).push(b.url);
+  }
+  const old = [...builds.keys()]
+    .sort((a, b) => Number(b) - Number(a))
+    .slice(KEEP);
+  if (old.length === 0) return;
+  const urls = old.flatMap((k) => builds.get(k));
+  await del(urls);
+  console.log(`古いビルドを ${old.length} 回ぶん消しました（直近 ${KEEP} 回は残す）`);
 }
 
 const [, , ipaPath] = process.argv;
@@ -66,6 +94,10 @@ console.log(`ipa metadata: ${JSON.stringify(meta)}`);
 const stamp = Date.now();
 const ipaBlobName = `ios-preview/${stamp}/triplot-preview.ipa`;
 const manifestBlobName = `ios-preview/${stamp}/manifest.plist`;
+
+// **上げる前に間引く。** 上げてから消すと、上限に当たった時にそもそも
+// 上げられない（消す処理まで辿り着けない）。
+await pruneOldBuilds();
 
 const ipaBuffer = readFileSync(ipaAbsPath);
 console.log(`Uploading ipa (${(ipaBuffer.length / 1024 / 1024).toFixed(1)} MB)...`);
