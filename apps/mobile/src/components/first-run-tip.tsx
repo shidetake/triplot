@@ -45,6 +45,7 @@ export function FirstRunTip({
     <Host style={{ width: anchorWidth, height: anchorHeight }}>
       <Popover
         isPresented
+        attachmentAnchor="trailing"
         arrowEdge="top"
         onIsPresentedChange={(presented) => {
           if (!presented) onDismiss();
