@@ -242,18 +242,14 @@ export default function ScheduleTab() {
                         setViewerPickOpen(true);
                         dismissTip();
                       },
-                      // 案内は角の操作子を包む形で渡す（吹き出しは OS が描く）。
-                      tip: (anchor, size) => (
+                      tip: (pos) => (
                         <FirstRunTip
                           visible={!tipSeen}
                           title={t("schedule.viewerTipTitle")}
                           text={t("schedule.viewerTip")}
                           onDismiss={dismissTip}
-                          anchorWidth={size.width}
-                          anchorHeight={size.height}
-                        >
-                          {anchor}
-                        </FirstRunTip>
+                          {...pos}
+                        />
                       ),
                     }
                   : null
