@@ -4,6 +4,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactElement,
   type ReactNode,
 } from "react";
 import {
@@ -179,9 +180,12 @@ export function WeekCalendar({
   viewer?: {
     member: MemberLite;
     onPress: () => void;
-    // 初めての人にだけ出す案内（角を指す吹き出し）。出すかどうかは画面側が
-    // 状態で決める。位置だけここが知っているので、受け取って角の下に置く。
-    tip?: (pos: { top: number; left: number }) => ReactNode;
+    // 初めての人にだけ出す案内。**角の操作子を包む**形で受け取る（吹き出しは
+    // OS が描くので、位置も向きもこちらは決めない）。
+    tip?: (
+      anchor: ReactElement,
+      size: { width: number; height: number },
+    ) => ReactNode;
   } | null;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
   events: EventRow[];
@@ -912,14 +916,16 @@ export function WeekCalendar({
       {/* ── ヘッダ（日付 + 終日バー）。横スクロールは本体と同期 ── */}
       <View style={styles.headerRow}>
         <View style={[styles.corner, { width: GUTTER }]}>
-          {viewer && (
-            <Pressable
-              onPress={viewer.onPress}
-              accessibilityLabel={tSched("viewAs", {
-                name: viewer.member.display_name,
-              })}
-              style={styles.viewerButton}
-            >
+          {viewer &&
+            (() => {
+              const button = (
+                <Pressable
+                  onPress={viewer.onPress}
+                  accessibilityLabel={tSched("viewAs", {
+                    name: viewer.member.display_name,
+                  })}
+                  style={styles.viewerButton}
+                >
               {/* アバターに重なる徽章は右上（管理者の王冠と同じ位置・寸法）。
                   色だけ中立にする——琥珀は要対応の色で、これは知らせではなく
                   「時間の話だ」という種別の印だから。 */}
@@ -929,9 +935,16 @@ export function WeekCalendar({
                   <ClockIcon size={10} color={t.mutedForeground} />
                 </View>
               </View>
-              <ChevronIcon size={12} color={t.mutedForeground} rotate={90} />
-            </Pressable>
-          )}
+                  <ChevronIcon size={12} color={t.mutedForeground} rotate={90} />
+                </Pressable>
+              );
+              return viewer.tip
+                ? viewer.tip(button, {
+                    width: GUTTER,
+                    height: VIEWER_BUTTON_H,
+                  })
+                : button;
+            })()}
         </View>
         <ScrollView
           ref={headerScroll}
@@ -1049,19 +1062,6 @@ export function WeekCalendar({
           </View>
         </ScrollView>
       </View>
-
-      {/* 角を指す案内（初めての人にだけ出る）。置く位置だけここが知っている
-          ＝中身は呼ぶ側が渡す。**アバターの右下**に置く（尖った角が左上＝
-          アバターの方を向く）。 */}
-      {viewer?.tip?.({
-        // 操作子のすぐ下（角の中の縦中央 ＋ 操作子の高さの半分）。離すほど
-        // 「どれの説明か」が弱くなるので、終日帯に少し重なってでも近くに置く。
-        top:
-          (headerH + Math.max(allDayRowCount, 1) * ALLDAY_ROW) / 2 +
-          VIEWER_BUTTON_H / 2 +
-          4,
-        left: GUTTER / 2 + 4,
-      })}
 
       {/* ── 本体（時間グリッド）。縦スクロール。ゴースト中は2軸とも
           スクロールを止めてドラッグに専念させる（web の scroll lock 相当） ── */}

@@ -1,8 +1,6 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
-import { useTranslations } from "use-intl";
-
-import { XIcon } from "@/components/icons";
-import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
+import { type ReactElement } from "react";
+import { Host, Popover, RNHostView, Text } from "@expo/ui/swift-ui";
+import { frame, padding } from "@expo/ui/swift-ui/modifiers";
 
 // **初めての人にだけ出す案内**（docs/ui-guidelines.md「初めての人にだけ出す案内」）。
 //
@@ -10,79 +8,54 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 // その人がまだ使っていないか）。出来事をきっかけに出すと、その瞬間に画面を見て
 // いた人にしか届かない——あとから開いた人には何も起きない。
 //
-// 見た目はポップオーバーの段（サーフェス・強い影・角丸）。暗い浮遊チップは
-// 「自分から消えるもの」（トースト）と「押している間だけ出るもの」（HelpTip）で、
-// **消すまで居座って何かを指すもの**は、指し先と地続きに見せる。
+// **吹き出しは自分で描かない。** 中身は OS の仕組みそのもの（SwiftUI の
+// `.popover()`）で、指す相手を向く矢印・面の質感・縁・影・画面端での回り込み・
+// 外をタップして閉じる・ライト/ダークの追従は全部 iOS が持っているものが出る。
+// `@expo/ui` の Popover は `presentationCompactAdaptation(.popover)` を当てて
+// いるので、iPhone でもシートに化けずに吹き出しのまま出る。
 //
-// **指している相手の側の角を尖らせる**（漫画の吹き出しと同じ）。矢印を別に
-// 添えるより、器そのものが向きを持つ方が「これはあれの説明だ」と分かる。
+// 自前で描くと、角の尖り・影・暗い地での浮かせ方・端での回り込みを全部自分で
+// 面倒見ることになる（一度やってみて、どれも OS の出来に届かなかった）。
 export function FirstRunTip({
-  children,
+  visible,
+  text,
   onDismiss,
-  style,
+  anchorWidth,
+  anchorHeight,
+  children,
 }: {
-  children: string;
+  visible: boolean;
+  text: string;
+  // 外をタップして閉じた時も呼ばれる（＝見たことにする）。
   onDismiss: () => void;
-  // 指す相手の右下に置く位置（呼ぶ側が絶対座標で決める）。尖った角が
-  // 相手の方（左上）を向く。
-  style?: { top: number; left: number };
+  // 指す相手（children）の寸法。SwiftUI は RN で描いた中身の寸法を知らないので
+  // 渡す（swipe-delete-row と同じ事情。こちらは固定の操作子なので実測は不要）。
+  anchorWidth: number;
+  anchorHeight: number;
+  children: ReactElement;
 }) {
-  const t = useTranslations("common");
-  const theme = useTheme();
-  const styles = useThemedStyles(makeStyles);
+  // 出さない時は器ごと挟まない＝普段の描画・当たり判定を一切変えない。
+  if (!visible) return children;
   return (
-    <View style={[styles.wrap, style]}>
-      <View style={styles.bubble}>
-        {/* 尖った角。四角を45°回して左上の角から覗かせる＝器の角がそのまま
-            尖って見える（角丸を落としてあるので継ぎ目が出ない）。 */}
-        <View style={styles.tail} />
-        <Text style={styles.text}>{children}</Text>
-        <Pressable
-          onPress={onDismiss}
-          accessibilityLabel={t("close")}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-          style={styles.close}
-        >
-          <XIcon size={14} color={theme.mutedForeground} />
-        </Pressable>
-      </View>
-    </View>
+    <Host style={{ width: anchorWidth, height: anchorHeight }}>
+      <Popover
+        isPresented
+        arrowEdge="top"
+        onIsPresentedChange={(presented) => {
+          if (!presented) onDismiss();
+        }}
+      >
+        <Popover.Trigger>
+          <RNHostView matchContents>{children}</RNHostView>
+        </Popover.Trigger>
+        <Popover.Content>
+          {/* 文字の大きさ・色は SwiftUI の既定（本文）に任せる＝OS の
+              吹き出しと同じ見え方になる。幅だけ与えて折り返させる。 */}
+          <Text modifiers={[frame({ width: 240 }), padding({ all: 16 })]}>
+            {text}
+          </Text>
+        </Popover.Content>
+      </Popover>
+    </Host>
   );
 }
-
-const makeStyles = (t: Theme) =>
-  StyleSheet.create({
-    wrap: { position: "absolute", zIndex: 20, width: 236 },
-    bubble: {
-      // 暗い地では影がほとんど効かないので、浮きは一段明るい面で出す
-      // （ライトは地色のまま＝影で浮かせる）。
-      backgroundColor: t.dark ? t.secondary : t.background,
-      borderRadius: 10,
-      // 指す相手の側だけ角を落とす＝そこが尖って見える。
-      borderTopLeftRadius: 0,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderColor: t.fgAlpha(0.1),
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      paddingRight: 32,
-      shadowColor: "#000",
-      shadowOpacity: t.dark ? 0.4 : 0.18,
-      shadowRadius: 16,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: 6,
-    },
-    tail: {
-      position: "absolute",
-      top: -7,
-      left: -7,
-      width: 14,
-      height: 14,
-      transform: [{ rotate: "45deg" }],
-      backgroundColor: t.dark ? t.secondary : t.background,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderLeftWidth: StyleSheet.hairlineWidth,
-      borderColor: t.fgAlpha(0.1),
-    },
-    text: { fontSize: 12, lineHeight: 19, color: t.foreground },
-    close: { position: "absolute", top: 8, right: 8 },
-  });

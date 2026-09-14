@@ -242,13 +242,18 @@ export default function ScheduleTab() {
                         setViewerPickOpen(true);
                         dismissTip();
                       },
-                      tip: tipSeen
-                        ? undefined
-                        : (pos) => (
-                            <FirstRunTip style={pos} onDismiss={dismissTip}>
-                              {t("schedule.viewerTip")}
-                            </FirstRunTip>
-                          ),
+                      // 案内は角の操作子を包む形で渡す（吹き出しは OS が描く）。
+                      tip: (anchor, size) => (
+                        <FirstRunTip
+                          visible={!tipSeen}
+                          text={t("schedule.viewerTip")}
+                          onDismiss={dismissTip}
+                          anchorWidth={size.width}
+                          anchorHeight={size.height}
+                        >
+                          {anchor}
+                        </FirstRunTip>
+                      ),
                     }
                   : null
               }
