@@ -44,7 +44,8 @@ const config: ExpoConfig = {
     // app/api/apple-app-site-association）。
     // staging ビルドには付けない: 同じドメインを2つのアプリが宣言すると
     // どちらがリンクを受けるか OS 依存になるため（bundle id を分けている
-    // のと同じ理由）。staging の確認は triplot://join/<token> で行う。
+    // のと同じ理由）。staging の確認は triplot-staging://join/<token> で行う
+    // （共有ボタンもそちらのリンクを出す。src/lib/shareTripInvite.ts）。
     //
     // この宣言は App ID の Associated Domains capability と、それを含む
     // プロビジョニングプロファイルが揃っていないと署名段階でビルドが落ちる。

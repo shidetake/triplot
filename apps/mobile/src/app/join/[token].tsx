@@ -35,7 +35,10 @@ import { replaceOnce } from "@/lib/navigate";
 // この画面に来る経路は2つ:
 //  - Universal Link: https://triplot.app/join/<token>（app.config.ts の
 //    associatedDomains ＋ web が配信する apple-app-site-association）
-//  - カスタムスキーム: triplot://join/<token>（開発・シミュレータでの確認用）
+//  - カスタムスキーム: triplot://join/<token>（開発・シミュレータでの確認用。
+//    preview ビルドは triplot-staging://join/<token> で、共有ボタンもそちらの
+//    リンクを出す —— triplot.app は本番の DB を読むので、staging で作った
+//    トークンは開けない。src/lib/shareTripInvite.ts 参照）
 // アプリ未インストールの端末では従来どおり web の参加ページが開く。
 export default function JoinScreen() {
   const { token: rawToken } = useLocalSearchParams<{ token: string }>();
