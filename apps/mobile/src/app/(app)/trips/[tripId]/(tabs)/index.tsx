@@ -105,8 +105,6 @@ export default function ScheduleTab() {
       })
     : null;
   const hasDivergence = schedule?.groups.some((g) => g.diverged) ?? false;
-  const viewerName =
-    activeMembers.find((m) => m.id === viewerId)?.display_name ?? "";
 
   if (loadError) {
     return (
@@ -212,9 +210,6 @@ export default function ScheduleTab() {
           <WeekCalendar
             onHourPxChange={setHourPx}
             schedule={schedule}
-            viewerLabel={
-              hasDivergence ? t("schedule.viewAs", { name: viewerName }) : null
-            }
             events={eventsWithDrafts}
             memberHueById={memberHueById}
             activeMemberCount={activeMemberCount}

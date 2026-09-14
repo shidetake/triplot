@@ -203,7 +203,6 @@ export function ScheduleSection({
     ],
   );
   const hasDivergence = schedule.groups.some((g) => g.diverged);
-  const viewerName = members.find((m) => m.id === viewerId)?.display_name ?? "";
   const viewerSelect = hasDivergence ? (
     <select
       value={viewerId}
@@ -456,7 +455,6 @@ export function ScheduleSection({
         )}
         <WeekCalendar
           schedule={schedule}
-          viewerLabel={hasDivergence ? t("viewAs", { name: viewerName }) : null}
           placeName={placeName}
           selectedEventId={selectedEventId}
           myMemberId={myMemberId}
