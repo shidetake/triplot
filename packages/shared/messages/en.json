@@ -41,8 +41,7 @@
     "loadError": "Failed to load: {message}",
     "retry": "Retry",
     "search": "Search",
-    "undo": "Undo",
-    "gotIt": "Got it"
+    "undo": "Undo"
   },
   "settings": {
     "heading": "Settings",
@@ -194,7 +193,7 @@
     "viewAsAria": "Whose time to view",
     "viewerTitle": "Whose clock to use",
     "viewerSelf": "{name} (you)",
-    "viewerTip": "On this trip, people are in different time zones at some point. Choose whose clock to read the calendar in."
+    "viewerTip": "On this trip, members are in different time zones partway through. Use this to switch whose clock the calendar is shown in."
   },
   "tripActions": {
     "shareAria": "Share",
