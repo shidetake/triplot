@@ -41,7 +41,8 @@
     "loadError": "Failed to load: {message}",
     "retry": "Retry",
     "search": "Search",
-    "undo": "Undo"
+    "undo": "Undo",
+    "gotIt": "Got it"
   },
   "settings": {
     "heading": "Settings",
@@ -190,7 +191,10 @@
     "moved": "Event moved",
     "moveFailed": "Couldn't move the event: {error}",
     "viewAs": "{name}'s time",
-    "viewAsAria": "Whose time to view"
+    "viewAsAria": "Whose time to view",
+    "viewerTitle": "Whose clock to use",
+    "viewerSelf": "{name} (you)",
+    "viewerTip": "On this trip, people are in different time zones at some point. Choose whose clock to read the calendar in."
   },
   "tripActions": {
     "shareAria": "Share",

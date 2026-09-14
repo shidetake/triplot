@@ -260,6 +260,16 @@ export function CircleIcon(p: IconProps) {
   );
 }
 
+// Lucide: clock（時刻。カレンダーの「誰の時計で見るか」の徽章）
+export function ClockIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Circle cx={12} cy={12} r={10} />
+      <Path d="M12 6v6l4 2" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: search（検索）
 export function SearchIcon(p: IconProps) {
   return (

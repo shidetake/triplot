@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   Dimensions,
   Image,
@@ -48,6 +55,8 @@ import {
 } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
+import { ChevronIcon, ClockIcon } from "@/components/icons";
+import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { hapticDrop, hapticPickUp, hapticStep } from "@/lib/haptics";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { dotStyle } from "@/lib/themeColor";
@@ -146,6 +155,7 @@ const reservationMarkStyle = { width: 12, height: 12, marginRight: 2 };
 
 export function WeekCalendar({
   schedule,
+  viewer = null,
   events,
   memberHueById,
   activeMemberCount,
@@ -158,6 +168,18 @@ export function WeekCalendar({
   onHourPxChange,
 }: {
   schedule: Schedule;
+  // 年表が分かれている旅行で「誰の時計で見るか」を切り替える操作子。
+  // **時刻ガターの頭（左上の角）に置く**——ガターは時間軸そのものなので、
+  // 「誰の時間軸か」はその頭に書くのが筋（列ヘッダは日付のもの）。元から
+  // 空いている場所なので、カレンダーの高さを1ptも取らない。
+  // 分かれていない旅行では null＝角は空のまま。
+  viewer?: {
+    member: MemberLite;
+    onPress: () => void;
+    // 初めての人にだけ出す案内（角を指す吹き出し）。出すかどうかは画面側が
+    // 状態で決める。位置だけここが知っているので、受け取って角の下に置く。
+    tip?: (pos: { top: number; left: number }) => ReactNode;
+  } | null;
   // 色決定に元イベント（参加者・visibility）が要るので id 引きできるよう渡す。
   events: EventRow[];
   memberHueById: Map<string, number | null>;
@@ -886,7 +908,28 @@ export function WeekCalendar({
     >
       {/* ── ヘッダ（日付 + 終日バー）。横スクロールは本体と同期 ── */}
       <View style={styles.headerRow}>
-        <View style={[styles.corner, { width: GUTTER }]} />
+        <View style={[styles.corner, { width: GUTTER }]}>
+          {viewer && (
+            <Pressable
+              onPress={viewer.onPress}
+              accessibilityLabel={tSched("viewAs", {
+                name: viewer.member.display_name,
+              })}
+              style={styles.viewerButton}
+            >
+              {/* アバターに重なる徽章は右上（管理者の王冠と同じ位置・寸法）。
+                  色だけ中立にする——琥珀は要対応の色で、これは知らせではなく
+                  「時間の話だ」という種別の印だから。 */}
+              <View>
+                <MemberAvatar member={viewer.member} size={24} />
+                <View style={styles.viewerBadge}>
+                  <ClockIcon size={10} color={t.mutedForeground} />
+                </View>
+              </View>
+              <ChevronIcon size={12} color={t.mutedForeground} rotate={90} />
+            </Pressable>
+          )}
+        </View>
         <ScrollView
           ref={headerScroll}
           horizontal
@@ -1003,6 +1046,13 @@ export function WeekCalendar({
           </View>
         </ScrollView>
       </View>
+
+      {/* 角を指す案内（初めての人にだけ出る）。角の真下に置く位置だけ
+          ここが知っている＝中身は呼ぶ側が渡す。 */}
+      {viewer?.tip?.({
+        top: headerH + Math.max(allDayRowCount, 1) * ALLDAY_ROW + 6,
+        left: 8,
+      })}
 
       {/* ── 本体（時間グリッド）。縦スクロール。ゴースト中は2軸とも
           スクロールを止めてドラッグに専念させる（web の scroll lock 相当） ── */}
@@ -1355,6 +1405,24 @@ const makeStyles = (t: Theme) =>
   corner: {
     borderRightWidth: StyleSheet.hairlineWidth,
     borderRightColor: t.fgAlpha(0.08),
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // アバターの下に開く印を積む。横に並べると、徽章のはみ出しと印が 44pt の
+  // 幅の中で重なって1つの塊に見える（実測）。角は日付ヘッダ＋終日帯ぶんの
+  // 高さがあるので縦に置ける＝そのまま 44pt の当たり判定になる。
+  viewerButton: { alignItems: "center", gap: 1 },
+  // 管理者の王冠と同形（14px 丸・10px グリフ・地色で縁取り）。
+  viewerBadge: {
+    position: "absolute",
+    right: -4,
+    top: -4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
   },
   dayHeaderRow: { flexDirection: "row" },
   dayHeaderCell: {

@@ -41,7 +41,8 @@
     "loadError": "読み込みに失敗しました: {message}",
     "retry": "再試行",
     "search": "検索",
-    "undo": "元に戻す"
+    "undo": "元に戻す",
+    "gotIt": "わかった"
   },
   "settings": {
     "heading": "設定",
@@ -190,7 +191,10 @@
     "moved": "予定を移動しました",
     "moveFailed": "移動できませんでした: {error}",
     "viewAs": "{name}の時間",
-    "viewAsAria": "誰の時間で見るか"
+    "viewAsAria": "誰の時間で見るか",
+    "viewerTitle": "誰の時計で見るか",
+    "viewerSelf": "{name}（自分）",
+    "viewerTip": "この旅行は、途中でみんなが別の時間帯にいます。ここで誰の時計で見るかを選べます。"
   },
   "tripActions": {
     "shareAria": "共有",

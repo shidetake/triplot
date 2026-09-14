@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "use-intl";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import {
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
+import { ScreenStack, ScreenStackItem } from "react-native-screens";
 
 import {
   deriveEventDraftItemsWithTimeline,
@@ -22,8 +29,10 @@ import {
   type EventRow,
 } from "@triplot/shared/tripDerive";
 
-import { PlusIcon } from "@/components/icons";
-import { CompactSegment } from "@/components/visibility-segment";
+import { CheckIcon, PlusIcon } from "@/components/icons";
+import { FirstRunTip } from "@/components/first-run-tip";
+import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
+import { SheetTitle } from "@/components/sheet-title";
 import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
@@ -37,6 +46,7 @@ import {
 } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 import { pushOnce } from "@/lib/navigate";
+import { viewerTipSeen, markViewerTipSeen } from "@/lib/viewerTip";
 
 // 予定タブ（週カレンダー）。レイアウト計算は shared の buildSchedule、描画は
 // WeekCalendar（RN）。予定の追加/編集は native formSheet ルート
@@ -61,6 +71,19 @@ export default function ScheduleTab() {
   // 確定した時だけ更新される。
   const [hourPx, setHourPx] = useState(HOUR_PX_MIN);
   const viewerId = viewerOverride ?? me?.id ?? null;
+  // 「誰の時計で見るか」を選ぶシートの開閉。
+  const [viewerPickOpen, setViewerPickOpen] = useState(false);
+  // 初回の案内を出すか。**条件は状態だけ**（年表が分かれている × この人がまだ
+  // 使っていない）なので、あとから開いた人にも同じように出る。トーストで
+  // 教えると、分かれた瞬間に画面を見ていた人にしか届かない。
+  const [tipSeen, setTipSeen] = useState(true);
+  useEffect(() => {
+    void viewerTipSeen().then(setTipSeen);
+  }, []);
+  const dismissTip = () => {
+    setTipSeen(true);
+    void markViewerTipSeen();
+  };
 
   // React Compiler が自動でメモ化するので手動 useMemo は不要。
   const events = data
@@ -180,65 +203,148 @@ export default function ScheduleTab() {
     pushOnce(`/trips/${tripId}/event-form?eventId=${ev.id}`);
   };
 
-  return (
-    <View style={styles.screen}>
-      {schedule.columns.length === 0 ? (
-        <View style={styles.empty}>
-          <Text style={styles.emptyText}>
-            この旅行の日付が未設定です。予定を追加すると、その日から
-            カレンダーが出ます。
-          </Text>
-        </View>
-      ) : (
-        <>
-          {/* 年表が分かれている旅行でだけ「誰の時間で見るか」を出す
-              （web の見出し行のセレクトと同じ。少数の排他選択は RN では
-              セグメント）。 */}
-          {hasDivergence && (
-            <View style={styles.viewerRow}>
-              <CompactSegment
-                options={activeMembers.map((m) => ({
-                  key: m.id,
-                  label: t("schedule.viewAs", { name: m.display_name }),
-                }))}
-                value={viewerId ?? ""}
-                onChange={setViewerOverride}
-                grow
-              />
-            </View>
-          )}
-          <WeekCalendar
-            onHourPxChange={setHourPx}
-            schedule={schedule}
-            events={eventsWithDrafts}
-            memberHueById={memberHueById}
-            activeMemberCount={activeMemberCount}
-            myMemberId={me.id}
-            placeName={placeName}
-            onEventPress={onEventPress}
-            onEventMove={onEventMove}
-            onSlotPick={onSlotPick}
-            onAllDaySlotPick={onAllDaySlotPick}
-          />
-        </>
-      )}
+  const memberLite = (m: (typeof activeMembers)[number]): MemberLite => ({
+    id: m.id,
+    display_name: m.display_name,
+    color: m.color,
+    avatarUrl: m.users?.avatar_url ?? null,
+  });
+  const viewerMember = activeMembers.find((m) => m.id === viewerId);
 
-      {/* 追加 FAB */}
-      <Pressable
-        onPress={() => pushOnce(`/trips/${tripId}/event-form`)}
-        style={styles.fab}
-        accessibilityLabel={t("event.addAria")}
+  return (
+    // シートを出すために ScreenStack を入れ子にする（TODO タブ・場所タブと
+    // 同じパターン。タブ画面の中から native の formSheet を開く唯一の形）。
+    <ScreenStack style={StyleSheet.absoluteFill}>
+      <ScreenStackItem
+        screenId="schedule-calendar"
+        activityState={2}
+        style={StyleSheet.absoluteFill}
+        headerConfig={{ hidden: true }}
       >
-        <PlusIcon size={24} color={theme.primaryForeground} />
-      </Pressable>
-    </View>
+        <View style={styles.screen}>
+          {schedule.columns.length === 0 ? (
+            <View style={styles.empty}>
+              <Text style={styles.emptyText}>
+                この旅行の日付が未設定です。予定を追加すると、その日から
+                カレンダーが出ます。
+              </Text>
+            </View>
+          ) : (
+            <WeekCalendar
+              onHourPxChange={setHourPx}
+              schedule={schedule}
+              // 年表が分かれている旅行でだけ、時刻ガターの頭に切り替えを出す。
+              viewer={
+                hasDivergence && viewerMember
+                  ? {
+                      member: memberLite(viewerMember),
+                      onPress: () => {
+                        setViewerPickOpen(true);
+                        dismissTip();
+                      },
+                      tip: tipSeen
+                        ? undefined
+                        : (pos) => (
+                            <FirstRunTip style={pos} onDismiss={dismissTip}>
+                              {t("schedule.viewerTip")}
+                            </FirstRunTip>
+                          ),
+                    }
+                  : null
+              }
+              events={eventsWithDrafts}
+              memberHueById={memberHueById}
+              activeMemberCount={activeMemberCount}
+              myMemberId={me.id}
+              placeName={placeName}
+              onEventPress={onEventPress}
+              onEventMove={onEventMove}
+              onSlotPick={onSlotPick}
+              onAllDaySlotPick={onAllDaySlotPick}
+            />
+          )}
+
+          {/* 追加 FAB */}
+          <Pressable
+            onPress={() => pushOnce(`/trips/${tripId}/event-form`)}
+            style={styles.fab}
+            accessibilityLabel={t("event.addAria")}
+          >
+            <PlusIcon size={24} color={theme.primaryForeground} />
+          </Pressable>
+        </View>
+      </ScreenStackItem>
+
+      {viewerPickOpen && (
+        <ScreenStackItem
+          screenId="schedule-viewer"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setViewerPickOpen(false)}
+        >
+          <ScrollView contentContainerStyle={styles.sheetScroll}>
+            <SheetTitle>{t("schedule.viewerTitle")}</SheetTitle>
+            {activeMembers.map((m) => {
+              const selected = m.id === viewerId;
+              const label =
+                m.id === me.id
+                  ? t("schedule.viewerSelf", { name: m.display_name })
+                  : m.display_name;
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() => {
+                    setViewerOverride(m.id);
+                    setViewerPickOpen(false);
+                  }}
+                  accessibilityLabel={label}
+                  style={[
+                    styles.viewerRow,
+                    selected && styles.viewerRowSelected,
+                  ]}
+                >
+                  <MemberAvatar member={memberLite(m)} size={24} />
+                  <Text
+                    style={[
+                      styles.viewerRowLabel,
+                      selected && styles.viewerRowLabelSelected,
+                    ]}
+                  >
+                    {label}
+                  </Text>
+                  {selected && (
+                    <CheckIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </ScreenStackItem>
+      )}
+    </ScreenStack>
   );
 }
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.background },
-    viewerRow: { paddingHorizontal: 16, paddingVertical: 8 },
+    sheetScroll: { paddingBottom: 24 },
+    // 「誰の時計で見るか」の行（TODO の優先度シートと同じ形）。
+    viewerRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 10,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+      borderBottomWidth: StyleSheet.hairlineWidth,
+      borderBottomColor: t.fgAlpha(0.08),
+    },
+    viewerRowSelected: { backgroundColor: t.secondary },
+    viewerRowLabel: { flex: 1, fontSize: 14, color: t.foreground },
+    viewerRowLabelSelected: { fontWeight: "600" },
     empty: {
       flex: 1,
       alignItems: "center",
