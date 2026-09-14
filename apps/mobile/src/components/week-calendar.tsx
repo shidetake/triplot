@@ -47,6 +47,7 @@ import {
 } from "@triplot/shared/schedule";
 import type { EventRow } from "@triplot/shared/tripDerive";
 
+import { hapticDrop, hapticPickUp, hapticStep } from "@/lib/haptics";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { dotStyle } from "@/lib/themeColor";
 
@@ -468,6 +469,7 @@ export function WeekCalendar({
         const m = moveAt(moving, cx, cy);
         if (m.columnIndex !== moving.columnIndex || m.startMin !== moving.startMin) {
           setMove(m);
+          hapticStep();
         }
         return;
       }
@@ -478,6 +480,7 @@ export function WeekCalendar({
         (g.columnIndex !== cur.columnIndex || g.startMin !== cur.startMin)
       ) {
         setGhost(g);
+        hapticStep();
       }
     };
     if (!autoTimer.current) autoTimer.current = setInterval(tick, 16);
@@ -492,6 +495,9 @@ export function WeekCalendar({
         viewportRef.current = { x, y: y2, w, h };
       });
       dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
+      // **長押しが通った瞬間を指に返す。** ここから先はスクロールでなく
+      // ドラッグに変わるので、画面を見ていなくても切り替わりが分かる。
+      hapticPickUp();
       // 掴んだ場所にブロックがあれば「動かす」、無ければ「作る」。
       const hit = onEventMove ? blockAt(e.x, e.y) : null;
       const ev = hit ? eventById.get(hit.event.id) : null;
@@ -536,6 +542,8 @@ export function WeekCalendar({
           m.startMin !== moving.startMin
         ) {
           setMove(m);
+          // 置き先が1つ隣の刻みに移った（30分 or 別の日）。
+          hapticStep();
         }
         updateAutoScroll();
         return;
@@ -548,6 +556,8 @@ export function WeekCalendar({
         g.startMin !== cur.startMin
       ) {
         setGhost(g);
+        // 掴んだ直後（cur が無い）は掴んだ合図と重なるので鳴らさない。
+        if (cur) hapticStep();
       }
       updateAutoScroll();
     },
@@ -566,13 +576,19 @@ export function WeekCalendar({
           dropMinutes: m.startMin,
           grabOffset: 0,
         });
-        if (to) onEventMove(ev, to);
+        if (to) {
+          onEventMove(ev, to);
+          hapticDrop();
+        }
       }
       return;
     }
     const g = ghostRef.current;
     const col = g ? columns[g.columnIndex] : null;
-    if (g && col) onSlotPick(col.date, g.startMin);
+    if (g && col) {
+      onSlotPick(col.date, g.startMin);
+      hapticDrop();
+    }
   }, [columns, eventById, onEventMove, onSlotPick]);
   const onGhostFinalize = useCallback(() => {
     stopAutoScroll();
@@ -722,20 +738,27 @@ export function WeekCalendar({
     [columns.length, COL],
   );
   const onAllDayStart = useCallback(
-    (e: { x: number }) => setAllDayGhostCol(colFromX(e.x)),
+    (e: { x: number }) => {
+      hapticPickUp();
+      setAllDayGhostCol(colFromX(e.x));
+    },
     [colFromX, setAllDayGhostCol],
   );
   const onAllDayUpdate = useCallback(
     (e: { x: number }) => {
       const i = colFromX(e.x);
-      if (i !== allDayGhostRef.current) setAllDayGhostCol(i);
+      if (i === allDayGhostRef.current) return;
+      setAllDayGhostCol(i);
+      hapticStep();
     },
     [colFromX, setAllDayGhostCol],
   );
   const onAllDayEnd = useCallback(() => {
     const i = allDayGhostRef.current;
     const col = i != null ? columns[i] : null;
-    if (col) onAllDaySlotPick?.(col.date);
+    if (!col) return;
+    onAllDaySlotPick?.(col.date);
+    hapticDrop();
   }, [columns, onAllDaySlotPick]);
   const onAllDayFinalize = useCallback(
     () => setAllDayGhostCol(null),

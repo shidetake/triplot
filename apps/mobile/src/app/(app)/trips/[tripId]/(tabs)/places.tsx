@@ -18,7 +18,6 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { GlassView } from "expo-glass-effect";
-import * as Haptics from "expo-haptics";
 import * as Location from "expo-location";
 import Reanimated, {
   Extrapolation,
@@ -119,6 +118,7 @@ import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { SheetTitle } from "@/components/sheet-title";
 import { Toaster, toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
+import { hapticStep } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useOptimisticHide } from "@/lib/optimistic-hide";
@@ -1471,7 +1471,7 @@ export default function PlacesTab() {
     // 行の数だけハプティックを鳴らす（1回だけだと速いフリックで間の行を
     // 飛ばした感触になる、という実機フィードバックへの対応）。
     const steps = from < 0 ? 1 : Math.min(Math.abs(index - from), 8);
-    for (let i = 0; i < steps; i++) void Haptics.selectionAsync();
+    for (let i = 0; i < steps; i++) hapticStep();
     justCommittedRef.current = true; // 下の同期 effect の二重アニメを止める
     focusProgress.value = withSpring(index, FOCUS_SPRING_CONFIG);
     commitPreviewPlace(item); // タップ選択と同じ処理（赤ピン・住所・バッジ・地図追従）
