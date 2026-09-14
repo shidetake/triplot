@@ -193,7 +193,8 @@
     "viewAsAria": "Whose time to view",
     "viewerTitle": "Whose clock to use",
     "viewerSelf": "{name} (you)",
-    "viewerTip": "On this trip, members are in different time zones partway through. Use this to switch whose clock the calendar is shown in."
+    "viewerTip": "Members are in different time zones partway through this trip. Switch here.",
+    "viewerTipTitle": "Whose clock to use"
   },
   "tripActions": {
     "shareAria": "Share",

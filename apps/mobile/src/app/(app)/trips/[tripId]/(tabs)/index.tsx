@@ -246,6 +246,7 @@ export default function ScheduleTab() {
                       tip: (anchor, size) => (
                         <FirstRunTip
                           visible={!tipSeen}
+                          title={t("schedule.viewerTipTitle")}
                           text={t("schedule.viewerTip")}
                           onDismiss={dismissTip}
                           anchorWidth={size.width}

@@ -1,6 +1,6 @@
 import { type ReactElement } from "react";
-import { Host, Popover, RNHostView, Text } from "@expo/ui/swift-ui";
-import { frame, padding } from "@expo/ui/swift-ui/modifiers";
+import { Host, Popover, RNHostView, Text, VStack } from "@expo/ui/swift-ui";
+import { font, frame, padding } from "@expo/ui/swift-ui/modifiers";
 
 // **初めての人にだけ出す案内**（docs/ui-guidelines.md「初めての人にだけ出す案内」）。
 //
@@ -18,6 +18,7 @@ import { frame, padding } from "@expo/ui/swift-ui/modifiers";
 // 面倒見ることになる（一度やってみて、どれも OS の出来に届かなかった）。
 export function FirstRunTip({
   visible,
+  title,
   text,
   onDismiss,
   anchorWidth,
@@ -25,6 +26,10 @@ export function FirstRunTip({
   children,
 }: {
   visible: boolean;
+  // 見出し＝ここで何ができるか（短く）。本文＝なぜ今それが出ているか。
+  // Apple の TipKit と同じ2段。1段だけだと、状況の説明が先に来て何ができる
+  // のかが後ろに埋もれる。
+  title: string;
   text: string;
   // 外をタップして閉じた時も呼ばれる（＝見たことにする）。
   onDismiss: () => void;
@@ -49,11 +54,18 @@ export function FirstRunTip({
           <RNHostView matchContents>{children}</RNHostView>
         </Popover.Trigger>
         <Popover.Content>
-          {/* 文字の大きさ・色は SwiftUI の既定（本文）に任せる＝OS の
-              吹き出しと同じ見え方になる。幅だけ与えて折り返させる。 */}
-          <Text modifiers={[frame({ width: 240 }), padding({ all: 16 })]}>
-            {text}
-          </Text>
+          {/* 文字の大きさはアプリの字階に合わせる（本文14・補助12）。
+              SwiftUI の既定は17で、この中だけ大きく見えてしまう。 */}
+          <VStack
+            alignment="leading"
+            spacing={4}
+            modifiers={[frame({ width: 232 }), padding({ all: 14 })]}
+          >
+            <Text modifiers={[font({ size: 14, weight: "semibold" })]}>
+              {title}
+            </Text>
+            <Text modifiers={[font({ size: 12 })]}>{text}</Text>
+          </VStack>
         </Popover.Content>
       </Popover>
     </Host>
