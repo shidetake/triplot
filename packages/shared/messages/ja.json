@@ -193,7 +193,7 @@
     "viewAsAria": "誰の時間で見るか",
     "viewerTitle": "誰の時計で見るか",
     "viewerSelf": "{name}（自分）",
-    "viewerTip": "この旅行は、途中でメンバーの時間帯が分かれます。ここで切り替えられます。",
+    "viewerTip": "この旅行は途中でメンバーの時間帯が分かれます。ここで切り替えられます。",
     "viewerTipTitle": "誰の時計で見るか"
   },
   "tripActions": {
