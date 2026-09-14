@@ -33,7 +33,6 @@ export function grabOffsetMinutes(startAt: string, grabMinutes: number): number 
   return grabMinutes - parseWall(startAt).minutes;
 }
 
-const SNAP_MIN = 30;
 const DAY_MIN = 24 * 60;
 
 export type MovedTiming = { startAt: string; endAt: string | null };
@@ -43,11 +42,18 @@ export type MovedTiming = { startAt: string; endAt: string | null };
  * へ動かした結果の壁時計を返す。動かす必要が無ければ null（＝保存しない）。
  *
  * `grabOffset` は掴んだ点の開始からのずれ（grabOffsetMinutes）。
- * 開始時刻は 30 分にスナップする（空き枠の長押しで作る時と同じ刻み）。
+ * `snapMin` は開始時刻を置く刻み（空き枠の長押しで作る時と同じもの）。
+ * **刻みは縮尺で変わる**ので、ここでは決めずに呼ぶ側が渡す
+ * （calendarZoom.ts の snapMinutes。縮尺が固定の web は常に同じ値になる）。
  */
 export function movedEventTiming(
   e: { startAt: string; endAt: string | null },
-  target: { date: string; dropMinutes: number; grabOffset: number },
+  target: {
+    date: string;
+    dropMinutes: number;
+    grabOffset: number;
+    snapMin: number;
+  },
 ): MovedTiming | null {
   const start = parseWall(e.startAt);
   const end = e.endAt ? parseWall(e.endAt) : null;
@@ -57,13 +63,13 @@ export function movedEventTiming(
     : 0;
 
   const rawStart = target.dropMinutes - target.grabOffset;
-  const snapped = Math.round(rawStart / SNAP_MIN) * SNAP_MIN;
+  const snapped = Math.round(rawStart / target.snapMin) * target.snapMin;
   // **日跨ぎを新しく作らない。跨いでいたものは跨いだまま。**
   // 日を跨いでいなかった予定は、置いた日の中に丸ごと収める（下端に置いても
   // 翌日に尻尾が出ない）。元から深夜を跨いでいた予定は収まりようが無いので、
   // 開始だけ置いた日の中に留める。
   const crossed = end != null && end.date !== start.date;
-  const latestStart = crossed ? DAY_MIN - SNAP_MIN : DAY_MIN - durationMin;
+  const latestStart = crossed ? DAY_MIN - target.snapMin : DAY_MIN - durationMin;
   const startMin = Math.max(0, Math.min(latestStart, snapped));
 
   const startAt = wall(target.date, startMin);

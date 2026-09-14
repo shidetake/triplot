@@ -6,6 +6,7 @@ import {
   zoomedHourPx,
   ZOOM_MAX_VISIBLE_HOURS,
   minEventMinutes,
+  snapMinutes,
   HOUR_PX_MIN,
 } from "./calendarZoom";
 
@@ -105,5 +106,41 @@ describe("minEventMinutes", () => {
 
   it("縮尺が測れていなくても壊れない", () => {
     expect(minEventMinutes(0)).toBe(30);
+  });
+});
+
+// 刻みも「px で決まっているものを今の縮尺で分に直す」で決まるが、こちらは
+// 人が読む時刻になるので時計の目盛りに丸める。
+describe("snapMinutes", () => {
+  it("既定の縮尺では30分（従来の値）", () => {
+    expect(snapMinutes(HOUR_PX_MIN)).toBe(30);
+  });
+
+  it("2倍に拡大すると15分", () => {
+    expect(snapMinutes(HOUR_PX_MIN * 2)).toBe(15);
+  });
+
+  it("3倍に拡大すると10分", () => {
+    expect(snapMinutes(HOUR_PX_MIN * 3)).toBe(10);
+  });
+
+  it("画面が高くて6倍まで寄せられるなら5分", () => {
+    expect(snapMinutes(HOUR_PX_MIN * 6)).toBe(5);
+  });
+
+  // web は1時間29pxの固定。30分が15pxに届かないので一番粗い目盛りのまま。
+  it("縮尺が固定の web でも従来どおり30分", () => {
+    expect(snapMinutes(29)).toBe(30);
+  });
+
+  it("縮尺が測れていなくても壊れない", () => {
+    expect(snapMinutes(0)).toBe(30);
+  });
+
+  // 途中の刻みで止めても :00 に戻れること（時計の目盛りであることの担保）。
+  it("どの刻みも60を割り切る", () => {
+    for (const px of [29, 30, 45, 60, 75, 90, 120, 180, 300]) {
+      expect(60 % snapMinutes(px)).toBe(0);
+    }
   });
 });

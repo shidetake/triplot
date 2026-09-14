@@ -30,6 +30,7 @@ import {
   zoomAnchoredScrollY,
   zoomedHourPx,
   minEventMinutes,
+  snapMinutes,
 } from "@triplot/shared/calendarZoom";
 import {
   eventBlockColors,
@@ -173,7 +174,7 @@ export function WeekCalendar({
   // canMoveEvent が持つ。渡されなければ掴めない（＝押すだけ）。
   onEventMove?: (event: EventRow, to: MovedTiming) => void;
   // 空き枠の長押し→ゴースト→ドラッグ→離した位置で確定（web と同じ）。
-  // date は確定した列の日付、minutes は 0時からの通算分（30分スナップ済み）。
+  // date は確定した列の日付、minutes は 0時からの通算分（スナップ済み）。
   onSlotPick: (date: string, minutes: number) => void;
   // 終日帯の長押し→横ドラッグ→離した日付で終日予定を追加（web と同じ）。
   onAllDaySlotPick?: (date: string) => void;
@@ -203,6 +204,9 @@ export function WeekCalendar({
   const totalW = columns.length * COL;
   // 縦ピンチの倍率は「1時間の高さ」そのもので持つ（描画は全部この値から引く）。
   const [hourPx, setHourPx] = useState(HOUR_PX_MIN);
+  // 時刻を置く刻み。**拡大したぶんだけ細かく置ける**（2列にするかの判定と
+  // 同じで、決まっているのは px の側。calendarZoom.ts の snapMinutes）。
+  const snapMin = snapMinutes(hourPx);
   // 本体（時間グリッド）の見えている高さ。上限を「6時間ぶんが入る高さ」に
   // するために要る。測れるまでは既定の3倍を仮に使う。
   const [bodyViewportH, setBodyViewportH] = useState(0);
@@ -335,11 +339,14 @@ export function WeekCalendar({
   const autoTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // グリッド内容座標 → ゴースト位置。web と同じく指の30分上を開始時刻に
-  // （指で隠れず見やすい）、30分スナップ。
+  // （1時間のゴーストの半分＝指の真ん中に来る）。刻みは今の縮尺で決まる。
   const ghostAt = useCallback(
     (contentX: number, contentY: number): GhostState => {
       const raw = (contentY / hourPx) * 60;
-      const snapped = Math.max(0, Math.min(1380, Math.round(raw / 30) * 30));
+      const snapped = Math.max(
+        0,
+        Math.min(1380, Math.round(raw / snapMin) * snapMin),
+      );
       return {
         columnIndex: Math.max(
           0,
@@ -348,7 +355,7 @@ export function WeekCalendar({
         startMin: Math.max(0, snapped - 30),
       };
     },
-    [columns.length, COL, hourPx],
+    [columns.length, COL, hourPx, snapMin],
   );
 
   // ── 確定済みの予定を掴んで動かす ──
@@ -408,12 +415,12 @@ export function WeekCalendar({
         0,
         Math.min(
           1440 - Math.min(m.durationMin, 1440),
-          Math.round((dropMinutes - m.grabOffset) / 30) * 30,
+          Math.round((dropMinutes - m.grabOffset) / snapMin) * snapMin,
         ),
       );
       return { ...m, columnIndex, startMin };
     },
-    [columns.length, COL, hourPx],
+    [columns.length, COL, hourPx, snapMin],
   );
 
   const stopAutoScroll = useCallback(() => {
@@ -575,6 +582,7 @@ export function WeekCalendar({
           date: col.date,
           dropMinutes: m.startMin,
           grabOffset: 0,
+          snapMin,
         });
         if (to) {
           onEventMove(ev, to);
@@ -589,7 +597,7 @@ export function WeekCalendar({
       onSlotPick(col.date, g.startMin);
       hapticDrop();
     }
-  }, [columns, eventById, onEventMove, onSlotPick]);
+  }, [columns, eventById, onEventMove, onSlotPick, snapMin]);
   const onGhostFinalize = useCallback(() => {
     stopAutoScroll();
     dragAbsRef.current = null;

@@ -64,3 +64,32 @@ export function minEventMinutes(hourPx: number): number {
   if (hourPx <= 0) return 30;
   return Math.max(1, Math.round((MIN_EVENT_PX / hourPx) * 60));
 }
+
+// ドラッグで時刻を置く時の刻み（分）。**拡大したぶんだけ細かく置ける。**
+//
+// 刻みを分で固定すると、拡大するほど1刻みが遠くなる（90px/h まで寄せると
+// 30分の刻みは 45px 先）。細かく置きたくて拡大したのに粗く感じる、という
+// ことになる。2列判定（上の minEventMinutes）と同じで、**本当に決まって
+// いるのは px の側**なので、今の縮尺で分に直す。
+//
+// 1つだけ minEventMinutes と違うところがある。あちらは内部の比較なので
+// 何分でも構わないが、こちらは**人が読む時刻になる**（9:07 開始の予定を
+// 作ってしまう）。なので px から出した値を時計の目盛りに丸める。
+
+// 指1本で狙える1刻みの幅（px）。これより細かくすると、指の震えで値が変わる。
+// **根拠は今の手触りそのもの** — 一番縮めた状態（1時間30px）では 30分が
+// ちょうど 15px で、今そう動いている。
+export const SNAP_PX_MIN = 15;
+
+// 時計の目盛り（粗い順）。どれも60を割り切るので、刻み続けても :00 に戻る。
+const SNAP_LADDER = [30, 15, 10, 5] as const;
+
+export function snapMinutes(hourPx: number): number {
+  // 15px 以上の高さを持つ一番細かい目盛り。どれも届かない（縮めすぎ・
+  // 未計測）なら一番粗いもの。
+  let step: number = SNAP_LADDER[0];
+  for (const s of SNAP_LADDER) {
+    if ((s / 60) * hourPx >= SNAP_PX_MIN) step = s;
+  }
+  return step;
+}

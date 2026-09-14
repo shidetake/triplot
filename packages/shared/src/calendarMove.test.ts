@@ -7,7 +7,12 @@ import {
   movedTzDisambig,
 } from "./calendarMove";
 
-const base = { kind: "normal" as const, allDay: false, startAt: "", endAt: null };
+const base = {
+  kind: "normal" as const,
+  allDay: false,
+  startAt: "",
+  endAt: null,
+};
 
 describe("canMoveEvent", () => {
   it("時間のある通常の予定は動かせる", () => {
@@ -40,6 +45,7 @@ describe("movedEventTiming", () => {
         date: "2026-09-10",
         dropMinutes: 17 * 60 + 20,
         grabOffset: grab,
+        snapMin: 30,
       }),
     ).toEqual({ startAt: "2026-09-10T17:00", endAt: "2026-09-10T18:30" });
   });
@@ -47,9 +53,12 @@ describe("movedEventTiming", () => {
   it("長さは変わらない", () => {
     const r = movedEventTiming(
       { startAt: "2026-09-09T09:00", endAt: "2026-09-09T09:45" },
-      { date: "2026-09-09", dropMinutes: 20 * 60, grabOffset: 0 },
+      { date: "2026-09-09", dropMinutes: 20 * 60, grabOffset: 0, snapMin: 30 },
     );
-    expect(r).toEqual({ startAt: "2026-09-09T20:00", endAt: "2026-09-09T20:45" });
+    expect(r).toEqual({
+      startAt: "2026-09-09T20:00",
+      endAt: "2026-09-09T20:45",
+    });
   });
 
   it("開始は30分にスナップする", () => {
@@ -58,6 +67,7 @@ describe("movedEventTiming", () => {
         date: "2026-09-09",
         dropMinutes: 10 * 60 + 12,
         grabOffset: 0,
+        snapMin: 30,
       })?.startAt,
     ).toBe("2026-09-09T10:00");
     expect(
@@ -65,8 +75,22 @@ describe("movedEventTiming", () => {
         date: "2026-09-09",
         dropMinutes: 10 * 60 + 20,
         grabOffset: 0,
+        snapMin: 30,
       })?.startAt,
     ).toBe("2026-09-09T10:30");
+  });
+
+  // 拡大すると刻みが細かくなる（calendarZoom.ts の snapMinutes が決める）。
+  // ここは渡された刻みをそのまま使うことだけを見る。
+  it("刻みは呼ぶ側が決める（拡大した時は細かく置ける）", () => {
+    expect(
+      movedEventTiming(ev, {
+        date: "2026-09-09",
+        dropMinutes: 10 * 60 + 12,
+        grabOffset: 0,
+        snapMin: 10,
+      })?.startAt,
+    ).toBe("2026-09-09T10:10");
   });
 
   it("動いていなければ null（保存しない）", () => {
@@ -75,6 +99,7 @@ describe("movedEventTiming", () => {
         date: "2026-09-09",
         dropMinutes: 14 * 60 + 20,
         grabOffset: grab,
+        snapMin: 30,
       }),
     ).toBeNull();
   });
@@ -86,13 +111,19 @@ describe("movedEventTiming", () => {
         date: "2026-09-09",
         dropMinutes: 23 * 60 + 50,
         grabOffset: 0,
+        snapMin: 30,
       }),
     ).toEqual({ startAt: "2026-09-09T22:30", endAt: "2026-09-10T00:00" });
   });
 
   it("その日からはみ出さない（上端）", () => {
     expect(
-      movedEventTiming(ev, { date: "2026-09-09", dropMinutes: 10, grabOffset: 60 }),
+      movedEventTiming(ev, {
+        date: "2026-09-09",
+        dropMinutes: 10,
+        grabOffset: 60,
+        snapMin: 30,
+      }),
     ).toEqual({ startAt: "2026-09-09T00:00", endAt: "2026-09-09T01:30" });
   });
 
@@ -100,7 +131,7 @@ describe("movedEventTiming", () => {
     expect(
       movedEventTiming(
         { startAt: "2026-09-09T14:00", endAt: null },
-        { date: "2026-09-11", dropMinutes: 8 * 60, grabOffset: 0 },
+        { date: "2026-09-11", dropMinutes: 8 * 60, grabOffset: 0, snapMin: 30 },
       ),
     ).toEqual({ startAt: "2026-09-11T08:00", endAt: null });
   });
@@ -109,7 +140,12 @@ describe("movedEventTiming", () => {
     expect(
       movedEventTiming(
         { startAt: "2026-09-09T22:00", endAt: "2026-09-10T02:00" },
-        { date: "2026-09-11", dropMinutes: 23 * 60, grabOffset: 0 },
+        {
+          date: "2026-09-11",
+          dropMinutes: 23 * 60,
+          grabOffset: 0,
+          snapMin: 30,
+        },
       ),
     ).toEqual({ startAt: "2026-09-11T23:00", endAt: "2026-09-12T03:00" });
   });

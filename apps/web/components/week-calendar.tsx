@@ -22,6 +22,7 @@ import {
   movedEventTiming,
   type MovedTiming,
 } from "@triplot/shared/calendarMove";
+import { snapMinutes } from "@triplot/shared/calendarZoom";
 import {
   computeGhostLaneOverrides,
   GHOST_LANE_KEY,
@@ -50,6 +51,10 @@ function ReservationMark({ ev }: { ev: ScheduleEvent }) {
 
 const GUTTER = 48; // 時刻ガター幅 px
 const HOUR_PX = 29; // 1時間の高さ px（従来48の約6割）
+// 時刻を置く刻み。**決まっているのは px の側**（指で狙える幅）なので、今の
+// 縮尺から導く（shared の snapMinutes。RN はピンチで縮尺が変わるので刻みも
+// 変わるが、web は高さが固定なので常に30分になる）。
+const SNAP_MIN = snapMinutes(HOUR_PX);
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
 const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 
@@ -296,10 +301,10 @@ export function WeekCalendar({
   const y = (min: number) =>
     ((Math.min(Math.max(min, winStart), winEnd) - winStart) / 60) * HOUR_PX;
 
-  // 30分刻みスナップ。1時間の枠が縦軸からはみ出さないよう 23:00(=1380) を上限。
+  // 刻みにスナップ。1時間の枠が縦軸からはみ出さないよう 23:00(=1380) を上限。
   const yToMin = useCallback((offsetY: number): number => {
     const raw = winStart + (offsetY / HOUR_PX) * 60;
-    return Math.max(0, Math.min(1380, Math.round(raw / 30) * 30));
+    return Math.max(0, Math.min(1380, Math.round(raw / SNAP_MIN) * SNAP_MIN));
   }, []);
 
   // ── スマホの長押し→ゴースト枠→ドラッグで時間移動→離すと予定追加 ──
@@ -454,7 +459,7 @@ export function WeekCalendar({
       const pending = movePendingRef.current;
       if (!cur || !pending) return;
       const rect = pending.bodyEl.getBoundingClientRect();
-      // yToMin は 30 分スナップ＋23:00 上限が入っているので使わない
+      // yToMin はスナップ＋23:00 上限が入っているので使わない
       // （スナップは掴んだずれを引いた後に掛ける）。
       const dropMinutes = winStart + ((clientY - rect.top) / HOUR_PX) * 60;
       const columnIndex = Math.max(
@@ -465,7 +470,7 @@ export function WeekCalendar({
         0,
         Math.min(
           1440 - Math.min(cur.durationMin, 1440),
-          Math.round((dropMinutes - cur.grabOffset) / 30) * 30,
+          Math.round((dropMinutes - cur.grabOffset) / SNAP_MIN) * SNAP_MIN,
         ),
       );
       if (columnIndex !== cur.columnIndex || startMin !== cur.startMin) {
@@ -637,7 +642,12 @@ export function WeekCalendar({
       // 置き先はスナップ済みなので、掴んだずれは 0 で渡す（二重スナップ回避）。
       const to = movedEventTiming(
         { startAt: ev.startAt, endAt: ev.endAt },
-        { date: col.date, dropMinutes: m.startMin, grabOffset: 0 },
+        {
+          date: col.date,
+          dropMinutes: m.startMin,
+          grabOffset: 0,
+          snapMin: SNAP_MIN,
+        },
       );
       // 掴んで離しただけ（動いていない）なら click として扱わせる。
       movedRecentlyRef.current = true;
@@ -1046,7 +1056,7 @@ export function WeekCalendar({
                   const raw = winStart + (off / HOUR_PX) * 60;
                   const snapped = Math.max(
                     0,
-                    Math.min(1380, Math.round(raw / 30) * 30),
+                    Math.min(1380, Math.round(raw / SNAP_MIN) * SNAP_MIN),
                   );
                   pcDragRef.current = {
                     date: c.date,
@@ -1076,13 +1086,13 @@ export function WeekCalendar({
                       return;
                     }
                   }
-                  // 現在 Y → 終了時刻（30分スナップ・最小30分・上限24:00）
+                  // 現在 Y → 終了時刻（刻みにスナップ・最小30分・上限24:00）
                   const rect = info.columnEl.getBoundingClientRect();
                   const off = e.clientY - rect.top;
                   const raw = winStart + (off / HOUR_PX) * 60;
                   const snapped = Math.max(
                     info.startMin + 30,
-                    Math.min(24 * 60, Math.round(raw / 30) * 30),
+                    Math.min(24 * 60, Math.round(raw / SNAP_MIN) * SNAP_MIN),
                   );
                   onPcDragChange({
                     columnIndex: info.columnIndex,
@@ -1363,7 +1373,10 @@ export function WeekCalendar({
                     movePendingRef.current = {
                       event: p.event,
                       durationMin: p.endMin - p.topMin,
-                      grabOffset: grabOffsetMinutes(p.event.startAt, grabMinutes),
+                      grabOffset: grabOffsetMinutes(
+                        p.event.startAt,
+                        grabMinutes,
+                      ),
                       bodyEl,
                       startX: e.clientX,
                       startY: e.clientY,
@@ -1442,7 +1455,8 @@ export function WeekCalendar({
                       left: move.columnIndex * COL + 1,
                       width: COL - 2,
                       top: y(move.startMin),
-                      height: Math.max(y(endMin) - y(move.startMin), MIN_BLOCK) - 1,
+                      height:
+                        Math.max(y(endMin) - y(move.startMin), MIN_BLOCK) - 1,
                       ...app.style,
                     }}
                   >
