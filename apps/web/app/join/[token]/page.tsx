@@ -1,7 +1,11 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
-import { peekInvite } from "@triplot/shared/data/invites";
+import {
+  findJoinedTripByInvite,
+  peekInvite,
+} from "@triplot/shared/data/invites";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
@@ -25,6 +29,14 @@ export default async function JoinPage({
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  // **もう入っている旅行なら、参加画面は出さずにその旅行へ送る。**
+  // 自分が共有したリンクを自分で踏む・同じリンクを2回踏む、はどちらも普通に
+  // 起きる。判定は RLS に任せる（findJoinedTripByInvite のコメント参照）。
+  if (user) {
+    const joinedTripId = await findJoinedTripByInvite(supabase, token);
+    if (joinedTripId) redirect(`/trips/${joinedTripId}`);
+  }
   const [t, lastAuthProvider] = await Promise.all([
     getTranslations("join"),
     resolveLastAuthProvider(),

@@ -11,6 +11,26 @@ export async function peekInvite(
   return data ?? null;
 }
 
+// **もうこの旅行に入っているか**を、招待トークンから調べる。入っていれば
+// その旅行の id、そうでなければ null。
+//
+// 判定を自分で書かず RLS に答えさせる: trip_invites は
+// 「そのトリップのアクティブメンバーだけが見える」ポリシーなので、トークンで
+// 1行引けたということは、引いた人がそのトリップのメンバーだということ
+// （未ログイン・非メンバーには0行に見える）。メンバーかどうかの規則は
+// DB 側にあるので、アプリ側に同じ規則をもう1つ置かない。
+export async function findJoinedTripByInvite(
+  sb: DB,
+  token: string,
+): Promise<string | null> {
+  const { data } = await sb
+    .from("trip_invites")
+    .select("trip_id")
+    .eq("token", token)
+    .maybeSingle();
+  return data?.trip_id ?? null;
+}
+
 // 招待トークンで旅行に参加する。セッション（匿名 or Google）必須。
 // 成功で参加した trip の id を返す（呼び出し側で遷移）。
 export async function joinTripViaInvite(
