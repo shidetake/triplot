@@ -909,6 +909,9 @@ export function PlacesSection({
                       selectedId={
                         selected?.kind === "saved" ? selected.id : null
                       }
+                      // 地図のピンから選んだ時、その行がシートのスクロールの
+                      // 外にあると何を選んだのか分からない。見える位置へ寄せる。
+                      scrollSelectedIntoView
                       locatingId={pendingLocationFor?.id ?? null}
                       dayByPlaceId={dayByPlaceId}
                       areaByPlaceId={areaByPlaceId}

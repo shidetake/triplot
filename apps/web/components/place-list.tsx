@@ -8,6 +8,7 @@ import {
 import type { VisitDay } from "@triplot/shared/placeOrder";
 import { formatDayLabel } from "@triplot/shared/schedule";
 import { useTranslations } from "next-intl";
+import { useEffect, useRef } from "react";
 
 import { ChevronIcon, CloseIcon } from "./icons";
 import { PrivateBadge } from "./private-badge";
@@ -56,6 +57,7 @@ export { gmapsUrl } from "@triplot/shared/placeLink";
 export function PlaceList({
   places,
   selectedId,
+  scrollSelectedIntoView = false,
   framed = true,
   locatingId,
   dayByPlaceId,
@@ -68,6 +70,10 @@ export function PlaceList({
 }: {
   places: PlaceRow[];
   selectedId: string | null;
+  // 選択が**一覧の外から**来る時に true（地図のピンをタップした時）。選んだ
+  // 行がスクロールの外にあると、何を選んだのか分からないまま一覧だけが出る。
+  // 一覧の中から選んだ時は既に見えているので要らない。
+  scrollSelectedIntoView?: boolean;
   // ページの中に置く時は枠付きのカードにする。ボトムシートの中では枠を外して
   // 行の区切り線だけにする（シート自体が枠なので二重になる＝iOS と同じ形）。
   framed?: boolean;
@@ -86,6 +92,19 @@ export function PlaceList({
   onDismissLocation: (id: string) => void;
 }) {
   const t = useTranslations("place");
+
+  // 選んだ行を見える位置へ。**"nearest"** なので、既に見えていれば動かない＝
+  // 一覧の中から選んだ時に余計なスクロールが起きない。
+  const selectedRef = useRef<HTMLLIElement>(null);
+  useEffect(() => {
+    if (!scrollSelectedIntoView || !selectedId) return;
+    // シートがせり上がる／段が変わる間は高さが動くので、レイアウトが落ち着いて
+    // から寄せる（動いている最中に測ると、寄せ切れずに端で止まる）。
+    const id = requestAnimationFrame(() => {
+      selectedRef.current?.scrollIntoView({ block: "nearest" });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [selectedId, scrollSelectedIntoView]);
   const tCommon = useTranslations("common");
 
   if (places.length === 0) {
@@ -113,7 +132,7 @@ export function PlaceList({
         const day = dayByPlaceId.get(p.id);
         const area = areaByPlaceId.get(p.id) ?? null;
         return (
-          <li key={p.id}>
+          <li key={p.id} ref={isSelected ? selectedRef : undefined}>
             <button
               type="button"
               onClick={() =>
