@@ -100,14 +100,20 @@ const makeStyles = (t: Theme) =>
       paddingHorizontal: 14,
       paddingTop: 11,
       paddingBottom: 13,
-      paddingRight: 34,
       shadowColor: "#000",
       shadowOpacity: t.dark ? 0.45 : 0.2,
       shadowRadius: 18,
       shadowOffset: { width: 0, height: 6 },
       elevation: 6,
     },
-    title: { fontSize: 14, fontWeight: "600", color: t.foreground },
+    // ×を避けるのは**見出しの行だけ**。器ごと右を空けると、×が無い2行目
+    // 以降まで狭くなって、そのぶん行が増える。
+    title: {
+      fontSize: 14,
+      fontWeight: "600",
+      color: t.foreground,
+      paddingRight: 22,
+    },
     text: { marginTop: 3, fontSize: 12, lineHeight: 18, color: t.foreground },
     close: { position: "absolute", top: 9, right: 9 },
   });
