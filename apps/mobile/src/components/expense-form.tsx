@@ -27,6 +27,7 @@ import {
   CUSTOM_CATEGORY_ICON,
   createExpenseCategory,
 } from "@triplot/shared/data/categories";
+import { deriveSplitSubmission } from "@triplot/shared/expenseSplit";
 import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
@@ -298,15 +299,16 @@ export function ExpenseForm({
     selectTz(kept ?? r.options[0]);
   };
 
-  // 割り勘対象（web と同じ導出）。
-  const initOnlySelf = isEdit && !editExpense.splittable;
+  // 割り勘対象（web と同じ導出）。splittable=false は「払った人のみ」なので、
+  // 復元する時も払った人を選んだ状態にする。
+  const initOnlyPayer = isEdit && !editExpense.splittable;
   // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
   // アクティブメンバーに解決する（後から加わった人もここに現れる）。
   const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
     "selectedSplits",
     () =>
-      initOnlySelf
-        ? new Set([myMemberId])
+      initOnlyPayer
+        ? new Set([isEdit ? editExpense.payer_member_id : myMemberId])
         : isEdit && !editExpense.split_everyone
           ? new Set(editExpense.split_member_ids)
           : new Set(members.map((m) => m.id)),
@@ -331,13 +333,21 @@ export function ExpenseForm({
       return next;
     });
   };
-  const onlySelf = selectedSplits.size === 1 && selectedSplits.has(myMemberId);
-  const splittable = visibility === "shared" && !onlySelf;
-  // 「全員」は具体的な ID を焼き込まない（後から加わった人も含まれるように）。
-  const splitEveryone = !splittable || splitMode === "all";
-  const splitIds = splitEveryone ? [] : Array.from(selectedSplits);
-  const splitLabel = onlySelf
-    ? t("splitSelfOnly")
+  // 保存する3つの値は shared が決める（web と同じ1つの判定。expenseSplit.ts）。
+  const {
+    splittable,
+    splitEveryone,
+    splitMemberIds: splitIds,
+  } = deriveSplitSubmission({
+    visibility,
+    payerMemberId: payer,
+    selectedMemberIds: Array.from(selectedSplits),
+    everyone: splitMode === "all",
+  });
+  const onlyPayer = !splittable && visibility === "shared";
+  const splitLabel =
+    onlyPayer && payer === myMemberId
+      ? t("splitSelfOnly")
     : splitsMatchAll
       ? t("splitAll")
       : t("splitSome");

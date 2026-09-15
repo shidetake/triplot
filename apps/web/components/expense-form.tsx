@@ -22,6 +22,7 @@ import {
   restoreExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
+import { deriveSplitSubmission } from "@triplot/shared/expenseSplit";
 import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import type { FxRates } from "@triplot/shared/fxRates";
@@ -154,14 +155,14 @@ export function ExpenseForm({
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";
-  // 編集モードで splittable=false の費用は「自分のみ（=おごり / 自分の費用）」
-  // として復元する。split_member_ids は空で保存されているので、ここで自分を
-  // 1人だけ選択した状態にしておく（チップ UI で自分のみ表示）。
-  const initOnlySelf = isEdit && !editExpense.splittable;
+  // 編集モードで splittable=false の費用は「払った人のみ（=おごり / 自分の
+  // 費用）」として復元する。split_member_ids は空で保存されているので、
+  // ここで払った人を1人だけ選択した状態にしておく。
+  const initOnlyPayer = isEdit && !editExpense.splittable;
   // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
   // アクティブメンバーに解決する（後から加わった人もここに現れる）。
-  const initSplits: Set<string> = initOnlySelf
-    ? new Set([myMemberId])
+  const initSplits: Set<string> = initOnlyPayer
+    ? new Set([isEdit ? editExpense.payer_member_id : myMemberId])
     : isEdit && !editExpense.split_everyone
       ? new Set(editExpense.split_member_ids)
       : new Set(members.map((m) => m.id));
@@ -438,18 +439,18 @@ export function ExpenseForm({
     });
   };
 
-  // 割り勘対象から splittable と split_member_ids を導出する。
-  //  - 自分のみ選択（=「割り勘しない」と同義）→ splittable=false, ids=[]
-  //  - 全員 / 一部（自分以外も居る） → splittable=true, ids=選択分
-  //  - private → 強制的に splittable=false（DB の CHECK 制約に合わせる）
-  const onlySelf =
-    selectedSplits.size === 1 && selectedSplits.has(myMemberId);
-  const submittedSplittable = visibility === "shared" && !onlySelf;
-  // 「全員」は具体的な ID を焼き込まない（後から加わった人も含まれるように）。
-  const submittedSplitEveryone = !submittedSplittable || splitMode === "all";
-  const submittedSplitIds: string[] = submittedSplitEveryone
-    ? []
-    : Array.from(selectedSplits);
+  // 保存する3つの値は shared が決める（iOS と同じ1つの判定。expenseSplit.ts）。
+  const {
+    splittable: submittedSplittable,
+    splitEveryone: submittedSplitEveryone,
+    splitMemberIds: submittedSplitIds,
+  } = deriveSplitSubmission({
+    visibility,
+    payerMemberId: payer,
+    selectedMemberIds: Array.from(selectedSplits),
+    everyone: splitMode === "all",
+  });
+  const onlyPayer = !submittedSplittable && visibility === "shared";
 
   // disclosure ラベルは選択状態から決める。
   //  - 全員選択 → "全員"
@@ -458,7 +459,7 @@ export function ExpenseForm({
   const allSelectedNow =
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
-  const splitLabel = onlySelf
+  const splitLabel = onlyPayer && payer === myMemberId
     ? t("splitSelfOnly")
     : allSelectedNow
       ? t("splitAll")
