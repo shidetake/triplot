@@ -187,6 +187,11 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .gm-style-iw-d {
   max-width: none !important;
   overflow-x: hidden !important;
+  /* Google は overflow-y: scroll を当てるので、中身が収まっていても
+     スクロールバーの溝が出たままになる（実機で「窓の右に白い帯が出る」
+     として発覚。溝の色は OS のスクロールバー設定次第で目立つ）。auto に
+     すると要る時だけ出る＝中身が入り切らない時の縦スクロールは残る。 */
+  overflow-y: auto !important;
 }
 
 /* ダークモード: Google Maps InfoWindow の背景を上書き。
@@ -199,8 +204,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 .dark .gm-style-iw-d {
   background-color: var(--background) !important;
 }
-.dark .gm-style-iw-t::after {
-  background: var(--background) !important;
+/* 吹き出しの三角（尻尾）は出さない。ピンのすぐ上に窓が出るので、指さなくても
+   どのピンの話かは分かる。Google の尻尾は白のままでダークに追従せず、地の色を
+   上書きしても縁が残って浮く。 */
+.gm-style-iw-tc,
+.gm-style-iw-t::after {
+  display: none !important;
 }
 /* InfoWindow のデフォルト閉じる × ボタン（Google 製）も暗い面に合わせる */
 .dark .gm-ui-hover-effect > span {
