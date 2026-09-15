@@ -3024,13 +3024,16 @@ const makeStyles = (t: Theme) =>
     // フィルタ中は塗り＝アクティブ表示（followingLocation の青と同じ配色）。
     filterButtonActive: { backgroundColor: "#4285F4" },
     // 方位磁針。現在地ボタンの真上（本家 Google マップ・iOS マップと同じ並び）。
+    // **現在地ボタンと同じ大きさにする。** 並ぶ操作子の大きさが違うと理由の
+    // 無い差に見えるうえ、以前の 40 はタップ領域の下限 44pt を割っていた。
     compassButton: {
       position: "absolute",
       right: 12,
+      // 現在地ボタン（bottom:100・高さ44）の 8pt 上。
       bottom: 152,
-      width: 40,
-      height: 40,
-      borderRadius: 20,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: t.background,
       alignItems: "center",
       justifyContent: "center",

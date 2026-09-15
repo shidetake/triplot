@@ -244,7 +244,10 @@ export function MapControls({
 
           {/* 右下の縦列（上＝方位磁針・下＝現在地）。**積むだけで位置が決まる**
               ようにしてある——以前は方位磁針が現在地ボタンの高さ(44)を決め打ちで
-              足していて、ボタンの大きさを変えると段がずれた。 */}
+              足していて、ボタンの大きさを変えると段がずれた。
+              **2つは同じ大きさにする。** 並ぶ操作子の大きさが違うと理由の無い
+              差に見えるうえ、小さい方（40）は指のタップ領域の下限 44pt を
+              割っていた。広い画面はマウスなので下限が無く、両方 40。 */}
           <div
             className="absolute right-3 flex flex-col items-center gap-2"
             style={{ bottom: MAP_OVERLAY_BOTTOM_PX }}
@@ -257,7 +260,7 @@ export function MapControls({
                 onClick={() => map?.setHeading(0)}
                 aria-label="地図の向きを北にリセット"
                 title="地図の向きを北にリセット"
-                className={`${buttonClass} h-10 w-10 md:h-9 md:w-9`}
+                className={`${buttonClass} h-11 w-11 md:h-10 md:w-10`}
               >
                 <svg
                   viewBox="0 0 24 24"
