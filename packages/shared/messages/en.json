@@ -490,12 +490,13 @@
     "openList": "Open place list",
     "resetHeading": "Reset map orientation to north",
     "myLocation": "Recenter on my location",
-    "locationUnavailable": "Can't use your location",
+    "locationUnavailable": "Location is unavailable",
     "locationPermissionBody": "Allow location access in the Settings app.",
     "locationFailed": "Could not get your location",
     "empty": "No places yet.",
     "deleted": "Place deleted",
-    "hide": "Hide"
+    "hide": "Hide",
+    "myLocationAria": "Back to my location"
   },
   "validation": {
     "loginRequired": "You need to be logged in.",

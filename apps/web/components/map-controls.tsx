@@ -1,9 +1,11 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AdvancedMarker, useMap } from "@vis.gl/react-google-maps";
 
+import { toast } from "@/components/toast";
 import { computeScaleBar } from "@triplot/shared/mapScale";
 import type { MapRegion } from "@triplot/shared/mapLabelLayout";
 
@@ -67,6 +69,7 @@ export function MapControls({
 }: {
   hidden?: boolean;
 }) {
+  const tMap = useTranslations("place");
   const map = useMap();
   const [coords, setCoords] = useState<google.maps.LatLngLiteral | null>(null);
   // 現在地を中心に据えている間だけボタンを青塗りにする（本家と同じ）。
@@ -79,20 +82,40 @@ export function MapControls({
     widthPx: number;
   } | null>(null);
   const [scaleVisible, setScaleVisible] = useState(false);
+  // 位置情報が使えない（ブラウザで拒否されている・機能が無い）。押しても何も
+  // 起きないボタンを出したままにしないよう、分かった時点で非活性にする。
+  const [denied, setDenied] = useState(false);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const prevZoom = useRef<number | null>(null);
 
-  // 現在地の購読（許可された時だけ。拒否されてもボタンは出したままにして、
-  // 押した時に改めてブラウザの許可を求められるようにする）。
+  // 現在地の購読。**まだ許可を聞かれていない段階で勝手に聞きに行かない**ため、
+  // 先に許可の状態だけ見る（Permissions API は問い合わせでプロンプトを出さない）。
+  // 拒否されているならボタンを非活性にし、押した時に「使えない」と伝える。
   useEffect(() => {
     if (!navigator.geolocation) return;
-    const id = navigator.geolocation.watchPosition(
-      (pos) =>
-        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => {},
-      { enableHighAccuracy: true },
-    );
-    return () => navigator.geolocation.clearWatch(id);
+    let cleanup: (() => void) | undefined;
+    const watch = () => {
+      const id = navigator.geolocation.watchPosition(
+        (pos) =>
+          setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (e) => {
+          // PERMISSION_DENIED(1) だけが「設定を変えるまで無理」。取得失敗や
+          // タイムアウトは次に押せば成功しうるので非活性にしない。
+          if (e.code === e.PERMISSION_DENIED) setDenied(true);
+        },
+        { enableHighAccuracy: true },
+      );
+      cleanup = () => navigator.geolocation.clearWatch(id);
+    };
+    navigator.permissions
+      ?.query({ name: "geolocation" })
+      .then((st) => {
+        setDenied(st.state === "denied");
+        st.onchange = () => setDenied(st.state === "denied");
+        if (st.state === "granted") watch();
+      })
+      .catch(() => watch());
+    return () => cleanup?.();
   }, []);
 
   // 縮尺バーの値を今の表示範囲から出す。ズーム量が変わった時だけ姿を見せ、
@@ -160,14 +183,27 @@ export function MapControls({
       setFollowing(true);
       return;
     }
-    navigator.geolocation?.getCurrentPosition(
+    if (!navigator.geolocation) {
+      // 位置情報そのものが無い端末（実質ありえないが、押して無反応にしない）。
+      setDenied(true);
+      toast(tMap("locationUnavailable"));
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
       (pos) => {
         const c = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         setCoords(c);
         map.panTo(c);
         setFollowing(true);
       },
-      () => {},
+      (e) => {
+        // 拒否されたらその場で伝えて、以後はボタンを非活性にする（本家
+        // Google マップと同じ。押しても何も起きないボタンを残さない）。
+        if (e.code === e.PERMISSION_DENIED) {
+          setDenied(true);
+          toast(tMap("locationUnavailable"));
+        }
+      },
     );
   };
 
@@ -206,60 +242,73 @@ export function MapControls({
             </div>
           )}
 
-          {/* 方位磁針（現在地ボタンの真上）。真北の間は出さず、回すと現れる。
+          {/* 右下の縦列（上＝方位磁針・下＝現在地）。**積むだけで位置が決まる**
+              ようにしてある——以前は方位磁針が現在地ボタンの高さ(44)を決め打ちで
+              足していて、ボタンの大きさを変えると段がずれた。 */}
+          <div
+            className="absolute right-3 flex flex-col items-center gap-2"
+            style={{ bottom: MAP_OVERLAY_BOTTOM_PX }}
+          >
+            {/* 方位磁針。真北の間は出さず、回すと現れる。
               針は地図の回転と逆に回して常に真北を指す。タップで北へ戻す。 */}
-          {Math.abs(heading) > 0.5 && (
+            {Math.abs(heading) > 0.5 && (
+              <button
+                type="button"
+                onClick={() => map?.setHeading(0)}
+                aria-label="地図の向きを北にリセット"
+                title="地図の向きを北にリセット"
+                className={`${buttonClass} h-10 w-10 md:h-9 md:w-9`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width={28}
+                  height={28}
+                  style={{ transform: `rotate(${-heading}deg)` }}
+                  aria-hidden
+                >
+                  <path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
+                  <path
+                    d="M12,22 L15,12 L9,12 Z"
+                    className="fill-muted-foreground"
+                  />
+                </svg>
+              </button>
+            )}
+
+            {/* 現在地に戻る（右下）。現在地を中心に据えている間だけ青塗り、
+              それ以外はアウトラインのみ（本家 Google マップ・iOS マップと同じ）。 */}
             <button
               type="button"
-              onClick={() => map?.setHeading(0)}
-              aria-label="地図の向きを北にリセット"
-              title="地図の向きを北にリセット"
-              style={{ bottom: MAP_OVERLAY_BOTTOM_PX + 44 + 8 }}
-              className={`${buttonClass} absolute right-3 h-10 w-10`}
+              onClick={goToMyLocation}
+              disabled={denied}
+              aria-label={tMap("myLocationAria")}
+              title={
+                denied ? tMap("locationUnavailable") : tMap("myLocationAria")
+              }
+              // 広い画面は一回り小さく（h-10）。狭い画面は指で押すので h-11 のまま。
+              className={`${buttonClass} h-11 w-11 md:h-10 md:w-10 ${
+                denied ? "cursor-default opacity-50" : ""
+              }`}
             >
               <svg
-                viewBox="0 0 24 24"
-                width={28}
-                height={28}
-                style={{ transform: `rotate(${-heading}deg)` }}
+                viewBox="0 -960 960 960"
+                width={26}
+                height={26}
+                className="md:h-[23px] md:w-[23px]"
+                // グリフの視覚重心が左下に寄っているので、45°回転後の座標系で
+                // 少し右上へ寄せる（iOS 側と同じ補正）。
+                style={{ transform: "translate(1.5px, -1.5px) rotate(45deg)" }}
                 aria-hidden
               >
-                <path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
                 <path
-                  d="M12,22 L15,12 L9,12 Z"
-                  className="fill-muted-foreground"
+                  d={NAVIGATION_PATH}
+                  fill={following ? "#4285F4" : "none"}
+                  stroke={following ? "none" : "#5f6368"}
+                  strokeWidth={following ? 0 : 60}
                 />
               </svg>
             </button>
-          )}
-
-          {/* 現在地に戻る（右下）。現在地を中心に据えている間だけ青塗り、
-              それ以外はアウトラインのみ（本家 Google マップ・iOS マップと同じ）。 */}
-          <button
-            type="button"
-            onClick={goToMyLocation}
-            aria-label="現在地に戻る"
-            title="現在地に戻る"
-            style={{ bottom: MAP_OVERLAY_BOTTOM_PX }}
-            className={`${buttonClass} absolute right-3 h-11 w-11`}
-          >
-            <svg
-              viewBox="0 -960 960 960"
-              width={26}
-              height={26}
-              // グリフの視覚重心が左下に寄っているので、45°回転後の座標系で
-              // 少し右上へ寄せる（iOS 側と同じ補正）。
-              style={{ transform: "translate(1.5px, -1.5px) rotate(45deg)" }}
-              aria-hidden
-            >
-              <path
-                d={NAVIGATION_PATH}
-                fill={following ? "#4285F4" : "none"}
-                stroke={following ? "none" : "#5f6368"}
-                strokeWidth={following ? 0 : 60}
-              />
-            </svg>
-          </button>
+          </div>
         </div>
       )}
     </>

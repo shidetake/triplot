@@ -490,12 +490,13 @@
     "openList": "場所一覧を開く",
     "resetHeading": "地図の向きを北にリセット",
     "myLocation": "現在地に戻る",
-    "locationUnavailable": "現在地を利用できません",
+    "locationUnavailable": "現在地を使用できません",
     "locationPermissionBody": "設定アプリで位置情報の利用を許可してください。",
     "locationFailed": "現在地を取得できませんでした",
     "empty": "まだ場所がありません。",
     "deleted": "場所を削除しました",
-    "hide": "非表示"
+    "hide": "非表示",
+    "myLocationAria": "現在地に戻る"
   },
   "validation": {
     "loginRequired": "ログインが必要です",
