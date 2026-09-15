@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Alert, ScrollView } from "react-native";
+import { Alert } from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
@@ -13,6 +13,7 @@ import { deriveScheduleEvents } from "@triplot/shared/tripDerive";
 
 import { EventForm } from "@/components/event-form";
 import { FormHostProvider } from "@/components/form-host";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { supabase } from "@/lib/supabase";
 import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import {
@@ -172,10 +173,7 @@ export default function EventFormRoute() {
         }`;
 
   return (
-    <ScrollView
-      contentContainerStyle={{ paddingBottom: 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SheetScroll>
       <FormHostProvider draftKey={draftKey}>
         <EventForm
           tripId={tripId}
@@ -215,6 +213,6 @@ export default function EventFormRoute() {
           }
         />
       </FormHostProvider>
-    </ScrollView>
+    </SheetScroll>
   );
 }

@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Dimensions,
   Keyboard,
   Pressable,
   ScrollView,
@@ -46,6 +47,33 @@ export function PlacePicker({
   const tPlace = useTranslations("place");
   const styles = useThemedStyles(makeStyles);
   const [focused, setFocused] = useState(false);
+
+  // **候補の高さはキーボードの上までに収める。** 器に固定の上限だけ持たせると、
+  // 下の方の候補がキーボードの裏に入って押せない（実機で確認）。入力欄の画面上の
+  // 位置とキーボードの上端から、入る高さを都度出す。
+  const inputRef = useRef<TextInput>(null);
+  const [maxHeight, setMaxHeight] = useState(SUGGEST_MAX_H);
+  useEffect(() => {
+    if (!focused) return;
+    const fit = () => {
+      inputRef.current?.measureInWindow((_x, y, _w, h) => {
+        // キーボードが出ていなければ画面の下端まで使える。
+        const kb = Keyboard.metrics()?.screenY ?? Dimensions.get("window").height;
+        const room = kb - (y + h) - SUGGEST_GAP - 8;
+        setMaxHeight(Math.max(SUGGEST_MIN_H, Math.min(SUGGEST_MAX_H, room)));
+      });
+    };
+    fit();
+    // キーボードは遅れて出る／高さが変わる（絵文字・予測変換）ので都度測り直す。
+    const shown = Keyboard.addListener("keyboardDidShow", fit);
+    const changed = Keyboard.addListener("keyboardDidChangeFrame", fit);
+    const hidden = Keyboard.addListener("keyboardDidHide", fit);
+    return () => {
+      shown.remove();
+      changed.remove();
+      hidden.remove();
+    };
+  }, [focused]);
   const { predictions, search, clear, resolve } =
     usePlaceAutocomplete(biasCenter);
 
@@ -83,6 +111,7 @@ export function PlacePicker({
   return (
     <View>
       <TextInput
+        ref={inputRef}
         value={text}
         onChangeText={(next) => {
           onChange(
@@ -100,7 +129,7 @@ export function PlacePicker({
         style={styles.input}
       />
       {rows.length > 0 && (
-        <View style={styles.suggestions}>
+        <View style={[styles.suggestions, { maxHeight }]}>
           {/* 候補だけがスクロールし、下の帰属表示は流れない
               （器は maxHeight で頭打ちなので、包まないと候補に押し出されて
               切れる＝「常に見えて読めること」を満たせない）。 */}
@@ -167,6 +196,12 @@ export function PlacePicker({
   );
 }
 
+// 候補の器の高さ。上限は他のドロップダウンと同じ256（ui-guidelines）。
+// 下限は、キーボードで潰れても2行は見えて「まだ続きがある」と分かる高さ。
+const SUGGEST_MAX_H = 256;
+const SUGGEST_MIN_H = 88;
+const SUGGEST_GAP = 4; // 入力欄と候補の間（styles.suggestions の marginTop）
+
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
     input: {
@@ -179,7 +214,6 @@ const makeStyles = (t: Theme) =>
       color: t.foreground,
     },
     suggestions: {
-      maxHeight: 256,
       borderWidth: 1,
       borderColor: t.fgAlpha(0.1),
       borderRadius: 6,

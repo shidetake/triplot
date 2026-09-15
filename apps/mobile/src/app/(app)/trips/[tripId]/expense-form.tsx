@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from "expo-router";
-import { Alert, ScrollView } from "react-native";
+import { Alert } from "react-native";
 import { useTranslations } from "use-intl";
 
 import { resolveInboundDraft } from "@triplot/shared/data/inbox";
@@ -21,6 +21,7 @@ import type { Currency } from "@triplot/shared/types/database";
 
 import { ExpenseForm } from "@/components/expense-form";
 import { FormHostProvider } from "@/components/form-host";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { supabase } from "@/lib/supabase";
 import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
 import {
@@ -152,10 +153,7 @@ export default function ExpenseFormRoute() {
       : `expense:new:${tripId}`;
 
   return (
-    <ScrollView
-      contentContainerStyle={{ paddingBottom: 24 }}
-      keyboardShouldPersistTaps="handled"
-    >
+    <SheetScroll>
       <FormHostProvider draftKey={draftKey}>
         <ExpenseForm
           tripId={tripId}
@@ -187,6 +185,6 @@ export default function ExpenseFormRoute() {
           }
         />
       </FormHostProvider>
-    </ScrollView>
+    </SheetScroll>
   );
 }
