@@ -29,6 +29,7 @@ import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
 import { LoadError } from "@/components/load-error";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { SheetTitle } from "@/components/sheet-title";
 import {
   CheckIcon,
@@ -182,7 +183,7 @@ export default function TodosTab() {
           headerConfig={{ hidden: true }}
           onDismissed={() => setPriorityPick(null)}
         >
-          <ScrollView contentContainerStyle={styles.sheetScroll}>
+          <SheetScroll>
             <SheetTitle>{t("todo.priorityTitle")}</SheetTitle>
             {PRIORITY_ORDER.map((p) => {
               const selected = priorityPick.current === p;
@@ -214,7 +215,7 @@ export default function TodosTab() {
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </SheetScroll>
         </ScreenStackItem>
       )}
     </ScreenStack>
@@ -656,7 +657,6 @@ const makeStyles = (t: Theme) =>
   },
   // いいね数の固定幅スロット（2桁まで）。空でも幅を保ち ♥ の位置を固定する
   likeCount: { width: 16, fontSize: 11, color: t.mutedForeground },
-  sheetScroll: { paddingBottom: 24 },
   // 優先度選択シートの行（場所タブのフィルタシートの行と同じ形）
   priorityRow: {
     flexDirection: "row",

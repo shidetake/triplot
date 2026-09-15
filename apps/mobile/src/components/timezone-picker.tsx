@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import {
   TZ_GROUPS,
@@ -15,6 +15,7 @@ import { useLocale, useTranslations } from "use-intl";
 
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { PageSheet } from "./page-sheet";
+import { SheetScroll } from "./sheet-scroll";
 
 // タイムゾーンピッカー（RN・時差移動の出発/到着TZ用）。web と同じ3段ドリルダウン
 // （大陸グループ → サブ地域 → ゾーン）。データは shared/timezones（単一の真実）。
@@ -60,7 +61,7 @@ export function TimezonePicker({
         onClose={close}
         title={tEvent("timezonePickerTitle")}
       >
-        <ScrollView contentContainerStyle={styles.list}>
+        <SheetScroll contentContainerStyle={styles.list}>
           {!group ? (
             TZ_GROUPS.map((g) => (
               <Row
@@ -119,7 +120,7 @@ export function TimezonePicker({
               ))}
             </>
           )}
-        </ScrollView>
+        </SheetScroll>
       </PageSheet>
     </>
   );

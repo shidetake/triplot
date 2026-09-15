@@ -1,9 +1,10 @@
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { CopySourceTrip } from "@triplot/shared/copySourceLabel";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 
 import { CheckIcon, ChevronIcon } from "./icons";
 import { PageSheet } from "./page-sheet";
+import { SheetScroll } from "./sheet-scroll";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // コピー元の旅行選択（トリガー＋モーダルリスト。CurrencyPickerModal と同形）。
@@ -57,7 +58,7 @@ export function CopySourceModal({
   const labels = buildCopySourceLabels(trips);
   return (
     <PageSheet visible={visible} onClose={onClose} title={title}>
-      <ScrollView contentContainerStyle={styles.list}>
+      <SheetScroll contentContainerStyle={styles.list}>
         {trips.map((tr) => (
           <Pressable
             key={tr.id}
@@ -75,7 +76,7 @@ export function CopySourceModal({
             )}
           </Pressable>
         ))}
-      </ScrollView>
+      </SheetScroll>
     </PageSheet>
   );
 }

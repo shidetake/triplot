@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import Svg, { Path } from "react-native-svg";
 import { useTranslations } from "use-intl";
 
@@ -12,6 +12,7 @@ import {
   type PinOption,
 } from "@triplot/shared/placeIcons";
 
+import { SheetScroll } from "./sheet-scroll";
 import { SheetTitle } from "./sheet-title";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
@@ -103,7 +104,7 @@ export function PlaceIconPicker({
     <View style={styles.sheet}>
       <SheetTitle>{t("iconPickerAria")}</SheetTitle>
 
-      <ScrollView contentContainerStyle={styles.grid}>
+      <SheetScroll contentContainerStyle={styles.grid}>
           {ICON_CATALOG.filter((it) => it.key !== "pin").map((it) => {
             const used = optionByIcon.has(it.key);
             const sel = selected === it.key;
@@ -135,7 +136,7 @@ export function PlaceIconPicker({
               </Pressable>
             );
           })}
-        </ScrollView>
+        </SheetScroll>
 
         <View style={styles.footer}>
           <View style={styles.selectedRow}>

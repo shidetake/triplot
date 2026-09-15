@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "use-intl";
 import {
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -32,6 +31,7 @@ import {
 import { CheckIcon, PlusIcon } from "@/components/icons";
 import { FirstRunTip } from "@/components/first-run-tip";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { SheetTitle } from "@/components/sheet-title";
 import { LoadError } from "@/components/load-error";
 import { WeekCalendar } from "@/components/week-calendar";
@@ -287,7 +287,7 @@ export default function ScheduleTab() {
           headerConfig={{ hidden: true }}
           onDismissed={() => setViewerPickOpen(false)}
         >
-          <ScrollView contentContainerStyle={styles.sheetScroll}>
+          <SheetScroll>
             <SheetTitle>{t("schedule.viewerTitle")}</SheetTitle>
             {activeMembers.map((m) => {
               const selected = m.id === viewerId;
@@ -323,7 +323,7 @@ export default function ScheduleTab() {
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </SheetScroll>
         </ScreenStackItem>
       )}
     </ScreenStack>
@@ -333,7 +333,6 @@ export default function ScheduleTab() {
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
     screen: { flex: 1, backgroundColor: t.background },
-    sheetScroll: { paddingBottom: 24 },
     // 「誰の時計で見るか」の行（TODO の優先度シートと同じ形）。
     viewerRow: {
       flexDirection: "row",

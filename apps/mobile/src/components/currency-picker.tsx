@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import {
   Keyboard,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -20,6 +19,7 @@ import type { Currency } from "@triplot/shared/types/database";
 
 import { CheckIcon, ChevronIcon, SearchIcon } from "./icons";
 import { PageSheet } from "./page-sheet";
+import { SheetScroll } from "./sheet-scroll";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
 // 主要通貨 → その他全通貨（web の CurrencySelect と同じ並び。COMMON_CURRENCIES
@@ -87,10 +87,7 @@ export function CurrencyPickerModal({
           clearButtonMode="while-editing"
         />
       </View>
-      <ScrollView
-        contentContainerStyle={styles.list}
-        keyboardShouldPersistTaps="handled"
-      >
+      <SheetScroll contentContainerStyle={styles.list}>
         {filtered.length === 0 ? (
           <Text style={styles.empty}>{tCurrency("noResults")}</Text>
         ) : (
@@ -119,7 +116,7 @@ export function CurrencyPickerModal({
             );
           })
         )}
-      </ScrollView>
+      </SheetScroll>
     </PageSheet>
   );
 }

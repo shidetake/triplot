@@ -7,7 +7,6 @@ import {
   Keyboard,
   LayoutAnimation,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -115,6 +114,7 @@ import {
 import { CheckIcon, ChevronIcon, FilterIcon, XIcon } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
 import { SwipeDeleteRow } from "@/components/swipe-delete-row";
+import { SheetScroll } from "@/components/sheet-scroll";
 import { SheetTitle } from "@/components/sheet-title";
 import { Toaster, toast } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
@@ -2548,10 +2548,7 @@ export default function PlacesTab() {
             setPinDraft(null);
           }}
         >
-          <ScrollView
-            contentContainerStyle={styles.formScroll}
-            keyboardShouldPersistTaps="handled"
-          >
+          <SheetScroll>
             <PlaceForm
               tripId={tripId}
               pinOptions={pinOptions}
@@ -2574,7 +2571,7 @@ export default function PlacesTab() {
                 void invalidate();
               }}
             />
-          </ScrollView>
+          </SheetScroll>
         </ScreenStackItem>
       )}
       {/* ピンのアイコンピッカー。編集フォームの中にネストせず兄弟
@@ -2613,7 +2610,7 @@ export default function PlacesTab() {
           headerConfig={{ hidden: true }}
           onDismissed={() => setFilterOpen(false)}
         >
-          <ScrollView contentContainerStyle={styles.formScroll}>
+          <SheetScroll>
             <SheetTitle>{t("filterTitle")}</SheetTitle>
             <Pressable
               onPress={() => applyPlaceFilter(null)}
@@ -2731,7 +2728,7 @@ export default function PlacesTab() {
                 </Pressable>
               </>
             )}
-          </ScrollView>
+          </SheetScroll>
         </ScreenStackItem>
       )}
     </ScreenStack>
@@ -3070,7 +3067,6 @@ const makeStyles = (t: Theme) =>
       borderRightWidth: 1.5,
       borderColor: t.dark ? "#e8eaed" : "#3c4043",
     },
-    formScroll: { paddingBottom: 24 },
     // 上に grabber（取っ手）があるので paddingTop で件数表記を下げて被りを防ぐ。
     sheetHeader: {
       paddingHorizontal: 16,
