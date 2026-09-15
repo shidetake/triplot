@@ -376,12 +376,12 @@ export function PlacePicker({
     debounceRef.current = setTimeout(() => fetchGoogle(v), 300);
   };
 
+  // **保存済みは絞らずに全部出す**（器は max-h-64 で頭打ち＝入り切らない分は
+  // スクロール）。先頭 n 件だけにすると、それより古い場所は名前を打つまで
+  // 選べない＝一覧から選ぶ操作が成立しなくなる。
   const savedMatches = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = q
-      ? places.filter((p) => p.name.toLowerCase().includes(q))
-      : places;
-    return list.slice(0, 6);
+    return q ? places.filter((p) => p.name.toLowerCase().includes(q)) : places;
   }, [places, query]);
 
   const exactSaved = useMemo(() => {

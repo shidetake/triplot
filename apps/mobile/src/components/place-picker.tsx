@@ -56,10 +56,12 @@ export function PlacePicker({
         ? (value.label ?? "")
         : value.name;
 
+  // **保存済みは絞らずに全部出す**（器は maxHeight で頭打ち＝入り切らない分は
+  // スクロール）。先頭 n 件だけにすると、それより古い場所は名前を打つまで
+  // 選べない＝一覧から選ぶ操作が成立しなくなる。
   const savedMatches = useMemo(() => {
     const q = text.trim().toLowerCase();
-    const hit = places.filter((p) => p.name.toLowerCase().includes(q));
-    return (q ? hit : places).slice(0, 5);
+    return q ? places.filter((p) => p.name.toLowerCase().includes(q)) : places;
   }, [text, places]);
 
   const rows: Row[] = focused
@@ -110,8 +112,12 @@ export function PlacePicker({
               row.type === "saved" ? (
                 <Pressable
                   key={`s-${row.id}`}
-                  // onBlur より先に発火させたいので onPressIn
-                  onPressIn={() => {
+                  // **指を離した時に決める。** 触れた瞬間（onPressIn）だと、
+                  // スクロールしようとして触れただけで確定してしまう。
+                  // 押しても候補が消えないのは、親のスクロールが
+                  // keyboardShouldPersistTaps="handled" を持っていて、
+                  // 触った先が押せるものならフォーカスを外さないため。
+                  onPress={() => {
                     onChange({ kind: "saved", placeId: row.id });
                     closeSuggestions();
                     Keyboard.dismiss();
@@ -124,7 +130,7 @@ export function PlacePicker({
               ) : (
                 <Pressable
                   key={`g-${row.prediction.placeId}`}
-                  onPressIn={() => {
+                  onPress={() => {
                     closeSuggestions();
                     Keyboard.dismiss();
                     void resolve(row.prediction).then((c) => {
