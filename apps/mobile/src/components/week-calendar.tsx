@@ -836,6 +836,11 @@ export function WeekCalendar({
   // 分ける意味が無い＝実機で見比べて統一を決めた）。
   const eventColors = (ev: EventRow) => {
     if (ev.isDraft) return DRAFT_COLORS;
+    // **自分が入っていない予定は薄くする**（web と同じ）。別行動の予定が自分の
+    // 予定と同じ濃さで並ぶと、どれが自分のものか一目で分からない。
+    // 規約の「不参加 = opacity-50」。全員参加なら当然自分も入っている。
+    const mine =
+      ev.participantsEveryone || ev.participantMemberIds.includes(myMemberId);
     const c = pickEventColor({
       visibility: ev.visibility,
       participantsEveryone: ev.participantsEveryone,
@@ -853,7 +858,7 @@ export function WeekCalendar({
       return {
         bg: t.fgAlpha(0.08),
         text: t.mutedForeground,
-        dim: c.kind === "mixed",
+        dim: !mine,
         mixed: c.kind === "mixed",
       };
     }
@@ -862,7 +867,7 @@ export function WeekCalendar({
     return {
       bg: cols.bg[m],
       text: cols.fg[m],
-      dim: false,
+      dim: !mine,
       mixed: c.kind === "mixed",
     };
   };
@@ -1287,6 +1292,8 @@ export function WeekCalendar({
                           top: part.top,
                           height: part.height - 1,
                           backgroundColor: col.bg,
+                          // 移動も同じ＝自分が乗っていない便は薄くする（web と同じ）。
+                          opacity: col.dim ? 0.5 : 1,
                         },
                       ]}
                     >
