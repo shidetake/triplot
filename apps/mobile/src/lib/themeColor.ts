@@ -15,15 +15,11 @@ import { NEUTRAL, roleColorFromHex } from "@triplot/shared/colorRoles";
 export function chipStyle(
   hue: number | null | undefined,
   dark: boolean,
-): { backgroundColor: string; color: string; borderColor: string } | null {
+): { backgroundColor: string; color: string } | null {
   const c = chipColors(hue);
   if (!c) return null;
   const m = dark ? "dark" : "light";
-  return {
-    backgroundColor: c.bg[m],
-    color: c.fg[m],
-    borderColor: c.ring[m],
-  };
+  return { backgroundColor: c.bg[m], color: c.fg[m] };
 }
 
 // アバター（イニシャル円）。輪郭なし。

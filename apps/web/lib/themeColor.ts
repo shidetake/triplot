@@ -23,12 +23,7 @@ export function ld(pair: ColorPair): string {
 export function chipStyle(hue: number | null | undefined): CSSProperties {
   const c = chipColors(hue);
   if (!c) return {};
-  return {
-    backgroundColor: ld(c.bg),
-    color: ld(c.fg),
-    // ring 相当を box-shadow inset で表現（Tailwind の ring と同じ見た目）。
-    boxShadow: `inset 0 0 0 1px ${ld(c.ring)}`,
-  };
+  return { backgroundColor: ld(c.bg), color: ld(c.fg) };
 }
 
 // アバター（イニシャル円）。輪郭なし。

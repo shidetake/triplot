@@ -21,11 +21,13 @@ import {
 
 export { normalizeHue, type ColorPair } from "./colorRoles";
 
-// チップ用: 薄い面 + 濃い文字 + 同系統の輪郭。
+// チップ用: 薄い面 + 濃い文字。**輪郭は引かない** —— 同じ面の上に文字を載せる
+// 他のチップ（予定ブロック・費用カテゴリ）が輪郭を持たないので、メンバーだけ
+// 枠があると浮いて見える（実機フィードバック）。輪郭の色（outline）は、
+// 選択中の予定の枠のように「強調」で使う。
 export interface ChipColors {
   bg: ColorPair;
   fg: ColorPair;
-  ring: ColorPair;
 }
 
 // hue が無効（NULL / 範囲外）なら null。呼び出し側は中立の見た目
@@ -33,17 +35,15 @@ export interface ChipColors {
 export function chipColors(hue: number | null | undefined): ChipColors | null {
   const bg = roleColor(hue, "surface");
   const fg = roleColor(hue, "onSurface");
-  const ring = roleColor(hue, "outline");
-  if (!bg || !fg || !ring) return null;
-  return { bg, fg, ring };
+  if (!bg || !fg) return null;
+  return { bg, fg };
 }
 
-// アバター（イニシャル円）用: 輪郭なし、面 + 文字だけ。
+// アバター（イニシャル円）用。チップと同じ面＋文字（どちらも輪郭を持たない）。
 export function avatarColors(
   hue: number | null | undefined,
-): { bg: ColorPair; fg: ColorPair } | null {
-  const c = chipColors(hue);
-  return c ? { bg: c.bg, fg: c.fg } : null;
+): ChipColors | null {
+  return chipColors(hue);
 }
 
 // ドット用: 単色で塗る小さな図形（参加者ドット等）。チップと違い hue が無効
