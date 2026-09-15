@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { useTranslations } from "next-intl";
 
 import {
@@ -104,6 +111,7 @@ function spanLabel(ev: {
 
 export function WeekCalendar({
   schedule,
+  viewer = null,
   placeName,
   selectedEventId,
   myMemberId,
@@ -118,6 +126,10 @@ export function WeekCalendar({
   className,
 }: {
   schedule: Schedule;
+  // 「誰の時計で見るか」の切り替え。**時刻ガターの頭（左上の角）**に置く
+  // （ガターは時間軸そのものなので、「誰の時間軸か」はその頭に書く）。
+  // 年表が分かれていない旅行では null＝角は空のまま。
+  viewer?: ReactNode;
   placeName: (placeId: string | null) => string | null;
   selectedEventId: string | null;
   // 自分が participants に含まれない予定（=別行動）を薄く描くために必要。
@@ -794,13 +806,18 @@ export function WeekCalendar({
     >
       <div style={{ width: GUTTER + totalW }}>
         {/* ── ヘッダ + 終日帯（まとめて sticky） ── */}
-        <div className="sticky top-0 z-30">
+        {/* 左上の角は**日付ヘッダと終日帯にまたがる1つのセル**にする（RN と同じ）。
+            ここに「誰の時計で見るか」を置くので、2つに割れていると縦に入らない。 */}
+        <div className="sticky top-0 z-30 flex">
+          <div
+            className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-b border-r border-foreground/10 bg-background"
+            style={{ width: GUTTER }}
+          >
+            {viewer}
+          </div>
+          <div style={{ width: totalW }}>
           {/* ── ヘッダ（縦スクロールしても上部固定） ── */}
           <div className="flex border-b border-foreground/10 bg-background">
-            <div
-              className="sticky left-0 z-10 shrink-0 border-r border-foreground/10 bg-background"
-              style={{ width: GUTTER }}
-            />
             {groups.map((g) => (
               <div
                 key={g.key}
@@ -837,12 +854,6 @@ export function WeekCalendar({
             data-mobile-chrome-top
             className="flex border-b border-foreground/10 bg-muted"
           >
-            <div
-              className="sticky left-0 z-10 flex shrink-0 items-center justify-center border-r border-foreground/10 bg-muted text-[10px] text-muted-foreground"
-              style={{ width: GUTTER }}
-            >
-              {tSched("allDayLabel")}
-            </div>
             <div
               className="relative"
               style={{ width: totalW, height: allDayBandH }}
@@ -1000,6 +1011,7 @@ export function WeekCalendar({
                   );
                 })()}
             </div>
+          </div>
           </div>
         </div>
         {/* ── ヘッダ + 終日帯 sticky ラッパー end ── */}

@@ -430,6 +430,7 @@ export default async function TripDetailPage({
                     display_name: m.display_name,
                     color: m.color,
                     active: m.active,
+                    avatarUrl: m.users?.avatar_url ?? null,
                   }))}
                   biasCenter={placesBiasCenter}
                   myMemberId={me.id}

@@ -464,6 +464,22 @@ export function DownloadIcon({
   );
 }
 
+// Lucide: clock（時刻。カレンダーの「誰の時計で見るか」の徽章。RN と同じパス）
+export function ClockIcon({
+  size = 18,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <LucideIcon size={size} className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 6v6l4 2" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: search（検索・虫めがね）
 export function SearchIcon({
   size = 18,

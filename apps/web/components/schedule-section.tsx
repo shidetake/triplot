@@ -39,11 +39,11 @@ import { useUndoable } from "@/lib/undoable";
 import { AddFab } from "./add-fab";
 import { EventForm, type EventFormMode } from "./event-form";
 import { HelpTip } from "./help-tip";
+import { ViewerSelect } from "./viewer-select";
 import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { useMediaQuery } from "./use-media-query";
-import { inputClass } from "./input-class";
 import { type PcDragRender, WeekCalendar } from "./week-calendar";
 import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
@@ -114,6 +114,7 @@ export function ScheduleSection({
     display_name: string;
     color: number | null;
     active: boolean;
+    avatarUrl: string | null;
   }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
@@ -203,20 +204,22 @@ export function ScheduleSection({
     ],
   );
   const hasDivergence = schedule.groups.some((g) => g.diverged);
+  // 「誰の時計で見るか」。**カレンダーの左上の角に置く**（時刻ガターの頭＝
+  // 時間軸そのものなので、「誰の時間軸か」はその頭に書く。RN と同じ）。
+  // 以前は広い画面が見出し行、狭い画面がカレンダーの直上の専用行で、狭い方は
+  // その1行ぶんカレンダーが縮んでいた。
   const viewerSelect = hasDivergence ? (
-    <select
+    <ViewerSelect
+      members={activeMembers.map((m) => ({
+        id: m.id,
+        display_name: m.display_name,
+        color: m.color,
+        avatarUrl: m.avatarUrl,
+      }))}
       value={viewerId}
-      onChange={(e) => setViewerId(e.target.value)}
-      aria-label={t("viewAsAria")}
-      title={t("viewAsAria")}
-      className={`${inputClass} h-8 w-auto text-xs`}
-    >
-      {activeMembers.map((m) => (
-        <option key={m.id} value={m.id}>
-          {t("viewAs", { name: m.display_name })}
-        </option>
-      ))}
-    </select>
+      onChange={setViewerId}
+      label={t("viewAsAria")}
+    />
   ) : null;
 
   const tzTimeline = useMemo(
@@ -418,7 +421,6 @@ export function ScheduleSection({
       <div className="hidden items-center justify-between gap-2 md:flex">
         <h2 className="text-lg font-semibold">{t("heading")}</h2>
         <div className="flex items-center gap-3">
-          {viewerSelect}
           <HelpTip label={t("addHelpLabel")} align="right" widthClass="w-52">
             {t("addHelp")}
           </HelpTip>
@@ -447,14 +449,9 @@ export function ScheduleSection({
         className="fixed inset-x-0 flex flex-col md:static md:inset-auto"
         style={{ top: MOBILE_TAB_TOP_OFFSET, bottom: MOBILE_TAB_BOTTOM_OFFSET }}
       >
-        {/* 狭い画面は見出し行が無いので、切り替えはカレンダーの直上に出す。 */}
-        {viewerSelect && (
-          <div className="flex shrink-0 justify-end px-4 py-1 md:hidden">
-            {viewerSelect}
-          </div>
-        )}
         <WeekCalendar
           schedule={schedule}
+          viewer={viewerSelect}
           placeName={placeName}
           selectedEventId={selectedEventId}
           myMemberId={myMemberId}
