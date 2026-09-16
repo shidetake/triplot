@@ -22,16 +22,26 @@ export function deriveSplitSubmission(a: {
   payerMemberId: string;
   // 画面で選ばれている割り勘対象。
   selectedMemberIds: string[];
-  // 「全員」を選んでいるか（true なら具体的な ID を焼き込まない＝後から
+  // 「全員」モードを選んでいるか（true なら具体的な ID を焼き込まない＝後から
   // 加わった人も含まれる）。
   everyone: boolean;
+  // その旅行のアクティブメンバー。選択が全員を覆っているかの判定に使う。
+  activeMemberIds: string[];
 }): SplitSubmission {
   // private は自分にしか見えない＝割り勘できない（DB の CHECK 制約と同じ）。
   const onlyPayer =
     a.selectedMemberIds.length === 1 &&
     a.selectedMemberIds[0] === a.payerMemberId;
   const splittable = a.visibility === "shared" && !onlyPayer;
-  const splitEveryone = !splittable || a.everyone;
+  // **結果が全員なら「全員」として保存する。** 一部モードのまま全員を選んで
+  // いる状態は画面上「全員」と表示されるので、そこで ID を焼き込むと、
+  // 見えている表示と保存される値が食い違う（後から加わった人が、見た目は
+  // 「全員」なのに対象に入らない）。畳んだ「全員」を確かめようと開いて
+  // 保存しただけで焼き込まれていた。
+  const coversEveryone =
+    a.activeMemberIds.length > 0 &&
+    a.activeMemberIds.every((id) => a.selectedMemberIds.includes(id));
+  const splitEveryone = !splittable || a.everyone || coversEveryone;
   return {
     splittable,
     splitEveryone,

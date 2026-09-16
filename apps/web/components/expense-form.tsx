@@ -453,6 +453,7 @@ export function ExpenseForm({
     payerMemberId: payer,
     selectedMemberIds: Array.from(selectedSplits),
     everyone: splitMode === "all",
+    activeMemberIds: members.map((m) => m.id),
   });
   const onlyPayer = !submittedSplittable && visibility === "shared";
 

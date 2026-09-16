@@ -7,6 +7,8 @@ import {
 
 const ME = "me";
 const OTHER = "other";
+const THIRD = "third";
+const MEMBERS = [ME, OTHER, THIRD];
 
 describe("deriveSplitSubmission", () => {
   it("払った人が自分のためだけに払ったなら、割り勘しない", () => {
@@ -16,6 +18,7 @@ describe("deriveSplitSubmission", () => {
         payerMemberId: ME,
         selectedMemberIds: [ME],
         everyone: false,
+        activeMemberIds: MEMBERS,
       }),
     ).toEqual({ splittable: false, splitEveryone: true, splitMemberIds: [] });
   });
@@ -29,6 +32,7 @@ describe("deriveSplitSubmission", () => {
         payerMemberId: OTHER,
         selectedMemberIds: [ME],
         everyone: false,
+        activeMemberIds: MEMBERS,
       }),
     ).toEqual({
       splittable: true,
@@ -42,8 +46,24 @@ describe("deriveSplitSubmission", () => {
       deriveSplitSubmission({
         visibility: "shared",
         payerMemberId: ME,
-        selectedMemberIds: [ME, OTHER],
+        selectedMemberIds: MEMBERS,
         everyone: true,
+        activeMemberIds: MEMBERS,
+      }),
+    ).toEqual({ splittable: true, splitEveryone: true, splitMemberIds: [] });
+  });
+
+  // 実データで起きていたケース。畳んだ「全員」を確かめようと開くと一部モードに
+  // 変わり、全員が選ばれたまま保存すると ID が焼き込まれていた（表示は「全員」の
+  // まま）。結果が全員なら「全員」として保存する。
+  it("一部モードでも、結果が全員なら「全員」として保存する", () => {
+    expect(
+      deriveSplitSubmission({
+        visibility: "shared",
+        payerMemberId: ME,
+        selectedMemberIds: MEMBERS,
+        everyone: false,
+        activeMemberIds: MEMBERS,
       }),
     ).toEqual({ splittable: true, splitEveryone: true, splitMemberIds: [] });
   });
@@ -55,6 +75,7 @@ describe("deriveSplitSubmission", () => {
         payerMemberId: ME,
         selectedMemberIds: [ME, OTHER],
         everyone: false,
+        activeMemberIds: MEMBERS,
       }),
     ).toEqual({
       splittable: true,
@@ -68,8 +89,9 @@ describe("deriveSplitSubmission", () => {
       deriveSplitSubmission({
         visibility: "private",
         payerMemberId: ME,
-        selectedMemberIds: [ME, OTHER],
+        selectedMemberIds: MEMBERS,
         everyone: false,
+        activeMemberIds: MEMBERS,
       }),
     ).toEqual({ splittable: false, splitEveryone: true, splitMemberIds: [] });
   });
@@ -119,12 +141,14 @@ describe("deriveSplitSelection", () => {
     const cases = [
       { everyone: false, selectedMemberIds: ["me"] }, // 自分のためだけ
       { everyone: true, selectedMemberIds: members }, // 全員
+      { everyone: false, selectedMemberIds: members }, // 一部モードで全員
       { everyone: false, selectedMemberIds: ["me", "a"] }, // 一部
     ];
     for (const c of cases) {
       const saved = deriveSplitSubmission({
         visibility: "shared",
         payerMemberId: "me",
+        activeMemberIds: members,
         ...c,
       });
       const back = deriveSplitSelection({
@@ -135,6 +159,7 @@ describe("deriveSplitSelection", () => {
       const again = deriveSplitSubmission({
         visibility: "shared",
         payerMemberId: "me",
+        activeMemberIds: members,
         selectedMemberIds: back.selectedMemberIds,
         everyone: back.mode === "all",
       });
