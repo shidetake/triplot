@@ -11,6 +11,7 @@ import { useTranslations } from "use-intl";
 
 import { calculateExpenseSummary } from "@triplot/shared/expenseSummary";
 import { calculateSettlements } from "@triplot/shared/settlement";
+import { expenseNoteSlot } from "@triplot/shared/expenseNote";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
 import {
@@ -334,6 +335,7 @@ export default function ExpensesTab() {
               const placeName = e.place_id
                 ? (placeNameById.get(e.place_id) ?? null)
                 : null;
+              const noteSlot = expenseNoteSlot({ placeName, note: e.note });
               return (
                 <SwipeDeleteRow
                   key={e.id}
@@ -402,6 +404,12 @@ export default function ExpensesTab() {
                           </Text>
                         </View>
                       )}
+                      {/* 場所が無い費用は、空いたこの枠にメモを入れる（1行減る）。 */}
+                      {noteSlot === "place" && (
+                        <Text style={styles.metaText} numberOfLines={1}>
+                          {e.note}
+                        </Text>
+                      )}
                     </View>
                     <View style={styles.expensePayerGroup}>
                       <View style={styles.metaGroup}>
@@ -422,7 +430,7 @@ export default function ExpensesTab() {
                       )}
                     </View>
                   </View>
-                  {e.note ? (
+                  {noteSlot === "own" ? (
                     // 一覧の可変長テキストは1行で止める（ui-guidelines「切り詰め」）。
                     // 取り込みが入れるメモは1行に収まる長さで書かせているが、
                     // 手入力は自由なのでここでも止める。

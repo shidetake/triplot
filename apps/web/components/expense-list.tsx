@@ -7,6 +7,7 @@ import { chipStyle } from "@/lib/themeColor";
 import type { LatLng } from "@triplot/shared/placeMap";
 import type { TripTzTimeline } from "@triplot/shared/schedule";
 import type { Currency } from "@triplot/shared/types/database";
+import { expenseNoteSlot } from "@triplot/shared/expenseNote";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
 
@@ -170,6 +171,7 @@ function ExpenseRowItem({
 
   const isForeign = expense.local_currency !== defaultCurrency;
   const amountInDefault = expense.local_price * expense.rate_to_default;
+  const noteSlot = expenseNoteSlot({ placeName, note: expense.note });
 
   return (
     <li className="text-sm">
@@ -223,6 +225,10 @@ function ExpenseRowItem({
                   <span className="min-w-0 truncate">{placeName}</span>
                 </span>
               )}
+              {/* 場所が無い費用は、空いたこの枠にメモを入れる（1行減る）。 */}
+              {noteSlot === "place" && (
+                <span className="block truncate">{expense.note}</span>
+              )}
             </span>
             {/* 狭い画面は写真アバター、広い画面は色付きフルネームチップ（TODO 作成者と同じ）。 */}
             <span className="flex shrink-0 flex-wrap items-center justify-end gap-2">
@@ -267,8 +273,11 @@ function ExpenseRowItem({
             </span>
           </div>
 
-          {expense.note && (
-            <p className="text-xs text-muted-foreground">{expense.note}</p>
+          {/* 一覧の可変長テキストは1行で止める（ui-guidelines「切り詰め」）。 */}
+          {noteSlot === "own" && (
+            <p className="truncate text-xs text-muted-foreground">
+              {expense.note}
+            </p>
           )}
         </div>
       </button>
