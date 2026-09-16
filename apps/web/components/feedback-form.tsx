@@ -7,7 +7,7 @@ import { useState } from "react";
 import { FEEDBACK_BODY_MAX, type FeedbackKind } from "@triplot/shared/feedback";
 
 import { SubmitButton } from "@/components/submit-button";
-import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { FieldLabel } from "./field-label";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
 import { SendIcon } from "./icons";
@@ -74,34 +74,30 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
       onSubmit={handleSubmit}
       className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
-      {!inSheet && (
-        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
-      )}
-
-      {/* 種別（不具合/要望）。先頭が全幅トラックなので × の右クリアランス mr-7。 */}
-      <div
-        className={`${inSheet ? "" : "mr-7"} flex gap-1 rounded-md border border-foreground/10 p-1`}
-      >
-        {(["bug", "feature"] as const).map((k) => (
-          <label
-            key={k}
-            className={`${seg} ${
-              kind === k
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-foreground/10"
-            }`}
-          >
-            <input
-              type="radio"
-              name="kind"
-              className="sr-only"
-              checked={kind === k}
-              onChange={() => setKind(k)}
-            />
-            {k === "bug" ? t("kindBug") : t("kindFeature")}
-          </label>
-        ))}
-      </div>
+      {/* 種別（不具合/要望）。× は先頭行の一員として並べる（FormCloseRow）。 */}
+      <FormCloseRow onClose={onDone}>
+        <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
+          {(["bug", "feature"] as const).map((k) => (
+            <label
+              key={k}
+              className={`${seg} ${
+                kind === k
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-foreground/10"
+              }`}
+            >
+              <input
+                type="radio"
+                name="kind"
+                className="sr-only"
+                checked={kind === k}
+                onChange={() => setKind(k)}
+              />
+              {k === "bug" ? t("kindBug") : t("kindFeature")}
+            </label>
+          ))}
+        </div>
+      </FormCloseRow>
 
       <label className="block min-w-0 text-sm">
         <FieldLabel required>{t("bodyLabel")}</FieldLabel>
@@ -112,7 +108,9 @@ export function FeedbackForm({ onDone }: { onDone: () => void }) {
           value={body}
           onChange={(e) => setBody(e.target.value)}
           maxLength={FEEDBACK_BODY_MAX}
-          placeholder={kind === "bug" ? t("placeholderBug") : t("placeholderFeature")}
+          placeholder={
+            kind === "bug" ? t("placeholderBug") : t("placeholderFeature")
+          }
           className={`mt-1 block w-full min-h-28 resize-y py-2 ${inputClass}`}
         />
       </label>

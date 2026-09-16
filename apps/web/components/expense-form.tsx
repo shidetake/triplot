@@ -52,6 +52,7 @@ import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { ToggleChip } from "./toggle-chip";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
@@ -155,9 +156,7 @@ export function ExpenseForm({
   const initShowTime = isEdit
     ? initPaidAtTime !== "00:00"
     : !!initialTime && initialTime !== "00:00";
-  const initVisibility: Visibility = isEdit
-    ? editExpense.visibility
-    : "shared";
+  const initVisibility: Visibility = isEdit ? editExpense.visibility : "shared";
   // 保存された値からフォームの選択状態に戻す（保存の逆写像。iOS と同じ1つの
   // 判定＝expenseSplit.ts）。
   const initSelection = isEdit
@@ -267,14 +266,14 @@ export function ExpenseForm({
     ? editExpense.tz
     : initResolution.kind === "single"
       ? initResolution.tz
-      : (initialTzDisambig
+      : ((initialTzDisambig
           ? initResolution.options.find(
               (o) =>
                 o.transitId === initialTzDisambig.transitId &&
                 o.side === initialTzDisambig.side,
             )
           : null
-        )?.tz ?? initResolution.options[0].tz;
+        )?.tz ?? initResolution.options[0].tz);
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
   // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補を選択肢にも反映する
   // （「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
@@ -293,9 +292,10 @@ export function ExpenseForm({
           : initResolution.options[0]
         : (initialTzDisambig ?? initResolution.options[0]);
   const [tz, setTzRaw] = useDraft<string>("tz", initTz);
-  const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<
-    string | null
-  >("tzDisambigTransitId", editDisambig?.transitId ?? null);
+  const [tzDisambigTransitId, setTzDisambigTransitId] = useDraft<string | null>(
+    "tzDisambigTransitId",
+    editDisambig?.transitId ?? null,
+  );
   const [tzDisambigSide, setTzDisambigSide] = useDraft<
     "depart" | "arrive" | null
   >("tzDisambigSide", editDisambig?.side ?? null);
@@ -464,11 +464,12 @@ export function ExpenseForm({
   const allSelectedNow =
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
-  const splitLabel = onlyPayer && payer === myMemberId
-    ? t("splitSelfOnly")
-    : allSelectedNow
-      ? t("splitAll")
-      : t("splitSome");
+  const splitLabel =
+    onlyPayer && payer === myMemberId
+      ? t("splitSelfOnly")
+      : allSelectedNow
+        ? t("splitAll")
+        : t("splitSome");
 
   const sortedCategories = useMemo(
     () => [...categories].sort((a, b) => a.sort_order - b.sort_order),
@@ -481,8 +482,7 @@ export function ExpenseForm({
       ? {
           kind: "saved",
           id: editExpense.place_id,
-          name:
-            places.find((p) => p.id === editExpense.place_id)?.name ?? "",
+          name: places.find((p) => p.id === editExpense.place_id)?.name ?? "",
         }
       : (initialPlace ?? null);
 
@@ -492,35 +492,32 @@ export function ExpenseForm({
       action={formAction}
       className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
-      {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
-          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
-      {onDone && !inSheet && (
-        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
-      )}
-
       {/* 価格はラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
-          隣の通貨セレクトは選択値（JPY 等）自体が説明になるのでラベル無しで高さを揃える。 */}
-      <div className="grid grid-cols-[1fr_auto] gap-2">
-        <Input
-          type="number"
-          name="local_price"
-          required
-          min="0"
-          step="0.01"
-          inputMode="decimal"
-          placeholder={t("price")}
-          aria-label={t("price")}
-          value={price}
-          onChange={(e) => setPrice(e.target.value)}
-          className="block w-full"
-        />
-        <CurrencySelect
-          name="local_currency"
-          value={localCurrency}
-          onChange={(v) => onCurrencyChange(v as Currency)}
-          aria-label={t("currency")}
-        />
-      </div>
+          隣の通貨セレクトは選択値（JPY 等）自体が説明になるのでラベル無しで高さを揃える。
+          × は先頭行の一員として並べる（FormCloseRow）。 */}
+      <FormCloseRow onClose={onDone}>
+        <div className="grid grid-cols-[1fr_auto] gap-2">
+          <Input
+            type="number"
+            name="local_price"
+            required
+            min="0"
+            step="0.01"
+            inputMode="decimal"
+            placeholder={t("price")}
+            aria-label={t("price")}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            className="block w-full"
+          />
+          <CurrencySelect
+            name="local_currency"
+            value={localCurrency}
+            onChange={(v) => onCurrencyChange(v as Currency)}
+            aria-label={t("currency")}
+          />
+        </div>
+      </FormCloseRow>
 
       {localCurrency !== defaultCurrency && (
         <label className="block text-sm">
@@ -664,9 +661,7 @@ export function ExpenseForm({
         multiTz &&
         (tzRes.kind === "ambiguous" ? (
           <fieldset className="text-sm">
-            <p className="text-xs text-muted-foreground">
-              {t("transitDay")}
-            </p>
+            <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
             {/* 同じ TZ の候補は畳む（移動が複数あると重複して並ぶ）。選択状態も
                 TZ 単位で照合する（実体の transitId/side は selectTz が保持）。 */}
             <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
@@ -713,7 +708,11 @@ export function ExpenseForm({
       <div className="flex items-center gap-2 text-sm">
         <span className="font-medium">{t("visibility")}</span>
         {canChangeVisibility ? (
-          <div className="flex gap-3" role="radiogroup" aria-label={t("visibility")}>
+          <div
+            className="flex gap-3"
+            role="radiogroup"
+            aria-label={t("visibility")}
+          >
             <label className="inline-flex items-center gap-1">
               <input
                 type="radio"
@@ -738,7 +737,9 @@ export function ExpenseForm({
         ) : (
           <>
             <span className="text-muted-foreground">
-              {visibility === "shared" ? tCommon("shared") : tCommon("selfOnly")}
+              {visibility === "shared"
+                ? tCommon("shared")
+                : tCommon("selfOnly")}
             </span>
             <input type="hidden" name="visibility" value={visibility} />
           </>
@@ -757,7 +758,9 @@ export function ExpenseForm({
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
             <span>
-              {t("payer", { name: members.find((m) => m.id === payer)?.display_name ?? "?" })}
+              {t("payer", {
+                name: members.find((m) => m.id === payer)?.display_name ?? "?",
+              })}
             </span>
             <ChevronIcon
               size={16}
@@ -802,7 +805,11 @@ export function ExpenseForm({
             aria-expanded={splitMode === "custom"}
             className="inline-flex items-center gap-1 rounded font-medium text-muted-foreground transition hover:text-foreground"
           >
-            <span>{t("splitTargets", { label: splitMode === "all" ? t("splitAll") : splitLabel })}</span>
+            <span>
+              {t("splitTargets", {
+                label: splitMode === "all" ? t("splitAll") : splitLabel,
+              })}
+            </span>
             <ChevronIcon
               size={16}
               className={`transition-transform ${splitMode === "all" ? "rotate-90" : "-rotate-90"}`}
@@ -875,9 +882,7 @@ export function ExpenseForm({
         </SubmitButton>
       </div>
 
-      {state.error && (
-        <MessageBox kind="error">{state.error}</MessageBox>
-      )}
+      {state.error && <MessageBox kind="error">{state.error}</MessageBox>}
     </form>
   );
 }

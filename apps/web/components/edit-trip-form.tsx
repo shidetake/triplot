@@ -12,7 +12,7 @@ import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 
 import type { Currency } from "@triplot/shared/types/database";
-import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { CurrencySelect } from "./currency-select";
 import { DateRangePopover } from "./date-range-popover";
 import { FieldLabel } from "./field-label";
@@ -61,21 +61,19 @@ export function EditTripForm({
       action={formAction}
       className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
-      {/* ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
-      {!inSheet && (
-        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
-      )}
-
-      {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。 */}
-      <Input
-        name="title"
-        required
-        placeholder={t("createTrip.title")}
-        aria-label={t("createTrip.title")}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="block w-full min-w-0"
-      />
+      {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
+          × は先頭行の一員として並べる（FormCloseRow）。 */}
+      <FormCloseRow onClose={onDone}>
+        <Input
+          name="title"
+          required
+          placeholder={t("createTrip.title")}
+          aria-label={t("createTrip.title")}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="block w-full min-w-0"
+        />
+      </FormCloseRow>
 
       <div className="text-sm">
         <FieldLabel required>{t("createTrip.dates")}</FieldLabel>

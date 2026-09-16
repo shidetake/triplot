@@ -31,7 +31,7 @@ import { PrivateBadge } from "./private-badge";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { gmapsUrl, PlaceIcon, type PlaceRow } from "./place-list";
 import type { CandidatePlace } from "./place-search";
 import { cn } from "@/lib/utils";
@@ -207,14 +207,6 @@ function IconPicker({
   );
 }
 
-// 広い画面の吹き出し（InfoWindow）の右上に出す × 。狭い画面のボトムシートは
-// ドラッグダウン/dim タップで閉じるので出さない（ui-guidelines「定型部品」）。
-function PopupCloseButton({ onClose }: { onClose: () => void }) {
-  const inSheet = useInSheet();
-  if (inSheet) return null;
-  return <CloseButton onClick={onClose} className="shrink-0" />;
-}
-
 export function CandidateInfo({
   tripId,
   candidate,
@@ -259,12 +251,9 @@ export function CandidateInfo({
       <div>
         {/* 評価は地図の候補ピンと検索結果の一覧に出ているので、ここでは出さない
             （同じ情報を3箇所に置かない＝そのぶん縦が1行詰まる）。 */}
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 break-words text-sm font-semibold">
-            {candidate.name}
-          </p>
-          <PopupCloseButton onClose={onClose} />
-        </div>
+        <FormCloseRow onClose={onClose}>
+          <p className="break-words text-sm font-semibold">{candidate.name}</p>
+        </FormCloseRow>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {candidate.address}
         </p>
@@ -358,10 +347,9 @@ export function DraftInfo({
   return (
     <div className={popupWrapClass(inSheet)}>
       <div>
-        <div className="flex items-start justify-between gap-2">
-          <p className="min-w-0 text-sm font-semibold">{t("addPin")}</p>
-          <PopupCloseButton onClose={onClose} />
-        </div>
+        <FormCloseRow onClose={onClose}>
+          <p className="text-sm font-semibold">{t("addPin")}</p>
+        </FormCloseRow>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}
           {t("dragHint")}
@@ -595,15 +583,14 @@ export function SavedInfo({
   return (
     <div className={popupWrapClass(inSheet)}>
       <div>
-        <div className="flex items-start justify-between gap-2">
-          <p className="flex min-w-0 flex-wrap items-center gap-1.5 text-sm font-semibold">
+        <FormCloseRow onClose={onClose}>
+          <p className="flex flex-wrap items-center gap-1.5 text-sm font-semibold">
             <span className="min-w-0 break-words">{place.name}</span>
             {place.visibility === "private" && (
               <PrivateBadge className="shrink-0" />
             )}
           </p>
-          <PopupCloseButton onClose={onClose} />
-        </div>
+        </FormCloseRow>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-muted-foreground">
             {place.formatted_address}

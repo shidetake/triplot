@@ -21,7 +21,7 @@ import { CurrencySelect } from "./currency-select";
 import { HelpTip } from "./help-tip";
 import { MessageBox } from "./message-box";
 import { PlusIcon } from "./icons";
-import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
 
 // コピー元に選べる過去の旅行。
@@ -135,12 +135,6 @@ export function CreateTripForm({
       onSubmit={() => clearDraft()}
       className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
-      {/* × は専用行を作らず右上角に重ねる（ui-guidelines「× 閉じるは右上角」）。
-          先頭が全幅のセグメントトラックのとき（canCopy）は mr で × の下に潜らせない。
-          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
-      {!inSheet && (
-        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
-      )}
       {/* 旅行の候補から開いた時だけ。作成後にこのメール群を新しい旅行へ割り当てる。 */}
       {proposal && (
         <input
@@ -151,47 +145,48 @@ export function CreateTripForm({
       )}
 
       {/* 作り方の選択（過去の旅行が無ければ出さない）。セグメントトラック型。
-          右クリアランス mr-7 は × がある時（PC ポップオーバー）だけ＝シートは × が無いので端まで。 */}
+          × は先頭行の一員として並べる（FormCloseRow）。先頭はこのトラックか、
+          トラックが無ければ下のタイトル入力なので、× をどちらに付けるか切り替える。 */}
       {canCopy && (
-        <div
-          className={`${inSheet ? "" : "mr-7"} flex gap-1 rounded-md border border-foreground/10 p-1`}
-        >
-          <label
-            className={`${seg} ${
-              mode === "new"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-foreground/10"
-            }`}
-          >
-            <input
-              type="radio"
-              name="__mode"
-              className="sr-only"
-              checked={mode === "new"}
-              onChange={() => {
-                setMode("new");
-                setSourceId("");
-              }}
-            />
-            {t("modeNew")}
-          </label>
-          <label
-            className={`${seg} ${
-              mode === "copy"
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:bg-foreground/10"
-            }`}
-          >
-            <input
-              type="radio"
-              name="__mode"
-              className="sr-only"
-              checked={mode === "copy"}
-              onChange={() => setMode("copy")}
-            />
-            {t("modeCopy")}
-          </label>
-        </div>
+        <FormCloseRow onClose={onDone}>
+          <div className="flex gap-1 rounded-md border border-foreground/10 p-1">
+            <label
+              className={`${seg} ${
+                mode === "new"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-foreground/10"
+              }`}
+            >
+              <input
+                type="radio"
+                name="__mode"
+                className="sr-only"
+                checked={mode === "new"}
+                onChange={() => {
+                  setMode("new");
+                  setSourceId("");
+                }}
+              />
+              {t("modeNew")}
+            </label>
+            <label
+              className={`${seg} ${
+                mode === "copy"
+                  ? "bg-primary text-primary-foreground"
+                  : "text-muted-foreground hover:bg-foreground/10"
+              }`}
+            >
+              <input
+                type="radio"
+                name="__mode"
+                className="sr-only"
+                checked={mode === "copy"}
+                onChange={() => setMode("copy")}
+              />
+              {t("modeCopy")}
+            </label>
+          </div>
+        </FormCloseRow>
       )}
 
       {mode === "copy" && (
@@ -228,15 +223,17 @@ export function CreateTripForm({
 
       {/* タイトルはラベル無し＋placeholder＝フィールド名（iOS カレンダー方式）。
           必須は * でなく「埋まるまで作成ボタン無効」で表現。 */}
-      <Input
-        name="title"
-        required
-        placeholder={t("title")}
-        aria-label={t("title")}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        className="block w-full min-w-0"
-      />
+      <FormCloseRow onClose={canCopy ? undefined : onDone}>
+        <Input
+          name="title"
+          required
+          placeholder={t("title")}
+          aria-label={t("title")}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="block w-full min-w-0"
+        />
+      </FormCloseRow>
 
       <Field
         label={t("displayName")}
@@ -299,9 +296,7 @@ export function CreateTripForm({
         </MessageBox>
       )}
 
-      {state.error && (
-        <MessageBox kind="error">{state.error}</MessageBox>
-      )}
+      {state.error && <MessageBox kind="error">{state.error}</MessageBox>}
     </form>
   );
 }

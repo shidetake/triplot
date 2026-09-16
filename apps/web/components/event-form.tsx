@@ -61,7 +61,7 @@ import { deriveTransitTimezones } from "@triplot/shared/placeTimezone";
 import { Button } from "@/components/ui/button";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
-import { CloseButton } from "./close-button";
+import { FormCloseRow } from "./form-close-row";
 import { ToggleChip } from "./toggle-chip";
 import { MessageBox } from "./message-box";
 import { useClearDraft, useDraft, useInSheet } from "./form-host";
@@ -376,7 +376,8 @@ export function EventForm({
   // 全体の年表だと、別行動している人の移動まで候補に混ざる。全員参加なら
   // 旅行全体の年表と同じ。
   const participantTimeline = useMemo(
-    () => timelineFor(tzTimeline, pMode === "all" ? null : Array.from(pSelected)),
+    () =>
+      timelineFor(tzTimeline, pMode === "all" ? null : Array.from(pSelected)),
     [tzTimeline, pMode, pSelected],
   );
 
@@ -437,10 +438,7 @@ export function EventForm({
   // 旅程タイムラインから一意に解決 → UI を出さずに hidden で送る。
   // tz = 表示用の実効値、tzDisambig* = 保存する選択（乗継日
   // 以外は両方 null のまま＝毎回自動導出）。
-  const startResolution = resolveExpenseTz(
-    startInit.date,
-    participantTimeline,
-  );
+  const startResolution = resolveExpenseTz(startInit.date, participantTimeline);
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
   // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補をラジオにも
   // 反映する（「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
@@ -707,13 +705,6 @@ export function EventForm({
       action={formAction}
       className={`relative space-y-3 p-4 ${inSheet ? "" : "rounded-md border border-foreground/10 bg-background"}`}
     >
-      {/* × は専用行を作らず右上角に重ねる（縦を 1 行ぶん詰める）。先頭の種別トラックが
-          下に潜らないよう、トラック側に右クリアランス（mr）を入れる。
-          ボトムシート時は × を出さず下スワイプで閉じる（Instagram と同じ）。 */}
-      {!inSheet && (
-        <CloseButton onClick={onDone} className="absolute right-2 top-2 z-10" />
-      )}
-
       <input type="hidden" name="kind" value={submitKind} />
       {kind3 === "allday" && <input type="hidden" name="all_day" value="on" />}
       {isEdit && <input type="hidden" name="event_id" value={ev!.id} />}
@@ -725,54 +716,58 @@ export function EventForm({
           アイコンは入力欄の内側右端に重ねる（iOS の検索欄のマイクと同じ形。
           place-search.tsx の検索クリアボタンと同じ relative/pr-9 パターン）。
           入れ替え中も title は hidden で送る（required を満たすため）。 */}
-      {flightMode ? (
-        <>
-          <input type="hidden" name="title" value={title} />
-          <FlightPicker
-            date={
-              kind3 === "allday"
-                ? alldayStart
-                : kind3 === "transit"
-                  ? departDate
-                  : sDate
-            }
-            initialNumber={prefill?.flightNumber ?? undefined}
-            autoApply={autoApplyFlight}
-            onCancel={() => {
-              setAutoApplyFlight(false);
-              setFlightMode(false);
-            }}
-            onApply={applyFlight}
-          />
-        </>
-      ) : (
-        <div className="relative">
-          <Input
-            type="text"
-            name="title"
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder={t("title")}
-            aria-label={t("title")}
-            className="block w-full pr-9"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="iconDense"
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full"
-            onClick={() => {
-              setAutoApplyFlight(false);
-              setFlightMode(true);
-            }}
-            title={t("flightAria")}
-            aria-label={t("flightAria")}
-          >
-            <PlaneIcon size={16} />
-          </Button>
-        </div>
-      )}
+      {/* × は先頭行の一員として並べる（FormCloseRow）。逃がすための右クリアランスは
+          要らない。ボトムシートでは出さず下スワイプで閉じる。 */}
+      <FormCloseRow onClose={onDone}>
+        {flightMode ? (
+          <>
+            <input type="hidden" name="title" value={title} />
+            <FlightPicker
+              date={
+                kind3 === "allday"
+                  ? alldayStart
+                  : kind3 === "transit"
+                    ? departDate
+                    : sDate
+              }
+              initialNumber={prefill?.flightNumber ?? undefined}
+              autoApply={autoApplyFlight}
+              onCancel={() => {
+                setAutoApplyFlight(false);
+                setFlightMode(false);
+              }}
+              onApply={applyFlight}
+            />
+          </>
+        ) : (
+          <div className="relative">
+            <Input
+              type="text"
+              name="title"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder={t("title")}
+              aria-label={t("title")}
+              className="block w-full pr-9"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="iconDense"
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full"
+              onClick={() => {
+                setAutoApplyFlight(false);
+                setFlightMode(true);
+              }}
+              title={t("flightAria")}
+              aria-label={t("flightAria")}
+            >
+              <PlaneIcon size={16} />
+            </Button>
+          </div>
+        )}
+      </FormCloseRow>
 
       {/* 種別は宣言させず、入力の結果として決まる。移動は「出す欄」を変える
           （到着地・TZ）ので場所より前に置く。終日は日時の見た目だけ変えるので
@@ -926,7 +921,8 @@ export function EventForm({
             <span className="text-muted-foreground">{t("timezone")}</span>
             {!tzExpanded && (
               <span>
-                {tzDisplayLabel(departTz, locale)} → {tzDisplayLabel(arriveTz, locale)}
+                {tzDisplayLabel(departTz, locale)} →{" "}
+                {tzDisplayLabel(arriveTz, locale)}
               </span>
             )}
             <ChevronIcon
@@ -953,7 +949,9 @@ export function EventForm({
           {transitWarnings.map((w) => (
             <MessageBox key={`${w.memberId}-${w.side}`} kind="warning" dense>
               {t(
-                w.side === "before" ? "disconnectedBefore" : "disconnectedAfter",
+                w.side === "before"
+                  ? "disconnectedBefore"
+                  : "disconnectedAfter",
                 { name: memberName(w.memberId), tz: tzLabel(w.tz) },
               )}
             </MessageBox>
