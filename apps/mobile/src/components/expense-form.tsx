@@ -48,7 +48,14 @@ import { chipDateText, InlineNativePicker, PickerChip } from "./datetime-field";
 import { ColorDisc } from "./color-badge";
 import { PageSheet } from "./page-sheet";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
-import { CheckIcon, ChevronIcon, PlusIcon, TrashIcon, XIcon } from "./icons";
+import {
+  CheckIcon,
+  ChevronIcon,
+  PlusIcon,
+  SaveIcon,
+  TrashIcon,
+  XIcon,
+} from "./icons";
 import { PlacePicker } from "./place-picker";
 import { SheetScroll } from "./sheet-scroll";
 import { SheetTitle } from "./sheet-title";
@@ -812,7 +819,13 @@ export function ExpenseForm({
           style={styles.submitButton}
           accessibilityLabel={isEdit ? tCommon("save") : t("addAria")}
         >
-          <PlusIcon size={20} color={theme.primaryForeground} />
+          {/* 編集は「保存」、新規は「追加」。読み上げ名（accessibilityLabel）は
+              元から切り替えていたのに、アイコンだけ＋のままだった。 */}
+          {isEdit ? (
+            <SaveIcon size={20} color={theme.primaryForeground} />
+          ) : (
+            <PlusIcon size={20} color={theme.primaryForeground} />
+          )}
         </SubmitButton>
       </View>
 
