@@ -118,19 +118,19 @@ async function TripsSection({ userId }: { userId: string }) {
         </div>
       )}
 
-      {/* 同種の項目が並ぶ一覧なので、1件ずつ枠＋隙間ではなく一覧全体を1つの枠に
-          して行を区切り線で分ける（費用一覧・受信箱と同じ形）。 */}
+      {/* カード単位（ui-guidelines「行にするかカードにするか」＝
+          「1件ずつが独立した塊として扱われる時はカード」に当たる）。
+          1つ1つの旅行は場所・予定・費用・メンバーを抱える別々の文脈への
+          入り口で、費用一覧の行のような「同じ文脈の中の同種の明細」とは
+          性質が違う（実機フィードバック: 区切り線の一覧だと旅行同士が
+          地続きに見えて選びにくかった）。iOS の旅行一覧と同じ形。 */}
       {trips.length > 0 && (
-        <ul
-          className={`divide-y divide-foreground/10 overflow-hidden rounded-md border border-foreground/10${
-            proposals.length > 0 ? " mt-6" : ""
-          }`}
-        >
+        <ul className={`space-y-2${proposals.length > 0 ? " mt-6" : ""}`}>
           {trips.map((trip) => (
             <li key={trip.id}>
               <Link
                 href={`/trips/${trip.id}`}
-                className="block p-4 transition hover:bg-foreground/10"
+                className="block rounded-lg border border-foreground/10 p-4 transition hover:bg-foreground/10"
               >
                 <div className="font-medium">{trip.title}</div>
                 <div className="mt-1 text-sm text-muted-foreground">
