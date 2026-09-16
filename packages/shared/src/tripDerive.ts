@@ -382,6 +382,7 @@ export function toSummaryExpenses(
 ): SummaryExpense[] {
   return expenses.map((e) => ({
     visibility: e.visibility,
+    categoryId: e.category_id,
     amountInDefault: e.local_price * e.rate_to_default,
     payerMemberId: e.payer_member_id,
     splittable: e.splittable,

@@ -7,6 +7,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
+        categoryId: "food",
         amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
@@ -17,6 +18,7 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       personalTotal: 15000,
       tripTotal: 30000,
+      byCategory: [{ categoryId: "food", personal: 15000, trip: 30000 }],
     });
   });
 
@@ -24,6 +26,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
+        categoryId: "food",
         amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
@@ -34,6 +37,7 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "carol")).toEqual({
       personalTotal: 0,
       tripTotal: 30000,
+      byCategory: [{ categoryId: "food", personal: 0, trip: 30000 }],
     });
   });
 
@@ -41,6 +45,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
+        categoryId: "food",
         amountInDefault: 5000,
         payerMemberId: "alice",
         splittable: false,
@@ -51,10 +56,12 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "alice")).toEqual({
       personalTotal: 5000,
       tripTotal: 5000,
+      byCategory: [{ categoryId: "food", personal: 5000, trip: 5000 }],
     });
     expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       personalTotal: 0,
       tripTotal: 5000,
+      byCategory: [{ categoryId: "food", personal: 0, trip: 5000 }],
     });
   });
 
@@ -62,6 +69,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "private",
+        categoryId: "misc",
         amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
@@ -72,6 +80,7 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       personalTotal: 3000,
       tripTotal: 0,
+      byCategory: [{ categoryId: "misc", personal: 3000, trip: 0 }],
     });
   });
 
@@ -79,6 +88,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "private",
+        categoryId: "misc",
         amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
@@ -89,6 +99,7 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "alice")).toEqual({
       personalTotal: 0,
       tripTotal: 0,
+      byCategory: [],
     });
   });
 
@@ -96,6 +107,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
+        categoryId: "food",
         amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
@@ -104,6 +116,7 @@ describe("calculateExpenseSummary", () => {
       },
       {
         visibility: "private",
+        categoryId: "misc",
         amountInDefault: 3000,
         payerMemberId: "alice",
         splittable: false,
@@ -112,6 +125,7 @@ describe("calculateExpenseSummary", () => {
       },
       {
         visibility: "private",
+        categoryId: "misc",
         amountInDefault: 7000,
         payerMemberId: "bob",
         splittable: false,
@@ -129,6 +143,7 @@ describe("calculateExpenseSummary", () => {
     const expenses: SummaryExpense[] = [
       {
         visibility: "shared",
+        categoryId: "food",
         amountInDefault: 30000,
         payerMemberId: "alice",
         splittable: true,
@@ -137,6 +152,7 @@ describe("calculateExpenseSummary", () => {
       },
       {
         visibility: "private",
+        categoryId: "misc",
         amountInDefault: 3000,
         payerMemberId: "bob",
         splittable: false,
@@ -148,6 +164,38 @@ describe("calculateExpenseSummary", () => {
     expect(calculateExpenseSummary(expenses, "bob")).toEqual({
       personalTotal: 18000,
       tripTotal: 30000,
+      byCategory: [
+        { categoryId: "food", personal: 15000, trip: 30000 },
+        { categoryId: "misc", personal: 3000, trip: 0 },
+      ],
     });
+  });
+
+  it("カテゴリ別の内訳は旅行合計の降順で、金額の無いカテゴリは出さない", () => {
+    const mk = (
+      categoryId: string,
+      amountInDefault: number,
+      visibility: "shared" | "private" = "shared",
+    ): SummaryExpense => ({
+      visibility,
+      categoryId,
+      amountInDefault,
+      payerMemberId: "bob",
+      splittable: false,
+      splitMemberIds: [],
+      createdByMemberId: "bob",
+    });
+    const expenses = [
+      mk("food", 1000),
+      mk("stay", 5000),
+      mk("food", 2000),
+      // プライベートは個人にだけ入る＝旅行が 0 なので末尾に来る。
+      mk("gift", 4000, "private"),
+    ];
+    expect(calculateExpenseSummary(expenses, "bob").byCategory).toEqual([
+      { categoryId: "stay", personal: 5000, trip: 5000 },
+      { categoryId: "food", personal: 3000, trip: 3000 },
+      { categoryId: "gift", personal: 4000, trip: 0 },
+    ]);
   });
 });

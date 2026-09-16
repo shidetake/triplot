@@ -32,6 +32,10 @@ import {
 } from "@triplot/shared/tripDerive";
 import type { Currency } from "@triplot/shared/types/database";
 
+import {
+  ExpenseDonut,
+  ExpenseDonutLegend,
+} from "@/components/expense-donut";
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon } from "@/components/icons";
@@ -204,19 +208,47 @@ export default function ExpensesTab() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 集計（個人合計 / 旅行合計）。2つは対等なので同じ大きさで並べる
-            （web の expense-summary.tsx と同形）。 */}
-        <View style={styles.summaryGrid}>
-          <SummaryCell
-            label={t("tripDetail.expenseSummaryPersonalTotal")}
-            value={summary.personalTotal}
-            currency={defaultCurrency}
+        {/* カテゴリ別の円グラフ（上）と合計（下）を同じ2列に並べる＝左の列が
+            個人、右の列が旅行。2つは対等なので同じ大きさで並べる。凡例は
+            2つの図で共用（並び順も共通なので1つで足りる）。
+            web の expense-summary.tsx と同形。 */}
+        <View style={styles.summaryCard}>
+          <View style={styles.summaryRow}>
+            <View style={styles.chartCell}>
+              <ExpenseDonut
+                amounts={summary.byCategory}
+                pick={(c) => c.personal}
+                categoryById={categoryById}
+                label={t("tripDetail.expenseSummaryPersonalTotal")}
+              />
+            </View>
+            <View style={styles.chartCell}>
+              <ExpenseDonut
+                amounts={summary.byCategory}
+                pick={(c) => c.trip}
+                categoryById={categoryById}
+                label={t("tripDetail.expenseSummaryTripTotal")}
+              />
+            </View>
+          </View>
+
+          <ExpenseDonutLegend
+            amounts={summary.byCategory}
+            categoryById={categoryById}
           />
-          <SummaryCell
-            label={t("tripDetail.expenseSummaryTripTotal")}
-            value={summary.tripTotal}
-            currency={defaultCurrency}
-          />
+
+          <View style={styles.summaryRow}>
+            <SummaryCell
+              label={t("tripDetail.expenseSummaryPersonalTotal")}
+              value={summary.personalTotal}
+              currency={defaultCurrency}
+            />
+            <SummaryCell
+              label={t("tripDetail.expenseSummaryTripTotal")}
+              value={summary.tripTotal}
+              currency={defaultCurrency}
+            />
+          </View>
         </View>
 
         {/* 精算 */}
@@ -550,15 +582,16 @@ const makeStyles = (t: Theme) =>
     paddingVertical: 2,
   },
   confirmChipText: { fontSize: 11, fontWeight: "500", color: t.primaryForeground },
-  summaryGrid: {
-    flexDirection: "row",
-    gap: 8,
+  summaryCard: {
+    gap: 12,
     borderWidth: 1,
     borderColor: t.fgAlpha(0.1),
     borderRadius: 6,
     padding: 16,
   },
+  summaryRow: { flexDirection: "row", gap: 8 },
   summaryCell: { flex: 1 },
+  chartCell: { flex: 1, alignItems: "center" },
   summaryLabel: { fontSize: 12, color: t.mutedForeground },
   summaryValue: { marginTop: 4, fontSize: 18, fontWeight: "600", color: t.foreground },
   card: {

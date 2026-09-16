@@ -547,6 +547,7 @@ export default async function TripDetailPage({
                   summary={summary}
                   settlements={settlements}
                   members={allMembers}
+                  categories={categories}
                   defaultCurrency={defaultCurrency}
                   averageRates={averageRates}
                 />
