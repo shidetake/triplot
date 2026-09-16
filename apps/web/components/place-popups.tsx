@@ -42,21 +42,17 @@ export type { PinOption };
 const initialState: PlaceMutationState = { ok: false, error: null };
 
 // 地図ピンのポップアップ（Google Maps の InfoWindow）とボトムシート（狭い画面）で
-// 中身を共用するための外枠クラス。InfoWindow 内は幅を絞る必要があるが（256px。
-// 「テキスト入力のラベルと placeholder」の 352px フォームより狭い）、ボトムシートは
-// vaul 側が幅・スクロールを持つのでここでは絞らない。
-function popupWrapClass(inSheet: boolean, hasOwnMaxHeight = true): string {
+// 中身を共用するための外枠クラス。余白は他のフォームと同じ `p-4` を4辺に持つ
+// （InfoWindow 側の Google 既定 padding は globals.css で 0 にしてある）。
+// InfoWindow 内は幅を絞る必要があるが（中身 256px＋左右の余白。「テキスト入力の
+// ラベルと placeholder」の 352px フォームより狭い）、ボトムシートは vaul 側が
+// 幅・スクロールを持つのでここでは絞らない。
+function popupWrapClass(inSheet: boolean): string {
   return cn(
-    "flex flex-col gap-2",
+    "flex flex-col gap-2 p-4",
     inSheet
-      ? // ボトムシート内の左右余白。event-form/expense-form 等の FormPopover 経由
-        // フォームと同じ `p-4`（このリポジトリの de facto パターンだが
-        // ui-guidelines.md に書かれていなかったので追記した）。
-        "w-full p-4"
-      : cn(
-          "w-[min(16rem,calc(100vw-3rem))] pr-1",
-          hasOwnMaxHeight && "max-h-[26rem] overflow-y-auto pb-2",
-        ),
+      ? "w-full"
+      : "max-h-[26rem] w-[min(18rem,calc(100vw-3rem))] overflow-y-auto",
   );
 }
 
@@ -211,15 +207,25 @@ function IconPicker({
   );
 }
 
+// 広い画面の吹き出し（InfoWindow）の右上に出す × 。狭い画面のボトムシートは
+// ドラッグダウン/dim タップで閉じるので出さない（ui-guidelines「定型部品」）。
+function PopupCloseButton({ onClose }: { onClose: () => void }) {
+  const inSheet = useInSheet();
+  if (inSheet) return null;
+  return <CloseButton onClick={onClose} className="shrink-0" />;
+}
+
 export function CandidateInfo({
   tripId,
   candidate,
   pinOptions,
+  onClose,
   onDone,
 }: {
   tripId: string;
   candidate: CandidatePlace;
   pinOptions: PinOption[];
+  onClose: () => void;
   onDone: () => void;
 }) {
   const t = useTranslations("place");
@@ -253,7 +259,12 @@ export function CandidateInfo({
       <div>
         {/* 評価は地図の候補ピンと検索結果の一覧に出ているので、ここでは出さない
             （同じ情報を3箇所に置かない＝そのぶん縦が1行詰まる）。 */}
-        <p className="text-sm font-semibold">{candidate.name}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 break-words text-sm font-semibold">
+            {candidate.name}
+          </p>
+          <PopupCloseButton onClose={onClose} />
+        </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {candidate.address}
         </p>
@@ -317,11 +328,13 @@ export function DraftInfo({
   tripId,
   draft,
   pinOptions,
+  onClose,
   onDone,
 }: {
   tripId: string;
   draft: { lat: number; lng: number };
   pinOptions: PinOption[];
+  onClose: () => void;
   onDone: () => void;
 }) {
   const inSheet = useInSheet();
@@ -345,7 +358,10 @@ export function DraftInfo({
   return (
     <div className={popupWrapClass(inSheet)}>
       <div>
-        <p className="text-sm font-semibold">{t("addPin")}</p>
+        <div className="flex items-start justify-between gap-2">
+          <p className="min-w-0 text-sm font-semibold">{t("addPin")}</p>
+          <PopupCloseButton onClose={onClose} />
+        </div>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}
           {t("dragHint")}
@@ -449,8 +465,10 @@ export function LocateInfo({
   };
 
   return (
-    <div className="flex w-[min(16rem,calc(100vw-3rem))] flex-col gap-2 pr-1">
+    <div className={popupWrapClass(false)}>
       <div>
+        {/* モード（位置を設定）から抜ける口は × でなく文言のボタン（下の
+            「やめる」）。ui-guidelines「定型部品」の × の節。 */}
         <p className="text-sm font-semibold">{t("setLocation")}</p>
         <p className="mt-0.5 text-xs text-muted-foreground">
           {t("settingLocationFor", { name: placeName })}
@@ -495,6 +513,7 @@ export function SavedInfo({
   canDelete,
   canChangeVisibility,
   startEditing = false,
+  onClose,
   onDone,
 }: {
   tripId: string;
@@ -503,6 +522,8 @@ export function SavedInfo({
   canEdit: boolean;
   canDelete: boolean;
   canChangeVisibility: boolean;
+  // × を押した時（＝この吹き出しを閉じる）。保存・削除の完了は onDone。
+  onClose: () => void;
   // 開いた直後から編集モードにする（**初期値だけ**）。狭い画面は一覧の行の
   // 2タップ目でここへ来るので、そこからさらに鉛筆を押させない＝iOS と同じ
   // 2タップで編集に着く。名前・住所・Google マップへのリンクは編集モードでも
@@ -581,14 +602,7 @@ export function SavedInfo({
               <PrivateBadge className="shrink-0" />
             )}
           </p>
-          {/* ボトムシートはドラッグダウン/dim タップで閉じる（× は出さない。
-              ui-guidelines「定型部品」の × 閉じるボタン節）。 */}
-          {!inSheet && (
-            <CloseButton
-              onClick={onDone}
-              className="-mr-0.5 -mt-0.5 shrink-0"
-            />
-          )}
+          <PopupCloseButton onClose={onClose} />
         </div>
         {place.formatted_address ? (
           <p className="mt-0.5 text-xs text-muted-foreground">

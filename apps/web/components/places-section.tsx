@@ -339,7 +339,14 @@ export function PlacesSection({
   }, []);
 
   const closeInfo = useCallback(() => {
-    // 詳細を閉じても選択は残す＝一覧のその行が選択されたまま戻る（iOS と同じ）。
+    // 広い画面の吹き出しは「選択したら開く」で段が無いので、閉じる＝選択を
+    // 解く。選択を残すと吹き出しが開いたままになり、× を押しても何も起きない。
+    if (!isNarrow) {
+      dismissSelection();
+      return;
+    }
+    // 狭い画面は「1タップ目＝選択、2タップ目＝詳細」の段があるので、詳細を
+    // 閉じても選択は残す＝一覧のその行が選択されたまま戻る（iOS と同じ）。
     // 候補・POI は選択そのものが詳細と一体なので選択ごと解除する。
     setSelected((cur) => {
       if (cur?.kind === "saved") {
@@ -349,7 +356,7 @@ export function PlacesSection({
       setPoi(null);
       return null;
     });
-  }, []);
+  }, [isNarrow, dismissSelection]);
 
   // 「位置を設定」モード中に、既存の登録済み場所・POI・検索結果を選んだ時の
   // 共通処理: 未確定の場所をタップ/検索で選んだ実在の Google の場所へ寄せる
@@ -623,6 +630,7 @@ export function PlacesSection({
           tripId={tripId}
           candidate={c}
           pinOptions={pinOptions}
+          onClose={dismissSelection}
           onDone={clearSearch}
         />
       );
@@ -644,6 +652,7 @@ export function PlacesSection({
           // （初期値だけを見るので、広い画面の InfoWindow＝選択と同時にもう
           // 開いている方は今までどおり閲覧モードのまま）。
           startEditing={savedInfoOpen}
+          onClose={closeInfo}
           onDone={closeInfo}
         />
       );
@@ -665,6 +674,7 @@ export function PlacesSection({
       tripId={tripId}
       draft={draft}
       pinOptions={pinOptions}
+      onClose={closeDraft}
       onDone={clearSearch}
     />
   );

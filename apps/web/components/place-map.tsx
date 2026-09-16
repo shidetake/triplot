@@ -181,6 +181,14 @@ function LongPressPin({
 const INFO_OFFSET_PIN = -36; // RedPin（赤い雫。候補・保存済みの選択中）
 const INFO_OFFSET_ICON = -27; // ベースマップ POI 既存アイコン
 
+// `<InfoWindow pixelOffset>` に渡す配列は**毎レンダー作り直さない**。
+// @vis.gl の InfoWindow は「開く」エフェクトの依存配列に pixelOffset を
+// そのまま持つので、識別子が変わるたびに close → open が走る。この開き直しは
+// Maps 側で時々こけて、**開いているのに見えない**吹き出しになる。定数にして
+// 識別子を固定する（インラインの配列リテラルを渡さない）。
+const INFO_PIXEL_OFFSET_PIN: [number, number] = [0, INFO_OFFSET_PIN];
+const INFO_PIXEL_OFFSET_ICON: [number, number] = [0, INFO_OFFSET_ICON];
+
 // 本家 Google の赤い雫ピン（Material location_on）。translateY で先端を
 // マーカーのアンカー（＝クリック/座標点）に合わせる。値を大きく(負に)
 // するほどピンは上にズレる。検索候補の選択時と自由（draft）ピンで共用。
@@ -306,7 +314,14 @@ function MapController({
         Math.abs(panTo.lng - c.lng()) / span.lng() < 0.1 &&
         Math.abs(panTo.lat - targetLat) / span.lat() < 0.1;
     }
-    if (!alreadyThere) panToTarget(offsetY);
+    // パンは**吹き出しが開いた後**に始める。Maps のパンのアニメーション中に
+    // InfoWindow を open すると、開いているのに描かれない（吹き出しの入れ物が
+    // 画面に出ないまま残る）。エフェクトは MapController → InfoWindow の順に
+    // 走るので、ここで1フレーム遅らせて順序を逆にする。
+    let panFrame = 0;
+    if (!alreadyThere) {
+      panFrame = requestAnimationFrame(() => panToTarget(offsetY));
+    }
 
     // 2回目: シートがせり上がりきってから、**ピンが本当に隠れている時だけ**
     // 持ち上げる。1回目の時点ではシートがまだ動いている途中で覆う高さが
@@ -341,7 +356,10 @@ function MapController({
       if (onScreen) return;
       panToTarget(m.offsetY);
     }, 450);
-    return () => clearTimeout(id);
+    return () => {
+      if (panFrame) cancelAnimationFrame(panFrame);
+      clearTimeout(id);
+    };
   }, [map, panTo]);
 
   return null;
@@ -418,6 +436,25 @@ export function PlaceMap({
   // 直近にタッチがあった締切。これ以内の click はタッチ由来とみなし、
   // 自由ピンの click ドロップ（＝マウス専用）を行わない。
   const recentTouchUntil = useRef(0);
+
+  // Esc で吹き出しを閉じる（ui-guidelines「閉じる経路は3つ揃える」＝ Esc・
+  // 背景＝地図のタップ・× ）。戻す段は地図の余白タップと同じ順。
+  // 狭い画面のボトムシートは vaul が自前で Esc を持つのでここでは扱わない。
+  // 上に重なった部品（アイコン選択のダイアログ等）が既に受け取った Esc は
+  // defaultPrevented で来るので素通しする（2段まとめて閉じない）。
+  useEffect(() => {
+    if (narrow) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return;
+      if (selected) {
+        onDismissSelection();
+        return;
+      }
+      if (draft) onCloseDraft();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [narrow, selected, draft, onDismissSelection, onCloseDraft]);
 
   // 未マップ（自由入力）の場所は座標が無いので地図に出さない。
   const mappedPlaces = useMemo(
@@ -685,10 +722,11 @@ export function PlaceMap({
               headerDisabled
               // 候補・保存済みは選択中＝雫ピン表示なので深め、POI（Google の
               // アイコンのまま）だけ浅め。
-              pixelOffset={[
-                0,
-                selected.kind === "poi" ? INFO_OFFSET_ICON : INFO_OFFSET_PIN,
-              ]}
+              pixelOffset={
+                selected.kind === "poi"
+                  ? INFO_PIXEL_OFFSET_ICON
+                  : INFO_PIXEL_OFFSET_PIN
+              }
             >
               {infoContent}
             </InfoWindow>
@@ -722,7 +760,7 @@ export function PlaceMap({
               position={draft}
               onCloseClick={onCloseDraft}
               headerDisabled
-              pixelOffset={[0, INFO_OFFSET_PIN]}
+              pixelOffset={INFO_PIXEL_OFFSET_PIN}
             >
               {draftContent}
             </InfoWindow>

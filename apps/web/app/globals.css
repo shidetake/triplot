@@ -183,6 +183,12 @@ input[type="time"]::-webkit-calendar-picker-indicator {
    いるので、小さい画面でも横スクロール無しで収まる。 */
 .gm-style-iw-c {
   max-width: none !important;
+  /* 内側の余白は中身側（place-popups の popupWrapClass）が他のフォームと同じ
+     p-4 で持つ。Google の既定は 12px だが、既定の閉じる × とスクロール溝の
+     ぶんを空ける作りのため右と下だけインラインで 0 に潰され、そのままだと
+     左 12 / 右 0 / 上 12 / 下 0 の非対称になる（実測）。4辺とも中身側に
+     一本化する。 */
+  padding: 0 !important;
 }
 .gm-style-iw-d {
   max-width: none !important;

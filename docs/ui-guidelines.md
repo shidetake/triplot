@@ -695,6 +695,14 @@ web が `NarrowSheet`（中身を `ResizeObserver` で実測）、iOS が formSh
 **閉じる経路は3つ揃える**（オーバーレイ全般）: `Esc` キー・背景クリック・キャンセル/×ボタン。WAI-ARIA の
 dialog パターンに沿う。どれか1つだけにしない。
 
+**地図の上の吹き出し（Google Maps の InfoWindow）もオーバーレイなので同じ3つを揃える。**
+「背景クリック」は地図の何もない所のタップで、これは段階的に一段戻す（選択 → 仮ピン → 一覧）。
+`Esc` と × もその段に合わせる。**× は「今開いているものを閉じる」以外の意味を持たせない** ——
+広い画面は「選択した＝吹き出しが開いている」で段が無いので、× は選択ごと解く（選択を残すと
+閉じる手立てが無くなり、押しても何も起きないボタンになる）。選択を残したまま詳細だけ閉じる段が
+あるのは、狭い画面のボトムシート（1タップ目＝選択、2タップ目＝詳細）だけ。
+モード（位置を設定等）から抜ける口だけは × でなく文言のボタン（下の「定型部品」の × の節）。
+
 **モーダルの ARIA**: `role="dialog"` ＋ `aria-modal="true"` ＋ アクセシブル名（`aria-label` か見出しへの
 `aria-labelledby`）の3点セットを必ず付ける。`FormPopover` は `label` prop を渡すと dialog として公開する
 （メニュー用途〔⋯〕は dialog ではないので label を省略）。ドロップダウンは `role="listbox"`、⋯ は `role="menu"`。
@@ -915,7 +923,7 @@ if (!(await confirmDialog({ title: "この予定を削除しますか？" }))) r
 | **セクション見出し** | `<h2 className="text-lg font-semibold">` | 右に操作（追加ボタン・HelpTip 等）を置くときは `<div className="flex items-center justify-between gap-2">` で両端に並べる。操作が無ければ素の h2 |
 | **見出しに添える件数** | `見出し (N)`（数字は `text-subtle-foreground`） | **必ず括弧を付ける** — 裸の数字は見出しの続きに読める（「準備 0」が1つの名前に見える）。**0 のときは出さない**（「旅行の候補」のように 0 なら見出しごと消えるものはそもそも出ない。TODO のように常設のセクションは、開けば空のリストと追加欄が見えるので `(0)` は同じことを二度言うだけ） |
 | **アバター画像** | 丸い容器＋`<img className="h-full w-full object-cover" />` ／ 自分は `selfAvatarClass`（`components/self-avatar.ts`） | 画像が無いときは頭文字フォールバック。自分（ログインユーザ）のアバターは中立 zinc（`selfAvatarClass`）＝メンバー色 hue とは別系統。`MemberAvatar` の hue 丸は旅行内で誰かを色で識別する用途、アカウント自身（`account-menu` / `avatar-upload`）は識別不要なので中立。自分のアバターに hue を当てない |
-| **フォームの外枠**（FormPopover/NarrowSheet に載せるフォームの `<form>` 直下） | `relative space-y-3 p-4`＋ポップアップ時のみ `rounded-md border border-foreground/10 bg-background`（`useInSheet()` で分岐）。**幅・最大高・スクロールは器が持つので中身は指定しない**（指定するとボトムシートの中で左寄せになり右に余白が残る） | `p-4` はポップアップ／ボトムシートどちらでも共通（シート側は vaul 自身が左右余白を持たないため、これが無いと中身が画面端まで詰まる）。枠線・背景はボトムシートでは不要（Drawer.Content 自身が持つ）。event-form/expense-form/create-trip-form/edit-trip-form/feedback-form で共通のクラス文字列 |
+| **フォームの外枠**（FormPopover/NarrowSheet に載せるフォームの `<form>` 直下） | `relative space-y-3 p-4`＋ポップアップ時のみ `rounded-md border border-foreground/10 bg-background`（`useInSheet()` で分岐）。**幅・最大高・スクロールは器が持つので中身は指定しない**（指定するとボトムシートの中で左寄せになり右に余白が残る） | `p-4` はポップアップ／ボトムシートどちらでも共通（シート側は vaul 自身が左右余白を持たないため、これが無いと中身が画面端まで詰まる）。枠線・背景はボトムシートでは不要（Drawer.Content 自身が持つ）。event-form/expense-form/create-trip-form/edit-trip-form/feedback-form で共通のクラス文字列。**地図の吹き出し（Google Maps の InfoWindow）の中身も同じ `p-4`**＝ Google 既定の padding は `globals.css` で 0 にして、4辺の余白を中身側に一本化する（Google の既定は上左 12px・右下 0 の非対称で、そのままだと吹き出しだけ他のフォームと余白が揃わない） |
 | **フォームのフィールド構造** | テキスト入力＝素の `<Input placeholder aria-label>`（ラベル行なし）／非テキスト＝`<label className="block text-sm">` に `<FieldLabel>` ＋コントロール `mt-1` | フィールド間 `space-y-3`。テキスト入力の規約は[[テキスト入力のラベルと placeholder]] |
 | **日時の表示整形** | `lib/schedule.ts`（`formatDayLabel`・`formatMinutes` 等）／ローカル日付は `lib/ymd.ts`（`parseYmd`/`formatYmd`） | 手書きしない。日付 = `M/D`（年なし・ゼロ埋めなし）／曜日付き `M/D(曜)`／時刻 `HH:MM`（24h・時もゼロ埋め〔`9:00` でなく `09:00`〕、`00:00`＝未設定は出さない）／期間 `M/D(曜) → M/D(曜)`。0時からの通算分→時刻は `formatMinutes(min)`（`Math.floor(min/60)` を手書きしない）。例外: 高密度な週カレンダーは時の先頭ゼロを落とす `formatMinutes(min, false)`（`9:00`）。react-day-picker のローカル `Date` ↔ `"YYYY-MM-DD"` は ymd.ts（schedule.ts は UTC 専用） |
 
