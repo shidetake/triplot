@@ -33,22 +33,18 @@ export async function ExpenseSummaryView({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-3 gap-2 rounded-md border border-foreground/10 bg-background p-4 text-sm">
+      {/* 2つの合計は対等（どちらも見出しの数字）なので同じ大きさで並べる。
+          プライベートを含むかどうかはラベルの括弧書きで示す。 */}
+      <div className="grid grid-cols-2 gap-2 rounded-md border border-foreground/10 bg-background p-4 text-sm">
         <SummaryCell
-          label={t("expenseSummarySharedSelf")}
-          value={summary.sharedSelfShare}
+          label={t("expenseSummaryPersonalTotal")}
+          value={summary.personalTotal}
           currency={defaultCurrency}
         />
         <SummaryCell
-          label={t("expenseSummaryPrivate")}
-          value={summary.privateTotal}
+          label={t("expenseSummaryTripTotal")}
+          value={summary.tripTotal}
           currency={defaultCurrency}
-        />
-        <SummaryCell
-          label={t("expenseSummaryTotal")}
-          value={summary.total}
-          currency={defaultCurrency}
-          emphasized
         />
       </div>
 
@@ -88,21 +84,15 @@ function SummaryCell({
   label,
   value,
   currency,
-  emphasized,
 }: {
   label: string;
   value: number;
   currency: Currency;
-  emphasized?: boolean;
 }) {
   return (
     <div>
       <div className="text-xs text-muted-foreground">{label}</div>
-      <div
-        className={
-          emphasized ? "mt-1 text-lg font-semibold" : "mt-1 font-medium"
-        }
-      >
+      <div className="mt-1 text-lg font-semibold tabular-nums">
         {formatAmount(value, currency)}
       </div>
     </div>

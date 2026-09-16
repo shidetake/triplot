@@ -204,23 +204,18 @@ export default function ExpensesTab() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
         }
       >
-        {/* 集計（自己負担 / private / 合計） */}
+        {/* 集計（個人合計 / 旅行合計）。2つは対等なので同じ大きさで並べる
+            （web の expense-summary.tsx と同形）。 */}
         <View style={styles.summaryGrid}>
           <SummaryCell
-            label={t("tripDetail.expenseSummarySharedSelf")}
-            value={summary.sharedSelfShare}
+            label={t("tripDetail.expenseSummaryPersonalTotal")}
+            value={summary.personalTotal}
             currency={defaultCurrency}
           />
           <SummaryCell
-            label={t("tripDetail.expenseSummaryPrivate")}
-            value={summary.privateTotal}
+            label={t("tripDetail.expenseSummaryTripTotal")}
+            value={summary.tripTotal}
             currency={defaultCurrency}
-          />
-          <SummaryCell
-            label={t("tripDetail.expenseSummaryTotal")}
-            value={summary.total}
-            currency={defaultCurrency}
-            emphasized
           />
         </View>
 
@@ -466,20 +461,16 @@ function SummaryCell({
   label,
   value,
   currency,
-  emphasized,
 }: {
   label: string;
   value: number;
   currency: Currency;
-  emphasized?: boolean;
 }) {
   const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.summaryCell}>
       <Text style={styles.summaryLabel}>{label}</Text>
-      <Text style={emphasized ? styles.summaryValueLg : styles.summaryValue}>
-        {formatAmount(value, currency)}
-      </Text>
+      <Text style={styles.summaryValue}>{formatAmount(value, currency)}</Text>
     </View>
   );
 }
@@ -569,8 +560,7 @@ const makeStyles = (t: Theme) =>
   },
   summaryCell: { flex: 1 },
   summaryLabel: { fontSize: 12, color: t.mutedForeground },
-  summaryValue: { marginTop: 4, fontSize: 14, fontWeight: "500", color: t.foreground },
-  summaryValueLg: { marginTop: 4, fontSize: 18, fontWeight: "600", color: t.foreground },
+  summaryValue: { marginTop: 4, fontSize: 18, fontWeight: "600", color: t.foreground },
   card: {
     borderWidth: 1,
     borderColor: t.fgAlpha(0.1),
