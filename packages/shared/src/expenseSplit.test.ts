@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { deriveSplitSubmission } from "./expenseSplit";
+import {
+  deriveSplitSelection,
+  deriveSplitSubmission,
+} from "./expenseSplit";
 
 const ME = "me";
 const OTHER = "other";
@@ -69,5 +72,73 @@ describe("deriveSplitSubmission", () => {
         everyone: false,
       }),
     ).toEqual({ splittable: false, splitEveryone: true, splitMemberIds: [] });
+  });
+});
+
+describe("deriveSplitSelection", () => {
+  const members = ["me", "a", "b"];
+
+  it("自分のためだけに払った費用は「自分のみ」に戻す（全員に化けない）", () => {
+    // splittable=false の費用は split_everyone=true で保存されている。
+    expect(
+      deriveSplitSelection({
+        splittable: false,
+        splitEveryone: true,
+        splitMemberIds: [],
+        payerMemberId: "me",
+        activeMemberIds: members,
+      }),
+    ).toEqual({ mode: "custom", selectedMemberIds: ["me"] });
+  });
+
+  it("全員の割り勘は、開いた時点のアクティブメンバーに解決する", () => {
+    expect(
+      deriveSplitSelection({
+        splittable: true,
+        splitEveryone: true,
+        splitMemberIds: [],
+        payerMemberId: "me",
+        activeMemberIds: members,
+      }),
+    ).toEqual({ mode: "all", selectedMemberIds: members });
+  });
+
+  it("一部の割り勘は、保存された対象をそのまま戻す", () => {
+    expect(
+      deriveSplitSelection({
+        splittable: true,
+        splitEveryone: false,
+        splitMemberIds: ["me", "a"],
+        payerMemberId: "me",
+        activeMemberIds: members,
+      }),
+    ).toEqual({ mode: "custom", selectedMemberIds: ["me", "a"] });
+  });
+
+  it("保存 → 復元 → 保存で値が変わらない", () => {
+    const cases = [
+      { everyone: false, selectedMemberIds: ["me"] }, // 自分のためだけ
+      { everyone: true, selectedMemberIds: members }, // 全員
+      { everyone: false, selectedMemberIds: ["me", "a"] }, // 一部
+    ];
+    for (const c of cases) {
+      const saved = deriveSplitSubmission({
+        visibility: "shared",
+        payerMemberId: "me",
+        ...c,
+      });
+      const back = deriveSplitSelection({
+        ...saved,
+        payerMemberId: "me",
+        activeMemberIds: members,
+      });
+      const again = deriveSplitSubmission({
+        visibility: "shared",
+        payerMemberId: "me",
+        selectedMemberIds: back.selectedMemberIds,
+        everyone: back.mode === "all",
+      });
+      expect(again).toEqual(saved);
+    }
   });
 });

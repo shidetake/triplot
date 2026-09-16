@@ -22,7 +22,10 @@ import {
   restoreExpenseAction,
   updateExpenseAction,
 } from "@/app/trips/[tripId]/actions";
-import { deriveSplitSubmission } from "@triplot/shared/expenseSplit";
+import {
+  deriveSplitSelection,
+  deriveSplitSubmission,
+} from "@triplot/shared/expenseSplit";
 import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import type { FxRates } from "@triplot/shared/fxRates";
@@ -155,17 +158,18 @@ export function ExpenseForm({
   const initVisibility: Visibility = isEdit
     ? editExpense.visibility
     : "shared";
-  // 編集モードで splittable=false の費用は「払った人のみ（=おごり / 自分の
-  // 費用）」として復元する。split_member_ids は空で保存されているので、
-  // ここで払った人を1人だけ選択した状態にしておく。
-  const initOnlyPayer = isEdit && !editExpense.splittable;
-  // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
-  // アクティブメンバーに解決する（後から加わった人もここに現れる）。
-  const initSplits: Set<string> = initOnlyPayer
-    ? new Set([isEdit ? editExpense.payer_member_id : myMemberId])
-    : isEdit && !editExpense.split_everyone
-      ? new Set(editExpense.split_member_ids)
-      : new Set(members.map((m) => m.id));
+  // 保存された値からフォームの選択状態に戻す（保存の逆写像。iOS と同じ1つの
+  // 判定＝expenseSplit.ts）。
+  const initSelection = isEdit
+    ? deriveSplitSelection({
+        splittable: editExpense.splittable,
+        splitEveryone: editExpense.split_everyone,
+        splitMemberIds: editExpense.split_member_ids,
+        payerMemberId: editExpense.payer_member_id,
+        activeMemberIds: members.map((m) => m.id),
+      })
+    : { mode: "all" as const, selectedMemberIds: members.map((m) => m.id) };
+  const initSplits: Set<string> = new Set(initSelection.selectedMemberIds);
 
   const boundAction = isEdit
     ? updateExpenseAction.bind(null, tripId, editExpense.id)
@@ -374,11 +378,11 @@ export function ExpenseForm({
   );
 
   // 割り勘対象の "全員 / 一部" モード（event-form の参加者と同じ disclosure）。
-  // 編集時のモードは保存された split_everyone がそのまま決める（選択内容が
-  // たまたま全員と一致するかで推測しない）。
+  // 編集時のモードも保存された値から戻す（選択内容がたまたま全員と一致するかで
+  // 推測しない）。
   const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
     "splitMode",
-    isEdit && !editExpense.split_everyone ? "custom" : "all",
+    initSelection.mode,
   );
 
   // レート入力欄。currency 変更時は初期値に戻す。順序は実績の平均 → 取り込み時の

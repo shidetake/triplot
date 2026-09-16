@@ -27,7 +27,10 @@ import {
   CUSTOM_CATEGORY_ICON,
   createExpenseCategory,
 } from "@triplot/shared/data/categories";
-import { deriveSplitSubmission } from "@triplot/shared/expenseSplit";
+import {
+  deriveSplitSelection,
+  deriveSplitSubmission,
+} from "@triplot/shared/expenseSplit";
 import { formatRate } from "@triplot/shared/formatRate";
 import { initialRate } from "@triplot/shared/import/draftRate";
 import { tzDisplayLabel } from "@triplot/shared/timezones";
@@ -306,28 +309,29 @@ export function ExpenseForm({
     selectTz(kept ?? r.options[0]);
   };
 
-  // 割り勘対象（web と同じ導出）。splittable=false は「払った人のみ」なので、
-  // 復元する時も払った人を選んだ状態にする。
-  const initOnlyPayer = isEdit && !editExpense.splittable;
-  // 「全員」で保存された費用は具体的な ID を持たないので、開いた時点の
-  // アクティブメンバーに解決する（後から加わった人もここに現れる）。
+  // 保存された値からフォームの選択状態に戻す（保存の逆写像。web と同じ1つの
+  // 判定＝expenseSplit.ts）。
+  const initSelection = isEdit
+    ? deriveSplitSelection({
+        splittable: editExpense.splittable,
+        splitEveryone: editExpense.split_everyone,
+        splitMemberIds: editExpense.split_member_ids,
+        payerMemberId: editExpense.payer_member_id,
+        activeMemberIds: members.map((m) => m.id),
+      })
+    : { mode: "all" as const, selectedMemberIds: members.map((m) => m.id) };
   const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
     "selectedSplits",
-    () =>
-      initOnlyPayer
-        ? new Set([isEdit ? editExpense.payer_member_id : myMemberId])
-        : isEdit && !editExpense.split_everyone
-          ? new Set(editExpense.split_member_ids)
-          : new Set(members.map((m) => m.id)),
+    () => new Set(initSelection.selectedMemberIds),
   );
   const splitsMatchAll =
     selectedSplits.size === members.length &&
     members.every((m) => selectedSplits.has(m.id));
-  // 編集時のモードは保存された split_everyone がそのまま決める（選択内容が
-  // たまたま全員と一致するかで推測しない）。
+  // 編集時のモードも保存された値から戻す（選択内容がたまたま全員と一致するかで
+  // 推測しない）。
   const [splitMode, setSplitMode] = useDraft<"all" | "custom">(
     "splitMode",
-    isEdit && !editExpense.split_everyone ? "custom" : "all",
+    initSelection.mode,
   );
   const toggleSplit = (id: string) => {
     setSelectedSplits((prev) => {

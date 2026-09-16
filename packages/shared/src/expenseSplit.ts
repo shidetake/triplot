@@ -38,3 +38,37 @@ export function deriveSplitSubmission(a: {
     splitMemberIds: splitEveryone ? [] : [...a.selectedMemberIds],
   };
 }
+
+// 保存された3つの値から、フォームの選択状態に戻す（deriveSplitSubmission の逆）。
+//
+// **splittable=false のとき split_everyone は true で保存される**（割り勘しない
+// ので「全員かどうか」は意味を持たない）。なので split_everyone だけを見て
+// モードを決めると、「自分のためだけに払った」費用を開き直したときに
+// 「割り勘対象: 全員」に化ける。そこから支払者を変えるなどして保存すると、
+// 本当に全員の割り勘になってしまう。
+//
+// 保存と復元が別々の場所に散ると必ずこうずれるので、逆写像もここに置く。
+
+export type SplitSelection = {
+  mode: "all" | "custom";
+  selectedMemberIds: string[];
+};
+
+export function deriveSplitSelection(a: {
+  splittable: boolean;
+  splitEveryone: boolean;
+  // splitEveryone=false のときだけ意味を持つ、明示的に選ばれた対象。
+  splitMemberIds: string[];
+  payerMemberId: string;
+  // 「全員」は具体的な ID を持たないので、開いた時点のアクティブメンバーに
+  // 解決する（後から加わった人もここに現れる）。
+  activeMemberIds: string[];
+}): SplitSelection {
+  if (!a.splittable) {
+    return { mode: "custom", selectedMemberIds: [a.payerMemberId] };
+  }
+  if (a.splitEveryone) {
+    return { mode: "all", selectedMemberIds: [...a.activeMemberIds] };
+  }
+  return { mode: "custom", selectedMemberIds: [...a.splitMemberIds] };
+}
