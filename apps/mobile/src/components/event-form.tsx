@@ -895,10 +895,12 @@ export function EventForm({
             onChange={(d) => {
               if (openPicker === "start") {
                 if (kind === "allday") {
-                  // 他のピッカーと同じく、選んだだけでは閉じない（閉じるのは
-                  // もう一度チップを押したとき）。終日だけ自動で閉じると
-                  // 挙動が不揃いになる。
+                  // 終日は日付だけ＝1タップで選び終わるので、その場で閉じる
+                  // （費用の日付と同じ。ui-guidelines「日付・時刻ピッカーを
+                  // 閉じるタイミング」）。日付＋時刻のホイールは時を選んだ
+                  // 時点ではまだ決まっていないので閉じない。
                   moveAlldayStart(fmtDate(d));
+                  setOpenPicker(null);
                 } else if (kind === "transit") {
                   // 移動も通常予定と同じく、出発をずらしたら到着が同じ幅だけ
                   // 追従する（所要時間は変わらないため）。出発と到着でTZが
@@ -910,6 +912,7 @@ export function EventForm({
               } else {
                 if (kind === "allday") {
                   setEndDate(fmtDate(d));
+                  setOpenPicker(null);
                 } else if (kind === "transit") {
                   setEndDate(fmtDate(d));
                   setEndTime(fmtTime(d));

@@ -968,7 +968,6 @@ export function EventForm({
           <span className="text-sm text-muted-foreground">{t("date")}</span>
           <div className="flex items-center gap-2">
             <DatePopover
-              closeOnSelect={false}
               name="start_date"
               value={alldayStart}
               onChange={setAlldayStartG}
@@ -979,7 +978,6 @@ export function EventForm({
             />
             <span className="shrink-0 text-muted-foreground">–</span>
             <DatePopover
-              closeOnSelect={false}
               name="end_date"
               value={alldayEnd}
               onChange={setAlldayEnd}

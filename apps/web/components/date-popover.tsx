@@ -30,7 +30,6 @@ const RANGE_END = new Date(TODAY.getFullYear() + 10, 11, 1);
 // disabled は rdp の Matcher をそのまま転送。「終了日は開始日より前不可」など
 // 不正状態を picker レベルで物理的に弾くために使う（呼び出し側でセット）。
 export function DatePopover({
-  closeOnSelect = true,
   name,
   value,
   onChange,
@@ -40,9 +39,6 @@ export function DatePopover({
   disabled,
   className,
 }: {
-  // false にすると日付を選んでもポップオーバーを閉じない（同画面の他の
-  // ピッカーが開きっぱなしのときに挙動を揃えるため）。
-  closeOnSelect?: boolean;
   name: string;
   value: string; // "YYYY-MM-DD" or ""
   onChange: (v: string) => void;
@@ -91,10 +87,9 @@ export function DatePopover({
             onSelect={(d) => {
               if (d) {
                 onChange(formatYmd(d));
-                // 単一の日付だけを選ぶ用途（費用など）は選択＝確定で閉じる。
-                // 予定フォームのように同じ画面の他のピッカー（日付＋時刻）が
-                // 開きっぱなしの所では、揃えるために閉じない指定をする。
-                if (closeOnSelect) setOpen(false);
+                // 日付だけなら1タップで選び終わるので、その場で閉じる
+                // （ui-guidelines「日付・時刻ピッカーを閉じるタイミング」）。
+                setOpen(false);
               }
             }}
             defaultMonth={date ?? tripFrom ?? new Date()}
