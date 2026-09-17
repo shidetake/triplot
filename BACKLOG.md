@@ -10,13 +10,6 @@ App Store 公開（TestFlight から本番リリースへ）。
 
 提出前にやること:
 
-- [ ] **AI Gateway のクレジットを買う**。無料枠は月あたりヘビーユーザー2人分
-  程度しかなく、公開して人が増えると取り込みが止まる。枠と上限の詳細は
-  [docs/design/import-flow.md](docs/design/import-flow.md) の
-  「AI Gateway の無料枠の制限」。
-  **公開前に既に効いている**（2026-08-27）: 開発者1人の利用で 78 通が
-  `rate_limit` で失敗し、取り込みが止まった。行はリトライ待ちのまま残るので
-  データは失われないが、クレジットが入るまで進まない。
 - [ ] **バージョンを 1.0.0 にする**。`apps/mobile/app.config.ts` の `version`
   （ビルド番号は `eas.json` の `autoIncrement` が自動で上げるので触らない）。
   **提出用ビルドの直前に上げる** — TestFlight の確認ビルドを 1.0.0 で
@@ -42,23 +35,3 @@ App Store 公開（TestFlight から本番リリースへ）。
 アップロードするとブランド確認（審査・数日）が発動するため未設定にしてある。
 同意画面にロゴを出したくなったら設定して審査を通す。
 （iOS のカレンダーエクスポートは 2026-07-14 実装済み）
-
-### 17. iOS のピッカー2つを react-native-screens の formSheet に寄せる
-通貨選択とコピー元選択だけ RN core の `<Modal presentationStyle="pageSheet">`
-を使っていて、他のシート（react-native-screens の formSheet）と API が違う。
-この API は detent を持てないので**中身が短くても高さが縮まない**（コピー元が
-1件でも画面いっぱいに出る）。グラバー・見出しの見た目は `PageSheet`
-（`components/page-sheet.tsx`）で揃えてあるが、高さだけは揃えられない。
-
-理由は「formSheet の中にさらに `ScreenStack` を入れ子にすると元の画面と
-二重露光のように重なる」という実機で確認した不具合。ただし**これは当時この
-リポジトリで試して出した結論で、上流に既知の issue として報告されているかは
-未確認**。使い方の問題で書き方次第では動く可能性も残っている。
-
-- 現状 `react-native-screens` 4.26.2（`~4.26.0` 指定）。最新の安定版 4.27.0
-  （2026-08-07）のリリースノートに該当する修正は無い（formSheet 関連は
-  Android の1件のみ）。上げても変わらない。
-- `5.0.0-alpha` で Stack v5 が進行中なので、安定したら試し直す価値がある。
-- 上流に issue を出して確認するのも手。
-
-寄せられれば ui-guidelines の「RN のシート」の例外が1つ消える。
