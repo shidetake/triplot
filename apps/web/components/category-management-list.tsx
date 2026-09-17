@@ -15,9 +15,9 @@ import { CloseIcon, PlusIcon, TrashIcon } from "./icons";
 import { ColorDisc } from "./color-badge";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { inputClass } from "./input-class";
+import { pickCategoryColor } from "@triplot/shared/categoryColor";
 
 const CUSTOM_ICON = "category";
-const CUSTOM_COLOR = "#3b82f6";
 
 export type CategoryItem = {
   id: string;
@@ -37,6 +37,8 @@ export function CategoryManagementList({
   const t = useTranslations("categories");
   const tc = useTranslations("common");
   const tExp = useTranslations("expense");
+  // 追加したときに付く色（既存のどの色相からも一番離れたもの）。
+  const nextCategoryColor = pickCategoryColor(categories.map((c) => c.color));
 
   // 編集中: controlled input（TODO の edit input と同じパターン）
   const [editId, setEditId] = useState<string | null>(null);
@@ -108,7 +110,8 @@ export function CategoryManagementList({
 
         return (
           <div key={c.id} className="flex items-center gap-2">
-            <ColorDisc color={isEditing ? CUSTOM_COLOR : c.color} size={24}>
+            {/* 改名しても色は変わらない（色相は旅行の中で一意なので作り直さない）。 */}
+            <ColorDisc color={c.color} size={24}>
               <ExpenseCategoryIcon
                 icon={isEditing ? CUSTOM_ICON : c.icon}
                 size={24}
@@ -166,7 +169,8 @@ export function CategoryManagementList({
       {/* 追加行: blur でも保存（iOS の Done ボタン = blur → 確定できる） */}
       {isAdding ? (
         <div className="flex items-center gap-2">
-          <ColorDisc color={CUSTOM_COLOR} size={24}>
+          {/* 追加したときに実際に付く色を先に見せる。 */}
+          <ColorDisc color={nextCategoryColor} size={24}>
             <ExpenseCategoryIcon icon={CUSTOM_ICON} size={24} inset={0.18} />
           </ColorDisc>
           <input

@@ -11,12 +11,12 @@ import { useTranslations } from "use-intl";
 
 import {
   CATEGORY_IN_USE,
-  CUSTOM_CATEGORY_COLOR,
   CUSTOM_CATEGORY_ICON,
   createExpenseCategory,
   deleteExpenseCategory,
   updateExpenseCategoryName,
 } from "@triplot/shared/data/categories";
+import { pickCategoryColor } from "@triplot/shared/categoryColor";
 import { deriveCategories, type Category } from "@triplot/shared/tripDerive";
 
 import { ColorDisc } from "@/components/color-badge";
@@ -55,6 +55,8 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
 
   if (!data?.trip) return null;
   const categories = deriveCategories(data.categoriesRaw);
+  // 追加したときに付く色（既存のどの色相からも一番離れたもの）。
+  const nextCategoryColor = pickCategoryColor(categories.map((c) => c.color));
 
   const startEdit = (c: Category) => {
     setEditId(c.id);
@@ -139,7 +141,8 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
         const isCustom = c.key == null;
         return (
           <View key={c.id} style={styles.row}>
-            <ColorDisc color={isEditing ? CUSTOM_CATEGORY_COLOR : c.color} size={24}>
+            {/* 改名しても色は変わらない（色相は旅行の中で一意なので作り直さない）。 */}
+            <ColorDisc color={c.color} size={24}>
               {(glyph) => (
                 <ExpenseCategoryIcon
                   icon={isEditing ? CUSTOM_CATEGORY_ICON : c.icon}
@@ -186,7 +189,8 @@ export function CategoriesSheet({ tripId }: { tripId: string }) {
 
       {isAdding ? (
         <View style={styles.row}>
-          <ColorDisc color={CUSTOM_CATEGORY_COLOR} size={24}>
+          {/* 追加したときに実際に付く色を先に見せる。 */}
+          <ColorDisc color={nextCategoryColor} size={24}>
             {(glyph) => (
               <ExpenseCategoryIcon
                 icon={CUSTOM_CATEGORY_ICON}

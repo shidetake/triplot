@@ -23,10 +23,10 @@ import {
   type ExpenseFields,
 } from "@triplot/shared/data/expenses";
 import {
-  CUSTOM_CATEGORY_COLOR,
   CUSTOM_CATEGORY_ICON,
   createExpenseCategory,
 } from "@triplot/shared/data/categories";
+import { pickCategoryColor } from "@triplot/shared/categoryColor";
 import {
   deriveSplitSelection,
   deriveSplitSubmission,
@@ -125,6 +125,8 @@ export function ExpenseForm({
   const locale = useLocale();
   const tCommon = useTranslations("common");
   const tCat = useTranslations("categories");
+  // 追加したときに付く色（既存のどの色相からも一番離れたもの）。
+  const nextCategoryColor = pickCategoryColor(categories.map((c) => c.color));
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const isEdit = !!editExpense;
@@ -889,7 +891,8 @@ export function ExpenseForm({
           ))}
           {addingCategory ? (
             <View style={styles.pickerAddRow}>
-              <ColorDisc color={CUSTOM_CATEGORY_COLOR} size={20}>
+              {/* 追加したときに実際に付く色を先に見せる。 */}
+              <ColorDisc color={nextCategoryColor} size={20}>
                 {(glyph) => (
                   <ExpenseCategoryIcon
                     icon={CUSTOM_CATEGORY_ICON}

@@ -1,10 +1,12 @@
+import { pickCategoryColor } from "../categoryColor";
 import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
-// カスタムカテゴリのアイコン・色は固定（汎用「category」アイコン＋青で
-// デフォルトカテゴリの「その他」と区別する）。
+// カスタムカテゴリのアイコンは固定（汎用「category」）。
+// **色は固定しない** —— 同じ旅行の既存カテゴリから一番離れた色相を選ぶ
+// （categoryColor.ts。メンバー色と同じ farthest-point）。全部同じ色だと、
+// 色が主役になる円グラフで切れを見分けられない。
 export const CUSTOM_CATEGORY_ICON = "category";
-export const CUSTOM_CATEGORY_COLOR = "#3b82f6";
 
 // 削除が使用中（expenses.category_id の on delete restrict）で弾かれたときの
 // センチネル。呼び出し側が i18n の「使用中」メッセージに変換する。
@@ -18,22 +20,25 @@ export async function createExpenseCategory(
   tripId: string,
   name: string,
 ): Promise<Result<{ id: string }>> {
-  const { data: maxRow } = await sb
+  // 並び順（末尾）と色（既存から一番離れた色相）を決めるために、同じ旅行の
+  // 既存カテゴリを1回だけ読む。
+  const { data: siblings } = await sb
     .from("expense_categories")
-    .select("sort_order")
-    .eq("trip_id", tripId)
-    .order("sort_order", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+    .select("sort_order, color")
+    .eq("trip_id", tripId);
+  const maxSortOrder = (siblings ?? []).reduce(
+    (m, c) => Math.max(m, c.sort_order),
+    0,
+  );
 
   const { data, error } = await sb
     .from("expense_categories")
     .insert({
       trip_id: tripId,
       name: name.trim(),
-      color: CUSTOM_CATEGORY_COLOR,
+      color: pickCategoryColor((siblings ?? []).map((c) => c.color)),
       icon: CUSTOM_CATEGORY_ICON,
-      sort_order: (maxRow?.sort_order ?? 0) + 1,
+      sort_order: maxSortOrder + 1,
       key: null,
     })
     .select("id")
@@ -43,7 +48,9 @@ export async function createExpenseCategory(
 }
 
 // カテゴリ名を変える。key を null にする＝改名した時点でカスタム扱い
-// （i18n のデフォルト名参照を外す）。アイコン・色もカスタム固定値に揃える。
+// （i18n のデフォルト名参照を外す）。アイコンは汎用に戻す。
+// **色はそのまま残す** —— その色相は旅行の中で既に一意なので、作り直すと
+// 他のカテゴリとぶつかりうる（かつ、名前を変えただけで色が変わるのも驚く）。
 export async function updateExpenseCategoryName(
   sb: DB,
   id: string,
@@ -53,7 +60,6 @@ export async function updateExpenseCategoryName(
     .from("expense_categories")
     .update({
       name: name.trim(),
-      color: CUSTOM_CATEGORY_COLOR,
       icon: CUSTOM_CATEGORY_ICON,
       key: null,
     })
