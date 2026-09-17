@@ -6,6 +6,7 @@ import { donutSegments } from "@triplot/shared/donutSegments";
 import { formatAmount } from "@triplot/shared/formatAmount";
 
 import { ld } from "@/lib/themeColor";
+import { ChevronIcon } from "./icons";
 
 // カテゴリ別の円グラフ（ドーナツ）。web と RN で同じ寸法・同じ図形
 // （弧の計算は @triplot/shared/donutSegments）。
@@ -129,5 +130,71 @@ export function ExpenseDonutLegend({
         );
       })}
     </ul>
+  );
+}
+
+// 名前と金額は図の上では読めない（切れが細いし、狭い画面ではなおさら）。
+// **図は概形、実数は表**に分ける（管理画面の LLM 使用量グラフと同じ形）。
+// ホバーに頼らないので web と iOS で同じ手順になり、読み上げもこちらが拾う。
+// 開けることが分かるよう ChevronIcon を添える（ui-guidelines「開けるものは
+// 開けると分かる形にする」）。native の <details> なので開閉の JS は要らない。
+export function ExpenseBreakdown({
+  amounts,
+  categoryById,
+  currency,
+  labels,
+}: {
+  amounts: CategoryAmount[];
+  categoryById: Map<string, Category>;
+  currency: Currency;
+  labels: { breakdown: string; personal: string; trip: string };
+}) {
+  if (amounts.length === 0) return null;
+  return (
+    <details className="group">
+      <summary className="flex cursor-pointer list-none items-center gap-1 py-1 text-xs text-muted-foreground [&::-webkit-details-marker]:hidden">
+        {labels.breakdown}
+        <ChevronIcon size={12} className="transition group-open:rotate-90" />
+      </summary>
+      <table className="mt-1 w-full text-xs">
+        <thead>
+          <tr className="text-subtle-foreground">
+            <th scope="col" className="w-full text-left font-normal" />
+            <th scope="col" className="px-2 text-right font-normal">
+              {labels.personal}
+            </th>
+            <th scope="col" className="text-right font-normal">
+              {labels.trip}
+            </th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-foreground/10">
+          {amounts.map((a) => {
+            const cat = categoryById.get(a.categoryId);
+            return (
+              <tr key={a.categoryId}>
+                <th
+                  scope="row"
+                  className="flex items-center gap-1.5 py-1 text-left font-normal"
+                >
+                  <span
+                    aria-hidden
+                    className="h-2.5 w-2.5 shrink-0 rounded-full"
+                    style={{ backgroundColor: categoryColor(cat?.color) }}
+                  />
+                  {cat?.name ?? "?"}
+                </th>
+                <td className="px-2 py-1 text-right tabular-nums">
+                  {formatAmount(a.personal, currency)}
+                </td>
+                <td className="py-1 text-right tabular-nums">
+                  {a.trip > 0 ? formatAmount(a.trip, currency) : "—"}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </details>
   );
 }

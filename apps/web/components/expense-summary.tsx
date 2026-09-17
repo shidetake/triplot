@@ -7,7 +7,11 @@ import type { Currency } from "@triplot/shared/types/database";
 import { formatAmount } from "@triplot/shared/formatAmount";
 import { formatRate } from "@triplot/shared/formatRate";
 
-import { ExpenseDonut, ExpenseDonutLegend } from "./expense-donut";
+import {
+  ExpenseBreakdown,
+  ExpenseDonut,
+  ExpenseDonutLegend,
+} from "./expense-donut";
 
 type Member = {
   id: string;
@@ -68,6 +72,17 @@ export async function ExpenseSummaryView({
         <ExpenseDonutLegend
           amounts={summary.byCategory}
           categoryById={categoryById}
+        />
+
+        <ExpenseBreakdown
+          amounts={summary.byCategory}
+          categoryById={categoryById}
+          currency={defaultCurrency}
+          labels={{
+            breakdown: t("expenseBreakdown"),
+            personal: t("expenseBreakdownPersonal"),
+            trip: t("expenseBreakdownTrip"),
+          }}
         />
 
         <div className="grid grid-cols-2 gap-2">

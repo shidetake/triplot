@@ -1,4 +1,3 @@
-
 import {
   Pressable,
   RefreshControl,
@@ -33,6 +32,7 @@ import {
 import type { Currency } from "@triplot/shared/types/database";
 
 import {
+  ExpenseBreakdown,
   ExpenseDonut,
   ExpenseDonutLegend,
 } from "@/components/expense-donut";
@@ -72,8 +72,7 @@ export default function ExpensesTab() {
   const tImport = useTranslations("import");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
-  const { data, me, loadError, refetch, isRefetching } =
-    useTripDetail(tripId);
+  const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
   const { data: tripDrafts } = useTripDrafts(tripId);
   const invalidate = useInvalidateTrip(tripId);
@@ -237,6 +236,17 @@ export default function ExpensesTab() {
             categoryById={categoryById}
           />
 
+          <ExpenseBreakdown
+            amounts={summary.byCategory}
+            categoryById={categoryById}
+            currency={defaultCurrency}
+            labels={{
+              breakdown: t("tripDetail.expenseBreakdown"),
+              personal: t("tripDetail.expenseBreakdownPersonal"),
+              trip: t("tripDetail.expenseBreakdownTrip"),
+            }}
+          />
+
           <View style={styles.summaryRow}>
             <SummaryCell
               label={t("tripDetail.expenseSummaryPersonalTotal")}
@@ -294,47 +304,44 @@ export default function ExpensesTab() {
               {t("tripDetail.pendingImports", { count: draftItems.length })}
             </Text>
             <View style={styles.draftList}>
-            {draftItems.map((d, i) => (
-              <SwipeDeleteRow
-                key={d.id}
-                actions={[
-                  {
-                    icon: "trash",
-                    label: tImport("dismiss"),
-                    destructive: true,
-                    onPress: () => dismissDraft(d.emailId),
-                  },
-                ]}
-                style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
-                measureKey={d.labelParts.join("|")}
-              >
-                <Pressable
-                  onPress={() =>
-                    pushOnce(`/trips/${tripId}/expense-form?draftId=${d.id}`)
-                  }
-                  style={styles.draftButton}
+              {draftItems.map((d, i) => (
+                <SwipeDeleteRow
+                  key={d.id}
+                  actions={[
+                    {
+                      icon: "trash",
+                      label: tImport("dismiss"),
+                      destructive: true,
+                      onPress: () => dismissDraft(d.emailId),
+                    },
+                  ]}
+                  style={[styles.draftRow, i > 0 && styles.draftRowDivider]}
+                  measureKey={d.labelParts.join("|")}
                 >
-                  <View style={styles.draftLabelParts}>
-                    {d.labelParts.map((part, i) => (
-                      <View key={i} style={styles.draftLabelPart}>
-                        {i > 0 && <View style={styles.draftDivider} />}
-                        <Text
-                          style={styles.draftLabelText}
-                          numberOfLines={1}
-                        >
-                          {part}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  <View style={styles.confirmChip}>
-                    <Text style={styles.confirmChipText}>
-                      {t("common.confirm")}
-                    </Text>
-                  </View>
-                </Pressable>
-              </SwipeDeleteRow>
-            ))}
+                  <Pressable
+                    onPress={() =>
+                      pushOnce(`/trips/${tripId}/expense-form?draftId=${d.id}`)
+                    }
+                    style={styles.draftButton}
+                  >
+                    <View style={styles.draftLabelParts}>
+                      {d.labelParts.map((part, i) => (
+                        <View key={i} style={styles.draftLabelPart}>
+                          {i > 0 && <View style={styles.draftDivider} />}
+                          <Text style={styles.draftLabelText} numberOfLines={1}>
+                            {part}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                    <View style={styles.confirmChip}>
+                      <Text style={styles.confirmChipText}>
+                        {t("common.confirm")}
+                      </Text>
+                    </View>
+                  </Pressable>
+                </SwipeDeleteRow>
+              ))}
             </View>
           </View>
         )}
@@ -376,96 +383,97 @@ export default function ExpensesTab() {
                     },
                   ]}
                 >
-                <Pressable
-                  onPress={() =>
-                    pushOnce(
-                      `/trips/${tripId}/expense-form?expenseId=${e.id}`,
-                    )
-                  }
-                  style={[styles.expenseRow, i > 0 && styles.expenseRowDivider]}
-                >
-                  <View style={styles.expenseInfoRow}>
-                    <View style={styles.expenseLeftGroup}>
-                      {category && (
-                        <ColorBadge
-                          color={category.color}
-                          icon={(glyph) => (
-                            <ExpenseCategoryIcon
-                              icon={category.icon}
-                              size={13}
-                              color={glyph}
-                            />
-                          )}
-                        >
-                          {category.name}
-                        </ColorBadge>
-                      )}
-                      <Text style={styles.amount}>
-                        {formatAmount(amountInDefault, defaultCurrency)}
-                      </Text>
-                      {isForeign && (
-                        <Text style={styles.foreign}>
-                          ({formatAmount(e.local_price, e.local_currency)} @{" "}
-                          {formatRate(e.rate_to_default)})
+                  <Pressable
+                    onPress={() =>
+                      pushOnce(
+                        `/trips/${tripId}/expense-form?expenseId=${e.id}`,
+                      )
+                    }
+                    style={[
+                      styles.expenseRow,
+                      i > 0 && styles.expenseRowDivider,
+                    ]}
+                  >
+                    <View style={styles.expenseInfoRow}>
+                      <View style={styles.expenseLeftGroup}>
+                        {category && (
+                          <ColorBadge
+                            color={category.color}
+                            icon={(glyph) => (
+                              <ExpenseCategoryIcon
+                                icon={category.icon}
+                                size={13}
+                                color={glyph}
+                              />
+                            )}
+                          >
+                            {category.name}
+                          </ColorBadge>
+                        )}
+                        <Text style={styles.amount}>
+                          {formatAmount(amountInDefault, defaultCurrency)}
                         </Text>
-                      )}
-                      {e.visibility === "private" && (
-                        <PrivateBadge />
-                      )}
-                    </View>
-                    <Text style={styles.metaText}>
-                      {formatDateTime(e.paid_at)}
-                    </Text>
-                  </View>
-                  <View style={styles.expenseMetaRow}>
-                    <View style={styles.expensePlaceGroup}>
-                      {placeName && (
-                        <View style={styles.placeRow}>
-                          <PlaceCategoryIcon
-                            icon="pin"
-                            size={12}
-                            color={theme.mutedForeground}
-                          />
-                          <Text style={styles.metaText} numberOfLines={1}>
-                            {placeName}
+                        {isForeign && (
+                          <Text style={styles.foreign}>
+                            ({formatAmount(e.local_price, e.local_currency)} @{" "}
+                            {formatRate(e.rate_to_default)})
                           </Text>
-                        </View>
-                      )}
-                      {/* 場所が無い費用は、空いたこの枠にメモを入れる（1行減る）。 */}
-                      {noteSlot === "place" && (
-                        <Text style={styles.metaText} numberOfLines={1}>
-                          {e.note}
-                        </Text>
-                      )}
-                    </View>
-                    <View style={styles.expensePayerGroup}>
-                      <View style={styles.metaGroup}>
-                        <Text style={styles.metaText}>
-                          {tExp("paidLabel")}
-                        </Text>
-                        {payer && <MemberAvatar member={payer} size={16} />}
+                        )}
+                        {e.visibility === "private" && <PrivateBadge />}
                       </View>
-                      {splitMembers && splitMembers.length > 0 && (
+                      <Text style={styles.metaText}>
+                        {formatDateTime(e.paid_at)}
+                      </Text>
+                    </View>
+                    <View style={styles.expenseMetaRow}>
+                      <View style={styles.expensePlaceGroup}>
+                        {placeName && (
+                          <View style={styles.placeRow}>
+                            <PlaceCategoryIcon
+                              icon="pin"
+                              size={12}
+                              color={theme.mutedForeground}
+                            />
+                            <Text style={styles.metaText} numberOfLines={1}>
+                              {placeName}
+                            </Text>
+                          </View>
+                        )}
+                        {/* 場所が無い費用は、空いたこの枠にメモを入れる（1行減る）。 */}
+                        {noteSlot === "place" && (
+                          <Text style={styles.metaText} numberOfLines={1}>
+                            {e.note}
+                          </Text>
+                        )}
+                      </View>
+                      <View style={styles.expensePayerGroup}>
                         <View style={styles.metaGroup}>
                           <Text style={styles.metaText}>
-                            {tExp("splitLabel")}
+                            {tExp("paidLabel")}
                           </Text>
-                          {splitMembers.map((m) => (
-                            <MemberAvatar key={m.id} member={m} size={16} />
-                          ))}
+                          {payer && <MemberAvatar member={payer} size={16} />}
                         </View>
-                      )}
+                        {splitMembers && splitMembers.length > 0 && (
+                          <View style={styles.metaGroup}>
+                            <Text style={styles.metaText}>
+                              {tExp("splitLabel")}
+                            </Text>
+                            {splitMembers.map((m) => (
+                              <MemberAvatar key={m.id} member={m} size={16} />
+                            ))}
+                          </View>
+                        )}
+                      </View>
                     </View>
-                  </View>
-                  {noteSlot === "own" ? (
-                    // 一覧の可変長テキストは1行で止める（ui-guidelines「切り詰め」）。
-                    // 取り込みが入れるメモは1行に収まる長さで書かせているが、
-                    // 手入力は自由なのでここでも止める。
-                    <Text style={styles.metaText} numberOfLines={1}>
-                      {e.note}
-                    </Text>
-                  ) : null}
-                </Pressable>
+                    {noteSlot === "own" ? (
+                      // 一覧の可変長テキストは1行で止める（ui-guidelines「切り詰め」）。
+                      // 取り込みが入れるメモは1行に収まる長さで書かせているが、
+                      // 手入力は自由なのでここでも止める。
+                      <Text style={styles.metaText} numberOfLines={1}>
+                        {e.note}
+                      </Text>
+                    ) : null}
+                  </Pressable>
                 </SwipeDeleteRow>
               );
             })}
@@ -516,173 +524,182 @@ function formatDateTime(iso: string): string {
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-  screen: { flex: 1, backgroundColor: t.background },
-  // FAB は bottom:100 + 高さ56 なので、画面下端から156ptまでを占める。
-  // 96 だとその範囲に食い込み、最後の行が FAB の下に隠れて全部は見えな
-  // かった（実機フィードバック）。FAB の上端を越えるまで余白を取る。
-  content: { padding: 16, gap: 8, paddingBottom: 172 },
-  // 未確定の取り込み。仮のもの（仮費用・仮旅行）は破線の枠で示し、色は付けない。破線＝
-  // 「まだ実体が無い／押すと実体ができる」で、旅行一覧の「旅行の候補」と
-  // 同じ言語に揃える（ui-guidelines「定型部品」の破線ボーダー）。
-  // 見出しは器の外（確定の一覧が「費用」の見出しの外にあるのと同じ関係）。
-  // 確定の一覧とは別のまとまりなので境目は 24px。
-  draftBox: { marginBottom: 24 },
-  draftHeading: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
-  // 破線の器はここ（見出しの外＝行だけを囲う）。
-  // 付けると枠の中に枠ができて、他の一覧から浮く（ui-guidelines「行にするか
-  // カードにするか」の「意味が群に付いているなら囲いを群の側に置く」）。
-  draftList: {
-    borderWidth: 1,
-    borderStyle: "dashed",
-    borderColor: t.fgAlpha(0.2),
-    borderRadius: 6,
-    // スワイプで出る赤い面を器の中に収める（角丸からはみ出さない）。
-    overflow: "hidden",
-  },
-  // 左右の余白は行が持つ（区切り線を器の端まで引くため）。
-  draftRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  draftRowDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: t.fgAlpha(0.1),
-  },
-  // padding は行（draftRow）が持つ。ここにも付けると二重になって、
-  // 店名と日付に使える幅が減り省略が増える。
-  draftButton: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  draftLabelParts: {
-    flex: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  draftLabelPart: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    flexShrink: 1,
-  },
-  // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
-  draftDivider: { width: 1, height: 12, backgroundColor: t.fgAlpha(0.1) },
-  draftLabelText: { fontSize: 14, flexShrink: 1, color: t.foreground },
-  confirmChip: {
-    borderRadius: 4,
-    backgroundColor: t.primary,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-  },
-  confirmChipText: { fontSize: 11, fontWeight: "500", color: t.primaryForeground },
-  summaryCard: {
-    gap: 12,
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.1),
-    borderRadius: 6,
-    padding: 16,
-  },
-  summaryRow: { flexDirection: "row", gap: 8 },
-  summaryCell: { flex: 1 },
-  chartCell: { flex: 1, alignItems: "center" },
-  summaryLabel: { fontSize: 12, color: t.mutedForeground },
-  summaryValue: { marginTop: 4, fontSize: 18, fontWeight: "600", color: t.foreground },
-  card: {
-    borderWidth: 1,
-    borderColor: t.fgAlpha(0.1),
-    borderRadius: 6,
-    padding: 16,
-    gap: 6,
-    marginBottom: 8,
-  },
-  cardTitle: { fontSize: 14, fontWeight: "500", color: t.foreground },
-  muted: { fontSize: 14, color: t.mutedForeground },
-  settlementRow: { fontSize: 14, color: t.mutedForeground },
-  settlementName: { fontWeight: "500", color: t.foreground },
-  rateHint: { marginTop: 6, fontSize: 12, color: t.mutedForeground },
-  // 一覧全体を1つの枠にし（web の ExpenseList の <ul> と同じ）、行同士は
-  // 区切り線（expenseRowDivider）だけで分ける。行ごとに枠＋隙間を持たせると
-  // 件数が多い旅行で無駄に縦長になっていた（実機フィードバック）。
-  expenseListCard: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: t.fgAlpha(0.12),
-    borderRadius: 6,
-    overflow: "hidden",
-  },
-  expenseRow: {
-    padding: 12,
-    gap: 4,
-  },
-  expenseRowDivider: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: t.fgAlpha(0.1),
-  },
-  // 1行目＝カテゴリ/金額（左）＋日時（右）、2行目＝場所（左）＋支払/割り勘
-  // （右）の2行構成（web の ExpenseRowItem と同じ情報を意味のまとまりで
-  // 左右に分けて詰める）。場所と支払は「行き先と誰が払ったか」で同じ行に
-  // まとめるのが自然という実機フィードバックを受けて2行目に統合。
-  expenseInfoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  expenseLeftGroup: {
-    flex: 1,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    alignItems: "center",
-    gap: 8,
-  },
-  expenseMetaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-  },
-  expensePlaceGroup: {
-    flex: 1,
-    minWidth: 0,
-  },
-  expensePayerGroup: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: 8,
-    flexShrink: 0,
-  },
-  metaGroup: { flexDirection: "row", alignItems: "center", gap: 4 },
-  placeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
-  amount: { fontSize: 14, fontWeight: "500", color: t.foreground },
-  foreign: { fontSize: 12, color: t.mutedForeground },
-  metaText: { fontSize: 12, color: t.mutedForeground },
-  empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
-  fab: {
-    position: "absolute",
-    right: 20,
-    // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
-    // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
-    // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
-    // 確認）。タブバーより確実に上に出す値へ引き上げる。
-    bottom: MOBILE_TAB_BAR_TOP + 17,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: t.primary,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
-  },
-});
+    screen: { flex: 1, backgroundColor: t.background },
+    // FAB は bottom:100 + 高さ56 なので、画面下端から156ptまでを占める。
+    // 96 だとその範囲に食い込み、最後の行が FAB の下に隠れて全部は見えな
+    // かった（実機フィードバック）。FAB の上端を越えるまで余白を取る。
+    content: { padding: 16, gap: 8, paddingBottom: 172 },
+    // 未確定の取り込み。仮のもの（仮費用・仮旅行）は破線の枠で示し、色は付けない。破線＝
+    // 「まだ実体が無い／押すと実体ができる」で、旅行一覧の「旅行の候補」と
+    // 同じ言語に揃える（ui-guidelines「定型部品」の破線ボーダー）。
+    // 見出しは器の外（確定の一覧が「費用」の見出しの外にあるのと同じ関係）。
+    // 確定の一覧とは別のまとまりなので境目は 24px。
+    draftBox: { marginBottom: 24 },
+    draftHeading: { fontSize: 12, color: t.mutedForeground, marginBottom: 4 },
+    // 破線の器はここ（見出しの外＝行だけを囲う）。
+    // 付けると枠の中に枠ができて、他の一覧から浮く（ui-guidelines「行にするか
+    // カードにするか」の「意味が群に付いているなら囲いを群の側に置く」）。
+    draftList: {
+      borderWidth: 1,
+      borderStyle: "dashed",
+      borderColor: t.fgAlpha(0.2),
+      borderRadius: 6,
+      // スワイプで出る赤い面を器の中に収める（角丸からはみ出さない）。
+      overflow: "hidden",
+    },
+    // 左右の余白は行が持つ（区切り線を器の端まで引くため）。
+    draftRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      paddingVertical: 12,
+      paddingHorizontal: 16,
+    },
+    draftRowDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.fgAlpha(0.1),
+    },
+    // padding は行（draftRow）が持つ。ここにも付けると二重になって、
+    // 店名と日付に使える幅が減り省略が増える。
+    draftButton: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    draftLabelParts: {
+      flex: 1,
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+    },
+    draftLabelPart: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 1,
+    },
+    // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
+    draftDivider: { width: 1, height: 12, backgroundColor: t.fgAlpha(0.1) },
+    draftLabelText: { fontSize: 14, flexShrink: 1, color: t.foreground },
+    confirmChip: {
+      borderRadius: 4,
+      backgroundColor: t.primary,
+      paddingHorizontal: 8,
+      paddingVertical: 2,
+    },
+    confirmChipText: {
+      fontSize: 11,
+      fontWeight: "500",
+      color: t.primaryForeground,
+    },
+    summaryCard: {
+      gap: 12,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      padding: 16,
+    },
+    summaryRow: { flexDirection: "row", gap: 8 },
+    summaryCell: { flex: 1 },
+    chartCell: { flex: 1, alignItems: "center" },
+    summaryLabel: { fontSize: 12, color: t.mutedForeground },
+    summaryValue: {
+      marginTop: 4,
+      fontSize: 18,
+      fontWeight: "600",
+      color: t.foreground,
+    },
+    card: {
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.1),
+      borderRadius: 6,
+      padding: 16,
+      gap: 6,
+      marginBottom: 8,
+    },
+    cardTitle: { fontSize: 14, fontWeight: "500", color: t.foreground },
+    muted: { fontSize: 14, color: t.mutedForeground },
+    settlementRow: { fontSize: 14, color: t.mutedForeground },
+    settlementName: { fontWeight: "500", color: t.foreground },
+    rateHint: { marginTop: 6, fontSize: 12, color: t.mutedForeground },
+    // 一覧全体を1つの枠にし（web の ExpenseList の <ul> と同じ）、行同士は
+    // 区切り線（expenseRowDivider）だけで分ける。行ごとに枠＋隙間を持たせると
+    // 件数が多い旅行で無駄に縦長になっていた（実機フィードバック）。
+    expenseListCard: {
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: t.fgAlpha(0.12),
+      borderRadius: 6,
+      overflow: "hidden",
+    },
+    expenseRow: {
+      padding: 12,
+      gap: 4,
+    },
+    expenseRowDivider: {
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: t.fgAlpha(0.1),
+    },
+    // 1行目＝カテゴリ/金額（左）＋日時（右）、2行目＝場所（左）＋支払/割り勘
+    // （右）の2行構成（web の ExpenseRowItem と同じ情報を意味のまとまりで
+    // 左右に分けて詰める）。場所と支払は「行き先と誰が払ったか」で同じ行に
+    // まとめるのが自然という実機フィードバックを受けて2行目に統合。
+    expenseInfoRow: {
+      flexDirection: "row",
+      alignItems: "flex-start",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    expenseLeftGroup: {
+      flex: 1,
+      flexDirection: "row",
+      flexWrap: "wrap",
+      alignItems: "center",
+      gap: 8,
+    },
+    expenseMetaRow: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 8,
+    },
+    expensePlaceGroup: {
+      flex: 1,
+      minWidth: 0,
+    },
+    expensePayerGroup: {
+      flexDirection: "row",
+      flexWrap: "wrap",
+      justifyContent: "flex-end",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 0,
+    },
+    metaGroup: { flexDirection: "row", alignItems: "center", gap: 4 },
+    placeRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+    amount: { fontSize: 14, fontWeight: "500", color: t.foreground },
+    foreign: { fontSize: 12, color: t.mutedForeground },
+    metaText: { fontSize: 12, color: t.mutedForeground },
+    empty: { padding: 24, fontSize: 14, color: t.mutedForeground },
+    fab: {
+      position: "absolute",
+      right: 20,
+      // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は RN の zIndex より
+      // 上のネイティブ合成レイヤーに乗るため、bottom:28 だと FAB が丸ごと
+      // タブバーのヒット領域に隠れてタップが奪われる（実機/シミュレータで
+      // 確認）。タブバーより確実に上に出す値へ引き上げる。
+      bottom: MOBILE_TAB_BAR_TOP + 17,
+      width: 56,
+      height: 56,
+      borderRadius: 28,
+      backgroundColor: t.primary,
+      alignItems: "center",
+      justifyContent: "center",
+      shadowColor: "#000",
+      shadowOpacity: 0.2,
+      shadowRadius: 8,
+      shadowOffset: { width: 0, height: 4 },
+      elevation: 4,
+    },
+  });
