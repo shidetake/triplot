@@ -5,19 +5,9 @@
 ## 残件
 
 ### 12. iOS アプリ公開
-実装（Expo/React Native、`apps/mobile`）は完了済み。残っているのは
-App Store 公開（TestFlight から本番リリースへ）。
-
-提出前にやること:
-
-- [ ] **バージョンを 1.0.0 にする**。`apps/mobile/app.config.ts` の `version`
-  （ビルド番号は `eas.json` の `autoIncrement` が自動で上げるので触らない）。
-  **提出用ビルドの直前に上げる** — TestFlight の確認ビルドを 1.0.0 で
-  埋めてしまわないため。手順は [docs/versioning.md](docs/versioning.md)。
-- [ ] **migration をスカッシュする**。「本番運用フェーズに入った」と宣言する
-  タイミングと同じ。以降は backfill を真面目に書く運用に切り替わる
-  （AGENTS.md「Migration ポリシー（開発期間中）」）。スキーマが固まって
-  からでよい。
+実装（Expo/React Native、`apps/mobile`）・バージョン（1.0.0）・審査用アカウント・
+migration スカッシュ、すべて完了。残っているのは App Store Connect での
+提出操作そのもの（TestFlight ビルドを本番審査に出す）。
 
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。

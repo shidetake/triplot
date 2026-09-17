@@ -1,3 +1,10 @@
+-- スカッシュ済みスキーマ（2026-09-17）。
+-- 20260808000001〜20260917000100 の22本の migration をこの1本に統合した
+-- （`supabase migration squash --linked`。本番の実スキーマを pg_dump した結果）。
+-- 「本番運用フェーズに入った」宣言と同時に実施（AGENTS.md「Migration ポリシー
+-- （開発期間中）」）。以降は通常どおり migration を積み重ねる。
+-- 統合前の個別ファイルは git 履歴（このコミットの1つ前）に残っている。
+
 
 
 
@@ -254,7 +261,29 @@ $$;
 ALTER FUNCTION "public"."copy_trip"("p_source_trip_id" "text", "p_title" "text", "p_start_date" "date", "p_end_date" "date", "p_default_currency" "text", "p_display_name" "text", "p_events" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participant_member_ids" "uuid"[]) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."count_extraction"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  update public.ai_usage_baseline
+  set extracted_since = extracted_since + 1
+  where id;
+
+  insert into public.ai_usage_daily (day, extracted_count)
+  values ((new.extracted_at at time zone 'utc')::date, 1)
+  on conflict (day)
+  do update set extracted_count = ai_usage_daily.extracted_count + 1;
+
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."count_extraction"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -341,9 +370,14 @@ begin
     v_end_place_id := null;
   end if;
 
-  if p_visibility = 'shared'
-     and p_participant_member_ids is not null
-     and array_length(p_participant_member_ids, 1) > 0 then
+  -- 「全員参加」は participants_everyone が持つ。参加者の行は「一部の人」の
+  -- ときだけ入れる。**行が無いことに意味を持たせない**（0行＝全員、という
+  -- 推測をやめた。詳細は 20260906000100_participants_everyone.sql）。
+  if p_visibility = 'shared' and not p_participants_everyone then
+    if p_participant_member_ids is null
+       or array_length(p_participant_member_ids, 1) is null then
+      raise exception 'custom participants must not be empty';
+    end if;
     select count(*) into v_bad_count
     from unnest(p_participant_member_ids) as pid
     where not exists (
@@ -361,20 +395,20 @@ begin
     trip_id, created_by_member_id, visibility, kind, all_day,
     title, start_at, end_at, start_tz, end_tz,
     tz_disambig_transit_id, tz_disambig_side,
-    start_place_id, end_place_id, note
+    start_place_id, end_place_id, note, participants_everyone
   )
   values (
     p_trip_id, v_my_member_id, p_visibility, p_kind, coalesce(p_all_day, false),
     trim(p_title), p_start_at, v_end_at, v_store_start_tz, v_end_tz,
     v_disambig_transit_id, v_disambig_side,
     v_start_place_id, v_end_place_id,
-    nullif(trim(coalesce(p_note, '')), '')
+    nullif(trim(coalesce(p_note, '')), ''),
+    -- private は参加者の概念を持たないので常に everyone 扱い。
+    p_visibility <> 'shared' or p_participants_everyone
   )
   returning id into v_event_id;
 
-  if p_visibility = 'shared'
-     and p_participant_member_ids is not null
-     and array_length(p_participant_member_ids, 1) > 0 then
+  if p_visibility = 'shared' and not p_participants_everyone then
     insert into event_participants (event_id, member_id)
     select v_event_id, m
     from unnest(p_participant_member_ids) as m;
@@ -387,35 +421,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participant_member_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") RETURNS "text"
-    LANGUAGE "sql" IMMUTABLE
-    AS $$
-  -- 費用カテゴリから「初めてその場所を登録するときだけ」の既定アイコンを出す。
-  -- 既存の場所のアイコンには一切影響しない（呼び出し側が新規作成時にだけ使う）。
-  -- 対応が明確なカテゴリのみ（無理に全カテゴリを当てにいかない）。ここで使う
-  -- アイコンは全て trip_pin_options の既定14種の中（seed_default_trip_pin_options）
-  -- ＝場所編集画面のアイコン選択にも必ず表示されている状態にする。
-  select case p_category_key
-    when 'dining' then 'food'
-    when 'accommodation' then 'lodging'
-    when 'flight' then 'airport'
-    when 'local_transit' then 'station'
-    when 'clothing' then 'shopping'
-    when 'leisure' then 'activity'
-    when 'souvenir' then 'shopping'
-    when 'casino' then 'casino'
-    else null
-  end;
-$$;
-
-
-ALTER FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -499,17 +508,26 @@ begin
   insert into expenses (
     trip_id, created_by_member_id, visibility, local_price, local_currency,
     rate_to_default, category_id, payer_member_id, splittable, note, paid_at,
-    place_id, tz_disambig_transit_id, tz_disambig_side
+    place_id, tz_disambig_transit_id, tz_disambig_side, split_everyone
   )
   values (
     p_trip_id, v_my_member_id, p_visibility, p_local_price, p_local_currency,
     p_rate_to_default, p_category_id, p_payer_member_id, p_splittable,
     nullif(trim(coalesce(p_note, '')), ''), v_paid_at,
-    v_place_id, p_tz_disambig_transit_id, p_tz_disambig_side
+    v_place_id, p_tz_disambig_transit_id, p_tz_disambig_side,
+    -- 割り勘しない費用は「全員」の概念を持たないので true のまま置く。
+    not p_splittable or p_split_everyone
   )
   returning id into v_expense_id;
 
-  if p_splittable and p_split_member_ids is not null then
+  -- 「全員で割り勘」は split_everyone が持つ。対象の行は「一部の人」の
+  -- ときだけ入れる。**行が無いことに意味を持たせない**（0行＝全員、という
+  -- 推測をやめた。予定の participants_everyone と同じ形）。
+  if p_splittable and not p_split_everyone then
+    if p_split_member_ids is null
+       or array_length(p_split_member_ids, 1) is null then
+      raise exception 'custom split members must not be empty';
+    end if;
     foreach v_split_member_id in array p_split_member_ids loop
       if not exists (
         select 1 from trip_members
@@ -533,7 +551,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_place"("p_trip_id" "text", "p_name" "text", "p_tentative" boolean, "p_visibility" "text", "p_note" "text", "p_google_place_id" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") RETURNS "uuid"
@@ -702,7 +720,234 @@ $$;
 ALTER FUNCTION "public"."create_trip"("p_title" "text", "p_start_date" "date", "p_end_date" "date", "p_default_currency" "text", "p_display_name" "text", "p_client_tz" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."dismiss_inbound_email"("p_id" "uuid") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    AS $$
+  -- 費用カテゴリから「初めてその場所を登録するときだけ」の既定アイコンを出す。
+  -- 既存の場所のアイコンには一切影響しない（呼び出し側が新規作成時にだけ使う）。
+  -- 対応が明確なカテゴリのみ（無理に全カテゴリを当てにいかない）。ここで使う
+  -- アイコンは全て trip_pin_options の既定14種の中（seed_default_trip_pin_options）
+  -- ＝場所編集画面のアイコン選択にも必ず表示されている状態にする。
+  select case p_category_key
+    when 'dining' then 'food'
+    when 'accommodation' then 'lodging'
+    when 'flight' then 'airport'
+    when 'local_transit' then 'station'
+    when 'clothing' then 'shopping'
+    when 'leisure' then 'activity'
+    when 'souvenir' then 'shopping'
+    when 'casino' then 'casino'
+    else null
+  end;
+$$;
+
+
+ALTER FUNCTION "public"."default_place_icon_for_expense_category"("p_category_key" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_account"() RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_trip_ids text[];
+begin
+  if v_uid is null then
+    raise exception 'not authenticated';
+  end if;
+
+  -- 後始末の対象を、この人が所属していた旅行だけに限る
+  -- （無関係な孤児データまで巻き込んで消さない）。
+  select coalesce(array_agg(distinct trip_id), '{}')
+    into v_trip_ids
+    from trip_members where user_id = v_uid;
+
+  -- 1. 本人にしか見えないコンテンツは消す（墓標に紐づいたまま残しても
+  --    RLS 上どのアカウントからも到達できず、ゴミになるだけ）。
+  delete from expenses e using trip_members m
+   where e.created_by_member_id = m.id and m.user_id = v_uid and e.visibility = 'private';
+  delete from events ev using trip_members m
+   where ev.created_by_member_id = m.id and m.user_id = v_uid and ev.visibility = 'private';
+  delete from places p using trip_members m
+   where p.created_by_member_id = m.id and m.user_id = v_uid and p.visibility = 'private';
+  delete from todos t using trip_members m
+   where t.created_by_member_id = m.id and m.user_id = v_uid and t.visibility = 'private';
+
+  -- 2. 取り込んだメールは本文が本人の個人データなので消す。
+  delete from inbound_emails where user_id = v_uid;
+
+  -- 3. 管理者の引き継ぎ。抜ける人が唯一の管理者だった旅行では、
+  --    残る実アカウントのうち最古参を昇格させる（管理者不在にしない）。
+  with orphaned as (
+    select m.trip_id
+      from trip_members m
+     where m.user_id = v_uid and m.left_at is null and m.is_admin
+       and not exists (
+         select 1 from trip_members o
+          where o.trip_id = m.trip_id and o.left_at is null and o.is_admin
+            and o.user_id is not null and o.user_id <> v_uid
+       )
+  ), successor as (
+    select distinct on (m.trip_id) m.id
+      from trip_members m
+      join orphaned o on o.trip_id = m.trip_id
+     where m.left_at is null and m.user_id is not null and m.user_id <> v_uid
+     order by m.trip_id, m.joined_at
+  )
+  update trip_members set is_admin = true
+   where id in (select id from successor);
+
+  -- 4. 名前を匿名化する。**left_at は立てない**（上のコメント参照）。
+  --    既に自分で旅行から抜けていた行は、その left_at をそのまま残す。
+  update trip_members
+     set display_name = '退会したユーザー', is_admin = false
+   where user_id = v_uid;
+
+  -- 5. アバターの実体（avatars バケット）はここでは消せない。Supabase が
+  --    storage.objects への直接 DELETE を禁じており、Storage API 経由で
+  --    しか消せないため。呼び出し側がこの RPC の**前に**
+  --    storage.from("avatars").remove() を実行する。
+  -- 6. アカウント本体を消す。
+  --    auth.users → public.users は CASCADE、public.users → trip_members は
+  --    SET NULL なので、ここでメンバー行の user_id が外れる。
+  delete from auth.users where id = v_uid;
+
+  -- 7. 実アカウントが1人も残らなくなった旅行は誰からも開けないので消す。
+  delete from trips t
+   where t.id = any(v_trip_ids)
+     and not exists (
+       select 1 from trip_members m
+        where m.trip_id = t.id and m.user_id is not null
+     );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_account"() OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "public"."delete_account"() IS 'アカウントを削除する。共有コンテンツは trip_members を墓標として残すことで保全し、private なコンテンツ・取り込みメール・アバター・アカウント本体を消す。';
+
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_expense_returning"("p_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid     uuid := auth.uid();
+  v_expense jsonb;
+  v_splits  jsonb;
+  v_drafts  jsonb;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  select to_jsonb(e) into v_expense
+  from expenses e
+  where e.id = p_id and is_active_trip_member(e.trip_id);
+  if v_expense is null then
+    raise exception 'expense not found' using errcode = '42501';
+  end if;
+
+  select coalesce(jsonb_agg(s.member_id), '[]'::jsonb) into v_splits
+  from expense_splits s where s.expense_id = p_id;
+  select coalesce(jsonb_agg(d.id), '[]'::jsonb) into v_drafts
+  from inbound_drafts d where d.expense_id = p_id;
+
+  delete from expenses where id = p_id;
+  return jsonb_build_object(
+    'expense', v_expense,
+    'splits', v_splits,
+    'drafts', v_drafts
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_expense_returning"("p_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_place_returning"("p_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid   uuid := auth.uid();
+  v_place jsonb;
+  v_starts jsonb;
+  v_ends   jsonb;
+  v_exps   jsonb;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  select to_jsonb(p) into v_place
+  from places p
+  where p.id = p_id and is_active_trip_member(p.trip_id);
+  if v_place is null then
+    raise exception 'place not found' using errcode = '42501';
+  end if;
+
+  -- 出発地と到着地は別々に控える（同じ予定が両方でこの場所を指していることが
+  -- あり、まとめると片方しか戻せない）。
+  select coalesce(jsonb_agg(id), '[]'::jsonb) into v_starts
+  from events where start_place_id = p_id;
+  select coalesce(jsonb_agg(id), '[]'::jsonb) into v_ends
+  from events where end_place_id = p_id;
+  select coalesce(jsonb_agg(id), '[]'::jsonb) into v_exps
+  from expenses where place_id = p_id;
+
+  delete from places where id = p_id;
+  return jsonb_build_object(
+    'place', v_place,
+    'eventStarts', v_starts,
+    'eventEnds', v_ends,
+    'expenses', v_exps
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_place_returning"("p_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_todo_returning"("p_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid   uuid := auth.uid();
+  v_todo  jsonb;
+  v_likes jsonb;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  select to_jsonb(t) into v_todo
+  from todos t
+  where t.id = p_id and is_active_trip_member(t.trip_id);
+  if v_todo is null then
+    raise exception 'todo not found' using errcode = '42501';
+  end if;
+
+  select coalesce(jsonb_agg(l.member_id), '[]'::jsonb) into v_likes
+  from todo_likes l where l.todo_id = p_id;
+
+  delete from todos where id = p_id;
+  return jsonb_build_object('todo', v_todo, 'likes', v_likes);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_todo_returning"("p_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."delete_trip"("p_trip_id" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -712,17 +957,77 @@ begin
   if v_uid is null then
     raise exception 'authentication required' using errcode = '42501';
   end if;
-  update inbound_drafts d
-  set status = 'dismissed'
-  from inbound_emails e
-  where d.email_id = p_id and d.status = 'pending'
-    and e.id = d.email_id and e.user_id = v_uid;
+  -- RLS の trips_member_delete と同じ条件（管理者のみ）。
+  if not is_trip_admin(p_trip_id) then
+    raise exception 'admin required' using errcode = '42501';
+  end if;
+
+  update events
+  set tz_disambig_transit_id = null, tz_disambig_side = null
+  where trip_id = p_trip_id and tz_disambig_transit_id is not null;
+
+  update expenses
+  set tz_disambig_transit_id = null, tz_disambig_side = null
+  where trip_id = p_trip_id and tz_disambig_transit_id is not null;
+
+  delete from trips where id = p_trip_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_trip"("p_trip_id" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."dismiss_inbound_email"("p_id" "uuid") RETURNS "uuid"[]
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+  v_ids uuid[];
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  with updated as (
+    update inbound_drafts d
+    set status = 'dismissed'
+    from inbound_emails e
+    where d.email_id = p_id and d.status = 'pending'
+      and e.id = d.email_id and e.user_id = v_uid
+    returning d.id
+  )
+  select coalesce(array_agg(id), '{}'::uuid[]) into v_ids from updated;
   perform finalize_inbound_email_if_resolved(p_id, v_uid);
+  return v_ids;
 end;
 $$;
 
 
 ALTER FUNCTION "public"."dismiss_inbound_email"("p_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_trip_id text;
+begin
+  select trip_id into v_trip_id from places where id = p_place_id;
+  if v_trip_id is null then
+    raise exception 'place not found';
+  end if;
+  if not is_active_trip_member(v_trip_id) then
+    raise exception 'not an active member of this trip' using errcode = '42501';
+  end if;
+
+  update places set location_dismissed = true where id = p_place_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."ensure_import_token"() RETURNS "text"
@@ -819,11 +1124,12 @@ begin
   update inbound_emails
   set status = case when v_confirmed > 0 then 'confirmed' else 'dismissed' end,
       raw = null,
-      body_text = null
+      body_text = null,
+      diag = null
   where id = p_email_id and user_id = p_uid
     and status in ('extracted', 'error', 'over_quota');
   update inbound_emails
-  set raw = null, body_text = null
+  set raw = null, body_text = null, diag = null
   where merged_into = p_email_id and user_id = p_uid;
 end;
 $$;
@@ -1158,6 +1464,82 @@ $$;
 ALTER FUNCTION "public"."join_trip_via_invite"("p_token" "text", "p_display_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."merge_inbound_emails"("p_child" "uuid", "p_parent" "uuid", "p_mode" "text" DEFAULT 'dedupe'::"text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid    uuid := auth.uid();
+  v_child  jsonb;
+  v_parent jsonb;
+  v_kept   jsonb;   -- 親の receipt のうち中身のある項目だけ
+  v_merged jsonb;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if p_child = p_parent then
+    raise exception 'cannot merge into itself' using errcode = '22023';
+  end if;
+  if p_mode not in ('dedupe', 'sum') then
+    raise exception 'unknown merge mode' using errcode = '22023';
+  end if;
+
+  select extracted into v_child from inbound_emails
+  where id = p_child and user_id = v_uid and status = 'extracted';
+  select extracted into v_parent from inbound_emails
+  where id = p_parent and user_id = v_uid and status = 'extracted'
+    and merged_into is null;
+  if not found or v_child is null then
+    raise exception 'not mergeable' using errcode = '22023';
+  end if;
+
+  -- 子に畳まれていたものは新しい親へ付け替える（孫を作らない）。
+  update inbound_emails set merged_into = p_parent
+  where merged_into = p_child and user_id = v_uid;
+
+  update inbound_emails set status = 'merged', merged_into = p_parent
+  where id = p_child and user_id = v_uid;
+
+  -- 畳んだ側の下書きは消す（作り直さない）。確定済みのものは残す。
+  delete from inbound_drafts where email_id = p_child and status = 'pending';
+
+  -- 費用の合体。どちらかに receipt が無ければ何もしない（予定だけのメール等）。
+  if jsonb_typeof(v_parent -> 'receipt') = 'object'
+     and jsonb_typeof(v_child -> 'receipt') = 'object' then
+    -- 親の「中身のある項目」だけを取り出す（null と空文字は無いものとして扱う）。
+    select coalesce(jsonb_object_agg(k, v), '{}'::jsonb) into v_kept
+    from jsonb_each(v_parent -> 'receipt') as e(k, v)
+    where v <> 'null'::jsonb and v <> '""'::jsonb;
+
+    -- 子を土台に、親の中身のある項目で上書き＝空欄だけ子から埋まる。
+    v_merged := (v_child -> 'receipt') || v_kept;
+
+    -- 合算は通貨が同じ時だけ（換算は別の判断なので、ここではやらない）。
+    if p_mode = 'sum'
+       and (v_parent -> 'receipt' ->> 'currency')
+           is not distinct from (v_child -> 'receipt' ->> 'currency') then
+      v_merged := jsonb_set(
+        v_merged,
+        '{total}',
+        to_jsonb(
+          coalesce((v_parent -> 'receipt' ->> 'total')::numeric, 0)
+          + coalesce((v_child -> 'receipt' ->> 'total')::numeric, 0)
+        )
+      );
+    end if;
+
+    update inbound_drafts
+    set payload = v_merged
+    where email_id = p_parent and kind = 'expense' and status = 'pending';
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."merge_inbound_emails"("p_child" "uuid", "p_parent" "uuid", "p_mode" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."nanoid"("size" integer DEFAULT 10) RETURNS "text"
     LANGUAGE "plpgsql"
     AS $$
@@ -1354,6 +1736,23 @@ $$;
 ALTER FUNCTION "public"."regenerate_trip_invite"("p_trip_id" "text", "p_token" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."release_lease"("p_name" "text") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+begin
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'forbidden';
+  end if;
+
+  update public.drain_leases set locked_until = now() where name = p_name;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."release_lease"("p_name" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."remove_trip_member"("p_member_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
@@ -1520,15 +1919,240 @@ $$;
 ALTER FUNCTION "public"."resolve_place_spec"("p_trip_id" "text", "p_member_id" "uuid", "p_spec" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_trip_id      text;
+  v_gpid         text := nullif(trim(coalesce(p_google_place_id, '')), '');
+  v_existing_id  uuid;
+begin
+  if v_gpid is null then
+    raise exception 'google_place_id required';
+  end if;
+  if coalesce(trim(p_name), '') = '' then
+    raise exception 'name required';
+  end if;
+  if p_lat is null or p_lng is null then
+    raise exception 'coordinates required';
+  end if;
+
+  select trip_id into v_trip_id from places where id = p_place_id;
+  if v_trip_id is null then
+    raise exception 'place not found';
+  end if;
+  if not is_active_trip_member(v_trip_id) then
+    raise exception 'not an active member of this trip' using errcode = '42501';
+  end if;
+
+  select id into v_existing_id
+  from places
+  where trip_id = v_trip_id
+    and google_place_id = v_gpid
+    and visibility = 'shared'
+    and id <> p_place_id
+  order by created_at
+  limit 1;
+
+  if v_existing_id is not null then
+    update events set start_place_id = v_existing_id where start_place_id = p_place_id;
+    update events set end_place_id = v_existing_id where end_place_id = p_place_id;
+    update expenses set place_id = v_existing_id where place_id = p_place_id;
+    delete from places where id = p_place_id;
+    update trips set last_activity_at = now() where id = v_trip_id;
+    return v_existing_id;
+  end if;
+
+  update places
+  set google_place_id   = v_gpid,
+      name              = trim(p_name),
+      lat               = p_lat,
+      lng               = p_lng,
+      formatted_address = trim(p_formatted_address),
+      icon              = coalesce(nullif(trim(coalesce(p_icon, '')), ''), icon),
+      region            = coalesce(nullif(trim(coalesce(p_region, '')), ''), region),
+      locality          = coalesce(nullif(trim(coalesce(p_locality, '')), ''), locality),
+      location_dismissed = false
+  where id = p_place_id;
+
+  update trips set last_activity_at = now() where id = v_trip_id;
+  return p_place_id;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restore_expense"("p_snapshot" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid     uuid := auth.uid();
+  v_expense jsonb := p_snapshot -> 'expense';
+  v_id      uuid;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if v_expense is null then
+    raise exception 'invalid snapshot';
+  end if;
+  if not is_active_trip_member(v_expense ->> 'trip_id') then
+    raise exception 'not a trip member' using errcode = '42501';
+  end if;
+  v_id := (v_expense ->> 'id')::uuid;
+
+  insert into expenses
+  select * from jsonb_populate_record(null::expenses, v_expense)
+  on conflict (id) do nothing;
+
+  insert into expense_splits (expense_id, member_id)
+  select v_id, m::uuid
+  from jsonb_array_elements_text(coalesce(p_snapshot -> 'splits', '[]'::jsonb)) m
+  on conflict do nothing;
+
+  -- 取り込みの下書きの紐づけを戻す。**まだ空のままの行だけ**（消した後に別の
+  -- 費用へ結び直されていたら、そちらを上書きしない）。
+  update inbound_drafts set expense_id = v_id
+  where expense_id is null
+    and id in (
+      select (x)::uuid from jsonb_array_elements_text(
+        coalesce(p_snapshot -> 'drafts', '[]'::jsonb)) x
+    );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."restore_expense"("p_snapshot" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restore_inbound_drafts"("p_ids" "uuid"[]) RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid uuid := auth.uid();
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+
+  update inbound_drafts d
+  set status = 'pending'
+  from inbound_emails e
+  where d.id = any(p_ids) and d.status = 'dismissed'
+    and e.id = d.email_id and e.user_id = v_uid;
+
+  -- 未確定が戻ったメールは受信箱に出る状態へ。
+  update inbound_emails e
+  set status = 'extracted'
+  where e.user_id = v_uid
+    and e.status in ('confirmed', 'dismissed')
+    and exists (
+      select 1 from inbound_drafts d
+      where d.email_id = e.id and d.id = any(p_ids) and d.status = 'pending'
+    );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."restore_inbound_drafts"("p_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restore_place"("p_snapshot" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid   uuid := auth.uid();
+  v_place jsonb := p_snapshot -> 'place';
+  v_id    uuid;
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if v_place is null then
+    raise exception 'invalid snapshot';
+  end if;
+  if not is_active_trip_member(v_place ->> 'trip_id') then
+    raise exception 'not a trip member' using errcode = '42501';
+  end if;
+  v_id := (v_place ->> 'id')::uuid;
+
+  insert into places
+  select * from jsonb_populate_record(null::places, v_place)
+  on conflict (id) do nothing;
+
+  -- 参照を指し直す。**この場所を指していた行だけ**を戻す（消した後に別の場所へ
+  -- 付け替えられていたら、そちらを上書きしない）。
+  update events set start_place_id = v_id
+  where start_place_id is null
+    and id in (
+      select (x)::uuid from jsonb_array_elements_text(
+        coalesce(p_snapshot -> 'eventStarts', '[]'::jsonb)) x
+    );
+  update events set end_place_id = v_id
+  where end_place_id is null
+    and id in (
+      select (x)::uuid from jsonb_array_elements_text(
+        coalesce(p_snapshot -> 'eventEnds', '[]'::jsonb)) x
+    );
+  update expenses set place_id = v_id
+  where place_id is null
+    and id in (
+      select (x)::uuid from jsonb_array_elements_text(
+        coalesce(p_snapshot -> 'expenses', '[]'::jsonb)) x
+    );
+end;
+$$;
+
+
+ALTER FUNCTION "public"."restore_place"("p_snapshot" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."restore_todo"("p_snapshot" "jsonb") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public'
+    AS $$
+declare
+  v_uid  uuid := auth.uid();
+  v_todo jsonb := p_snapshot -> 'todo';
+begin
+  if v_uid is null then
+    raise exception 'authentication required' using errcode = '42501';
+  end if;
+  if v_todo is null then
+    raise exception 'invalid snapshot';
+  end if;
+  if not is_active_trip_member(v_todo ->> 'trip_id') then
+    raise exception 'not a trip member' using errcode = '42501';
+  end if;
+
+  insert into todos
+  select * from jsonb_populate_record(null::todos, v_todo)
+  on conflict (id) do nothing;
+
+  insert into todo_likes (todo_id, member_id)
+  select (v_todo ->> 'id')::uuid, m::uuid
+  from jsonb_array_elements_text(coalesce(p_snapshot -> 'likes', '[]'::jsonb)) m
+  on conflict do nothing;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."restore_todo"("p_snapshot" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."seed_default_expense_categories"("_trip_id" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 begin
   -- 色は**色相だけ**が使われる（明度・彩度は colorRoles の役割ラダーが決める）。
-  -- そのため色相環に均等に配ること。以前は「灰色と青」のように明度差で区別して
-  -- いたぶん色相が密集していて（12色中7組が 25°以内・その他と未分類は同一）、
-  -- ラダー導入後に見分けが付かなくなった。いまは最小 30° 間隔。
+  -- そのため色相環に均等に配ること。いまは最小 30° 間隔。
   -- 未分類だけ無彩色（「分類していない」を色で主張しない。ラダーは無彩色を
   -- 検出して中立グレーで描く）。
   insert into expense_categories (trip_id, name, color, icon, sort_order, key)
@@ -1538,14 +2162,14 @@ begin
     (_trip_id, '飲食',     '#c7692c', 'restaurant',     3,  'dining'),
     (_trip_id, '衣服',     '#a569bf', 'checkroom',      4,  'clothing'),
     (_trip_id, 'レジャー', '#c06099', 'local_activity', 5,  'leisure'),
-    (_trip_id, '土産',     '#cd5f62', 'redeem',         6,  'souvenir'),
+    (_trip_id, '土産',     '#399d57', 'redeem',         6,  'souvenir'),
     (_trip_id, '宿泊',     '#7f78d6', 'hotel',          7,  'accommodation'),
     (_trip_id, '通信',     '#009b8f', 'wifi',           8,  'communication'),
-    (_trip_id, '医療',     '#399d57', 'local_hospital', 9,  'medical'),
+    (_trip_id, '医療',     '#cd5f62', 'local_hospital', 9,  'medical'),
     (_trip_id, 'カジノ',   '#ae7c00', 'casino',         10, 'casino'),
     (_trip_id, 'その他',   '#848f02', 'category',       11, 'other'),
     -- 未分類 = 「分類していない」既定値（その他 = 「どれにも当てはまらないと
-    -- 判断した」とは別物）。控えめな薄グレー。
+    -- 判断した」とは別物）。無彩色。
     (_trip_id, '未分類',   '#808080', 'label_off',      12, 'uncategorized');
 end;
 $$;
@@ -1715,113 +2339,31 @@ $$;
 ALTER FUNCTION "public"."set_place_location"("p_place_id" "uuid", "p_lat" double precision, "p_lng" double precision) OWNER TO "postgres";
 
 
--- 未確定（自由入力）の場所を、地図上でタップ/検索して選んだ実在の Google の
--- 場所へ寄せる。選んだ場所が同じ旅行内で既に登録済み（google_place_id が一致）
--- なら、この place_id を参照している予定/費用をその既存の場所へ付け替えて
--- from 側を削除する（マージ）。まだ未登録なら、この行自体を Google の場所に
--- 昇格させる（id はそのまま＝参照している予定/費用は自動的に追従する）。
--- 店名がレシート由来の自由入力と大きく変わっても、ユーザーが地図上で明示的に
--- 選んだ場所を優先する（実装判断はプランに記載）。
-CREATE OR REPLACE FUNCTION "public"."resolve_place_to_google"(
-  "p_place_id" "uuid",
-  "p_google_place_id" "text",
-  "p_name" "text",
-  "p_lat" double precision,
-  "p_lng" double precision,
-  "p_formatted_address" "text",
-  "p_icon" "text",
-  "p_region" "text",
-  "p_locality" "text"
-) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."try_acquire_lease"("p_name" "text", "p_ttl_seconds" integer) RETURNS boolean
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
 declare
-  v_trip_id      text;
-  v_gpid         text := nullif(trim(coalesce(p_google_place_id, '')), '');
-  v_existing_id  uuid;
+  acquired boolean;
 begin
-  if v_gpid is null then
-    raise exception 'google_place_id required';
-  end if;
-  if coalesce(trim(p_name), '') = '' then
-    raise exception 'name required';
-  end if;
-  if p_lat is null or p_lng is null then
-    raise exception 'coordinates required';
+  -- サービスロール（cron・webhook）専用。
+  if auth.role() is distinct from 'service_role' then
+    raise exception 'forbidden';
   end if;
 
-  select trip_id into v_trip_id from places where id = p_place_id;
-  if v_trip_id is null then
-    raise exception 'place not found';
-  end if;
-  if not is_active_trip_member(v_trip_id) then
-    raise exception 'not an active member of this trip' using errcode = '42501';
-  end if;
+  insert into public.drain_leases (name, locked_until)
+  values (p_name, now() + make_interval(secs => p_ttl_seconds))
+  on conflict (name) do update
+    set locked_until = excluded.locked_until
+    where public.drain_leases.locked_until < now()
+  returning true into acquired;
 
-  select id into v_existing_id
-  from places
-  where trip_id = v_trip_id
-    and google_place_id = v_gpid
-    and visibility = 'shared'
-    and id <> p_place_id
-  order by created_at
-  limit 1;
-
-  if v_existing_id is not null then
-    update events set start_place_id = v_existing_id where start_place_id = p_place_id;
-    update events set end_place_id = v_existing_id where end_place_id = p_place_id;
-    update expenses set place_id = v_existing_id where place_id = p_place_id;
-    delete from places where id = p_place_id;
-    update trips set last_activity_at = now() where id = v_trip_id;
-    return v_existing_id;
-  end if;
-
-  update places
-  set google_place_id   = v_gpid,
-      name              = trim(p_name),
-      lat               = p_lat,
-      lng               = p_lng,
-      formatted_address = trim(p_formatted_address),
-      icon              = coalesce(nullif(trim(coalesce(p_icon, '')), ''), icon),
-      region            = coalesce(nullif(trim(coalesce(p_region, '')), ''), region),
-      locality          = coalesce(nullif(trim(coalesce(p_locality, '')), ''), locality),
-      location_dismissed = false
-  where id = p_place_id;
-
-  update trips set last_activity_at = now() where id = v_trip_id;
-  return p_place_id;
+  return coalesce(acquired, false);
 end;
 $$;
 
 
-ALTER FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") OWNER TO "postgres";
-
-
--- 「地図未登録」バッジを今後出さないようにする（未確定のまま置いておきたい
--- 場所向け）。座標は付けない＝後から地図タブの編集フォームで改めて
--- 位置を設定することもできる（このフラグは一方的な通知の抑制に過ぎない）。
-CREATE OR REPLACE FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
-    AS $$
-declare
-  v_trip_id text;
-begin
-  select trip_id into v_trip_id from places where id = p_place_id;
-  if v_trip_id is null then
-    raise exception 'place not found';
-  end if;
-  if not is_active_trip_member(v_trip_id) then
-    raise exception 'not an active member of this trip' using errcode = '42501';
-  end if;
-
-  update places set location_dismissed = true where id = p_place_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."try_acquire_lease"("p_name" "text", "p_ttl_seconds" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."unmerge_inbound_email"("p_id" "uuid") RETURNS "void"
@@ -1853,7 +2395,7 @@ $$;
 ALTER FUNCTION "public"."unmerge_inbound_email"("p_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_event"("p_event_id" "uuid", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participant_member_ids" "uuid"[]) RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."update_event"("p_event_id" "uuid", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -1964,9 +2506,14 @@ begin
     v_end_place_id := null;
   end if;
 
-  if p_visibility = 'shared'
-     and p_participant_member_ids is not null
-     and array_length(p_participant_member_ids, 1) > 0 then
+  -- 「全員参加」は participants_everyone が持つ。参加者の行は「一部の人」の
+  -- ときだけ入れる。**行が無いことに意味を持たせない**（0行＝全員、という
+  -- 推測をやめた。詳細は 20260906000100_participants_everyone.sql）。
+  if p_visibility = 'shared' and not p_participants_everyone then
+    if p_participant_member_ids is null
+       or array_length(p_participant_member_ids, 1) is null then
+      raise exception 'custom participants must not be empty';
+    end if;
     select count(*) into v_bad_count
     from unnest(p_participant_member_ids) as pid
     where not exists (
@@ -1993,13 +2540,12 @@ begin
       start_place_id = v_start_place_id,
       end_place_id   = v_end_place_id,
       visibility = p_visibility,
-      note       = nullif(trim(coalesce(p_note, '')), '')
+      note       = nullif(trim(coalesce(p_note, '')), ''),
+      participants_everyone = (p_visibility <> 'shared' or p_participants_everyone)
   where id = p_event_id;
 
   delete from event_participants where event_id = p_event_id;
-  if p_visibility = 'shared'
-     and p_participant_member_ids is not null
-     and array_length(p_participant_member_ids, 1) > 0 then
+  if p_visibility = 'shared' and not p_participants_everyone then
     insert into event_participants (event_id, member_id)
     select p_event_id, m
     from unnest(p_participant_member_ids) as m;
@@ -2010,10 +2556,10 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."update_event"("p_event_id" "uuid", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participant_member_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."update_event"("p_event_id" "uuid", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public'
     AS $$
@@ -2117,6 +2663,7 @@ begin
       payer_member_id = p_payer_member_id,
       visibility      = p_visibility,
       splittable      = p_splittable,
+      split_everyone  = (not p_splittable or p_split_everyone),
       note            = nullif(trim(coalesce(p_note, '')), ''),
       paid_at         = coalesce(p_paid_at, paid_at),
       tz_disambig_transit_id = p_tz_disambig_transit_id,
@@ -2125,7 +2672,14 @@ begin
   where id = p_expense_id;
 
   delete from expense_splits where expense_id = p_expense_id;
-  if p_splittable and p_split_member_ids is not null then
+  -- 「全員で割り勘」は split_everyone が持つ。対象の行は「一部の人」の
+  -- ときだけ入れる。**行が無いことに意味を持たせない**（0行＝全員、という
+  -- 推測をやめた。予定の participants_everyone と同じ形）。
+  if p_splittable and not p_split_everyone then
+    if p_split_member_ids is null
+       or array_length(p_split_member_ids, 1) is null then
+      raise exception 'custom split members must not be empty';
+    end if;
     foreach v_split_member_id in array p_split_member_ids loop
       if not exists (
         select 1 from trip_members
@@ -2147,7 +2701,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_place"("p_place_id" "uuid", "p_tentative" boolean, "p_visibility" "text", "p_note" "text", "p_icon" "text") RETURNS "void"
@@ -2242,6 +2796,36 @@ SET default_tablespace = '';
 SET default_table_access_method = "heap";
 
 
+CREATE TABLE IF NOT EXISTS "public"."ai_usage_baseline" (
+    "id" boolean DEFAULT true NOT NULL,
+    "total_used_at_start" numeric DEFAULT 0 NOT NULL,
+    "extracted_since" bigint DEFAULT 0 NOT NULL,
+    "started_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "ai_usage_baseline_id_check" CHECK ("id")
+);
+
+
+ALTER TABLE "public"."ai_usage_baseline" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."ai_usage_daily" (
+    "day" "date" NOT NULL,
+    "extracted_count" bigint DEFAULT 0 NOT NULL
+);
+
+
+ALTER TABLE "public"."ai_usage_daily" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."drain_leases" (
+    "name" "text" NOT NULL,
+    "locked_until" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."drain_leases" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."event_participants" (
     "event_id" "uuid" NOT NULL,
     "member_id" "uuid" NOT NULL
@@ -2269,6 +2853,7 @@ CREATE TABLE IF NOT EXISTS "public"."events" (
     "tz_disambig_transit_id" "uuid",
     "tz_disambig_side" "text",
     "end_place_id" "uuid",
+    "participants_everyone" boolean DEFAULT true NOT NULL,
     CONSTRAINT "events_allday_normal_chk" CHECK (((NOT "all_day") OR ("kind" = 'normal'::"text"))),
     CONSTRAINT "events_kind_check" CHECK (("kind" = ANY (ARRAY['normal'::"text", 'transit'::"text"]))),
     CONSTRAINT "events_normal_end_after_start_chk" CHECK ((("kind" = 'transit'::"text") OR ("end_at" IS NULL) OR ("end_at" >= "start_at"))),
@@ -2333,6 +2918,7 @@ CREATE TABLE IF NOT EXISTS "public"."expenses" (
     "place_id" "uuid",
     "tz_disambig_transit_id" "uuid",
     "tz_disambig_side" "text",
+    "split_everyone" boolean DEFAULT true NOT NULL,
     CONSTRAINT "expenses_check" CHECK ((("visibility" = 'shared'::"text") OR ("splittable" = false))),
     CONSTRAINT "expenses_local_currency_check" CHECK (("local_currency" ~ '^[A-Z]{3}$'::"text")),
     CONSTRAINT "expenses_local_price_check" CHECK (("local_price" > (0)::numeric)),
@@ -2421,6 +3007,9 @@ CREATE TABLE IF NOT EXISTS "public"."inbound_emails" (
     "merged_into" "uuid",
     "retry_count" integer DEFAULT 0 NOT NULL,
     "next_retry_at" timestamp with time zone,
+    "extract_error_kind" "text",
+    "diag" "jsonb",
+    CONSTRAINT "inbound_emails_extract_error_kind_check" CHECK ((("extract_error_kind" IS NULL) OR ("extract_error_kind" = ANY (ARRAY['rate_limit'::"text", 'transient'::"text", 'permanent'::"text", 'unknown'::"text"])))),
     CONSTRAINT "inbound_emails_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'extracted'::"text", 'over_quota'::"text", 'error'::"text", 'confirmed'::"text", 'dismissed'::"text", 'merged'::"text"])))
 );
 
@@ -2428,13 +3017,12 @@ CREATE TABLE IF NOT EXISTS "public"."inbound_emails" (
 ALTER TABLE "public"."inbound_emails" OWNER TO "postgres";
 
 
--- 旅行詳細画面がメール取り込みの新着を即座に反映するための Realtime 配信。
--- trip_id を直接持つのはこのテーブルだけ（inbound_drafts は email_id 経由の
--- JOIN が要り、postgres_changes の filter では絞れない）ので、ここへの
--- INSERT/UPDATE（新規到着・旅行への割り当て）をトリガーにクライアント側で
--- 下書き一覧を再取得する。RLS の SELECT ポリシー（inbound_emails_select_own）
--- がそのまま Realtime にも効くので、他ユーザーの行は流れない。
-ALTER PUBLICATION "supabase_realtime" ADD TABLE "public"."inbound_emails";
+COMMENT ON COLUMN "public"."inbound_emails"."extract_error_kind" IS '抽出失敗の性質（classifyFailure の結果）。受信箱の文言と見た目の出し分けに使う。';
+
+
+
+COMMENT ON COLUMN "public"."inbound_emails"."diag" IS '取り込みの診断メモ（長さ・ホスト名・件数・真偽値のみ。本文/URL/金額は入れない）';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."places" (
@@ -2520,7 +3108,7 @@ ALTER TABLE "public"."trip_invites" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "public"."trip_members" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "trip_id" "text" NOT NULL,
-    "user_id" "uuid" NOT NULL,
+    "user_id" "uuid",
     "display_name" "text" NOT NULL,
     "color" integer,
     "kind" "text" NOT NULL,
@@ -2572,11 +3160,32 @@ CREATE TABLE IF NOT EXISTS "public"."users" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "import_token" "text",
     "avatar_url" "text",
-    "is_admin" boolean DEFAULT false NOT NULL
+    "is_admin" boolean DEFAULT false NOT NULL,
+    "monthly_email_cap_override" integer,
+    CONSTRAINT "users_monthly_email_cap_override_check" CHECK ((("monthly_email_cap_override" IS NULL) OR ("monthly_email_cap_override" >= 0)))
 );
 
 
 ALTER TABLE "public"."users" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."users"."monthly_email_cap_override" IS 'メール取り込みの月間上限の個別上書き。実効上限 = max(プランの上限, この値)。NULL = 上書き無し。手動運用のみ。';
+
+
+
+ALTER TABLE ONLY "public"."ai_usage_baseline"
+    ADD CONSTRAINT "ai_usage_baseline_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."ai_usage_daily"
+    ADD CONSTRAINT "ai_usage_daily_pkey" PRIMARY KEY ("day");
+
+
+
+ALTER TABLE ONLY "public"."drain_leases"
+    ADD CONSTRAINT "drain_leases_pkey" PRIMARY KEY ("name");
+
 
 
 ALTER TABLE ONLY "public"."event_participants"
@@ -2775,6 +3384,10 @@ CREATE INDEX "todos_trip_idx" ON "public"."todos" USING "btree" ("trip_id");
 
 
 
+CREATE INDEX "trip_members_active_account_idx" ON "public"."trip_members" USING "btree" ("trip_id") WHERE ("user_id" IS NOT NULL);
+
+
+
 CREATE INDEX "trip_members_trip_idx" ON "public"."trip_members" USING "btree" ("trip_id");
 
 
@@ -2784,6 +3397,10 @@ CREATE INDEX "trip_members_user_active_idx" ON "public"."trip_members" USING "bt
 
 
 CREATE INDEX "trip_pin_options_trip_sort_idx" ON "public"."trip_pin_options" USING "btree" ("trip_id", "sort_order");
+
+
+
+CREATE OR REPLACE TRIGGER "inbound_emails_count_extraction" AFTER UPDATE OF "extracted_at" ON "public"."inbound_emails" FOR EACH ROW WHEN ((("old"."extracted_at" IS NULL) AND ("new"."extracted_at" IS NOT NULL))) EXECUTE FUNCTION "public"."count_extraction"();
 
 
 
@@ -2965,7 +3582,7 @@ ALTER TABLE ONLY "public"."trip_members"
 
 
 ALTER TABLE ONLY "public"."trip_members"
-    ADD CONSTRAINT "trip_members_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE CASCADE;
+    ADD CONSTRAINT "trip_members_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE SET NULL;
 
 
 
@@ -2977,6 +3594,15 @@ ALTER TABLE ONLY "public"."trip_pin_options"
 ALTER TABLE ONLY "public"."users"
     ADD CONSTRAINT "users_id_fkey" FOREIGN KEY ("id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
+
+
+ALTER TABLE "public"."ai_usage_baseline" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."ai_usage_daily" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."drain_leases" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."event_participants" ENABLE ROW LEVEL SECURITY;
@@ -3240,6 +3866,10 @@ CREATE POLICY "users_self_update" ON "public"."users" FOR UPDATE USING (("id" = 
 ALTER PUBLICATION "supabase_realtime" OWNER TO "postgres";
 
 
+ALTER PUBLICATION "supabase_realtime" ADD TABLE ONLY "public"."inbound_emails";
+
+
+
 
 
 
@@ -3413,8 +4043,11 @@ GRANT ALL ON FUNCTION "public"."copy_trip"("p_source_trip_id" "text", "p_title" 
 
 
 
-REVOKE ALL ON FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."create_event"("p_trip_id" "text", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."create_expense"("p_trip_id" "text", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") TO "authenticated";
 
 
 
@@ -3433,8 +4066,38 @@ GRANT ALL ON FUNCTION "public"."create_trip"("p_title" "text", "p_start_date" "d
 
 
 
+REVOKE ALL ON FUNCTION "public"."delete_account"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_account"() TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_expense_returning"("p_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_expense_returning"("p_id" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_place_returning"("p_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_place_returning"("p_id" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_todo_returning"("p_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_todo_returning"("p_id" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_trip"("p_trip_id" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_trip"("p_trip_id" "text") TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."dismiss_inbound_email"("p_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."dismiss_inbound_email"("p_id" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") TO "authenticated";
 
 
 
@@ -3466,6 +4129,11 @@ GRANT ALL ON FUNCTION "public"."join_trip_via_invite"("p_token" "text", "p_displ
 
 
 
+REVOKE ALL ON FUNCTION "public"."merge_inbound_emails"("p_child" "uuid", "p_parent" "uuid", "p_mode" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."merge_inbound_emails"("p_child" "uuid", "p_parent" "uuid", "p_mode" "text") TO "authenticated";
+
+
+
 REVOKE ALL ON FUNCTION "public"."peek_invite"("p_token" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."peek_invite"("p_token" "text") TO "anon";
 GRANT ALL ON FUNCTION "public"."peek_invite"("p_token" "text") TO "authenticated";
@@ -3494,6 +4162,11 @@ GRANT ALL ON FUNCTION "public"."regenerate_trip_invite"("p_trip_id" "text", "p_t
 
 
 
+REVOKE ALL ON FUNCTION "public"."release_lease"("p_name" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."release_lease"("p_name" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."remove_trip_member"("p_member_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_trip_member"("p_member_id" "uuid") TO "authenticated";
 
@@ -3501,6 +4174,31 @@ GRANT ALL ON FUNCTION "public"."remove_trip_member"("p_member_id" "uuid") TO "au
 
 REVOKE ALL ON FUNCTION "public"."resolve_inbound_draft"("p_id" "uuid", "p_status" "text", "p_expense_id" "uuid", "p_event_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."resolve_inbound_draft"("p_id" "uuid", "p_status" "text", "p_expense_id" "uuid", "p_event_id" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."restore_expense"("p_snapshot" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."restore_expense"("p_snapshot" "jsonb") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."restore_inbound_drafts"("p_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."restore_inbound_drafts"("p_ids" "uuid"[]) TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."restore_place"("p_snapshot" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."restore_place"("p_snapshot" "jsonb") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "public"."restore_todo"("p_snapshot" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."restore_todo"("p_snapshot" "jsonb") TO "authenticated";
 
 
 
@@ -3514,13 +4212,8 @@ GRANT ALL ON FUNCTION "public"."set_place_location"("p_place_id" "uuid", "p_lat"
 
 
 
-REVOKE ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."resolve_place_to_google"("p_place_id" "uuid", "p_google_place_id" "text", "p_name" "text", "p_lat" double precision, "p_lng" double precision, "p_formatted_address" "text", "p_icon" "text", "p_region" "text", "p_locality" "text") TO "authenticated";
-
-
-
-REVOKE ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."dismiss_place_location"("p_place_id" "uuid") TO "authenticated";
+REVOKE ALL ON FUNCTION "public"."try_acquire_lease"("p_name" "text", "p_ttl_seconds" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."try_acquire_lease"("p_name" "text", "p_ttl_seconds" integer) TO "service_role";
 
 
 
@@ -3529,8 +4222,11 @@ GRANT ALL ON FUNCTION "public"."unmerge_inbound_email"("p_id" "uuid") TO "authen
 
 
 
-REVOKE ALL ON FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") TO "authenticated";
+GRANT ALL ON FUNCTION "public"."update_event"("p_event_id" "uuid", "p_title" "text", "p_kind" "text", "p_all_day" boolean, "p_start_at" timestamp without time zone, "p_end_at" timestamp without time zone, "p_start_tz" "text", "p_end_tz" "text", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text", "p_start_place" "jsonb", "p_end_place" "jsonb", "p_visibility" "text", "p_note" "text", "p_participants_everyone" boolean, "p_participant_member_ids" "uuid"[]) TO "authenticated";
+
+
+
+GRANT ALL ON FUNCTION "public"."update_expense"("p_expense_id" "uuid", "p_local_price" numeric, "p_local_currency" "text", "p_rate_to_default" numeric, "p_category_id" "uuid", "p_payer_member_id" "uuid", "p_visibility" "text", "p_splittable" boolean, "p_note" "text", "p_paid_at" timestamp without time zone, "p_split_everyone" boolean, "p_split_member_ids" "uuid"[], "p_place" "jsonb", "p_tz_disambig_transit_id" "uuid", "p_tz_disambig_side" "text") TO "authenticated";
 
 
 
@@ -3556,6 +4252,24 @@ GRANT ALL ON FUNCTION "public"."validate_tz_disambig"("p_trip_id" "text", "p_tz_
 
 
 
+
+
+
+GRANT ALL ON TABLE "public"."ai_usage_baseline" TO "anon";
+GRANT ALL ON TABLE "public"."ai_usage_baseline" TO "authenticated";
+GRANT ALL ON TABLE "public"."ai_usage_baseline" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."ai_usage_daily" TO "anon";
+GRANT ALL ON TABLE "public"."ai_usage_daily" TO "authenticated";
+GRANT ALL ON TABLE "public"."ai_usage_daily" TO "service_role";
+
+
+
+GRANT ALL ON TABLE "public"."drain_leases" TO "anon";
+GRANT ALL ON TABLE "public"."drain_leases" TO "authenticated";
+GRANT ALL ON TABLE "public"."drain_leases" TO "service_role";
 
 
 
@@ -3783,13 +4497,6 @@ ALTER DEFAULT PRIVILEGES FOR ROLE "postgres" IN SCHEMA "public" GRANT ALL ON TAB
 --
 
 CREATE OR REPLACE TRIGGER "on_auth_user_created" AFTER INSERT ON "auth"."users" FOR EACH ROW EXECUTE FUNCTION "public"."handle_new_user"();
-
-
-
--- アバター画像の保管バケット（公開：読み取りは誰でも可。書き込みは本人フォルダのみ）。
-INSERT INTO "storage"."buckets" ("id", "name", "public")
-VALUES ('avatars', 'avatars', true)
-ON CONFLICT ("id") DO NOTHING;
 
 
 
