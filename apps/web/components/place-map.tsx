@@ -230,15 +230,26 @@ function pointsKey(points: LatLng[]): string {
 function MapController({
   points,
   panTo,
+  isSearching,
 }: {
   points: LatLng[];
   panTo: LatLng | null;
+  // 検索結果を映すためだけに地図を動かしたいので、それ以外の点集合の変化
+  // （場所の追加/削除・検索を消して元の集合に戻る）では動かさない。
+  isSearching: boolean;
 }) {
   const map = useMap();
   const key = pointsKey(points);
+  const isFirstRun = useRef(true);
 
   useEffect(() => {
     if (!map) return;
+    const first = isFirstRun.current;
+    isFirstRun.current = false;
+    // 初回表示（旅行を開いた時の既定表示）と検索結果が変わった時だけ動かす。
+    // 場所の追加/削除や検索欄のバツでの取り消しは「今見ている位置」を保つ
+    // （ユーザーがせっかく合わせた表示が勝手に飛ぶのを防ぐ）。
+    if (!first && !isSearching) return;
     if (points.length === 0) {
       map.setCenter(TOKYO);
       map.setZoom(11);
@@ -254,7 +265,7 @@ function MapController({
     }
     // points 自体ではなく key（集合の同一性）で発火させる
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key]);
+  }, [map, key, isSearching]);
 
   // ピン/一覧から選択されたらその位置へ寄せる（吹き出しが画面外に出ないように）。
   // 本家 Google マップと同じく「ズームは一切変えずパンだけ」。
@@ -641,7 +652,11 @@ export function PlaceMap({
           }}
           style={{ width: "100%", height: "100%" }}
         >
-          <MapController points={focusPoints} panTo={selectedPos} />
+          <MapController
+            points={focusPoints}
+            panTo={selectedPos}
+            isSearching={candidates.length > 0}
+          />
           {/* 現在地・方位磁針・縮尺バー（iOS の場所タブと同じ仕様）。
               位置を指定するモード中は地図に集中させるため出さない。 */}
           <MapControls hidden={locating} />

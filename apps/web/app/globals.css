@@ -209,6 +209,23 @@ input[type="time"]::-webkit-calendar-picker-indicator {
 }
 .dark .gm-style-iw-d {
   background-color: var(--background) !important;
+  /* overflow-y:auto の縦スクロールバー自体が白いまま浮く（`color-scheme: dark`
+     は :root で継承されているが、Chrome のオーバーレイスクロールバーは
+     それだけでは暗く塗り替わらない＝実機で確認済み）。トラックは背景に
+     溶け込ませ、つまみだけ薄いグレーで見せる（ボーダーの α 階段と同じ考え）。
+     Firefox/新しめの Chromium は scrollbar-color、それ以外は
+     ::-webkit-scrollbar 系で同じ見た目にする。 */
+  scrollbar-color: var(--muted-foreground) transparent;
+}
+.dark .gm-style-iw-d::-webkit-scrollbar {
+  width: 8px;
+}
+.dark .gm-style-iw-d::-webkit-scrollbar-track {
+  background: transparent;
+}
+.dark .gm-style-iw-d::-webkit-scrollbar-thumb {
+  background-color: var(--muted-foreground);
+  border-radius: 9999px;
 }
 /* 吹き出しの三角（尻尾）は出さない。ピンのすぐ上に窓が出るので、指さなくても
    どのピンの話かは分かる。Google の尻尾は白のままでダークに追従せず、地の色を
