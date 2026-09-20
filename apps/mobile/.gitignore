@@ -44,3 +44,6 @@ example
 
 # eas build --local の出力（ローカルビルドの成果物）
 build-*.ipa
+
+# ios:build のログ（ビルドのたびに増える診断用途、上限なし）
+build-logs/
