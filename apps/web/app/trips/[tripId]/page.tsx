@@ -392,6 +392,14 @@ export default async function TripDetailPage({
 
   return (
     <>
+      {/* 実験: 13 は費用一覧（= lab=9 と同条件）に iOS のデータ検出を止める
+          メタタグを足したもの。実験後に削除する。 */}
+      {labLevel === 13 && (
+        <meta
+          name="format-detection"
+          content="telephone=no,date=no,address=no,email=no"
+        />
+      )}
       {tripActions}
       <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
         {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
