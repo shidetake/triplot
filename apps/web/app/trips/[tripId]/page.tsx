@@ -427,7 +427,7 @@ export default async function TripDetailPage({
           {labLevel === 1 || labLevel === 2 ? null : (
           <TripDetailTabs
             schedule={
-              labLevel === 3 ? null : (
+              labLevel >= 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <ScheduleSection
                   tripId={tripId}
@@ -502,7 +502,7 @@ export default async function TripDetailPage({
               // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
               // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
               // （見出しは広い画面だけ）。
-              labLevel === 3 ? null : (
+              labLevel >= 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <h2 className="hidden text-lg font-semibold md:block">
                   {t("tripDetail.places")}
@@ -524,6 +524,7 @@ export default async function TripDetailPage({
               )
             }
             expenses={
+              labLevel === 4 || labLevel === 5 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
@@ -641,8 +642,10 @@ export default async function TripDetailPage({
                   myMemberId={me.id}
                 />
               </section>
+              )
             }
             todos={
+              labLevel === 4 || labLevel === 6 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-lg font-semibold">
@@ -676,6 +679,7 @@ export default async function TripDetailPage({
                   myMemberId={me.id}
                 />
               </section>
+              )
             }
           />
           )}
