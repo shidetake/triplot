@@ -71,15 +71,10 @@ import type { Currency } from "@triplot/shared/types/database";
 
 export default async function TripDetailPage({
   params,
-  searchParams,
 }: {
   params: Promise<{ tripId: string }>;
-  searchParams: Promise<{ lab?: string }>;
 }) {
   const { tripId } = await params;
-  // 実験用（Smart App Banner が旅行詳細でだけ出ない原因の二分探索）。
-  // ?lab=1..3 でページの中身を段階的に減らす。実験後に削除する。
-  const labLevel = Number((await searchParams).lab ?? 0);
   const supabase = await createClient();
   const {
     data: { user },
@@ -392,24 +387,12 @@ export default async function TripDetailPage({
 
   return (
     <>
-      {/* 実験: 13 は費用一覧（= lab=9 と同条件）に iOS のデータ検出を止める
-          メタタグを足したもの。実験後に削除する。 */}
-      {labLevel === 13 && (
-        <meta
-          name="format-detection"
-          content="telephone=no,date=no,address=no,email=no"
-        />
-      )}
       {tripActions}
       <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
         {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
           タブに戻ってきた時にも取り直す（他メンバーの変更を拾う）。 */}
-        {labLevel !== 1 && (
-          <>
-            <TripDraftsRealtime tripId={tripId} />
-            <RefreshOnFocus />
-          </>
-        )}
+        <TripDraftsRealtime tripId={tripId} />
+        <RefreshOnFocus />
 
         {/* メンバー一覧は広い画面だけ（狭い画面はヘッダーに入らないので出さない。
           誰が関わるかは予定の色・費用のアバターで分かる）。 */}
@@ -432,10 +415,8 @@ export default async function TripDetailPage({
           px-6(24px) だと同じレイアウトでも web だけ窮屈に見える。
           広い画面はページコンテナ側（main の md:px-6）が持つ。 */}
         <div className="px-4 md:px-0">
-          {labLevel === 1 || labLevel === 2 ? null : (
           <TripDetailTabs
             schedule={
-              labLevel >= 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <ScheduleSection
                   tripId={tripId}
@@ -504,13 +485,11 @@ export default async function TripDetailPage({
                   }
                 />
               </section>
-              )
             }
             places={
               // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
               // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
               // （見出しは広い画面だけ）。
-              labLevel >= 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <h2 className="hidden text-lg font-semibold md:block">
                   {t("tripDetail.places")}
@@ -529,15 +508,12 @@ export default async function TripDetailPage({
                   myMemberId={me.id}
                 />
               </section>
-              )
             }
             expenses={
-              labLevel === 4 || labLevel === 5 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
                 （components/use-mobile-chrome-margins.ts）。 */}
-                {labLevel !== 8 && labLevel < 9 && labLevel !== 14 && (
                 <div
                   data-mobile-chrome-top
                   className="flex items-center justify-between gap-2"
@@ -566,9 +542,7 @@ export default async function TripDetailPage({
                     tripEnd={trip.end_date}
                   />
                 </div>
-                )}
 
-                {labLevel !== 7 && labLevel < 9 && labLevel !== 14 && (
                 <ExpenseSummaryView
                   summary={summary}
                   settlements={settlements}
@@ -577,9 +551,8 @@ export default async function TripDetailPage({
                   defaultCurrency={defaultCurrency}
                   averageRates={averageRates}
                 />
-                )}
 
-                {labLevel < 7 && labLevel !== 14 && importDrafts.length > 0 && (
+                {importDrafts.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {t("tripDetail.pendingImports", {
@@ -630,20 +603,14 @@ export default async function TripDetailPage({
                   </div>
                 )}
 
-                {labLevel !== 7 && labLevel !== 8 && labLevel !== 14 && (
                 <ExpenseList
                   tripId={tripId}
-                  // 実験: 11 は行数だけ減らす（画像はそのまま）
-                  expenses={labLevel === 11 ? expenses.slice(0, 3) : expenses}
-                  // 実験: 12 は行の中身を "x" だけにする（構造と件数はそのまま）
-                  plain={labLevel === 12}
+                  expenses={expenses}
                   members={allMembers.map((m) => ({
                     id: m.id,
                     display_name: m.display_name,
                     color: m.color,
-                    // 実験: 10 はアバター画像だけ落とす（行数はそのまま）
-                    avatarUrl:
-                      labLevel === 10 ? null : (m.users?.avatar_url ?? null),
+                    avatarUrl: m.users?.avatar_url ?? null,
                     active: m.active,
                   }))}
                   categories={categories}
@@ -659,12 +626,9 @@ export default async function TripDetailPage({
                   tripEnd={trip.end_date}
                   myMemberId={me.id}
                 />
-                )}
               </section>
-              )
             }
             todos={
-              labLevel === 4 || labLevel === 6 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-lg font-semibold">
@@ -698,10 +662,8 @@ export default async function TripDetailPage({
                   myMemberId={me.id}
                 />
               </section>
-              )
             }
           />
-          )}
         </div>
       </main>
     </>
