@@ -529,7 +529,7 @@ export default async function TripDetailPage({
                 {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
                 （components/use-mobile-chrome-margins.ts）。 */}
-                {labLevel !== 8 && labLevel !== 9 && (
+                {labLevel !== 8 && labLevel < 9 && (
                 <div
                   data-mobile-chrome-top
                   className="flex items-center justify-between gap-2"
@@ -560,7 +560,7 @@ export default async function TripDetailPage({
                 </div>
                 )}
 
-                {labLevel !== 7 && labLevel !== 9 && (
+                {labLevel !== 7 && labLevel < 9 && (
                 <ExpenseSummaryView
                   summary={summary}
                   settlements={settlements}
@@ -625,12 +625,15 @@ export default async function TripDetailPage({
                 {labLevel !== 7 && labLevel !== 8 && (
                 <ExpenseList
                   tripId={tripId}
-                  expenses={expenses}
+                  // 実験: 11 は行数だけ減らす（画像はそのまま）
+                  expenses={labLevel === 11 ? expenses.slice(0, 3) : expenses}
                   members={allMembers.map((m) => ({
                     id: m.id,
                     display_name: m.display_name,
                     color: m.color,
-                    avatarUrl: m.users?.avatar_url ?? null,
+                    // 実験: 10 はアバター画像だけ落とす（行数はそのまま）
+                    avatarUrl:
+                      labLevel === 10 ? null : (m.users?.avatar_url ?? null),
                     active: m.active,
                   }))}
                   categories={categories}
