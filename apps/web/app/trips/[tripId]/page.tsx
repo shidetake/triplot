@@ -529,6 +529,7 @@ export default async function TripDetailPage({
                 {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
                 （components/use-mobile-chrome-margins.ts）。 */}
+                {labLevel !== 8 && labLevel !== 9 && (
                 <div
                   data-mobile-chrome-top
                   className="flex items-center justify-between gap-2"
@@ -557,7 +558,9 @@ export default async function TripDetailPage({
                     tripEnd={trip.end_date}
                   />
                 </div>
+                )}
 
+                {labLevel !== 7 && labLevel !== 9 && (
                 <ExpenseSummaryView
                   summary={summary}
                   settlements={settlements}
@@ -566,8 +569,9 @@ export default async function TripDetailPage({
                   defaultCurrency={defaultCurrency}
                   averageRates={averageRates}
                 />
+                )}
 
-                {importDrafts.length > 0 && (
+                {labLevel < 7 && importDrafts.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {t("tripDetail.pendingImports", {
@@ -618,6 +622,7 @@ export default async function TripDetailPage({
                   </div>
                 )}
 
+                {labLevel !== 7 && labLevel !== 8 && (
                 <ExpenseList
                   tripId={tripId}
                   expenses={expenses}
@@ -641,6 +646,7 @@ export default async function TripDetailPage({
                   tripEnd={trip.end_date}
                   myMemberId={me.id}
                 />
+                )}
               </section>
               )
             }
