@@ -53,6 +53,7 @@ export function ExpenseList({
   tripStart,
   tripEnd,
   myMemberId,
+  plain = false,
 }: {
   tripId: string;
   expenses: ExpenseRow[];
@@ -71,6 +72,8 @@ export function ExpenseList({
   tripStart: string | null;
   tripEnd: string | null;
   myMemberId: string;
+  // 実験用: 行の中身を最小限にする（Smart App Banner の原因切り分け）。実験後に削除。
+  plain?: boolean;
 }) {
   const t = useTranslations("expense");
   const memberById = new Map(members.map((m) => [m.id, m]));
@@ -93,7 +96,15 @@ export function ExpenseList({
   return (
     <>
       <ul className="divide-y divide-foreground/10 rounded-md border border-foreground/10 bg-background">
-        {expenses.map((e) => (
+        {plain
+          ? expenses.map((e) => (
+              <li key={e.id} className="text-sm">
+                <button type="button" className="flex w-full p-3 text-left">
+                  x
+                </button>
+              </li>
+            ))
+          : expenses.map((e) => (
           <ExpenseRowItem
             key={e.id}
             expense={e}

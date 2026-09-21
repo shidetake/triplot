@@ -627,6 +627,8 @@ export default async function TripDetailPage({
                   tripId={tripId}
                   // 実験: 11 は行数だけ減らす（画像はそのまま）
                   expenses={labLevel === 11 ? expenses.slice(0, 3) : expenses}
+                  // 実験: 12 は行の中身を "x" だけにする（構造と件数はそのまま）
+                  plain={labLevel === 12}
                   members={allMembers.map((m) => ({
                     id: m.id,
                     display_name: m.display_name,
