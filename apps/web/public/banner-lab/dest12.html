@@ -16,9 +16,12 @@
  ul{text-align:left;max-width:460px;padding-left:20px}
  li{margin:14px 0}
 </style></head><body>
-<div class="big">テスト12 到着</div>
-<div class="sub">読み込み直後に1.5秒ほど固まります（重い処理の模擬）<br><b>一番上にバナーは出ていますか？</b></div>
+<div class="big">テスト12</div>
+<div class="sub">2秒後に1.5秒ほど固まります<br><b>バナーを見ながら5秒ほど待ってください。<br>途中で消えたら「消えた」です。</b></div>
+<div id="state" style="font-size:22px;font-weight:700">待機中…</div>
 <a class="back" href="/banner-lab/">← テスト一覧に戻る</a>
 <div class="tagstate">banner tag: あり</div>
-<script>var t=Date.now();while(Date.now()-t<1500){}</script>
+<script>setTimeout(function(){document.getElementById('state').textContent='固まります…';
+   setTimeout(function(){var t=Date.now();while(Date.now()-t<1500){}
+   document.getElementById('state').textContent='固まり終わりました';},50);},2000);</script>
 </body></html>

@@ -71,10 +71,15 @@ import type { Currency } from "@triplot/shared/types/database";
 
 export default async function TripDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ tripId: string }>;
+  searchParams: Promise<{ lab?: string }>;
 }) {
   const { tripId } = await params;
+  // 実験用（Smart App Banner が旅行詳細でだけ出ない原因の二分探索）。
+  // ?lab=1..3 でページの中身を段階的に減らす。実験後に削除する。
+  const labLevel = Number((await searchParams).lab ?? 0);
   const supabase = await createClient();
   const {
     data: { user },
@@ -391,8 +396,12 @@ export default async function TripDetailPage({
       <main className="mx-auto w-full max-w-3xl md:px-6 md:py-10">
         {/* どちらも描画は無い。取り込み下書きが届いたら再描画（Realtime）＋
           タブに戻ってきた時にも取り直す（他メンバーの変更を拾う）。 */}
-        <TripDraftsRealtime tripId={tripId} />
-        <RefreshOnFocus />
+        {labLevel !== 1 && (
+          <>
+            <TripDraftsRealtime tripId={tripId} />
+            <RefreshOnFocus />
+          </>
+        )}
 
         {/* メンバー一覧は広い画面だけ（狭い画面はヘッダーに入らないので出さない。
           誰が関わるかは予定の色・費用のアバターで分かる）。 */}
@@ -415,8 +424,10 @@ export default async function TripDetailPage({
           px-6(24px) だと同じレイアウトでも web だけ窮屈に見える。
           広い画面はページコンテナ側（main の md:px-6）が持つ。 */}
         <div className="px-4 md:px-0">
+          {labLevel === 1 || labLevel === 2 ? null : (
           <TripDetailTabs
             schedule={
+              labLevel === 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <ScheduleSection
                   tripId={tripId}
@@ -485,11 +496,13 @@ export default async function TripDetailPage({
                   }
                 />
               </section>
+              )
             }
             places={
               // 狭い画面は PlacesSection 内部で地図/検索/一覧パネルを直接
               // position:fixed にして画面いっぱいに描く。ここは他タブと同じ通常フロー
               // （見出しは広い画面だけ）。
+              labLevel === 3 ? null : (
               <section className="mt-4 space-y-6 md:mt-10">
                 <h2 className="hidden text-lg font-semibold md:block">
                   {t("tripDetail.places")}
@@ -508,6 +521,7 @@ export default async function TripDetailPage({
                   myMemberId={me.id}
                 />
               </section>
+              )
             }
             expenses={
               <section className="mt-4 space-y-6 md:mt-10">
@@ -664,6 +678,7 @@ export default async function TripDetailPage({
               </section>
             }
           />
+          )}
         </div>
       </main>
     </>

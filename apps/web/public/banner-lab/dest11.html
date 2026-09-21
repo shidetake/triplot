@@ -16,10 +16,11 @@
  ul{text-align:left;max-width:460px;padding-left:20px}
  li{margin:14px 0}
 </style></head><body>
-<div class="big">テスト11 到着</div>
-<div class="sub">1秒後に URL を書き換えます（?tab=schedule を付与）<br><b>一番上にバナーは出ていますか？</b></div>
+<div class="big">テスト11</div>
+<div class="sub">2秒後に URL を書き換えます<br><b>バナーを見ながら5秒ほど待ってください。<br>途中で消えたら「消えた」です。</b></div>
+<div id="state" style="font-size:22px;font-weight:700">待機中…</div>
 <a class="back" href="/banner-lab/">← テスト一覧に戻る</a>
 <div class="tagstate">banner tag: あり</div>
 <script>setTimeout(function(){var u=new URL(location.href);u.searchParams.set('tab','schedule');
-   history.replaceState(null,'',u);},1000);</script>
+   history.replaceState(null,'',u);document.getElementById('state').textContent='URLを書き換えました';},2000);</script>
 </body></html>
