@@ -1,27 +1,19 @@
-<!doctype html>
-<html lang="ja"><head><meta charset="utf-8">
+<!doctype html><html lang="ja"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-
 <title>banner lab</title>
-<style>
- html,body{margin:0;height:100%}
- body{background:#111827;color:#fff;font:400 17px/1.5 -apple-system,BlinkMacSystemFont,sans-serif;
-      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px;box-sizing:border-box;text-align:center}
- .big{font-size:40px;font-weight:700}
- .sub{opacity:.85}
- .tagstate{font-size:14px;opacity:.7}
- a.btn,button{font:600 20px/1 -apple-system,sans-serif;padding:20px 28px;border:0;border-radius:14px;
-      background:#fff;color:#111;text-decoration:none;display:inline-block}
- a.back{color:#fff;opacity:.7;font-size:15px}
- ul{text-align:left;max-width:460px;padding-left:20px}
- li{margin:14px 0}
-</style></head><body>
+<style>html,body{margin:0;height:100%}body{background:#111827;color:#fff;
+font:400 17px/1.5 -apple-system,sans-serif;display:flex;flex-direction:column;align-items:center;
+justify-content:center;gap:16px;padding:16px;box-sizing:border-box;text-align:center}
+.big{font-size:34px;font-weight:700}
+a.btn{font:600 20px/1 -apple-system,sans-serif;padding:18px 26px;border-radius:14px;background:#fff;color:#111;text-decoration:none;display:inline-block}
+ul{text-align:left;padding-left:20px} li{margin:14px 0}</style></head><body>
 <div class="big">バナー実験</div>
-<div class="sub">今回は<b>「後からバナーが消えるか」</b>を見ます。<br>開いた瞬間ではなく、5秒ほど見ていてください。</div>
+<div>実物の費用行を静的ページに移植したものです。<br>すべて「開くだけ」。</div>
 <ul>
-<li><a class="btn" href="/banner-lab/dest11.html">テスト11: 2秒後にURL書き換え</a></li>
-<li><a class="btn" href="/banner-lab/dest12.html">テスト12: 2秒後に1.5秒固まる</a></li>
+<li><a class="btn" href="/banner-lab/dest24.html">24: 空（対照）</a></li>
+<li><a class="btn" href="/banner-lab/dest20.html">20: 費用行そのまま</a></li>
+<li><a class="btn" href="/banner-lab/dest21.html">21: SVGを抜く</a></li>
+<li><a class="btn" href="/banner-lab/dest22.html">22: 画像を抜く</a></li>
+<li><a class="btn" href="/banner-lab/dest23.html">23: テキストだけ</a></li>
 </ul>
-<div class="tagstate">banner tag: なし</div>
-<script></script>
 </body></html>
