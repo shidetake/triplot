@@ -34,6 +34,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "triplot",
     description: t("description"),
+    other: {
+      // Smart App Banner（iOS Safari 専用。他ブラウザ・Android は無視する）。
+      // https://apps.apple.com/jp/app/triplot/id6789780552
+      "apple-itunes-app": "app-id=6789780552",
+    },
   };
 }
 

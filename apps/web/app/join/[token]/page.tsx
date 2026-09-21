@@ -1,6 +1,6 @@
+import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 import {
   findJoinedTripByInvite,
@@ -10,7 +10,21 @@ import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
 
+import { HardRedirect } from "./hard-redirect";
 import { JoinForm } from "./join-form";
+
+// 招待を受け取って旅行を見る、という一点集中のタスク画面なので、Smart App
+// Banner（root layout の generateMetadata が site-wide に出す）はここでは
+// 抑制する。`other` は openGraph 等と違いキー単位でマージされる（親子で
+// Object.assign）ので `other: {}` では消えない。同じキーを空文字で上書きすると
+// レンダラーが空文字のタグを出力しないので、これで消える
+// （node_modules/next/dist/lib/metadata/resolve-metadata.js の `case 'other'`
+// と metadata.js の空文字チェック参照）。
+export const metadata: Metadata = {
+  other: {
+    "apple-itunes-app": "",
+  },
+};
 
 export default async function JoinPage({
   params,
@@ -33,10 +47,19 @@ export default async function JoinPage({
   // **もう入っている旅行なら、参加画面は出さずにその旅行へ送る。**
   // 自分が共有したリンクを自分で踏む・同じリンクを2回踏む、はどちらも普通に
   // 起きる。判定は RLS に任せる（findJoinedTripByInvite のコメント参照）。
-  if (user) {
-    const joinedTripId = await findJoinedTripByInvite(supabase, token);
-    if (joinedTripId) redirect(`/trips/${joinedTripId}`);
+  //
+  // next/navigation の redirect() は使わない（HTTP redirect であっても
+  // Safari は Smart App Banner を出さないことを実機確認済み。HardRedirect
+  // のコメント参照）。代わりにクライアント側で window.location.href する
+  // <HardRedirect> をレンダーし、join フォーム自体は出さない。
+  const joinedTripId = user
+    ? await findJoinedTripByInvite(supabase, token)
+    : null;
+
+  if (joinedTripId) {
+    return <HardRedirect to={`/trips/${joinedTripId}`} />;
   }
+
   const [t, lastAuthProvider] = await Promise.all([
     getTranslations("join"),
     resolveLastAuthProvider(),

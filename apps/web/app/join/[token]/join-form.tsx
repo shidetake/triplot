@@ -12,6 +12,7 @@ import type { AuthProvider } from "@/lib/lastAuthProvider";
 import { createClient } from "@/lib/supabase/client";
 
 import { joinAction } from "./actions";
+import { hardRedirect } from "./hard-redirect";
 
 export function JoinForm({
   token,
@@ -30,11 +31,18 @@ export function JoinForm({
   const t = useTranslations("join");
   const tc = useTranslations("common");
 
+  // 参加成功後の遷移は hard-redirect.tsx に集約（理由もそちらのコメント参照）。
+  const finishJoin = (result: Awaited<ReturnType<typeof joinAction>>) => {
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    hardRedirect(`/trips/${result.tripId}`);
+  };
+
   const submitJoin = () => {
     start(async () => {
-      const { error } = await joinAction(token, name);
-      // 成功時は joinAction 内で redirect されるためここには戻らない
-      if (error) setError(error);
+      finishJoin(await joinAction(token, name));
     });
   };
 
@@ -54,8 +62,7 @@ export function JoinForm({
         setError(t("guestDisabled"));
         return;
       }
-      const { error } = await joinAction(token, name);
-      if (error) setError(error);
+      finishJoin(await joinAction(token, name));
     });
   };
 
