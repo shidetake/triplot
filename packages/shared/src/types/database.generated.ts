@@ -1006,6 +1006,10 @@ export type Database = {
         Args: { p_id: string; p_trip_id: string }
         Returns: undefined
       }
+      clear_trip_tz_disambig: {
+        Args: { p_trip_ids: string[] }
+        Returns: undefined
+      }
       copy_trip: {
         Args: {
           p_default_currency: string
