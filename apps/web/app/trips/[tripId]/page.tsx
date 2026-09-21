@@ -537,7 +537,7 @@ export default async function TripDetailPage({
                 {/* data-mobile-chrome-top: 費用追加のボトムシートを開いた時、この
                 見出し+追加ボタンの行までは見えるようにする実測対象
                 （components/use-mobile-chrome-margins.ts）。 */}
-                {labLevel !== 8 && labLevel < 9 && (
+                {labLevel !== 8 && labLevel < 9 && labLevel !== 14 && (
                 <div
                   data-mobile-chrome-top
                   className="flex items-center justify-between gap-2"
@@ -568,7 +568,7 @@ export default async function TripDetailPage({
                 </div>
                 )}
 
-                {labLevel !== 7 && labLevel < 9 && (
+                {labLevel !== 7 && labLevel < 9 && labLevel !== 14 && (
                 <ExpenseSummaryView
                   summary={summary}
                   settlements={settlements}
@@ -579,7 +579,7 @@ export default async function TripDetailPage({
                 />
                 )}
 
-                {labLevel < 7 && importDrafts.length > 0 && (
+                {labLevel < 7 && labLevel !== 14 && importDrafts.length > 0 && (
                   <div>
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                       {t("tripDetail.pendingImports", {
@@ -630,7 +630,7 @@ export default async function TripDetailPage({
                   </div>
                 )}
 
-                {labLevel !== 7 && labLevel !== 8 && (
+                {labLevel !== 7 && labLevel !== 8 && labLevel !== 14 && (
                 <ExpenseList
                   tripId={tripId}
                   // 実験: 11 は行数だけ減らす（画像はそのまま）
