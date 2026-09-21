@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { useEffect, useState } from "react";
 
 import {
   CalendarDaysIcon,
@@ -40,6 +41,26 @@ export function TripDetailTabs({
 }: Record<TabKey, React.ReactNode>) {
   const t = useTranslations("tripTabs");
   const activeTab = useActiveTripTab();
+  // **初期描画には表示中のタブの中身しか入れない。**
+  // 4タブぶんを最初から DOM に入れると iOS Safari が Smart App Banner を
+  // 出さなくなる（費用一覧の行を描画すると必ず消える。実機で二分探索して
+  // 特定した。バナーは apps/web/app/layout.tsx）。読み込みが落ち着いてから
+  // 残りをマウントするので、タブ切替そのものは今までどおり即座で、地図や
+  // スクロール位置・入力中のフォームが切替をまたいで生き続ける性質も保つ。
+  const [mountAll, setMountAll] = useState(false);
+  useEffect(() => {
+    const w = window as Window & {
+      requestIdleCallback?: (cb: () => void) => number;
+      cancelIdleCallback?: (id: number) => void;
+    };
+    const run = () => setMountAll(true);
+    if (w.requestIdleCallback) {
+      const id = w.requestIdleCallback(run);
+      return () => w.cancelIdleCallback?.(id);
+    }
+    const id = window.setTimeout(run, 200);
+    return () => window.clearTimeout(id);
+  }, []);
 
   const content: Record<TabKey, React.ReactNode> = {
     schedule,
@@ -60,7 +81,7 @@ export function TripDetailTabs({
             key={key}
             className={cn(key === activeTab ? "block" : "hidden", "md:block")}
           >
-            {content[key]}
+            {key === activeTab || mountAll ? content[key] : null}
           </div>
         ))}
       </div>
