@@ -2,4 +2,4 @@
 // node scripts/gen-web-version.mjs <X.Y.Z> で再生成する（release 手順は
 // スクリプト本体のコメント参照）。
 
-export const RELEASE_VERSION = "0.1.0";
+export const RELEASE_VERSION = "1.0.0";
