@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { firstChar } from "@triplot/shared/memberColors";
 import { Stack } from "expo-router";
 import {
   FlatList,
@@ -137,11 +138,7 @@ export default function TripsScreen() {
     queryFn: () => fetchUserProfile(supabase, userId!),
     enabled: !!userId,
   });
-  const avatarInitial =
-    (profile?.display_name ?? session?.user.email ?? "?")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "?";
+  const avatarInitial = firstChar(profile?.display_name ?? session?.user.email);
 
   return (
     <View style={styles.container}>

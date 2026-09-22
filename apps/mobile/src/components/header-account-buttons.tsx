@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { firstChar } from "@triplot/shared/memberColors";
 
 import { Image, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
@@ -39,11 +40,7 @@ export function HeaderAccountButtons({ tripId }: { tripId?: string }) {
     queryFn: () => fetchUserProfile(supabase, userId!),
     enabled: !!userId,
   });
-  const avatarInitial =
-    (profile?.display_name ?? session?.user.email ?? "?")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "?";
+  const avatarInitial = firstChar(profile?.display_name ?? session?.user.email);
 
   return (
     <View style={styles.row}>

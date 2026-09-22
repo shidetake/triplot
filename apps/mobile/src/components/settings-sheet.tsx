@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { firstChar } from "@triplot/shared/memberColors";
 import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
 import * as ImagePicker from "expo-image-picker";
@@ -91,11 +92,7 @@ export function SettingsSheet({
   // 端末で 256px 正方形にリサイズ → 固定パス uid/avatar に upsert（孤児ゼロ）→
   // 保存 URL に ?v=時刻 でキャッシュ無効化。削除で avatar_url=null＝頭文字に戻る。
   const avatarUrl = profile?.avatar_url ?? null;
-  const avatarInitial =
-    (profile?.display_name ?? session?.user.email ?? "?")
-      .trim()
-      .charAt(0)
-      .toUpperCase() || "?";
+  const avatarInitial = firstChar(profile?.display_name ?? session?.user.email);
   const avatarPath = `${userId}/avatar`;
 
   const pickAndUploadAvatar = async () => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { firstChar } from "@triplot/shared/memberColors";
 import { useTranslations } from "next-intl";
 
 import { AvatarUpload } from "@/components/avatar-upload";
@@ -51,9 +52,7 @@ export function SettingsSheet({ currentTheme }: { currentTheme: Theme }) {
         // 単一ソースに揃える）。
         avatarUrl: data?.avatar_url ?? null,
         displayName,
-        initial:
-          (displayName || user.email || "?").trim().charAt(0).toUpperCase() ||
-          "?",
+        initial: firstChar(displayName || user.email),
       });
     })();
     return () => {

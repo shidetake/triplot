@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { firstChar } from "@triplot/shared/memberColors";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -81,7 +82,7 @@ export function AccountMenu({
   const t = useTranslations();
   const narrow = useMediaQuery(SHEET_BELOW);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const initial = (name ?? email ?? "?").trim().charAt(0).toUpperCase() || "?";
+  const initial = firstChar(name ?? email);
   // フィードバックフォームはメニュー/シートが閉じた後も生きるよう、この
   // （常駐する）コンポーネントの state で開閉する（create-trip-button と同じ
   // anchor パターン）。
