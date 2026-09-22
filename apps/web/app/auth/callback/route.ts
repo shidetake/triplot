@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 
-import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
+import {
+  backfillProfileFromIdentities,
+  clearGeneratedGoogleAvatar,
+} from "@triplot/shared/data/account";
 import { redeemGuestUpgradeTicket } from "@triplot/shared/data/guestUpgrade";
 
 import {
@@ -32,6 +35,13 @@ export async function GET(request: Request) {
           data.user.id,
           data.user.identities ?? null,
         );
+      }
+      // Google が写真未設定のアカウントに返す「頭文字入りの画像」を、写真として
+      // 持ち続けないようにする（旅行内でメンバー色が出なくなるため）。
+      // 判定できなければ何もしない（account.ts のコメント参照）。
+      const googleToken = data.session?.provider_token;
+      if (data.user && provider === "google" && googleToken) {
+        await clearGeneratedGoogleAvatar(supabase, data.user.id, googleToken);
       }
       // 引き換えに失敗しても、サインイン自体は成功しているのでここでは止めない
       // （旅行はゲストのメンバー行に残っており、券は30分有効なので押し直せる）。

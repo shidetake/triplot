@@ -1,3 +1,5 @@
+import { isGoogleDefaultPhoto } from "../googleProfilePhoto";
+
 import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
@@ -88,6 +90,43 @@ export async function backfillProfileFromIdentities(
   const { error: updateError } = await sb
     .from("users")
     .update(patch)
+    .eq("id", userId);
+  if (updateError) return err(updateError.message);
+  return ok(undefined);
+}
+
+// Google が生成した既定の画像を「写真」として持ち続けないようにする。
+//
+// アバターは「写真があれば写真、無ければ色丸＋頭文字」という設計だが、Google は
+// 写真未設定のアカウントにも頭文字入りの画像を返すため、写真が無い人まで
+// 「写真がある人」として扱われ、旅行内のメンバー色が出なくなっていた。
+//
+// サインインのたびに呼んで構わない。判定できなかった時は何もしない
+// （サインインを止めないため）。Apple は写真を返さないので Google だけで呼ぶ。
+export async function clearGeneratedGoogleAvatar(
+  sb: DB,
+  userId: string,
+  googleAccessToken: string,
+): Promise<Result<void>> {
+  const { data: profile, error: readError } = await sb
+    .from("users")
+    .select("avatar_url")
+    .eq("id", userId)
+    .single();
+  if (readError) return err(readError.message);
+
+  const current = profile?.avatar_url;
+  // triplot にアップロードした写真は対象外（Google 由来のものだけを見る）。
+  if (!current || !current.includes("googleusercontent.com")) {
+    return ok(undefined);
+  }
+
+  const generated = await isGoogleDefaultPhoto(googleAccessToken);
+  if (generated !== true) return ok(undefined);
+
+  const { error: updateError } = await sb
+    .from("users")
+    .update({ avatar_url: null })
     .eq("id", userId);
   if (updateError) return err(updateError.message);
   return ok(undefined);

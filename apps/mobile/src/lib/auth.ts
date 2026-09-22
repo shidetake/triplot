@@ -5,7 +5,10 @@ import {
 import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
 
-import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
+import {
+  backfillProfileFromIdentities,
+  clearGeneratedGoogleAvatar,
+} from "@triplot/shared/data/account";
 import {
   createGuestUpgradeTicket,
   redeemGuestUpgradeTicket,
@@ -100,6 +103,20 @@ export async function signInWithGoogle(): Promise<boolean> {
   if (error) throw error;
   await setLastAuthProvider("google");
   await backfillIdentityProfile(data.user);
+  // Google が写真未設定のアカウントに返す「頭文字入りの画像」を、写真として
+  // 持ち続けないようにする（旅行内でメンバー色が出なくなるため）。アクセス
+  // トークンは SDK から取るだけで、ユーザーの操作は増えない。
+  // 失敗してもサインインは成功扱い（backfill と同じ扱い）。
+  if (data.user) {
+    try {
+      const { accessToken } = await GoogleSignin.getTokens();
+      if (accessToken) {
+        await clearGeneratedGoogleAvatar(supabase, data.user.id, accessToken);
+      }
+    } catch {
+      // 取れなければ何もしない。
+    }
+  }
   return true;
 }
 
