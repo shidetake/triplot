@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { firstChar } from "@triplot/shared/memberColors";
 import { File } from "expo-file-system";
 import { ImageManipulator, SaveFormat } from "expo-image-manipulator";
@@ -179,6 +179,7 @@ export function SettingsSheet({
   // （消えると誤解されるのも、黙って残すのも困る）。
   const [deleting, setDeleting] = useState(false);
   const [upgrading, setUpgrading] = useState(false);
+  const queryClient = useQueryClient();
   const isGuest = session?.user.is_anonymous ?? false;
 
   // ゲストから本アカウントへ。ゲストのうちに引き換え券を取ってからサインイン
@@ -187,7 +188,14 @@ export function SettingsSheet({
     void (async () => {
       setUpgrading(true);
       try {
-        if (await upgradeGuest(provider)) toast(t("account.upgradeDone"));
+        if (await upgradeGuest(provider)) {
+          // サインインしてから引き取るまでの間、新しいアカウントはまだその旅行の
+          // メンバーではない。その瞬間に走った取得は RLS で空になり、引き取りが
+          // 終わっても取り直されないので画面が空のまま残る（実機で発生）。
+          // 引き取り後にまとめて取り直す。
+          await queryClient.invalidateQueries();
+          toast(t("account.upgradeDone"));
+        }
       } catch (e) {
         Alert.alert(t("account.upgradeFailed", { message: String(e) }));
       } finally {
