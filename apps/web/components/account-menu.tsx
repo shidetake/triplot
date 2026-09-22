@@ -2,7 +2,7 @@
 
 import { useTranslations } from "next-intl";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { Menu } from "@base-ui/react/menu";
@@ -12,7 +12,10 @@ import {
   MessageSquareIcon,
   SettingsIcon,
   ShieldIcon,
+  UserPlusIcon,
 } from "@/components/icons";
+import { confirmDialog } from "./confirm-dialog";
+import { GuestUpgradeForm } from "./guest-upgrade-form";
 import { createClient } from "@/lib/supabase/client";
 import { FeedbackForm } from "./feedback-form";
 import { SettingsSheet } from "./settings-sheet";
@@ -40,6 +43,7 @@ export function AccountMenu({
   name,
   avatarUrl,
   isAdmin,
+  isAnonymous,
   openFeedbackCount = 0,
   deployEnv,
   version,
@@ -51,6 +55,9 @@ export function AccountMenu({
   name: string | null;
   avatarUrl: string | null;
   isAdmin: boolean;
+  // ゲスト（匿名サインイン）か。ゲストにはアカウントを作る導線を出し、
+  // ログアウトには警告を挟む（ログインし直す手段が無く旅行を失うため）。
+  isAnonymous: boolean;
   // admin のみ: 未対応フィードバック件数（「管理」行のバッジ＋アバターの右上バッジ）。
   openFeedbackCount?: number;
   // デプロイ反映の目視確認用。以前は全ページ共通フッターに常時表示していたが、
@@ -69,6 +76,8 @@ export function AccountMenu({
   tripRows?: ReactNode;
 }) {
   const router = useRouter();
+  // 昇格後に元の画面へ戻すため（サインインで一度 callback を経由する）。
+  const pathname = usePathname();
   const t = useTranslations();
   const narrow = useMediaQuery(SHEET_BELOW);
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -79,8 +88,21 @@ export function AccountMenu({
   const [feedbackAnchor, setFeedbackAnchor] = useState<Anchor | null>(null);
   // 設定もページ遷移でなくオーバーレイで開く（元の画面に戻れるように）。
   const [settingsAnchor, setSettingsAnchor] = useState<Anchor | null>(null);
+  const [upgradeAnchor, setUpgradeAnchor] = useState<Anchor | null>(null);
 
   const handleSignOut = async () => {
+    // ゲストは匿名ユーザーなのでサインインし直す手段が無い。押した瞬間に
+    // 参加している旅行を開けなくなるので、ここだけ確認を挟む。
+    if (
+      isAnonymous &&
+      !(await confirmDialog({
+        title: t("account.guestSignOutConfirmTitle"),
+        body: t("account.guestSignOutConfirmBody"),
+        confirmLabel: t("account.guestSignOutConfirmLabel"),
+      }))
+    ) {
+      return;
+    }
     const supabase = createClient();
     await supabase.auth.signOut();
     router.refresh();
@@ -122,6 +144,22 @@ export function AccountMenu({
     <span className="ml-auto flex h-[15px] min-w-[15px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold leading-none text-primary-foreground">
       {openFeedbackCount > 9 ? "9+" : openFeedbackCount}
     </span>
+  );
+
+  // ゲストのときだけ。email 行が出ない位置に置く。
+  const upgradeRowIcon = (
+    <UserPlusIcon size={16} className="text-muted-foreground" />
+  );
+
+  const upgradeHost = upgradeAnchor && (
+    <FormPopover
+      anchor={upgradeAnchor}
+      onClose={() => setUpgradeAnchor(null)}
+      label={t("account.upgrade")}
+      fullScreenOnNarrow
+    >
+      <GuestUpgradeForm next={pathname} />
+    </FormPopover>
   );
 
   const settingsHost = settingsAnchor && (
@@ -169,6 +207,19 @@ export function AccountMenu({
           >
             <div className="pb-2 text-sm">
               {emailRow}
+              {isAnonymous && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    setSheetOpen(false);
+                    setUpgradeAnchor({ x: e.clientX, y: e.clientY });
+                  }}
+                  className={rowClass}
+                >
+                  {upgradeRowIcon}
+                  {t("account.upgrade")}
+                </button>
+              )}
               {tripRows}
               {tripRows && <div className="my-1 border-t border-foreground/5" />}
               <button
@@ -214,6 +265,7 @@ export function AccountMenu({
         )}
         {settingsHost}
         {feedbackHost}
+        {upgradeHost}
       </>
     );
   }
@@ -237,6 +289,17 @@ export function AccountMenu({
           <Menu.Positioner align="end" sideOffset={8} className="z-50">
             <Menu.Popup className="w-56 overflow-hidden rounded-md border border-foreground/10 bg-background py-1 shadow-lg">
               {emailRow}
+              {isAnonymous && (
+                <Menu.Item
+                  onClick={(e) =>
+                    setUpgradeAnchor({ x: e.clientX, y: e.clientY })
+                  }
+                  className={rowClass}
+                >
+                  {upgradeRowIcon}
+                  {t("account.upgrade")}
+                </Menu.Item>
+              )}
               {tripMenu && (
                 <>
                   {tripMenu}
@@ -280,6 +343,7 @@ export function AccountMenu({
 
       {settingsHost}
       {feedbackHost}
+      {upgradeHost}
     </>
   );
 }

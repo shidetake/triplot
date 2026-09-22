@@ -176,7 +176,14 @@
     "deleteConfirmTitle": "Delete your account?",
     "deleteConfirmBody": "Your sign-in, profile, and anything visible only to you will be deleted.\nShared plans, places, and expenses stay in the trip as part of the settlement record.\nThis cannot be undone.",
     "deleteConfirmLabel": "Delete",
-    "deleteFailed": "Could not delete the account: {message}"
+    "deleteFailed": "Could not delete the account: {message}",
+    "upgrade": "Create an account",
+    "upgradeBody": "You can keep using triplot as a guest. With an account you can open the same trips from another device, and everything you have written carries over.",
+    "upgradeDone": "Account created.",
+    "upgradeFailed": "Could not create the account: {message}",
+    "guestSignOutConfirmTitle": "You cannot sign back in",
+    "guestSignOutConfirmBody": "Guests have no way to sign in again, so you will lose access to the trips you joined.\nCreate an account first to keep them, and to open them from other devices.",
+    "guestSignOutConfirmLabel": "Sign out"
   },
   "schedule": {
     "heading": "Schedule",
@@ -585,7 +592,8 @@
     "issueFailed": "Failed to issue invite link.",
     "regenerateFailed": "Failed to regenerate.",
     "cannotDeleteOtherPin": "The \"Other\" pin cannot be deleted.",
-    "arrivalBeforeDeparture": "Arrival is before departure (checked using actual time across time zones)."
+    "arrivalBeforeDeparture": "Arrival is before departure (checked using actual time across time zones).",
+    "upgradeFailed": "Could not create the account."
   },
   "import": {
     "heading": "Imports",

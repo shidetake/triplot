@@ -32,9 +32,15 @@ export function OAuthSignInButton({
   provider,
   next,
   lastUsed = false,
+  upgradeToken,
+  disabled = false,
 }: {
   provider: keyof typeof LABEL_KEY;
   next?: string;
+  // ゲストからの昇格で使う引き換え券。渡すと callback で引き換えられる。
+  upgradeToken?: string;
+  // 券が取れるまで押させない等、呼び出し側の都合で止めたい時に使う。
+  disabled?: boolean;
   // 前回この端末でサインインに使ったプロバイダか（Google の「前回このアカウントで
   // ログインしました」等でよく見る UX）。読み取りは cookie から Server Component
   // 側で行い props で渡す（apps/web/lib/lastAuthProvider.server.ts）。
@@ -51,6 +57,10 @@ export function OAuthSignInButton({
     if (next) callbackUrl.searchParams.set("next", next);
     // callback 側で成功時にこの値を cookie へ書き戻す（次回の lastUsed 判定用）。
     callbackUrl.searchParams.set("provider", provider);
+    // ゲストからの昇格。サインインするとセッションが新しいアカウントに
+    // 切り替わるので、引き換え券を callback まで持ち回って向こうで引き換える
+    // （packages/shared/src/data/guestUpgrade.ts）。
+    if (upgradeToken) callbackUrl.searchParams.set("upgrade", upgradeToken);
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: { redirectTo: callbackUrl.toString() },
@@ -65,7 +75,7 @@ export function OAuthSignInButton({
     <button
       type="button"
       onClick={runSignIn}
-      disabled={isLoading}
+      disabled={isLoading || disabled}
       className={
         "relative inline-flex h-12 w-full shrink-0 items-center justify-center gap-3 rounded-md " +
         "px-4 font-medium transition focus-visible:outline-none focus-visible:ring-2 " +

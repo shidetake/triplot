@@ -467,6 +467,38 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_upgrade_tickets: {
+        Row: {
+          created_at: string
+          expires_at: string
+          guest_user_id: string
+          token: string
+          used_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          guest_user_id: string
+          token: string
+          used_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          guest_user_id?: string
+          token?: string
+          used_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "guest_upgrade_tickets_guest_user_id_fkey"
+            columns: ["guest_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       inbound_drafts: {
         Row: {
           created_at: string
@@ -1063,6 +1095,7 @@ export type Database = {
         }
         Returns: string
       }
+      create_guest_upgrade_ticket: { Args: never; Returns: string }
       create_place: {
         Args: {
           p_formatted_address: string
@@ -1182,6 +1215,10 @@ export type Database = {
             }
             Returns: undefined
           }
+      redeem_guest_upgrade_ticket: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       regenerate_trip_invite: {
         Args: { p_token: string; p_trip_id: string }
         Returns: string

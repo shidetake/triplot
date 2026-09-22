@@ -27,10 +27,11 @@ import {
   TrashIcon,
   MessageSquareIcon,
   SaveIcon,
+  UserPlusIcon,
 } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
-import { signOut } from "@/lib/auth";
+import { signOut, upgradeGuest } from "@/lib/auth";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
@@ -180,6 +181,60 @@ export function SettingsSheet({
   // アカウント削除。共有した内容が旅行に残ることを confirm の本文で明示する
   // （消えると誤解されるのも、黙って残すのも困る）。
   const [deleting, setDeleting] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const isGuest = session?.user.is_anonymous ?? false;
+
+  // ゲストから本アカウントへ。ゲストのうちに引き換え券を取ってからサインイン
+  // するので、旅行も書いたものもそのまま引き継がれる（lib/auth.ts）。
+  const handleUpgrade = (provider: "google" | "apple") => {
+    void (async () => {
+      setUpgrading(true);
+      try {
+        if (await upgradeGuest(provider)) toast(t("account.upgradeDone"));
+      } catch (e) {
+        Alert.alert(t("account.upgradeFailed", { message: String(e) }));
+      } finally {
+        setUpgrading(false);
+      }
+    })();
+  };
+
+  const handleUpgradePress = () => {
+    Alert.alert(t("account.upgrade"), t("account.upgradeBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("auth.signInWithApple"), onPress: () => handleUpgrade("apple") },
+      {
+        text: t("auth.signInWithGoogle"),
+        onPress: () => handleUpgrade("google"),
+      },
+    ]);
+  };
+
+  // ゲストは匿名ユーザーでサインインし直す手段が無い。押した瞬間に参加して
+  // いる旅行を開けなくなるので、ここだけ確認を挟む。
+  const handleSignOut = () => {
+    if (!isGuest) {
+      onDone();
+      void signOut();
+      return;
+    }
+    Alert.alert(
+      t("account.guestSignOutConfirmTitle"),
+      t("account.guestSignOutConfirmBody"),
+      [
+        { text: t("common.cancel"), style: "cancel" },
+        {
+          text: t("account.guestSignOutConfirmLabel"),
+          style: "destructive",
+          onPress: () => {
+            onDone();
+            void signOut();
+          },
+        },
+      ],
+    );
+  };
+
   const handleDeleteAccount = () => {
     Alert.alert(
       t("account.deleteConfirmTitle"),
@@ -277,6 +332,17 @@ export function SettingsSheet({
           旅行詳細から開いた時だけ先頭に「旅行を編集」が入る（旧・歯車の行き先）。
           節を分けると区切り線が二重に出て隙間が空くので、同じ並びに入れる。 */}
       <View style={styles.navList}>
+        {isGuest && (
+          <Pressable
+            onPress={handleUpgradePress}
+            disabled={upgrading}
+            style={[styles.navRow, upgrading && styles.busy]}
+          >
+            <UserPlusIcon size={18} color={theme.mutedForeground} />
+            <Text style={styles.navRowLabel}>{t("account.upgrade")}</Text>
+            <ChevronIcon size={16} color={theme.subtleForeground} />
+          </Pressable>
+        )}
         {onOpenTrip && (
           <Pressable onPress={onOpenTrip} style={styles.navRow}>
             <MapIcon size={18} color={theme.mutedForeground} />
@@ -300,13 +366,7 @@ export function SettingsSheet({
           destructive の赤にする（実機フィードバックで方針転換。削除等の
           不可逆操作だけを赤にする、という以前の方針より世の中の慣例を
           優先）。旅行削除ボタンと同じ「赤枠＋アイコン＋文字」の形。 */}
-      <Pressable
-        onPress={() => {
-          onDone();
-          void signOut();
-        }}
-        style={styles.signOutButton}
-      >
+      <Pressable onPress={handleSignOut} style={styles.signOutButton}>
         <LogOutIcon size={16} color={theme.destructiveText} />
         <Text style={styles.signOutLabel}>{t("account.signOut")}</Text>
       </Pressable>

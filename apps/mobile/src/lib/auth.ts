@@ -6,6 +6,10 @@ import * as AppleAuthentication from "expo-apple-authentication";
 import * as Crypto from "expo-crypto";
 
 import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
+import {
+  createGuestUpgradeTicket,
+  redeemGuestUpgradeTicket,
+} from "@triplot/shared/data/guestUpgrade";
 
 import { setLastAuthProvider } from "./lastAuthProvider";
 import { supabase } from "./supabase";
@@ -96,6 +100,31 @@ export async function signInWithGoogle(): Promise<boolean> {
   if (error) throw error;
   await setLastAuthProvider("google");
   await backfillIdentityProfile(data.user);
+  return true;
+}
+
+// ゲスト（匿名サインイン）から本アカウントへの昇格。
+//
+// サインインするとセッションが新しいアカウントに切り替わるので、**ゲストのうちに**
+// 引き換え券を取っておき、サインイン後に引き換える。web も同じ手順
+// （packages/shared/src/data/guestUpgrade.ts）。リダイレクトを挟まないぶん、
+// ここでは1つの関数に収まる。
+//
+// 券を取るところで失敗したらサインインしない（引き継がずにアカウントだけ
+// 作ってしまうと、ゲスト時代の旅行に戻る手段が無くなるため）。
+// キャンセル時は false を返す。
+export async function upgradeGuest(
+  provider: "google" | "apple",
+): Promise<boolean> {
+  const ticket = await createGuestUpgradeTicket(supabase);
+  if (!ticket.ok) throw new Error(ticket.error);
+
+  const signedIn =
+    provider === "apple" ? await signInWithApple() : await signInWithGoogle();
+  if (!signedIn) return false; // キャンセル
+
+  const redeemed = await redeemGuestUpgradeTicket(supabase, ticket.data.token);
+  if (!redeemed.ok) throw new Error(redeemed.error);
   return true;
 }
 

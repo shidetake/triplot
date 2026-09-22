@@ -176,7 +176,14 @@
     "deleteConfirmTitle": "アカウントを削除しますか？",
     "deleteConfirmBody": "ログイン情報・プロフィール・あなただけに見える予定や費用は消えます。\n共有した旅行の予定・場所・費用は、割り勘の記録として旅行に残ります。\n元に戻せません。",
     "deleteConfirmLabel": "削除",
-    "deleteFailed": "削除に失敗しました: {message}"
+    "deleteFailed": "削除に失敗しました: {message}",
+    "upgrade": "アカウントを作る",
+    "upgradeBody": "ゲストのまま使い続けられますが、アカウントを作ると別の端末からも同じ旅行を開けます。今の旅行と書いたものはそのまま引き継がれます。",
+    "upgradeDone": "アカウントを作りました",
+    "upgradeFailed": "アカウントを作れませんでした: {message}",
+    "guestSignOutConfirmTitle": "ログアウトすると戻れません",
+    "guestSignOutConfirmBody": "ゲストはログインし直す手段がないので、参加している旅行を開けなくなります。\n先にアカウントを作ると、この端末以外からも開けるようになります。",
+    "guestSignOutConfirmLabel": "ログアウト"
   },
   "schedule": {
     "heading": "スケジュール",
@@ -585,7 +592,8 @@
     "issueFailed": "招待リンクの発行に失敗しました",
     "regenerateFailed": "再生成に失敗しました",
     "cannotDeleteOtherPin": "「その他」のピンは削除できません",
-    "arrivalBeforeDeparture": "到着が出発より前になっています（タイムゾーンを考慮した実際の時刻で判定しています）"
+    "arrivalBeforeDeparture": "到着が出発より前になっています（タイムゾーンを考慮した実際の時刻で判定しています）",
+    "upgradeFailed": "アカウントの作成に失敗しました"
   },
   "import": {
     "heading": "取り込み",

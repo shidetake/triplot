@@ -389,6 +389,18 @@ export function LogOutIcon(p: IconProps) {
   );
 }
 
+// Lucide: user-plus（ゲストからアカウントを作る。web と同じパス）
+export function UserPlusIcon(p: IconProps) {
+  return (
+    <LucideIcon {...p}>
+      <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <Circle cx={9} cy={7} r={4} />
+      <Path d="M19 8v6" />
+      <Path d="M22 11h-6" />
+    </LucideIcon>
+  );
+}
+
 // Lucide: copy（クリップボードへのコピー操作）
 export function CopyIcon(p: IconProps) {
   return (

@@ -69,6 +69,25 @@ export async function signIn(
   return { sb: client as unknown as DB, userId: data.user.id };
 }
 
+// ゲスト参加を再現するための匿名サインイン。**staging の Supabase で
+// Anonymous sign-ins が有効になっている必要がある**（無効だと 422 が返る）。
+// 無効のまま skip すると「テストが通った」と誤解するので、理由を出して落とす。
+export async function signInAsGuest(
+  env: DbTestEnv,
+): Promise<{ sb: DB; userId: string }> {
+  const client: SupabaseClient = createClient(env.url, env.anonKey, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data, error } = await client.auth.signInAnonymously();
+  if (error || !data.user) {
+    throw new Error(
+      `匿名サインインに失敗: ${error?.message ?? "no user"}\n` +
+        "staging の Supabase で Authentication → Providers → Anonymous sign-ins を有効にしてください。",
+    );
+  }
+  return { sb: client as unknown as DB, userId: data.user.id };
+}
+
 // このテストが作る旅行の名前の接頭辞。**掃除の範囲をこれだけに限る**
 // （staging はプレビュー確認にも使う場所なので、truncate やユーザー単位の
 // 削除は絶対にしない）。落ちて後始末できなかった残骸も、次回の開始時に

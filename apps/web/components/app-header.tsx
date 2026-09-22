@@ -132,7 +132,8 @@ export async function AppHeader({
             email={user.email ?? null}
             name={accountName}
             avatarUrl={avatarUrl}
-            isAdmin={profile?.is_admin ?? false}
+            isAnonymous={user.is_anonymous ?? false}
+        isAdmin={profile?.is_admin ?? false}
             openFeedbackCount={openFeedbackCount}
             deployEnv={getDeployEnv()}
             version={getVersion()}

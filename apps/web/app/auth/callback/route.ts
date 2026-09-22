@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { backfillProfileFromIdentities } from "@triplot/shared/data/account";
+import { redeemGuestUpgradeTicket } from "@triplot/shared/data/guestUpgrade";
 
 import {
   isAuthProvider,
@@ -14,6 +15,9 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
   const provider = searchParams.get("provider");
+  // ゲストからの昇格。ここに来た時点でセッションは新しいアカウントに
+  // 切り替わっているので、ゲストのうちに取っておいた券をここで引き換える。
+  const upgrade = searchParams.get("upgrade");
 
   if (code) {
     const supabase = await createClient();
@@ -29,6 +33,9 @@ export async function GET(request: Request) {
           data.user.identities ?? null,
         );
       }
+      // 引き換えに失敗しても、サインイン自体は成功しているのでここでは止めない
+      // （旅行はゲストのメンバー行に残っており、券は30分有効なので押し直せる）。
+      if (upgrade) await redeemGuestUpgradeTicket(supabase, upgrade);
       const res = NextResponse.redirect(`${origin}${next}`);
       // 「前回このログイン方法を使いました」バッジ用（アカウントに紐づく
       // データではなくこの端末のローカルな UX ヒントなので cookie に持つ）。
