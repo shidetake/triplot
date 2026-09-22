@@ -22,7 +22,7 @@ const isStaging = process.env.APP_VARIANT === "staging";
 const config: ExpoConfig = {
   name: isStaging ? "triplot (staging)" : "triplot",
   slug: "triplot",
-  version: "1.0.0",
+  version: "1.1.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: isStaging ? "triplot-staging" : "triplot",
