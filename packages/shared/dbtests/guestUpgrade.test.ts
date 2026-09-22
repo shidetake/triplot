@@ -47,16 +47,24 @@ describeDb("ゲストからの昇格（実 DB）", () => {
   });
 
   it("ゲストが書いたものを、そのまま引き継げる", async () => {
-    const { tripId, token } = await makeTripWithInvite(sb, userId);
-
-    // ゲストとして参加して費用を書く。
+    // 引き取り先（本アカウント）が**その旅行のメンバーでない**形にしないと
+    // 統合の経路を通ってしまうので、旅行はゲスト自身に作らせる。
     const guest = await signInAsGuest(env!);
-    const joined = await joinTripViaInvite(guest.sb, token, "ゲストの名前");
-    expect(joined.ok, JSON.stringify(joined)).toBe(true);
+    const created = await createTrip(guest.sb, {
+      title: `${DBTEST_PREFIX}${Date.now()}`,
+      startDate: "2027-06-01",
+      endDate: "2027-06-05",
+      displayName: "ゲストの名前",
+      currency: "JPY",
+      clientTz: "Asia/Tokyo",
+    });
+    expect(created.ok, JSON.stringify(created)).toBe(true);
+    if (!created.ok) return;
+    const tripId = created.data.tripId;
 
-    const guestMemberId = await memberIdOf(sb, tripId, guest.userId);
+    const guestMemberId = await memberIdOf(guest.sb, tripId, guest.userId);
     const spent = await createExpense(guest.sb, tripId, {
-      ...(await expenseBase(sb, tripId, guestMemberId)),
+      ...(await expenseBase(guest.sb, tripId, guestMemberId)),
       splitEveryone: true,
       splitMemberIds: [],
     });
@@ -70,13 +78,13 @@ describeDb("ゲストからの昇格（実 DB）", () => {
     const redeemed = await redeemGuestUpgradeTicket(sb, ticket.data.token);
     expect(redeemed.ok, JSON.stringify(redeemed)).toBe(true);
 
-    // メンバー行は移っただけ。表示名と色はゲスト時代のまま、費用も残っている。
+    // メンバー行は持ち主が変わっただけ。表示名はゲスト時代のまま、費用も残っている。
     const members = await activeMembers(sb, tripId);
-    expect(members).toHaveLength(2); // 旅行の作成者＋引き取ったメンバー
-    const mine = members.find((m) => m.id === guestMemberId);
-    expect(mine?.user_id).toBe(userId);
-    expect(mine?.display_name).toBe("ゲストの名前");
-    expect(mine?.kind).toBe("member");
+    expect(members).toHaveLength(1);
+    expect(members[0]?.id).toBe(guestMemberId);
+    expect(members[0]?.user_id).toBe(userId);
+    expect(members[0]?.display_name).toBe("ゲストの名前");
+    expect(members[0]?.kind).toBe("member");
     expect(await expenseCount(sb, tripId, guestMemberId)).toBe(1);
 
     const deleted = await deleteTrip(sb, tripId, userId);
