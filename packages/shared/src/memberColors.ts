@@ -70,13 +70,19 @@ export function pinColors(
   border: ColorPair;
 } {
   const solid = roleColor(hue, "solid") ?? NEUTRAL.solid;
-  // 淡い面は onSurface（L=.90 のパステル）を流用する。
-  const pastel = roleColor(hue, "onSurface") ?? NEUTRAL.onSurface;
-  const lightBg = tentative ? pastel.light : solid.light;
+  // ラダーの「面と、その上に乗る文字」の対。ライトの淡い面はこの surface。
+  const surface = roleColor(hue, "surface") ?? NEUTRAL.surface;
+  const onSurface = roleColor(hue, "onSurface") ?? NEUTRAL.onSurface;
   return {
-    bg: { light: lightBg, dark: pastel.dark },
-    // 淡い面の上は濃いグリフ、濃い面の上は白グリフ。
-    glyph: { light: tentative ? "#202124" : "#ffffff", dark: "#202124" },
+    bg: {
+      light: tentative ? surface.light : solid.light,
+      // ダークだけは onSurface（L=.90 のパステル）を**面として**流用する。
+      // ダークの surface は L=.32 で、夜間スタイルの地図に沈んでしまう。
+      dark: onSurface.dark,
+    },
+    // 面と文字は必ずラダーの対で組む（4.5:1 をラダーが保証する）。濃い単色の
+    // 面の上だけ白、ダークのパステル面の上は地図の文字と同じ濃色。
+    glyph: { light: tentative ? onSurface.light : "#ffffff", dark: "#202124" },
     border: { light: "#ffffff", dark: "#6b7280" },
   };
 }

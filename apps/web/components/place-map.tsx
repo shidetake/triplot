@@ -668,8 +668,8 @@ export function PlaceMap({
 
           {mapId &&
             mappedPlaces.map((p) => {
-              // 候補（tentative=true）は半透明 + 作成者のメンバー色で塗る。
-              // 確定（tentative=false）は固定のグリーンで塗る。
+              // 候補（tentative=true）は作成者のメンバー色の淡い面で塗る。
+              // 確定（tentative=false）は固定のグリーンの濃い面で塗る。
               // 選択中は本家 Google マップと同じく赤ピンに差し替えて表示する
               // （選択を外すと元のピンに戻る。iOS と同じ挙動）。
               const creatorHue = memberHueById.get(p.created_by_member_id);
