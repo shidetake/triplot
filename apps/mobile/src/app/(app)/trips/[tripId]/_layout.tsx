@@ -1,6 +1,14 @@
 import { Stack } from "expo-router";
-import { useCallback, useMemo } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useCallback, useMemo, useState } from "react";
+import {
+  type LayoutChangeEvent,
+  type NativeSyntheticEvent,
+  StyleSheet,
+  Text,
+  type TextLayoutEventData,
+  useWindowDimensions,
+  View,
+} from "react-native";
 import { useLocale, useTranslations } from "use-intl";
 
 import { formatTripDateRange } from "@triplot/shared/ymd";
@@ -64,9 +72,22 @@ export default function TripLayout() {
   // まれに戻るボタンが消える（react-native-screens のヘッダー高頻度更新系の
   // 既知不具合。再起動まで直らない実機報告あり）。タイトルが実際に変わった時
   // だけ setOptions が走るようメモ化する。
+  // 右のボタン群の実寸。タイトルの幅を決めるのに要る（下の titleMaxWidth）。
+  // 数えて定数にすると、ボタンの padding やアイコンの大きさを触ったときに
+  // 黙ってずれるので測る。中身は固定（バッジは絶対配置で幅を変えない・
+  // アバターは画像でも頭文字でも 24pt）なので、初回のレイアウトで落ち着いて
+  // それ以降は更新されない＝ヘッダーの高頻度更新にはならない。
+  const [rightWidth, setRightWidth] = useState(0);
+  const onRightLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    setRightWidth((prev) => (Math.abs(prev - w) < 1 ? prev : w));
+  }, []);
   const headerRight = useCallback(
     () => (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+      <View
+        onLayout={onRightLayout}
+        style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+      >
         <HeaderIconButton
           accessibilityLabel={tActions("share")}
           onPress={() => void shareTripInvite(tripId)}
@@ -76,14 +97,68 @@ export default function TripLayout() {
         <HeaderAccountButtons tripId={tripId} />
       </View>
     ),
-    [tripId, tActions],
+    [tripId, tActions, onRightLayout],
   );
+
+  // **タイトルの幅は自分で決める。** 中央のタイトルは headerRight の幅を
+  // 避けてくれないので、上限を持たせないと長い旅行名がボタン群の下へ潜り込む
+  // ——省略記号すら出ず、ただ隠れる（実機フィードバック: "Peru & the West
+  // Coast"）。左右の取り分を引いた残りが、実際にタイトルが使える幅。
+  const { width: windowWidth } = useWindowDimensions();
+  const titleMaxWidth = Math.max(
+    MIN_TITLE_WIDTH,
+    windowWidth -
+      TITLE_LEFT_INSET -
+      (rightWidth || FALLBACK_RIGHT_WIDTH) -
+      HEADER_RIGHT_INSET -
+      TITLE_GAP,
+  );
+  // 旅行名を素の大きさで描いたときの幅。縮める量を決めるのに要る。
+  //
+  // **RN の adjustsFontSizeToFit は使わない。** 縮めてはくれるが
+  // minimumFontScale を効かせてくれず、下限を 14pt に指定しても止まらない
+  // （シミュレータで実測: 50文字の旅行名が約 8pt ＝ 下の日程より小さくなった）。
+  // 下限の無い縮小は、長い名前ほど静かに読めなくなるので採らない。
+  // 画面に出さない同じ書式の Text で素の幅を測り、入る大きさを自分で決める。
+  const [naturalTitleWidth, setNaturalTitleWidth] = useState(0);
+  const onTitleTextLayout = useCallback(
+    (e: NativeSyntheticEvent<TextLayoutEventData>) => {
+      const w = e.nativeEvent.lines[0]?.width ?? 0;
+      setNaturalTitleWidth((prev) => (Math.abs(prev - w) < 1 ? prev : w));
+    },
+    [],
+  );
+  // 入るなら素の大きさ、入らないなら入る大きさ、ただし下限まで。下限でも
+  // 入らなければ末尾を省略する（numberOfLines={1} が効く）。
+  const titleFontSize =
+    naturalTitleWidth > titleMaxWidth
+      ? Math.max(
+          TITLE_MIN_FONT_SIZE,
+          Math.floor((TITLE_FONT_SIZE * titleMaxWidth) / naturalTitleWidth),
+        )
+      : TITLE_FONT_SIZE;
+
   // 2行タイトル（旅行名＋日程）。headerTitle も headerRight と同じく identity が
   // 変わるたび setOptions が走るのでメモ化する。
   const headerTitle = useCallback(
     () => (
-      <View style={styles.titleBlock}>
-        <Text style={styles.title} numberOfLines={1}>
+      <View style={[styles.titleBlock, { maxWidth: titleMaxWidth }]}>
+        {/* 幅を測るためだけの控え。絶対配置で流れから外し、十分広い幅を
+            与えて素の1行の幅を測る。読み上げからも外す（同じ文言が2回
+            読まれないように）。 */}
+        <Text
+          style={styles.titleMeasure}
+          numberOfLines={1}
+          onTextLayout={onTitleTextLayout}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          {tripTitle}
+        </Text>
+        <Text
+          style={[styles.title, { fontSize: titleFontSize }]}
+          numberOfLines={1}
+        >
           {tripTitle}
         </Text>
         {dateRange ? (
@@ -93,7 +168,14 @@ export default function TripLayout() {
         ) : null}
       </View>
     ),
-    [tripTitle, dateRange, styles],
+    [
+      tripTitle,
+      dateRange,
+      styles,
+      titleMaxWidth,
+      titleFontSize,
+      onTitleTextLayout,
+    ],
   );
 
   const screenOptions = useMemo(
@@ -132,6 +214,28 @@ export default function TripLayout() {
 // のと同じ理由。ヘッダーの高頻度更新は戻るボタンが消える不具合につながる）。
 const tabsScreenOptions = { headerShown: false };
 
+// タイトルの器の左端。中身が native なので測れず、シミュレータの
+// スクリーンショットを実測した値（iPhone 16 Pro / iOS 26 で 71.8pt）。
+// 戻るボタンのガラスのカプセルと、その左右のマージンのぶん。
+// **器は中央ではなくここに左端を固定して右へ伸びる**（幅を 120pt に絞っても
+// 182pt にしても左端は動かなかった）ので、左の取り分はこの1つで決まる。
+const TITLE_LEFT_INSET = 72;
+// 右のボタン群が、測れる RN ビューの外側で取る幅（実測 24pt）。iOS 26 が
+// 被せるガラスのカプセルの左右の余白 8×2 と、画面端までのマージン 8。
+const HEADER_RIGHT_INSET = 24;
+// タイトルとボタンの間に残す隙間。
+const TITLE_GAP = 8;
+// 右のボタン群を測る前（初回レンダーの一瞬）に使う見積り。共有 40 ＋ 4 ＋
+// 受信箱 40 ＋ 8 ＋ アバター 44。測れたらそちらで上書きする。
+const FALLBACK_RIGHT_WIDTH = 136;
+// 左右を引くと残らないほど狭い端末でも、これだけは確保する。
+const MIN_TITLE_WIDTH = 120;
+// タイトルの素の大きさ（iOS 標準のナビバーのタイトルと同じ 17pt）。
+const TITLE_FONT_SIZE = 17;
+// 縮めてよい下限。14 は本文の大きさ（ui-guidelines「テキストサイズの階層」）
+// で、ナビバーでもまだ読める。これより小さくするくらいなら末尾を省略する。
+const TITLE_MIN_FONT_SIZE = 14;
+
 // sheetCornerRadius は指定しない（native 既定 = automatic）。固定値（旧20pt）
 // だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと半径が噛み合わず
 // 本家と違う丸みに見えるため、OS のオート計算に任せる
@@ -153,7 +257,34 @@ const makeStyles = (t: Theme) =>
     // 合わせた入れ物にすると、中央寄せが効く範囲が文字の幅だけになり、
     // 隙間の左端に詰めて置かれる（実機で確認）。幅を px で決め打ちすると
     // 旅行名の長さでずれるので、必ずレイアウトで解く。
-    titleBlock: { flex: 1, alignItems: "center", justifyContent: "center" },
-    title: { fontSize: 17, fontWeight: "600", color: t.foreground },
-    subtitle: { fontSize: 11, color: t.mutedForeground, marginTop: 1 },
+    // 上限（maxWidth）だけは呼び出し側が実寸から計算して渡す。
+    //
+    // **中央寄せは alignItems ではなく textAlign でやる。** alignItems:
+    // "center" にすると子は「中身の幅」で置かれる＝入れ物の maxWidth を
+    // 受け取らないので、長い旅行名が入れ物の外へそのままはみ出す（実機で
+    // 確認: 入れ物を 120pt に絞っても文字は素の幅のまま描かれた）。
+    // stretch にして入れ物の幅を受け取らせて初めて、縮めるのも末尾を
+    // 省略するのも効くようになる。
+    titleBlock: { flex: 1, alignItems: "stretch", justifyContent: "center" },
+    title: {
+      fontSize: TITLE_FONT_SIZE,
+      fontWeight: "600",
+      color: t.foreground,
+      textAlign: "center",
+    },
+    // 幅を測るためだけの控え。絶対配置＋十分な幅で、器の maxWidth に縛られずに
+    // 素の1行の幅を測る（縛られると測った幅が器の幅になり、縮小量が出せない）。
+    titleMeasure: {
+      position: "absolute",
+      opacity: 0,
+      width: 10000,
+      fontSize: TITLE_FONT_SIZE,
+      fontWeight: "600",
+    },
+    subtitle: {
+      fontSize: 11,
+      color: t.mutedForeground,
+      marginTop: 1,
+      textAlign: "center",
+    },
   });
