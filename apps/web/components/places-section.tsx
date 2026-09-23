@@ -7,6 +7,7 @@ import { APIProvider } from "@vis.gl/react-google-maps";
 import { Drawer } from "vaul";
 
 import {
+  type Bounds,
   dominantCenter,
   labelByPlace,
   type LatLng,
@@ -293,6 +294,12 @@ export function PlacesSection({
     name: string;
   } | null>(null);
 
+  // 地図が今見せている範囲。**地図の検索の基準位置はこれ**
+  // （docs/design/place-map.md「検索の基準位置」）。地図が描かれるまでは
+  // null なので、その間だけ下の biasCenter に落ちる。
+  const [viewport, setViewport] = useState<Bounds | null>(null);
+
+  // 地図がまだ範囲を持たない一瞬のフォールバック。
   const biasCenter = useMemo(
     () =>
       dominantCenter(
@@ -710,6 +717,7 @@ export function PlacesSection({
                 query={query}
                 onQueryChange={setQuery}
                 onClear={clearSearch}
+                biasRect={viewport}
                 biasCenter={biasCenter}
                 onResults={onResults}
                 onPickSaved={pickSaved}
@@ -764,6 +772,7 @@ export function PlacesSection({
               // 選択＝詳細なのでそのまま出す）。
               infoSheetOpen={selected?.kind !== "saved" || savedInfoOpen}
               onMapTap={onMapTap}
+              onViewportChange={setViewport}
               onDraftMove={onDraftMove}
               onCloseDraft={closeDraft}
               onPoiSelect={showPoi}

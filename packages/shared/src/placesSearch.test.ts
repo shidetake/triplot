@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   extractRegion,
+  locationBiasOf,
   nearestCandidate,
   pickResolvedPlace,
   queryLanguagesFor,
@@ -171,5 +172,77 @@ describe("pickResolvedPlace", () => {
       at("other", 0.2),
     ];
     expect(pickResolvedPlace(scored)).not.toBeNull();
+  });
+});
+
+// 地図の検索は「今見えている範囲」、地図を伴わない検索は「旅程から引いた
+// 居場所」を基準にする（docs/design/place-map.md「検索の基準位置」）。
+describe("locationBiasOf", () => {
+  const sf = { lat: 37.77, lng: -122.42 };
+  // ロサンゼルス周辺を映している画面。
+  const la = { south: 33.9, west: -118.5, north: 34.2, east: -118.1 };
+
+  it("表示範囲があればそれを矩形で渡す", () => {
+    expect(locationBiasOf({ biasRect: la }, 30000)).toEqual({
+      rectangle: {
+        low: { latitude: 33.9, longitude: -118.5 },
+        high: { latitude: 34.2, longitude: -118.1 },
+      },
+    });
+  });
+
+  it("表示範囲は中心より優先する（ピンの重心に引っ張られない）", () => {
+    // これが崩れると、SF にピンが集まっている旅行で LA を映していても
+    // 検索が SF に飛ばされる。
+    const bias = locationBiasOf({ biasRect: la, biasCenter: sf }, 30000);
+    expect(bias).toHaveProperty("rectangle");
+    expect(bias).not.toHaveProperty("circle");
+  });
+
+  it("表示範囲が無ければ中心＋半径の円に落ちる", () => {
+    expect(locationBiasOf({ biasCenter: sf }, 30000)).toEqual({
+      circle: {
+        center: { latitude: 37.77, longitude: -122.42 },
+        radius: 30000,
+      },
+    });
+  });
+
+  it("半径は呼び出し側の指定が既定より優先", () => {
+    const bias = locationBiasOf(
+      { biasCenter: sf, biasRadiusMeters: 20000 },
+      50000,
+    );
+    expect(bias).toEqual({
+      circle: { center: { latitude: 37.77, longitude: -122.42 }, radius: 20000 },
+    });
+  });
+
+  it("日付変更線を跨ぐ範囲は west > east のまま渡す", () => {
+    // Places API の Viewport は low.longitude > high.longitude を「跨いでいる」
+    // と定めている。ここで正規化すると地球の反対側を指す。
+    const bias = locationBiasOf(
+      { biasRect: { south: -18, west: 177, north: -16, east: -178 } },
+      30000,
+    );
+    expect(bias).toEqual({
+      rectangle: {
+        low: { latitude: -18, longitude: 177 },
+        high: { latitude: -16, longitude: -178 },
+      },
+    });
+  });
+
+  it("上下が逆さまの範囲は矩形として使わない", () => {
+    expect(
+      locationBiasOf(
+        { biasRect: { south: 34.2, west: -118.5, north: 33.9, east: -118.1 } },
+        30000,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("どちらも無ければバイアス無し", () => {
+    expect(locationBiasOf({}, 30000)).toBeUndefined();
   });
 });

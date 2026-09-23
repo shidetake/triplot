@@ -53,6 +53,7 @@ import { iconKeyForGoogleType } from "@triplot/shared/placeIcons";
 import { CandidatePin } from "./candidate-pin";
 
 import {
+  type Bounds,
   boundsOf,
   centerOf,
   type Cluster,
@@ -84,6 +85,35 @@ import { NARROW_SCREEN_QUERY } from "@/lib/mobileTabChrome";
 // MouseEvent 系で来て PC と区別できない）ので、自由ピンの click ドロップは
 // 「直近に touch が無い＝マウス」のときだけにする（タッチ端末は touch を
 // 出す・マウスは出さない＝確実）。
+// 今見えている範囲を呼び出し側に伝える。検索の基準位置がこれ
+// （docs/design/place-map.md「検索の基準位置」）。ジェスチャ確定（idle）
+// だけで報せる＝パン中に何度も再レンダーさせない。
+//
+// 日付変更線を跨ぐ範囲は south-west の経度が north-east より大きくなるが、
+// **そのまま渡す**。Places API の矩形も「low > high なら跨いでいる」と
+// 定めているので、ここで正規化すると地球の反対側を指す。
+function ViewportReporter({ onChange }: { onChange: (b: Bounds) => void }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const read = () => {
+      const b = map.getBounds();
+      if (!b) return;
+      const ne = b.getNorthEast();
+      const sw = b.getSouthWest();
+      onChange({
+        south: sw.lat(),
+        west: sw.lng(),
+        north: ne.lat(),
+        east: ne.lng(),
+      });
+    };
+    const listener = map.addListener("idle", read);
+    return () => listener.remove();
+  }, [map, onChange]);
+  return null;
+}
+
 function LongPressPin({
   onLongPress,
   ignoreNextMapClick,
@@ -392,6 +422,7 @@ export function PlaceMap({
   onDraftMove,
   onCloseDraft,
   onPoiSelect,
+  onViewportChange,
   poi,
   infoContent,
   infoSheetOpen = true,
@@ -419,6 +450,8 @@ export function PlaceMap({
   onDraftMove: (p: LatLng) => void;
   onCloseDraft: () => void;
   onPoiSelect: (c: CandidatePlace) => void;
+  // 今見えている範囲が変わった時（ジェスチャ確定ごと）。検索の基準位置に使う。
+  onViewportChange?: (b: Bounds) => void;
   infoContent: ReactNode;
   // 狭い画面で infoContent をボトムシートとして出すか。保存済みの場所は
   // 「1タップ目＝一覧で選択、2タップ目＝詳細」なので、呼び出し側が段を持つ。
@@ -650,6 +683,9 @@ export function PlaceMap({
           {/* 現在地・方位磁針・縮尺バー（iOS の場所タブと同じ仕様）。
               位置を指定するモード中は地図に集中させるため出さない。 */}
           <MapControls hidden={locating} />
+          {onViewportChange && (
+            <ViewportReporter onChange={onViewportChange} />
+          )}
           <LongPressPin
             onLongPress={onMapTap}
             ignoreNextMapClick={ignoreNextMapClick}

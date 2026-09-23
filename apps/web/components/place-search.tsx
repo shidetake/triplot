@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl";
 import { useMapsLibrary } from "@vis.gl/react-google-maps";
 import { Combobox } from "@base-ui/react/combobox";
 
-import type { LatLng } from "@triplot/shared/placeMap";
+import type { Bounds, LatLng } from "@triplot/shared/placeMap";
 import { menuItemClass } from "./menu-item";
 import { inputClass } from "./input-class";
 import { CloseButton } from "./close-button";
@@ -65,6 +65,7 @@ export function PlaceSearch({
   query,
   onQueryChange,
   onClear,
+  biasRect,
   biasCenter,
   onResults,
   onPickSaved,
@@ -72,6 +73,10 @@ export function PlaceSearch({
   query: string;
   onQueryChange: (value: string) => void;
   onClear: () => void;
+  // 今見えている地図の範囲。**地図の検索はここを基準にする**
+  // （docs/design/place-map.md「検索の基準位置」）。地図がまだ範囲を持たない
+  // 一瞬だけ null になり、その間は biasCenter に落ちる。
+  biasRect: Bounds | null;
   biasCenter: LatLng;
   // selectFirst=true は autocomplete 確定経路のシグナル。呼び出し側で
   // results[0] を「候補ピン選択中（吹き出し開く）」状態にする。
@@ -87,6 +92,11 @@ export function PlaceSearch({
   const placesLib = useMapsLibrary("places");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 表示範囲があればその矩形を、無ければ従来の円（中心＋半径）を渡す。
+  // 矩形は LatLngBoundsLiteral と同じ形なのでそのまま通る。日付変更線を跨ぐ
+  // 範囲（west > east）も LatLngBounds がそのまま扱えるので正規化しない。
+  const locationBias = biasRect ?? { center: biasCenter, radius: 30000 };
 
   // event-form の PlacePicker と同方針の autocomplete。入力中に候補を出し、
   // 選ぶと「その1件だけが検索結果」として扱う。検索ボタンは温存（曖昧語で
@@ -133,7 +143,7 @@ export function PlaceSearch({
             language: "ja",
             region: "jp",
             sessionToken,
-            locationBias: { center: biasCenter, radius: 30000 },
+            locationBias,
           });
         setSug(suggestions.filter((s) => s.placePrediction).slice(0, 6));
       } catch {
@@ -219,8 +229,7 @@ export function PlaceSearch({
           language: "ja",
           region: "jp",
           maxResultCount: 20,
-          // 既存ピンの重心（無ければ東京）周辺を優先。海外 trip でも文脈に沿う。
-          locationBias: { center: biasCenter, radius: 30000 },
+          locationBias,
         });
 
         const results: CandidatePlace[] = (places ?? [])

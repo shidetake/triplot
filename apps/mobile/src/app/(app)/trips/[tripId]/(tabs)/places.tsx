@@ -977,12 +977,41 @@ export default function PlacesTab() {
     (data.members ?? []).map((m) => [m.id, m.color]),
   );
 
-  const biasCenter = () =>
-    dominantCenter(
-      places
-        .filter((p) => p.lat != null && p.lng != null)
-        .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
-    ) ?? undefined;
+  // 地図の検索の基準位置は**今見えている範囲**。ピンの重心ではない
+  // （docs/design/place-map.md「検索の基準位置」）。
+  //
+  // 範囲は state（region）ではなく地図から直に取る。state はスナップショット
+  // なので、カメラのアニメーションが収まる前に検索すると古い範囲を掴む
+  // （focusCoord が getMapBoundaries を使うのと同じ理由）。取れなければ
+  // ピンの重心に落とす＝地図がまだ描けていない一瞬だけの経路。
+  const searchBias = async (): Promise<{
+    biasRect?: { south: number; west: number; north: number; east: number };
+    biasCenter?: { lat: number; lng: number };
+  }> => {
+    try {
+      const b = await mapRef.current?.getMapBoundaries();
+      if (b) {
+        return {
+          biasRect: {
+            south: b.southWest.latitude,
+            west: b.southWest.longitude,
+            north: b.northEast.latitude,
+            east: b.northEast.longitude,
+          },
+        };
+      }
+    } catch {
+      // 下のフォールバックへ。
+    }
+    return {
+      biasCenter:
+        dominantCenter(
+          places
+            .filter((p) => p.lat != null && p.lng != null)
+            .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
+        ) ?? undefined,
+    };
+  };
 
   // 入力中サジェストを閉じる唯一の経路。保留中の debounce タイマーと、既に
   // 飛んでいる fetch の応答（閉じた後に届いて窓を開き直すのが「開きっぱなし」の
@@ -1010,12 +1039,15 @@ export default function PlacesTab() {
     }
     debounceRef.current = setTimeout(() => {
       const epoch = suggestEpochRef.current;
-      void autocompletePlaces(v, {
-        apiKey: PLACES_API_KEY,
-        iosBundleId: BUNDLE_ID,
-        biasCenter: biasCenter(),
-        sessionToken: sessionTokenRef.current ?? undefined,
-      })
+      void searchBias()
+        .then((bias) =>
+          autocompletePlaces(v, {
+            apiKey: PLACES_API_KEY,
+            iosBundleId: BUNDLE_ID,
+            ...bias,
+            sessionToken: sessionTokenRef.current ?? undefined,
+          }),
+        )
         .then((r) => {
           if (epoch === suggestEpochRef.current) setPredictions(r);
         })
@@ -1110,15 +1142,10 @@ export default function PlacesTab() {
     closeSuggestions();
     setSearching(true);
     try {
-      const bias = dominantCenter(
-        places
-          .filter((p) => p.lat != null && p.lng != null)
-          .map((p) => ({ lat: p.lat as number, lng: p.lng as number })),
-      );
       const results = await searchPlaces(query, {
         apiKey: PLACES_API_KEY,
         iosBundleId: BUNDLE_ID,
-        biasCenter: bias ?? undefined,
+        ...(await searchBias()),
         // 候補一覧と候補ピンに評価点を出すので、ここは取る（placeFields 参照）。
         withRatings: true,
       });

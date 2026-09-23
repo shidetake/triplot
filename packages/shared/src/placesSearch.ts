@@ -44,10 +44,15 @@ export type SearchPlacesOptions = {
   apiKey: string;
   // iOS アプリ制限つき API キーは X-Ios-Bundle-Identifier ヘッダが要る。
   iosBundleId?: string;
-  // 地理バイアス（既存ピンの重心 or 東京）。
+  // 地理バイアス。**地図の検索は biasRect（今見えている範囲）、地図を伴わない
+  // 検索は biasCenter（旅程から引いた居場所）** を渡す。理由は
+  // docs/design/place-map.md「検索の基準位置」。両方あれば biasRect が勝つ。
   biasCenter?: { lat: number; lng: number };
   // biasCenter の半径。既定 50km（トリップ全体を見渡す通常検索向け）。
   biasRadiusMeters?: number;
+  // 今見えている地図の範囲。半径に直さず矩形のまま渡す＝画面に写っている
+  // 範囲とバイアスが完全に一致する（中心＋半径だと匙加減が要る）。
+  biasRect?: { south: number; west: number; north: number; east: number };
   languageCode?: string;
   regionCode?: string;
   // 結果をこの Place Type だけに絞る（例: "airport"）。指定しなければ絞らない。
@@ -60,6 +65,42 @@ export type SearchPlacesOptions = {
   // ピン）だけで、取り込みの自動解決では見ても保存してもいないので、既定は取らない。
   withRatings?: boolean;
 };
+
+// locationBias の中身。矩形（地図の表示範囲）があればそれを、無ければ円
+// （中心＋半径）を作る。どちらも無ければ undefined＝バイアス無し。
+//
+// 矩形の経度は west > east のまま渡してよい。Places API の Viewport は
+// 「low.longitude > high.longitude なら日付変更線を跨ぐ範囲」と定めているので、
+// ここで正規化すると逆に地球の反対側を指してしまう。
+export function locationBiasOf(
+  opts: Pick<
+    SearchPlacesOptions,
+    "biasRect" | "biasCenter" | "biasRadiusMeters"
+  >,
+  defaultRadiusMeters: number,
+): Record<string, unknown> | undefined {
+  const r = opts.biasRect;
+  if (r && r.south <= r.north) {
+    return {
+      rectangle: {
+        low: { latitude: r.south, longitude: r.west },
+        high: { latitude: r.north, longitude: r.east },
+      },
+    };
+  }
+  if (opts.biasCenter) {
+    return {
+      circle: {
+        center: {
+          latitude: opts.biasCenter.lat,
+          longitude: opts.biasCenter.lng,
+        },
+        radius: opts.biasRadiusMeters ?? defaultRadiusMeters,
+      },
+    };
+  }
+  return undefined;
+}
 
 // 取る項目。評価点まわりだけ料金の段が上がるので、要る時だけ足す。
 function placeFields(withRatings: boolean, prefix: string): string {
@@ -99,17 +140,8 @@ export async function searchPlaces(
     languageCode: opts.languageCode ?? "ja",
     regionCode: opts.regionCode ?? "jp",
   };
-  if (opts.biasCenter) {
-    body.locationBias = {
-      circle: {
-        center: {
-          latitude: opts.biasCenter.lat,
-          longitude: opts.biasCenter.lng,
-        },
-        radius: opts.biasRadiusMeters ?? 50000,
-      },
-    };
-  }
+  const bias = locationBiasOf(opts, 50000);
+  if (bias) body.locationBias = bias;
   if (opts.includedType) body.includedType = opts.includedType;
 
   const res = await fetch(
@@ -186,17 +218,8 @@ export async function autocompletePlaces(
     regionCode: opts.regionCode ?? "jp",
   };
   if (opts.sessionToken) body.sessionToken = opts.sessionToken;
-  if (opts.biasCenter) {
-    body.locationBias = {
-      circle: {
-        center: {
-          latitude: opts.biasCenter.lat,
-          longitude: opts.biasCenter.lng,
-        },
-        radius: 30000,
-      },
-    };
-  }
+  const bias = locationBiasOf(opts, 30000);
+  if (bias) body.locationBias = bias;
 
   const res = await fetch(
     "https://places.googleapis.com/v1/places:autocomplete",
@@ -508,7 +531,9 @@ export async function resolveNamedPlace(
   // （移動の乗降地）。実測: 「品川駅」「京都駅」はバイアス無しでも一意に決まる。
   // 旅行の地理バイアスは目的地（ハワイ等）にあるので、国内の駅はむしろ
   // バイアスがあると引けない。
-  if (!addr && !opts.biasCenter && !opts.allowUnbiased) return null;
+  if (!addr && !opts.biasCenter && !opts.biasRect && !opts.allowUnbiased) {
+    return null;
+  }
   try {
     // searchPlaces の既定 languageCode は "ja"（RN の場所検索 UI 向け）だが、
     // merchant/location はメール本文からそのままの言語（英語のレシートが
