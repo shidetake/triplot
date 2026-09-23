@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { Flight } from "./flight";
-import { type FlightApi, lookupFlight, peekCachedFlight } from "./flightLookup";
+import {
+  type FlightApi,
+  lookupFlight,
+  peekCachedFlight,
+  pickFlightByDepartureTime,
+} from "./flightLookup";
 
 const NRT = {
   iata: "NRT",
@@ -61,12 +66,53 @@ function fakeApi(opts: {
   };
 }
 
+function segment(
+  from: { iata: string; tz: string; dep: string },
+  to: { iata: string; tz: string; arr: string },
+): Flight {
+  const end = (iata: string, tz: string, t: string) => ({
+    iata,
+    icao: null,
+    name: iata,
+    municipality: null,
+    lat: 0,
+    lng: 0,
+    timeZone: tz,
+    terminal: null,
+    scheduledLocal: t,
+  });
+  return {
+    number: "UA2610",
+    airlineName: "United",
+    aircraftModel: null,
+    departure: end(from.iata, from.tz, from.dep),
+    arrival: end(to.iata, to.tz, to.arr),
+    source: { kind: "actual" },
+  };
+}
+
+const LA = "America/Los_Angeles";
+const ua2610 = {
+  ordSfo: segment(
+    { iata: "ORD", tz: "America/Chicago", dep: "2026-12-26T08:40" },
+    { iata: "SFO", tz: LA, arr: "2026-12-26T11:34" },
+  ),
+  sfoLax: segment(
+    { iata: "SFO", tz: LA, dep: "2026-12-26T13:55" },
+    { iata: "LAX", tz: LA, arr: "2026-12-26T15:29" },
+  ),
+  laxDen: segment(
+    { iata: "LAX", tz: LA, dep: "2026-12-26T19:10" },
+    { iata: "DEN", tz: "America/Denver", arr: "2026-12-26T22:38" },
+  ),
+};
+
 describe("lookupFlight", () => {
   it("対象日に実データがあれば1回で終わる", async () => {
     const api = fakeApi({ byDate: { "2026-08-05": [flightOn("2026-08-05")] } });
     const r = await lookupFlight(api, "ZG002", "2026-08-05");
 
-    expect(r).toEqual({ kind: "found", flight: flightOn("2026-08-05") });
+    expect(r).toEqual({ kind: "found", flights: [flightOn("2026-08-05")] });
     expect(api.calls).toEqual(["byDate:2026-08-05"]);
   });
 
@@ -80,9 +126,9 @@ describe("lookupFlight", () => {
 
     expect(r.kind).toBe("found");
     if (r.kind !== "found") return;
-    expect(r.flight.source).toEqual({ kind: "estimated", basedOn: "2026-08-05" });
-    expect(r.flight.departure.scheduledLocal).toBe("2027-08-10T19:10");
-    expect(r.flight.arrival.scheduledLocal).toBe("2027-08-10T07:50");
+    expect(r.flights[0].source).toEqual({ kind: "estimated", basedOn: "2026-08-05" });
+    expect(r.flights[0].departure.scheduledLocal).toBe("2027-08-10T19:10");
+    expect(r.flights[0].arrival.scheduledLocal).toBe("2027-08-10T07:50");
     // 最悪でも3回（対象日 → 運航日一覧 → 参照日）
     expect(api.calls).toEqual(["byDate:2027-08-10", "dates", "byDate:2026-08-05"]);
   });
@@ -114,7 +160,39 @@ describe("lookupFlight", () => {
 
     expect(r.kind).toBe("found");
     if (r.kind !== "found") return;
-    expect(r.flight.departure.scheduledLocal).toBe("2026-05-04T16:20");
+    expect(r.flights).toHaveLength(1);
+    expect(r.flights[0].departure.scheduledLocal).toBe("2026-05-04T16:20");
+  });
+
+  it("同じ便名が同じ日に複数区間を飛ぶなら、全区間を出発順に返す", async () => {
+    // 実例: UA2610 は同日に ORD→SFO・SFO→LAX・LAX→DEN の3区間を飛ぶ。
+    const api = fakeApi({
+      byDate: { "2026-12-26": [ua2610.sfoLax, ua2610.ordSfo, ua2610.laxDen] },
+    });
+    const r = await lookupFlight(api, "UA2610", "2026-12-26");
+
+    expect(r).toEqual({
+      kind: "found",
+      flights: [ua2610.ordSfo, ua2610.sfoLax, ua2610.laxDen],
+    });
+    expect(api.calls).toEqual(["byDate:2026-12-26"]);
+  });
+
+  it("複数区間の予測は、参照日の全区間から組み立てる", async () => {
+    const api = fakeApi({
+      byDate: { "2026-12-26": [ua2610.ordSfo, ua2610.sfoLax, ua2610.laxDen] },
+      dates: ["2026-12-26"],
+    });
+    const r = await lookupFlight(api, "UA2610", "2027-12-26");
+
+    expect(r.kind).toBe("found");
+    if (r.kind !== "found") return;
+    expect(r.flights.map((f) => f.departure.scheduledLocal)).toEqual([
+      "2027-12-26T08:40",
+      "2027-12-26T13:55",
+      "2027-12-26T19:10",
+    ]);
+    expect(r.flights.every((f) => f.source.kind === "estimated")).toBe(true);
   });
 
   it("運航日が1日も無ければ便名が存在しない扱い", async () => {
@@ -136,8 +214,8 @@ describe("lookupFlight", () => {
 
     expect(r.kind).toBe("found");
     if (r.kind !== "found") return;
-    expect(r.flight.source).toEqual({ kind: "estimated", basedOn: "2026-03-29" });
-    expect(r.flight.departure.scheduledLocal).toBe("2027-03-29T19:10");
+    expect(r.flights[0].source).toEqual({ kind: "estimated", basedOn: "2026-03-29" });
+    expect(r.flights[0].departure.scheduledLocal).toBe("2027-03-29T19:10");
   });
 
   it("補えないときは欠けたまま返す（握りつぶさない）", async () => {
@@ -149,8 +227,8 @@ describe("lookupFlight", () => {
 
     expect(r.kind).toBe("found");
     if (r.kind !== "found") return;
-    expect(r.flight.departure.scheduledLocal).toBeNull();
-    expect(r.flight.source).toEqual({ kind: "actual" });
+    expect(r.flights[0].departure.scheduledLocal).toBeNull();
+    expect(r.flights[0].source).toEqual({ kind: "actual" });
   });
 
   it("参照日を引いても揃わなければ no-data", async () => {
@@ -167,9 +245,9 @@ describe("peekCachedFlight", () => {
     const api = fakeApi({
       peekByDate: { "2026-08-05": [flightOn("2026-08-05")] },
     });
-    const flight = await peekCachedFlight(api, "ZG002", "2026-08-05");
+    const flights = await peekCachedFlight(api, "ZG002", "2026-08-05");
 
-    expect(flight).toEqual(flightOn("2026-08-05"));
+    expect(flights).toEqual([flightOn("2026-08-05")]);
     expect(api.calls).toEqual(["peek:2026-08-05"]);
   });
 
@@ -195,5 +273,25 @@ describe("peekCachedFlight", () => {
       },
     };
     expect(await peekCachedFlight(api, "ZG002", "2026-08-05")).toBeNull();
+  });
+});
+
+describe("pickFlightByDepartureTime", () => {
+  const all = [ua2610.ordSfo, ua2610.sfoLax, ua2610.laxDen];
+
+  it("出発時刻が一致する区間を選ぶ", () => {
+    expect(pickFlightByDepartureTime(all, "13:55")).toBe(ua2610.sfoLax);
+  });
+
+  it("一致しなければ一番近い区間", () => {
+    expect(pickFlightByDepartureTime(all, "18:30")).toBe(ua2610.laxDen);
+  });
+
+  it("時刻が分からなければ先頭", () => {
+    expect(pickFlightByDepartureTime(all, null)).toBe(ua2610.ordSfo);
+  });
+
+  it("候補が無ければ null", () => {
+    expect(pickFlightByDepartureTime([], "10:00")).toBeNull();
   });
 });

@@ -58,7 +58,8 @@ export function FlightPicker({
   const [airline, setAirline] = useState<Airline | null>(null);
   const [text, setText] = useState(initialNumber ?? "");
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<Flight | null>(null);
+  // 候補の区間（同じ便名が同じ日に経由地で区間を分けて飛ぶことがあるので複数）。
+  const [result, setResult] = useState<Flight[] | null>(null);
   // 直近で解決済み（検索中の状態を抜けた）の "便名|日付" キー。busy を専用の
   // state にせず、これと今のキーの一致/不一致から導出する（effect 内で直接
   // setState すると react-hooks/set-state-in-effect に触れるため、派生値にする）。
@@ -90,12 +91,12 @@ export function FlightPicker({
     const my = ++seq.current;
     let fired = false;
 
-    const applyFound = async (flight: Flight) => {
+    const applyFound = async (flights: Flight[]) => {
       // 提供元は英語名しか返さないので日本語に差し替える（対訳表は動的 import）。
-      let localized = flight;
+      let localized = flights;
       try {
         const table = await loadAirportNames(locale);
-        if (table) localized = localizeFlightJa(flight, table);
+        if (table) localized = flights.map((f) => localizeFlightJa(f, table));
       } catch {
         // 日本語化に失敗しても便自体は出す。
       }
@@ -118,7 +119,7 @@ export function FlightPicker({
           );
           if (my !== seq.current) return;
           if (outcome.kind === "found") {
-            await applyFound(outcome.flight);
+            await applyFound(outcome.flights);
           } else {
             setResult(null);
             setError(
@@ -136,11 +137,11 @@ export function FlightPicker({
     };
     runNowRef.current = runLookup;
 
-    void peekCachedFlight(createFlightApi(createClient()), normalized, date).then((flight) => {
-      if (fired || my !== seq.current || !flight) return;
+    void peekCachedFlight(createFlightApi(createClient()), normalized, date).then((flights) => {
+      if (fired || my !== seq.current || !flights) return;
       fired = true;
       clearTimeout(timer);
-      void applyFound(flight);
+      void applyFound(flights);
     });
 
     const timer = setTimeout(runLookup, FLIGHT_SEARCH_DEBOUNCE_MS);
@@ -151,16 +152,18 @@ export function FlightPicker({
   // 消しに行かず、表示側で門番する。
   const showBusy = key !== null && settledKey !== key;
   const showError = key !== null && settledKey === key ? error : null;
-  const showResult = normalized !== null && result?.number === normalized ? result : null;
+  const showResult =
+    normalized !== null && result?.[0]?.number === normalized ? result : null;
 
   // autoApply: 見つかった瞬間に1回だけタップ無しで確定する。ユーザー操作を
   // 挟まないので、この effect の外（呼び出し側）で autoApply を再度 true に
   // しない限り2回目以降は普通のプレビュー（タップして確定）に戻る。
+  // 候補が複数区間ならどれに乗るかは分からないので確定せず、選ばせる。
   const autoAppliedRef = useRef(false);
   useEffect(() => {
-    if (autoApply && showResult && !autoAppliedRef.current) {
+    if (autoApply && showResult?.length === 1 && !autoAppliedRef.current) {
       autoAppliedRef.current = true;
-      onApply(showResult);
+      onApply(showResult[0]);
     }
   }, [autoApply, showResult, onApply]);
 
@@ -234,15 +237,22 @@ export function FlightPicker({
       )}
 
       {showResult && !showBusy && (
-        <FlightPreview flight={showResult} onApply={() => onApply(showResult)} />
+        <ul className="divide-y divide-foreground/10 overflow-hidden rounded-lg border border-foreground/10">
+          {showResult.map((f) => (
+            <li key={`${f.departure.scheduledLocal}|${f.departure.iata ?? f.departure.name}`}>
+              <FlightPreview flight={f} onApply={() => onApply(f)} />
+            </li>
+          ))}
+        </ul>
       )}
     </div>
   );
 }
 
 /**
- * 確定前のプレビュー。**自動では適用しない。**
+ * 確定前のプレビュー（候補の1行）。**自動では適用しない。**
  * 便名の打ち間違いに気付ける最後の場所であり、予測値かどうかもここで示す。
+ * 同じ便名が同じ日に複数区間を飛ぶときは、区間ごとに1行並ぶ。
  */
 function FlightPreview({ flight, onApply }: { flight: Flight; onApply: () => void }) {
   const t = useTranslations("event");
@@ -252,7 +262,7 @@ function FlightPreview({ flight, onApply }: { flight: Flight; onApply: () => voi
     <button
       type="button"
       onClick={onApply}
-      className="block w-full rounded-lg border border-foreground/10 p-3 text-left transition hover:bg-foreground/10"
+      className="block w-full p-3 text-left transition hover:bg-foreground/10"
       aria-label={t("flightApply")}
     >
       <div className="flex items-center gap-2">

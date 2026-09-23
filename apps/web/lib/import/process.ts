@@ -20,7 +20,10 @@ import {
   resolveFlightNumber,
   type FlightEndpoint,
 } from "@triplot/shared/flight";
-import { lookupFlight } from "@triplot/shared/flightLookup";
+import {
+  lookupFlight,
+  pickFlightByDepartureTime,
+} from "@triplot/shared/flightLookup";
 import { EXTRACT_ERROR_NO_CONTENT } from "@triplot/shared/import/config";
 import {
   type StoredEventDraft,
@@ -492,11 +495,17 @@ async function prefetchFlights(
             parsed.normalized,
             ev.startDate,
           );
-          if (outcome.kind === "found") {
-            const places = await resolveFlightPlaces(outcome.flight);
+          // 同じ便名が同じ日に複数区間を飛ぶことがある（UA2610 等）。
+          // メールに書かれた出発時刻に一番近い区間を採る。
+          const flight =
+            outcome.kind === "found"
+              ? pickFlightByDepartureTime(outcome.flights, ev.startTime)
+              : null;
+          if (flight) {
+            const places = await resolveFlightPlaces(flight);
             result.push({
               ...ev,
-              resolvedFlight: outcome.flight,
+              resolvedFlight: flight,
               resolvedDeparturePlace: places.departure,
               resolvedArrivalPlace: places.arrival,
             });

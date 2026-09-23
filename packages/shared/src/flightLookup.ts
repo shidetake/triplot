@@ -37,14 +37,19 @@ export type FlightApi = {
 };
 
 export type LookupOutcome =
-  | { kind: "found"; flight: Flight }
+  /**
+   * 便名と出発日が一致する区間すべて（出発の早い順・1件以上）。同じ便名が
+   * 同じ日に経由地で区間を分けて飛ぶことがある（実例: UA2610 は同日に
+   * ORD→SFO・SFO→LAX・LAX→DEN の3区間）ので、どれに乗るかは利用者が選ぶ。
+   */
+  | { kind: "found"; flights: Flight[] }
   /** 便名自体が見つからない（打ち間違い・存在しない便） */
   | { kind: "unknown-number" }
   /** 便は実在するが、その日の情報も予測の材料も無い */
   | { kind: "no-data" };
 
 /**
- * 1便を解決する。呼び出し回数は最良1回・最悪3回。
+ * 便を解決する。呼び出し回数は最良1回・最悪3回。
  *
  * 「揃っていない答え」を握りつぶさない: 片側だけ返ったときも予測で補えるなら
  * 補い、補えなければ揃っていないまま返す（UI が欠けを見せて手入力させる）。
@@ -54,27 +59,29 @@ export async function lookupFlight(
   number: string,
   date: string,
 ): Promise<LookupOutcome> {
-  const exact = best(await api.byNumberAndDate(number, date), date);
-  if (exact && isComplete(exact)) return { kind: "found", flight: exact };
+  const exact = candidates(await api.byNumberAndDate(number, date), date);
+  if (exact.length > 0 && exact.every(isComplete)) return { kind: "found", flights: exact };
 
   const dates = await api.operatingDates(number);
   if (dates.length === 0) {
     // 運航日が1日も無い＝その便名を提供元が知らない。ただし対象日に部分的な
     // 答えが返っていたなら便は実在するので、それを返す。
-    return exact ? { kind: "found", flight: exact } : { kind: "unknown-number" };
+    return exact.length > 0 ? { kind: "found", flights: exact } : { kind: "unknown-number" };
   }
 
   const refDate = pickReferenceDate(date, dates);
   if (refDate === null || refDate === date) {
-    return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
+    return exact.length > 0 ? { kind: "found", flights: exact } : { kind: "no-data" };
   }
 
-  const ref = best(await api.byNumberAndDate(number, refDate), refDate);
-  if (!ref || !isComplete(ref)) {
-    return exact ? { kind: "found", flight: exact } : { kind: "no-data" };
+  const ref = candidates(await api.byNumberAndDate(number, refDate), refDate).filter(
+    isComplete,
+  );
+  if (ref.length === 0) {
+    return exact.length > 0 ? { kind: "found", flights: exact } : { kind: "no-data" };
   }
 
-  return { kind: "found", flight: estimateForDate(ref, date) };
+  return { kind: "found", flights: ref.map((f) => estimateForDate(f, date)) };
 }
 
 /**
@@ -87,33 +94,70 @@ export async function peekCachedFlight(
   api: FlightApi,
   number: string,
   date: string,
-): Promise<Flight | null> {
+): Promise<Flight[] | null> {
   const cached = await api.peekByNumberAndDate?.(number, date);
   if (!cached) return null;
-  const exact = best(cached, date);
-  return exact && isComplete(exact) ? exact : null;
+  const exact = candidates(cached, date);
+  return exact.length > 0 && exact.every(isComplete) ? exact : null;
 }
 
 /**
- * 複数区間が返ったら1つ選ぶ。「複数区間」は2パターンある:
- *  ① 同じ便名が経由地で複数区間に分かれる（乗継便）
+ * 候補が複数あるとき、分かっている出発時刻（"HH:MM"）に一番近い区間を選ぶ。
+ * 利用者に選ばせられない経路（メール取り込みの事前解決）用。時刻が無ければ
+ * 先頭（最も早い出発）。
+ */
+export function pickFlightByDepartureTime(
+  flights: readonly Flight[],
+  time: string | null | undefined,
+): Flight | null {
+  if (flights.length === 0) return null;
+  const target = time ? toMinutes(time) : null;
+  if (target === null) return flights[0];
+  let best = flights[0];
+  let bestDiff = Infinity;
+  for (const f of flights) {
+    const m = f.departure.scheduledLocal
+      ? toMinutes(f.departure.scheduledLocal.slice(11, 16))
+      : null;
+    if (m === null) continue;
+    const diff = Math.abs(m - target);
+    if (diff < bestDiff) {
+      best = f;
+      bestDiff = diff;
+    }
+  }
+  return best;
+}
+
+function toMinutes(hhmm: string): number | null {
+  const m = hhmm.match(/^(\d{1,2}):(\d{2})/);
+  return m ? Number(m[1]) * 60 + Number(m[2]) : null;
+}
+
+/**
+ * 提供元の応答から、対象日の候補を出発の早い順に返す。「複数区間」は2パターンある:
+ *  ① 同じ便名が経由地で複数区間に分かれる（乗継便）→ **全部返して利用者に選ばせる**
  *  ② 提供元が「出発日 or 到着日のどちらかが対象日」を緩く一致させて返す
  *     （実測: DL181 を date=2026-05-04 で引くと、5/3出発/5/4到着便と
- *     5/4出発/5/5到着便の2件が返る）
+ *     5/4出発/5/5到着便の2件が返る）→ 関係ない便なので**落とす**
  * triplot はカレンダーで長押しした日＝出発日として便を引くので、**出発の
- * ローカル日付が対象日と一致する区間を優先する**（②の取り違えを防ぐ）。
- * 一致が無ければ従来どおり（揃っている・出発が早い順）にフォールバックする。
+ * ローカル日付が対象日と一致する区間だけ**を候補にする。一致が1つも無ければ
+ * （出発時刻が欠けた部分応答など）、揃っている・出発が早い順で1つだけ返す。
  */
-function best(flights: readonly Flight[], date: string): Flight | null {
-  if (flights.length === 0) return null;
+function candidates(flights: readonly Flight[], date: string): Flight[] {
+  if (flights.length === 0) return [];
   const departingOnDate = flights.filter((f) =>
     f.departure.scheduledLocal?.startsWith(date),
   );
-  const pool = departingOnDate.length > 0 ? departingOnDate : flights;
-  return (
-    pool.find((f) => isComplete(f)) ??
-    pool.reduce((a, b) =>
+  if (departingOnDate.length > 0) {
+    return [...departingOnDate].sort((a, b) =>
+      (a.departure.scheduledLocal ?? "").localeCompare(b.departure.scheduledLocal ?? ""),
+    );
+  }
+  const fallback =
+    flights.find((f) => isComplete(f)) ??
+    flights.reduce((a, b) =>
       (a.departure.scheduledLocal ?? "") <= (b.departure.scheduledLocal ?? "") ? a : b,
-    )
-  );
+    );
+  return [fallback];
 }
