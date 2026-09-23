@@ -645,6 +645,10 @@
   },
   "admin": {
     "heading": "Admin",
+    "usersHeading": "Users",
+    "usersDescription": "Users who have signed in (excludes guests who only joined via an invite link).",
+    "usersRegistered": "Registered users",
+    "usersGuests": "Guest-only",
     "menuLink": "Admin",
     "candidatesHeading": "Receipt link host candidates",
     "candidatesDescription": "Hosts not on the allowlist yet where the automatic fetch (second pass) actually filled in draft details. Check the domain, and promote genuine receipt platforms by adding them to the allowlist (a code constant) — that cuts the LLM call back down to one.",

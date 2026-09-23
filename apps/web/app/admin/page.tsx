@@ -92,6 +92,8 @@ export default async function AdminPage() {
     { data: baseline },
     { count: rateLimitedCount },
     { data: extractedRows },
+    { count: registeredUserCount },
+    { count: guestUserCount },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // **service client で読む。** ai_usage_baseline は RLS が有効なのに
@@ -120,6 +122,18 @@ export default async function AdminPage() {
       .select("day, extracted_count")
       .gte("day", usageSinceDay())
       .order("day", { ascending: false }),
+    // 登録ユーザー数（サインイン済み）。RLS の users_admin_select（is_app_admin()）
+    // で admin だけ全行を読めるので、head:true で件数だけ取る。
+    supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("is_anonymous", false),
+    // 招待リンクだけで参加したゲスト（サインインしていない）。登録ユーザー数と
+    // 対にして、ゲストが登録に転換しているかの目安にする。
+    supabase
+      .from("users")
+      .select("id", { count: "exact", head: true })
+      .eq("is_anonymous", true),
   ]);
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
@@ -140,6 +154,26 @@ export default async function AdminPage() {
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-10">
       <h1 className="text-2xl font-semibold tracking-tight">{t("heading")}</h1>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">{t("usersHeading")}</h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("usersDescription")}
+        </p>
+        <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+          <span className="text-xs text-muted-foreground">
+            {t("usersRegistered")}
+          </span>
+          <span className="text-lg font-semibold tabular-nums">
+            {registeredUserCount ?? 0}
+          </span>
+          <InlineDivider />
+          <span className="text-xs text-muted-foreground">
+            {t("usersGuests")}
+          </span>
+          <span className="text-sm tabular-nums">{guestUserCount ?? 0}</span>
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold">{t("creditsHeading")}</h2>
