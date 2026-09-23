@@ -61,6 +61,7 @@ import {
   type LatLng,
   TOKYO,
 } from "@triplot/shared/placeMap";
+import { markerStackRanks } from "@triplot/shared/placeMarkerStack";
 
 import { pinColors } from "@triplot/shared/memberColors";
 import { GREEN_HUE } from "@triplot/shared/eventColor";
@@ -477,25 +478,14 @@ export function PlaceMap({
     [places],
   );
 
-  // Google の既定（zIndex 未指定）は「画面上の垂直位置（＝緯度）が低いほど手前」
-  // という静的なルールで、ズームや中心からの距離では動的に調整されない
-  // （@types/google.maps の AdvancedMarkerElementOptions.zIndex のコメント
-  // 参照）。**その既定と見た目を変えないため、zIndex 自体は緯度から作る**
-  // （-lat。緯度が低いほど値が大きく＝手前になり、既定と同じ結果になる）。
-  //
-  // ただし緯度が完全に同値の2点（実例: 英語表記とローカル表記で別々の Google
-  // Place として登録され、座標まで一致した「Hanauma Bay」「ハナウマ湾」）は、
-  // 既定ルールにとっても引き分けで、その解決方法は規定されていない。ここだけ
-  // Google 任せにすると重なり順が描画のたびに入れ替わってチラつく（不具合に
-  // 見える）。id の昇順という安定した順位を、実際の緯度差より十分小さい
-  // 微小値として足し、**引き分けのときだけ**常に同じピンが勝つようにする
-  // （通常の緯度差を上書きしない程度に十分小さい値）。
-  const tieBreakRankById = useMemo(() => {
-    const ids = mappedPlaces.map((p) => p.id).sort();
-    // "Map" は @vis.gl/react-google-maps の <Map> コンポーネントに
-    // シャドウされているので、組み込みの Map は globalThis 経由で使う。
-    return new globalThis.Map<string, number>(ids.map((id, i) => [id, i]));
-  }, [mappedPlaces]);
+  // 重なり順（未確定は確定の奥・同じ段は緯度順・引き分けは id 順）は
+  // @triplot/shared/placeMarkerStack が決める＝RN と同じ順位を見る。
+  // "Map" は @vis.gl/react-google-maps の <Map> コンポーネントにシャドウ
+  // されているので、組み込みの Map は globalThis 経由で使う。
+  const stackRankById = useMemo<globalThis.Map<string, number>>(
+    () => markerStackRanks(mappedPlaces),
+    [mappedPlaces],
+  );
 
   // 保存済みピンをエリアでクラスタリング（検索中はチップを出さない）。
   const clusters = useMemo<Cluster[]>(
@@ -691,10 +681,10 @@ export function PlaceMap({
                   zIndex={
                     isSel
                       ? 1e6
-                      : // -1000 は候補ピン（CandidateMarkers の 10/100）より必ず
-                        // 下に置くための下駄。緯度は ±90 の範囲なので南半球でも
-                        // 候補ピンを追い越さない。
-                        -p.lat - 1000 + (tieBreakRankById.get(p.id) ?? 0) * 1e-9
+                      : // -1000 は検索候補ピン（CandidateMarkers の 10/100）より
+                        // 必ず下に置くための下駄。順位は件数ぶんしか伸びないので、
+                        // 場所が千件を超えない限り追い越さない。
+                        -1000 + (stackRankById.get(p.id) ?? 0)
                   }
                 >
                   {isSel ? (

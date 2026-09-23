@@ -47,6 +47,7 @@ import {
   labelByPlace,
   TOKYO,
 } from "@triplot/shared/placeMap";
+import { markerStackRanks } from "@triplot/shared/placeMarkerStack";
 import {
   areaFilterOptions,
   dayFilterOptions,
@@ -722,17 +723,12 @@ export default function PlacesTab() {
     () => places.filter((p) => p.lat == null && p.location_dismissed).length,
     [places],
   );
-  // 確定ピンは全件が同じ zIndex（下のコメント参照）なので、座標が完全一致する
-  // 2件（実例: 英語表記とローカル表記で別々の Google Place として登録され
-  // 座標だけ一致した「Hanauma Bay」「ハナウマ湾」）は Google Maps SDK 側の
-  // 重なり順の解決が不安定で、どちらが手前に出るか描画のたびに入れ替わって
-  // チラつく（web の place-map.tsx と同じ現象・同じ原因）。id の昇順という
-  // 安定した順位を、全件同一という前提を崩さない程度の極小値として足し、
-  // 引き分けのときだけ常に同じピンが勝つようにする。
-  const tieBreakRankById = useMemo(() => {
-    const ids = filteredPlaces.map((p) => p.id).sort();
-    return new Map<string, number>(ids.map((id, i) => [id, i]));
-  }, [filteredPlaces]);
+  // 重なり順（未確定は確定の奥・同じ段は緯度順・引き分けは id 順）は
+  // @triplot/shared/placeMarkerStack が決める＝web と同じ順位を見る。
+  const stackRankById = useMemo(
+    () => markerStackRanks(filteredPlaces),
+    [filteredPlaces],
+  );
   // 中央寄せスクロール演出（ドラムロール）を有効にするか（PICKER_CENTERING_MIN_ITEMS
   // 参照）。タップ時の scrollToOffset だけでなく、中央寄せ用の上下パディング
   // （pickerCenterPad/pickerTopPad、下）自体もこれで止める。件数が少ない時に
@@ -1893,17 +1889,13 @@ export default function PlacesTab() {
                     stopPropagation
                     // 丸マーカーは中心、赤ピンは先端を座標に合わせる。
                     anchor={isEditing ? { x: 0.5, y: 0.9 } : { x: 0.5, y: 0.5 }}
-                    // 現在地の青丸（下の MyLocationDot マーカー）より手前に確定
+                    // 現在地の青丸（下の MyLocationDot マーカー）より手前に
                     // ピンが乗って隠してしまわないよう、通常時は負の zIndex で
                     // 青丸の下に沈める（編集中の赤ピンは操作対象なので手前のまま）。
-                    // **zIndex は iOS ネイティブ側で整数にキャストされる**
-                    // （AIRGoogleMapMarker.m の setZIndex: が NSInteger →
-                    // (int)）ので、小数の極小値では引き分けを解消できない
-                    // （実際に消えて再現した）。確定ピン全員に一意な整数を
-                    // 振ることで解決する。範囲は -1000 起点なので、件数が
-                    // 千件を超えない限り青丸(50)・編集中(200)を追い越さない。
+                    // -1000 起点なので、件数が千件を超えない限り青丸(50)・
+                    // 編集中(200)を追い越さない。
                     zIndex={
-                      isEditing ? 200 : -1000 + (tieBreakRankById.get(p.id) ?? 0)
+                      isEditing ? 200 : -1000 + (stackRankById.get(p.id) ?? 0)
                     }
                   >
                     {isEditing ? (
