@@ -90,13 +90,13 @@ export default async function AdminPage() {
   // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
   const [
     credits,
-    { data: baseline, error: baselineError },
+    { data: baseline },
     { count: rateLimitedCount },
-    { data: extractedRows, error: extractedRowsError },
+    { data: extractedRows },
     { count: registeredUserCount },
     { count: guestUserCount },
     { data: activeUserCount },
-    { data: userStatsDaily, error: userStatsDailyError },
+    { data: userStatsDaily },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // **service client で読む。** ai_usage_baseline は RLS が有効なのに
@@ -201,21 +201,6 @@ export default async function AdminPage() {
         {activeUserCount !== null && (
           <p className="mt-1 text-xs text-subtle-foreground">
             {t("usersActiveNote")}
-          </p>
-        )}
-        {userStatsDailyError && (
-          <p className="mt-2 text-xs text-red-600">
-            DEBUG userStatsDaily: {userStatsDailyError.message}
-          </p>
-        )}
-        {baselineError && (
-          <p className="mt-2 text-xs text-red-600">
-            DEBUG baseline: {baselineError.message}
-          </p>
-        )}
-        {extractedRowsError && (
-          <p className="mt-2 text-xs text-red-600">
-            DEBUG extractedRows: {extractedRowsError.message}
           </p>
         )}
         {(userStatsDaily ?? []).length > 0 && (
