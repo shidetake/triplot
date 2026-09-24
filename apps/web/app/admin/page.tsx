@@ -202,9 +202,6 @@ export default async function AdminPage() {
           className="mt-4 inline-block text-sm text-blue-600 hover:underline"
         >
           {t("usersListHeading")}
-          {registeredUserCount ? (
-            <span className="tabular-nums"> ({registeredUserCount})</span>
-          ) : null}
         </Link>
       </section>
 

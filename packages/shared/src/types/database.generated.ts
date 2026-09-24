@@ -1060,7 +1060,6 @@ export type Database = {
           cap_override: number
           display_name: string
           failed_count: number
-          imports_90d: number
           imports_this_month: number
           last_active_at: string
           registered_at: string

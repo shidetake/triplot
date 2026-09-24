@@ -31,6 +31,8 @@ export default async function AdminUsersPage() {
   const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
   const th = "px-2 py-2 text-right font-normal whitespace-nowrap";
+  // 数字はすべて同じ濃さ。例外は「/ 上限」（件数の分母なので薄く）と、
+  // 取り込み失敗が1件以上の時（状態を知らせる注意の色）だけ。
   const td = "px-2 py-2 text-right tabular-nums whitespace-nowrap";
 
   return (
@@ -80,9 +82,6 @@ export default async function AdminUsersPage() {
                 <th scope="col" className={th}>
                   {t("usersListColImportsMonth")}
                 </th>
-                <th scope="col" className={th}>
-                  {t("usersListColImports90d")}
-                </th>
                 <th scope="col" className="py-2 pl-2 text-right font-normal whitespace-nowrap">
                   {t("usersListColFailed")}
                 </th>
@@ -100,9 +99,7 @@ export default async function AdminUsersPage() {
                       {u.display_name || t("usersListNoName")}
                     </th>
                     <td className={td}>{day(u.last_active_at)}</td>
-                    <td className={`${td} text-muted-foreground`}>
-                      {day(u.registered_at)}
-                    </td>
+                    <td className={td}>{day(u.registered_at)}</td>
                     <td className={td}>{Number(u.trip_count)}</td>
                     <td className={td}>
                       {Number(u.imports_this_month)}
@@ -114,12 +111,9 @@ export default async function AdminUsersPage() {
                         )}
                       </span>
                     </td>
-                    <td className={td}>{Number(u.imports_90d)}</td>
                     <td
                       className={`py-2 pl-2 text-right tabular-nums whitespace-nowrap ${
-                        failed > 0
-                          ? "text-amber-700 dark:text-amber-400"
-                          : "text-subtle-foreground"
+                        failed > 0 ? "text-amber-700 dark:text-amber-400" : ""
                       }`}
                     >
                       {failed}
