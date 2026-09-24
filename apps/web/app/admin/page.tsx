@@ -94,7 +94,7 @@ export default async function AdminPage() {
     { data: extractedRows },
     { count: registeredUserCount },
     { count: guestUserCount },
-    { data: activeCounts },
+    { data: activeUserCount },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // **service client で読む。** ai_usage_baseline は RLS が有効なのに
@@ -135,14 +135,12 @@ export default async function AdminPage() {
       .from("users")
       .select("id", { count: "exact", head: true })
       .eq("is_anonymous", true),
-    // 直近7日/30日にサインインした登録ユーザーの数。auth.users を直に読む必要が
+    // 直近半年にサインインした登録ユーザーの数。auth.users を直に読む必要が
     // あるので RPC 越し（PostgREST は public スキーマしか公開しない）。
     // 「サインインした」であって「今開いている」ではない（JWT リフレッシュでは
     // 更新されない）ので、あくまで継続利用の目安。
-    supabase.rpc("admin_active_user_counts").maybeSingle(),
+    supabase.rpc("admin_active_user_count"),
   ]);
-  const active7d = activeCounts?.active_7d ?? null;
-  const active30d = activeCounts?.active_30d ?? null;
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
     credits && since > 0
@@ -181,20 +179,15 @@ export default async function AdminPage() {
           </span>
           <span className="text-sm tabular-nums">{guestUserCount ?? 0}</span>
         </div>
-        {(active7d !== null || active30d !== null) && (
+        {activeUserCount !== null && (
           <>
             <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="text-xs text-muted-foreground">
-                {t("usersActive7d")}
+                {t("usersActive")}
               </span>
               <span className="text-lg font-semibold tabular-nums">
-                {active7d ?? 0}
+                {activeUserCount}
               </span>
-              <InlineDivider />
-              <span className="text-xs text-muted-foreground">
-                {t("usersActive30d")}
-              </span>
-              <span className="text-sm tabular-nums">{active30d ?? 0}</span>
             </div>
             <p className="mt-1 text-xs text-subtle-foreground">
               {t("usersActiveNote")}

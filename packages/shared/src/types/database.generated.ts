@@ -1034,13 +1034,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_active_user_counts: {
-        Args: never
-        Returns: {
-          active_30d: number
-          active_7d: number
-        }[]
-      }
+      admin_active_user_count: { Args: never; Returns: number }
       assign_inbound_email_trip: {
         Args: { p_id: string; p_trip_id: string }
         Returns: undefined
