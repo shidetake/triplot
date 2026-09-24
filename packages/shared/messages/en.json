@@ -649,8 +649,12 @@
     "usersDescription": "Users who have signed in (excludes guests who only joined via an invite link).",
     "usersRegistered": "Registered users",
     "usersGuests": "Guest-only",
-    "usersActiveSuffix": "(active: {count})",
-    "usersActiveNote": "Counts users who signed in (may miss people with a long-lived session who never signed in again).",
+    "usersActiveNote": "Counts a user as active if they signed in, or their session silently refreshed, within the last 6 months (so long-lived logged-in sessions still count).",
+    "usersTrendHeading": "Registered vs. active users over time",
+    "usersTrendRegistered": "Registered",
+    "usersTrendActive": "Active (6mo)",
+    "usersTrendBreakdown": "Daily breakdown",
+    "usersTrendNoActive": "—",
     "menuLink": "Admin",
     "candidatesHeading": "Receipt link host candidates",
     "candidatesDescription": "Hosts not on the allowlist yet where the automatic fetch (second pass) actually filled in draft details. Check the domain, and promote genuine receipt platforms by adding them to the allowlist (a code constant) — that cuts the LLM call back down to one.",
@@ -681,7 +685,8 @@
     "usageMonthly": "Monthly",
     "usagePeriodTotal": "This period",
     "usageEmails": "{count} emails",
-    "usageBreakdown": "Show breakdown"
+    "usageBreakdown": "Show breakdown",
+    "usersActiveLabel": "active:"
   },
   "feedback": {
     "menuLink": "Feedback",

@@ -649,8 +649,12 @@
     "usersDescription": "サインインして使っているユーザーの数（招待リンクだけで参加したゲストは含まない）。",
     "usersRegistered": "登録ユーザー",
     "usersGuests": "ゲストのみ",
-    "usersActiveSuffix": "（内アクティブ {count}）",
-    "usersActiveNote": "サインインした人数（アプリを開いたまま継続利用している人は含まないことがある）。",
+    "usersActiveNote": "サインイン、または裏で自動更新されているセッションのどちらかが半年以内なら active（ログインしたまま使い続けている人も数える）。",
+    "usersTrendHeading": "登録ユーザー・アクティブユーザーの推移",
+    "usersTrendRegistered": "登録ユーザー",
+    "usersTrendActive": "アクティブ（半年）",
+    "usersTrendBreakdown": "日別の内訳",
+    "usersTrendNoActive": "—",
     "menuLink": "管理",
     "candidatesHeading": "明細リンクの候補ホスト",
     "candidatesDescription": "自動 fetch（第2パス）が実際に下書きの内容を補えた、まだ許可リストに無いホストです。ドメイン名を確認し、本物のレシート基盤なら許可リスト（コード定数）への追加で昇格させてください（昇格すると LLM 呼び出しが1回で済むようになります）。",
@@ -681,7 +685,8 @@
     "usageMonthly": "月別",
     "usagePeriodTotal": "この期間",
     "usageEmails": "{count}通",
-    "usageBreakdown": "内訳を見る"
+    "usageBreakdown": "内訳を見る",
+    "usersActiveLabel": "内アクティブ"
   },
   "feedback": {
     "menuLink": "フィードバック",

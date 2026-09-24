@@ -993,6 +993,24 @@ export type Database = {
         }
         Relationships: []
       }
+      user_stats_daily: {
+        Row: {
+          active_count: number | null
+          day: string
+          registered_count: number
+        }
+        Insert: {
+          active_count?: number | null
+          day: string
+          registered_count: number
+        }
+        Update: {
+          active_count?: number | null
+          day?: string
+          registered_count?: number
+        }
+        Relationships: []
+      }
       users: {
         Row: {
           avatar_url: string | null
@@ -1043,6 +1061,7 @@ export type Database = {
         Args: { p_trip_ids: string[] }
         Returns: undefined
       }
+      compute_active_user_count: { Args: never; Returns: number }
       copy_trip: {
         Args: {
           p_default_currency: string
@@ -1203,6 +1222,7 @@ export type Database = {
         Args: { p_email_id: string }
         Returns: undefined
       }
+      record_daily_user_stats: { Args: never; Returns: undefined }
       record_receipt_link_candidate:
         | {
             Args: { p_host: string; p_sample_url?: string }

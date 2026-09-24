@@ -6,6 +6,7 @@ import { formatDayLabel } from "@triplot/shared/schedule";
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
 import { InlineDivider } from "@/components/inline-divider";
 import { AiUsageChart } from "@/components/ai-usage-chart";
+import { UserStatsChart } from "@/components/user-stats-chart";
 import { MessageBox } from "@/components/message-box";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
@@ -95,6 +96,7 @@ export default async function AdminPage() {
     { count: registeredUserCount },
     { count: guestUserCount },
     { data: activeUserCount },
+    { data: userStatsDaily },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // **service client で読む。** ai_usage_baseline は RLS が有効なのに
@@ -140,6 +142,14 @@ export default async function AdminPage() {
     // 「サインインした」であって「今開いている」ではない（JWT リフレッシュでは
     // 更新されない）ので、あくまで継続利用の目安。
     supabase.rpc("admin_active_user_count"),
+    // 登録/アクティブ数の推移。user_stats_daily は ai_usage_daily と同じく
+    // RLS 有効・ポリシー無しなので service client で読む。過去分は
+    // アクティブ数が算出できず null（record_daily_user_stats のバックフィル
+    // 参照）。
+    createServiceClient()
+      .from("user_stats_daily")
+      .select("day, registered_count, active_count")
+      .order("day", { ascending: true }),
   ]);
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
@@ -174,8 +184,12 @@ export default async function AdminPage() {
             {registeredUserCount ?? 0}
           </span>
           {activeUserCount !== null && (
-            <span className="text-xs text-muted-foreground tabular-nums">
-              {t("usersActiveSuffix", { count: activeUserCount })}
+            <span className="text-xs text-muted-foreground">
+              （{t("usersActiveLabel")}{" "}
+              <span className="text-lg font-semibold tabular-nums text-foreground">
+                {activeUserCount}
+              </span>
+              ）
             </span>
           )}
           <InlineDivider />
@@ -188,6 +202,19 @@ export default async function AdminPage() {
           <p className="mt-1 text-xs text-subtle-foreground">
             {t("usersActiveNote")}
           </p>
+        )}
+        {(userStatsDaily ?? []).length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-sm font-semibold">{t("usersTrendHeading")}</h3>
+            <UserStatsChart
+              rows={(userStatsDaily ?? []).map((r) => ({
+                day: r.day,
+                registeredCount: Number(r.registered_count),
+                activeCount:
+                  r.active_count === null ? null : Number(r.active_count),
+              }))}
+            />
+          </div>
         )}
       </section>
 
