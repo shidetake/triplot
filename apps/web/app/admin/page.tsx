@@ -96,7 +96,7 @@ export default async function AdminPage() {
     { count: registeredUserCount },
     { count: guestUserCount },
     { data: activeUserCount },
-    { data: userStatsDaily },
+    { data: userStatsDaily, error: userStatsDailyError },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // **service client で読む。** ai_usage_baseline は RLS が有効なのに
@@ -201,6 +201,11 @@ export default async function AdminPage() {
         {activeUserCount !== null && (
           <p className="mt-1 text-xs text-subtle-foreground">
             {t("usersActiveNote")}
+          </p>
+        )}
+        {userStatsDailyError && (
+          <p className="mt-2 text-xs text-red-600">
+            DEBUG: {userStatsDailyError.message}
           </p>
         )}
         {(userStatsDaily ?? []).length > 0 && (
