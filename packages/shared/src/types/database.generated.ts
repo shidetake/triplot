@@ -1053,6 +1053,7 @@ export type Database = {
     }
     Functions: {
       admin_active_user_count: { Args: never; Returns: number }
+      admin_rate_limited_email_count: { Args: never; Returns: number }
       assign_inbound_email_trip: {
         Args: { p_id: string; p_trip_id: string }
         Returns: undefined

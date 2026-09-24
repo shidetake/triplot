@@ -11,7 +11,6 @@ import { MessageBox } from "@/components/message-box";
 import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
 import { createClient } from "@/lib/supabase/server";
-import { createServiceClient } from "@/lib/supabase/service";
 
 import { updateFeedbackStatusAction } from "./actions";
 
@@ -91,7 +90,7 @@ export default async function AdminPage() {
   const [
     credits,
     { data: baseline },
-    { count: rateLimitedCount },
+    { data: rateLimitedCount },
     { data: extractedRows },
     { count: registeredUserCount },
     { count: guestUserCount },
@@ -99,28 +98,22 @@ export default async function AdminPage() {
     { data: userStatsDaily },
   ] = await Promise.all([
     fetchGatewayCredits(),
-    // **service client で読む。** ai_usage_baseline は RLS が有効なのに
-    // ポリシーが1つも無いので、通常のクライアントからは常に0行になる。
-    // その結果 perEmail が出せず、「1通あたり」「残り何通」「使用量の概算
-    // コスト」がまとめて表示されていなかった（実測: 本番で単価が出るはずの
-    // 値〔$0.020〕があるのに、どれも出ていなかった）。
-    createServiceClient()
+    // 単価計算の基準値。RLS の ai_usage_baseline_admin_select（is_app_admin()）
+    // で管理者の権限で読む。
+    supabase
       .from("ai_usage_baseline")
       .select("total_used_at_start, extracted_since")
       .maybeSingle(),
-    supabase
-      .from("inbound_emails")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "error")
-      .eq("extract_error_kind", "rate_limit"),
+    // レート制限で詰まっている件数（全ユーザー分）。受信メールは本人しか
+    // 読めないので、件数だけを返す RPC 越しに数える。
+    supabase.rpc("admin_rate_limited_email_count"),
     // 使用量の推移の材料。**受信箱ではなく日別カウンタから読む。**
     // inbound_emails を数えると、行が消えたぶんの履歴ごと消える（90日の自動
     // 削除、テスト用に受信箱を空にする運用）。実測: 累計331通を抽出している
     // のに残っていたのは108通で、グラフが「今日しか使っていない」形になった。
     //
-    // service client なのは ai_usage_daily が RLS 有効・ポリシー無しのため
-    // （ai_usage_baseline と同じ扱い）。ここに来る時点で is_admin は確認済み。
-    createServiceClient()
+    // RLS の ai_usage_daily_admin_select（is_app_admin()）で管理者の権限で読む。
+    supabase
       .from("ai_usage_daily")
       .select("day, extracted_count")
       .gte("day", usageSinceDay())
@@ -137,10 +130,9 @@ export default async function AdminPage() {
       .from("users")
       .select("id", { count: "exact", head: true })
       .eq("is_anonymous", true),
-    // 直近半年にサインインした登録ユーザーの数。auth.users を直に読む必要が
-    // あるので RPC 越し（PostgREST は public スキーマしか公開しない）。
-    // 「サインインした」であって「今開いている」ではない（JWT リフレッシュでは
-    // 更新されない）ので、あくまで継続利用の目安。
+    // 直近半年に使った登録ユーザーの数（サインインかセッションの自動更新の
+    // どちらかが半年以内）。auth のテーブルを読む必要があるので RPC 越し
+    // （PostgREST は public スキーマしか公開しない）。
     supabase.rpc("admin_active_user_count"),
     // 登録/アクティブ数の推移。RLS の user_stats_daily_admin_select
     // （is_app_admin()）で admin のセッションから読む（service role key に
