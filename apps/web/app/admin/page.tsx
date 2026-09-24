@@ -1,6 +1,8 @@
 import { getLocale, getTranslations } from "next-intl/server";
 import { notFound, redirect } from "next/navigation";
 
+import { MONTHLY_EMAIL_CAP } from "@triplot/shared/import/config";
+import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
 import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
@@ -96,6 +98,7 @@ export default async function AdminPage() {
     { count: guestUserCount },
     { data: activeUserCount },
     { data: userStatsDaily },
+    { data: userUsage },
   ] = await Promise.all([
     fetchGatewayCredits(),
     // 単価計算の基準値。RLS の ai_usage_baseline_admin_select（is_app_admin()）
@@ -142,7 +145,15 @@ export default async function AdminPage() {
       .from("user_stats_daily")
       .select("day, registered_count, active_count")
       .order("day", { ascending: true }),
+    // ユーザー一覧（使われ方の分析）。件数と日付だけを返す RPC 越しに読む。
+    // 旅行やメールの中身は管理者にも読ませない。
+    supabase.rpc("admin_user_usage"),
   ]);
+  // 選ぶ一覧なので新しい順（最後に使った日が新しい人が先頭。一度も使って
+  // いない人は末尾）。
+  const usageRows = [...(userUsage ?? [])].sort((a, b) =>
+    (b.last_active_at ?? "").localeCompare(a.last_active_at ?? ""),
+  );
   const since = baseline?.extracted_since ?? 0;
   const perEmail =
     credits && since > 0
@@ -207,6 +218,75 @@ export default async function AdminPage() {
               }))}
             />
           </div>
+        )}
+      </section>
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold">
+          {t("usersListHeading")}
+          {usageRows.length > 0 && (
+            <span className="font-normal text-subtle-foreground">
+              {" "}({usageRows.length})
+            </span>
+          )}
+        </h2>
+        <p className="mt-1 text-xs text-muted-foreground">
+          {t("usersListDescription")}
+        </p>
+        {usageRows.length === 0 ? (
+          <p className="mt-6 text-sm text-muted-foreground">
+            {t("usersListEmpty")}
+          </p>
+        ) : (
+          <ul className="mt-4 divide-y divide-foreground/10">
+            {usageRows.map((u) => (
+              <li key={u.user_id} className="py-3">
+                <div className="flex items-baseline gap-2">
+                  <span className="min-w-0 truncate text-sm font-medium text-foreground">
+                    {u.display_name || t("usersListNoName")}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                    {t("usersListImportsMonth", {
+                      count: Number(u.imports_this_month),
+                      cap: effectiveEmailCap(
+                        MONTHLY_EMAIL_CAP,
+                        u.cap_override as number | null,
+                      ),
+                    })}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground tabular-nums">
+                  <span>
+                    {t("usersListLastActive", {
+                      date: u.last_active_at
+                        ? formatDayLabel(u.last_active_at.slice(0, 10), locale)
+                        : "—",
+                    })}
+                  </span>
+                  <InlineDivider />
+                  <span>
+                    {t("usersListRegistered", {
+                      date: formatDayLabel(u.registered_at.slice(0, 10), locale),
+                    })}
+                  </span>
+                  <InlineDivider />
+                  <span>{t("usersListTrips", { count: Number(u.trip_count) })}</span>
+                  <InlineDivider />
+                  <span>
+                    {t("usersListImports90d", { count: Number(u.imports_90d) })}
+                  </span>
+                  {Number(u.failed_count) > 0 && (
+                    <>
+                      <InlineDivider />
+                      <span className="text-amber-700 dark:text-amber-400">
+                        {t("usersListFailed", { count: Number(u.failed_count) })}
+                      </span>
+                    </>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
 

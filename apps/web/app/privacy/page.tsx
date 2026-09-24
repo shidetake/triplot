@@ -21,7 +21,7 @@ export default function PrivacyPage() {
 
       <h1 className="mt-6 text-2xl font-semibold">プライバシーポリシー</h1>
       <p className="mt-2 text-xs text-muted-foreground">
-        最終更新日: 2026年7月14日
+        最終更新日: 2026年9月25日
       </p>
 
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
@@ -65,6 +65,7 @@ export default function PrivacyPage() {
             <li>旅行計画・費用記録・精算などの本サービスの機能提供</li>
             <li>転送されたメールからの費用・予定の自動抽出（下記 4 参照）</li>
             <li>不正利用の防止・障害対応</li>
+            <li>サービスの運営・改善のための利用状況の把握</li>
           </ul>
           <p>
             取得した情報を広告目的で利用すること、および第三者に販売することは
@@ -78,7 +79,8 @@ export default function PrivacyPage() {
             <li>
               <span className="font-medium">Google サインイン</span> —
               メールアドレス・名前・プロフィール画像を認証とアカウント表示の
-              ためにのみ使用します。
+              ために使用します。名前は、本サービスの運営（利用状況の把握）の
+              ためにも使用します。
             </li>
             <li>
               <span className="font-medium">Google カレンダーへのエクスポート</span> —

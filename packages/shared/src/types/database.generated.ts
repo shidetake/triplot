@@ -1054,6 +1054,20 @@ export type Database = {
     Functions: {
       admin_active_user_count: { Args: never; Returns: number }
       admin_rate_limited_email_count: { Args: never; Returns: number }
+      admin_user_usage: {
+        Args: never
+        Returns: {
+          cap_override: number
+          display_name: string
+          failed_count: number
+          imports_90d: number
+          imports_this_month: number
+          last_active_at: string
+          registered_at: string
+          trip_count: number
+          user_id: string
+        }[]
+      }
       assign_inbound_email_trip: {
         Args: { p_id: string; p_trip_id: string }
         Returns: undefined
