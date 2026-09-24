@@ -1,6 +1,6 @@
 ---
 name: web-staging-deploy
-description: web の変更を staging ブランチにマージ&pushしてVercel Previewで確認できる状態にする。「stagingに上げて」「確認できる状態にして」で使う。AGENTS.mdの「webの動作確認はstagingで行う」。
+description: web の変更を staging ブランチにマージ&pushしてVercel Previewで確認できる状態にする。「stagingに上げて」「確認できる状態にして」で使う。docs/development.md の「web の動作確認は staging で行う」。
 ---
 
 # web の staging デプロイ

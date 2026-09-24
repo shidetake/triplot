@@ -2,7 +2,7 @@
 // **migration を入れたら staging にも当てる**、を push の時に確かめる。
 //
 // 当て忘れると、プレビューだけ古いスキーマで動く。壊れ方が「原因不明の不具合」
-// の形で出るので、気付くのが遅れる（AGENTS.md「web の動作確認は staging で行う」）。
+// の形で出るので、気付くのが遅れる（docs/development.md「web の動作確認は staging で行う」）。
 //
 // 本番との差は db:types:check が見ている（生成した型と実 DB の突き合わせ）が、
 // staging は誰も見ていなかった。ここが担当する。
@@ -77,5 +77,5 @@ console.error("当ててから push する:");
 console.error("  npm run db:push:staging");
 console.error("");
 console.error("当て忘れると、プレビューだけ古いスキーマで動いて原因不明の");
-console.error("不具合に見える（AGENTS.md「staging DB への migration」）。");
+console.error("不具合に見える（docs/development.md「staging DB への migration」）。");
 process.exit(1);

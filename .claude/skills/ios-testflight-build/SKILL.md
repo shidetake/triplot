@@ -1,6 +1,6 @@
 ---
 name: ios-testflight-build
-description: iOS の動作確認用ビルドを TestFlight に上げる（ローカルビルド + submit）。「TestFlightに上げて」「区切りだからビルドして」「TestFlightビルドして」で使う。AGENTS.md の「iOS の実機確認」3段目。
+description: iOS の動作確認用ビルドを TestFlight に上げる（ローカルビルド + submit）。「TestFlightに上げて」「区切りだからビルドして」「TestFlightビルドして」で使う。docs/development.md の「iOS の実機確認」3段目。
 ---
 
 # iOS TestFlight 確認ビルド
@@ -11,7 +11,7 @@ description: iOS の動作確認用ビルドを TestFlight に上げる（ロー
 
 - preview ビルド（`ios-preview-build`）で一通り確認できていること。
 - typecheck / lint / test が通っていること。
-- 機能追加やバグ修正の「区切り」がついていること（AGENTS.md の定義）。
+- 機能追加やバグ修正の「区切り」がついていること（docs/development.md の定義）。
 - これらが揃っているなら、**ユーザーの指示を待たず判断でビルド〜submitまで進めてよい**（AGENTS.md 既定方針）。
 
 ## 手順
@@ -45,7 +45,7 @@ npm run ios:submit -- apps/mobile/build-<timestamp>.ipa
 - **`eas submit` を直に叩かない。** このスクリプトは出す前に ipa の中身を検めて、
   起動に要るフレームワーク（React / ReactNativeDependencies / hermesvm）が欠けて
   いたら止める。上流の配信が落ちている時、**ビルドは成功するのに起動しない
-  バイナリ**ができるため（AGENTS.md 参照。実際に TestFlight まで出してしまった）。
+  バイナリ**ができるため（docs/development.md「pod install が cmake で落ちる時」参照。実際に TestFlight まで出してしまった）。
 - 止まったら回避せず、配信が戻ってからビルドし直す。
 
 ## 完了報告（省略しないこと）

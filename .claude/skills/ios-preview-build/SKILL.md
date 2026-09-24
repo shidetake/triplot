@@ -1,6 +1,6 @@
 ---
 name: ios-preview-build
-description: 実機ですぐ確認したい時の内部配布ビルド（staging DB・数十秒でインストール可）。「実機で見たい」「previewビルドして」で使う。AGENTS.md の「iOS の実機確認」2段目・既定の実機確認先。
+description: 実機ですぐ確認したい時の内部配布ビルド（staging DB・数十秒でインストール可）。「実機で見たい」「previewビルドして」で使う。docs/development.md の「iOS の実機確認」2段目・既定の実機確認先。
 ---
 
 # iOS preview ビルド

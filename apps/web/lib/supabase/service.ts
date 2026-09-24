@@ -9,6 +9,7 @@ import type { Database } from "@triplot/shared/types/database";
 // 既存の 3 クライアント（client / server / proxy）はすべてユーザの cookie
 // セッション前提で RLS 配下。これはその例外で、auth.uid() を持たない入口
 // （例: Cloudflare Email Worker からの POST）専用。乱用しないこと。
+// 使ってよい場面の決まりは docs/database.md の「データを誰に読ませるか」。
 export function createServiceClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;

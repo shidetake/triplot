@@ -1,11 +1,11 @@
 ---
 name: ios-simulator-verify
-description: シミュレータ + maestro で iOS の見た目/挙動を実機に近い形で検証する。新しいUI変更やバグ修正を出荷する前の最初の確認段階。「シミュレータで確認して」「見た目確認して」で使う。AGENTS.md の「iOS の実機確認」1段目。
+description: シミュレータ + maestro で iOS の見た目/挙動を実機に近い形で検証する。新しいUI変更やバグ修正を出荷する前の最初の確認段階。「シミュレータで確認して」「見た目確認して」で使う。docs/development.md の「iOS の実機確認」1段目。
 ---
 
 # シミュレータ + maestro での確認
 
-3段階の実機確認フロー（AGENTS.md）のうち一番速い最初の段。ここで作り込んでから
+3段階の実機確認フロー（docs/development.md）のうち一番速い最初の段。ここで作り込んでから
 `ios-preview-build` → `ios-testflight-build` に進む。
 
 ## 落とし穴（このセッションで繰り返し踏んだ）

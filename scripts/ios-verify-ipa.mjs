@@ -41,7 +41,7 @@ export function verifyIpa(ipa) {
   console.error("");
   console.error("これが入っていないアプリは起動した瞬間に落ちる。上流の");
   console.error("アーティファクト配信が落ちていて、ソースからビルドする経路に");
-  console.error("落ちた時にこうなる（AGENTS.md「pod install が cmake で落ちる時」）。");
+  console.error("落ちた時にこうなる（docs/development.md「pod install が cmake で落ちる時」）。");
   console.error("");
   console.error("配信が戻っているか確かめて、戻ってからビルドし直すこと。");
   console.error("回避してビルドしたものを出さない。");
