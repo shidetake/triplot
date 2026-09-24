@@ -82,9 +82,14 @@ create table if not exists "public"."user_stats_daily" (
 
 alter table "public"."user_stats_daily" owner to "postgres";
 
--- ai_usage_daily と同じ扱い: RLS は有効にするがポリシーは1つも置かない。
--- 管理ページは service client（RLS をバイパス）で読む。
+-- 読めるのは admin だけ（users_admin_select 等と同じ is_app_admin() ゲート）。
+-- 管理ページはログイン中の admin のセッションで読むので service role key に
+-- 依存しない。書き込みのポリシーは置かない＝書けるのは
+-- record_daily_user_stats（SECURITY DEFINER）経由だけ。
 alter table "public"."user_stats_daily" enable row level security;
+
+create policy "user_stats_daily_admin_select" on "public"."user_stats_daily"
+  for select using ("public"."is_app_admin"());
 
 grant all on table "public"."user_stats_daily" to "anon";
 grant all on table "public"."user_stats_daily" to "authenticated";

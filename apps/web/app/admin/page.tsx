@@ -142,11 +142,11 @@ export default async function AdminPage() {
     // 「サインインした」であって「今開いている」ではない（JWT リフレッシュでは
     // 更新されない）ので、あくまで継続利用の目安。
     supabase.rpc("admin_active_user_count"),
-    // 登録/アクティブ数の推移。user_stats_daily は ai_usage_daily と同じく
-    // RLS 有効・ポリシー無しなので service client で読む。過去分は
-    // アクティブ数が算出できず null（record_daily_user_stats のバックフィル
-    // 参照）。
-    createServiceClient()
+    // 登録/アクティブ数の推移。RLS の user_stats_daily_admin_select
+    // （is_app_admin()）で admin のセッションから読む（service role key に
+    // 依存させない）。過去分はアクティブ数が算出できず null
+    // （record_daily_user_stats のバックフィル参照）。
+    supabase
       .from("user_stats_daily")
       .select("day, registered_count, active_count")
       .order("day", { ascending: true }),
