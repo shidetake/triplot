@@ -649,7 +649,7 @@
     "usersDescription": "サインインして使っているユーザーの数（招待リンクだけで参加したゲストは含まない）。",
     "usersRegistered": "登録ユーザー",
     "usersGuests": "ゲストのみ",
-    "usersActive": "アクティブ（直近半年）",
+    "usersActiveSuffix": "（内アクティブ {count}）",
     "usersActiveNote": "サインインした人数（アプリを開いたまま継続利用している人は含まないことがある）。",
     "menuLink": "管理",
     "candidatesHeading": "明細リンクの候補ホスト",

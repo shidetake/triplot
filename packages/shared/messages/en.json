@@ -649,7 +649,7 @@
     "usersDescription": "Users who have signed in (excludes guests who only joined via an invite link).",
     "usersRegistered": "Registered users",
     "usersGuests": "Guest-only",
-    "usersActive": "Active (last 6 months)",
+    "usersActiveSuffix": "(active: {count})",
     "usersActiveNote": "Counts users who signed in (may miss people with a long-lived session who never signed in again).",
     "menuLink": "Admin",
     "candidatesHeading": "Receipt link host candidates",

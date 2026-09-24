@@ -173,6 +173,11 @@ export default async function AdminPage() {
           <span className="text-lg font-semibold tabular-nums">
             {registeredUserCount ?? 0}
           </span>
+          {activeUserCount !== null && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {t("usersActiveSuffix", { count: activeUserCount })}
+            </span>
+          )}
           <InlineDivider />
           <span className="text-xs text-muted-foreground">
             {t("usersGuests")}
@@ -180,19 +185,9 @@ export default async function AdminPage() {
           <span className="text-sm tabular-nums">{guestUserCount ?? 0}</span>
         </div>
         {activeUserCount !== null && (
-          <>
-            <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="text-xs text-muted-foreground">
-                {t("usersActive")}
-              </span>
-              <span className="text-lg font-semibold tabular-nums">
-                {activeUserCount}
-              </span>
-            </div>
-            <p className="mt-1 text-xs text-subtle-foreground">
-              {t("usersActiveNote")}
-            </p>
-          </>
+          <p className="mt-1 text-xs text-subtle-foreground">
+            {t("usersActiveNote")}
+          </p>
         )}
       </section>
 
