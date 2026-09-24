@@ -1,6 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
-
-import { formatDayLabel } from "@triplot/shared/schedule";
+import { getTranslations } from "next-intl/server";
 
 export type UserStatsRow = {
   day: string;
@@ -18,7 +16,6 @@ export type UserStatsRow = {
 // 縦軸は「人数」で共通の1軸（別スケールにしない＝ダブル軸グラフを作らない）。
 export async function UserStatsChart({ rows }: { rows: UserStatsRow[] }) {
   const t = await getTranslations("admin");
-  const locale = await getLocale();
 
   const n = rows.length;
   const activePoints = rows
@@ -111,8 +108,9 @@ export async function UserStatsChart({ rows }: { rows: UserStatsRow[] }) {
       </svg>
 
       <div className="mt-1 flex justify-between text-[10px] text-muted-foreground tabular-nums">
-        <span>{formatDayLabel(rows[0]!.day, locale)}</span>
-        <span>{formatDayLabel(rows[n - 1]!.day, locale)}</span>
+        {/* 日付は YYYY-MM-DD（LLM 使用量のグラフと揃える）。 */}
+        <span>{rows[0]!.day}</span>
+        <span>{rows[n - 1]!.day}</span>
       </div>
     </div>
   );

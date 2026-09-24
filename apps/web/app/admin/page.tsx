@@ -4,7 +4,6 @@ import Link from "next/link";
 import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
-import { ChevronIcon } from "@/components/icons";
 import { InlineDivider } from "@/components/inline-divider";
 import { AiUsageChart } from "@/components/ai-usage-chart";
 import { UserStatsChart } from "@/components/user-stats-chart";
@@ -200,13 +199,12 @@ export default async function AdminPage() {
         {/* ユーザー一覧は人数ぶん長くなるので別ページ（/admin/users）。 */}
         <Link
           href="/admin/users"
-          className="mt-4 inline-flex items-center gap-0.5 text-sm text-blue-600 hover:underline"
+          className="mt-4 inline-block text-sm text-blue-600 hover:underline"
         >
           {t("usersListHeading")}
           {registeredUserCount ? (
             <span className="tabular-nums"> ({registeredUserCount})</span>
           ) : null}
-          <ChevronIcon size={16} />
         </Link>
       </section>
 

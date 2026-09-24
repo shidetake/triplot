@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { MONTHLY_EMAIL_CAP } from "@triplot/shared/import/config";
 import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
-import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { ChevronIcon } from "@/components/icons";
 
@@ -18,10 +17,9 @@ import { requireAdmin } from "../require-admin";
 export default async function AdminUsersPage() {
   const supabase = await requireAdmin();
 
-  const [{ data: userUsage }, t, locale] = await Promise.all([
+  const [{ data: userUsage }, t] = await Promise.all([
     supabase.rpc("admin_user_usage"),
     getTranslations("admin"),
-    getLocale(),
   ]);
 
   // 選ぶ一覧なので新しい順（最後に使った日が新しい人が先頭。一度も使って
@@ -29,8 +27,8 @@ export default async function AdminUsersPage() {
   const rows = [...(userUsage ?? [])].sort((a, b) =>
     (b.last_active_at ?? "").localeCompare(a.last_active_at ?? ""),
   );
-  const day = (iso: string | null) =>
-    iso ? formatDayLabel(iso.slice(0, 10), locale) : "—";
+  // 日付は YYYY-MM-DD（管理ページの LLM 使用量と揃える。UTC の日付）。
+  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
   const th = "px-2 py-2 text-right font-normal whitespace-nowrap";
   const td = "px-2 py-2 text-right tabular-nums whitespace-nowrap";
