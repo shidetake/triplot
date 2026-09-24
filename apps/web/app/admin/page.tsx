@@ -90,9 +90,9 @@ export default async function AdminPage() {
   // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
   const [
     credits,
-    { data: baseline },
+    { data: baseline, error: baselineError },
     { count: rateLimitedCount },
-    { data: extractedRows },
+    { data: extractedRows, error: extractedRowsError },
     { count: registeredUserCount },
     { count: guestUserCount },
     { data: activeUserCount },
@@ -205,7 +205,17 @@ export default async function AdminPage() {
         )}
         {userStatsDailyError && (
           <p className="mt-2 text-xs text-red-600">
-            DEBUG: {userStatsDailyError.message}
+            DEBUG userStatsDaily: {userStatsDailyError.message}
+          </p>
+        )}
+        {baselineError && (
+          <p className="mt-2 text-xs text-red-600">
+            DEBUG baseline: {baselineError.message}
+          </p>
+        )}
+        {extractedRowsError && (
+          <p className="mt-2 text-xs text-red-600">
+            DEBUG extractedRows: {extractedRowsError.message}
           </p>
         )}
         {(userStatsDaily ?? []).length > 0 && (
