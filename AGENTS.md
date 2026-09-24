@@ -30,8 +30,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - **iOS**: 「実機で見たい」と言われたら preview ビルドを使う。区切り
   （docs/development.md の「iOS の実機確認」の定義）では、指示を待たず
   TestFlight にビルドして submit まで進める。
-- **Migration ポリシー**の「本番運用フェーズ」への切り替えは、ユーザーが明示的に
-  言った時だけ。自分で判断しない。
+- **本番 DB を直接変更しない。** スキーマもデータも migration を通す。調査の
+  ための読み取りはよいが、本番のデータを書き換える・消す操作は、自分が検証用に
+  作ったものであっても事前にユーザーに確認する。
 
 ## ユーザーへの渡し方
 

@@ -43,6 +43,6 @@ npx expo run:ios --device "iPhone 16 Pro (iOS26)"
 
 ## テストデータのクリーンアップ
 
-検証用に一時的にイベント/費用等を作った場合は、確認後に本番/staging DBへ直接SQLで削除する
-（`SUPABASE_ACCESS_TOKEN` を使った `supabase db query --linked` 経由。CLAUDE.mdの
-「既存データを理由に設計を妥協しない」とは別の話——検証用に作ったテストデータの後始末）。
+検証用に一時的にイベント/費用等を作った場合は、確認後に後始末する。消すのは自分が
+作ったものだけ。staging DB なら直接 SQL で消してよい。本番 DB は利用者のデータが
+入っているので、消す前にユーザーに確認する（AGENTS.md「本番 DB を直接変更しない」）。

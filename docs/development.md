@@ -201,8 +201,8 @@ web の入口は OAuth（Google / Apple）だけなので、自動テストや A
 環境（本番/確認用で DB が分かれていること・全体像）は
 [`architecture.md`](./architecture.md) の「環境（本番／確認）」節を参照。
 
-本番にデプロイして確かめる運用はリリースまで。**リリース後は `main` に入れた
-ものが即公開されるので、確認は staging で行う**（`main` への push ＝ 公開）。
+**`main` に入れたものは即公開されるので、確認は staging で行う**
+（`main` への push ＝ 公開）。
 
 - **確認はプレビュー URL で行う。** `https://triplot-git-staging-hdtks-projects.vercel.app`
   （Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが
