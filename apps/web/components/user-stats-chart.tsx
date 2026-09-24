@@ -114,30 +114,6 @@ export async function UserStatsChart({ rows }: { rows: UserStatsRow[] }) {
         <span>{formatDayLabel(rows[0]!.day, locale)}</span>
         <span>{formatDayLabel(rows[n - 1]!.day, locale)}</span>
       </div>
-
-      {/* グラフは概形なので、実数は表で読めるようにする（読み上げもこちら）。 */}
-      <details className="mt-3">
-        <summary className="cursor-pointer text-xs text-muted-foreground">
-          {t("usersTrendBreakdown")}
-        </summary>
-        <ul className="mt-2 divide-y divide-foreground/10">
-          {[...rows].reverse().map((r) => (
-            <li
-              key={r.day}
-              className="flex items-baseline justify-between py-1 text-xs tabular-nums"
-            >
-              <span className="text-muted-foreground">
-                {formatDayLabel(r.day, locale)}
-              </span>
-              <span>
-                {r.registeredCount}
-                {" / "}
-                {r.activeCount ?? t("usersTrendNoActive")}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </details>
     </div>
   );
 }
