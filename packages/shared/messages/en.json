@@ -658,6 +658,8 @@
     "usersListEmpty": "No registered users yet.",
     "usersListNoName": "(no display name)",
     "usersListColName": "Name",
+    "usersListColEmail": "Email",
+    "usersListColProvider": "Sign-in",
     "usersListColLastActive": "Last active",
     "usersListColRegistered": "Joined",
     "usersListColTrips": "Trips",

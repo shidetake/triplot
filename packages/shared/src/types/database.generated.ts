@@ -1059,9 +1059,11 @@ export type Database = {
         Returns: {
           cap_override: number
           display_name: string
+          email: string
           failed_count: number
           imports_this_month: number
           last_active_at: string
+          provider: string
           registered_at: string
           trip_count: number
           user_id: string

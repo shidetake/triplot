@@ -658,6 +658,8 @@
     "usersListEmpty": "登録ユーザーはまだいません。",
     "usersListNoName": "（表示名なし）",
     "usersListColName": "表示名",
+    "usersListColEmail": "メールアドレス",
+    "usersListColProvider": "ログイン",
     "usersListColLastActive": "最終利用",
     "usersListColRegistered": "登録",
     "usersListColTrips": "旅行",

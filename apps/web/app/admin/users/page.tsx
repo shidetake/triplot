@@ -11,7 +11,8 @@ import { requireAdmin } from "../require-admin";
 // 管理ページの「ユーザー一覧」（使われ方の分析）。登録ユーザー1人を1行にした表。
 //
 // 人数が増えると長くなるので管理ページ本体からは分けてある（本体には入口だけ
-// 置く）。表示するのは件数と日付だけで、旅行やメールの中身は出さない。
+// 置く）。誰かを見分けるための表示名・メールアドレス・ログイン方法と、件数と
+// 日付だけを出す。旅行やメールの中身は出さない。
 // 数えるのは管理者用の RPC（admin_user_usage）で、中身の表は管理者にも
 // 読ませない（docs/database.md「データを誰に読ませるか」）。
 export default async function AdminUsersPage() {
@@ -27,6 +28,9 @@ export default async function AdminUsersPage() {
   const rows = [...(userUsage ?? [])].sort((a, b) =>
     (b.last_active_at ?? "").localeCompare(a.last_active_at ?? ""),
   );
+  // ログイン方法の表示名（ブランド名なので訳さない）。未知の値はそのまま出す。
+  const providerLabel = (p: string | null) =>
+    p === "google" ? "Google" : p === "apple" ? "Apple" : (p ?? "—");
   // 日付は YYYY-MM-DD（管理ページの LLM 使用量と揃える。UTC の日付）。
   const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
@@ -70,6 +74,12 @@ export default async function AdminUsersPage() {
                 <th scope="col" className="py-2 pr-2 text-left font-normal">
                   {t("usersListColName")}
                 </th>
+                <th scope="col" className="px-2 py-2 text-left font-normal">
+                  {t("usersListColEmail")}
+                </th>
+                <th scope="col" className="px-2 py-2 text-left font-normal whitespace-nowrap">
+                  {t("usersListColProvider")}
+                </th>
                 <th scope="col" className={th}>
                   {t("usersListColLastActive")}
                 </th>
@@ -98,6 +108,12 @@ export default async function AdminUsersPage() {
                     >
                       {u.display_name || t("usersListNoName")}
                     </th>
+                    <td className="max-w-56 truncate px-2 py-2 text-left">
+                      {u.email || "—"}
+                    </td>
+                    <td className="px-2 py-2 text-left whitespace-nowrap">
+                      {providerLabel(u.provider)}
+                    </td>
                     <td className={td}>{day(u.last_active_at)}</td>
                     <td className={td}>{day(u.registered_at)}</td>
                     <td className={td}>{Number(u.trip_count)}</td>

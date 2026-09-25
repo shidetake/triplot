@@ -79,8 +79,8 @@ export default function PrivacyPage() {
             <li>
               <span className="font-medium">Google サインイン</span> —
               メールアドレス・名前・プロフィール画像を認証とアカウント表示の
-              ために使用します。名前は、本サービスの運営（利用状況の把握）の
-              ためにも使用します。
+              ために使用します。名前とメールアドレスは、本サービスの運営
+              （利用状況の把握）のためにも使用します。
             </li>
             <li>
               <span className="font-medium">Google カレンダーへのエクスポート</span> —
