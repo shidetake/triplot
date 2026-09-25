@@ -40,7 +40,9 @@ export default async function AdminUsersPage() {
   const td = "px-2 py-2 text-right tabular-nums whitespace-nowrap";
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-6 py-10">
+    // 列が多い表なので、旅行詳細と同じく一段広い max-w-3xl（ui-guidelines の
+    // ページコンテナ: 情報量の多いページの例外）。
+    <main className="mx-auto w-full max-w-3xl px-6 py-10">
       <Link
         href="/admin"
         className="-ml-1 inline-flex items-center gap-0.5 text-sm text-muted-foreground transition hover:text-foreground"
