@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages, getTranslations } from "next-intl/server";
 import "./globals.css";
 import { Toaster } from "@/components/toast";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
+import { LinkResultToast } from "@/components/link-result-toast";
 import { resolveTheme } from "@/i18n/theme.server";
 import { ThemeSync } from "@/components/theme-sync";
 
@@ -69,6 +71,11 @@ export default async function RootLayout({
           <div className="flex-1">{children}</div>
           <Toaster />
           <ConfirmDialogHost />
+          {/* 検索パラメータを読むので Suspense で包む（包まないとページ全体が
+              動的描画に落ちる）。 */}
+          <Suspense fallback={null}>
+            <LinkResultToast />
+          </Suspense>
         </NextIntlClientProvider>
       </body>
     </html>

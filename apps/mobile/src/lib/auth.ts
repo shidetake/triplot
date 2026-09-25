@@ -21,7 +21,9 @@ import { supabase } from "./supabase";
 // signInWithIdToken に繋ぐ（web の OAuth リダイレクトフローは使わない）。
 // どちらもキャンセル時は false を返し、失敗時は throw する。
 
-export async function signInWithApple(): Promise<boolean> {
+// Apple の本人確認ダイアログを出して、Supabase に渡す証明（id_token と nonce）を
+// もらう。ログインとログイン方法の追加で共通。閉じられたら null。
+async function appleCredential(): Promise<{ token: string; nonce: string } | null> {
   // Supabase は id_token の nonce（SHA256 前の生値）を検証する。
   // Apple へはハッシュを渡し、Supabase へは生値を渡す（公式パターン）。
   const rawNonce = Crypto.randomUUID();
@@ -40,16 +42,22 @@ export async function signInWithApple(): Promise<boolean> {
     });
   } catch (e) {
     // ユーザーがダイアログを閉じた（ERR_REQUEST_CANCELED）は正常系。
-    if ((e as { code?: string }).code === "ERR_REQUEST_CANCELED") return false;
+    if ((e as { code?: string }).code === "ERR_REQUEST_CANCELED") return null;
     throw e;
   }
   if (!credential.identityToken) {
     throw new Error("Apple identityToken missing");
   }
+  return { token: credential.identityToken, nonce: rawNonce };
+}
+
+export async function signInWithApple(): Promise<boolean> {
+  const credential = await appleCredential();
+  if (!credential) return false;
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "apple",
-    token: credential.identityToken,
-    nonce: rawNonce,
+    token: credential.token,
+    nonce: credential.nonce,
   });
   if (error) throw error;
   await setLastAuthProvider("apple");
@@ -90,12 +98,20 @@ if (googleSignInAvailable) {
   });
 }
 
-export async function signInWithGoogle(): Promise<boolean> {
+// Google の本人確認を出して、Supabase に渡す id_token をもらう。ログインと
+// ログイン方法の追加で共通。閉じられたら null。
+async function googleIdToken(): Promise<string | null> {
   await GoogleSignin.hasPlayServices();
   const response = await GoogleSignin.signIn();
-  if (!isSuccessResponse(response)) return false; // キャンセル
+  if (!isSuccessResponse(response)) return null; // キャンセル
   const idToken = response.data.idToken;
   if (!idToken) throw new Error("Google idToken missing");
+  return idToken;
+}
+
+export async function signInWithGoogle(): Promise<boolean> {
+  const idToken = await googleIdToken();
+  if (!idToken) return false;
   const { data, error } = await supabase.auth.signInWithIdToken({
     provider: "google",
     token: idToken,
@@ -117,6 +133,35 @@ export async function signInWithGoogle(): Promise<boolean> {
       // 取れなければ何もしない。
     }
   }
+  return true;
+}
+
+// 設定の「ログイン方法」から、今のアカウントに Google / Apple を足す。
+// 足すだけで、アカウントの統合はしない。その Google / Apple で既に別の
+// アカウントがあると Supabase が断る（呼び出し側が classifyLinkError で
+// 見分けて案内を出す。@triplot/shared/loginMethods）。
+// 閉じられたら false、失敗は throw。
+export async function linkLoginMethod(
+  provider: "google" | "apple",
+): Promise<boolean> {
+  if (provider === "apple") {
+    const credential = await appleCredential();
+    if (!credential) return false;
+    const { error } = await supabase.auth.linkIdentity({
+      provider: "apple",
+      token: credential.token,
+      nonce: credential.nonce,
+    });
+    if (error) throw error;
+    return true;
+  }
+  const idToken = await googleIdToken();
+  if (!idToken) return false;
+  const { error } = await supabase.auth.linkIdentity({
+    provider: "google",
+    token: idToken,
+  });
+  if (error) throw error;
   return true;
 }
 

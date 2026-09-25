@@ -30,6 +30,7 @@ import {
   SaveIcon,
   UserPlusIcon,
 } from "@/components/icons";
+import { LoginMethods } from "@/components/login-methods";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { signOut, upgradeGuest } from "@/lib/auth";
@@ -331,6 +332,9 @@ export function SettingsSheet({
           <Text style={styles.hint}>{t("settings.displayNameHelp")}</Text>
         </View>
       </View>
+
+      {/* ログイン方法（Google / Apple の追加）。ゲストには出ない。 */}
+      <LoginMethods />
 
       {/* ドリルイン行（iOS 設定流の並び。旅行編集のカテゴリ管理/エクスポート行と
           同形＝navList が上端の枠を持ち、行同士の区切りは各 navRow の下端だけ）。

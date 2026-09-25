@@ -52,7 +52,16 @@
     "themeSystem": "System",
     "namePlaceholder": "Display name",
     "displayNameHelpLabel": "About your default display name",
-    "displayNameHelp": "Your default display name when joining a trip (existing trip names won't change)."
+    "displayNameHelp": "Your default display name when joining a trip (existing trip names won't change).",
+    "loginMethods": "Sign-in methods",
+    "loginMethodsHelpLabel": "About sign-in methods",
+    "loginMethodsHelp": "Once added, either method signs you in to this same account.",
+    "loginMethodAdd": "Add {provider}",
+    "loginMethodLinked": "{provider} is added",
+    "loginMethodLinkedToast": "Added {provider}",
+    "loginMethodAlreadyUsed": "This {provider} account is already used by another triplot account. If you no longer need that account, sign in with {provider}, delete it, then add {provider} here again.",
+    "loginMethodLinkFailed": "Couldn't add {provider} ({message})",
+    "loginMethodLinkFailedRetry": "Couldn't add {provider}. Please try again later."
   },
   "join": {
     "invalidTitle": "Invalid invite link",

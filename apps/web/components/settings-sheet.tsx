@@ -8,11 +8,12 @@ import { AvatarUpload } from "@/components/avatar-upload";
 import { DeleteAccountButton } from "@/components/delete-account-button";
 import { DisplayNameForm } from "@/components/display-name-form";
 import { LanguageForm } from "@/components/language-form";
+import { LoginMethods } from "@/components/login-methods";
 import { ThemeForm } from "@/components/theme-form";
 import { createClient } from "@/lib/supabase/client";
 import type { Theme } from "@/i18n/theme";
 
-// 設定の中身（アバター・既定の表示名・テーマ・言語）。
+// 設定の中身（アバター・既定の表示名・テーマ・言語・ログイン方法）。
 //
 // 以前は /settings のページだったが、アカウントメニューから開くシート／
 // ポップオーバーに変えた。ページ遷移だと元の画面（旅行詳細など）に戻る道が
@@ -91,6 +92,8 @@ export function SettingsSheet({ currentTheme }: { currentTheme: Theme }) {
         <label className="block text-sm font-medium">{t("language")}</label>
         <LanguageForm />
       </div>
+
+      <LoginMethods />
 
       {/* 取り消せない操作なので、他の設定と区切り線で隔てて一番下に置く。 */}
       <div className="border-t border-foreground/10 pt-6">

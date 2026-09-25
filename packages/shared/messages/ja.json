@@ -52,7 +52,16 @@
     "themeSystem": "システム",
     "namePlaceholder": "表示名",
     "displayNameHelpLabel": "デフォルト表示名について",
-    "displayNameHelp": "旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。"
+    "displayNameHelp": "旅行に参加するときのデフォルト表示名です（既存の旅行の表示名は変わりません）。",
+    "loginMethods": "ログイン方法",
+    "loginMethodsHelpLabel": "ログイン方法について",
+    "loginMethodsHelp": "追加すると、どちらの方法でログインしても同じアカウントに入れます。",
+    "loginMethodAdd": "{provider}を追加",
+    "loginMethodLinked": "{provider}は追加済み",
+    "loginMethodLinkedToast": "{provider}を追加しました",
+    "loginMethodAlreadyUsed": "この{provider}は別のアカウントで使われています。そのアカウントが不要なら、{provider}でログインしてアカウントを削除してから、もう一度追加してください。",
+    "loginMethodLinkFailed": "{provider}を追加できませんでした（{message}）",
+    "loginMethodLinkFailedRetry": "{provider}を追加できませんでした。時間をおいてもう一度お試しください。"
   },
   "join": {
     "invalidTitle": "無効な招待リンクです",

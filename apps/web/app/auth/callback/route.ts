@@ -5,6 +5,7 @@ import {
   clearGeneratedGoogleAvatar,
 } from "@triplot/shared/data/account";
 import { redeemGuestUpgradeTicket } from "@triplot/shared/data/guestUpgrade";
+import { classifyLinkError } from "@triplot/shared/loginMethods";
 
 import {
   isAuthProvider,
@@ -21,6 +22,37 @@ export async function GET(request: Request) {
   // ゲストからの昇格。ここに来た時点でセッションは新しいアカウントに
   // 切り替わっているので、ゲストのうちに取っておいた券をここで引き換える。
   const upgrade = searchParams.get("upgrade");
+  // 設定の「ログイン方法」からの追加（LoginMethods）。ログインではないので、
+  // プロフィールの穴埋めや「前回のログイン方法」の記録はしない。結果は戻り先の
+  // URL に付けて、LinkResultToast が知らせる。
+  const link = searchParams.get("link");
+  if (isAuthProvider(link)) {
+    // 戻り先は同じサイト内のパスだけ（別サイトへ飛ばされないように）。
+    const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
+    const back = new URL(safeNext, origin);
+    back.searchParams.set("link_provider", link);
+    // 既に別のアカウントで使われている等は、Supabase が code の代わりに
+    // error_code を付けて戻してくる。
+    const errorCode = searchParams.get("error_code");
+    if (errorCode || !code) {
+      back.searchParams.set(
+        "link_error",
+        classifyLinkError({
+          code: errorCode,
+          message: searchParams.get("error_description"),
+        }),
+      );
+      return NextResponse.redirect(back);
+    }
+    const supabase = await createClient();
+    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      back.searchParams.set("link_error", classifyLinkError(error));
+    } else {
+      back.searchParams.set("linked", "1");
+    }
+    return NextResponse.redirect(back);
+  }
 
   if (code) {
     const supabase = await createClient();
