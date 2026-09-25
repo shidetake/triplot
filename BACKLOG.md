@@ -4,11 +4,6 @@
 
 ## 残件
 
-### 12. iOS アプリ公開
-実装（Expo/React Native、`apps/mobile`）・バージョン（1.0.0）・審査用アカウント・
-migration スカッシュ、すべて完了。残っているのは App Store Connect での
-提出操作そのもの（TestFlight ビルドを本番審査に出す）。
-
 ### 14. LP 本体（コピー/動画/スクショ）
 骨組み（ルート・共有ヘッダー・URL/IA）は実装済み。LP のコンテンツ制作が残。
 
