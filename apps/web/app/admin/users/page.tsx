@@ -3,6 +3,10 @@ import { getTranslations } from "next-intl/server";
 
 import { MONTHLY_EMAIL_CAP } from "@triplot/shared/import/config";
 import { effectiveEmailCap } from "@triplot/shared/import/emailCap";
+import {
+  LOGIN_PROVIDERS,
+  linkedProviders,
+} from "@triplot/shared/loginMethods";
 
 import { ChevronIcon } from "@/components/icons";
 
@@ -28,9 +32,16 @@ export default async function AdminUsersPage() {
   const rows = [...(userUsage ?? [])].sort((a, b) =>
     (b.last_active_at ?? "").localeCompare(a.last_active_at ?? ""),
   );
-  // ログイン方法の表示名（ブランド名なので訳さない）。未知の値はそのまま出す。
-  const providerLabel = (p: string | null) =>
-    p === "google" ? "Google" : p === "apple" ? "Apple" : (p ?? "—");
+  // 付いているログイン方法（設定の「ログイン方法」と同じ並び）。ブランド名
+  // なので訳さない。Google / Apple 以外（開発用のパスワードなど）は出さない。
+  const PROVIDER_NAME = { google: "Google", apple: "Apple" } as const;
+  const providerLabel = (providers: string[] | null) => {
+    const linked = linkedProviders((providers ?? []).map((p) => ({ provider: p })));
+    const names = LOGIN_PROVIDERS.filter((p) => linked.has(p)).map(
+      (p) => PROVIDER_NAME[p],
+    );
+    return names.length > 0 ? names.join(", ") : "—";
+  };
   // 日付は YYYY-MM-DD（管理ページの LLM 使用量と揃える。UTC の日付）。
   const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
 
@@ -114,7 +125,7 @@ export default async function AdminUsersPage() {
                       {u.email || "—"}
                     </td>
                     <td className="px-2 py-2 text-left whitespace-nowrap">
-                      {providerLabel(u.provider)}
+                      {providerLabel(u.providers)}
                     </td>
                     <td className={td}>{day(u.last_active_at)}</td>
                     <td className={td}>{day(u.registered_at)}</td>
