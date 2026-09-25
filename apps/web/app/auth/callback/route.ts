@@ -35,6 +35,14 @@ export async function GET(request: Request) {
     // error_code を付けて戻してくる。
     const errorCode = searchParams.get("error_code");
     if (errorCode || !code) {
+      // 理由の返り方（クエリか # の後ろか）を後から確かめられるように残す。
+      // # の後ろはここに届かないので、その場合は error_code が空になる。
+      console.log("[auth/callback] link failed", {
+        provider: link,
+        error: searchParams.get("error"),
+        errorCode,
+        errorDescription: searchParams.get("error_description"),
+      });
       back.searchParams.set(
         "link_error",
         classifyLinkError({

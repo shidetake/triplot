@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { classifyLinkError } from "@triplot/shared/loginMethods";
+
 import { toast } from "@/components/toast";
 
 // 設定の「ログイン方法」で Google / Apple を追加して戻ってきた時の結果を知らせる。
@@ -27,7 +29,18 @@ export function LinkResultToast() {
     const providerKey = params.get("link_provider");
     if (!providerKey) return;
     const provider = PROVIDER_NAME[providerKey] ?? providerKey;
-    const error = params.get("link_error");
+    let error = params.get("link_error");
+    // Supabase は失敗の理由を URL の # の後ろに付けて返すことがある。# の後ろは
+    // サーバー（/auth/callback）に届かないので、そこでは理由が分からず other に
+    // なる。リダイレクトをまたいでもブラウザには残っているので、ここで読み直す
+    // （実例: 別のアカウントで使われている Apple を追加したのに、汎用の失敗文が出た）。
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    if (error && (hash.get("error_code") || hash.get("error_description"))) {
+      error = classifyLinkError({
+        code: hash.get("error_code"),
+        message: hash.get("error_description"),
+      });
+    }
 
     if (params.get("linked")) {
       toast(t("loginMethodLinkedToast", { provider }));
