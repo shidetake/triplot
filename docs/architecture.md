@@ -181,4 +181,4 @@ flowchart LR
 
 | 対象 | 周期 | 対応 |
 |---|---|---|
-| Apple Sign in の client_secret（JWT） | 最大6ヶ月（Apple の仕様上限） | Apple Developer の同じ Key（.p8）から JWT を再生成し、Supabase Dashboard（Auth → Providers → Apple → Secret Key）に貼り直す。現在の失効日はこの表に書かず、都度 Supabase Dashboard の表示で確認する |
+| Apple Sign in の client_secret（JWT） | 最大6ヶ月（Apple の仕様上限） | Apple Developer の同じ Key（.p8）から `node scripts/apple-client-secret.mjs --p8 <鍵> --key-id <Key ID> --team-id <Team ID>` で JWT を作り、Supabase Dashboard（Auth → Providers → Apple → Secret Key）に貼り直す。スクリプトが次の失効日を表示する。**切れると web の「Apple でログイン」が黙って失敗する**（Supabase が Apple との照合に失敗し、画面が遷移しないだけでエラーも出ない。iOS は端末の Apple ログインを使うので動き続けるため気付きにくい）。現在の失効日はこの表に書かず、都度 Supabase Dashboard の表示で確認する |
