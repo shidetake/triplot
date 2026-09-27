@@ -62,7 +62,7 @@
     "loginMethodAlreadyUsed": "この{provider}は別のアカウントで使われています。そのアカウントが不要なら、{provider}でログインしてアカウントを削除してから、もう一度追加してください。",
     "loginMethodLinkFailed": "{provider}を追加できませんでした（{message}）",
     "loginMethodLinkFailedRetry": "{provider}を追加できませんでした。時間をおいてもう一度お試しください。",
-    "loginMethodUnavailable": "今は{provider}を追加できません。"
+    "loginMethodUnavailable": "{provider}の追加が一時的にご利用いただけません。復旧まで少しお待ちください。"
   },
   "join": {
     "invalidTitle": "無効な招待リンクです",
@@ -168,8 +168,8 @@
     "privacy": "プライバシーポリシー",
     "terms": "利用規約",
     "signInFailed": "ログインできませんでした。もう一度お試しください。",
-    "signInUnavailable": "{provider}では今ログインできません。別の方法でログインしてください。",
-    "signInUnavailableGeneric": "この方法では今ログインできません。別の方法でログインしてください。"
+    "signInUnavailable": "{provider}でのログインが一時的にご利用いただけません。復旧まで少しお待ちください。",
+    "signInUnavailableGeneric": "このログイン方法が一時的にご利用いただけません。復旧まで少しお待ちください。"
   },
   "auth": {
     "lastUsed": "前回使用",

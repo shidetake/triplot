@@ -56,7 +56,7 @@ export async function alertAdminAuthFailure(params: {
     // 管理者向けなので日本語固定（フィードバックの管理者通知と同じ扱い）。
     const text = [
       `web の「${name}」の${flowLabel}が、こちら側の不具合で失敗しています。`,
-      "利用者には「この方法では今ログインできません。別の方法でログインしてください」と表示しています。",
+      "利用者には「一時的にご利用いただけません。復旧まで少しお待ちください」と表示しています。",
       "",
       `error: ${params.error ?? "-"}`,
       `error_code: ${params.errorCode ?? "-"}`,

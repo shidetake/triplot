@@ -66,8 +66,8 @@ export default async function LandingPage({
               <>
                 <MessageBox kind="error" className="w-fit max-w-full">
                   {/* 失敗の理由で文言を変える（@triplot/shared/signInError）。
-                      こちら側の不具合は何度やっても入れないので、やり直しを
-                      勧めず別の方法を案内する。 */}
+                      こちら側の不具合は「一時的に使えない、復旧まで待って」と
+                      伝え、別のログイン方法は勧めない（別アカウントができるため）。 */}
                   {authError === "unavailable"
                     ? PROVIDER_NAME[authProvider ?? ""]
                       ? t("signInUnavailable", {
