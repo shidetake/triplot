@@ -61,7 +61,7 @@ export default async function LandingPage({
                 いても気付けない（実例: web の Apple ログインが黙って失敗し続けた）。 */}
             {authError && (
               <>
-                <MessageBox kind="error" className="w-72">
+                <MessageBox kind="error" className="w-fit max-w-full">
                   {t("signInFailed")}
                 </MessageBox>
                 {/* 再読み込みで出し続けないよう、表示したら URL から消す。 */}
