@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
+import { ClearQueryParam } from "@/components/clear-query-param";
 import { DevSignInButton } from "@/components/dev-sign-in-button";
 import { MessageBox } from "@/components/message-box";
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
@@ -59,9 +60,13 @@ export default async function LandingPage({
                 何も出さないと「押したのに画面が遷移しない」だけに見え、壊れて
                 いても気付けない（実例: web の Apple ログインが黙って失敗し続けた）。 */}
             {authError && (
-              <MessageBox kind="error" className="w-72">
-                {t("signInFailed")}
-              </MessageBox>
+              <>
+                <MessageBox kind="error" className="w-72">
+                  {t("signInFailed")}
+                </MessageBox>
+                {/* 再読み込みで出し続けないよう、表示したら URL から消す。 */}
+                <ClearQueryParam name="auth_error" />
+              </>
             )}
             {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。w-72固定でブランド
                 ボタン2つの横幅を揃える。 */}
