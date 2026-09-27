@@ -7,12 +7,14 @@ import { useEffect } from "react";
 //
 // ルーターで遷移し直すとサーバー描画がやり直されて知らせも消えるので、
 // ブラウザの履歴だけを書き換える（画面はそのまま）。
-export function ClearQueryParam({ name }: { name: string }) {
+export function ClearQueryParam({ names }: { names: string[] }) {
+  const key = names.join(",");
   useEffect(() => {
     const url = new URL(window.location.href);
-    if (!url.searchParams.has(name)) return;
-    url.searchParams.delete(name);
+    const present = key.split(",").filter((n) => url.searchParams.has(n));
+    if (present.length === 0) return;
+    for (const n of present) url.searchParams.delete(n);
     window.history.replaceState(window.history.state, "", url.toString());
-  }, [name]);
+  }, [key]);
   return null;
 }

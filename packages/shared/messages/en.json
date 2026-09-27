@@ -61,7 +61,8 @@
     "loginMethodLinkedToast": "Added {provider}",
     "loginMethodAlreadyUsed": "This {provider} account is already used by another triplot account. If you no longer need that account, sign in with {provider}, delete it, then add {provider} here again.",
     "loginMethodLinkFailed": "Couldn't add {provider} ({message})",
-    "loginMethodLinkFailedRetry": "Couldn't add {provider}. Please try again later."
+    "loginMethodLinkFailedRetry": "Couldn't add {provider}. Please try again later.",
+    "loginMethodUnavailable": "Can't add {provider} right now."
   },
   "join": {
     "invalidTitle": "Invalid invite link",
@@ -166,7 +167,9 @@
     "shareBody": "Send the link to the people coming with you and they can write to it right away. Joining needs no account and no sign-in.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
-    "signInFailed": "Couldn't sign you in. Please try again."
+    "signInFailed": "Couldn't sign you in. Please try again.",
+    "signInUnavailable": "Signing in with {provider} isn't working right now. Please use another sign-in method.",
+    "signInUnavailableGeneric": "This sign-in method isn't working right now. Please use another one."
   },
   "auth": {
     "lastUsed": "Last used",

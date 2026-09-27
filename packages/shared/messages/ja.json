@@ -61,7 +61,8 @@
     "loginMethodLinkedToast": "{provider}を追加しました",
     "loginMethodAlreadyUsed": "この{provider}は別のアカウントで使われています。そのアカウントが不要なら、{provider}でログインしてアカウントを削除してから、もう一度追加してください。",
     "loginMethodLinkFailed": "{provider}を追加できませんでした（{message}）",
-    "loginMethodLinkFailedRetry": "{provider}を追加できませんでした。時間をおいてもう一度お試しください。"
+    "loginMethodLinkFailedRetry": "{provider}を追加できませんでした。時間をおいてもう一度お試しください。",
+    "loginMethodUnavailable": "今は{provider}を追加できません。"
   },
   "join": {
     "invalidTitle": "無効な招待リンクです",
@@ -166,7 +167,9 @@
     "shareBody": "同行者にリンクを送れば、その場から書き込めます。参加する側は、アカウント登録もログインも要りません。",
     "privacy": "プライバシーポリシー",
     "terms": "利用規約",
-    "signInFailed": "ログインできませんでした。もう一度お試しください。"
+    "signInFailed": "ログインできませんでした。もう一度お試しください。",
+    "signInUnavailable": "{provider}では今ログインできません。別の方法でログインしてください。",
+    "signInUnavailableGeneric": "この方法では今ログインできません。別の方法でログインしてください。"
   },
   "auth": {
     "lastUsed": "前回使用",

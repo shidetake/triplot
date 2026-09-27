@@ -44,6 +44,8 @@ export function LinkResultToast() {
 
     if (params.get("linked")) {
       toast(t("loginMethodLinkedToast", { provider }));
+    } else if (error === "unavailable") {
+      toast(t("loginMethodUnavailable", { provider }));
     } else if (error === "already_used") {
       toast(t("loginMethodAlreadyUsed", { provider }));
     } else if (error) {

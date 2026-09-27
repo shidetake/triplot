@@ -8,6 +8,8 @@ import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
 
+const PROVIDER_NAME: Record<string, string> = { google: "Google", apple: "Apple" };
+
 // ランディングページ（公開）。ログイン済みでも即リダイレクトせず
 // 「アプリを開く →」CTA を出す（Notion 方式）。
 //
@@ -17,13 +19,14 @@ import { createClient } from "@/lib/supabase/server";
 export default async function LandingPage({
   searchParams,
 }: {
-  searchParams: Promise<{ auth_error?: string }>;
+  searchParams: Promise<{ auth_error?: string; auth_provider?: string }>;
 }) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [t, lastAuthProvider, { auth_error: authError }] = await Promise.all([
+  const [t, lastAuthProvider, { auth_error: authError, auth_provider: authProvider }] =
+    await Promise.all([
     getTranslations("landing"),
     resolveLastAuthProvider(),
     searchParams,
@@ -62,10 +65,19 @@ export default async function LandingPage({
             {authError && (
               <>
                 <MessageBox kind="error" className="w-fit max-w-full">
-                  {t("signInFailed")}
+                  {/* 失敗の理由で文言を変える（@triplot/shared/signInError）。
+                      こちら側の不具合は何度やっても入れないので、やり直しを
+                      勧めず別の方法を案内する。 */}
+                  {authError === "unavailable"
+                    ? PROVIDER_NAME[authProvider ?? ""]
+                      ? t("signInUnavailable", {
+                          provider: PROVIDER_NAME[authProvider ?? ""],
+                        })
+                      : t("signInUnavailableGeneric")
+                    : t("signInFailed")}
                 </MessageBox>
                 {/* 再読み込みで出し続けないよう、表示したら URL から消す。 */}
-                <ClearQueryParam name="auth_error" />
+                <ClearQueryParam names={["auth_error", "auth_provider"]} />
               </>
             )}
             {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。w-72固定でブランド

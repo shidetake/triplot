@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 
 import {
   backfillProfileFromIdentities,
@@ -6,6 +6,9 @@ import {
 } from "@triplot/shared/data/account";
 import { redeemGuestUpgradeTicket } from "@triplot/shared/data/guestUpgrade";
 import { classifyLinkError } from "@triplot/shared/loginMethods";
+import { classifySignInError } from "@triplot/shared/signInError";
+
+import { alertAdminAuthFailure } from "@/lib/auth/alertAdmin";
 
 import {
   isAuthProvider,
@@ -19,6 +22,12 @@ export async function GET(request: Request) {
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/";
   const provider = searchParams.get("provider");
+  // 失敗して戻ってきた時に Supabase が付ける理由（成功時は無い）。
+  const failure = {
+    error: searchParams.get("error"),
+    code: searchParams.get("error_code"),
+    description: searchParams.get("error_description"),
+  };
   // ゲストからの昇格。ここに来た時点でセッションは新しいアカウントに
   // 切り替わっているので、ゲストのうちに取っておいた券をここで引き換える。
   const upgrade = searchParams.get("upgrade");
@@ -30,28 +39,36 @@ export async function GET(request: Request) {
     // 戻り先は同じサイト内のパスだけ（別サイトへ飛ばされないように）。
     const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/";
     const back = new URL(safeNext, origin);
-    back.searchParams.set("link_provider", link);
     // 既に別のアカウントで使われている等は、Supabase が code の代わりに
     // error_code を付けて戻してくる。
-    const errorCode = searchParams.get("error_code");
-    if (errorCode || !code) {
+    if (failure.code || !code) {
       // 理由の返り方（クエリか # の後ろか）を後から確かめられるように残す。
       // # の後ろはここに届かないので、その場合は error_code が空になる。
-      console.log("[auth/callback] link failed", {
-        provider: link,
-        error: searchParams.get("error"),
-        errorCode,
-        errorDescription: searchParams.get("error_description"),
-      });
-      back.searchParams.set(
-        "link_error",
-        classifyLinkError({
-          code: errorCode,
-          message: searchParams.get("error_description"),
-        }),
-      );
+      console.log("[auth/callback] link failed", { provider: link, ...failure });
+      const kind = classifySignInError(failure);
+      // キャンセルは失敗ではないので何も知らせない。
+      if (kind === "canceled") return NextResponse.redirect(back);
+      back.searchParams.set("link_provider", link);
+      if (kind === "unavailable") {
+        back.searchParams.set("link_error", "unavailable");
+        after(() =>
+          alertAdminAuthFailure({
+            provider: link,
+            flow: "link",
+            error: failure.error,
+            errorCode: failure.code,
+            errorDescription: failure.description,
+          }),
+        );
+      } else {
+        back.searchParams.set(
+          "link_error",
+          classifyLinkError({ code: failure.code, message: failure.description }),
+        );
+      }
       return NextResponse.redirect(back);
     }
+    back.searchParams.set("link_provider", link);
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
@@ -113,9 +130,25 @@ export async function GET(request: Request) {
   console.log("[auth/callback] sign-in failed", {
     provider,
     hasCode: Boolean(code),
-    error: searchParams.get("error"),
-    errorCode: searchParams.get("error_code"),
-    errorDescription: searchParams.get("error_description"),
+    ...failure,
   });
-  return NextResponse.redirect(`${origin}/?auth_error=1`);
+  // 利用者への見せ方を3つに分ける（@triplot/shared/signInError）。
+  // code を受け取れたのに交換で失敗した場合は、理由が付いていないので retry。
+  const kind = classifySignInError(failure);
+  if (kind === "canceled") return NextResponse.redirect(`${origin}/`);
+  const failed = new URL("/", origin);
+  failed.searchParams.set("auth_error", kind);
+  if (kind === "unavailable") {
+    if (isAuthProvider(provider)) failed.searchParams.set("auth_provider", provider);
+    after(() =>
+      alertAdminAuthFailure({
+        provider: provider ?? "unknown",
+        flow: "sign-in",
+        error: failure.error,
+        errorCode: failure.code,
+        errorDescription: failure.description,
+      }),
+    );
+  }
+  return NextResponse.redirect(failed);
 }
