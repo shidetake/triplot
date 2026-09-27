@@ -59,7 +59,7 @@
     "loginMethodAdd": "Add {provider}",
     "loginMethodLinked": "{provider} is added",
     "loginMethodLinkedToast": "Added {provider}",
-    "loginMethodAlreadyUsed": "This {provider} account is already used by another triplot account. If you no longer need that account, sign in with {provider}, delete it, then add {provider} here again.",
+    "loginMethodAlreadyUsed": "This {provider} account is used by another account. Delete that account to add it here.",
     "loginMethodLinkFailed": "Couldn't add {provider} ({message})",
     "loginMethodLinkFailedRetry": "Couldn't add {provider}. Please try again later.",
     "loginMethodUnavailable": "Adding {provider} is temporarily unavailable. Please try again a little later."

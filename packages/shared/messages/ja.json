@@ -59,7 +59,7 @@
     "loginMethodAdd": "{provider}を追加",
     "loginMethodLinked": "{provider}は追加済み",
     "loginMethodLinkedToast": "{provider}を追加しました",
-    "loginMethodAlreadyUsed": "この{provider}は別のアカウントで使われています。そのアカウントが不要なら、{provider}でログインしてアカウントを削除してから、もう一度追加してください。",
+    "loginMethodAlreadyUsed": "この{provider}は別のアカウントで使われています。そちらを削除すれば追加できます。",
     "loginMethodLinkFailed": "{provider}を追加できませんでした（{message}）",
     "loginMethodLinkFailedRetry": "{provider}を追加できませんでした。時間をおいてもう一度お試しください。",
     "loginMethodUnavailable": "{provider}の追加が一時的にご利用いただけません。復旧まで少しお待ちください。"
