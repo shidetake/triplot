@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { DevSignInButton } from "@/components/dev-sign-in-button";
+import { MessageBox } from "@/components/message-box";
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
 import { createClient } from "@/lib/supabase/server";
@@ -12,14 +13,19 @@ import { createClient } from "@/lib/supabase/server";
 // **機能の説明はログインの有無に関わらず出す。** Google の OAuth ブランディング
 // 検証は、ホームページを見て「ログインしないとアプリの内容が分からない」もの
 // （＝実質ログインページ）を却下する。実際に一度その理由で落ちている。
-export default async function LandingPage() {
+export default async function LandingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ auth_error?: string }>;
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [t, lastAuthProvider] = await Promise.all([
+  const [t, lastAuthProvider, { auth_error: authError }] = await Promise.all([
     getTranslations("landing"),
     resolveLastAuthProvider(),
+    searchParams,
   ]);
 
   // 旅行詳細の4タブ（予定/場所/費用/TODO）＝主要機能。その下にメール取り込みと
@@ -49,6 +55,14 @@ export default async function LandingPage() {
           </Link>
         ) : (
           <div className="space-y-4">
+            {/* ログインの失敗（/auth/callback が ?auth_error を付けて戻す）。
+                何も出さないと「押したのに画面が遷移しない」だけに見え、壊れて
+                いても気付けない（実例: web の Apple ログインが黙って失敗し続けた）。 */}
+            {authError && (
+              <MessageBox kind="error" className="w-72">
+                {t("signInFailed")}
+              </MessageBox>
+            )}
             {/* 縦積み: 狭い画面前提のヒーローで2ボタンを同格に見せる。w-72固定でブランド
                 ボタン2つの横幅を揃える。 */}
             <div className="flex w-72 flex-col gap-3">

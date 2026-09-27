@@ -65,6 +65,13 @@ export async function GET(request: Request) {
   if (code) {
     const supabase = await createClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.log("[auth/callback] sign-in code exchange failed", {
+        provider,
+        code: error.code,
+        message: error.message,
+      });
+    }
     if (!error) {
       // Apple サインアップ（名前・写真を返さないことが多い）の後、同じメール
       // アドレスで Google が自動リンクされたケースの穴埋め。display_name/
@@ -101,5 +108,14 @@ export async function GET(request: Request) {
     }
   }
 
+  // ログインの失敗。理由を後から確かめられるよう残す（Supabase が code の代わりに
+  // error_code を付けて戻す。# の後ろに付いた場合はここに届かない）。
+  console.log("[auth/callback] sign-in failed", {
+    provider,
+    hasCode: Boolean(code),
+    error: searchParams.get("error"),
+    errorCode: searchParams.get("error_code"),
+    errorDescription: searchParams.get("error_description"),
+  });
   return NextResponse.redirect(`${origin}/?auth_error=1`);
 }

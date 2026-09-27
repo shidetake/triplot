@@ -165,7 +165,8 @@
     "shareTitle": "One link, and you build it together",
     "shareBody": "Send the link to the people coming with you and they can write to it right away. Joining needs no account and no sign-in.",
     "privacy": "Privacy Policy",
-    "terms": "Terms of Service"
+    "terms": "Terms of Service",
+    "signInFailed": "Couldn't sign you in. Please try again."
   },
   "auth": {
     "lastUsed": "Last used",
