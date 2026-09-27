@@ -4,7 +4,7 @@ import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
 import { useTranslations } from "use-intl";
 
 import {
-  classifyLinkError,
+  classifyLinkFailure,
   LOGIN_PROVIDERS,
   type LoginProvider,
   linkedProviders,
@@ -74,17 +74,21 @@ export function LoginMethods() {
           toast(t("loginMethodLinkedToast", { provider: name }));
         }
       } catch (e) {
-        const reason = classifyLinkError(
-          e as { code?: string; message?: string },
-        );
-        Alert.alert(
-          reason === "already_used"
-            ? t("loginMethodAlreadyUsed", { provider: name })
-            : t("loginMethodLinkFailed", {
-                provider: name,
-                message: String((e as { message?: string }).message ?? e),
-              }),
-        );
+        // 判定は web と同じ classifyLinkFailure（@triplot/shared/loginMethods）。
+        const err = e as { code?: string; message?: string };
+        const kind = classifyLinkFailure({ code: err.code, description: err.message });
+        if (kind !== "canceled") {
+          Alert.alert(
+            kind === "already_used"
+              ? t("loginMethodAlreadyUsed", { provider: name })
+              : kind === "unavailable"
+                ? t("loginMethodUnavailable", { provider: name })
+                : t("loginMethodLinkFailed", {
+                    provider: name,
+                    message: String(err.message ?? e),
+                  }),
+          );
+        }
       } finally {
         setBusy(false);
       }

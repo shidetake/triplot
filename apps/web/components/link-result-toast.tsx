@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
-import { classifyLinkError } from "@triplot/shared/loginMethods";
+import { classifyLinkFailure } from "@triplot/shared/loginMethods";
 
 import { toast } from "@/components/toast";
 
@@ -35,10 +35,12 @@ export function LinkResultToast() {
     // なる。リダイレクトをまたいでもブラウザには残っているので、ここで読み直す
     // （実例: 別のアカウントで使われている Apple を追加したのに、汎用の失敗文が出た）。
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+    // 判定はサーバーと同じ classifyLinkFailure を使う（別々に書くと食い違う）。
     if (error && (hash.get("error_code") || hash.get("error_description"))) {
-      error = classifyLinkError({
+      error = classifyLinkFailure({
+        error: hash.get("error"),
         code: hash.get("error_code"),
-        message: hash.get("error_description"),
+        description: hash.get("error_description"),
       });
     }
 

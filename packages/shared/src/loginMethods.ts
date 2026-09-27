@@ -1,3 +1,5 @@
+import { classifySignInError } from "./signInError";
+
 // ログイン方法（Google / Apple）の追加まわりの共通部品。web と iOS の設定の
 // 「ログイン方法」欄から使う。
 //
@@ -38,4 +40,22 @@ export function classifyLinkError(
     return "already_used";
   }
   return "other";
+}
+
+// 追加が失敗して戻ってきた時の、利用者への見せ方。ログインの失敗の分け方
+// （classifySignInError）に「既に別のアカウントで使われている」を足したもの。
+// web はサーバー（/auth/callback）とブラウザ（戻り先の # の後ろ）の両方で
+// 判定するので、**必ずこの1つを使う**（別々に書くと食い違う。実例: サーバーは
+// 「こちら側の不具合」と判定したのに、ブラウザが # の後ろを「既に使われているか」
+// だけで読み直して「その他」に上書きし、違う文言が出た）。
+export type LinkFailureKind = "unavailable" | "canceled" | LinkFailure;
+
+export function classifyLinkFailure(e: {
+  error?: string | null;
+  code?: string | null;
+  description?: string | null;
+}): LinkFailureKind {
+  const kind = classifySignInError(e);
+  if (kind !== "retry") return kind;
+  return classifyLinkError({ code: e.code, message: e.description });
 }

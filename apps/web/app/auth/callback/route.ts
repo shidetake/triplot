@@ -5,7 +5,7 @@ import {
   clearGeneratedGoogleAvatar,
 } from "@triplot/shared/data/account";
 import { redeemGuestUpgradeTicket } from "@triplot/shared/data/guestUpgrade";
-import { classifyLinkError } from "@triplot/shared/loginMethods";
+import { classifyLinkFailure } from "@triplot/shared/loginMethods";
 import { classifySignInError } from "@triplot/shared/signInError";
 
 import { alertAdminAuthFailure } from "@/lib/auth/alertAdmin";
@@ -45,12 +45,12 @@ export async function GET(request: Request) {
       // 理由の返り方（クエリか # の後ろか）を後から確かめられるように残す。
       // # の後ろはここに届かないので、その場合は error_code が空になる。
       console.log("[auth/callback] link failed", { provider: link, ...failure });
-      const kind = classifySignInError(failure);
+      const kind = classifyLinkFailure(failure);
       // キャンセルは失敗ではないので何も知らせない。
       if (kind === "canceled") return NextResponse.redirect(back);
       back.searchParams.set("link_provider", link);
+      back.searchParams.set("link_error", kind);
       if (kind === "unavailable") {
-        back.searchParams.set("link_error", "unavailable");
         after(() =>
           alertAdminAuthFailure({
             provider: link,
@@ -60,11 +60,6 @@ export async function GET(request: Request) {
             errorDescription: failure.description,
           }),
         );
-      } else {
-        back.searchParams.set(
-          "link_error",
-          classifyLinkError({ code: failure.code, message: failure.description }),
-        );
       }
       return NextResponse.redirect(back);
     }
@@ -72,7 +67,10 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (error) {
-      back.searchParams.set("link_error", classifyLinkError(error));
+      back.searchParams.set(
+        "link_error",
+        classifyLinkFailure({ code: error.code, description: error.message }),
+      );
     } else {
       back.searchParams.set("linked", "1");
     }

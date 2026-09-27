@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { classifyLinkError, linkedProviders } from "./loginMethods";
+import {
+  classifyLinkError,
+  classifyLinkFailure,
+  linkedProviders,
+} from "./loginMethods";
 
 describe("linkedProviders", () => {
   it("Google と Apple を取り出す", () => {
@@ -35,5 +39,29 @@ describe("classifyLinkError", () => {
   it("それ以外", () => {
     expect(classifyLinkError({ code: "manual_linking_disabled" })).toBe("other");
     expect(classifyLinkError(null)).toBe("other");
+  });
+});
+
+describe("classifyLinkFailure", () => {
+  it("照合の失敗はこちら側の不具合（既に使われている、にはしない）", () => {
+    expect(
+      classifyLinkFailure({
+        error: "server_error",
+        code: "unexpected_failure",
+        description: "Unable to exchange external code: c2a7",
+      }),
+    ).toBe("unavailable");
+  });
+
+  it("既に別のアカウントで使われている", () => {
+    expect(classifyLinkFailure({ code: "identity_already_exists" })).toBe("already_used");
+  });
+
+  it("キャンセル", () => {
+    expect(classifyLinkFailure({ error: "access_denied" })).toBe("canceled");
+  });
+
+  it("それ以外", () => {
+    expect(classifyLinkFailure({ error: "invalid_request" })).toBe("other");
   });
 });
