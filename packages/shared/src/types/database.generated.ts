@@ -75,6 +75,24 @@ export type Database = {
         }
         Relationships: []
       }
+      apple_client_secret_rotations: {
+        Row: {
+          expires_at: string
+          id: string
+          rotated_at: string
+        }
+        Insert: {
+          expires_at: string
+          id?: string
+          rotated_at?: string
+        }
+        Update: {
+          expires_at?: string
+          id?: string
+          rotated_at?: string
+        }
+        Relationships: []
+      }
       drain_leases: {
         Row: {
           locked_until: string
@@ -1219,6 +1237,7 @@ export type Database = {
         }
         Returns: string
       }
+      invoke_apple_client_secret_rotation: { Args: never; Returns: undefined }
       is_active_trip_member: { Args: { _trip_id: string }; Returns: boolean }
       is_app_admin: { Args: never; Returns: boolean }
       is_own_member: { Args: { _member_id: string }; Returns: boolean }

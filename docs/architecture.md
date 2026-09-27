@@ -121,14 +121,21 @@ People API は写真ごとに `default` フラグを返し、これが生成画�
 - **デプロイ**: GitHub `main` への push がトリガーの自動デプロイ。`vercel` CLI の手動デプロイは使わない。
 - **リージョン**: Vercel 関数 `hnd1` × Supabase `ap-northeast-1` を東京に揃え、サーバ側 Supabase クエリの太平洋越え RTT 積み上げを避ける。複数の独立クエリは `Promise.all` で並列化する方針。
 
-## 定期実行（2系統）
+## 定期実行（3系統）
 
 | 駆動 | パス | 間隔 | 役割 |
 |---|---|---|---|
 | **Vercel Cron** | `/api/cron/expire-inbound` | 日次 | 90日経った未確定/失敗/合体の受信メール行を削除（保持最小化） |
+| **Vercel Cron** | `/api/cron/user-stats-daily` | 日次（UTC 22:00＝日本の朝7時） | 登録ユーザー数・アクティブユーザー数をその日の値として記録（管理ページの推移グラフ） |
+| **Supabase（pg_cron）** | Edge Function `rotate-apple-client-secret` | 週1（月曜 03:00 UTC） | web の「Apple でログイン」の client secret（最長6か月）を、前回から150日経っていたら作り直して認証設定に入れる。失敗したら管理者にメール。本番だけで動く（呼び先を Vault の `apple_secret_rotation_url` に置いた環境だけ） |
 | **Cloudflare Cron Worker** | `/api/cron/retry-extract` | **毎分** | 保留中の抽出を reconcile（期限の来た error を再試行＋枠の空いた over_quota を再抽出） |
 
-> **なぜ2系統か**: Vercel Hobby の Cron は各1日1回（プラン全体）なので、分単位が要る
+> **Apple の client secret だけ Supabase の中で回す理由**: 作り直しには Apple の鍵（.p8）と
+> Supabase の管理用トークンが要る。どちらも強い鍵なので、web サーバー（Vercel）や GitHub に
+> 置き場所を増やさず、Supabase の Function Secrets に閉じる。管理用トークンは範囲を絞ったもの
+> （本番プロジェクトの Auth Config と Project Settings だけ）を使う。
+>
+> **なぜ Vercel と Cloudflare の2系統か**: Vercel Hobby の Cron は各1日1回（プラン全体）なので、分単位が要る
 > リトライは Cloudflare の Cron Worker（毎分・無料・プラン非依存）に逃がす。心拍 Worker は
 > 状態を持たず `/api/cron/retry-extract` を叩くだけの独立ユニット（メール Worker とは別物）。
 > リトライの設計は [`import-flow.md`](./design/import-flow.md) のリトライ節を参照。
@@ -181,4 +188,4 @@ flowchart LR
 
 | 対象 | 周期 | 対応 |
 |---|---|---|
-| Apple Sign in の client_secret（JWT） | 最大6ヶ月（Apple の仕様上限） | Apple Developer の同じ Key（.p8）から `node scripts/apple-client-secret.mjs --p8 <鍵> --key-id <Key ID> --team-id <Team ID>` で JWT を作り、Supabase Dashboard（Auth → Providers → Apple → Secret Key）に貼り直す。スクリプトが次の失効日を表示する。**切れると web の「Apple でログイン」が失敗する**（鍵そのものから Sign in with Apple が外れても同じ症状になる。Apple Developer の Keys で鍵に Sign in with Apple が付いているかも確かめる。実例: 鍵の編集で外れていた）（Supabase が Apple との照合に失敗する。iOS は端末の Apple ログインを使うので動き続けるため気付きにくい。失敗すると管理者にメールが届く）。現在の失効日はこの表に書かず、都度 Supabase Dashboard の表示で確認する |
+| Apple Sign in の鍵まわり | 自動更新が失敗した時・トークンの期限切れ時 | client secret（最長6か月）そのものは上の定期実行が自動で作り直すので、普段は何もしない。**自動更新が失敗すると管理者にメールが届く**ので、その時に直す。疑うもの: Apple Developer の Keys で鍵（.p8）から Sign in with Apple が外れていないか（実例: 鍵の編集で外れていた）、Supabase の管理用トークン（Function Secrets の `SUPABASE_MANAGEMENT_TOKEN`）が失効・期限切れしていないか。直せば翌週の実行で入れ替わる。急ぐ時は手で作る: `node scripts/apple-client-secret.mjs --p8 <鍵> --key-id <Key ID> --team-id <Team ID>` で JWT を作り、Supabase Dashboard（Auth → Providers → Apple → Secret Key）に貼る（手で入れた時は入れ替えの記録が残らないので、次の週の実行でもう一度作り直される。害は無い）。**切れると web の「Apple でログイン」が失敗する**（iOS は端末の Apple ログインを使うので動き続け、気付きにくい。ログインの失敗でも管理者にメールが届く）。入れ替えの履歴は `apple_client_secret_rotations` テーブル |

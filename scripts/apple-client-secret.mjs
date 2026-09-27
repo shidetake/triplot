@@ -6,6 +6,9 @@
 // 端末の Apple ログインを使うので影響を受けない）。docs/architecture.md の
 // 「人手の定期メンテナンス」参照。
 //
+// 普段は Supabase の定期実行（Edge Function の rotate-apple-client-secret）が
+// 自動で作り直すので、これを使うのは自動更新が失敗して急いで直したい時だけ。
+//
 // 使い方:
 //   node scripts/apple-client-secret.mjs --p8 ~/Downloads/AuthKey_XXXXXXXXXX.p8 \
 //     --key-id XXXXXXXXXX --team-id XXXXXXXXXX
