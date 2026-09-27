@@ -16,8 +16,12 @@
 // 必要な秘密（本番だけに入れる。staging は Apple ログインを使っていない）:
 //   APPLE_P8                 Apple Developer の鍵（.p8 の中身）
 //   APPLE_KEY_ID / APPLE_TEAM_ID
-//   SUPABASE_MANAGEMENT_TOKEN 範囲を絞った管理用トークン（このプロジェクトの
-//                             Auth Config と Project Settings の読み書きだけ）
+//   MANAGEMENT_API_TOKEN      範囲を絞った管理用トークン（このプロジェクトの
+//                             Auth Config と Project Settings の読み書きだけ）。
+//                             名前を SUPABASE_ で始めない（Supabase が予約していて
+//                             保存を黙って拒む）
+//   MANAGEMENT_API_TOKEN_EXPIRES_AT  そのトークンの期限（YYYY-MM-DD）。トークンは
+//                             最長1年なので、期限の30日前から毎週知らせる
 //   RESEND_API_KEY / ALERT_EMAIL  失敗の知らせの送り先
 //
 // 失敗したら管理者にメールする。ログイン失敗の知らせ（apps/web/lib/auth/alertAdmin.ts）
@@ -32,6 +36,8 @@ const LIFETIME_SECONDS = 15777000;
 // 前回から何日経ったら作り直すか。期限（約182日）までに週1回の実行で
 // 4回ほどやり直せる幅を残す。
 const ROTATE_AFTER_DAYS = 150;
+// 管理用トークンの期限の何日前から知らせるか。
+const TOKEN_WARN_DAYS = 30;
 
 Deno.serve(async () => {
   const sb = createClient(
@@ -40,6 +46,8 @@ Deno.serve(async () => {
   );
 
   try {
+    await warnIfTokenExpiring(sb);
+
     const { data: last, error: readError } = await sb
       .from("apple_client_secret_rotations")
       .select("rotated_at")
@@ -67,7 +75,7 @@ Deno.serve(async () => {
     const p8 = required("APPLE_P8");
     const keyId = required("APPLE_KEY_ID");
     const teamId = required("APPLE_TEAM_ID");
-    const token = required("SUPABASE_MANAGEMENT_TOKEN");
+    const token = required("MANAGEMENT_API_TOKEN");
 
     const now = Math.floor(Date.now() / 1000);
     const exp = now + LIFETIME_SECONDS;
@@ -101,6 +109,29 @@ Deno.serve(async () => {
     return json({ rotated: false, error: message }, 500);
   }
 });
+
+// 管理用トークンの期限が近ければ知らせる。週1回の実行ごとに1通（誰かに叩かれ
+// 続けても増えないよう、6日のリースで間引く）。
+async function warnIfTokenExpiring(sb: ReturnType<typeof createClient>): Promise<void> {
+  const raw = Deno.env.get("MANAGEMENT_API_TOKEN_EXPIRES_AT");
+  if (!raw) return;
+  const daysLeft = (new Date(`${raw}T00:00:00Z`).getTime() - Date.now()) / 86400000;
+  if (!(daysLeft < TOKEN_WARN_DAYS)) return;
+  const { data: acquired } = await sb.rpc("try_acquire_lease", {
+    p_name: "management_api_token_expiry_warning",
+    p_ttl_seconds: 6 * 86400,
+  });
+  if (acquired !== true) return;
+  await sendMail(
+    "【triplot】Apple ログインの自動更新に使うトークンの期限が近づいています",
+    [
+      `web の「Apple でログイン」の client secret を自動で作り直すための Supabase の管理用トークンが、${raw} に期限切れになります${daysLeft < 0 ? "（既に切れています）" : `（あと${Math.ceil(daysLeft)}日）`}。`,
+      "",
+      "作り直して、Supabase の Function Secrets の MANAGEMENT_API_TOKEN と MANAGEMENT_API_TOKEN_EXPIRES_AT を入れ替えてください。",
+      "作り方は docs/architecture.md の「人手の定期メンテナンス」。",
+    ].join("\n"),
+  );
+}
 
 function required(name: string): string {
   const v = Deno.env.get(name);
@@ -158,8 +189,22 @@ function b64url(data: string | Uint8Array): string {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+function alert(detail: string): Promise<void> {
+  return sendMail(
+    "【triplot】Apple ログインの client secret の自動更新が失敗しました",
+    [
+      "web の「Apple でログイン」の client secret（最長6か月）の自動更新が失敗しました。",
+      "毎週やり直すので、原因を直せば次の実行で入れ替わります。",
+      "",
+      detail,
+      "",
+      "直し方は docs/architecture.md の「人手の定期メンテナンス」。",
+    ].join("\n"),
+  );
+}
+
 // 管理者向けなので日本語固定（ログイン失敗の知らせと同じ扱い）。
-async function alert(detail: string): Promise<void> {
+async function sendMail(subject: string, text: string): Promise<void> {
   const apiKey = Deno.env.get("RESEND_API_KEY");
   const to = Deno.env.get("ALERT_EMAIL");
   if (!apiKey || !to) return;
@@ -170,15 +215,8 @@ async function alert(detail: string): Promise<void> {
       body: JSON.stringify({
         from: "triplot <noreply@triplot.app>",
         to,
-        subject: "【triplot】Apple ログインの client secret の自動更新が失敗しました",
-        text: [
-          "web の「Apple でログイン」の client secret（最長6か月）の自動更新が失敗しました。",
-          "毎週やり直すので、原因を直せば次の実行で入れ替わります。",
-          "",
-          detail,
-          "",
-          "直し方は docs/architecture.md の「人手の定期メンテナンス」。",
-        ].join("\n"),
+        subject,
+        text,
       }),
     });
     if (!res.ok) console.error("[rotate-apple-client-secret] mail failed", res.status);
