@@ -11,9 +11,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 // 呼ぶ admin_active_user_count と同じ関数（compute_active_user_count）を
 // 共有している**ので、ここと管理画面の表示がずれることはない。
 //
-// 1日の終わり（UTC 23:50）に叩くのは、DB の current_date（UTC 基準）が
-// その日の間に取れる値として最も「その日を見た」に近いため
-// （早朝に叩くとその日の登録・サインインをほぼ含まないまま記録してしまう）。
+// 1日の終わり近く（UTC 22:00）に叩く。DB の current_date（UTC）がその日の値として
+// 記録されるので、早朝に叩くとその日の登録・利用をほぼ含まないまま記録してしまう。
+// 23 時台にしないのは、Vercel の無料プラン（Hobby）の定期実行は時刻の精度が
+// ±59分で、日付をまたいで翌日の日付で記録されてしまうため（実例: 23:50 にしていたら
+// 翌日 0 時台に動き、記録の日付が1日ずれていた）。
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;

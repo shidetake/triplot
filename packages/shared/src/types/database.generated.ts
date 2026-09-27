@@ -1063,7 +1063,6 @@ export type Database = {
           failed_count: number
           imports_this_month: number
           last_active_at: string
-          provider: string
           providers: string[]
           registered_at: string
           trip_count: number

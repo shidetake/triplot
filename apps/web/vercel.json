@@ -3,6 +3,6 @@
   "regions": ["hnd1"],
   "crons": [
     { "path": "/api/cron/expire-inbound", "schedule": "0 3 * * *" },
-    { "path": "/api/cron/user-stats-daily", "schedule": "50 23 * * *" }
+    { "path": "/api/cron/user-stats-daily", "schedule": "0 22 * * *" }
   ]
 }
