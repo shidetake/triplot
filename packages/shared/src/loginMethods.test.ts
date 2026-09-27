@@ -57,6 +57,17 @@ describe("classifyLinkFailure", () => {
     expect(classifyLinkFailure({ code: "identity_already_exists" })).toBe("already_used");
   });
 
+  it("大分類が server_error でも、既に使われているなら already_used", () => {
+    // 実際に本番で返ってきた形。
+    expect(
+      classifyLinkFailure({
+        error: "server_error",
+        code: "identity_already_exists",
+        description: "Identity is already linked to another user",
+      }),
+    ).toBe("already_used");
+  });
+
   it("キャンセル", () => {
     expect(classifyLinkFailure({ error: "access_denied" })).toBe("canceled");
   });

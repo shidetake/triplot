@@ -61,8 +61,10 @@ export async function alertAdminAuthFailure(params: {
       `error_code: ${params.errorCode ?? "-"}`,
       `error_description: ${params.errorDescription ?? "-"}`,
       "",
-      "Apple の場合、まず client secret（最長6か月）の期限切れを疑う。",
-      "作り直しは docs/architecture.md の「人手の定期メンテナンス」。",
+      "Apple の場合に疑うもの（どちらも Supabase のログに oauth2 \"invalid_client\" と出る）:",
+      "- Apple Developer の Keys で、鍵から Sign in with Apple が外れていないか",
+      "- client secret（最長6か月）の期限切れ",
+      "直し方は docs/architecture.md の「人手の定期メンテナンス」。",
       "",
       `このメールは同じログイン方法について ${THROTTLE_SECONDS / 60} 分に1通まで送ります。`,
     ].join("\n");

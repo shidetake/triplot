@@ -22,8 +22,10 @@ export function classifySignInError(e: {
 }): SignInFailure {
   const text = `${e.error ?? ""} ${e.code ?? ""} ${e.description ?? ""}`;
   if (e.error === "access_denied" || /cancel/i.test(text)) return "canceled";
+  // error（大分類）は見ない。Supabase は「既に別のアカウントで使われている」にも
+  // server_error を付けて返すので、大分類で決めると取り違える（実例: 使われている
+  // Apple を追加したのに「一時的に使えない」と出た）。詳しい理由（code・説明）で決める。
   if (
-    e.error === "server_error" ||
     e.code === "unexpected_failure" ||
     /unable to exchange external code|provider is not enabled|unsupported provider/i.test(
       text,

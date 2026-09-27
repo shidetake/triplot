@@ -27,6 +27,17 @@ describe("classifySignInError", () => {
     );
   });
 
+  it("大分類が server_error でも、詳しい理由が別ならこちら側の不具合にしない", () => {
+    // 実際に本番で返ってきた形（既に別のアカウントで使われている Apple を追加）。
+    expect(
+      classifySignInError({
+        error: "server_error",
+        code: "identity_already_exists",
+        description: "Identity is already linked to another user",
+      }),
+    ).toBe("retry");
+  });
+
   it("それ以外はやり直し", () => {
     expect(classifySignInError({})).toBe("retry");
     expect(classifySignInError({ error: "invalid_request" })).toBe("retry");

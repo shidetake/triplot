@@ -55,7 +55,10 @@ export function classifyLinkFailure(e: {
   code?: string | null;
   description?: string | null;
 }): LinkFailureKind {
+  // 「既に別のアカウントで使われている」を先に見る（一番具体的な理由なので）。
+  if (classifyLinkError({ code: e.code, message: e.description }) === "already_used") {
+    return "already_used";
+  }
   const kind = classifySignInError(e);
-  if (kind !== "retry") return kind;
-  return classifyLinkError({ code: e.code, message: e.description });
+  return kind === "retry" ? "other" : kind;
 }
