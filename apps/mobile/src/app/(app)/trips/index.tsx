@@ -1,9 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { firstChar } from "@triplot/shared/memberColors";
 import { Stack } from "expo-router";
 import {
   FlatList,
-  Image,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -15,19 +13,15 @@ import { useLocale, useTranslations } from "use-intl";
 
 import {
   fetchUnassignedDrafts,
-  fetchUnassignedInboundCount,
 } from "@triplot/shared/data/reads/inbox";
 import {
   deriveTripProposals,
   tripProposalDefaults,
 } from "@triplot/shared/import/tripProposal";
-import {
-  fetchMyTrips,
-  fetchUserProfile,
-} from "@triplot/shared/data/reads/trips";
+import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
 
 import { HeaderAccountButtons } from "@/components/header-account-buttons";
-import { InboxIcon, PlusIcon } from "@/components/icons";
+import { PlusIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { usePullRefresh } from "@/lib/usePullRefresh";
@@ -43,8 +37,6 @@ import { pushOnce } from "@/lib/navigate";
 export default function TripsScreen() {
   const t = useTranslations("trips");
   const tCommon = useTranslations("common");
-  const tHeader = useTranslations("header");
-  const tSettings = useTranslations("settings");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const locale = useLocale();
@@ -121,24 +113,6 @@ export default function TripsScreen() {
       qc.refetchQueries({ queryKey: ["unassignedDrafts", userId] }),
     ]);
   });
-
-  // 受信箱バッジ: まだ旅行に割り当てていない下書きの件数（要割当）。web の
-  // AppHeader と同じ shared read。
-  const { data: inboxCount } = useQuery({
-    queryKey: ["inboxCount", userId],
-    queryFn: () => fetchUnassignedInboundCount(supabase, userId!),
-    enabled: !!userId,
-  });
-
-  // ヘッダー右のアバター（web の AppHeader 右上のアバターと同じ「自分の
-  // アカウント」の入口＝タップで設定シート）。queryKey は設定シートと同じ
-  // なのでキャッシュ共有され、アバター変更が即ここにも反映する。
-  const { data: profile } = useQuery({
-    queryKey: ["profile", userId],
-    queryFn: () => fetchUserProfile(supabase, userId!),
-    enabled: !!userId,
-  });
-  const avatarInitial = firstChar(profile?.display_name ?? session?.user.email);
 
   return (
     <View style={styles.container}>

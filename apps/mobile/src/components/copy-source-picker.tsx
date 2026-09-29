@@ -1,4 +1,4 @@
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text } from "react-native";
 import type { CopySourceTrip } from "@triplot/shared/copySourceLabel";
 import { buildCopySourceLabels } from "@triplot/shared/copySourceLabel";
 
