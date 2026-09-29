@@ -22,3 +22,9 @@
 - 課金経路（App Store / web の決済）。どちらで買っても同じ1つの権利にする
 - 権利を引く1か所の入口（判定はサーバ側）
 未決: どちらの経路から作るか／有料で何が変わるか（取り込みの枠だけか、機能も出し分けるか）。
+
+### 17. web のファビコン
+`apps/web/app/favicon.ico` が create-next-app 既定の Vercel の三角のまま。アプリアイコン
+（`apps/mobile/assets/images/icon.png`）から作って差し替える。ホーム画面に追加された時の
+`apple-icon` も同時に置く。`apps/web/public/` の既定の SVG 5つ（file/globe/next/vercel/window）も
+どこからも参照されていないので一緒に消す。
