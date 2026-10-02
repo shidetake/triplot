@@ -379,7 +379,10 @@
     "deleteAria": "Delete",
     "addAria": "Add",
     "placeholderAdd": "Add a to-do",
-    "deleted": "To-do deleted"
+    "deleted": "To-do deleted",
+    "assigneeNone": "Unassigned",
+    "assigneeAria": "Assignee: {name}",
+    "assigneeTitle": "Assignee"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",

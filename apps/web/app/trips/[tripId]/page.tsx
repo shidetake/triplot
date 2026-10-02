@@ -168,12 +168,14 @@ export default async function TripDetailPage({
   const todos: TodoRow[] = deriveTodos(todosRaw, me.id);
   const prepTodos = todos.filter((t) => t.kind === "prep");
   const onsiteTodos = todos.filter((t) => t.kind === "onsite");
-  // TODO は作成者・いいねの表示にしか使わない（ピッカーは無い）ので全員。
+  // TODO の担当者の表示と選択に使う。表示は抜けた人も要る（担当のまま残って
+  // いることがある）ので全員を渡し、選択肢は active で絞る。
   const todoMembers = allMembers.map((m) => ({
     id: m.id,
     display_name: m.display_name,
     color: m.color,
     avatarUrl: m.users?.avatar_url ?? null,
+    active: m.active,
   }));
 
   // lat/lng は予定フォームが移動の TZ を場所から導出するのに使う。

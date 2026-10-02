@@ -91,6 +91,8 @@ export type TodoRow = {
   done: boolean;
   created_at: string;
   created_by_member_id: string;
+  // 担当者（誰がやるか）。null は未定。行のアバターはこちらを出す。
+  assignee_member_id: string | null;
   kind: TodoKind;
   // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
   event_id: string | null;
@@ -177,6 +179,7 @@ export type RawTodo = {
   done: boolean;
   created_at: string;
   created_by_member_id: string;
+  assignee_member_id: string | null;
   kind: string;
   event_id: string | null;
   visibility: string;
@@ -314,6 +317,7 @@ export function deriveTodos(
       done: t.done,
       created_at: t.created_at,
       created_by_member_id: t.created_by_member_id,
+      assignee_member_id: t.assignee_member_id,
       kind: t.kind as TodoKind,
       event_id: t.event_id,
       visibility: t.visibility as Visibility,

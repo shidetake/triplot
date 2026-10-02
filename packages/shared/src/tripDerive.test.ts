@@ -203,6 +203,7 @@ describe("deriveTodos", () => {
         done: false,
         created_at: "2026-01-01T00:00:00Z",
         created_by_member_id: "m1",
+        assignee_member_id: null,
         kind: "prep",
         event_id: null,
         visibility: "shared",
@@ -213,6 +214,8 @@ describe("deriveTodos", () => {
     expect(row.likeCount).toBe(2);
     expect(row.iLiked).toBe(true);
     expect(deriveTodos(todos, "m3")[0].iLiked).toBe(false);
+    // 担当者は未定（null）のまま通す。作った人で埋めない。
+    expect(row.assignee_member_id).toBeNull();
   });
 });
 

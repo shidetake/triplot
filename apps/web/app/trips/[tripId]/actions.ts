@@ -45,6 +45,7 @@ import {
   deleteTodoReturning,
   restoreTodo,
   type TodoSnapshot,
+  setTodoAssignee,
   setTodoDone,
   toggleTodoLike,
   updateTodo,
@@ -1233,6 +1234,30 @@ export async function updateTodoAction(
   if (Object.keys(patch).length === 0) return { error: null };
 
   const result = await updateTodo(supabase, todoId, patch);
+  if (!result.ok) {
+    const tErr = await getTranslations("errors");
+    return { error: translateSharedError(result.error, tErr) };
+  }
+
+  revalidatePath(`/trips/${tripId}`);
+  return { error: null };
+}
+
+// 担当者の付け替え（null は未定）。同じ旅行のメンバーか・自分だけの TODO で
+// 他人を担当にしていないかは DB が見る。
+export async function setTodoAssigneeAction(
+  tripId: string,
+  todoId: string,
+  memberId: string | null,
+): Promise<{ error: string | null }> {
+  const t = await getTranslations("validation");
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: t("loginRequired") };
+
+  const result = await setTodoAssignee(supabase, todoId, memberId);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

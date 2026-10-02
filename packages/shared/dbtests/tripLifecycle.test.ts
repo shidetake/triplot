@@ -5,6 +5,7 @@ import { createEvent } from "../src/data/events";
 import { createExpense } from "../src/data/expenses";
 import { ensureTripInvite } from "../src/data/invites";
 import { createPlace } from "../src/data/places";
+import { createTodo, setTodoAssignee } from "../src/data/todos";
 import { createTrip, deleteTrip } from "../src/data/trips";
 
 import { DBTEST_PREFIX, dbTestEnv, signIn } from "./helpers";
@@ -149,7 +150,27 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
     const invite = await ensureTripInvite(sb, tripId, `dbtest-${Date.now()}`);
     expect(invite.ok, JSON.stringify(invite)).toBe(true);
 
-    // 5. 削除。ここが本題。
+    // 5. 担当者のいる TODO（trip_members への複合外部キーが、旅行の削除の
+    //    cascade と噛み合うか）。未定に外して、また付け直す。
+    const todo = await createTodo(sb, {
+      tripId,
+      title: "航空券の予約",
+      priority: "high",
+      kind: "prep",
+      visibility: "shared",
+    });
+    expect(todo.ok, JSON.stringify(todo)).toBe(true);
+    const { data: todoRow } = await sb
+      .from("todos")
+      .select("id")
+      .eq("trip_id", tripId)
+      .single();
+    const unassign = await setTodoAssignee(sb, todoRow!.id, null);
+    expect(unassign.ok, JSON.stringify(unassign)).toBe(true);
+    const assign = await setTodoAssignee(sb, todoRow!.id, me);
+    expect(assign.ok, JSON.stringify(assign)).toBe(true);
+
+    // 6. 削除。ここが本題。
     const deleted = await deleteTrip(sb, tripId, userId);
     expect(deleted.ok, JSON.stringify(deleted)).toBe(true);
 

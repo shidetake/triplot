@@ -379,7 +379,10 @@
     "deleteAria": "削除",
     "addAria": "追加",
     "placeholderAdd": "TODOを追加",
-    "deleted": "TODO を削除しました"
+    "deleted": "TODO を削除しました",
+    "assigneeNone": "未定",
+    "assigneeAria": "担当: {name}",
+    "assigneeTitle": "担当"
   },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",

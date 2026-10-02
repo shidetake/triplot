@@ -797,6 +797,7 @@ export type Database = {
       }
       todos: {
         Row: {
+          assignee_member_id: string | null
           created_at: string
           created_by_member_id: string
           done: boolean
@@ -809,6 +810,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          assignee_member_id?: string | null
           created_at?: string
           created_by_member_id: string
           done?: boolean
@@ -821,6 +823,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          assignee_member_id?: string | null
           created_at?: string
           created_by_member_id?: string
           done?: boolean
@@ -833,6 +836,13 @@ export type Database = {
           visibility?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "todos_assignee_member_fkey"
+            columns: ["assignee_member_id", "trip_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id", "trip_id"]
+          },
           {
             foreignKeyName: "todos_created_by_member_id_fkey"
             columns: ["created_by_member_id"]

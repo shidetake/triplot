@@ -2,7 +2,7 @@ import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
 // TODO（やりたいこと）。共有リスト。作成だけ created_by_member_id 解決のため RPC、
-// 更新（チェック / 本文 / 優先度）と削除は RLS 配下の素の table 操作。
+// 更新（チェック / 本文 / 優先度 / 担当者）と削除は RLS 配下の素の table 操作。
 
 export type CreateTodoInput = {
   tripId: string;
@@ -44,6 +44,21 @@ export async function updateTodo(
 ): Promise<Result<void>> {
   if (Object.keys(patch).length === 0) return ok(undefined);
   const { error } = await sb.from("todos").update(patch).eq("id", todoId);
+  if (error) return err(error.message);
+  return ok(undefined);
+}
+
+// 担当者の付け替え。null は「未定」。同じ旅行のメンバーかは DB の外部キーが、
+// 自分だけの TODO で他人を担当にしていないかは DB の check が見る。
+export async function setTodoAssignee(
+  sb: DB,
+  todoId: string,
+  memberId: string | null,
+): Promise<Result<void>> {
+  const { error } = await sb
+    .from("todos")
+    .update({ assignee_member_id: memberId })
+    .eq("id", todoId);
   if (error) return err(error.message);
   return ok(undefined);
 }

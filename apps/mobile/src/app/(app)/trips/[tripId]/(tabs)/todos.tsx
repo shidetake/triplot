@@ -20,6 +20,7 @@ import {
   createTodo,
   deleteTodoReturning,
   restoreTodo,
+  setTodoAssignee,
   setTodoDone,
   toggleTodoLike,
   updateTodo,
@@ -77,6 +78,14 @@ type MemberLite = {
   display_name: string;
   color: number | null;
   avatarUrl: string | null;
+  // 在籍中か。担当者に選べるのは在籍中のメンバーだけ（抜けた人が担当のまま
+  // 残っている TODO は、その表示のために一覧に含める）。web と同じ。
+  active: boolean;
+};
+
+type AssigneePick = {
+  current: string | null;
+  onPick: (memberId: string | null) => void;
 };
 
 export default function TodosTab() {
@@ -99,6 +108,8 @@ export default function TodosTab() {
     current: TodoPriority;
     onPick: (p: TodoPriority) => void;
   } | null>(null);
+  // 担当者のシートも同じ理由で親が1つだけ持つ（優先度と同じ形のシート）。
+  const [assigneePick, setAssigneePick] = useState<AssigneePick | null>(null);
 
   if (loadError) {
     return (
@@ -123,7 +134,13 @@ export default function TodosTab() {
     display_name: m.display_name,
     color: m.color,
     avatarUrl: m.users?.avatar_url ?? null,
+    active: m.left_at === null,
   }));
+  // 選択肢は「未定」と在籍中のメンバー。今の担当が抜けた人なら、その人も残す
+  // （今の値として見せるため）。
+  const assigneeOptions = assigneePick
+    ? members.filter((m) => m.active || m.id === assigneePick.current)
+    : [];
   return (
     <ScreenStack style={StyleSheet.absoluteFill}>
       <ScreenStackItem
@@ -156,6 +173,9 @@ export default function TodosTab() {
             onPickPriority={(current, onPick) =>
               setPriorityPick({ current, onPick })
             }
+            onPickAssignee={(current, onPick) =>
+              setAssigneePick({ current, onPick })
+            }
           />
           <TodoSection
             tripId={tripId}
@@ -168,6 +188,9 @@ export default function TodosTab() {
             userId={userId!}
             onPickPriority={(current, onPick) =>
               setPriorityPick({ current, onPick })
+            }
+            onPickAssignee={(current, onPick) =>
+              setAssigneePick({ current, onPick })
             }
           />
         </ScrollView>
@@ -218,6 +241,58 @@ export default function TodosTab() {
           </SheetScroll>
         </ScreenStackItem>
       )}
+
+      {/* 担当者の選択。選んだ瞬間に保存する（1つ選ぶだけの操作なので保存
+          ボタンは置かない。ui-guidelines「保存ボタンの要否」）。 */}
+      {assigneePick && (
+        <ScreenStackItem
+          screenId="todos-assignee"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setAssigneePick(null)}
+        >
+          <SheetScroll>
+            <SheetTitle>{t("todo.assigneeTitle")}</SheetTitle>
+            {[null, ...assigneeOptions].map((m) => {
+              const id = m?.id ?? null;
+              const selected = assigneePick.current === id;
+              const name = m?.display_name ?? t("todo.assigneeNone");
+              return (
+                <Pressable
+                  key={id ?? "none"}
+                  onPress={() => {
+                    assigneePick.onPick(id);
+                    setAssigneePick(null);
+                  }}
+                  accessibilityLabel={name}
+                  style={[
+                    styles.priorityRow,
+                    selected && styles.priorityRowSelected,
+                  ]}
+                >
+                  <AssigneeMark member={m} />
+                  <Text
+                    numberOfLines={1}
+                    style={[
+                      styles.priorityRowLabel,
+                      !m && styles.assigneeNoneLabel,
+                      selected && styles.priorityRowLabelSelected,
+                    ]}
+                  >
+                    {name}
+                  </Text>
+                  {selected && (
+                    <CheckIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              );
+            })}
+          </SheetScroll>
+        </ScreenStackItem>
+      )}
     </ScreenStack>
   );
 }
@@ -232,6 +307,7 @@ function TodoSection({
   myMemberId,
   userId,
   onPickPriority,
+  onPickAssignee,
 }: {
   tripId: string;
   kind: TodoKind;
@@ -245,6 +321,11 @@ function TodoSection({
   onPickPriority: (
     current: TodoPriority,
     onPick: (p: TodoPriority) => void,
+  ) => void;
+  // 担当者のシートも親が持つ。
+  onPickAssignee: (
+    current: string | null,
+    onPick: (memberId: string | null) => void,
   ) => void;
 }) {
   const t = useTranslations("todo");
@@ -350,6 +431,13 @@ function TodoSection({
     void invalidate();
   };
 
+  const changeAssignee = async (todo: TodoRow, next: string | null) => {
+    if (next === todo.assignee_member_id) return;
+    const r = await setTodoAssignee(supabase, todo.id, next);
+    if (!r.ok) fail(r.error);
+    void invalidate();
+  };
+
   const changePriority = async (todo: TodoRow, next: TodoPriority) => {
     if (next === todo.priority) return;
     const r = await updateTodo(supabase, todo.id, { priority: next });
@@ -448,7 +536,11 @@ function TodoSection({
               行は詰めて並ぶ。 */}
           <View style={styles.rows}>
           {sorted.map((todo) => {
-            const creator = memberById.get(todo.created_by_member_id);
+            const assignee = todo.assignee_member_id
+              ? (memberById.get(todo.assignee_member_id) ?? null)
+              : null;
+            const assigneeName =
+              assignee?.display_name ?? t("assigneeNone");
             return (
               <SwipeDeleteRow
                 key={todo.id}
@@ -491,8 +583,8 @@ function TodoSection({
                 </Pressable>
 
                 {/* 行の並びは「左=読む情報（優先度・タイトル・鍵）／
-                    右端=誰の投稿か＋押すもの（作成者アバター・♥・削除）」の
-                    グループ分け（web と同形）。作成者アバターはタイトルの
+                    右端=担当者＋押すもの（担当者アバター・♥・削除）」の
+                    グループ分け（web と同形）。担当者アバターはタイトルの
                     長さに関係なく行の右側に揃える＝タイトル側（flex）に
                     置くと文字の長さでアバターの位置がガタつくため、
                     ここでは行トップレベルの子として右寄せ側に置く
@@ -534,7 +626,26 @@ function TodoSection({
                   </View>
                 )}
 
-                {editingId !== todo.id && creator && <Avatar member={creator} />}
+                {/* 担当者。自分だけの TODO は担当が本人に決まっているので、
+                    選択を出さず印だけ（web と同じ）。 */}
+                {editingId !== todo.id &&
+                  (todo.visibility === "private" ? (
+                    <AssigneeMark member={assignee} />
+                  ) : (
+                    <Pressable
+                      onPress={() =>
+                        onPickAssignee(todo.assignee_member_id, (m) =>
+                          void changeAssignee(todo, m),
+                        )
+                      }
+                      hitSlop={8}
+                      accessibilityLabel={t("assigneeAria", {
+                        name: assigneeName,
+                      })}
+                    >
+                      <AssigneeMark member={assignee} />
+                    </Pressable>
+                  ))}
 
                 {kind === "onsite" && (
                   <>
@@ -569,6 +680,13 @@ function TodoSection({
 
     </View>
   );
+}
+
+// 担当者の印。未定は破線の丸＝「まだ実体が無い」（web の AssigneeMark と同じ）。
+function AssigneeMark({ member }: { member: MemberLite | null }) {
+  const styles = useThemedStyles(makeStyles);
+  if (!member) return <View style={[styles.avatar, styles.avatarNone]} />;
+  return <Avatar member={member} />;
 }
 
 // 色丸＋頭文字（web の MemberAvatar 相当。写真があれば写真）。
@@ -678,4 +796,10 @@ const makeStyles = (t: Theme) =>
     justifyContent: "center",
   },
   avatarText: { fontSize: 10, fontWeight: "600" },
+  avatarNone: {
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: t.fgAlpha(0.4),
+  },
+  assigneeNoneLabel: { color: t.mutedForeground },
 });

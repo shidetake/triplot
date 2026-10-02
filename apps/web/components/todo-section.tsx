@@ -19,6 +19,7 @@ import {
   createTodoAction,
   deleteTodoAction,
   restoreTodoAction,
+  setTodoAssigneeAction,
   toggleTodoAction,
   toggleTodoLikeAction,
   updateTodoAction,
@@ -53,6 +54,9 @@ type MemberLite = {
   display_name: string;
   color: number | null;
   avatarUrl?: string | null;
+  // 在籍中か。担当者に選べるのは在籍中のメンバーだけ（抜けた人が担当のまま
+  // 残っている TODO は、その表示のために一覧に含める）。
+  active: boolean;
 };
 
 // JIRA 風の優先度アイコン（高=上シェブロン / 中=イコール / 低=下シェブロン）。
@@ -69,6 +73,7 @@ type OptimisticAction =
   | { type: "add"; todo: TodoRow }
   | { type: "toggle"; id: string; done: boolean }
   | { type: "update"; id: string; title?: string; priority?: TodoPriority }
+  | { type: "assign"; id: string; assignee: string | null }
   | { type: "delete"; id: string }
   | { type: "like"; id: string; liked: boolean };
 
@@ -127,6 +132,123 @@ function PrioritySelect({
                 <PriorityIcon p={p} />
                 <Select.ItemText className="flex-1">
                   {PRIORITY_LABEL[p]}
+                </Select.ItemText>
+                <Select.ItemIndicator className="text-muted-foreground">
+                  <CheckIcon size={16} />
+                </Select.ItemIndicator>
+              </Select.Item>
+            ))}
+          </Select.Popup>
+        </Select.Positioner>
+      </Select.Portal>
+    </Select.Root>
+  );
+}
+
+// 担当者の印。狭い画面は色アバター、広い画面は名前の色チップ（行の幅が足りる
+// ときは名前まで読める方が速い）。しきい値はボトムシートと同じ 640px。未定は
+// 破線の丸／チップ＝「まだ実体が無い」（ui-guidelines「定型部品」の破線）。
+function AssigneeMark({ member }: { member: MemberLite | null }) {
+  const t = useTranslations("todo");
+  if (!member) {
+    return (
+      <>
+        <span
+          aria-hidden
+          className="inline-block h-[18px] w-[18px] shrink-0 rounded-full border border-dashed border-foreground/40 sm:hidden"
+        />
+        <span className="hidden shrink-0 rounded-full border border-dashed border-foreground/40 px-2 py-0.5 text-xs font-medium leading-none text-muted-foreground sm:inline-block">
+          {t("assigneeNone")}
+        </span>
+      </>
+    );
+  }
+  return (
+    <>
+      <MemberAvatar
+        name={member.display_name}
+        color={member.color}
+        imageUrl={member.avatarUrl ?? null}
+        className="shrink-0 sm:hidden"
+      />
+      <span
+        style={chipStyle(member.color)}
+        className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+      >
+        {member.display_name}
+      </span>
+    </>
+  );
+}
+
+// 担当者の選択。選んだ瞬間に保存する（1つ選ぶだけの操作なので保存ボタンは
+// 置かない。ui-guidelines「保存ボタンの要否」）。選択肢は「未定」と在籍中の
+// メンバー。抜けた人が担当のままなら、その人も選択肢に残す（今の値として
+// 見せるため）。
+const UNASSIGNED = "__unassigned__";
+function AssigneeSelect({
+  value,
+  members,
+  onChange,
+}: {
+  value: string | null;
+  members: MemberLite[];
+  onChange: (memberId: string | null) => void;
+}) {
+  const t = useTranslations("todo");
+  const current = value ? (members.find((m) => m.id === value) ?? null) : null;
+  const options = members.filter((m) => m.active || m.id === value);
+  const label = t("assigneeAria", {
+    name: current?.display_name ?? t("assigneeNone"),
+  });
+  return (
+    <Select.Root
+      value={value ?? UNASSIGNED}
+      onValueChange={(v) => onChange(v === UNASSIGNED ? null : (v as string))}
+    >
+      <Select.Trigger
+        aria-label={label}
+        title={label}
+        className="flex shrink-0 items-center rounded-full p-1 transition hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <AssigneeMark member={current} />
+      </Select.Trigger>
+      <Select.Portal>
+        <Select.Positioner
+          align="end"
+          sideOffset={4}
+          alignItemWithTrigger={false}
+          className="z-50"
+        >
+          <Select.Popup className="max-h-64 w-48 overflow-y-auto rounded-md border border-foreground/20 bg-background py-1 shadow-lg">
+            <Select.Item
+              value={UNASSIGNED}
+              className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+            >
+              <span
+                aria-hidden
+                className="inline-block h-4 w-4 shrink-0 rounded-full border border-dashed border-foreground/40"
+              />
+              <Select.ItemText className="flex-1 text-muted-foreground">
+                {t("assigneeNone")}
+              </Select.ItemText>
+              <Select.ItemIndicator className="text-muted-foreground">
+                <CheckIcon size={16} />
+              </Select.ItemIndicator>
+            </Select.Item>
+            {options.map((m) => (
+              <Select.Item
+                key={m.id}
+                value={m.id}
+                className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+              >
+                <MemberAvatar
+                  name={m.display_name}
+                  color={m.color}
+                  imageUrl={m.avatarUrl ?? null}
+                />
+                <Select.ItemText className="min-w-0 flex-1 truncate">
+                  {m.display_name}
                 </Select.ItemText>
                 <Select.ItemIndicator className="text-muted-foreground">
                   <CheckIcon size={16} />
@@ -222,6 +344,12 @@ export function TodoSection({
                 }
               : t,
           );
+        case "assign":
+          return state.map((t) =>
+            t.id === action.id
+              ? { ...t, assignee_member_id: action.assignee }
+              : t,
+          );
         case "delete":
           return state.filter((t) => t.id !== action.id);
         case "like":
@@ -245,10 +373,8 @@ export function TodoSection({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
-  const memberOf = (id: string) => members.find((m) => m.id === id);
-  const memberName = (id: string) => memberOf(id)?.display_name ?? "?";
-  const memberColor = (id: string) => memberOf(id)?.color ?? null;
-  const memberAvatar = (id: string) => memberOf(id)?.avatarUrl ?? null;
+  const memberOf = (id: string | null) =>
+    id ? (members.find((m) => m.id === id) ?? null) : null;
 
   const add = () => {
     const title = draft.trim();
@@ -260,6 +386,7 @@ export function TodoSection({
       done: false,
       created_at: new Date().toISOString(),
       created_by_member_id: myMemberId,
+      assignee_member_id: myMemberId,
       kind,
       event_id: null,
       visibility: draftVisibility,
@@ -294,6 +421,15 @@ export function TodoSection({
     startTransition(async () => {
       applyOptimistic({ type: "update", id: todo.id, priority });
       const { error } = await updateTodoAction(tripId, todo.id, { priority });
+      if (error) toast(t("failed", { error }));
+    });
+  };
+
+  const changeAssignee = (todo: TodoRow, assignee: string | null) => {
+    if (assignee === todo.assignee_member_id) return;
+    startTransition(async () => {
+      applyOptimistic({ type: "assign", id: todo.id, assignee });
+      const { error } = await setTodoAssigneeAction(tripId, todo.id, assignee);
       if (error) toast(t("failed", { error }));
     });
   };
@@ -451,7 +587,7 @@ export function TodoSection({
                 className="size-[18px] shrink-0 cursor-pointer"
               />
 
-              {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・作成者）／
+              {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・担当者）／
                   右端=押すもの（♥・削除）」のグループ分け。優先度は押して
                   変更できるが本質は状態表示なので左（Jira/Linear と同じ）。 */}
               <PrioritySelect
@@ -499,25 +635,21 @@ export function TodoSection({
                 )}
               </div>
 
-              {/* 作成者: 狭い画面は色アバター（イニシャル）、広い画面は名前の色チップ。
-                  **行のトップレベルに置く**（タイトル側に入れるとタイトルの長さで
-                  位置がガタつく。iOS と同形）。しきい値はボトムシートと同じ 640px。 */}
-              {editingId !== todo.id && (
-                <>
-                  <MemberAvatar
-                    name={memberName(todo.created_by_member_id)}
-                    color={memberColor(todo.created_by_member_id)}
-                    imageUrl={memberAvatar(todo.created_by_member_id)}
-                    className="shrink-0 sm:hidden"
-                  />
-                  <span
-                    style={chipStyle(memberColor(todo.created_by_member_id))}
-                    className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-                  >
-                    {memberName(todo.created_by_member_id)}
+              {/* 担当者。**行のトップレベルに置く**（タイトル側に入れるとタイトルの
+                  長さで位置がガタつく。iOS と同形）。自分だけの TODO は担当が
+                  本人に決まっているので、選択を出さず印だけ。 */}
+              {editingId !== todo.id &&
+                (todo.visibility === "private" ? (
+                  <span className="flex shrink-0 items-center p-1">
+                    <AssigneeMark member={memberOf(todo.assignee_member_id)} />
                   </span>
-                </>
-              )}
+                ) : (
+                  <AssigneeSelect
+                    value={todo.assignee_member_id}
+                    members={members}
+                    onChange={(m) => changeAssignee(todo, m)}
+                  />
+                ))}
 
               {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
               {kind === "onsite" && (
