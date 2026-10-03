@@ -520,6 +520,7 @@ export function ScheduleSection({
             state={open.form}
             places={places}
             members={activeMembers}
+            myMemberId={myMemberId}
             biasCenter={biasCenter}
             tzTimeline={tzTimeline}
             onDone={closeForm}

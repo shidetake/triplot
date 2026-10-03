@@ -229,6 +229,22 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
     );
     expect(some.ok, JSON.stringify(some)).toBe(true);
 
+    // 自分だけの予定: 「全員」で送っても、参加者は作った本人だけになる
+    // （全員扱いだと他のメンバーの年表に入り込む。20261003000000）。
+    const mine = await createEvent(
+      sb,
+      tripId,
+      {
+        ...base,
+        visibility: "private",
+        title: "自分だけ",
+        participantsEveryone: true,
+        participantMemberIds: [],
+      },
+      false,
+    );
+    expect(mine.ok, JSON.stringify(mine)).toBe(true);
+
     const { data: rows } = await sb
       .from("events")
       .select("title, participants_everyone, event_participants(member_id)")
@@ -238,6 +254,10 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
     expect(byTitle.get("全員")?.event_participants ?? []).toHaveLength(0);
     expect(byTitle.get("一部")?.participants_everyone).toBe(false);
     expect(byTitle.get("一部")?.event_participants ?? []).toHaveLength(1);
+    expect(byTitle.get("自分だけ")?.participants_everyone).toBe(false);
+    expect(byTitle.get("自分だけ")?.event_participants ?? []).toEqual([
+      { member_id: me },
+    ]);
 
     // 「一部の人」なのに誰も居ない、は作らせない（入口で弾く）。
     const empty = await createEvent(

@@ -402,13 +402,20 @@ export function EventForm({
   );
   // 予定の TZ は**その予定の参加者の年表**で引く（timelineFor 参照。web と
   // 同じ）。旅行全体の年表だと、別行動している人の移動まで候補に混ざる。
+  // 自分だけの予定は参加者が自分だけ（DB の create_event / update_event と
+  // 同じ。web と同じ）。参加者の欄も出さない。
+  const isPrivate = visibility === "private";
   const participantTimeline = useMemo(
     () =>
       timelineFor(
         tzTimeline,
-        partMode === "all" ? null : Array.from(participants),
+        isPrivate
+          ? [myMemberId]
+          : partMode === "all"
+            ? null
+            : Array.from(participants),
       ),
-    [tzTimeline, partMode, participants],
+    [tzTimeline, isPrivate, myMemberId, partMode, participants],
   );
 
   const initResolution = resolveExpenseTz(initDate, participantTimeline);
@@ -488,8 +495,11 @@ export function EventForm({
   const memberName = (id: string) =>
     members.find((m) => m.id === id)?.display_name ?? "";
   const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
-  const participantIds =
-    partMode === "all" ? members.map((m) => m.id) : Array.from(participants);
+  const participantIds = isPrivate
+    ? [myMemberId]
+    : partMode === "all"
+      ? members.map((m) => m.id)
+      : Array.from(participants);
   const splitWarning =
     kind !== "transit" && participantIds.length > 1
       ? splitParticipants(
@@ -511,7 +521,7 @@ export function EventForm({
             arriveAt: `${endDate}T${endTime}`,
             departTz,
             arriveTz,
-            participantsEveryone: partMode === "all",
+            participantsEveryone: !isPrivate && partMode === "all",
             participantMemberIds: participantIds,
           },
           members.map((m) => m.id),
@@ -606,10 +616,13 @@ export function EventForm({
     const isTransit = kind === "transit";
     const submitKind = isTransit ? "transit" : "normal";
     // 参加者: all なら everyone フラグを立てて配列は空、custom は選択分。
-    const participantsEveryone = partMode === "all";
-    const participantIds = participantsEveryone
-      ? []
-      : Array.from(participants);
+    // 自分だけの予定は自分だけ（DB も同じに正規化する）。
+    const participantsEveryone = !isPrivate && partMode === "all";
+    const participantIds = isPrivate
+      ? [myMemberId]
+      : participantsEveryone
+        ? []
+        : Array.from(participants);
 
     let startAt: string;
     let endAt: string | null;
@@ -987,8 +1000,9 @@ export function EventForm({
         </View>
       </View>
 
-      {/* 参加者（複数メンバーのときだけ） */}
-      {members.length > 1 && (
+      {/* 参加者（複数メンバーのときだけ）。自分だけの予定は参加者が自分に
+          決まっているので出さない（web と同じ）。 */}
+      {!isPrivate && members.length > 1 && (
         <View>
           <Pressable
             onPress={() =>

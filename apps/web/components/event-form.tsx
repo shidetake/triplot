@@ -162,6 +162,7 @@ export function EventForm({
   state: formMode,
   places,
   members,
+  myMemberId,
   biasCenter,
   tzTimeline,
   onDone,
@@ -181,6 +182,8 @@ export function EventForm({
     lng: number | null;
   }[];
   members: { id: string; display_name: string; color: number | null }[];
+  // 自分だけの予定の参加者（＝自分）を決めるのに使う。
+  myMemberId: string;
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピンの重心 or 東京）
   tzTimeline: TripTzTimeline;
   onDone: () => void;
@@ -375,10 +378,20 @@ export function EventForm({
   // 予定の TZ は**その予定の参加者の年表**で引く（timelineFor 参照）。旅行
   // 全体の年表だと、別行動している人の移動まで候補に混ざる。全員参加なら
   // 旅行全体の年表と同じ。
+  // 自分だけの予定は参加者が自分だけ（DB の create_event / update_event と
+  // 同じ）。参加者の欄も出さない。
+  const isPrivate = visibility === "private";
   const participantTimeline = useMemo(
     () =>
-      timelineFor(tzTimeline, pMode === "all" ? null : Array.from(pSelected)),
-    [tzTimeline, pMode, pSelected],
+      timelineFor(
+        tzTimeline,
+        isPrivate
+          ? [myMemberId]
+          : pMode === "all"
+            ? null
+            : Array.from(pSelected),
+      ),
+    [tzTimeline, isPrivate, myMemberId, pMode, pSelected],
   );
 
   const [isDeleting, startDelete] = useTransition();
@@ -532,8 +545,11 @@ export function EventForm({
   const memberName = (id: string) =>
     members.find((m) => m.id === id)?.display_name ?? "";
   const tzLabel = (tz: string) => tzDisplayLabel(tz, locale);
-  const participantIds =
-    pMode === "all" ? members.map((m) => m.id) : Array.from(pSelected);
+  const participantIds = isPrivate
+    ? [myMemberId]
+    : pMode === "all"
+      ? members.map((m) => m.id)
+      : Array.from(pSelected);
   const splitWarning =
     kind3 !== "transit" && participantIds.length > 1
       ? splitParticipants(
@@ -602,7 +618,7 @@ export function EventForm({
             arriveAt: `${arriveDate}T${arriveTime}`,
             departTz,
             arriveTz,
-            participantsEveryone: pMode === "all",
+            participantsEveryone: !isPrivate && pMode === "all",
             participantMemberIds: participantIds,
           },
           members.map((m) => m.id),

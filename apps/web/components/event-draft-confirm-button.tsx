@@ -16,7 +16,6 @@ type Props = Omit<
   // 重なりをまとめた予定は複数の下書き行を表す。
   draftIds: string[];
   emailIds: string[];
-  myMemberId: string;
   labelParts: string[];
 };
 
@@ -45,6 +44,7 @@ export function EventDraftConfirmButton({
       {({ confirmDraft, close }) => (
         <EventForm
           {...formProps}
+          myMemberId={myMemberId}
           onSuccess={(eventId) => void confirmDraft({ eventId })}
           onDone={close}
         />
