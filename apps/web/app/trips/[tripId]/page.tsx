@@ -176,6 +176,8 @@ export default async function TripDetailPage({
     color: m.color,
     avatarUrl: m.users?.avatar_url ?? null,
     active: m.active,
+    // 退会したメンバー（アカウントが無い）は TODO の担当に数えない。
+    hasAccount: m.user_id !== null,
   }));
 
   // lat/lng は予定フォームが移動の TZ を場所から導出するのに使う。

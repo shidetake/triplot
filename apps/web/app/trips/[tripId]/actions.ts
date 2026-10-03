@@ -45,8 +45,8 @@ import {
   deleteTodoReturning,
   restoreTodo,
   type TodoSnapshot,
-  setTodoAssignee,
-  setTodoDone,
+  setTodoAssignees,
+  setTodoCompleted,
   toggleTodoLike,
   updateTodo,
 } from "@triplot/shared/data/todos";
@@ -1185,10 +1185,12 @@ export async function createTodoAction(
   return { error: null };
 }
 
+// 自分の分のチェック。TODO 全体が完了したかは DB が計算する。
 export async function toggleTodoAction(
   tripId: string,
   todoId: string,
-  done: boolean,
+  memberId: string,
+  completed: boolean,
 ): Promise<{ error: string | null }> {
   const t = await getTranslations("validation");
   const supabase = await createClient();
@@ -1197,7 +1199,7 @@ export async function toggleTodoAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: t("loginRequired") };
 
-  const result = await setTodoDone(supabase, todoId, done);
+  const result = await setTodoCompleted(supabase, todoId, memberId, completed);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };
@@ -1243,12 +1245,12 @@ export async function updateTodoAction(
   return { error: null };
 }
 
-// 担当者の付け替え（null は未定）。同じ旅行のメンバーか・自分だけの TODO で
-// 他人を担当にしていないかは DB が見る。
-export async function setTodoAssigneeAction(
+// 担当を変える（未定／全員／一部）。同じ旅行の在籍メンバーか・自分だけの
+// TODO でないかは DB が見る。
+export async function setTodoAssigneesAction(
   tripId: string,
   todoId: string,
-  memberId: string | null,
+  next: { everyone: boolean; memberIds: string[] },
 ): Promise<{ error: string | null }> {
   const t = await getTranslations("validation");
   const supabase = await createClient();
@@ -1257,7 +1259,7 @@ export async function setTodoAssigneeAction(
   } = await supabase.auth.getUser();
   if (!user) return { error: t("loginRequired") };
 
-  const result = await setTodoAssignee(supabase, todoId, memberId);
+  const result = await setTodoAssignees(supabase, todoId, next);
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { error: translateSharedError(result.error, tErr) };

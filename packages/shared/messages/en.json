@@ -382,7 +382,8 @@
     "deleted": "To-do deleted",
     "assigneeNone": "Unassigned",
     "assigneeAria": "Assignee: {name}",
-    "assigneeTitle": "Assignee"
+    "assigneeTitle": "Assignee",
+    "assigneeEveryone": "Everyone"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",

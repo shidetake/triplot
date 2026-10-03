@@ -5,7 +5,13 @@ import { createEvent } from "../src/data/events";
 import { createExpense } from "../src/data/expenses";
 import { ensureTripInvite } from "../src/data/invites";
 import { createPlace } from "../src/data/places";
-import { createTodo, setTodoAssignee } from "../src/data/todos";
+import {
+  createTodo,
+  deleteTodoReturning,
+  restoreTodo,
+  setTodoAssignees,
+  setTodoCompleted,
+} from "../src/data/todos";
 import { createTrip, deleteTrip } from "../src/data/trips";
 
 import { DBTEST_PREFIX, dbTestEnv, signIn } from "./helpers";
@@ -165,10 +171,13 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
       .select("id")
       .eq("trip_id", tripId)
       .single();
-    const unassign = await setTodoAssignee(sb, todoRow!.id, null);
-    expect(unassign.ok, JSON.stringify(unassign)).toBe(true);
-    const assign = await setTodoAssignee(sb, todoRow!.id, me);
-    expect(assign.ok, JSON.stringify(assign)).toBe(true);
+    const everyone = await setTodoAssignees(sb, todoRow!.id, {
+      everyone: true,
+      memberIds: [],
+    });
+    expect(everyone.ok, JSON.stringify(everyone)).toBe(true);
+    const done = await setTodoCompleted(sb, todoRow!.id, me, true);
+    expect(done.ok, JSON.stringify(done)).toBe(true);
 
     // 6. 削除。ここが本題。
     const deleted = await deleteTrip(sb, tripId, userId);
@@ -267,6 +276,94 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
       false,
     );
     expect(empty.ok).toBe(false);
+
+    const deleted = await deleteTrip(sb, tripId, userId);
+    expect(deleted.ok, JSON.stringify(deleted)).toBe(true);
+  });
+
+  // TODO の完了は一人ずつ記録し、全体の完了（todos.done）は DB が担当の規則で
+  // 計算する（20261003020000）。トリガの噛み合わせは実 DB でしか確かめられない。
+  // 旅行のメンバーは自分1人なので、全員・一部・未定の「1人」の場合を見る。
+  it("TODO の完了は DB が担当の規則で計算する", async () => {
+    const created = await createTrip(sb, {
+      title: `${DBTEST_PREFIX}todo-${Date.now()}`,
+      startDate: "2027-08-01",
+      endDate: "2027-08-03",
+      displayName: "dbtest",
+      currency: "JPY",
+      clientTz: "Asia/Tokyo",
+    });
+    expect(created.ok, JSON.stringify(created)).toBe(true);
+    if (!created.ok) return;
+    const tripId = created.data.tripId;
+    const me = await myMemberId(sb, tripId, userId);
+
+    const made = await createTodo(sb, {
+      tripId,
+      title: "ESTA申請",
+      priority: "high",
+      kind: "prep",
+      visibility: "shared",
+    });
+    expect(made.ok, JSON.stringify(made)).toBe(true);
+    const todoState = async () => {
+      const { data } = await sb
+        .from("todos")
+        .select("id, done, assignee_everyone, todo_assignees(member_id), todo_completions(member_id)")
+        .eq("trip_id", tripId)
+        .single();
+      return data!;
+    };
+    const todo = await todoState();
+    // 担当の初期値は作った人。
+    expect(todo.todo_assignees).toEqual([{ member_id: me }]);
+    expect(todo.done).toBe(false);
+
+    // 担当がやれば完了。
+    expect((await setTodoCompleted(sb, todo.id, me, true)).ok).toBe(true);
+    expect((await todoState()).done).toBe(true);
+
+    // 全員にしても、在籍しているのが自分だけなので完了のまま。
+    expect(
+      (await setTodoAssignees(sb, todo.id, { everyone: true, memberIds: [] })).ok,
+    ).toBe(true);
+    expect((await todoState()).done).toBe(true);
+
+    // 取り消すと未完了。
+    expect((await setTodoCompleted(sb, todo.id, me, false)).ok).toBe(true);
+    expect((await todoState()).done).toBe(false);
+
+    // 配布済みのアプリは done を直接書き換える。自分のやった記録に読み替わる。
+    const { error: legacyErr } = await sb
+      .from("todos")
+      .update({ done: true })
+      .eq("id", todo.id);
+    expect(legacyErr).toBeNull();
+    const afterLegacy = await todoState();
+    expect(afterLegacy.done).toBe(true);
+    expect(afterLegacy.todo_completions).toEqual([{ member_id: me }]);
+
+    // 未定にしても、誰かがやっていれば完了。
+    expect(
+      (await setTodoAssignees(sb, todo.id, { everyone: false, memberIds: [] })).ok,
+    ).toBe(true);
+    const none = await todoState();
+    expect(none.assignee_everyone).toBe(false);
+    expect(none.todo_assignees).toEqual([]);
+    expect(none.done).toBe(true);
+
+    // 消して元に戻すと、担当とやった記録も戻る。
+    expect(
+      (await setTodoAssignees(sb, todo.id, { everyone: false, memberIds: [me] })).ok,
+    ).toBe(true);
+    const snap = await deleteTodoReturning(sb, todo.id);
+    expect(snap.ok, JSON.stringify(snap)).toBe(true);
+    if (!snap.ok) return;
+    expect((await restoreTodo(sb, snap.data)).ok).toBe(true);
+    const restored = await todoState();
+    expect(restored.todo_assignees).toEqual([{ member_id: me }]);
+    expect(restored.todo_completions).toEqual([{ member_id: me }]);
+    expect(restored.done).toBe(true);
 
     const deleted = await deleteTrip(sb, tripId, userId);
     expect(deleted.ok, JSON.stringify(deleted)).toBe(true);

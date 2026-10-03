@@ -762,6 +762,69 @@ export type Database = {
         }
         Relationships: []
       }
+      todo_assignees: {
+        Row: {
+          member_id: string
+          todo_id: string
+        }
+        Insert: {
+          member_id: string
+          todo_id: string
+        }
+        Update: {
+          member_id?: string
+          todo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_assignees_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_assignees_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      todo_completions: {
+        Row: {
+          completed_at: string
+          member_id: string
+          todo_id: string
+        }
+        Insert: {
+          completed_at?: string
+          member_id: string
+          todo_id: string
+        }
+        Update: {
+          completed_at?: string
+          member_id?: string
+          todo_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "todo_completions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "todo_completions_todo_id_fkey"
+            columns: ["todo_id"]
+            isOneToOne: false
+            referencedRelation: "todos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       todo_likes: {
         Row: {
           created_at: string
@@ -797,6 +860,7 @@ export type Database = {
       }
       todos: {
         Row: {
+          assignee_everyone: boolean
           assignee_member_id: string | null
           created_at: string
           created_by_member_id: string
@@ -810,6 +874,7 @@ export type Database = {
           visibility: string
         }
         Insert: {
+          assignee_everyone?: boolean
           assignee_member_id?: string | null
           created_at?: string
           created_by_member_id: string
@@ -823,6 +888,7 @@ export type Database = {
           visibility?: string
         }
         Update: {
+          assignee_everyone?: boolean
           assignee_member_id?: string | null
           created_at?: string
           created_by_member_id?: string
@@ -1101,6 +1167,10 @@ export type Database = {
         Args: { p_id: string; p_trip_id: string }
         Returns: undefined
       }
+      can_complete_todo: {
+        Args: { p_member_id: string; p_todo_id: string }
+        Returns: boolean
+      }
       clear_trip_tz_disambig: {
         Args: { p_trip_ids: string[] }
         Returns: undefined
@@ -1337,6 +1407,14 @@ export type Database = {
       set_place_location: {
         Args: { p_lat: number; p_lng: number; p_place_id: string }
         Returns: undefined
+      }
+      set_todo_assignees: {
+        Args: { p_everyone: boolean; p_member_ids: string[]; p_todo_id: string }
+        Returns: undefined
+      }
+      todo_is_done: {
+        Args: { p_everyone: boolean; p_todo_id: string; p_trip_id: string }
+        Returns: boolean
       }
       try_acquire_lease: {
         Args: { p_name: string; p_ttl_seconds: number }

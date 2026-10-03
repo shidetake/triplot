@@ -20,12 +20,20 @@ import {
   createTodo,
   deleteTodoReturning,
   restoreTodo,
-  setTodoAssignee,
-  setTodoDone,
+  setTodoAssignees,
+  setTodoCompleted,
   toggleTodoLike,
   updateTodo,
 } from "@triplot/shared/data/todos";
 import { sortTodos } from "@triplot/shared/todoSort";
+import {
+  canCompleteTodo,
+  stackOrder,
+  todoAssignment,
+  todoProgress,
+  toggleAssignee,
+  type TodoAssignment,
+} from "@triplot/shared/todoAssignees";
 import { deriveTodos, type TodoRow } from "@triplot/shared/tripDerive";
 import type { TodoKind, TodoPriority } from "@triplot/shared/types/database";
 
@@ -39,6 +47,7 @@ import {
   HeartIcon,
   LockIcon,
   PlusIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { PrivateBadge } from "@/components/private-badge";
 import { SwipeDeleteRow } from "@/components/swipe-delete-row";
@@ -81,12 +90,22 @@ type MemberLite = {
   // 在籍中か。担当者に選べるのは在籍中のメンバーだけ（抜けた人が担当のまま
   // 残っている TODO は、その表示のために一覧に含める）。web と同じ。
   active: boolean;
+  // アカウントがあるか（退会したメンバーは担当に数えない）。
+  hasAccount: boolean;
 };
 
-type AssigneePick = {
-  current: string | null;
-  onPick: (memberId: string | null) => void;
-};
+type AssigneeNext = { everyone: boolean; memberIds: string[] };
+
+function assignmentOf(todo: TodoRow, members: MemberLite[]): TodoAssignment {
+  return todoAssignment(
+    {
+      assigneeEveryone: todo.assigneeEveryone,
+      assigneeIds: todo.assigneeIds,
+      completedIds: todo.completedIds,
+    },
+    members,
+  );
+}
 
 export default function TodosTab() {
   const tripId = useTripId();
@@ -108,8 +127,18 @@ export default function TodosTab() {
     current: TodoPriority;
     onPick: (p: TodoPriority) => void;
   } | null>(null);
-  // 担当者のシートも同じ理由で親が1つだけ持つ（優先度と同じ形のシート）。
-  const [assigneePick, setAssigneePick] = useState<AssigneePick | null>(null);
+  // 担当のシートも同じ理由で親が1つだけ持つ（優先度と同じ形のシート）。
+  // 複数選ぶので開いたまま何度も変える。中身は開いている TODO の今の値から
+  // 毎回作り、保存の往復を待たずに見た目を変えるため、送った値を再取得まで
+  // 上書きとして重ねる（assignOverride）。
+  const [assigneeTodoId, setAssigneeTodoId] = useState<string | null>(null);
+  // 上書きは「どの取得結果に重ねたものか」と一緒に持ち、再取得で実データが
+  // 変わったら自然に効かなくなる（捨てるためのエフェクトを持たない）。
+  const [assignOverride, setAssignOverride] = useState<{
+    base: unknown;
+    map: Record<string, AssigneeNext>;
+  }>({ base: null, map: {} });
+  const invalidateTrip = useInvalidateTrip(tripId);
 
   if (loadError) {
     return (
@@ -128,19 +157,56 @@ export default function TodosTab() {
     low: t("todo.priorityLow"),
   };
 
-  const todos = deriveTodos(data.todosRaw, me.id);
+  const overrides =
+    assignOverride.base === data.todosRaw ? assignOverride.map : {};
+  const todos = deriveTodos(data.todosRaw, me.id).map((todo) => {
+    const o = overrides[todo.id];
+    return o
+      ? {
+          ...todo,
+          assigneeEveryone: o.everyone,
+          assigneeIds: o.everyone ? [] : o.memberIds,
+        }
+      : todo;
+  });
   const members: MemberLite[] = (data.members ?? []).map((m) => ({
     id: m.id,
     display_name: m.display_name,
     color: m.color,
     avatarUrl: m.users?.avatar_url ?? null,
     active: m.left_at === null,
+    hasAccount: m.user_id !== null,
   }));
-  // 選択肢は「未定」と在籍中のメンバー。今の担当が抜けた人なら、その人も残す
-  // （今の値として見せるため）。
-  const assigneeOptions = assigneePick
-    ? members.filter((m) => m.active || m.id === assigneePick.current)
+
+  // 担当のシート。選択肢は「未定」「全員」と、在籍していてアカウントのある
+  // メンバー。抜けた人が担当のままなら、その人も今の値として残す。
+  const pickTodo = assigneeTodoId
+    ? (todos.find((x) => x.id === assigneeTodoId) ?? null)
+    : null;
+  const pickAssignment = pickTodo ? assignmentOf(pickTodo, members) : null;
+  const assigneeOptions = pickAssignment
+    ? members.filter(
+        (m) =>
+          (m.active && m.hasAccount) ||
+          pickAssignment.selectedIds.includes(m.id),
+      )
     : [];
+  const isAssigned = (a: TodoAssignment, id: string) =>
+    a.mode === "everyone" ? a.requiredIds.includes(id) : a.selectedIds.includes(id);
+  // 選ぶたびにその場で保存する（1つ選ぶだけの操作に保存ボタンを置かない）。
+  const changeAssignees = async (todoId: string, next: AssigneeNext) => {
+    const base = data.todosRaw;
+    setAssignOverride((o) => ({
+      base,
+      map: { ...(o.base === base ? o.map : {}), [todoId]: next },
+    }));
+    const r = await setTodoAssignees(supabase, todoId, next);
+    if (!r.ok) {
+      setAssignOverride({ base: null, map: {} });
+      Alert.alert(t("todo.failed", { error: r.error }));
+    }
+    void invalidateTrip();
+  };
   return (
     <ScreenStack style={StyleSheet.absoluteFill}>
       <ScreenStackItem
@@ -173,9 +239,7 @@ export default function TodosTab() {
             onPickPriority={(current, onPick) =>
               setPriorityPick({ current, onPick })
             }
-            onPickAssignee={(current, onPick) =>
-              setAssigneePick({ current, onPick })
-            }
+            onPickAssignee={setAssigneeTodoId}
           />
           <TodoSection
             tripId={tripId}
@@ -189,9 +253,7 @@ export default function TodosTab() {
             onPickPriority={(current, onPick) =>
               setPriorityPick({ current, onPick })
             }
-            onPickAssignee={(current, onPick) =>
-              setAssigneePick({ current, onPick })
-            }
+            onPickAssignee={setAssigneeTodoId}
           />
         </ScrollView>
       </ScreenStackItem>
@@ -242,9 +304,10 @@ export default function TodosTab() {
         </ScreenStackItem>
       )}
 
-      {/* 担当者の選択。選んだ瞬間に保存する（1つ選ぶだけの操作なので保存
-          ボタンは置かない。ui-guidelines「保存ボタンの要否」）。 */}
-      {assigneePick && (
+      {/* 担当の選択。選ぶたびにその場で保存し、メンバーは複数選ぶので開いた
+          まま（未定・全員を選んだ時だけ閉じる）。各メンバーには、やったかどうかを
+          行と同じ印で出す（誰がまだかはここで分かる）。web と同じ。 */}
+      {pickTodo && pickAssignment && (
         <ScreenStackItem
           screenId="todos-assignee"
           activityState={2}
@@ -252,41 +315,74 @@ export default function TodosTab() {
           sheetAllowedDetents="fitToContents"
           sheetGrabberVisible
           headerConfig={{ hidden: true }}
-          onDismissed={() => setAssigneePick(null)}
+          onDismissed={() => setAssigneeTodoId(null)}
         >
           <SheetScroll>
             <SheetTitle>{t("todo.assigneeTitle")}</SheetTitle>
-            {[null, ...assigneeOptions].map((m) => {
-              const id = m?.id ?? null;
-              const selected = assigneePick.current === id;
-              const name = m?.display_name ?? t("todo.assigneeNone");
-              return (
-                <Pressable
-                  key={id ?? "none"}
-                  onPress={() => {
-                    assigneePick.onPick(id);
-                    setAssigneePick(null);
-                  }}
-                  accessibilityLabel={name}
+            {(
+              [
+                { key: "none", label: t("todo.assigneeNone"), on: pickAssignment.mode === "none", next: { everyone: false, memberIds: [] } },
+                { key: "everyone", label: t("todo.assigneeEveryone"), on: pickAssignment.mode === "everyone", next: { everyone: true, memberIds: [] } },
+              ] as const
+            ).map((row) => (
+              <Pressable
+                key={row.key}
+                onPress={() => {
+                  void changeAssignees(pickTodo.id, {
+                    everyone: row.next.everyone,
+                    memberIds: [...row.next.memberIds],
+                  });
+                  setAssigneeTodoId(null);
+                }}
+                accessibilityLabel={row.label}
+                style={[styles.priorityRow, row.on && styles.priorityRowSelected]}
+              >
+                {row.key === "none" ? (
+                  <View style={[styles.avatar, styles.avatarNone]} />
+                ) : (
+                  <UsersIcon size={18} color={theme.mutedForeground} />
+                )}
+                <Text
                   style={[
-                    styles.priorityRow,
-                    selected && styles.priorityRowSelected,
+                    styles.priorityRowLabel,
+                    row.key === "none" && styles.assigneeNoneLabel,
+                    row.on && styles.priorityRowLabelSelected,
                   ]}
                 >
-                  <AssigneeMark member={m} />
+                  {row.label}
+                </Text>
+                {row.on && <CheckIcon size={16} color={theme.mutedForeground} />}
+              </Pressable>
+            ))}
+            {assigneeOptions.map((m) => {
+              const on = isAssigned(pickAssignment, m.id);
+              return (
+                <Pressable
+                  key={m.id}
+                  onPress={() =>
+                    void changeAssignees(
+                      pickTodo.id,
+                      toggleAssignee(pickAssignment, m.id),
+                    )
+                  }
+                  accessibilityLabel={m.display_name}
+                  accessibilityState={{ checked: on }}
+                  style={[styles.priorityRow, on && styles.priorityRowSelected]}
+                >
+                  <AvatarWithDone
+                    member={m}
+                    done={pickAssignment.completedIds.includes(m.id)}
+                  />
                   <Text
                     numberOfLines={1}
                     style={[
                       styles.priorityRowLabel,
-                      !m && styles.assigneeNoneLabel,
-                      selected && styles.priorityRowLabelSelected,
+                      on && styles.priorityRowLabelSelected,
                     ]}
                   >
-                    {name}
+                    {m.display_name}
                   </Text>
-                  {selected && (
-                    <CheckIcon size={16} color={theme.mutedForeground} />
-                  )}
+                  {on && <CheckIcon size={16} color={theme.mutedForeground} />}
                 </Pressable>
               );
             })}
@@ -322,11 +418,8 @@ function TodoSection({
     current: TodoPriority,
     onPick: (p: TodoPriority) => void,
   ) => void;
-  // 担当者のシートも親が持つ。
-  onPickAssignee: (
-    current: string | null,
-    onPick: (memberId: string | null) => void,
-  ) => void;
+  // 担当のシートも親が持つ。開く TODO の id を渡す。
+  onPickAssignee: (todoId: string) => void;
 }) {
   const t = useTranslations("todo");
   const theme = useTheme();
@@ -390,9 +483,10 @@ function TodoSection({
     onError: (e) => fail(String(e)),
   });
 
+  // チェックは自分の分（やった／やっていない）。全体の完了は DB が計算する。
   const doneMutation = useMutation({
-    mutationFn: async (v: { id: string; done: boolean }) => {
-      const r = await setTodoDone(supabase, v.id, v.done);
+    mutationFn: async (v: { id: string; completed: boolean }) => {
+      const r = await setTodoCompleted(supabase, v.id, myMemberId, v.completed);
       if (!r.ok) throw new Error(r.error);
     },
     onSettled: () => void invalidate(),
@@ -427,13 +521,6 @@ function TodoSection({
     const original = todos.find((x) => x.id === id);
     if (!original || !text || text === original.title) return;
     const r = await updateTodo(supabase, id, { title: text });
-    if (!r.ok) fail(r.error);
-    void invalidate();
-  };
-
-  const changeAssignee = async (todo: TodoRow, next: string | null) => {
-    if (next === todo.assignee_member_id) return;
-    const r = await setTodoAssignee(supabase, todo.id, next);
     if (!r.ok) fail(r.error);
     void invalidate();
   };
@@ -536,11 +623,24 @@ function TodoSection({
               行は詰めて並ぶ。 */}
           <View style={styles.rows}>
           {sorted.map((todo) => {
-            const assignee = todo.assignee_member_id
-              ? (memberById.get(todo.assignee_member_id) ?? null)
-              : null;
+            const assignment = assignmentOf(todo, members);
             const assigneeName =
-              assignee?.display_name ?? t("assigneeNone");
+              assignment.mode === "none"
+                ? t("assigneeNone")
+                : assignment.mode === "everyone"
+                  ? t("assigneeEveryone")
+                  : stackOrder(assignment)
+                      .map((x) => memberById.get(x.id)?.display_name)
+                      .filter(Boolean)
+                      .join("、");
+            // チェックは「自分がやったか」。担当でない人は押せない。未定は誰が
+            // やっても完了なので全体の完了を見せ、外せるのはやった本人だけ（web と同じ）。
+            const mine = todo.completedIds.includes(myMemberId);
+            const canCheck = canCompleteTodo(assignment, myMemberId);
+            const checked =
+              canCheck && assignment.mode !== "none" ? mine : todo.done;
+            const checkDisabled =
+              !canCheck || (assignment.mode === "none" && todo.done && !mine);
             return (
               <SwipeDeleteRow
                 key={todo.id}
@@ -557,15 +657,21 @@ function TodoSection({
               >
                 <Pressable
                   onPress={() =>
-                    doneMutation.mutate({ id: todo.id, done: !todo.done })
+                    doneMutation.mutate({ id: todo.id, completed: !mine })
                   }
+                  disabled={checkDisabled}
                   hitSlop={8}
                   accessibilityLabel={
-                    todo.done ? t("checkUndone") : t("checkDone")
+                    checked ? t("checkUndone") : t("checkDone")
                   }
-                  style={[styles.checkbox, todo.done && styles.checkboxDone]}
+                  accessibilityState={{ checked, disabled: checkDisabled }}
+                  style={[
+                    styles.checkbox,
+                    checked && styles.checkboxDone,
+                    checkDisabled && styles.disabled,
+                  ]}
                 >
-                  {todo.done && <CheckIcon size={13} color={theme.primaryForeground} />}
+                  {checked && <CheckIcon size={13} color={theme.primaryForeground} />}
                 </Pressable>
 
                 <Pressable
@@ -628,22 +734,22 @@ function TodoSection({
 
                 {/* 担当者。自分だけの TODO は担当が本人に決まっているので、
                     選択を出さず印だけ（web と同じ）。 */}
+                {/* 全体が完了した TODO は、取り消し線と揃えて印もまとめて控えめに。 */}
                 {editingId !== todo.id &&
                   (todo.visibility === "private" ? (
-                    <AssigneeMark member={assignee} />
+                    <View style={todo.done && styles.disabled}>
+                      <AssigneeMark assignment={assignment} members={members} />
+                    </View>
                   ) : (
                     <Pressable
-                      onPress={() =>
-                        onPickAssignee(todo.assignee_member_id, (m) =>
-                          void changeAssignee(todo, m),
-                        )
-                      }
+                      onPress={() => onPickAssignee(todo.id)}
                       hitSlop={8}
                       accessibilityLabel={t("assigneeAria", {
                         name: assigneeName,
                       })}
+                      style={todo.done && styles.disabled}
                     >
-                      <AssigneeMark member={assignee} />
+                      <AssigneeMark assignment={assignment} members={members} />
                     </Pressable>
                   ))}
 
@@ -682,11 +788,82 @@ function TodoSection({
   );
 }
 
-// 担当者の印。未定は破線の丸＝「まだ実体が無い」（web の AssigneeMark と同じ）。
-function AssigneeMark({ member }: { member: MemberLite | null }) {
+// 担当の印（行の右端）。web の AssigneeMark と同じ規則:
+//   未定 … 破線の丸／1人 … その人のアバター／複数 … アバターを重ねて並べ、
+//   進み具合（全員も一部も同じ形）。まだの人を左・手前に、済んだ人を右・後ろに。
+//   並べるのは3人まで、残りは +N。
+const STACK_MAX = 3;
+function AssigneeMark({
+  assignment,
+  members,
+}: {
+  assignment: TodoAssignment;
+  members: MemberLite[];
+}) {
   const styles = useThemedStyles(makeStyles);
-  if (!member) return <View style={[styles.avatar, styles.avatarNone]} />;
-  return <Avatar member={member} />;
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const order = stackOrder(assignment).filter((x) => byId.has(x.id));
+  if (assignment.mode === "none" || order.length === 0) {
+    return <View style={[styles.avatar, styles.avatarNone]} />;
+  }
+  if (order.length === 1) return <Avatar member={byId.get(order[0].id)!} />;
+  const shown = order.slice(0, STACK_MAX);
+  const rest = order.length - shown.length;
+  const { done, total } = todoProgress(assignment);
+  return (
+    <View style={styles.stackRow}>
+      <View style={styles.stack}>
+        {shown.map((x, i) => (
+          <AvatarWithDone
+            key={x.id}
+            member={byId.get(x.id)!}
+            done={x.done}
+            style={[i > 0 && styles.stackOverlap, { zIndex: shown.length - i }]}
+            ring
+          />
+        ))}
+        {rest > 0 && <Text style={styles.stackMore}>+{rest}</Text>}
+      </View>
+      <Text style={styles.progress}>
+        {done}/{total}
+      </Text>
+    </View>
+  );
+}
+
+// 済んだ人の印。アバターを灰色にして暗くし、右上に小さな ✓（ui-guidelines
+// 「TODO の担当」。web と同じ）。色＝まだの人、灰色＋✓＝済んだ人。
+function AvatarWithDone({
+  member,
+  done,
+  style,
+  ring = false,
+}: {
+  member: MemberLite;
+  done: boolean;
+  style?: import("react-native").StyleProp<import("react-native").ViewStyle>;
+  // 重ねて並べる時だけ、背景色の縁で隣と分ける。
+  ring?: boolean;
+}) {
+  const theme = useTheme();
+  const styles = useThemedStyles(makeStyles);
+  return (
+    <View style={style}>
+      <View
+        style={[
+          ring && styles.avatarRing,
+          done && { filter: [{ grayscale: 1 }, { brightness: 0.6 }] },
+        ]}
+      >
+        <Avatar member={member} />
+      </View>
+      {done && (
+        <View style={styles.doneBadge}>
+          <CheckIcon size={7} color={theme.primaryForeground} strokeWidth={4} />
+        </View>
+      )}
+    </View>
+  );
 }
 
 // 色丸＋頭文字（web の MemberAvatar 相当。写真があれば写真）。
@@ -802,4 +979,23 @@ const makeStyles = (t: Theme) =>
     borderColor: t.fgAlpha(0.4),
   },
   assigneeNoneLabel: { color: t.mutedForeground },
+  stackRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  stack: { flexDirection: "row", alignItems: "center" },
+  stackOverlap: { marginLeft: -6 },
+  stackMore: { marginLeft: 2, fontSize: 10, fontWeight: "600", color: t.mutedForeground },
+  progress: { fontSize: 12, color: t.mutedForeground, fontVariant: ["tabular-nums"] },
+  avatarRing: { borderRadius: 11, borderWidth: 1.5, borderColor: t.background, margin: -1.5 },
+  doneBadge: {
+    position: "absolute",
+    top: -3,
+    right: -3,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: t.primary,
+    borderWidth: 1.5,
+    borderColor: t.background,
+    alignItems: "center",
+    justifyContent: "center",
+  },
 });

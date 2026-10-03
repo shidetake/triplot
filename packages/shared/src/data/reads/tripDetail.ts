@@ -68,7 +68,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     sb
       .from("todos")
       .select(
-        "id, title, priority, done, created_at, created_by_member_id, assignee_member_id, kind, event_id, visibility, todo_likes(member_id)",
+        "id, title, priority, done, created_at, created_by_member_id, assignee_everyone, kind, event_id, visibility, todo_likes(member_id), todo_assignees(member_id), todo_completions(member_id)",
       )
       .eq("trip_id", tripId)
       // 表示順は todoSort（優先度→作成順）でアプリ側に統一。

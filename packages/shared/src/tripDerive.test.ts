@@ -203,19 +203,22 @@ describe("deriveTodos", () => {
         done: false,
         created_at: "2026-01-01T00:00:00Z",
         created_by_member_id: "m1",
-        assignee_member_id: null,
+        assignee_everyone: false,
         kind: "prep",
         event_id: null,
         visibility: "shared",
         todo_likes: [{ member_id: "m1" }, { member_id: "m2" }],
+        todo_assignees: [{ member_id: "m1" }],
+        todo_completions: [{ member_id: "m1" }],
       },
     ];
     const [row] = deriveTodos(todos, "m2");
     expect(row.likeCount).toBe(2);
     expect(row.iLiked).toBe(true);
     expect(deriveTodos(todos, "m3")[0].iLiked).toBe(false);
-    // 担当者は未定（null）のまま通す。作った人で埋めない。
-    expect(row.assignee_member_id).toBeNull();
+    // 担当とやった人はそのまま通す（規則の解決は todoAssignees.ts）。
+    expect(row.assigneeIds).toEqual(["m1"]);
+    expect(row.completedIds).toEqual(["m1"]);
   });
 });
 

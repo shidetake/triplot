@@ -7,6 +7,7 @@ import {
   useTransition,
 } from "react";
 import { useTranslations } from "next-intl";
+import { Menu } from "@base-ui/react/menu";
 import { Select } from "@base-ui/react/select";
 
 import { toast } from "@/components/toast";
@@ -19,7 +20,7 @@ import {
   createTodoAction,
   deleteTodoAction,
   restoreTodoAction,
-  setTodoAssigneeAction,
+  setTodoAssigneesAction,
   toggleTodoAction,
   toggleTodoLikeAction,
   updateTodoAction,
@@ -32,12 +33,21 @@ import {
   LockIcon,
   PlusIcon,
   TrashIcon,
+  UsersIcon,
 } from "@/components/icons";
 import { MemberAvatar } from "@/components/member-avatar";
 import { chipStyle } from "@/lib/themeColor";
 import { ReservationIcon } from "@/components/reservation-icon";
 import { useMediaQuery } from "@/components/use-media-query";
 import { sortTodos } from "@triplot/shared/todoSort";
+import {
+  canCompleteTodo,
+  stackOrder,
+  todoAssignment,
+  todoProgress,
+  toggleAssignee,
+  type TodoAssignment,
+} from "@triplot/shared/todoAssignees";
 import type {
   TodoKind,
   TodoPriority,
@@ -57,6 +67,8 @@ type MemberLite = {
   // 在籍中か。担当者に選べるのは在籍中のメンバーだけ（抜けた人が担当のまま
   // 残っている TODO は、その表示のために一覧に含める）。
   active: boolean;
+  // アカウントがあるか（退会したメンバーは担当に数えない）。
+  hasAccount: boolean;
 };
 
 // JIRA 風の優先度アイコン（高=上シェブロン / 中=イコール / 低=下シェブロン）。
@@ -71,9 +83,13 @@ function PriorityIcon({ p, size = 16 }: { p: TodoPriority; size?: number }) {
 
 type OptimisticAction =
   | { type: "add"; todo: TodoRow }
-  | { type: "toggle"; id: string; done: boolean }
+  | { type: "toggle"; id: string; memberId: string; completed: boolean }
   | { type: "update"; id: string; title?: string; priority?: TodoPriority }
-  | { type: "assign"; id: string; assignee: string | null }
+  | {
+      type: "assign";
+      id: string;
+      next: { everyone: boolean; memberIds: string[] };
+    }
   | { type: "delete"; id: string }
   | { type: "like"; id: string; liked: boolean };
 
@@ -145,12 +161,57 @@ function PrioritySelect({
   );
 }
 
-// 担当者の印。狭い画面は色アバター、広い画面は名前の色チップ（行の幅が足りる
-// ときは名前まで読める方が速い）。しきい値はボトムシートと同じ 640px。未定は
-// 破線の丸／チップ＝「まだ実体が無い」（ui-guidelines「定型部品」の破線）。
-function AssigneeMark({ member }: { member: MemberLite | null }) {
+// 済んだ人の印。アバターを灰色にして暗くし、右上に小さな ✓ を付ける
+// （ui-guidelines「TODO の担当」）。色＝まだの人、灰色＋✓＝済んだ人。
+function AvatarWithDone({
+  member,
+  done,
+  className,
+  style,
+}: {
+  member: MemberLite;
+  done: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  return (
+    <span className={`relative inline-flex shrink-0 ${className ?? ""}`} style={style}>
+      <MemberAvatar
+        name={member.display_name}
+        color={member.color}
+        imageUrl={member.avatarUrl ?? null}
+        className={`ring-[1.5px] ring-background ${done ? "brightness-60 grayscale" : ""}`}
+      />
+      {done && (
+        <span
+          aria-hidden
+          className="absolute -right-[3px] -top-[3px] flex h-2.5 w-2.5 items-center justify-center rounded-full bg-primary text-primary-foreground ring-[1.5px] ring-background"
+        >
+          <CheckIcon size={7} />
+        </span>
+      )}
+    </span>
+  );
+}
+
+// 担当の印（行の右端）。
+//   未定 … 破線の丸（広い画面は破線のチップ）
+//   1人  … その人のアバター（広い画面は名前の色チップ）
+//   複数 … アバターを重ねて並べ、進み具合（全員も一部も同じ形）。まだの人を
+//          左・手前に、済んだ人を右・後ろに。並べるのは3人まで、残りは +N。
+const STACK_MAX = 3;
+function AssigneeMark({
+  assignment,
+  members,
+}: {
+  assignment: TodoAssignment;
+  members: MemberLite[];
+}) {
   const t = useTranslations("todo");
-  if (!member) {
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const order = stackOrder(assignment).filter((x) => byId.has(x.id));
+
+  if (assignment.mode === "none" || order.length === 0) {
     return (
       <>
         <span
@@ -163,102 +224,152 @@ function AssigneeMark({ member }: { member: MemberLite | null }) {
       </>
     );
   }
+
+  if (order.length === 1) {
+    const member = byId.get(order[0].id)!;
+    return (
+      <>
+        <MemberAvatar
+          name={member.display_name}
+          color={member.color}
+          imageUrl={member.avatarUrl ?? null}
+          className="shrink-0 sm:hidden"
+        />
+        <span
+          style={chipStyle(member.color)}
+          className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
+        >
+          {member.display_name}
+        </span>
+      </>
+    );
+  }
+
+  const shown = order.slice(0, STACK_MAX);
+  const rest = order.length - shown.length;
+  const { done, total } = todoProgress(assignment);
   return (
-    <>
-      <MemberAvatar
-        name={member.display_name}
-        color={member.color}
-        imageUrl={member.avatarUrl ?? null}
-        className="shrink-0 sm:hidden"
-      />
-      <span
-        style={chipStyle(member.color)}
-        className="hidden shrink-0 rounded-full px-2 py-0.5 text-xs font-medium leading-none sm:inline-block"
-      >
-        {member.display_name}
+    <span className="flex shrink-0 items-center gap-1.5">
+      <span className="flex items-center">
+        {shown.map((x, i) => (
+          <AvatarWithDone
+            key={x.id}
+            member={byId.get(x.id)!}
+            done={x.done}
+            className={i > 0 ? "-ml-1.5" : ""}
+            style={{ zIndex: shown.length - i }}
+          />
+        ))}
+        {rest > 0 && (
+          <span className="ml-0.5 text-[10px] font-semibold text-muted-foreground">
+            +{rest}
+          </span>
+        )}
       </span>
-    </>
+      <span className="text-xs tabular-nums text-muted-foreground">
+        {done}/{total}
+      </span>
+    </span>
   );
 }
 
-// 担当者の選択。選んだ瞬間に保存する（1つ選ぶだけの操作なので保存ボタンは
-// 置かない。ui-guidelines「保存ボタンの要否」）。選択肢は「未定」と在籍中の
-// メンバー。抜けた人が担当のままなら、その人も選択肢に残す（今の値として
-// 見せるため）。
-const UNASSIGNED = "__unassigned__";
-function AssigneeSelect({
-  value,
+// 担当の選択。「未定」「全員」と、メンバー（複数選べる）。選ぶたびにその場で
+// 保存する（1つ選ぶだけの操作に保存ボタンを置かない。ui-guidelines「保存
+// ボタンの要否」）。メンバーは複数選ぶのでメニューを開いたままにする。各メンバー
+// には、やったかどうかを行と同じ印で出す（誰がまだかはここで分かる）。
+// 選べるのは在籍していてアカウントのある人。抜けた人が担当のままなら、その人も
+// 今の値として残す。
+function AssigneeMenu({
+  assignment,
   members,
   onChange,
 }: {
-  value: string | null;
+  assignment: TodoAssignment;
   members: MemberLite[];
-  onChange: (memberId: string | null) => void;
+  onChange: (next: { everyone: boolean; memberIds: string[] }) => void;
 }) {
   const t = useTranslations("todo");
-  const current = value ? (members.find((m) => m.id === value) ?? null) : null;
-  const options = members.filter((m) => m.active || m.id === value);
+  const byId = new Map(members.map((m) => [m.id, m]));
+  const options = members.filter(
+    (m) =>
+      (m.active && m.hasAccount) || assignment.selectedIds.includes(m.id),
+  );
+  const isOn = (id: string) =>
+    assignment.mode === "everyone"
+      ? assignment.requiredIds.includes(id)
+      : assignment.selectedIds.includes(id);
+  const names = stackOrder(assignment)
+    .map((x) => byId.get(x.id)?.display_name)
+    .filter(Boolean)
+    .join("、");
   const label = t("assigneeAria", {
-    name: current?.display_name ?? t("assigneeNone"),
+    name:
+      assignment.mode === "none"
+        ? t("assigneeNone")
+        : assignment.mode === "everyone"
+          ? t("assigneeEveryone")
+          : names,
   });
+  const optionClass = (selected: boolean) =>
+    `flex w-full items-center gap-2 ${menuItemClass} ${selected ? "bg-accent font-medium" : ""}`;
+
   return (
-    <Select.Root
-      value={value ?? UNASSIGNED}
-      onValueChange={(v) => onChange(v === UNASSIGNED ? null : (v as string))}
-    >
-      <Select.Trigger
+    <Menu.Root>
+      <Menu.Trigger
         aria-label={label}
         title={label}
         className="flex shrink-0 items-center rounded-full p-1 transition hover:bg-foreground/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <AssigneeMark member={current} />
-      </Select.Trigger>
-      <Select.Portal>
-        <Select.Positioner
-          align="end"
-          sideOffset={4}
-          alignItemWithTrigger={false}
-          className="z-50"
-        >
-          <Select.Popup className="max-h-64 w-48 overflow-y-auto rounded-md border border-foreground/20 bg-background py-1 shadow-lg">
-            <Select.Item
-              value={UNASSIGNED}
-              className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+        <AssigneeMark assignment={assignment} members={members} />
+      </Menu.Trigger>
+      <Menu.Portal>
+        <Menu.Positioner align="end" sideOffset={4} className="z-50">
+          <Menu.Popup className="max-h-64 w-56 overflow-y-auto rounded-md border border-foreground/10 bg-background py-1 text-sm shadow-lg">
+            <Menu.Item
+              onClick={() => onChange({ everyone: false, memberIds: [] })}
+              className={optionClass(assignment.mode === "none")}
             >
               <span
                 aria-hidden
-                className="inline-block h-4 w-4 shrink-0 rounded-full border border-dashed border-foreground/40"
+                className="inline-block h-[18px] w-[18px] shrink-0 rounded-full border border-dashed border-foreground/40"
               />
-              <Select.ItemText className="flex-1 text-muted-foreground">
+              <span className="min-w-0 flex-1 truncate text-left text-muted-foreground">
                 {t("assigneeNone")}
-              </Select.ItemText>
-              <Select.ItemIndicator className="text-muted-foreground">
-                <CheckIcon size={16} />
-              </Select.ItemIndicator>
-            </Select.Item>
+              </span>
+              {assignment.mode === "none" && <CheckIcon size={16} />}
+            </Menu.Item>
+            <Menu.Item
+              onClick={() => onChange({ everyone: true, memberIds: [] })}
+              className={optionClass(assignment.mode === "everyone")}
+            >
+              <UsersIcon size={16} className="shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1 truncate text-left">
+                {t("assigneeEveryone")}
+              </span>
+              {assignment.mode === "everyone" && <CheckIcon size={16} />}
+            </Menu.Item>
+            <div className="my-1 border-t border-foreground/5" />
             {options.map((m) => (
-              <Select.Item
+              <Menu.Item
                 key={m.id}
-                value={m.id}
-                className={`flex items-center gap-2 ${menuItemClass} data-[selected]:bg-accent data-[selected]:font-medium`}
+                closeOnClick={false}
+                onClick={() => onChange(toggleAssignee(assignment, m.id))}
+                className={optionClass(isOn(m.id))}
               >
-                <MemberAvatar
-                  name={m.display_name}
-                  color={m.color}
-                  imageUrl={m.avatarUrl ?? null}
+                <AvatarWithDone
+                  member={m}
+                  done={assignment.completedIds.includes(m.id)}
                 />
-                <Select.ItemText className="min-w-0 flex-1 truncate">
+                <span className="min-w-0 flex-1 truncate text-left">
                   {m.display_name}
-                </Select.ItemText>
-                <Select.ItemIndicator className="text-muted-foreground">
-                  <CheckIcon size={16} />
-                </Select.ItemIndicator>
-              </Select.Item>
+                </span>
+                {isOn(m.id) && <CheckIcon size={16} />}
+              </Menu.Item>
             ))}
-          </Select.Popup>
-        </Select.Positioner>
-      </Select.Portal>
-    </Select.Root>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.Root>
   );
 }
 
@@ -328,9 +439,17 @@ export function TodoSection({
       switch (action.type) {
         case "add":
           return [...state, action.todo];
+        // 自分の分だけ付け外しする。全体の完了（done）は再取得で DB の値に揃う。
         case "toggle":
           return state.map((t) =>
-            t.id === action.id ? { ...t, done: action.done } : t,
+            t.id === action.id
+              ? {
+                  ...t,
+                  completedIds: action.completed
+                    ? [...t.completedIds, action.memberId]
+                    : t.completedIds.filter((m) => m !== action.memberId),
+                }
+              : t,
           );
         case "update":
           return state.map((t) =>
@@ -347,7 +466,11 @@ export function TodoSection({
         case "assign":
           return state.map((t) =>
             t.id === action.id
-              ? { ...t, assignee_member_id: action.assignee }
+              ? {
+                  ...t,
+                  assigneeEveryone: action.next.everyone,
+                  assigneeIds: action.next.everyone ? [] : action.next.memberIds,
+                }
               : t,
           );
         case "delete":
@@ -373,8 +496,15 @@ export function TodoSection({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState("");
 
-  const memberOf = (id: string | null) =>
-    id ? (members.find((m) => m.id === id) ?? null) : null;
+  const assignmentOf = (todo: TodoRow) =>
+    todoAssignment(
+      {
+        assigneeEveryone: todo.assigneeEveryone,
+        assigneeIds: todo.assigneeIds,
+        completedIds: todo.completedIds,
+      },
+      members,
+    );
 
   const add = () => {
     const title = draft.trim();
@@ -386,7 +516,9 @@ export function TodoSection({
       done: false,
       created_at: new Date().toISOString(),
       created_by_member_id: myMemberId,
-      assignee_member_id: myMemberId,
+      assigneeEveryone: false,
+      assigneeIds: [myMemberId],
+      completedIds: [],
       kind,
       event_id: null,
       visibility: draftVisibility,
@@ -408,10 +540,22 @@ export function TodoSection({
     });
   };
 
+  // チェックは自分の分（やった／やっていない）。
   const toggle = (todo: TodoRow) => {
+    const completed = !todo.completedIds.includes(myMemberId);
     startTransition(async () => {
-      applyOptimistic({ type: "toggle", id: todo.id, done: !todo.done });
-      const { error } = await toggleTodoAction(tripId, todo.id, !todo.done);
+      applyOptimistic({
+        type: "toggle",
+        id: todo.id,
+        memberId: myMemberId,
+        completed,
+      });
+      const { error } = await toggleTodoAction(
+        tripId,
+        todo.id,
+        myMemberId,
+        completed,
+      );
       if (error) toast(t("failed", { error }));
     });
   };
@@ -425,11 +569,13 @@ export function TodoSection({
     });
   };
 
-  const changeAssignee = (todo: TodoRow, assignee: string | null) => {
-    if (assignee === todo.assignee_member_id) return;
+  const changeAssignees = (
+    todo: TodoRow,
+    next: { everyone: boolean; memberIds: string[] },
+  ) => {
     startTransition(async () => {
-      applyOptimistic({ type: "assign", id: todo.id, assignee });
-      const { error } = await setTodoAssigneeAction(tripId, todo.id, assignee);
+      applyOptimistic({ type: "assign", id: todo.id, next });
+      const { error } = await setTodoAssigneesAction(tripId, todo.id, next);
       if (error) toast(t("failed", { error }));
     });
   };
@@ -574,17 +720,29 @@ export function TodoSection({
       {/* リスト */}
       {ordered.length === 0 ? null : (
         <ul>
-          {ordered.map((todo) => (
+          {ordered.map((todo) => {
+            const assignment = assignmentOf(todo);
+            // チェックは「自分がやったか」。担当でない人は押せない（全体の完了を
+            // 見せるだけ）。未定は誰がやっても完了なので全体の完了を見せ、
+            // 外せるのはやった本人だけ。
+            const mine = todo.completedIds.includes(myMemberId);
+            const canCheck = canCompleteTodo(assignment, myMemberId);
+            const checked =
+              canCheck && assignment.mode !== "none" ? mine : todo.done;
+            const disabled =
+              !canCheck || (assignment.mode === "none" && todo.done && !mine);
+            return (
             <li
               key={todo.id}
               className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-foreground/10"
             >
               <input
                 type="checkbox"
-                checked={todo.done}
+                checked={checked}
+                disabled={disabled}
                 onChange={() => toggle(todo)}
-                aria-label={todo.done ? t("checkUndone") : t("checkDone")}
-                className="size-[18px] shrink-0 cursor-pointer"
+                aria-label={checked ? t("checkUndone") : t("checkDone")}
+                className="size-[18px] shrink-0 cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
               />
 
               {/* 行の並びは「左=読む情報（優先度・タイトル・鍵・担当者）／
@@ -638,18 +796,22 @@ export function TodoSection({
               {/* 担当者。**行のトップレベルに置く**（タイトル側に入れるとタイトルの
                   長さで位置がガタつく。iOS と同形）。自分だけの TODO は担当が
                   本人に決まっているので、選択を出さず印だけ。 */}
-              {editingId !== todo.id &&
-                (todo.visibility === "private" ? (
-                  <span className="flex shrink-0 items-center p-1">
-                    <AssigneeMark member={memberOf(todo.assignee_member_id)} />
-                  </span>
-                ) : (
-                  <AssigneeSelect
-                    value={todo.assignee_member_id}
-                    members={members}
-                    onChange={(m) => changeAssignee(todo, m)}
-                  />
-                ))}
+              {editingId !== todo.id && (
+                // 全体が完了した TODO は、取り消し線と揃えて印もまとめて控えめに。
+                <span className={todo.done ? "opacity-50" : ""}>
+                  {todo.visibility === "private" ? (
+                    <span className="flex shrink-0 items-center p-1">
+                      <AssigneeMark assignment={assignment} members={members} />
+                    </span>
+                  ) : (
+                    <AssigneeMenu
+                      assignment={assignment}
+                      members={members}
+                      onChange={(next) => changeAssignees(todo, next)}
+                    />
+                  )}
+                </span>
+              )}
 
               {/* いいねは現地TODOだけ。1人1いいねで再タップ取り消し。 */}
               {kind === "onsite" && (
@@ -689,7 +851,8 @@ export function TodoSection({
                 <TrashIcon size={16} />
               </button>
             </li>
-          ))}
+          );
+          })}
         </ul>
       )}
         </>

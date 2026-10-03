@@ -91,8 +91,12 @@ export type TodoRow = {
   done: boolean;
   created_at: string;
   created_by_member_id: string;
-  // 担当者（誰がやるか）。null は未定。行のアバターはこちらを出す。
-  assignee_member_id: string | null;
+  // 担当（todoAssignees.ts の todoAssignment に渡す材料）。全員ならフラグ、
+  // 一部なら選ばれた人。どちらでもなければ未定。done は TODO 全体の完了で、
+  // DB が計算した値。
+  assigneeEveryone: boolean;
+  assigneeIds: string[];
+  completedIds: string[];
   kind: TodoKind;
   // 予定に紐づく予約TODOなら event_id が入る（null=通常TODO）。
   event_id: string | null;
@@ -179,11 +183,13 @@ export type RawTodo = {
   done: boolean;
   created_at: string;
   created_by_member_id: string;
-  assignee_member_id: string | null;
+  assignee_everyone: boolean;
   kind: string;
   event_id: string | null;
   visibility: string;
   todo_likes: { member_id: string }[] | null;
+  todo_assignees: { member_id: string }[] | null;
+  todo_completions: { member_id: string }[] | null;
 };
 
 // ── 派生計算 ──
@@ -317,7 +323,9 @@ export function deriveTodos(
       done: t.done,
       created_at: t.created_at,
       created_by_member_id: t.created_by_member_id,
-      assignee_member_id: t.assignee_member_id,
+      assigneeEveryone: t.assignee_everyone,
+      assigneeIds: (t.todo_assignees ?? []).map((a) => a.member_id),
+      completedIds: (t.todo_completions ?? []).map((c) => c.member_id),
       kind: t.kind as TodoKind,
       event_id: t.event_id,
       visibility: t.visibility as Visibility,

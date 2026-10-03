@@ -2,7 +2,8 @@ import type { DB } from "./client";
 import { err, ok, type Result } from "./result";
 
 // TODO（やりたいこと）。共有リスト。作成だけ created_by_member_id 解決のため RPC、
-// 更新（チェック / 本文 / 優先度 / 担当者）と削除は RLS 配下の素の table 操作。
+// 本文・優先度の更新と削除は RLS 配下の素の table 操作。担当は RPC、チェックは
+// 自分の分を todo_completions に付け外しする。
 
 export type CreateTodoInput = {
   tripId: string;
@@ -27,12 +28,26 @@ export async function createTodo(
   return ok(undefined);
 }
 
-export async function setTodoDone(
+// 自分の分のチェック（やった／やっていない）。TODO 全体が完了したかは DB が
+// 計算する（todos.done）。担当でない人は RLS で付けられない（未定なら誰でも）。
+export async function setTodoCompleted(
   sb: DB,
   todoId: string,
-  done: boolean,
+  memberId: string,
+  completed: boolean,
 ): Promise<Result<void>> {
-  const { error } = await sb.from("todos").update({ done }).eq("id", todoId);
+  const { error } = completed
+    ? await sb
+        .from("todo_completions")
+        .upsert(
+          { todo_id: todoId, member_id: memberId },
+          { onConflict: "todo_id,member_id", ignoreDuplicates: true },
+        )
+    : await sb
+        .from("todo_completions")
+        .delete()
+        .eq("todo_id", todoId)
+        .eq("member_id", memberId);
   if (error) return err(error.message);
   return ok(undefined);
 }
@@ -48,17 +63,19 @@ export async function updateTodo(
   return ok(undefined);
 }
 
-// 担当者の付け替え。null は「未定」。同じ旅行のメンバーかは DB の外部キーが、
-// 自分だけの TODO で他人を担当にしていないかは DB の check が見る。
-export async function setTodoAssignee(
+// 担当を変える。未定は { everyone: false, memberIds: [] }、全員は
+// { everyone: true }、一部は { everyone: false, memberIds: [...] }。
+// 同じ旅行の在籍メンバーか・自分だけの TODO でないかは RPC が見る。
+export async function setTodoAssignees(
   sb: DB,
   todoId: string,
-  memberId: string | null,
+  next: { everyone: boolean; memberIds: string[] },
 ): Promise<Result<void>> {
-  const { error } = await sb
-    .from("todos")
-    .update({ assignee_member_id: memberId })
-    .eq("id", todoId);
+  const { error } = await sb.rpc("set_todo_assignees", {
+    p_todo_id: todoId,
+    p_everyone: next.everyone,
+    p_member_ids: next.everyone ? [] : next.memberIds,
+  });
   if (error) return err(error.message);
   return ok(undefined);
 }
