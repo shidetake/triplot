@@ -243,10 +243,16 @@ export function ExpenseForm({
   );
   // 開閉トグルは純粋な表示状態なので保持しない（毎回畳んで開く）。
   const [payerOpen, setPayerOpen] = useState<boolean>(false);
+  const [visibility, setVisibility] = useDraft<Visibility>(
+    "visibility",
+    initVisibility,
+  );
   // 年表は人ごと（timelineFor 参照）。費用の TZ は支払った人の年表で引く。
+  // 自分だけの費用の支払者は自分（保存する値・DB と同じ）。
+  const effectivePayer = visibility === "private" ? myMemberId : payer;
   const payerTimeline = useMemo(
-    () => timelineFor(tzTimeline, [payer]),
-    [tzTimeline, payer],
+    () => timelineFor(tzTimeline, [effectivePayer]),
+    [tzTimeline, effectivePayer],
   );
   const [paidAtDate, setPaidAtDate] = useDraft<string>(
     "paidAtDate",
@@ -368,10 +374,6 @@ export function ExpenseForm({
     setPaidAtTime("00:00");
     setShowTime(false);
   };
-  const [visibility, setVisibility] = useDraft<Visibility>(
-    "visibility",
-    initVisibility,
-  );
   const [selectedSplits, setSelectedSplits] = useDraft<Set<string>>(
     "selectedSplits",
     initSplits,

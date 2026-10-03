@@ -222,9 +222,11 @@ export function ExpenseForm({
   );
   const [payerOpen, setPayerOpen] = useState(false);
   // 年表は人ごと（timelineFor 参照）。費用の TZ は支払った人の年表で引く。
+  // 自分だけの費用の支払者は自分（保存する値・DB と同じ。web と同じ）。
+  const effectivePayer = visibility === "private" ? myMemberId : payer;
   const payerTimeline = useMemo(
-    () => timelineFor(tzTimeline, [payer]),
-    [tzTimeline, payer],
+    () => timelineFor(tzTimeline, [effectivePayer]),
+    [tzTimeline, effectivePayer],
   );
 
   // 日付と時刻。時刻は「指定したい人だけ」展開するトグル（未展開は 00:00 送信
