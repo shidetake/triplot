@@ -1416,6 +1416,13 @@ export type Database = {
         Args: { p_everyone: boolean; p_todo_id: string; p_trip_id: string }
         Returns: boolean
       }
+      trip_member_avatars: {
+        Args: { p_trip_id: string }
+        Returns: {
+          avatar_url: string
+          member_id: string
+        }[]
+      }
       try_acquire_lease: {
         Args: { p_name: string; p_ttl_seconds: number }
         Returns: boolean
