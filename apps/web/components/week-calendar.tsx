@@ -121,8 +121,9 @@ export function WeekCalendar({
   onPcDragChange,
   onSlotClick,
   onAllDaySlotClick,
-  onEventClick,
+  onEventClick: onEventClickProp,
   onEventMove,
+  formOpen,
   className,
 }: {
   schedule: Schedule;
@@ -155,9 +156,21 @@ export function WeekCalendar({
   // 確定済みの予定を掴んで別の日時へ動かす（RN の週カレンダーと同じ）。
   // 渡されなければ掴めない（＝押すだけ）。
   onEventMove?: (event: ScheduleEvent, to: MovedTiming) => void;
+  // フォーム（追加・編集）が開いているか。開いている間のクリックはフォームを
+  // 閉じるだけにする（外側のクリックで閉じるのはフォーム自身）。新しい場所で
+  // 開き直すと、閉じたつもりが別のフォームが出てくることになる。
+  formOpen: boolean;
   // 呼び出し側で外枠（余白・角丸・高さ）を上書きしたい時に渡す（モバイルタブの全画面化等）。
   className?: string;
 }) {
+  // フォームが開いている間は、予定を押しても開かない（フォームが閉じるだけ）。
+  // 判定は「押した瞬間に開いていたか」で行う。フォームはマウスを離した時に
+  // 閉じるので、予定の click が届く頃にはもう formOpen が false になっている。
+  const pressedWhileFormOpenRef = useRef(false);
+  const onEventClick = (eventId: string, anchor: Anchor) => {
+    if (pressedWhileFormOpenRef.current) return;
+    onEventClickProp(eventId, anchor);
+  };
   const tSched = useTranslations("schedule");
   // 自分が「明示参加者リスト」から外れている＝別行動の予定か。
   // 全員参加なら当然自分も含まれる。
@@ -795,6 +808,9 @@ export function WeekCalendar({
   return (
     <div
       ref={scrollRef}
+      onPointerDownCapture={() => {
+        pressedWhileFormOpenRef.current = formOpen;
+      }}
       // iOS Safari は長押しで拡大鏡(loupe)＋テキスト選択を出してしまい、
       // 自前の長押し→ゴースト追加と被って使いにくい。カレンダー内は
       // 選択不要なので user-select:none / touch-callout:none で抑止する。
@@ -1057,6 +1073,8 @@ export function WeekCalendar({
                   // PC（マウス）専用。touch / pen は touch 系で扱うので無視。
                   if (e.pointerType !== "mouse") return;
                   if (e.button !== 0) return; // 左クリックのみ
+                  // フォームが開いている間は、閉じるだけ（新しいフォームを開かない）。
+                  if (formOpen) return;
                   const colEl = e.currentTarget;
                   const rect = colEl.getBoundingClientRect();
                   const off = e.clientY - rect.top;

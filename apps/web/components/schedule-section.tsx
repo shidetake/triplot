@@ -463,6 +463,7 @@ export function ScheduleSection({
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
           onEventMove={onEventMove}
+          formOpen={open !== null}
           className="min-h-0 flex-1 max-h-none rounded-none border-0 md:h-auto md:flex-none md:max-h-[70vh] md:rounded-md md:border"
         />
       </div>
