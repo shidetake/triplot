@@ -1121,25 +1121,27 @@ export function WeekCalendar({
                     columns[info.columnIndex],
                     info.startMin,
                   );
+                  const anchor = { x: e.clientX, y: e.clientY };
+                  // **フォームはこの操作の click が済んでから開く。** pointerup の
+                  // 直後にブラウザは同じ操作から click を発生させる。ここで開くと、
+                  // フォーム（Base UI Popover）はその click を「外側のクリック」と
+                  // 受け取り、開いた直後に閉じてしまう（開いても見えない）。
+                  // click は pointerup と同じタスクで配られるので、次のタスクに
+                  // 回せば click の後になる。
                   if (info.dragging) {
                     // ドラッグ確定 → 開始/終了を form に渡す。
                     // ゴースト(pcDrag)は親が form 閉じ時にクリアするので、
                     // ここでは触らず開いてる間は表示し続ける。
                     const end = pcDrag?.endMin ?? info.startMin + 60;
-                    onSlotClick(
-                      info.date,
-                      tz,
-                      info.startMin,
-                      { x: e.clientX, y: e.clientY },
-                      end,
+                    setTimeout(() =>
+                      onSlotClick(info.date, tz, info.startMin, anchor, end),
                     );
                   } else {
                     // ドラッグ無し＝ただのクリック → 既存挙動（1時間枠）
                     onPcDragChange(null);
-                    onSlotClick(info.date, tz, info.startMin, {
-                      x: e.clientX,
-                      y: e.clientY,
-                    });
+                    setTimeout(() =>
+                      onSlotClick(info.date, tz, info.startMin, anchor),
+                    );
                   }
                 }}
                 onPointerCancel={(e) => {
