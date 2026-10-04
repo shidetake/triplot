@@ -68,14 +68,28 @@ function parseBody(body: unknown): Request_ | null {
   return null;
 }
 
+// web はブラウザから supabase-js の functions.invoke で直接呼ぶので、CORS の
+// 事前確認（OPTIONS）に答え、応答にも許可のヘッダーを付ける。答えないと
+// ブラウザが本番の POST を送らずに止める（iOS は事前確認を挟まないので
+// 影響しない）。呼べる人を絞るのは CORS ではなく JWT の検証（関数の前段）。
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers":
+    "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 function json(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...CORS_HEADERS },
   });
 }
 
 Deno.serve(async (httpReq) => {
+  if (httpReq.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   if (httpReq.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const apiKey = Deno.env.get("AERODATABOX_API_KEY");
