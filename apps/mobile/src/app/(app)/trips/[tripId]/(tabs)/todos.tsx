@@ -852,7 +852,7 @@ function AvatarWithDone({
       <View
         style={[
           ring && styles.avatarRing,
-          done && { filter: [{ grayscale: 1 }, { brightness: 0.6 }] },
+          done && { filter: [{ grayscale: 1 }, { brightness: 0.7 }] },
         ]}
       >
         <Avatar member={member} />

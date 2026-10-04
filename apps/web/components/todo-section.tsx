@@ -180,7 +180,7 @@ function AvatarWithDone({
         name={member.display_name}
         color={member.color}
         imageUrl={member.avatarUrl ?? null}
-        className={`ring-[1.5px] ring-background ${done ? "brightness-60 grayscale" : ""}`}
+        className={`ring-[1.5px] ring-background ${done ? "brightness-70 grayscale" : ""}`}
       />
       {done && (
         <span
