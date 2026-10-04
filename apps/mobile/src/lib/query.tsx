@@ -3,8 +3,10 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@tanstack/react-query";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AppState } from "react-native";
+
+import { supabase } from "./supabase";
 
 // TanStack Query の共通設定。mutation 成功時の invalidateQueries が
 // web の router.refresh() 相当（サーバから再取得して全タブに反映）。
@@ -24,6 +26,23 @@ export function AppQueryProvider({ children }: { children: ReactNode }) {
         },
       }),
   );
+
+  // ログインしている人が変わったら（ログアウト・別のアカウントでのログイン）、
+  // 取得結果を全部捨てる。残すと、前の人が取得した旅行の中身（その人にしか
+  // 見えない情報を含む）が、取り直すまで次の人の画面に出る。
+  const userIdRef = useRef<string | null | undefined>(undefined);
+  useEffect(() => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      const next = session?.user.id ?? null;
+      if (userIdRef.current !== undefined && userIdRef.current !== next) {
+        client.clear();
+      }
+      userIdRef.current = next;
+    });
+    return () => subscription.unsubscribe();
+  }, [client]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (state) => {
