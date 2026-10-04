@@ -147,6 +147,9 @@ TODO の優先度ピッカー。ルート遷移すると地図のカメラ位置
 （白い四角が浮く）。T の青緑は明暗どちらの地でも見える。
 
 ホーム画面のアイコンは透明にできない（iOS は透明な部分を黒で塗る）ので、この表の上の段と同じものを使う。
+同じ画像を `public/apple-touch-icon.png`・`apple-touch-icon-precomposed.png` にも
+置いている。iOS の Safari はページの指定とは別に、この決まった場所にもアイコンを
+探しに行くことがあるため（無いと「見つからない」を返す）。
 
 T 単体の元素材は `apps/mobile/assets/images/splash-icon.png`（透明背景）。
 
