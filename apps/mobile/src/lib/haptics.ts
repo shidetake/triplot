@@ -6,9 +6,10 @@ import * as Haptics from "expo-haptics";
 // ずれていく（呼ぶ側が毎回その場で強さを選ぶと必ずそうなる）。だから
 // 呼ぶ側は「何が起きたか」だけを言い、どう鳴らすかはここが決める。
 //
-// 今あるのは「掴んだものを刻みながら動かして、離して決める」という1つの
-// 流れで、iOS 標準（リマインダーの並べ替え、写真の取り出し、ピッカーの
-// ドラム）と同じ3つの節目に対応する。
+// 1つは「掴んだものを刻みながら動かして、離して決める」という流れで、
+// iOS 標準（リマインダーの並べ替え、写真の取り出し、ピッカーのドラム）と
+// 同じ3つの節目に対応する。もう1つはチェックの付け外し（リマインダーの
+// 完了チェックと同じ）。
 
 /** 長押しが成立して、掴めた（動かせる状態になった）。 */
 export function hapticPickUp(): void {
@@ -24,5 +25,11 @@ export function hapticStep(): void {
 
 /** 離して決まった（置いた・確定した）。 */
 export function hapticDrop(): void {
+  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+}
+
+/** チェックを付けた／外した（TODO の完了）。付けても外しても同じ合図。 */
+export function hapticToggle(): void {
+  // リマインダーの完了チェックと同じく、押した指に返る軽い手応え。
   void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 }

@@ -42,6 +42,7 @@ import { useMediaQuery } from "@/components/use-media-query";
 import { sortTodos } from "@triplot/shared/todoSort";
 import {
   canCompleteTodo,
+  isTodoDone,
   stackOrder,
   todoAssignment,
   todoProgress,
@@ -439,18 +440,29 @@ export function TodoSection({
       switch (action.type) {
         case "add":
           return [...state, action.todo];
-        // 自分の分だけ付け外しする。全体の完了（done）は再取得で DB の値に揃う。
+        // 自分の分だけ付け外しする。全体の完了（done）も DB と同じ規則で先に
+        // 出し、再取得で DB の値に揃う。
         case "toggle":
-          return state.map((t) =>
-            t.id === action.id
-              ? {
-                  ...t,
-                  completedIds: action.completed
-                    ? [...t.completedIds, action.memberId]
-                    : t.completedIds.filter((m) => m !== action.memberId),
-                }
-              : t,
-          );
+          return state.map((t) => {
+            if (t.id !== action.id) return t;
+            const completedIds = action.completed
+              ? [...t.completedIds, action.memberId]
+              : t.completedIds.filter((m) => m !== action.memberId);
+            const next = { ...t, completedIds };
+            return {
+              ...next,
+              done: isTodoDone(
+                todoAssignment(
+                  {
+                    assigneeEveryone: next.assigneeEveryone,
+                    assigneeIds: next.assigneeIds,
+                    completedIds,
+                  },
+                  members,
+                ),
+              ),
+            };
+          });
         case "update":
           return state.map((t) =>
             t.id === action.id

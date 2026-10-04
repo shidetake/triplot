@@ -28,6 +28,7 @@ import {
 import { sortTodos } from "@triplot/shared/todoSort";
 import {
   canCompleteTodo,
+  isTodoDone,
   stackOrder,
   todoAssignment,
   todoProgress,
@@ -52,6 +53,7 @@ import {
 import { PrivateBadge } from "@/components/private-badge";
 import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { ReservationIcon } from "@/components/reservation-icon";
+import { hapticToggle } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { avatarStyle } from "@/lib/themeColor";
@@ -134,9 +136,11 @@ export default function TodosTab() {
   const [assigneeTodoId, setAssigneeTodoId] = useState<string | null>(null);
   // 上書きは「どの取得結果に重ねたものか」と一緒に持ち、再取得で実データが
   // 変わったら自然に効かなくなる（捨てるためのエフェクトを持たない）。
+  // チェック（自分の分）も同じ形で先に見せる。押してから DB を往復して
+  // 取り直すまで変わらないと、反応が遅く見える。
   const [assignOverride, setAssignOverride] = useState<{
     base: unknown;
-    map: Record<string, AssigneeNext>;
+    map: Record<string, { assign?: AssigneeNext; mine?: boolean }>;
   }>({ base: null, map: {} });
   const invalidateTrip = useInvalidateTrip(tripId);
 
@@ -157,18 +161,6 @@ export default function TodosTab() {
     low: t("todo.priorityLow"),
   };
 
-  const overrides =
-    assignOverride.base === data.todosRaw ? assignOverride.map : {};
-  const todos = deriveTodos(data.todosRaw, me.id).map((todo) => {
-    const o = overrides[todo.id];
-    return o
-      ? {
-          ...todo,
-          assigneeEveryone: o.everyone,
-          assigneeIds: o.everyone ? [] : o.memberIds,
-        }
-      : todo;
-  });
   const members: MemberLite[] = (data.members ?? []).map((m) => ({
     id: m.id,
     display_name: m.display_name,
@@ -177,6 +169,48 @@ export default function TodosTab() {
     active: m.left_at === null,
     hasAccount: m.user_id !== null,
   }));
+  const overrides =
+    assignOverride.base === data.todosRaw ? assignOverride.map : {};
+  const myId = me.id;
+  const todos = deriveTodos(data.todosRaw, myId).map((todo) => {
+    const o = overrides[todo.id];
+    if (!o) return todo;
+    let next = todo;
+    if (o.assign) {
+      next = {
+        ...next,
+        assigneeEveryone: o.assign.everyone,
+        assigneeIds: o.assign.everyone ? [] : o.assign.memberIds,
+      };
+    }
+    if (o.mine !== undefined) {
+      const others = next.completedIds.filter((id) => id !== myId);
+      next = { ...next, completedIds: o.mine ? [...others, myId] : others };
+    }
+    // 全体の完了も DB と同じ規則で先に出す（取り直すと DB の値に揃う）。
+    return { ...next, done: isTodoDone(assignmentOf(next, members)) };
+  });
+  const setOverride = (
+    todoId: string,
+    patch: { assign?: AssigneeNext; mine?: boolean },
+  ) => {
+    const base = data.todosRaw;
+    setAssignOverride((o) => {
+      const map = o.base === base ? o.map : {};
+      return { base, map: { ...map, [todoId]: { ...map[todoId], ...patch } } };
+    });
+  };
+  // チェック（自分の分）。押した瞬間に触覚を返し、見た目も先に変える。
+  const toggleComplete = async (todoId: string, completed: boolean) => {
+    hapticToggle();
+    setOverride(todoId, { mine: completed });
+    const r = await setTodoCompleted(supabase, todoId, myId, completed);
+    if (!r.ok) {
+      setAssignOverride({ base: null, map: {} });
+      Alert.alert(t("todo.failed", { error: r.error }));
+    }
+    void invalidateTrip();
+  };
 
   // 担当のシート。選択肢は「未定」「全員」と、在籍していてアカウントのある
   // メンバー。抜けた人が担当のままなら、その人も今の値として残す。
@@ -195,11 +229,7 @@ export default function TodosTab() {
     a.mode === "everyone" ? a.requiredIds.includes(id) : a.selectedIds.includes(id);
   // 選ぶたびにその場で保存する（1つ選ぶだけの操作に保存ボタンを置かない）。
   const changeAssignees = async (todoId: string, next: AssigneeNext) => {
-    const base = data.todosRaw;
-    setAssignOverride((o) => ({
-      base,
-      map: { ...(o.base === base ? o.map : {}), [todoId]: next },
-    }));
+    setOverride(todoId, { assign: next });
     const r = await setTodoAssignees(supabase, todoId, next);
     if (!r.ok) {
       setAssignOverride({ base: null, map: {} });
@@ -240,6 +270,7 @@ export default function TodosTab() {
               setPriorityPick({ current, onPick })
             }
             onPickAssignee={setAssigneeTodoId}
+            onToggleComplete={(id, c) => void toggleComplete(id, c)}
           />
           <TodoSection
             tripId={tripId}
@@ -254,6 +285,7 @@ export default function TodosTab() {
               setPriorityPick({ current, onPick })
             }
             onPickAssignee={setAssigneeTodoId}
+            onToggleComplete={(id, c) => void toggleComplete(id, c)}
           />
         </ScrollView>
       </ScreenStackItem>
@@ -404,6 +436,7 @@ function TodoSection({
   userId,
   onPickPriority,
   onPickAssignee,
+  onToggleComplete,
 }: {
   tripId: string;
   kind: TodoKind;
@@ -420,6 +453,8 @@ function TodoSection({
   ) => void;
   // 担当のシートも親が持つ。開く TODO の id を渡す。
   onPickAssignee: (todoId: string) => void;
+  // チェック（自分の分）。見た目を先に変えるための上書きを親が持つ。
+  onToggleComplete: (todoId: string, completed: boolean) => void;
 }) {
   const t = useTranslations("todo");
   const theme = useTheme();
@@ -480,16 +515,6 @@ function TodoSection({
       setDraft("");
       void invalidate();
     },
-    onError: (e) => fail(String(e)),
-  });
-
-  // チェックは自分の分（やった／やっていない）。全体の完了は DB が計算する。
-  const doneMutation = useMutation({
-    mutationFn: async (v: { id: string; completed: boolean }) => {
-      const r = await setTodoCompleted(supabase, v.id, myMemberId, v.completed);
-      if (!r.ok) throw new Error(r.error);
-    },
-    onSettled: () => void invalidate(),
     onError: (e) => fail(String(e)),
   });
 
@@ -657,7 +682,7 @@ function TodoSection({
               >
                 <Pressable
                   onPress={() =>
-                    doneMutation.mutate({ id: todo.id, completed: !mine })
+                    onToggleComplete(todo.id, !mine)
                   }
                   disabled={checkDisabled}
                   hitSlop={8}

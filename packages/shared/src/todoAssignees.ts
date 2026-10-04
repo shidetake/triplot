@@ -70,6 +70,17 @@ export function canCompleteTodo(a: TodoAssignment, memberId: string): boolean {
   return a.selectedIds.includes(memberId);
 }
 
+/**
+ * TODO 全体が完了しているか。DB の todo_is_done と同じ規則。普段は DB が
+ * 計算した done を読むが、チェックを押した瞬間に見た目を先に変えるのに使う。
+ */
+export function isTodoDone(a: TodoAssignment): boolean {
+  if (a.mode === "none" || a.requiredIds.length === 0) {
+    return a.completedIds.length > 0;
+  }
+  return a.requiredIds.every((id) => a.completedIds.includes(id));
+}
+
 /** 進み具合。やるべき人のうち、やった人の数。 */
 export function todoProgress(a: TodoAssignment): { done: number; total: number } {
   const done = a.requiredIds.filter((id) => a.completedIds.includes(id)).length;
