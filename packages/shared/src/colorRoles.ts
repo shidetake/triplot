@@ -33,9 +33,12 @@ export type ColorRole =
   | "onSurface"
   // 面の輪郭・選択強調の枠（面に対して 3:1 以上）
   | "outline"
-  // 単色で塗る小さな図形（参加者ドット・地図マーカー）。ページ地／地図に
+  // 単色で塗る小さな図形（地図マーカー・費用の円グラフ）。ページ地／地図に
   // 対して 3:1 以上
-  | "solid";
+  | "solid"
+  // 予定ブロックの上に乗る参加者の点。**明るさを色相の見分けやすさに振る**
+  // （下の LADDER のコメント参照）。ページ地へのコントラストの基準は課さない。
+  | "dot";
 
 export interface ColorPair {
   light: string;
@@ -55,6 +58,13 @@ const LADDER: Record<ColorRole, { light: Tone; dark: Tone }> = {
   onSurface: { light: { l: 0.4, c: 0.09 }, dark: { l: 0.9, c: 0.07 } },
   outline: { light: { l: 0.59, c: 0.14 }, dark: { l: 0.62, c: 0.12 } },
   solid: { light: { l: 0.62, c: 0.14 }, dark: { l: 0.72, c: 0.13 } },
+  // 参加者の点は 6px の小さな印で、予定ブロック（明るい面）の上に乗る。
+  // solid と同じく白地に 3:1 を求めると、黄色は茶色・山吹色まで暗くなり、
+  // その人の色に見えなくなる（実機フィードバック。黄の色相 72° が #b77700）。
+  // 点は「誰が参加か」を色相で見分ける補助の印で、参加者は予定を開けば名前で
+  // 分かる（SC 1.4.11 は理解に必要な図形が対象）。だから明るさは色相が
+  // 色らしく見える側に振る。値はモックで見比べて決めた（ライト・ダーク共通）。
+  dot: { light: { l: 0.8, c: 0.16 }, dark: { l: 0.8, c: 0.16 } },
 };
 
 // 有効な色相か（DB の色相は 0-359 の整数）。範囲外・NULL は呼び出し側が
@@ -209,4 +219,37 @@ export const NEUTRAL: Record<ColorRole, ColorPair> = {
   onSurface: { light: "#4b4b4b", dark: "#e0e0e0" },
   outline: { light: "#8f8f8f", dark: "#8f8f8f" },
   solid: { light: "#8f8f8f", dark: "#adadad" },
+  dot: { light: "#c4c4c4", dark: "#c4c4c4" },
 };
+
+/**
+ * 不透明な色 `top` を、透明度 `alpha` で `bottom` の上に重ねた色（不透明）。
+ * 「予定ごと半透明にする」代わりに、地と文字だけを薄い色で塗るのに使う
+ * （半透明は中の参加者の点まで薄くしてしまうため）。ブラウザの opacity と
+ * 同じく sRGB の値のまま混ぜる。
+ */
+export function blendOver(top: string, bottom: string, alpha: number): string {
+  const rgb = (hex: string) => {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+    if (!m) throw new Error(`bad hex: ${hex}`);
+    const v = parseInt(m[1], 16);
+    return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+  };
+  const a = rgb(top);
+  const b = rgb(bottom);
+  return `#${a
+    .map((c, i) =>
+      Math.round(c * alpha + b[i] * (1 - alpha))
+        .toString(16)
+        .padStart(2, "0"),
+    )
+    .join("")}`;
+}
+
+/** ライト・ダークの対を、それぞれのページ地の上に `alpha` で重ねた色にする。 */
+export function dimPair(pair: ColorPair, alpha = 0.5): ColorPair {
+  return {
+    light: blendOver(pair.light, PAGE_BG.light, alpha),
+    dark: blendOver(pair.dark, PAGE_BG.dark, alpha),
+  };
+}

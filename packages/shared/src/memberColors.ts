@@ -46,11 +46,11 @@ export function avatarColors(
   return chipColors(hue);
 }
 
-// ドット用: 単色で塗る小さな図形（参加者ドット等）。チップと違い hue が無効
+// ドット用: 予定ブロックに乗る参加者の点（colorRoles の dot の段）。チップと違い hue が無効
 // でも**必ず色を返す** —— 点が消えると「誰も居ない」に見えてしまうため、
 // 中立グレーにフォールバックする。
 export function dotColor(hue: number | null | undefined): ColorPair {
-  return roleColor(hue, "solid") ?? NEUTRAL.solid;
+  return roleColor(hue, "dot") ?? NEUTRAL.dot;
 }
 
 // 地図マーカーの丸。ページではなく**地図の上**に乗るので、ダークでは淡い面 +

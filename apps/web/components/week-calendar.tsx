@@ -17,6 +17,7 @@ import {
   pickEventColor,
   type EventColor,
 } from "@triplot/shared/eventColor";
+import { dimPair } from "@triplot/shared/colorRoles";
 import {
   formatMinutes,
   parseWall,
@@ -228,13 +229,21 @@ export function WeekCalendar({
   // だったが、分ける意味が無い＝実機で見比べて枠線なしに統一した
   // （旧 blockAppearance は削除。selected/private/mixed は Tailwind class、
   // green と hue は inline style）。
+  // dim = 自分が参加していない予定。**予定ごと半透明にはしない**。半透明は
+  // 中に乗る参加者の点まで薄くするが、参加していない予定で一番知りたいのは
+  // 「誰の予定か」＝点なので、地と文字だけを半分の濃さ（ページ地と半々に
+  // 混ぜた色）で塗り、点はそのまま見せる（ui-guidelines「予定の色」）。
   const eventAppearance = (
     color: EventColor,
     sel: boolean,
     hov: boolean,
     isDraft: boolean,
+    dim: boolean,
   ): { className: string; style?: React.CSSProperties } => {
-    if (isDraft) return draftAppearance(sel, hov);
+    if (isDraft) {
+      const d = draftAppearance(sel, hov);
+      return dim ? { ...d, className: `${d.className} opacity-50` } : d;
+    }
     // 選択は地色を保ったまま同系色の濃い枠（inset なので隣接ブロックに被らない）。
     // 塗り替えると選択した瞬間に誰の予定か分からなくなる（ui-guidelines の blue 節）。
     if (color.kind === "private") {
@@ -243,9 +252,11 @@ export function WeekCalendar({
       };
     }
     if (color.kind === "mixed" && color.selfHue == null) {
-      // 自分不参加: private と同系の neutral を opacity-50 で dim（ガイドライン「不参加=opacity-50」）。
+      // 自分不参加: private と同系の neutral を半分の濃さで（上の dim の説明）。
       return {
-        className: `opacity-50 ${hov ? "bg-foreground/25" : "bg-foreground/15"} text-foreground${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
+        // text-foreground/50 の直後に ${ を続けない（Tailwind がクラス名として
+        // 拾えず CSS が生成されない）。
+        className: `text-foreground/50 ${hov ? "bg-foreground/[0.125]" : "bg-foreground/[0.075]"}${sel ? " z-10 ring-2 ring-inset ring-foreground/40" : ""}`,
       };
     }
     // mixed（自分参加）は自分の hue を地色に（各自の画面で違って見える）。
@@ -260,8 +271,8 @@ export function WeekCalendar({
       style: (() => {
         const c = eventBlockColors(hue, hov);
         return {
-          backgroundColor: ld(c.bg),
-          color: ld(c.fg),
+          backgroundColor: ld(dim ? dimPair(c.bg) : c.bg),
+          color: ld(dim ? dimPair(c.fg) : c.fg),
           ...(sel
             ? { boxShadow: `inset 0 0 0 2px ${ld(eventSelectedBorder(hue))}` }
             : null),
@@ -966,7 +977,13 @@ export function WeekCalendar({
                 const sel = selectedEventId === b.event.id;
                 const hov = hoveredEventId === b.event.id;
                 const color = colorOf(b.event);
-                const app = eventAppearance(color, sel, hov, !!b.event.isDraft);
+                const app = eventAppearance(
+                  color,
+                  sel,
+                  hov,
+                  !!b.event.isDraft,
+                  !isMyEvent(b.event),
+                );
                 return (
                   <button
                     key={b.event.id}
@@ -976,7 +993,7 @@ export function WeekCalendar({
                     }
                     onMouseEnter={() => setHoveredEventId(b.event.id)}
                     onMouseLeave={() => setHoveredEventId(null)}
-                    className={`absolute flex items-center gap-1 rounded px-1 text-left text-xs ${app.className} ${isMyEvent(b.event) ? "" : "opacity-50"}`}
+                    className={`absolute flex items-center gap-1 rounded px-1 text-left text-xs ${app.className}`}
                     style={{
                       left: b.startColIndex * COL + 2,
                       width: (b.endColIndex - b.startColIndex + 1) * COL - 4,
@@ -1372,7 +1389,13 @@ export function WeekCalendar({
               const sel = selectedEventId === p.event.id;
               const hov = hoveredEventId === p.event.id;
               const color = colorOf(p.event);
-              const app = eventAppearance(color, sel, hov, !!p.event.isDraft);
+              const app = eventAppearance(
+                color,
+                sel,
+                hov,
+                !!p.event.isDraft,
+                !isMyEvent(p.event),
+              );
               const grabbable = !!onEventMove && canMoveEvent(p.event);
               // 運んでいる間は元の位置に薄い抜け殻を残す（どこから持って
               // きたかが分かる。RN と同じ）。
@@ -1442,7 +1465,7 @@ export function WeekCalendar({
                   onPointerCancel={() => endMove(false)}
                   onMouseEnter={() => setHoveredEventId(p.event.id)}
                   onMouseLeave={() => setHoveredEventId(null)}
-                  className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${grabbable ? "touch-none" : ""} ${carried ? "opacity-30" : isMyEvent(p.event) ? "" : "opacity-50"}`}
+                  className={`absolute overflow-hidden rounded px-1 py-0.5 text-left text-xs leading-tight ${app.className} ${grabbable ? "touch-none" : ""} ${carried ? "opacity-30" : ""}`}
                   style={{
                     left: i * COL + lane * w + 1,
                     width: w - 2,
@@ -1473,7 +1496,7 @@ export function WeekCalendar({
             {move &&
               (() => {
                 const ev = move.event;
-                const app = eventAppearance(colorOf(ev), false, false, false);
+                const app = eventAppearance(colorOf(ev), false, false, false, false);
                 const endMin = move.startMin + move.durationMin;
                 return (
                   <div
@@ -1515,10 +1538,15 @@ export function WeekCalendar({
                 const ya = y(t.arriveMin);
                 const sel = selectedEventId === t.event.id;
                 const hov = hoveredEventId === t.event.id;
-                const fade = isMyEvent(t.event) ? "" : " opacity-50";
                 const color = colorOf(t.event);
-                const app = eventAppearance(color, sel, hov, !!t.event.isDraft);
-                const baseClass = `${app.className}${fade}`;
+                const app = eventAppearance(
+                  color,
+                  sel,
+                  hov,
+                  !!t.event.isDraft,
+                  !isMyEvent(t.event),
+                );
+                const baseClass = app.className;
                 const baseStyle = app.style;
                 const dots =
                   color.kind === "mixed" ? participantDots(t.event) : null;

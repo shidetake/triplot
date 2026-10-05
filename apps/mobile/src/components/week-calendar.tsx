@@ -44,6 +44,7 @@ import {
   GREEN_HUE,
   pickEventColor,
 } from "@triplot/shared/eventColor";
+import { blendOver } from "@triplot/shared/colorRoles";
 import {
   computeGhostLaneOverrides,
   GHOST_LANE_KEY,
@@ -827,7 +828,6 @@ export function WeekCalendar({
   const DRAFT_COLORS = {
     bg: t.warnBg,
     text: t.warnText,
-    dim: false,
     mixed: false,
   };
 
@@ -837,8 +837,11 @@ export function WeekCalendar({
   const eventColors = (ev: EventRow) => {
     if (ev.isDraft) return DRAFT_COLORS;
     // **自分が入っていない予定は薄くする**（web と同じ）。別行動の予定が自分の
-    // 予定と同じ濃さで並ぶと、どれが自分のものか一目で分からない。
-    // 規約の「不参加 = opacity-50」。全員参加なら当然自分も入っている。
+    // 予定と同じ濃さで並ぶと、どれが自分のものか一目で分からない。全員参加なら
+    // 当然自分も入っている。**予定ごと半透明にはしない**: 半透明は中に乗る
+    // 参加者の点まで薄くするが、参加していない予定で一番知りたいのは「誰の
+    // 予定か」＝点なので、地と文字だけを半分の濃さ（ページ地と半々に混ぜた
+    // 不透明な色）で塗り、点はそのまま見せる（ui-guidelines「予定の色」）。
     const mine =
       ev.participantsEveryone || ev.participantMemberIds.includes(myMemberId);
     const c = pickEventColor({
@@ -856,18 +859,18 @@ export function WeekCalendar({
     if (hue == null) {
       // private / 自分不参加の mixed = 中立グレー。
       return {
-        bg: t.fgAlpha(0.08),
-        text: t.mutedForeground,
-        dim: !mine,
+        bg: t.fgAlpha(mine ? 0.08 : 0.04),
+        text: mine
+          ? t.mutedForeground
+          : blendOver(t.mutedForeground, t.background, 0.5),
         mixed: c.kind === "mixed",
       };
     }
     const cols = eventBlockColors(hue, false);
     const m = t.dark ? "dark" : "light";
     return {
-      bg: cols.bg[m],
-      text: cols.fg[m],
-      dim: !mine,
+      bg: mine ? cols.bg[m] : blendOver(cols.bg[m], t.background, 0.5),
+      text: mine ? cols.fg[m] : blendOver(cols.fg[m], t.background, 0.5),
       mixed: c.kind === "mixed",
     };
   };
@@ -1027,7 +1030,6 @@ export function WeekCalendar({
                           width: width - 4,
                           top: b.row * ALLDAY_ROW + 1,
                           backgroundColor: col.bg,
-                          opacity: col.dim ? 0.5 : 1,
                         },
                       ]}
                     >
@@ -1177,7 +1179,7 @@ export function WeekCalendar({
                         top,
                         height: height - 1,
                         backgroundColor: col.bg,
-                        opacity: carried ? 0.3 : col.dim ? 0.5 : 1,
+                        opacity: carried ? 0.3 : 1,
                       },
                     ]}
                   >
@@ -1291,9 +1293,8 @@ export function WeekCalendar({
                           width: laneW - 2,
                           top: part.top,
                           height: part.height - 1,
+                          // 移動も同じ＝自分が乗っていない便は薄くする（色で。web と同じ）。
                           backgroundColor: col.bg,
-                          // 移動も同じ＝自分が乗っていない便は薄くする（web と同じ）。
-                          opacity: col.dim ? 0.5 : 1,
                         },
                       ]}
                     >

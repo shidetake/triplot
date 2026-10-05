@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  blendOver,
   contrastRatio,
+  dimPair,
   hueOfHex,
   NEUTRAL,
   PAGE_BG,
@@ -86,7 +88,7 @@ describe("色の役割ラダー", () => {
   describe("色相によるばらつき（OKLCH に替えた目的そのもの）", () => {
     // HSL 時代は同じ指定でも色相で 3.8 倍ぶれていた（黄 1.9:1 / 青 7.2:1）。
     it("同じ役割なら、色相が変わってもコントラストが 1.3 倍以内に収まる", () => {
-      for (const role of ["surface", "onSurface", "solid"] as const) {
+      for (const role of ["surface", "onSurface", "solid", "dot"] as const) {
         for (const mode of ["light", "dark"] as const) {
           const ratios = HUES.map((h) =>
             contrastRatio(pair(h, role)[mode], PAGE_BG[mode]),
@@ -151,5 +153,18 @@ describe("色の役割ラダー", () => {
       expect(roleColor(360, "surface")).toBeNull();
       expect(roleColor(NaN, "surface")).toBeNull();
     });
+  });
+});
+
+describe("参加していない予定の薄い色", () => {
+  it("半透明で重ねたのと同じ色を、不透明で作る", () => {
+    expect(blendOver("#ff0000", "#ffffff", 0.5)).toBe("#ff8080");
+    expect(blendOver("#000000", "#0a0a0a", 1)).toBe("#000000");
+  });
+
+  it("ライト・ダークをそれぞれのページ地に重ねる", () => {
+    const d = dimPair({ light: "#000000", dark: "#ffffff" });
+    expect(d.light).toBe("#808080");
+    expect(d.dark).toBe(blendOver("#ffffff", PAGE_BG.dark, 0.5));
   });
 });
