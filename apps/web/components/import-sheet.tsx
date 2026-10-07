@@ -69,7 +69,10 @@ function ImportSheetBody() {
     const raw = await fetchImportInboxRows(supabase, user.id);
     return {
       importAddress: raw.importToken
-        ? buildImportAddress(raw.importToken)
+        ? buildImportAddress(
+            raw.importToken,
+            process.env.NEXT_PUBLIC_SUPABASE_URL,
+          )
         : null,
       trips: raw.trips,
       tripLabel: buildCopySourceLabels(raw.trips),

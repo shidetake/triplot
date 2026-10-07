@@ -25,29 +25,29 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ROOT = path.join(import.meta.dirname, "..");
-const ENV_FILE = path.join(ROOT, "apps/web/.env.local");
 
-function readEnv(name) {
-  if (process.env[name]) return process.env[name];
-  if (!fs.existsSync(ENV_FILE)) return undefined;
-  for (const line of fs.readFileSync(ENV_FILE, "utf8").split("\n")) {
-    const m = line.match(new RegExp(`^${name}=(.*)$`));
-    if (m) return m[1].replace(/^"|"$/g, "").trim();
+// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は
+// `supabase link` 済みのプロジェクトだが、そちらは見ない。接続文字列は
+// scripts/db-push-staging.sh と同じ gitignore されたファイルから読む。
+const STAGING_ENV_FILE = path.join(ROOT, "apps/web/.env.staging.local");
+
+function stagingDbUrl() {
+  if (fs.existsSync(STAGING_ENV_FILE)) {
+    for (const line of fs.readFileSync(STAGING_ENV_FILE, "utf8").split("\n")) {
+      const m = line.match(/^SUPABASE_STAGING_DB_URL=(.*)$/);
+      if (m) return m[1].trim();
+    }
   }
-  return undefined;
+  console.error(`SUPABASE_STAGING_DB_URL が ${STAGING_ENV_FILE} にありません。`);
+  process.exit(1);
 }
 
 function dbQuery(sql) {
-  const token = readEnv("SUPABASE_ACCESS_TOKEN");
-  if (!token) {
-    console.error(`SUPABASE_ACCESS_TOKEN が ${ENV_FILE} にありません。`);
-    process.exit(1);
-  }
-  const r = spawnSync("npx", ["supabase", "db", "query", "--linked", sql], {
-    cwd: ROOT,
-    encoding: "utf8",
-    env: { ...process.env, SUPABASE_ACCESS_TOKEN: token },
-  });
+  const r = spawnSync(
+    "npx",
+    ["supabase", "db", "query", "--db-url", stagingDbUrl(), sql],
+    { cwd: ROOT, encoding: "utf8" },
+  );
   if (r.status !== 0) {
     console.error(r.stderr || r.stdout);
     process.exit(r.status ?? 1);

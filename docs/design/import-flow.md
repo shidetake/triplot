@@ -50,12 +50,13 @@ sequenceDiagram
   end
 ```
 
-**この経路は本番でしか確認できない。** Cloudflare Email Worker（`workers/inbound-email/index.js`）の
-転送先 URL は `https://triplot.app/api/inbound-email` に固定されており、Vercel Preview（staging
-ブランチ）や iOS の preview ビルドの URL には向いていない。staging の取り込みトークン宛にメールを
-転送しても、実際に叩かれるのは本番デプロイ（本番 Supabase）側になり、トークンが本番 DB に無いため
-取り込みが成立しない。web の staging・mobile の preview ビルドで動作確認できる他の機能（ログイン・
-旅行操作等）とは異なるので注意。
+**本番と staging は宛先のローカルパートで分かれる。** staging の利用者に見せるアドレスは
+`receipts-staging+<token>@triplot.app` で、同じ Email Worker（`workers/inbound-email/index.js`）が
+受けてローカルパートで振り分ける。`receipts-staging+` は staging（Vercel Preview の staging
+ブランチ）の受け口へ、それ以外は本番へ。どちらのアドレスを見せるかは、アプリが繋いでいる
+Supabase で決まる（`importLocalpartFor`）。Preview は Vercel Authentication で守られているので、
+Worker は Protection Bypass for Automation のヘッダを付けて叩く。抽出の再試行を回す心拍 Worker も
+同じく両方を叩く。
 
 ### 何を予定として抽出するか
 

@@ -64,7 +64,7 @@ export function ImportSheet() {
   const hide = useOptimisticHide();
 
   const address = data?.importToken
-    ? buildImportAddress(data.importToken)
+    ? buildImportAddress(data.importToken, process.env.EXPO_PUBLIC_SUPABASE_URL)
     : null;
   const trips = data?.trips ?? [];
   // 破棄した行は、サーバの返事と再取得を待たずに一覧から外す（空の行が残らない

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // メール取り込みの動作確認用のテストデータを作り直す。
 //
-//   1. 受信箱（inbound_emails と、cascade で inbound_drafts）を空にする
+//   1. staging の受信箱（inbound_emails と、cascade で inbound_drafts）を空にする
 //   2. Gmail の指定ラベルのメールを1通ずつ転送先アドレスへ転送する
 //
 // 転送は scripts/forward-gmail.mjs をそのまま使う（あちらが単体でも使える
@@ -11,7 +11,7 @@
 // それを知っていれば誰でもその受信箱にメールを流し込めるので、コミットする
 // ファイルには書かない。
 //
-//   TRIPLOT_RECEIPTS_ADDRESS=receipts+xxxxxxxx@triplot.app
+//   TRIPLOT_RECEIPTS_ADDRESS=receipts-staging+xxxxxxxx@triplot.app
 //   TRIPLOT_TEST_GMAIL_LABEL=2026-04-28-hawaii
 //
 // 消すのは**その転送先アドレス宛の行だけ**。同じ DB に他ユーザーの受信箱が
@@ -76,17 +76,28 @@ function run(cmd, args, opts = {}) {
   return r;
 }
 
-function dbQuery(sql) {
-  const token = readEnv("SUPABASE_ACCESS_TOKEN");
-  if (!token) {
-    console.error(`SUPABASE_ACCESS_TOKEN が ${ENV_FILE} にありません。`);
-    process.exit(1);
+// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は
+// `supabase link` 済みのプロジェクトだが、そちらは見ない。接続文字列は
+// scripts/db-push-staging.sh と同じ gitignore されたファイルから読む。
+const STAGING_ENV_FILE = path.join(ROOT, "apps/web/.env.staging.local");
+
+function stagingDbUrl() {
+  if (fs.existsSync(STAGING_ENV_FILE)) {
+    for (const line of fs.readFileSync(STAGING_ENV_FILE, "utf8").split("\n")) {
+      const m = line.match(/^SUPABASE_STAGING_DB_URL=(.*)$/);
+      if (m) return m[1].trim();
+    }
   }
-  const r = spawnSync("npx", ["supabase", "db", "query", "--linked", sql], {
-    cwd: ROOT,
-    encoding: "utf8",
-    env: { ...process.env, SUPABASE_ACCESS_TOKEN: token },
-  });
+  console.error(`SUPABASE_STAGING_DB_URL が ${STAGING_ENV_FILE} にありません。`);
+  process.exit(1);
+}
+
+function dbQuery(sql) {
+  const r = spawnSync(
+    "npx",
+    ["supabase", "db", "query", "--db-url", stagingDbUrl(), sql],
+    { cwd: ROOT, encoding: "utf8" },
+  );
   if (r.status !== 0) {
     console.error(r.stderr || r.stdout);
     process.exit(r.status ?? 1);

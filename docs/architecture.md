@@ -179,8 +179,8 @@ flowchart LR
   （どちらも「公開前に一度見る場所」であって、TestFlight のような Apple 側の審査プロセスは無い）。
 - migration を入れたときは、確認用の DB（staging）にも同じ migration を当てる。当て忘れると確認用だけ
   古いスキーマのまま動き、原因不明の不具合に見える。
-- **例外: メール取り込みは確認用環境では確認できない。** 転送先の Cloudflare Email Worker が本番 URL
-  （`triplot.app`）に固定されているため（詳細は [`import-flow.md`](design/import-flow.md)）。
+- メール取り込みも確認用で確かめられる。確認用のアドレスは `receipts-staging+<token>@triplot.app` で、
+  同じ Email Worker がローカルパートで確認用の受け口に振り分ける（詳細は [`import-flow.md`](design/import-flow.md)）。
 
 ## 人手の定期メンテナンス
 

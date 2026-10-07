@@ -88,8 +88,8 @@ npm run test:import-status                      # 取り込みの結果を見る
 2回叩く。組は `apps/web/.env.local` に1行足すと増える
 （`TRIPLOT_TEST_GMAIL_LABEL_<組の名前>=<Gmail のラベル>`）。
 
-やることは2つ。**本番の受信箱を空にしてから、Gmail の指定ラベルのメールを
-1通ずつ転送する**（まとめて1通にしない。1通=1レシートでないと取り込みの検証に
+やることは2つ。**staging の受信箱を空にしてから、Gmail の指定ラベルのメールを
+1通ずつ staging の取り込みアドレスへ転送する**（まとめて1通にしない。1通=1レシートでないと取り込みの検証に
 ならない）。転送そのものは `scripts/forward-gmail.mjs`（Gmail API を直接叩く
 汎用ツール。単体でも使える）で、`scripts/seed-import-emails.mjs` が手順の側。
 
@@ -101,7 +101,10 @@ npm run test:import-status                      # 取り込みの結果を見る
   記録とは別ファイル（`~/.gmail-mcp/seed_state.json`）。
 - 転送先アドレスと Gmail のラベルは gitignore された `apps/web/.env.local` の
   `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL_*` から読む（転送先は
-  知っていれば誰でもその受信箱にメールを流し込めるため）。
+  知っていれば誰でもその受信箱にメールを流し込めるため）。転送先は staging の
+  開発用アカウントのアドレス（`receipts-staging+<トークン>@triplot.app`）。
+- DB は staging を読み書きする（`test:import-status` も同じ）。接続文字列は
+  `apps/web/.env.staging.local` の `SUPABASE_STAGING_DB_URL`。
 - Gmail の認証は `~/.gmail-mcp/`（`gcp-oauth.keys.json` と `credentials.json`）。
   切れていればブラウザが開いて再認証する。
 - 転送してから取り込みが終わるまでは cron 次第で時間がかかる。件数の推移は

@@ -14,10 +14,15 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 
-const ENV_FILES = ["apps/web/.env.local", ".env.local"];
+const ENV_FILES = [
+  "apps/web/.env.local",
+  "apps/web/.env.staging.local",
+  ".env.local",
+];
 // 値を持つ環境変数のうち、漏れると困るもの。名前だけをここに置く。
 const SECRET_KEYS = [
   "TRIPLOT_RECEIPTS_ADDRESS",
+  "TRIPLOT_PROD_RECEIPTS_ADDRESS",
   "SUPABASE_ACCESS_TOKEN",
   "BLOB_READ_WRITE_TOKEN",
   "SUPABASE_STAGING_DB_URL",
