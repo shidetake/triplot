@@ -279,7 +279,8 @@ npm run db:push:staging   # scripts/db-push-staging.sh
 
 1. **シミュレータ＋maestro**（一番速い。実機固有の挙動は見れない — 開発ビルド
    限定の要素が実機と違う挙動をする。例: expo-dev-client の Tools ボタンが
-   画面右上のタップを吸う）。まずここで動作を作り込む。
+   画面右上のタップを吸う）。まずここで動作を作り込む。**staging DB を見る**
+   （下記「シミュレータの向き先」）ので、書き込みを伴う確認もここでしてよい。
 2. **preview ビルド**（実機・staging DB・TestFlight/App Store Connect を
    一切通らないので数十秒でインストールできる）。**「実機で見たい」の既定は
    ここ。** 一段落する前の軽い確認・繰り返しの検証・出先でスマホだけの時に使う。
@@ -289,6 +290,21 @@ npm run db:push:staging   # scripts/db-push-staging.sh
    **区切りのタイミングでだけ**使う。「区切り」＝ 2. の preview ビルドで一通り
    確認できていて、機能追加やバグ修正のまとまりが完成し typecheck / lint /
    テストが通っている状態（＝ preview を経ずに TestFlight へ飛ばない）。
+
+### 1. シミュレータの向き先
+
+シミュレータの開発ビルドがどの DB を見るかは、gitignore された
+`apps/mobile/.env.local` の `EXPO_PUBLIC_SUPABASE_URL` /
+`EXPO_PUBLIC_SUPABASE_ANON_KEY` で決まる。**staging に向けておく**（開発用ログイン
+`EXPO_PUBLIC_DEV_LOGIN_*` も web の `.env.development.local` と同じ staging の資格情報）。
+
+**起動時に環境変数を渡しても向き先は変わらない。** Expo の開発用バンドルは、
+シェルの環境変数の上に `.env` 系のファイルの値を重ねてアプリに渡す
+（`expo/virtual/env`）。ファイルに値がある限りそちらが勝つので、変えるならファイルを
+書き換える。
+
+本番のビルド（EAS の preview / production）はこのファイルを使わない。EAS は git の
+管理下にあるファイルだけを持ち込み、向き先は EAS の environment の値で決まる。
 
 ### 2. preview ビルド
 
