@@ -1,6 +1,8 @@
 // Cloudflare Email Worker: triplot.app 宛のメールを受けて、Next.js の
-// /api/inbound-email へ POST で転送する。Email Routing の catch-all ルールの
-// アクションをこの Worker に向けて使う。
+// /api/inbound-email へ POST で転送する。Email Routing の規則で
+// `receipts@triplot.app` と `receipts-staging@triplot.app` をこの Worker に向けている
+// （`+<token>` の部分は Email Routing の subaddressing で同じ規則に当たる）。
+// catch-all は無効のまま。規則に無いアドレスは Cloudflare が受信を断る。
 //
 // 宛先のローカルパートで本番と staging に振り分ける。`receipts-staging+<token>@`
 // は staging（Vercel Preview の staging ブランチ）へ、それ以外は本番へ。接頭辞は

@@ -53,7 +53,7 @@ flowchart LR
 
   subgraph cf[Cloudflare]
     dns[DNS<br/>ネームサーバ]
-    email[Email Routing<br/>catch-all]
+    email[Email Routing<br/>取り込みアドレスの規則]
     worker[Email Worker]
     heartbeat[Cron Worker<br/>毎分の心拍]
   end

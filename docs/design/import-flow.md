@@ -58,6 +58,11 @@ Supabase で決まる（`importLocalpartFor`）。Preview は Vercel Authenticat
 Worker は Protection Bypass for Automation のヘッダを付けて叩く。抽出の再試行を回す心拍 Worker も
 同じく両方を叩く。
 
+Worker に届くのは、Cloudflare の Email Routing に規則があるアドレスだけ（`receipts@` と
+`receipts-staging@`。`+<token>` は subaddressing で同じ規則に当たる）。catch-all は無効なので、
+ローカルパートを増やす時は Email Routing にも規則を足す（足さないと Cloudflare が
+「Address does not exist」で受信を断り、Worker には何も届かない）。
+
 ### 何を予定として抽出するか
 
 - 購入済み航空券などタイムゾーンを跨ぐ移動 = **transit**（往復は往路・復路で別の予定。
