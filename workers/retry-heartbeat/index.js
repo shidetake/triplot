@@ -17,10 +17,14 @@
 // デプロイ: 現状は Cloudflare ダッシュボードにこの内容を貼って作成し、Triggers で
 // cron を設定、Variables に上記を登録する（このファイルが原本）。
 
+// 断られた時（401・Vercel の保護による 403 等）も記録する。通信の失敗だけを
+// 拾っていると、叩けていないことに気付けない。
 function beat(url, headers, label) {
-  return fetch(url, { headers }).catch((err) =>
-    console.log("retry-extract trigger failed", label, err),
-  );
+  return fetch(url, { headers })
+    .then((res) => {
+      if (!res.ok) console.log("retry-extract rejected", label, res.status);
+    })
+    .catch((err) => console.log("retry-extract trigger failed", label, err));
 }
 
 const handler = {
