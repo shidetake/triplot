@@ -8,12 +8,11 @@
 //
 // 必要な環境変数（Cloudflare の Worker 設定 → Variables and Secrets で登録）:
 //   INBOUND_ENDPOINT_URL          例: https://triplot.app/api/inbound-email
-//   INBOUND_EMAIL_SECRET          Vercel の同名 env（Production）と同じ値
+//   INBOUND_EMAIL_SECRET          Vercel の同名 env と同じ値（Production と Preview で共通）
 //   STAGING_INBOUND_ENDPOINT_URL  例: https://triplot-git-staging-hdtks-projects.vercel.app/api/inbound-email
-//   STAGING_INBOUND_EMAIL_SECRET  Vercel の INBOUND_EMAIL_SECRET（Preview）と同じ値
 //   STAGING_VERCEL_BYPASS         Vercel の Protection Bypass for Automation の値
 //                                 （Preview は Vercel Authentication で守られているため）
-// staging の3つが無ければ、staging 宛のメールは捨てる（本番には流さない）。
+// staging の URL が無ければ、staging 宛のメールは捨てる（本番には流さない）。
 //
 // デプロイ: 現状は Cloudflare ダッシュボードにこの内容を貼って作成している。
 // （リポジトリのこのファイルが原本。将来 wrangler 管理に移す）
@@ -27,10 +26,7 @@ function isStagingRecipient(to) {
 const handler = {
   async email(message, env) {
     const staging = isStagingRecipient(message.to);
-    if (
-      staging &&
-      !(env.STAGING_INBOUND_ENDPOINT_URL && env.STAGING_INBOUND_EMAIL_SECRET)
-    ) {
+    if (staging && !env.STAGING_INBOUND_ENDPOINT_URL) {
       console.log("inbound-email: staging endpoint not configured; dropped");
       return;
     }
@@ -49,9 +45,7 @@ const handler = {
 
     const headers = {
       "content-type": "application/json",
-      "x-inbound-secret": staging
-        ? env.STAGING_INBOUND_EMAIL_SECRET
-        : env.INBOUND_EMAIL_SECRET,
+      "x-inbound-secret": env.INBOUND_EMAIL_SECRET,
     };
     if (staging && env.STAGING_VERCEL_BYPASS) {
       headers["x-vercel-protection-bypass"] = env.STAGING_VERCEL_BYPASS;

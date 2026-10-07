@@ -8,9 +8,8 @@
 //
 // 必要な環境変数（Cloudflare の Worker 設定 → Variables and Secrets で登録）:
 //   RETRY_ENDPOINT_URL          例: https://triplot.app/api/cron/retry-extract
-//   CRON_SECRET                 Vercel の同名 env（Production）と同じ値（Bearer 認証）
+//   CRON_SECRET                 Vercel の同名 env と同じ値（Production と Preview で共通。Bearer 認証）
 //   STAGING_RETRY_ENDPOINT_URL  例: https://triplot-git-staging-hdtks-projects.vercel.app/api/cron/retry-extract
-//   STAGING_CRON_SECRET         Vercel の CRON_SECRET（Preview）と同じ値
 //   STAGING_VERCEL_BYPASS       Vercel の Protection Bypass for Automation の値
 // staging の URL が無ければ staging は叩かない。
 //
@@ -33,8 +32,8 @@ const handler = {
         "production",
       ),
     );
-    if (env.STAGING_RETRY_ENDPOINT_URL && env.STAGING_CRON_SECRET) {
-      const headers = { authorization: `Bearer ${env.STAGING_CRON_SECRET}` };
+    if (env.STAGING_RETRY_ENDPOINT_URL) {
+      const headers = { authorization: `Bearer ${env.CRON_SECRET}` };
       if (env.STAGING_VERCEL_BYPASS) {
         headers["x-vercel-protection-bypass"] = env.STAGING_VERCEL_BYPASS;
       }
