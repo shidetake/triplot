@@ -1391,7 +1391,7 @@ export type Database = {
         Returns: undefined
       }
       set_event_reservation: {
-        Args: { p_event_id: string; p_needs: boolean }
+        Args: { p_done?: boolean; p_event_id: string; p_needs: boolean }
         Returns: undefined
       }
       set_place_location: {
