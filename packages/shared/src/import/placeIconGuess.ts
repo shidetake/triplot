@@ -2,6 +2,8 @@
 // の ICON_CATALOG key）をベストエフォートで割り当てる。取り込みは推測なので
 // 多少の誤りは許容する（確定前の場所ピッカーでユーザーが直せる）。
 
+import type { EventDraft } from "./schema";
+
 const GROCERY_KEYWORDS = [
   "スーパー",
   "supermarket",
@@ -38,8 +40,11 @@ export function guessImportPlaceIcon(input: {
   eventTitle: string | null;
   // 店名・住所などのキーワード手がかり（receipt.merchant や event.location）。
   merchant: string | null;
+  // 予定の下書きのサービスの種類（schema.ts の service）。費用側の呼び出しと、
+  // この項目を足す前に取り込んだ下書きでは無い。
+  service?: EventDraft["service"] | null;
 }): string | null {
-  const { category, eventTitle, merchant } = input;
+  const { category, eventTitle, merchant, service } = input;
 
   if (eventTitle === "カフェ") return "cafe";
   if (eventTitle === "バー") return "bar";
@@ -52,6 +57,31 @@ export function guessImportPlaceIcon(input: {
       : "shopping";
   }
   if (eventTitle === "観光") return "sightseeing";
+
+  // サービスの種類が分かっていれば、それが一番確かな手がかり（フライトの場所は
+  // 空港、宿泊は宿）。移動の場所は出発地・到着地のどちらにも同じものを付ける。
+  // 配車・タクシーは付けない——乗り降りした場所はホテルや店で、乗り物の
+  // アイコンを付ける場所ではない。
+  switch (service) {
+    case "flight":
+      return "airport";
+    case "rail":
+      return "station";
+    case "ferry":
+      return "directions_boat";
+    case "bus":
+      return "directions_bus";
+    case "lodging":
+      return "lodging";
+    case "dining":
+      if (textHints(merchant, BAR_KEYWORDS)) return "bar";
+      if (textHints(merchant, CAFE_KEYWORDS)) return "cafe";
+      return "food";
+    case "activity":
+      return "activity";
+    case "ride":
+      return null;
+  }
 
   switch (category) {
     case "飲食":

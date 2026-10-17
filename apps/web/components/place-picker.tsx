@@ -181,6 +181,9 @@ export function PlacePicker({
     name: string;
     address?: string | null;
     searchQuery?: string;
+    // 解決できた場所（または解決できずテキストのまま残った場所）に付ける
+    // アイコン。取り込みで種別が分かっている時だけ。
+    icon?: string | null;
   } | null;
 }) {
   const t = useTranslations("place");
@@ -331,7 +334,13 @@ export function PlacePicker({
             biasCenter,
           );
           if (found) {
-            setResolved(found.resolved);
+            // 取り込みで種別が分かっていれば、解決できた場所にそのアイコンを付ける。
+            const icon = autoResolve?.icon ?? null;
+            setResolved(
+              found.resolved.kind === "google" && icon
+                ? { ...found.resolved, icon }
+                : found.resolved,
+            );
             setQuery(found.name);
             return;
           }
@@ -487,11 +496,22 @@ export function PlacePicker({
     mode = "free";
     placeLabel = query.trim();
   }
-  // 座標は「自由入力のまま・文字も変えていない」ときだけ通す。
-  const freeCoords =
-    mode === "free" && initialFree?.coords && query.trim() === initialFree.label
-      ? { coords: initialFree.coords, icon: initialFree.icon ?? null }
+  // 座標とアイコンは「自由入力のまま・文字も変えていない」ときだけ通す。
+  // アイコンは座標と別に通す（座標の無い自由入力でも、取り込みで種別が
+  // 分かっていれば駅・宿などのアイコンを付ける）。自動解決が空振りして
+  // テキストのまま残った時も、その手がかりのアイコンを使う。
+  const untouchedFree =
+    mode === "free" && initialFree && query.trim() === initialFree.label
+      ? initialFree
       : null;
+  const freeCoords = untouchedFree?.coords ?? null;
+  const freeIcon =
+    untouchedFree?.icon ??
+    (mode === "free" &&
+    autoResolve?.icon &&
+    query.trim() === autoResolve.name.trim()
+      ? autoResolve.icon
+      : null);
 
   return (
     <div className="relative mt-1">
@@ -505,17 +525,17 @@ export function PlacePicker({
       <input
         type="hidden"
         name={`${namePrefix}place_lat`}
-        value={freeCoords ? String(freeCoords.coords.lat) : ""}
+        value={freeCoords ? String(freeCoords.lat) : ""}
       />
       <input
         type="hidden"
         name={`${namePrefix}place_lng`}
-        value={freeCoords ? String(freeCoords.coords.lng) : ""}
+        value={freeCoords ? String(freeCoords.lng) : ""}
       />
       <input
         type="hidden"
         name={`${namePrefix}place_icon`}
-        value={freeCoords?.icon ?? ""}
+        value={freeIcon ?? ""}
       />
       <input type="hidden" name={`${namePrefix}g_place_id`} value={g.id} />
       <input type="hidden" name={`${namePrefix}g_name`} value={g.name} />

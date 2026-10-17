@@ -129,18 +129,27 @@ export type DraftPlacePrefill =
 
 // 予定下書きの place/endPlace 専用（費用下書きにはこの分岐は無い）。
 // "free" は Google 解決できなかった時のフォールバック（座標つき自由入力。
-// 座標が無ければ lat/lng は null）。
+// 座標が無ければ lat/lng は null）。icon は Google の場所と同じく、種別が
+// 分かっている時だけ入る（null＝DB 側の既定 "pin"）。
 export type EventDraftPlacePrefill =
   | DraftPlacePrefill
-  | { kind: "free"; name: string; lat: number | null; lng: number | null };
+  | {
+      kind: "free";
+      name: string;
+      lat: number | null;
+      lng: number | null;
+      icon: string | null;
+    };
 
 // 保存済みに当たらなかった時の Google 自動解決の手がかり（web の PlacePicker
 // autoResolve 契約）。RN は Google 自動解決を持たないので name を自由入力
-// テキストとして使う。
+// テキストとして使う。icon は解決できた場所（または自由入力）に付ける
+// アイコン（種別が分かっている時だけ）。
 export type DraftAutoResolvePlace = {
   name: string;
   address?: string | null;
   searchQuery?: string;
+  icon?: string | null;
 } | null;
 
 // 費用下書き1件 → 費用フォームの事前入力一式。
@@ -519,7 +528,7 @@ function draftPlaceFromFlightEndpoint(
   candidate: PlaceCandidate | null | undefined,
 ): EventDraftPlacePrefill {
   if (candidate) return candidateToDraftPlace(candidate, "airport");
-  return { kind: "free", name: e.name, lat: e.lat, lng: e.lng };
+  return { kind: "free", name: e.name, lat: e.lat, lng: e.lng, icon: "airport" };
 }
 
 // 予定下書き（kind="event"）→ 事前入力。
@@ -684,25 +693,27 @@ export function deriveEventDraftItems(
       const savedPlace = placeName
         ? matchSavedPlace(placeName, placeHint, ctx.places)
         : null;
+      // 新しく作る場所に付けるアイコン。保存済みの場所に当たった時は、その
+      // 場所が持っているアイコンのまま（ここでは上書きしない）。移動は出発地・
+      // 到着地のどちらにも同じものを付ける（駅から駅、空港から空港）。
+      const placeIcon = guessImportPlaceIcon({
+        category: null,
+        eventTitle: ev.title,
+        merchant: ev.location,
+        service: ev.service,
+      });
       // **Google で引けた場所が最優先。** 保存済みとの名前の照合はその受け皿
       // （matchSavedPlace のコメント参照）。
       const place =
         (ev.kind === "transit"
-          ? // 便名で引けない移動（配車・タクシー等）の乗車地。空港は
+          ? // 便名で引けない移動（列車・配車・タクシー等）の乗車地。空港は
             // resolvedDeparturePlace をフライト側の分岐で使うので、ここに
             // 来るのはそれ以外。
             ev.resolvedDeparturePlace
-            ? candidateToDraftPlace(ev.resolvedDeparturePlace, null)
+            ? candidateToDraftPlace(ev.resolvedDeparturePlace, placeIcon)
             : null
           : ev.resolvedNamedPlace
-            ? candidateToDraftPlace(
-                ev.resolvedNamedPlace,
-                guessImportPlaceIcon({
-                  category: null,
-                  eventTitle: ev.title,
-                  merchant: ev.location,
-                }),
-              )
+            ? candidateToDraftPlace(ev.resolvedNamedPlace, placeIcon)
             : null) ?? savedPlace;
       // 移動の到着地（降車地）。出発地と同じ順で、Google で引けた場所を最優先。
       // 空港のように施設名で書かれていれば既にあるその場所に寄る。
@@ -713,13 +724,14 @@ export function deriveEventDraftItems(
       const endPlaceName = ev.kind === "transit" ? ev.arriveLocation : null;
       const endPlace: EventDraftPlacePrefill = endPlaceName
         ? ((ev.resolvedArrivalPlace
-            ? candidateToDraftPlace(ev.resolvedArrivalPlace, null)
+            ? candidateToDraftPlace(ev.resolvedArrivalPlace, placeIcon)
             : null) ??
           matchSavedPlace(endPlaceName, null, ctx.places) ?? {
             kind: "free",
             name: endPlaceName,
             lat: null,
             lng: null,
+            icon: placeIcon,
           })
         : null;
       const title = ev.title || ctx.untitledLabel;
@@ -776,6 +788,7 @@ export function deriveEventDraftItems(
                     searchQuery: ev.departTerminal
                       ? `${placeName} ${ev.departTerminal}`
                       : undefined,
+                    icon: placeIcon,
                   },
           },
         },

@@ -144,3 +144,38 @@ describe("guessImportPlaceIcon", () => {
     ).toBeNull();
   });
 });
+
+describe("guessImportPlaceIcon（予定のサービスの種類）", () => {
+  const guess = (
+    service: Parameters<typeof guessImportPlaceIcon>[0]["service"],
+    merchant: string | null = null,
+  ) =>
+    guessImportPlaceIcon({ category: null, eventTitle: null, merchant, service });
+
+  it("乗り物は乗り降りする場所のアイコンにする", () => {
+    expect(guess("flight")).toBe("airport");
+    expect(guess("rail")).toBe("station");
+    expect(guess("ferry")).toBe("directions_boat");
+    expect(guess("bus")).toBe("directions_bus");
+  });
+
+  it("宿泊・飲食・アクティビティ", () => {
+    expect(guess("lodging")).toBe("lodging");
+    expect(guess("dining")).toBe("food");
+    expect(guess("activity")).toBe("activity");
+  });
+
+  it("飲食は店名からカフェ・バーを見分ける", () => {
+    expect(guess("dining", "Honolulu Coffee")).toBe("cafe");
+    expect(guess("dining", "Lewers Bar")).toBe("bar");
+  });
+
+  it("配車・タクシーは付けない（乗り降りした場所はホテルや店）", () => {
+    expect(guess("ride")).toBeNull();
+  });
+
+  it("どれにも当たらない・種類が無い時は今までどおり", () => {
+    expect(guess("other")).toBeNull();
+    expect(guess(undefined)).toBeNull();
+  });
+});

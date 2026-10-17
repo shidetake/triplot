@@ -78,7 +78,7 @@ function eventDraft(p: Partial<EventDraft>): EventDraft {
   return {
     kind: "timed",
     title: "ハイキング",
-    service: "activity",
+    service: "other",
     startDate: "2026-08-01",
     startTime: "09:00",
     endDate: null,
@@ -646,6 +646,7 @@ describe("deriveEventDraftItems", () => {
           payload: eventDraft({
             kind: "transit",
             title: "NRT-HNL",
+            service: "flight",
             startTime: "21:00",
             endDate: "2026-08-01",
             endTime: "09:35",
@@ -669,10 +670,12 @@ describe("deriveEventDraftItems", () => {
     expect(it1.prefill.note).toBe("NH184 ・ 予約番号: ABC123");
     // 出発地は保存済みに当たらない → ターミナル付き検索語の autoResolve。
     expect(it1.prefill.place).toBeNull();
+    // 航空便なので、解決できた場所には空港のアイコンを付ける。
     expect(it1.prefill.autoResolvePlace).toEqual({
       name: "成田国際空港",
       address: null,
       searchQuery: "成田国際空港 Terminal 1",
+      icon: "airport",
     });
     // 便名として解釈できる vehicleNumber は正規形で flightNumber にも入る
     // （確定フォームがフライト番号機能を自動起動するのに使う）。
@@ -738,12 +741,14 @@ describe("deriveEventDraftItems", () => {
       name: "Tokyo Narita",
       lat: 35.76,
       lng: 140.39,
+      icon: "airport",
     });
     expect(it1.prefill.endPlace).toEqual({
       kind: "free",
       name: "Honolulu",
       lat: 21.32,
       lng: -157.92,
+      icon: "airport",
     });
     // 確定済み相当なのでフライト番号機能を再起動させない。
     expect(it1.prefill.flightNumber).toBeNull();
@@ -801,6 +806,7 @@ describe("deriveEventDraftItems", () => {
       name: "Honolulu",
       lat: 21.32,
       lng: -157.92,
+      icon: "airport",
     });
   });
 
@@ -1007,6 +1013,7 @@ describe("deriveEventDraftItems", () => {
           payload: eventDraft({
             kind: "transit",
             title: "移動",
+            service: "ride",
             departLocation: "988 Halekauwila St, Honolulu, HI 96814, US",
             arriveLocation: "2259 Kalakaua Ave, Honolulu, HI 96815, US",
           }),
@@ -1019,11 +1026,13 @@ describe("deriveEventDraftItems", () => {
       name: "988 Halekauwila St, Honolulu, HI 96814, US",
     });
     // 到着地は受け皿が無く空になっていた。自由入力として残す。
+    // 配車の乗り降りした場所は乗り物の場所ではないのでアイコンは付けない。
     expect(items[0].prefill.endPlace).toEqual({
       kind: "free",
       name: "2259 Kalakaua Ave, Honolulu, HI 96815, US",
       lat: null,
       lng: null,
+      icon: null,
     });
   });
 
@@ -1038,6 +1047,7 @@ describe("deriveEventDraftItems", () => {
             ...eventDraft({
               kind: "transit",
               title: "NRT-HNL",
+              service: "flight",
               departLocation: "成田国際空港",
             }),
             // transit 用ではないので無視されるべき（誤って event.kind !== "transit"
@@ -1064,6 +1074,7 @@ describe("deriveEventDraftItems", () => {
       name: "成田国際空港",
       address: null,
       searchQuery: undefined,
+      icon: "airport",
     });
   });
 

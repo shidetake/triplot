@@ -191,7 +191,7 @@ export function EventForm({
       label: p.name,
       coords:
         p.lat != null && p.lng != null ? { lat: p.lat, lng: p.lng } : null,
-      icon: "airport",
+      icon: p.icon,
     };
   };
   const [place, setPlace] = useDraft<PlaceInput>("place", () => {
@@ -203,7 +203,11 @@ export function EventForm({
     const fromPrefill = draftPlaceToInput(prefill?.place ?? null);
     if (fromPrefill) return fromPrefill;
     if (prefill?.autoResolvePlace)
-      return { kind: "free", label: prefill.autoResolvePlace.name };
+      return {
+        kind: "free",
+        label: prefill.autoResolvePlace.name,
+        icon: prefill.autoResolvePlace.icon ?? null,
+      };
     return { kind: "saved", placeId: null };
   });
   // 下書き由来の自由入力の場所を、開いた時に Google の場所へ丸める

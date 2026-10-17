@@ -62,7 +62,8 @@ export function useAutoResolvePlace({
             lng: found.lng,
             region: found.region,
             locality: found.locality,
-            icon: null,
+            // 取り込みで種別が分かっていればそのアイコン（web の place-picker と同じ）。
+            icon: autoResolve?.icon ?? null,
           });
         }
       } finally {

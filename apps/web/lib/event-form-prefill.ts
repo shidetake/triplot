@@ -28,7 +28,7 @@ function draftPlaceToInitial(p: EventDraftPlacePrefill): PlacePickerInitial {
     label: p.name,
     coords:
       p.lat !== null && p.lng !== null ? { lat: p.lat, lng: p.lng } : null,
-    icon: "airport",
+    icon: p.icon,
   };
 }
 

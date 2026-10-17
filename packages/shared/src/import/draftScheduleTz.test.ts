@@ -101,7 +101,13 @@ describe("移動の仮予定の TZ", () => {
     const ev = draftToScheduleEvent(
       transitItem({
         place: google("乗車地", HNL),
-        endPlace: { kind: "free", name: "降車地", lat: null, lng: null },
+        endPlace: {
+          kind: "free",
+          name: "降車地",
+          lat: null,
+          lng: null,
+          icon: null,
+        },
         tz: "Asia/Tokyo",
       }),
       "me",
