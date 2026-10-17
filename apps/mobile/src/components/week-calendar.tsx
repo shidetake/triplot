@@ -88,14 +88,18 @@ const MIN_BLOCK = 18; // ブロック最低高さ
 // そのすぐ下に置くのに使う。
 const VIEWER_BUTTON_H = 37;
 
-// ブロックの高さから、時刻＋（下書きバッジ）＋タイトル1行を確保した「残り」で
-// 場所/メモに回せる行数を返す。既定の HOUR_PX=30 だと1時間の予定でも
-// 時刻(fontSize9)+タイトル(fontSize11)だけで既に高さの大半を使い切り、
-// 場所（fontSize9）を無条件で描くと場所がタイトルを押しのけて主役に見えて
-// しまっていた（実機フィードバック: 短い予定でタイトルがほぼ見えず、場所の
-// 店名だけが目立って見えた）。タイトルは1行ぶん必ず確保し、それでも余りが
-// 無ければ場所・メモは一切出さない（タイトルを削ってまで場所を見せない）。
-// 値は各 style のフォントサイズからの概算。
+// 「時刻の行」と「タイトルの行」の2行が収まるブロックの高さ（pt）。
+// 上の余白 1 ＋時刻 11（fontSize 9）＋タイトル 13（fontSize 11）。
+//
+// これより低いブロックは、**タイトルを先に、時刻をその後ろに同じ行で**書く
+// （web と同じ。Google カレンダーの短い予定と同じ形）。時刻を先頭に置いたままだと、
+// 短い予定では時刻の行だけで高さを使い切り、予定名が1文字も見えなかった。
+// 幅が足りない時は時刻の側が次の行に落ち、ブロックが切る＝予定名は必ず残る。
+// 値は web と違う（フォントサイズが違うため）が、決め方は同じ。
+const TWO_ROW_HEADER_PT = 25;
+// 未確定の下書きは時刻の行に「未確定」チップが付き、狭い列ではそれが次の行に
+// 落ちる。その1行（fontSize 9 ＋行の間隔 2）も見込む。
+const DRAFT_BADGE_ROW_PT = 13;
 
 // 5日以上表示するときの1日の最小幅。iPhone 16 Pro（幅393pt）でガター(44px)を
 // 引いた残りに約4.5日分入る値（(393-44)/80 ≈ 4.4日）。狭い端末（iPhone mini
@@ -1166,6 +1170,11 @@ export function WeekCalendar({
                 // 運んでいる間、元の位置には薄い抜け殻を残す（どこから
                 // 持ってきたかが分かる。Google カレンダーと同じ）。
                 const carried = move?.eventId === p.event.id;
+                // 時刻の行とタイトルの行が収まらなければ、1行にまとめる
+                // （TWO_ROW_HEADER_PT 参照）。
+                const oneRow =
+                  height - 1 <
+                  TWO_ROW_HEADER_PT + (ev.isDraft ? DRAFT_BADGE_ROW_PT : 0);
                 return (
                   <Pressable
                     key={p.event.id + p.columnKey}
@@ -1188,22 +1197,51 @@ export function WeekCalendar({
                           先頭でも強調はしない＝見た目は従来の eventTime のまま。
                           mixed の予定は右肩に参加者ドットを出す（ui-guidelines
                           「色（メンバー・予定）」）。 */}
-                      <View style={styles.timeRow}>
-                        <Text style={[styles.eventTime, { color: col.text }]}>
-                          {spanLabel(p.event) ?? hhmm(p.topMin)}
-                        </Text>
-                        <View style={styles.timeRowRight}>
-                          {col.mixed && participantDots(ev)}
-                          {draftBadge(ev)}
+                      {oneRow ? (
+                        // 短い予定: タイトル → 時刻 → ドット・未確定チップの順に
+                        // 1行へ。入り切らない分は次の行に落ちてブロックが切る。
+                        <View style={styles.oneRow}>
+                          <Text
+                            style={[
+                              styles.eventTitle,
+                              styles.oneRowTitle,
+                              { color: col.text },
+                            ]}
+                            numberOfLines={1}
+                          >
+                            <ReservationMark ev={ev} textColor={col.text} />
+                            {p.event.title}
+                          </Text>
+                          <Text style={[styles.eventTime, { color: col.text }]}>
+                            {spanLabel(p.event) ?? hhmm(p.topMin)}
+                          </Text>
+                          <View style={styles.timeRowRight}>
+                            {col.mixed && participantDots(ev)}
+                            {draftBadge(ev)}
+                          </View>
                         </View>
-                      </View>
-                      <Text
-                        style={[styles.eventTitle, { color: col.text }]}
-                        numberOfLines={2}
-                      >
-                        <ReservationMark ev={ev} textColor={col.text} />
-                        {p.event.title}
-                      </Text>
+                      ) : (
+                        <>
+                          <View style={styles.timeRow}>
+                            <Text
+                              style={[styles.eventTime, { color: col.text }]}
+                            >
+                              {spanLabel(p.event) ?? hhmm(p.topMin)}
+                            </Text>
+                            <View style={styles.timeRowRight}>
+                              {col.mixed && participantDots(ev)}
+                              {draftBadge(ev)}
+                            </View>
+                          </View>
+                          <Text
+                            style={[styles.eventTitle, { color: col.text }]}
+                            numberOfLines={2}
+                          >
+                            <ReservationMark ev={ev} textColor={col.text} />
+                            {p.event.title}
+                          </Text>
+                        </>
+                      )}
                       {/* 場所→メモ（web の blockLabel と同じ優先度: 時刻→タイトル→場所→メモ）。
                           折り返しも行数も制限せずそのまま書く。ブロックは
                           overflow: hidden なので入らない分はブロックが切る
@@ -1475,6 +1513,15 @@ const makeStyles = (t: Theme) =>
     gap: 2,
     flexShrink: 0,
   },
+  // 短い予定の1行（タイトル → 時刻）。入り切らない後ろの要素は次の行に落ちる。
+  oneRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    columnGap: 3,
+    flexWrap: "wrap",
+  },
+  // 1行の時はタイトルが縮んで省略される側（時刻は縮ませず次の行に落とす）。
+  oneRowTitle: { flexShrink: 1 },
   dotRow: { flexDirection: "row", alignItems: "center", gap: 2, flexShrink: 0 },
   dot: { width: 6, height: 6, borderRadius: 3 },
   allDayArea: {

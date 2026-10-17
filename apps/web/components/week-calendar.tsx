@@ -66,13 +66,19 @@ const SNAP_MIN = snapMinutes(HOUR_PX);
 const ALLDAY_ROW = 22; // 終日バー1行の高さ px
 const MIN_BLOCK = 16; // イベントブロックの最低高さ px
 
-// ブロックの高さから、時刻＋（下書きバッジ）＋タイトル1行を確保した「残り」で
-// 場所/メモに回せる行数を返す。HOUR_PX=29 の高密度表示だと1時間の予定でも
-// 時刻＋タイトルで高さの大半を使い切るのに、場所を無条件に描くと場所（店名）が
-// タイトルを押しのけて主役に見えてしまう（iOS の実機フィードバックで判明した
-// のと同じ現象が、狭い画面の web でも起きる）。タイトルは1行ぶん必ず確保し、
-// それでも余りが無ければ場所・メモは出さない。値は各 class のフォントサイズ
-// （leading-tight = 1.25）からの概算。
+// 「時刻の行」と「タイトルの行」の2行が収まるブロックの高さ（px）。
+// 上の余白 2（py-0.5）＋時刻 12.5（text-[10px]・leading-tight）＋
+// タイトル 15（text-xs・leading-tight）。
+//
+// これより低いブロックは、**タイトルを先に、時刻をその後ろに同じ行で**書く
+// （Google カレンダーの短い予定と同じ）。時刻を先頭に置いたままだと、短い
+// 予定では時刻の行だけで高さを使い切り、予定名が1文字も見えなかった。
+// 幅が足りない時は時刻の側が次の行に落ち、ブロックが切る＝予定名は必ず残る。
+const TWO_ROW_HEADER_PX = 30;
+// 未確定の下書きは時刻の行に「未確定」チップが付き、狭い列ではそれが次の行に
+// 落ちる。その1行（text-[9px] ＋行の間隔 4）も見込む。見込まないと、1時間
+// ほどの下書きで「時刻／未確定」の2行が高さを使い切り、予定名が見えなかった。
+const DRAFT_BADGE_ROW_PX = 15;
 
 export type Anchor = { x: number; y: number };
 
@@ -792,7 +798,8 @@ export function WeekCalendar({
   // 場所→メモの順に、そのまま全部書く。折り返しも行数も制限しない
   // （ブロックが overflow-hidden なので、入らない分はブロックが切る。
   // 上限を決め打ちすると「高さが余っているのに出ない」が起きる）。
-  const blockLabel = (ev: ScheduleEvent) => {
+  // withTitle=false はタイトルを時刻と同じ行に出した時（短い予定）。
+  const blockLabel = (ev: ScheduleEvent, withTitle = true) => {
     const extras = [placeName(ev.startPlaceId), ev.note].filter(
       (x): x is string => Boolean(x),
     );
@@ -800,10 +807,12 @@ export function WeekCalendar({
       <>
         {/* タイトル・場所・メモはそれぞれ独立した行にして文頭から書く
             （終日バーだけは高さ1行の帯なので1行に並べる）。 */}
-        <span className="block font-medium [overflow-wrap:anywhere]">
-          <ReservationMark ev={ev} />
-          {ev.title}
-        </span>
+        {withTitle && (
+          <span className="block font-medium [overflow-wrap:anywhere]">
+            <ReservationMark ev={ev} />
+            {ev.title}
+          </span>
+        )}
         {extras.map((text, i) => (
           <span
             key={i}
@@ -1400,6 +1409,11 @@ export function WeekCalendar({
               // 運んでいる間は元の位置に薄い抜け殻を残す（どこから持って
               // きたかが分かる。RN と同じ）。
               const carried = move?.event.id === p.event.id;
+              // 時刻の行とタイトルの行が収まらなければ、1行にまとめる
+              // （TWO_ROW_HEADER_PX 参照）。
+              const oneRow =
+                h - 1 <
+                TWO_ROW_HEADER_PX + (p.event.isDraft ? DRAFT_BADGE_ROW_PX : 0);
               return (
                 <button
                   key={`${p.event.id}-${p.columnKey}`}
@@ -1474,16 +1488,34 @@ export function WeekCalendar({
                     ...app.style,
                   }}
                 >
-                  <span className="flex flex-wrap items-center justify-between gap-1">
-                    <span className="shrink-0 text-[10px] tabular-nums opacity-70">
-                      {spanLabel(p.event) ?? hhmm(p.topMin)}
+                  {oneRow ? (
+                    // 短い予定: タイトル → 時刻 → ドット・未確定チップの順に
+                    // 1行へ。入り切らない分は次の行に落ちてブロックが切る。
+                    <span className="flex flex-wrap items-center gap-x-1">
+                      <span className="min-w-0 max-w-full truncate font-medium">
+                        <ReservationMark ev={p.event} />
+                        {p.event.title}
+                      </span>
+                      <span className="shrink-0 text-[10px] tabular-nums opacity-70">
+                        {spanLabel(p.event) ?? hhmm(p.topMin)}
+                      </span>
+                      {timeRowRight(
+                        p.event,
+                        color.kind === "mixed" ? participantDots(p.event) : null,
+                      )}
                     </span>
-                    {timeRowRight(
-                      p.event,
-                      color.kind === "mixed" ? participantDots(p.event) : null,
-                    )}
-                  </span>
-                  {blockLabel(p.event)}
+                  ) : (
+                    <span className="flex flex-wrap items-center justify-between gap-1">
+                      <span className="shrink-0 text-[10px] tabular-nums opacity-70">
+                        {spanLabel(p.event) ?? hhmm(p.topMin)}
+                      </span>
+                      {timeRowRight(
+                        p.event,
+                        color.kind === "mixed" ? participantDots(p.event) : null,
+                      )}
+                    </span>
+                  )}
+                  {blockLabel(p.event, !oneRow)}
                 </button>
               );
             })}
