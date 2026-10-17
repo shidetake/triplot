@@ -18,6 +18,7 @@ function draft(p: Partial<EventDraft>): EventDraft {
   return {
     kind: "timed",
     title: "ハイキング",
+    service: "activity",
     startDate: "2026-08-01",
     startTime: "09:00",
     endDate: null,

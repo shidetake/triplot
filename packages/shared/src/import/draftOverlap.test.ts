@@ -36,6 +36,7 @@ function item(
       kind3: o.kind3 ?? "timed",
       tzDisambig: null,
       title: o.title ?? "夕食",
+      booked: false,
       note: o.note ?? null,
       endDate: o.endDate ?? null,
       endTime: o.endTime === undefined ? "14:00" : o.endTime,

@@ -31,6 +31,7 @@ function transitItem(o: {
       kind3: "transit",
       tzDisambig: null,
       title: "移動",
+      booked: false,
       note: null,
       endDate: "2026-04-28",
       endTime: "07:25",

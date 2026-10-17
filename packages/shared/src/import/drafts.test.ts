@@ -78,6 +78,7 @@ function eventDraft(p: Partial<EventDraft>): EventDraft {
   return {
     kind: "timed",
     title: "ハイキング",
+    service: "activity",
     startDate: "2026-08-01",
     startTime: "09:00",
     endDate: null,
@@ -1097,6 +1098,7 @@ describe("draftToScheduleEvent", () => {
       kind3: "transit",
       tzDisambig: null,
       title: "NRT-HNL",
+      booked: false,
       note: null,
       endDate: "2026-08-01",
       endTime: "09:35",

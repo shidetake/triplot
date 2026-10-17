@@ -125,6 +125,9 @@ export type EventFormPrefill = {
   // 機能で開く。事前解決できていれば他フィールドが既に確定後の状態を埋めて
   // いるので null のまま（フライト番号機能は起動しない）。
   flightNumber: string | null;
+  // 予約メールから取り込んだ、予約が済んでいる予定（shared の EventDraftPrefill と同じ）。
+  // 要予約にチェックを入れた状態で開き、確定すると予約の TODO を済みで作る。
+  booked: boolean;
 };
 
 // 下書き事前入力への変換は lib/event-form-prefill.ts にある。
@@ -347,7 +350,7 @@ export function EventForm({
   // （private は共有TODOリストに漏れるため）。
   const [needsReservation, setNeedsReservation] = useDraft<boolean>(
     "needsReservation",
-    isEdit ? ev!.needsReservation : false,
+    isEdit ? ev!.needsReservation : (prefill?.booked ?? false),
   );
 
   // タイトル・メモは元々 uncontrolled（defaultValue）だが、シートのアンマウントを跨いで
@@ -1165,6 +1168,11 @@ export function EventForm({
           />
           <FieldLabel>{t("needsReservation")}</FieldLabel>
         </label>
+        {/* 予約が済んでいる取り込みの下書き。チェックを外して確定したら
+            TODO 自体を作らないので、ここで送るのは「作るなら済みで」だけ。 */}
+        {prefill?.booked && (
+          <input type="hidden" name="reservation_done" value="on" />
+        )}
       </div>
 
       {/* 参加者。共有予定のみ意味がある（private は作成者本人だけが当事者なので

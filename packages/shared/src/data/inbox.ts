@@ -231,7 +231,10 @@ export async function confirmSiblingDrafts(
       sb,
       tripId,
       eventFieldsFromDraft(item),
-      false,
+      // フォームを通らずに確定するので、フォームの既定（予約済みなら要予約に
+      // チェック）と同じにする。
+      item.prefill.booked,
+      item.prefill.booked,
     );
     if (!created.ok) return err(created.error);
     const resolved = await resolveInboundDrafts(

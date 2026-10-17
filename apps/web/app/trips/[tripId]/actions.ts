@@ -927,8 +927,16 @@ export async function createEventAction(
   // 要予約は共有/private どちらでも可。予約TODOは予定の公開範囲を継承する
   // （private 予定の予約TODOは作成者だけに見える。set_event_reservation で同期）。
   const needsReservation = formData.get("needs_reservation") === "on";
+  // 予約メールから取り込んだ下書きの確定なら、予約の TODO を済みで作る。
+  const reservationDone = formData.get("reservation_done") === "on";
 
-  const result = await createEvent(supabase, tripId, parsed, needsReservation);
+  const result = await createEvent(
+    supabase,
+    tripId,
+    parsed,
+    needsReservation,
+    reservationDone,
+  );
   if (!result.ok) {
     const tErr = await getTranslations("errors");
     return { ok: false, error: translateSharedError(result.error, tErr) };

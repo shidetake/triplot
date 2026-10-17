@@ -87,7 +87,10 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
         startPlace: { kind: "free", label: "成田国際空港" },
         endPlace: { kind: "free", label: "ホノルル国際空港" },
       },
-      false,
+      // 予約メールから取り込んだ航空券と同じ形＝予約の TODO を済みで作る
+      // （TODO とやった記録も旅行の削除で一緒に消える）。
+      true,
+      true,
     );
     expect(transit.ok, JSON.stringify(transit)).toBe(true);
     if (!transit.ok) return;
@@ -170,6 +173,8 @@ describeDb("旅行のライフサイクル（実 DB）", () => {
       .from("todos")
       .select("id")
       .eq("trip_id", tripId)
+      // 1. の航空券が予約の TODO を持つので、予定に紐づかない方を取る。
+      .is("event_id", null)
       .single();
     const everyone = await setTodoAssignees(sb, todoRow!.id, {
       everyone: true,

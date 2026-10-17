@@ -71,6 +71,9 @@ export async function createEvent(
   tripId: string,
   f: EventFields,
   needsReservation: boolean,
+  // 予約が既に済んでいる（取り込んだ予約メールから確定する）なら true。
+  // 予約TODOを作ると同時に「済み」にする。要予約でなければ見ない。
+  reservationDone = false,
 ): Promise<Result<string>> {
   const { data, error } = await sb.rpc("create_event", {
     p_trip_id: tripId,
@@ -86,6 +89,7 @@ export async function createEvent(
     const { error: rErr } = await sb.rpc("set_event_reservation", {
       p_event_id: eventId,
       p_needs: true,
+      p_done: reservationDone,
     });
     if (rErr) return err(rErr.message);
   }

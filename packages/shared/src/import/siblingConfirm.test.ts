@@ -158,6 +158,7 @@ const eventDraft = (
     kind3: "timed",
     tzDisambig: null,
     title: "夕食",
+    booked: false,
     note: null,
     endDate: null,
     endTime: "20:00",

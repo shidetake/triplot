@@ -163,7 +163,8 @@ export function EventForm({
   );
   const [needsReservation, setNeedsReservation] = useDraft(
     "needsReservation",
-    editEvent?.needsReservation ?? false,
+    // 予約メールから取り込んだ下書きは、予約が済んでいるのでチェックを入れて開く。
+    editEvent?.needsReservation ?? prefill?.booked ?? false,
   );
   // 下書きの place/endPlace（保存済みマッチ or 事前解決済みフライトの
   // 座標つき自由入力）を PlaceInput に変換する。両方の場所欄で共通。
@@ -682,6 +683,9 @@ export function EventForm({
         tripId,
         fields,
         needsReservation,
+        // チェックを外して確定したら TODO 自体を作らないので、これは
+        // 「作るなら済みで」だけを表す。
+        prefill?.booked ?? false,
       );
       setBusy(false);
       if (!result.ok) {

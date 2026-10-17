@@ -32,6 +32,7 @@ function event(p: Partial<EventDraft>): EventDraft {
   return {
     kind: "transit",
     title: "NRT-HNL",
+    service: "flight",
     startDate: "2026-05-05",
     startTime: "21:00",
     endDate: "2026-05-05",

@@ -306,6 +306,28 @@ export const eventDraftSchema = z.object({
         "推測で書かない（住所があると地理バイアス無しで地図に照合するため、" +
         "誤った住所は誤った場所に解決される）",
     ),
+  // **何のサービスか。** 予約が要る種類か（＝取り込んだ時点で予約が済んでいるか）を
+  // アプリ側が決めるのに使う（bookedService.ts）。「予約済みか」を LLM に直接
+  // 聞かないのは、その判断がぶれるため。サービスの種類はメールから読み取れる事実で、
+  // 予約が要るかどうかはそこから規則で決まる。
+  service: z
+    .enum([
+      "flight",
+      "rail",
+      "ferry",
+      "bus",
+      "ride",
+      "lodging",
+      "dining",
+      "activity",
+      "other",
+    ])
+    .describe(
+      "何のサービスか。flight=航空便、rail=鉄道、ferry=フェリー・船、bus=バス、" +
+        "ride=配車サービス・タクシー（Uber・Lyft・GO 等）、lodging=宿泊、" +
+        "dining=飲食（レストラン予約・飲食のレシートとも）、" +
+        "activity=ツアー・観光・アクティビティ・送迎・チケット、other=どれにも当たらないもの",
+    ),
   referenceId: z
     .string()
     .nullable()
@@ -462,6 +484,7 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
 
   const base = {
     title,
+    service: d.service,
     referenceId: d.referenceId,
     isUpdate: d.isUpdate,
   };

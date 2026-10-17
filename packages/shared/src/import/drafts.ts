@@ -32,6 +32,7 @@ import {
 import type { EventRow } from "../tripDerive";
 import type { Currency } from "../types/database";
 
+import { isBookedService } from "./bookedService";
 import { eventDraftWhenLabel, monthDayLabel } from "./draftLabel";
 import { receiptPlaceName } from "./merchantName";
 import { matchPlace, type TripPlace } from "./placeMatch";
@@ -190,6 +191,11 @@ export type EventDraftPrefill = {
   // バック。事前解決できていれば下の他フィールドが既に確定後の状態を
   // 埋めているのでフライト番号機能は使わせない（null のまま）。
   flightNumber: string | null;
+  // 予約が要るもので、メールが届いた時点で予約が済んでいるか（isBookedService）。
+  // 確定フォームは要予約にチェックを入れた状態で開き、確定すると予約の TODO を
+  // 済みで作る。**TODO はここでは作らない**——確定前にチェックを外されたら
+  // 作ってはいけないので、作るのは確定の瞬間だけ。
+  booked: boolean;
 };
 
 // 予定下書き1件 → 予定フォーム（create モード）の事前入力一式。
@@ -655,6 +661,7 @@ export function deriveEventDraftItems(
             ),
             autoResolvePlace: null,
             flightNumber: null,
+            booked: isBookedService(ev),
           },
         };
         return [item];
@@ -759,6 +766,7 @@ export function deriveEventDraftItems(
             place,
             endPlace,
             flightNumber,
+            booked: isBookedService(ev),
             autoResolvePlace:
               place || !placeName
                 ? null
@@ -966,8 +974,9 @@ export function draftToScheduleEvent(
     endPlaceId: null,
     visibility: "shared",
     note: null,
-    needsReservation: false,
-    reservationDone: false,
+    // 予約済みの印は確定前から見せる（確定するとこの状態の予定になる）。
+    needsReservation: d.prefill.booked,
+    reservationDone: d.prefill.booked,
     participantsEveryone: true, // 取り込みの下書きは常に全員参加で作る
     participantMemberIds: [],
     createdByMemberId: myMemberId,
