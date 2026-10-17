@@ -13,6 +13,7 @@
 //   1. メールの状態の内訳（取り込み待ち・抽出済み・合体済み・確定済み・失敗）
 //   2. 未確定の下書きの件数
 //   3. **合体で吸収された側に下書きが残っていないか**
+//   4. 未確定の予定の下書きを、サービスの種類ごとに（予約済みとみなすか）
 //
 // 3 は 2026-09-13 の確認で1件見つかった。吸収された側は下書きを持たない設計
 // （process.ts「来たメールは merged として畳む（draft 行は作らない）」）で、
@@ -112,4 +113,51 @@ if (leftovers.length === 0) {
     console.log(`  - ${r.received_jst} ${r.subject}`);
     console.log(`      ${r.kind}: ${r.label}`);
   }
+}
+
+// ── 3. 予定の下書きのサービスの種類 ──
+// 予約済みとみなす（確定すると予約の TODO を済みで作る）かは種類で決まる
+// （packages/shared/src/import/bookedService.ts）。種類の読み違いはそのまま
+// 「予約済み」の付け間違いになるので、見出しを並べて目で確かめられるようにする。
+// 判定の規則は bookedService.ts と同じものをここにも書いている。
+const BOOKED_SERVICES = new Set([
+  "flight",
+  "rail",
+  "ferry",
+  "bus",
+  "lodging",
+  "dining",
+  "activity",
+]);
+const eventDrafts = dbQuery(`
+  select coalesce(d.payload->>'service',
+                  case when d.payload->'resolvedFlight' is not null
+                            and d.payload->'resolvedFlight' <> 'null'::jsonb
+                       then 'flight' end) as service,
+         (d.payload->>'timeFromReceipt')::boolean as from_receipt,
+         d.payload->>'title' as title
+  from inbound_drafts d
+  where d.kind = 'event' and d.status = 'pending'
+  order by 1, 3;
+`);
+
+console.log("");
+console.log(`未確定の予定の下書き: ${eventDrafts.length} 件（種類ごと）`);
+const byService = new Map();
+for (const r of eventDrafts) {
+  const key = r.service ?? "（種類なし）";
+  const list = byService.get(key) ?? [];
+  list.push(r);
+  byService.set(key, list);
+}
+for (const [service, rows] of byService) {
+  const booked = rows.filter(
+    (r) => !r.from_receipt && BOOKED_SERVICES.has(r.service),
+  ).length;
+  console.log(`  ${service}: ${rows.length} 件（予約済み ${booked}）`);
+  const titles = rows.map((r) => (r.from_receipt ? `${r.title}*` : r.title));
+  console.log(`      ${titles.join(", ")}`);
+}
+if (eventDrafts.length > 0) {
+  console.log("  （* はレシートから作った仮予定。予約済みにはしない）");
 }
