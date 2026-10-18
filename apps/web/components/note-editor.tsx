@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { useUndoable } from "@/lib/undoable";
 
+import { FieldLabel } from "./field-label";
 import { CheckIcon, EditIcon } from "./icons";
 import { toast } from "./toast";
 
@@ -361,24 +362,28 @@ export function NoteEditor({
       )}
 
       {editing && canChangeVisibility && (
-        <div
-          className="flex gap-3 border-t border-foreground/10 pt-4 text-sm"
-          role="radiogroup"
-          aria-label={t("visibility")}
-        >
-          {(["shared", "private"] as const).map((v) => (
-            <label key={v} className="inline-flex items-center gap-1">
-              <input
-                type="radio"
-                name="note-visibility"
-                checked={visibility === v}
-                onChange={() => setVisibility(v)}
-              />
-              <span>
-                {v === "shared" ? tCommon("shared") : tCommon("selfOnly")}
-              </span>
-            </label>
-          ))}
+        // 予定・費用のフォームと同じく、ラベルの右に選択肢を並べる。
+        <div className="flex items-center gap-3 border-t border-foreground/10 pt-4 text-sm">
+          <FieldLabel>{t("visibility")}</FieldLabel>
+          <div
+            className="flex gap-3"
+            role="radiogroup"
+            aria-label={t("visibility")}
+          >
+            {(["shared", "private"] as const).map((v) => (
+              <label key={v} className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="note-visibility"
+                  checked={visibility === v}
+                  onChange={() => setVisibility(v)}
+                />
+                <span>
+                  {v === "shared" ? tCommon("shared") : tCommon("selfOnly")}
+                </span>
+              </label>
+            ))}
+          </div>
         </div>
       )}
     </div>

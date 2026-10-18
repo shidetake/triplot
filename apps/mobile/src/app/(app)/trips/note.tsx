@@ -388,7 +388,11 @@ function NoteEditor({
       {lost && <Text style={styles.warning}>{t("lockLost")}</Text>}
 
       {editing && canChangeVisibility && (
-        <VisibilitySegment value={visibility} onChange={setVisibility} />
+        // 予定・費用のフォームと同じく、ラベルの右にセグメントを並べる。
+        <View style={styles.inlineRow}>
+          <Text style={styles.label}>{t("visibility")}</Text>
+          <VisibilitySegment value={visibility} onChange={setVisibility} />
+        </View>
       )}
     </View>
   );
@@ -410,5 +414,8 @@ const makeStyles = (t: Theme) =>
     // web のリンク（text-blue-600 / dark:text-blue-400）と同じ色。
     link: { color: t.linkText },
     notice: { fontSize: 12, color: t.mutedForeground },
+    inlineRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+    // フォームのフィールドラベル（予定・費用のフォームと同じ）。
+    label: { fontSize: 14, fontWeight: "500", color: t.foreground },
     warning: { fontSize: 12, color: t.warnAccent },
   });
