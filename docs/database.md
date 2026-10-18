@@ -14,6 +14,7 @@ DB（Supabase の Postgres）の設計と、読み書きの決まり。スキー
 - **地図の表示範囲は「ピンが集まっているところ」だけに合わせる。** 全ピンの外接矩形を使うと、離れた1点（帰りの空港など）に引っ張られて海の上が中心になる。`clusterPlaces` → `dominantCluster` で主役エリアを選ぶ。中心は必ず `centerOf()` を使い `(west+east)/2` を自前で書かない（日付変更線を跨ぐ bounds は `west > east` で返るため、自前計算だと地球の反対側が中心になる）。詳細は [design/place-map.md](./design/place-map.md)。
 - **予定の TZ は保存しない。** 通常・終日の `events.start_tz` / `end_tz` は常に NULL で、literal な TZ を持つのは `kind='transit'` だけ（旅行の TZ 境界の唯一の真実源）。通常の予定の実効 TZ は旅程から毎回導出する（`resolveEventTz`）。`start_at` / `end_at` は壁時計（`timestamp without time zone`）。**「全予定に TZ を埋める」方式に変えないこと** — 理由と代償は [design/timezone.md](./design/timezone.md) の 0 節。
 - **TODO の担当は「未定／全員／一部」、完了は一人ずつ。** 担当は予定の参加者・費用の割り勘と同じ形（`todos.assignee_everyone` ＋ `todo_assignees`。全員はその時点の在籍メンバーに解決し、退会したメンバーは数えない）。やった人は `todo_completions` に一人ずつ記録し、**`todos.done`（TODO 全体の完了）は DB のトリガが規則から計算する**（`todo_is_done`）。クライアントは `done` を書かない。配布済みのアプリが `done` を直接書き換えた時は、その人のやった記録に読み替える。画面側の同じ規則は `todoAssignees.ts`。
+- **ノートの同時編集は期限付きのロックで防ぐ。** 編集に入る時に `acquire_note_lock` で取り、編集中の端末が `renew_note_lock` で期限（2分）を延ばし続ける。止まった（強制終了・電波切れ）ロックは期限が過ぎれば無いものとして扱う。延長と保存は取った時の `lock_token` を持つ時だけ通るので、期限切れの間に他の人が取って保存した後で戻ってきても、古い内容で上書きしない。ロックの列を直接書き換えられないよう、ノートへの書き込みはすべて関数を通す（RLS は読むだけ）。
 - **利用枠（メール取り込みの月間上限）は残高ではなく計測。** 使用量は保存せず、その月の抽出済み件数を都度数えて上限と比べる（`monthlyExtractCount`）。**月初に枠を復活させるバッチは無いし、作らない**（全ユーザが枠を失う単一障害点になる・カウンタと実データがずれる）。プランと個別上書き・古参優遇の扱いは [design/billing.md](./design/billing.md)。
 
 ## データを誰に読ませるか
