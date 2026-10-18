@@ -18,6 +18,9 @@ const googleIosUrlScheme = process.env.EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME;
 // scheme も分ける。同じカスタム scheme を2つのアプリが宣言すると、ディープリンクを
 // どちらが受けるか OS 依存になるため。
 const isStaging = process.env.APP_VARIANT === "staging";
+const bundleIdentifier = isStaging
+  ? "app.triplot.mobile.staging"
+  : "app.triplot.mobile";
 
 const config: ExpoConfig = {
   name: isStaging ? "triplot (staging)" : "triplot",
@@ -30,9 +33,7 @@ const config: ExpoConfig = {
   // lib/theme.ts のトークンが useColorScheme で切り替わる。
   userInterfaceStyle: "automatic",
   ios: {
-    bundleIdentifier: isStaging
-      ? "app.triplot.mobile.staging"
-      : "app.triplot.mobile",
+    bundleIdentifier,
     supportsTablet: false,
     usesAppleSignIn: true,
     // ローカルビルドの署名チーム（Apple Development 証明書の OU）。
@@ -81,6 +82,24 @@ const config: ExpoConfig = {
   plugins: [
     "expo-router",
     "expo-localization",
+    // 共有の拡張機能（Share Extension）: Google マップの「共有」から triplot を
+    // 選べるようにする。受け取ったものはアプリ本体を開いて渡し、旅行を選んで
+    // 場所タブで開く（src/app/+native-intent.tsx → trips/shared-place）。
+    // 受けるのは URL とテキストだけ（Google マップは短縮 URL と店名のテキストを渡す）。
+    // 拡張機能は別の bundle id（<本体>.share-extension）と App Group
+    // （group.<本体>）を持つので、実機のビルドにはそれを含むプロビジョニング
+    // プロファイルが要る（EAS が entitlements を見て作る）。
+    [
+      "expo-share-intent",
+      {
+        iosShareExtensionName: "triplotShareExtension",
+        iosActivationRules: {
+          NSExtensionActivationSupportsWebURLWithMaxCount: 1,
+          NSExtensionActivationSupportsText: true,
+        },
+        disableAndroid: true,
+      },
+    ],
     "expo-apple-authentication",
     // アバター画像の選択（設定 → アバター変更）。写真ライブラリの利用文言を
     // Info.plist に注入する。カメラ・マイクは使わない（文言を注入しない）。
@@ -160,6 +179,27 @@ const config: ExpoConfig = {
   extra: {
     eas: {
       projectId: "9fc880e2-573b-49e9-8279-01418e9c665a",
+      // 共有の拡張機能（expo-share-intent が prebuild で足すターゲット）の署名。
+      // EAS はビルド前に ios/ を持たないので、ここで宣言しておかないと拡張機能の
+      // プロビジョニングプロファイルを作らない（実機のビルドが署名で落ちる）。
+      // 名前・bundle id・App Group はプラグインの既定と同じ形にそろえる。
+      build: {
+        experimental: {
+          ios: {
+            appExtensions: [
+              {
+                targetName: "triplotShareExtension",
+                bundleIdentifier: `${bundleIdentifier}.share-extension`,
+                entitlements: {
+                  "com.apple.security.application-groups": [
+                    `group.${bundleIdentifier}`,
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
     },
   },
 };

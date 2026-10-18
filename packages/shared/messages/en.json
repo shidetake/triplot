@@ -404,6 +404,12 @@
     "visibility": "Visibility",
     "backToTrip": "Back to trip"
   },
+  "sharedPlace": {
+    "title": "Choose a trip",
+    "resolving": "Looking up the place...",
+    "notFound": "Could not read a Google Maps place",
+    "noTrips": "No trips yet. Create a trip first."
+  },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",
     "status": "Status",
