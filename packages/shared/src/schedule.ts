@@ -915,6 +915,34 @@ export function buildSchedule(
     const isMultiDay = d1 !== d2;
     let startColIndex = -1;
     let endColIndex = -1;
+    // 日付の戻る便に掛かる予定は、収まる側（allDayTzSides）の列だけに置く。
+    // 便の到着側の列（t-<id>-arr）の手前までが出発側、そこからが到着側。
+    const sides = allDayTzSides(d1, d2, viewerTl.transits);
+    const arrIdx = sides
+      ? columns.findIndex((c) => c.key === `t-${sides.transitId}-arr`)
+      : -1;
+    if (sides && arrIdx !== -1) {
+      const side = pickAllDaySide(sides, {
+        transitId: ev.tzDisambigTransitId,
+        side: ev.tzDisambigSide,
+      });
+      const [from, to] =
+        side.side === "depart" ? [0, arrIdx - 1] : [arrIdx, columns.length - 1];
+      for (let i = from; i <= to; i++) {
+        const c = columns[i];
+        if (startColIndex === -1 && c.date === d1) startColIndex = i;
+        if (startColIndex !== -1 && c.date === d2) {
+          endColIndex = i;
+          break;
+        }
+      }
+      if (startColIndex !== -1 && endColIndex !== -1) {
+        allDaySpans.push({ event: ev, startColIndex, endColIndex });
+        continue;
+      }
+      startColIndex = -1;
+      endColIndex = -1;
+    }
     for (let i = 0; i < columns.length; i++) {
       const c = columns[i];
       if (cmpDate(c.date, d1) >= 0 && cmpDate(c.date, d2) <= 0) {
@@ -1299,6 +1327,71 @@ type AllDaySpan = {
   startColIndex: number;
   endColIndex: number;
 };
+
+// 終日の予定（宿泊など）が、時差で日付が戻る移動（wraps 便）のどちら側に
+// あるか。
+//
+// 日付が戻る便の前後では同じ日付が2回出てくる（日本の 12/18 と太平洋時間の
+// 12/18）。宿泊はチェックインからチェックアウトまで同じ場所にいる＝その間に
+// 移動をまたがないので、「初日から最終日までが丸ごと収まる側」だけが候補になる。
+//   - 片側にしか収まらない → そちらに決まる（12/17–12/19 は日本側だけ）
+//   - 両側に収まる → 日付だけでは決まらない（12/18–12/19 は、前泊にも到着後の
+//     宿泊にもなり得る）。本人が選んだ側（tzDisambig*）を使い、選んでいなければ
+//     到着側に置く（到着後の宿泊は必ずあるが、前泊はあるか分からない。手で
+//     足す時はフォームで選ぶので、選ばれていないのはメールの取り込みの時だけ）
+// 便の時刻（夜中の出発だから泊まらないはず、等）は判断に使わない。
+//
+// 返すのは、その範囲が日付の戻る区間に掛かる最初の便と、収まる側（1つか2つ）。
+// 掛からない・どちらにも収まらない時は null（従来どおり日付だけで並べる）。
+export function allDayTzSides(
+  startDate: string,
+  endDate: string,
+  transits: TripTzTimeline["transits"],
+): { transitId: string; options: TzCandidate[] } | null {
+  for (let i = 0; i < transits.length; i++) {
+    const w = transits[i];
+    const wraps =
+      `${w.arriveDate}T${w.arriveTime}` <= `${w.departDate}T${w.departTime}`;
+    if (!wraps) continue;
+    // 同じ日付が2回出てくる区間（到着日〜出発日）に掛からなければ関係ない。
+    if (cmpDate(startDate, w.departDate) > 0) continue;
+    if (cmpDate(endDate, w.arriveDate) < 0) continue;
+
+    const prevArrive = transits[i - 1]?.arriveDate ?? null;
+    const nextDepart = transits[i + 1]?.departDate ?? null;
+    const options: TzCandidate[] = [];
+    if (
+      (prevArrive === null || cmpDate(startDate, prevArrive) >= 0) &&
+      cmpDate(endDate, w.departDate) <= 0
+    ) {
+      options.push({ tz: w.departTz, transitId: w.transitId, side: "depart" });
+    }
+    if (
+      cmpDate(startDate, w.arriveDate) >= 0 &&
+      (nextDepart === null || cmpDate(endDate, nextDepart) <= 0)
+    ) {
+      options.push({ tz: w.arriveTz, transitId: w.transitId, side: "arrive" });
+    }
+    if (options.length === 0) continue;
+    return { transitId: w.transitId, options };
+  }
+  return null;
+}
+
+// allDayTzSides の結果と、予定に保存されている選択から、置く側を決める。
+export function pickAllDaySide(
+  sides: { transitId: string; options: TzCandidate[] },
+  saved: { transitId: string | null; side: "depart" | "arrive" | null },
+): TzCandidate {
+  if (sides.options.length === 1) return sides.options[0];
+  return (
+    sides.options.find(
+      (o) => o.transitId === saved.transitId && o.side === saved.side,
+    ) ??
+    sides.options.find((o) => o.side === "arrive") ??
+    sides.options[0]
+  );
+}
 
 // 終日バーを段に詰める。
 //

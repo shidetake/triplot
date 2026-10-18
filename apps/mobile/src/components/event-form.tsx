@@ -26,8 +26,10 @@ import {
   type EventFields,
 } from "@triplot/shared/data/events";
 import {
+  allDayTzSides,
   buildTripTzTimeline,
   dedupeTzCandidates,
+  pickAllDaySide,
   resolveExpenseTz,
   timelineFor,
   type TzCandidate,
@@ -449,6 +451,28 @@ export function EventForm({
     [startDate, participantTimeline],
   );
   const multiTz = participantTimeline.transits.length > 0;
+  // 日付が戻る便の前後では同じ日付が2回出てくる。終日の予定（宿泊など）が
+  // その両側に収まる時だけ、どちら側か選ぶ（allDayTzSides。web と同じ）。
+  // 片側にしか収まらなければ決まるので出さない。選んでいなければ到着側
+  // （カレンダーの既定と同じ）を選んだ状態で見せる。
+  const allDaySides =
+    kind === "allday"
+      ? allDayTzSides(startDate, endDate, participantTimeline.transits)
+      : null;
+  // 選んだ側は時刻のある予定の選択（tzDisambig*）とは別に持つ。あちらは
+  // 未保存でも出発側を初期値に入れるので、それを使うと「選んでいないのに
+  // 日本側が選ばれている」ように見える（カレンダーは到着側に置いている）。
+  const [allDaySaved, setAllDaySaved] = useState<{
+    transitId: string | null;
+    side: "depart" | "arrive" | null;
+  }>({
+    transitId: editEvent?.allDay ? editEvent.tzDisambigTransitId : null,
+    side: editEvent?.allDay ? editEvent.tzDisambigSide : null,
+  });
+  const allDayChoice =
+    allDaySides && allDaySides.options.length > 1
+      ? pickAllDaySide(allDaySides, allDaySaved)
+      : null;
   const selectTz = (c: TzCandidate) => {
     setTzDisambigTransitId(c.transitId);
     setTzDisambigSide(c.side);
@@ -654,11 +678,19 @@ export function EventForm({
       endAt,
       startTz,
       endTz,
-      // 通常/終日の乗継日曖昧解決（transit は自身のTZを持つので null）。
-      // 移動（TZ境界）は自身の実TZを持つので不要。終日も TZ を使わないので持たない。
-      // transit は自身の実TZを持つので不要（DB の CHECK もそれを要求する）。
-      tzDisambigTransitId: isTransit || allDay ? null : tzDisambigTransitId,
-      tzDisambigSide: isTransit || allDay ? null : tzDisambigSide,
+      // 通常の予定は乗継日の曖昧解決。終日は、日付が戻る便の両側に収まって
+      // 選ぶ必要がある時の選択だけ（allDayChoice）。transit は自身の実TZを
+      // 持つので不要（DB の CHECK もそれを要求する）。
+      tzDisambigTransitId: isTransit
+        ? null
+        : allDay
+          ? (allDayChoice?.transitId ?? null)
+          : tzDisambigTransitId,
+      tzDisambigSide: isTransit
+        ? null
+        : allDay
+          ? (allDayChoice?.side ?? null)
+          : tzDisambigSide,
       visibility,
       note: note.trim(),
       participantsEveryone,
@@ -949,10 +981,7 @@ export function EventForm({
       {/* 通常/終日: 乗継日のTZ曖昧解決（セグメント）。同じ TZ の候補は
           dedupeTzCandidates で1つに畳み、キーも TZ で照合する（選択の実体は
           transitId/side だが、ユーザにとっての選択単位は TZ のため）。 */}
-      {/* 終日は出さない。終日は日付そのもので時刻を持たず、実効TZが要る場面が
-          無いため（週カレンダーの終日帯は日付だけで列を決め、Google カレンダー
-          出力も date のみで tz を使わない）。乗継日に TZ を選ばせても、
-          どこにも使われない入力になる。 */}
+      {/* 終日は下で、日付が戻る便の両側に収まる時だけ別に出す。 */}
       {kind === "timed" && multiTz && startTzRes.kind === "ambiguous" && (
         <View>
           <Text style={styles.hint}>{t("transitDay")}</Text>
@@ -972,6 +1001,27 @@ export function EventForm({
               onChange={(tz) => {
                 const opt = startTzRes.options.find((o) => o.tz === tz);
                 if (opt) selectTz(opt);
+              }}
+            />
+          </View>
+        </View>
+      )}
+
+      {kind === "allday" && allDaySides && allDayChoice && (
+        <View>
+          <Text style={styles.hint}>{t("transitDay")}</Text>
+          <View style={styles.tzOptions}>
+            <CompactSegment
+              options={allDaySides.options.map((opt) => ({
+                key: opt.side,
+                label: tzDisplayLabel(opt.tz, locale),
+              }))}
+              value={allDayChoice.side}
+              onChange={(side) => {
+                const opt = allDaySides.options.find((o) => o.side === side);
+                if (opt) {
+                  setAllDaySaved({ transitId: opt.transitId, side: opt.side });
+                }
               }}
             />
           </View>

@@ -835,7 +835,15 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
   const allDay = formData.get("all_day") === "on";
 
   if (allDay) {
-    // 終日イベントのTZは表示に無関係なので保存しない。
+    // 終日の予定は TZ を保存しない。保存するのは、日付が戻る便の両側に
+    // 収まる時に選んだ側だけ（フォームが選ぶ必要がある時だけ送る）。
+    const allDayDisambigTransitId = get("tz_disambig_transit_id") || null;
+    const allDayDisambigSideRaw = get("tz_disambig_side");
+    const allDayDisambigSide =
+      allDayDisambigTransitId &&
+      (allDayDisambigSideRaw === "depart" || allDayDisambigSideRaw === "arrive")
+        ? allDayDisambigSideRaw
+        : null;
     const startDate = get("start_date");
     const endDate = get("end_date") || startDate;
     if (!startDate) return { error: t("enterDate") };
@@ -850,8 +858,8 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
       endAt: `${endDate}T00:00:00`,
       startTz: null,
       endTz: null,
-      tzDisambigTransitId: null,
-      tzDisambigSide: null,
+      tzDisambigTransitId: allDayDisambigSide ? allDayDisambigTransitId : null,
+      tzDisambigSide: allDayDisambigSide,
       startPlace: place,
       endPlace: null,
       visibility,

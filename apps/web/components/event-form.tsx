@@ -32,6 +32,8 @@ import {
 import {
   dedupeTzCandidates,
   formatMinutes,
+  allDayTzSides,
+  pickAllDaySide,
   resolveEventTz,
   resolveExpenseTz,
   timelineFor,
@@ -681,6 +683,33 @@ export function EventForm({
     if (v > alldayEnd) setAlldayEnd(v);
   };
 
+  // 日付が戻る便の前後では同じ日付が2回出てくる。終日の予定（宿泊など）が
+  // その両側に収まる時だけ、どちら側か選ぶ（allDayTzSides）。片側にしか
+  // 収まらなければ決まるので出さない。選んでいなければ到着側（カレンダーの
+  // 既定と同じ）を選んだ状態で見せる。
+  const allDaySides =
+    kind3 === "allday"
+      ? allDayTzSides(
+          alldayStart,
+          alldayEnd || alldayStart,
+          participantTimeline.transits,
+        )
+      : null;
+  // 選んだ側は時刻のある予定の選択（tzDisambig*）とは別に持つ。あちらは
+  // 未保存でも出発側を初期値に入れるので、それを使うと「選んでいないのに
+  // 日本側が選ばれている」ように見える（カレンダーは到着側に置いている）。
+  const [allDaySaved, setAllDaySaved] = useDraft<{
+    transitId: string | null;
+    side: "depart" | "arrive" | null;
+  }>("allDaySide", {
+    transitId: isEdit && ev!.allDay ? ev!.tzDisambigTransitId : null,
+    side: isEdit && ev!.allDay ? ev!.tzDisambigSide : null,
+  });
+  const allDayChoice =
+    allDaySides && allDaySides.options.length > 1
+      ? pickAllDaySide(allDaySides, allDaySaved)
+      : null;
+
   const locale = useLocale();
   const t = useTranslations("event");
   const tCommon = useTranslations("common");
@@ -979,37 +1008,76 @@ export function EventForm({
       )}
 
       {kind3 === "allday" && (
-        // 開始日–終了日を横並び（通常予定の日時と同じ並び・時刻なし）。
-        // 入力は従来どおりカレンダーのみ（DatePopover）。終日はTZ無関係（tz は送らない）。
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t("date")}</span>
-          <div className="flex items-center gap-2">
-            <DatePopover
-              name="start_date"
-              value={alldayStart}
-              onChange={setAlldayStartG}
-              required
-              className="w-auto shrink-0"
-              tripStart={tripStart}
-              tripEnd={tripEnd}
-            />
-            <span className="shrink-0 text-muted-foreground">–</span>
-            <DatePopover
-              name="end_date"
-              value={alldayEnd}
-              onChange={setAlldayEnd}
-              required
-              className="w-auto shrink-0"
-              tripStart={tripStart}
-              tripEnd={tripEnd}
-              disabled={
-                parseYmd(alldayStart)
-                  ? { before: parseYmd(alldayStart)! }
-                  : undefined
-              }
-            />
+        <div className="space-y-3">
+          {/* 開始日–終了日を横並び（通常予定の日時と同じ並び・時刻なし）。
+              入力は従来どおりカレンダーのみ（DatePopover）。tz は送らない。 */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">{t("date")}</span>
+            <div className="flex items-center gap-2">
+              <DatePopover
+                name="start_date"
+                value={alldayStart}
+                onChange={setAlldayStartG}
+                required
+                className="w-auto shrink-0"
+                tripStart={tripStart}
+                tripEnd={tripEnd}
+              />
+              <span className="shrink-0 text-muted-foreground">–</span>
+              <DatePopover
+                name="end_date"
+                value={alldayEnd}
+                onChange={setAlldayEnd}
+                required
+                className="w-auto shrink-0"
+                tripStart={tripStart}
+                tripEnd={tripEnd}
+                disabled={
+                  parseYmd(alldayStart)
+                    ? { before: parseYmd(alldayStart)! }
+                    : undefined
+                }
+              />
+            </div>
+            {allDayCheckbox}
           </div>
-          {allDayCheckbox}
+          {/* 保存するのは、両側に収まって選ぶ必要がある時の選択だけ。 */}
+          <input
+            type="hidden"
+            name="tz_disambig_transit_id"
+            value={allDayChoice?.transitId ?? ""}
+          />
+          <input
+            type="hidden"
+            name="tz_disambig_side"
+            value={allDayChoice?.side ?? ""}
+          />
+          {allDaySides && allDayChoice && (
+            <fieldset className="text-sm">
+              <p className="text-xs text-muted-foreground">{t("transitDay")}</p>
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+                {allDaySides.options.map((opt) => (
+                  <label
+                    key={opt.side}
+                    className="inline-flex items-center gap-2"
+                  >
+                    <input
+                      type="radio"
+                      name="tz_choice"
+                      checked={allDayChoice.side === opt.side}
+                      onChange={() =>
+                        setAllDaySaved({
+                          transitId: opt.transitId,
+                          side: opt.side,
+                        })
+                      }
+                    />
+                    <span>{tzDisplayLabel(opt.tz, locale)}</span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          )}
         </div>
       )}
 

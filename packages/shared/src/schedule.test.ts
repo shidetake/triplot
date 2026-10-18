@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addDays,
+  allDayTzSides,
   buildSchedule,
   buildTripTzTimeline,
   dedupeTzCandidates,
@@ -842,7 +843,7 @@ describe("buildSchedule: 終日・連日バー", () => {
     expect(bar.startColIndex).not.toBe(depIndex);
   });
 
-  it("単日の終日予定は wraps 便の当日でも出発側の列から始まる（従来通り）", () => {
+  it("単日の終日予定も、wraps 便の当日は両側に収まるので選んだ側（既定は到着側）に置く", () => {
     const flight = ev({
       id: "f1",
       title: "NRT-HNL",
@@ -864,8 +865,128 @@ describe("buildSchedule: 終日・連日バー", () => {
       tripEnd: "2026-04-30",
     });
     const depIndex = s.columns.indexOf(s.columns.find((c) => c.key === "t-f1-dep")!);
+    const arrIndex = s.columns.indexOf(s.columns.find((c) => c.key === "t-f1-arr")!);
     const bar = s.allDayBars.find((b) => b.event.id === "oneDay")!;
-    expect(bar.startColIndex).toBe(depIndex);
+    expect(bar.startColIndex).toBe(arrIndex);
+
+    const chosen = buildSchedule(
+      [flight, { ...oneDay, tzDisambigTransitId: "f1", tzDisambigSide: "depart" }],
+      { tripStart: "2026-04-28", tripEnd: "2026-04-30" },
+    );
+    expect(
+      chosen.allDayBars.find((b) => b.event.id === "oneDay")!.startColIndex,
+    ).toBe(depIndex);
+  });
+
+  describe("日付が戻る便の前後で同じ日付が2回出てくる時の宿泊", () => {
+    // 実例（Peru & the West Coast）: 羽田 12/19 0:50 発 → LAX 12/18 17:50 着
+    // （日付が戻る）、LAX 12/19 23:00 発 → リマ 12/20 9:00 着。
+    const nh = ev({
+      id: "nh",
+      title: "NH106",
+      kind: "transit",
+      startAt: "2026-12-19T00:50:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-12-18T17:50:00",
+      endTz: "America/Los_Angeles",
+    });
+    const la = ev({
+      id: "la",
+      title: "LA2479",
+      kind: "transit",
+      startAt: "2026-12-19T23:00:00",
+      startTz: "America/Los_Angeles",
+      endAt: "2026-12-20T09:00:00",
+      endTz: "America/Lima",
+    });
+    const stay = (id: string, start: string, end: string, extra = {}) =>
+      ev({
+        id,
+        title: "宿泊",
+        allDay: true,
+        startAt: `${start}T00:00:00`,
+        endAt: `${end}T00:00:00`,
+        ...extra,
+      });
+    const opts = { tripStart: "2026-12-16", tripEnd: "2026-12-21" };
+    const cols = (s: ReturnType<typeof buildSchedule>, id: string) => {
+      const b = s.allDayBars.find((x) => x.event.id === id)!;
+      return s.columns
+        .slice(b.startColIndex, b.endColIndex + 1)
+        .map((c) => `${c.date}@${c.tz}`);
+    };
+
+    it("12/18–12/19 は両側に収まるので、選んでいなければ到着側（太平洋時間の 2列）", () => {
+      const s = buildSchedule([nh, la, stay("s", "2026-12-18", "2026-12-19")], opts);
+      expect(cols(s, "s")).toEqual([
+        "2026-12-18@America/Los_Angeles",
+        "2026-12-19@America/Los_Angeles",
+      ]);
+    });
+
+    it("12/18–12/19 で出発側を選んでいれば、日本側の 2列", () => {
+      const s = buildSchedule(
+        [
+          nh,
+          la,
+          stay("s", "2026-12-18", "2026-12-19", {
+            tzDisambigTransitId: "nh",
+            tzDisambigSide: "depart",
+          }),
+        ],
+        opts,
+      );
+      expect(cols(s, "s")).toEqual([
+        "2026-12-18@Asia/Tokyo",
+        "2026-12-19@Asia/Tokyo",
+      ]);
+    });
+
+    it("12/17–12/19 は日本側にしか収まらないので、選ばなくても日本側", () => {
+      const s = buildSchedule([nh, la, stay("s", "2026-12-17", "2026-12-19")], opts);
+      expect(cols(s, "s")).toEqual([
+        "2026-12-17@Asia/Tokyo",
+        "2026-12-18@Asia/Tokyo",
+        "2026-12-19@Asia/Tokyo",
+      ]);
+    });
+
+    it("どちら側にも収まらない（便をまたぐ）予定は、従来どおり日付で並べる", () => {
+      const s = buildSchedule([nh, la, stay("s", "2026-12-19", "2026-12-20")], opts);
+      expect(cols(s, "s").at(-1)).toBe("2026-12-20@America/Lima");
+    });
+  });
+});
+
+describe("allDayTzSides", () => {
+  const tl = buildTripTzTimeline([
+    ev({
+      id: "nh",
+      kind: "transit",
+      startAt: "2026-12-19T00:50:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-12-18T17:50:00",
+      endTz: "America/Los_Angeles",
+    }),
+  ]);
+
+  it("両側に収まれば候補は2つ、片側なら1つ、掛からなければ null", () => {
+    expect(
+      allDayTzSides("2026-12-18", "2026-12-19", tl.transits)?.options.map(
+        (o) => o.side,
+      ),
+    ).toEqual(["depart", "arrive"]);
+    expect(
+      allDayTzSides("2026-12-17", "2026-12-19", tl.transits)?.options.map(
+        (o) => o.side,
+      ),
+    ).toEqual(["depart"]);
+    expect(
+      allDayTzSides("2026-12-18", "2026-12-21", tl.transits)?.options.map(
+        (o) => o.side,
+      ),
+    ).toEqual(["arrive"]);
+    expect(allDayTzSides("2026-12-10", "2026-12-12", tl.transits)).toBeNull();
   });
 });
 
