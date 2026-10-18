@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 
-// 旅行詳細ページの4タブ（予定/場所/費用/TODO）。TripDetailTabs だけでなく、
+// 旅行詳細ページの5タブ（予定/場所/費用/TODO/ノート）。TripDetailTabs だけでなく、
 // PlacesSection・ScheduleSection 等、タブ内容側からも「今どのタブがアクティブか」
 // を読めるようにするための最小限の外部ストア。React Context だと Provider の
 // 子孫でしか読めず、Provider の外側にいるコンポーネントからは読めないため、
@@ -11,7 +11,13 @@ import { useSyncExternalStore } from "react";
 // タブ切替は実ナビゲーションにせず history.replaceState だけで URL を同期する
 // （TripDetailTabs 参照）。replaceState は popstate を発火しないため、クリック
 // 直後の反映は自前の CustomEvent で配る。
-export const TRIP_TABS = ["schedule", "places", "expenses", "todos"] as const;
+export const TRIP_TABS = [
+  "schedule",
+  "places",
+  "expenses",
+  "todos",
+  "notes",
+] as const;
 export type TripTabKey = (typeof TRIP_TABS)[number];
 
 function isTabKey(value: string | null): value is TripTabKey {

@@ -17,6 +17,7 @@ import { ExpenseSummaryView } from "@/components/expense-summary";
 import { AppHeader } from "@/components/app-header";
 import { LoadError } from "@/components/load-error";
 import { MembersSection } from "@/components/members-section";
+import { NotesSection } from "@/components/notes-section";
 import type { PlaceRow } from "@/components/place-list";
 import { PlacesSection } from "@/components/places-section";
 import { type EventRow, ScheduleSection } from "@/components/schedule-section";
@@ -59,6 +60,7 @@ import {
 } from "@triplot/shared/tripDerive";
 import { type ExpenseCsvRow } from "@triplot/shared/expenseCsv";
 import { type KmlPlacemark } from "@triplot/shared/placeKml";
+import { deriveNotes } from "@triplot/shared/notes";
 import { dominantCenter, TOKYO } from "@triplot/shared/placeMap";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 import {
@@ -95,6 +97,7 @@ export default async function TripDetailPage({
     eventsRaw,
     todosRaw,
     pinOptionsRaw,
+    notesRaw,
   } = await fetchTripDetailRows(supabase, tripId);
 
   // PGRST116 = 0件（本当に存在しない/権限が無い。RLS はこの2つを区別させない）。
@@ -663,6 +666,19 @@ export default async function TripDetailPage({
                   defaultCollapsed={false}
                   todos={onsiteTodos}
                   members={todoMembers}
+                  myMemberId={me.id}
+                />
+              </section>
+            }
+            notes={
+              <section className="mt-4 space-y-6 md:mt-10">
+                <NotesSection
+                  tripId={tripId}
+                  notes={deriveNotes(notesRaw)}
+                  members={allMembers.map((m) => ({
+                    id: m.id,
+                    display_name: m.display_name,
+                  }))}
                   myMemberId={me.id}
                 />
               </section>

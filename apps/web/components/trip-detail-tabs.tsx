@@ -8,6 +8,7 @@ import {
   ListTodoIcon,
   MapIcon,
   DollarSignIcon,
+  NotebookTextIcon,
 } from "@/components/icons";
 import {
   setActiveTripTab,
@@ -21,6 +22,7 @@ const TABS = [
   { key: "places", Icon: MapIcon },
   { key: "expenses", Icon: DollarSignIcon },
   { key: "todos", Icon: ListTodoIcon },
+  { key: "notes", Icon: NotebookTextIcon },
 ] as const satisfies { key: TabKey; Icon: unknown }[];
 
 // 狭い画面（< md=768px）だけタブ化し、広い画面は今までどおり全セクション縦積み
@@ -29,7 +31,7 @@ const TABS = [
 // "hidden md:block" だけで行い、JS のメディアクエリ判定は使わない
 // （SSR とクライアントの初期描画を一致させ hydration mismatch を避ける）。
 //
-// タブ切替は実ナビゲーションにしない（案B）: 4セクションは常にマウントされたまま
+// タブ切替は実ナビゲーションにしない（案B）: 5セクションは常にマウントされたまま
 // CSS で表示/非表示するだけなので、地図インスタンス・スクロール位置・入力途中の
 // フォームが切替をまたいで生き続ける。URL 同期は history.replaceState のみで
 // 行い、Next.js のルーターは経由しない（戻るボタンでタブ履歴が積まれない）。
@@ -38,11 +40,12 @@ export function TripDetailTabs({
   places,
   expenses,
   todos,
+  notes,
 }: Record<TabKey, React.ReactNode>) {
   const t = useTranslations("tripTabs");
   const activeTab = useActiveTripTab();
   // **初期描画には表示中のタブの中身しか入れない。**
-  // 4タブぶんを最初から DOM に入れると iOS Safari が Smart App Banner を
+  // 5タブぶんを最初から DOM に入れると iOS Safari が Smart App Banner を
   // 出さなくなる（費用一覧の行を描画すると必ず消える。実機で二分探索して
   // 特定した。バナーは apps/web/app/layout.tsx）。読み込みが落ち着いてから
   // 残りをマウントするので、タブ切替そのものは今までどおり即座で、地図や
@@ -67,6 +70,7 @@ export function TripDetailTabs({
     places,
     expenses,
     todos,
+    notes,
   };
 
   return (
