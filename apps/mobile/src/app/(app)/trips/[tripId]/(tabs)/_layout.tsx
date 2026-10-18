@@ -3,7 +3,7 @@ import { useTranslations } from "use-intl";
 
 import { useTheme } from "@/lib/theme";
 
-// 旅行詳細 = 予定/場所/費用/TODO の4タブ（画面サイズによらず常時タブ固定。
+// 旅行詳細 = 予定/場所/費用/TODO/ノートの5タブ（画面サイズによらず常時タブ固定。
 // web のモバイル幅タブと同じ並び・同じ Lucide アイコン）。
 // ヘッダーは親 Stack（trips/[tripId]/_layout.tsx）の1本だけ（旅行名+戻る+編集）。
 //
@@ -60,6 +60,12 @@ export default function TripTabsLayout() {
         <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
         <NativeTabs.Trigger.Icon
           src={require("../../../../../../assets/tab-icons/list-todo.png")}
+        />
+      </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="notes" accessibilityLabel={t("notes")}>
+        <NativeTabs.Trigger.Label>{""}</NativeTabs.Trigger.Label>
+        <NativeTabs.Trigger.Icon
+          src={require("../../../../../../assets/tab-icons/notebook-text.png")}
         />
       </NativeTabs.Trigger>
     </NativeTabs>
