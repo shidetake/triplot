@@ -7,6 +7,7 @@ import { fetchUnassignedInboundCount } from "@triplot/shared/data/reads/inbox";
 import { AccountMenu } from "@/components/account-menu";
 import { ChevronIcon } from "@/components/icons";
 import { ImportSheetButton } from "@/components/import-sheet";
+import { PAGE_HEADER_ACTIONS_ID } from "@/components/page-header-actions-id";
 import { resolveTheme } from "@/i18n/theme.server";
 import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
@@ -130,6 +131,11 @@ export async function AppHeader({
         {/* アイコン同士のタップ領域が接しないよう gap-3（ui-guidelines の
             「gap-2 だとタップ領域が被りやすい」と同じ値）。 */}
         <div className="flex shrink-0 items-center gap-3">
+          {/* ページ固有の操作の差し込み口（ノートの鉛筆／✓）。ページ側の
+              クライアントの状態で切り替わるので、ここには置かずポータルで
+              差し込む（page-header-actions.tsx）。contents なので、空の時は
+              箱も隙間も作らない。 */}
+          <div id={PAGE_HEADER_ACTIONS_ID} className="contents" />
           {tripActions}
           <ImportSheetButton count={importCount} />
           <AccountMenu

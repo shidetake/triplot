@@ -26,6 +26,7 @@ import { useUndoable } from "@/lib/undoable";
 
 import { FieldLabel } from "./field-label";
 import { CheckIcon, EditIcon } from "./icons";
+import { PageHeaderActions } from "./page-header-actions";
 import { toast } from "./toast";
 
 // ノートのページ（/trips/<旅行>/notes/<ノート>、新規は /notes/new）の中身。
@@ -292,12 +293,9 @@ export function NoteEditor({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-2">
-        {lockedBy !== null && (
-          <p className="min-w-0 flex-1 text-sm text-muted-foreground">
-            {t("lockedNow", { name: lockedBy })}
-          </p>
-        )}
+      {/* 鉛筆／✓はヘッダーのバーの右（iOS のナビバーの右と同じ位置）。
+          本文の上に操作の行を置くと、1行目がその分下がる。 */}
+      <PageHeaderActions>
         {editing ? (
           <Button
             type="button"
@@ -321,10 +319,16 @@ export function NoteEditor({
             title={tCommon("edit")}
             className="rounded-full"
           >
-            <EditIcon size={18} />
+            <EditIcon size={20} />
           </Button>
         )}
-      </div>
+      </PageHeaderActions>
+
+      {lockedBy !== null && (
+        <p className="text-sm text-muted-foreground">
+          {t("lockedNow", { name: lockedBy })}
+        </p>
+      )}
 
       {lost && (
         <p className="text-sm text-amber-700 dark:text-amber-400">
