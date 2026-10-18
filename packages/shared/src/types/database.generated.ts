@@ -700,7 +700,29 @@ export type Database = {
           updated_at?: string
           visibility?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "notes_created_by_member_id_fkey"
+            columns: ["created_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_locked_by_member_id_fkey"
+            columns: ["locked_by_member_id"]
+            isOneToOne: false
+            referencedRelation: "trip_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_trip_id_fkey"
+            columns: ["trip_id"]
+            isOneToOne: false
+            referencedRelation: "trips"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       places: {
         Row: {
@@ -1175,6 +1197,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_note_lock: { Args: { p_note_id: string }; Returns: Json }
       admin_active_user_count: { Args: never; Returns: number }
       admin_rate_limited_email_count: { Args: never; Returns: number }
       admin_user_usage: {
@@ -1198,6 +1221,10 @@ export type Database = {
       }
       can_complete_todo: {
         Args: { p_member_id: string; p_todo_id: string }
+        Returns: boolean
+      }
+      can_see_note: {
+        Args: { p_note: Database["public"]["Tables"]["notes"]["Row"] }
         Returns: boolean
       }
       clear_trip_tz_disambig: {
@@ -1259,6 +1286,10 @@ export type Database = {
         Returns: string
       }
       create_guest_upgrade_ticket: { Args: never; Returns: string }
+      create_note: {
+        Args: { p_body: string; p_trip_id: string; p_visibility: string }
+        Returns: string
+      }
       create_place: {
         Args: {
           p_formatted_address: string
@@ -1303,32 +1334,9 @@ export type Database = {
       }
       delete_account: { Args: never; Returns: undefined }
       delete_expense_returning: { Args: { p_id: string }; Returns: Json }
-      delete_place_returning: { Args: { p_id: string }; Returns: Json }
       delete_note_returning: { Args: { p_id: string }; Returns: Json }
+      delete_place_returning: { Args: { p_id: string }; Returns: Json }
       delete_todo_returning: { Args: { p_id: string }; Returns: Json }
-      acquire_note_lock: { Args: { p_note_id: string }; Returns: Json }
-      create_note: {
-        Args: { p_body: string; p_trip_id: string; p_visibility: string }
-        Returns: string
-      }
-      renew_note_lock: {
-        Args: { p_note_id: string; p_token: string }
-        Returns: boolean
-      }
-      release_note_lock: {
-        Args: { p_note_id: string; p_token: string }
-        Returns: undefined
-      }
-      restore_note: { Args: { p_snapshot: Json }; Returns: undefined }
-      save_note: {
-        Args: {
-          p_body: string
-          p_note_id: string
-          p_token: string
-          p_visibility: string
-        }
-        Returns: boolean
-      }
       delete_trip: { Args: { p_trip_id: string }; Returns: undefined }
       dismiss_inbound_email: { Args: { p_id: string }; Returns: string[] }
       dismiss_place_location: {
@@ -1383,7 +1391,9 @@ export type Database = {
         Args: { p_child: string; p_mode?: string; p_parent: string }
         Returns: undefined
       }
+      my_member_id: { Args: { p_trip_id: string }; Returns: string }
       nanoid: { Args: { size?: number }; Returns: string }
+      note_lock_lease: { Args: never; Returns: string }
       peek_invite: { Args: { p_token: string }; Returns: string }
       pick_member_color: { Args: { p_trip_id: string }; Returns: number }
       rebuild_inbound_drafts: {
@@ -1413,7 +1423,15 @@ export type Database = {
         Returns: string
       }
       release_lease: { Args: { p_name: string }; Returns: undefined }
+      release_note_lock: {
+        Args: { p_note_id: string; p_token: string }
+        Returns: undefined
+      }
       remove_trip_member: { Args: { p_member_id: string }; Returns: undefined }
+      renew_note_lock: {
+        Args: { p_note_id: string; p_token: string }
+        Returns: boolean
+      }
       resolve_inbound_draft: {
         Args: {
           p_event_id?: string
@@ -1443,8 +1461,18 @@ export type Database = {
       }
       restore_expense: { Args: { p_snapshot: Json }; Returns: undefined }
       restore_inbound_drafts: { Args: { p_ids: string[] }; Returns: undefined }
+      restore_note: { Args: { p_snapshot: Json }; Returns: undefined }
       restore_place: { Args: { p_snapshot: Json }; Returns: undefined }
       restore_todo: { Args: { p_snapshot: Json }; Returns: undefined }
+      save_note: {
+        Args: {
+          p_body: string
+          p_note_id: string
+          p_token: string
+          p_visibility: string
+        }
+        Returns: boolean
+      }
       seed_default_expense_categories: {
         Args: { _trip_id: string }
         Returns: undefined
