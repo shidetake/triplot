@@ -671,7 +671,9 @@ export default async function TripDetailPage({
               </section>
             }
             notes={
-              <section className="mt-4 space-y-6 md:mt-10">
+              // id はノートのページから戻った時の飛び先（広い画面は全セクションを
+              // 縦に積むので、戻ると一番上に出てしまう）。scroll-mt はヘッダーの高さ。
+              <section id="notes" className="mt-4 scroll-mt-16 space-y-6 md:mt-10">
                 <NotesSection
                   tripId={tripId}
                   notes={deriveNotes(notesRaw)}

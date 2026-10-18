@@ -204,10 +204,6 @@ export default function TripLayout() {
             持ち上がる体験を優先し fitToContents に戻す。 */}
         <Stack.Screen name="event-form" options={sheetScreenOptions} />
         <Stack.Screen name="expense-form" options={sheetScreenOptions} />
-        {/* ノートは中身の長さが入力で変わり続けるので fitToContents にしない
-            （測り直しでスクロールが先頭に戻る。ui-guidelines「レイヤーと影」）。
-            最初から画面いっぱいに開く。 */}
-        <Stack.Screen name="note" options={noteSheetScreenOptions} />
       </Stack>
     </>
   );
@@ -249,11 +245,6 @@ const sheetScreenOptions = {
   presentation: "formSheet" as const,
   sheetAllowedDetents: "fitToContents" as const,
   sheetGrabberVisible: true,
-};
-
-const noteSheetScreenOptions = {
-  ...sheetScreenOptions,
-  sheetAllowedDetents: [1],
 };
 
 const makeStyles = (t: Theme) =>

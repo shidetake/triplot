@@ -29,6 +29,7 @@ export async function AppHeader({
   tripMenu,
   tripRows,
   tripActions,
+  back,
 }: {
   // 旅行詳細でだけ渡す。渡すとワードマークの代わりに戻る＋2行タイトルになる。
   // 2行目は日程だけ（精算通貨は出さない。iOS と揃える＝ナビバーは旅行名と
@@ -40,6 +41,9 @@ export async function AppHeader({
   tripRows?: ReactNode;
   // バーに直接置く旅行のアクション（共有アイコン）。
   tripActions?: ReactNode;
+  // 戻る先（trip を渡した時の既定は旅行一覧）。旅行の中のページ（ノート）は
+  // その旅行へ戻す。
+  back?: { href: string; label: string };
 } = {}) {
   const supabase = await createClient();
   const {
@@ -78,9 +82,9 @@ export async function AppHeader({
     openFeedbackCount = feedbackCount ?? 0;
   }
 
-  const backLabel = await getTranslations("tripDetail").then((tt) =>
-    tt("backToTrips"),
-  );
+  const backLabel =
+    back?.label ??
+    (await getTranslations("tripDetail").then((tt) => tt("backToTrips")));
   // 設定シートのテーマ選択の初期値（cookie から解決）。
   const currentTheme = await resolveTheme();
 
@@ -100,7 +104,7 @@ export async function AppHeader({
           // （iOS 側と同じ理屈。_layout.tsx の titleBlock 参照）。
           <div className="flex min-w-0 flex-1 items-center gap-1">
             <Link
-              href="/trips"
+              href={back?.href ?? "/trips"}
               aria-label={backLabel}
               title={backLabel}
               className="-ml-2 shrink-0 rounded-full p-1.5 text-muted-foreground transition hover:bg-foreground/10 hover:text-foreground"

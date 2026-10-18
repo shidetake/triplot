@@ -401,7 +401,8 @@
     "deleted": "ノートを削除しました",
     "deleteAria": "削除",
     "failed": "失敗しました: {error}",
-    "visibility": "公開範囲"
+    "visibility": "公開範囲",
+    "backToTrip": "旅行に戻る"
   },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",

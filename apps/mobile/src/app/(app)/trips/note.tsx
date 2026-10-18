@@ -5,6 +5,7 @@ import {
   AppState,
   Linking,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -29,25 +30,28 @@ import {
   type NoteRow,
 } from "@triplot/shared/notes";
 
-import { SheetScroll } from "@/components/sheet-scroll";
 import { toast } from "@/components/toast";
 import { VisibilitySegment } from "@/components/visibility-segment";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
-import { useTripId } from "@/lib/useTripId";
+import { useTripIdParam } from "@/lib/useTripIdParam";
 
-// ノートを開く（native formSheet ルート）。noteId 無しは新しいノート。
-// web の components/notes-section.tsx の NoteEditor と同じ動き:
+// ノートを開く画面。旅行の画面のノートのタブから push する（?tripId=&noteId=、
+// noteId 無しは新しいノート）。ノートは長い文章を読み書きする行き先なので、
+// シートで重ねずに画面ごと切り替える（iOS のメモ帳と同じ。ui-guidelines
+// 「全画面表示を使う場面」）。どの画面からでも開けるようルート階層に置く。
+// web の components/note-editor.tsx と同じ動き:
 //   - 表示中と編集中の2つのモード。表示中はリンクを押せば Safari、
 //     それ以外を押せばロックを取って編集に入る（iOS のメモ帳と同じ）
-//   - 閉じる（下スワイプ）＝保存。保存ボタンは置かない
+//   - 戻る（画面を離れる）＝保存。保存ボタンは置かない
 //   - 編集中は期限付きのロックを延ばし続け、他の人が取ったら知らせる
 export default function NoteRoute() {
-  const tripId = useTripId();
+  const tripId = useTripIdParam();
   const { noteId } = useLocalSearchParams<{ noteId?: string }>();
   const { data, me } = useTripDetail(tripId);
+  const theme = useTheme();
   if (!data?.trip || !me) return null;
   const note = noteId
     ? (deriveNotes(data.notesRaw).find((n) => n.id === noteId) ?? null)
@@ -56,14 +60,23 @@ export default function NoteRoute() {
   const nameOf = (id: string) =>
     data.members?.find((m) => m.id === id)?.display_name ?? "";
   return (
-    <SheetScroll>
+    <ScrollView
+      // 末尾を書いている時にキーボードの裏に隠れないよう、フォーカス中の
+      // 入力をキーボードの上まで送る（SheetScroll と同じ設定）。
+      keyboardShouldPersistTaps="handled"
+      automaticallyAdjustKeyboardInsets
+      contentContainerStyle={{ paddingBottom: 24 }}
+      // 画面ごと push するので、地の色は自分で塗る（塗らないとスタックの
+      // 既定の灰色が出る）。
+      style={{ backgroundColor: theme.background }}
+    >
       <NoteEditor
         tripId={tripId}
         note={note}
         myMemberId={me.id}
         nameOf={nameOf}
       />
-    </SheetScroll>
+    </ScrollView>
   );
 }
 
@@ -109,7 +122,7 @@ function NoteEditor({
   const [lockedBy, setLockedBy] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // 閉じた（画面が外れた）時点の中身を書き込むため、最新を控えておく。
+  // 離れた（画面が外れた）時点の中身を書き込むため、最新を控えておく。
   const session = useRef<Session>({
     noteId,
     body,
@@ -129,7 +142,7 @@ function NoteEditor({
     },
   });
 
-  // 書き込む。閉じた時と、アプリが裏に回った時（強制終了で書きかけが
+  // 書き込む。戻った時と、アプリが裏に回った時（強制終了で書きかけが
   // 消えないように）に呼ぶ。新しく作ったら id を返す。
   const persist = async (s: Session): Promise<string | null> => {
     const changed =
@@ -146,7 +159,7 @@ function NoteEditor({
       if (changed) toast(t("saveLost"), copyAction(s.body));
       return null;
     }
-    // 空にして閉じたら消す（iOS のメモ帳と同じ）。ロックは自分が持っているので消せる。
+    // 空にして戻ったら消す（iOS のメモ帳と同じ）。ロックは自分が持っているので消せる。
     if (s.body.trim() === "") {
       await releaseNoteLock(supabase, s.noteId, s.token);
       const id = s.noteId;
@@ -174,7 +187,7 @@ function NoteEditor({
     persistRef.current = persist;
   });
 
-  // 閉じた時。
+  // 戻った時。
   useEffect(() => () => void persistRef.current(session.current), []);
 
   // アプリが裏に回ったら書き込んで表示中に戻す（戻ってきて続けるなら、
@@ -281,7 +294,7 @@ function NoteEditor({
 
 const makeStyles = (t: Theme) =>
   StyleSheet.create({
-    container: { padding: 16, paddingTop: 24, gap: 12 },
+    container: { padding: 16, gap: 12 },
     input: {
       minHeight: 240,
       fontSize: 16,

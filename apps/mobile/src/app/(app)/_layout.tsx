@@ -31,6 +31,12 @@ export default function AppLayout() {
           （ファイルパスそのもの "trips/[tripId]"）を出してしまう
           （動的注入は子コンポーネントの effect 経由なので1テンポ遅れる）。 */}
       <Stack.Screen name="trips/[tripId]" options={{ title: "" }} />
+      {/* ノートはシートではなく画面ごと切り替える（iOS のメモ帳と同じ）。
+          タイトルは出さない（本文の1行目がそのまま見出しになる）。 */}
+      <Stack.Screen
+        name="trips/note"
+        options={{ title: "", headerBackButtonDisplayMode: "minimal" }}
+      />
       {/* 取り込み・設定・フィードバック・旅行作成は native の formSheet
           ルート（react-native-screens の presentation: "formSheet"）。
           アプリ内のシートは全てこの native formSheet に統一されている

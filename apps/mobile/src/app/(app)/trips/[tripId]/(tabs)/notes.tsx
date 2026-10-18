@@ -29,7 +29,7 @@ import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { useTripId } from "@/lib/useTripId";
 
 // ノートのタブ。web の components/notes-section.tsx 相当。一覧は最後に
-// 書き換えた順で、タップで開く（trips/[tripId]/note の formSheet）。
+// 書き換えた順で、タップで開く（trips/note の画面へ push）。
 // 全行が同じように消せるのでスワイプで消す（他の人が編集中の行だけは
 // 消せない＝スワイプを受けない）。
 export default function NotesTab() {
@@ -103,7 +103,7 @@ export default function NotesTab() {
                 >
                   <Pressable
                     onPress={() =>
-                      pushOnce(`/trips/${tripId}/note?noteId=${n.id}`)
+                      pushOnce(`/trips/note?tripId=${tripId}&noteId=${n.id}`)
                     }
                     style={[styles.row, i > 0 && styles.rowDivider]}
                   >
@@ -127,7 +127,7 @@ export default function NotesTab() {
       </ScrollView>
 
       <Pressable
-        onPress={() => pushOnce(`/trips/${tripId}/note`)}
+        onPress={() => pushOnce(`/trips/note?tripId=${tripId}`)}
         style={styles.fab}
         accessibilityLabel={t("addAria")}
       >

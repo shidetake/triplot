@@ -401,7 +401,8 @@
     "deleted": "Note deleted",
     "deleteAria": "Delete",
     "failed": "Failed: {error}",
-    "visibility": "Visibility"
+    "visibility": "Visibility",
+    "backToTrip": "Back to trip"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",
