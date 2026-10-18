@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useTransition } from "react";
+import { RowDeleteButton } from "@/components/row-delete-button";
 import { flushSync } from "react-dom";
 import { useTranslations } from "next-intl";
 
@@ -11,7 +12,7 @@ import {
 } from "@/lib/categoryActions";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
-import { CloseIcon, PlusIcon, TrashIcon } from "./icons";
+import { CloseIcon, PlusIcon } from "./icons";
 import { ColorDisc } from "./color-badge";
 import { ExpenseCategoryIcon } from "./expense-category-icon";
 import { inputClass } from "./input-class";
@@ -151,16 +152,11 @@ export function CategoryManagementList({
             {/* ゴミ箱はカスタムカテゴリで常時表示（編集モード依存なし）
                 → blur と click の競合・DOM 消滅レースがない */}
             {isCustom && (
-              <button
-                type="button"
+              <RowDeleteButton
                 onClick={() => onDelete(c.id)}
                 disabled={isDeletePending}
-                aria-label={tc("delete")}
-                title={tc("delete")}
-                className="shrink-0 rounded-md p-1.5 text-red-600 transition hover:bg-red-600/10 disabled:opacity-50"
-              >
-                <TrashIcon size={16} />
-              </button>
+                label={tc("delete")}
+              />
             )}
           </div>
         );

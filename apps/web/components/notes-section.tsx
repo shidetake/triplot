@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { RowDeleteButton } from "@/components/row-delete-button";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -17,7 +18,7 @@ import { MOBILE_TAB_BOTTOM_OFFSET } from "@/lib/mobileTabChrome";
 import { useUndoable } from "@/lib/undoable";
 
 import { AddFab } from "./add-fab";
-import { PlusIcon, TrashIcon } from "./icons";
+import { PlusIcon } from "./icons";
 import { PrivateBadge } from "./private-badge";
 
 type MemberLite = { id: string; display_name: string };
@@ -116,18 +117,13 @@ export function NotesSection({
                   )}
                 </Link>
                 {/* 他の人が編集中のノートは消せない（その人の書きかけが行き場を失う）。 */}
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="iconDense"
-                  onClick={() => remove(n.id)}
-                  disabled={editingBy !== null}
-                  aria-label={t("deleteAria")}
-                  title={t("deleteAria")}
-                  className="mr-2 shrink-0 rounded-full text-muted-foreground"
-                >
-                  <TrashIcon size={16} />
-                </Button>
+                <span className="mr-2">
+                  <RowDeleteButton
+                    onClick={() => remove(n.id)}
+                    disabled={editingBy !== null}
+                    label={t("deleteAria")}
+                  />
+                </span>
               </li>
             );
           })}

@@ -10,6 +10,7 @@ import { useTranslations } from "next-intl";
 import { Menu } from "@base-ui/react/menu";
 import { Select } from "@base-ui/react/select";
 
+import { RowDeleteButton } from "@/components/row-delete-button";
 import { toast } from "@/components/toast";
 import { useUndoable } from "@/lib/undoable";
 import { menuItemClass } from "./menu-item";
@@ -32,7 +33,6 @@ import {
   HeartIcon,
   LockIcon,
   PlusIcon,
-  TrashIcon,
   UsersIcon,
 } from "@/components/icons";
 import { MemberAvatar } from "@/components/member-avatar";
@@ -854,14 +854,10 @@ export function TodoSection({
                 </>
               )}
 
-              <button
-                type="button"
+              <RowDeleteButton
                 onClick={() => onDelete(todo)}
-                aria-label={t("deleteAria")}
-                className="shrink-0 rounded p-1 text-red-600 transition hover:bg-red-600/10"
-              >
-                <TrashIcon size={16} />
-              </button>
+                label={t("deleteAria")}
+              />
             </li>
           );
           })}

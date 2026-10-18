@@ -1,6 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
+import { RowDeleteButton } from "@/components/row-delete-button";
 import { useState, useTransition } from "react";
 import { toast } from "@/components/toast";
 import { confirmDialog } from "@/components/confirm-dialog";
@@ -11,7 +12,7 @@ import {
 } from "@/app/trips/[tripId]/actions";
 import { chipStyle } from "@/lib/themeColor";
 
-import { CheckIcon, CloseIcon, CrownIcon, EditIcon, TrashIcon } from "./icons";
+import { CheckIcon, CloseIcon, CrownIcon, EditIcon } from "./icons";
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
 import { MemberAvatar } from "./member-avatar";
 import { Button } from "@/components/ui/button";
@@ -183,19 +184,13 @@ export function MembersManagementList({
               </Button>
             )}
             {showDelete && (
-              <Button
-                type="button"
-                variant="destructive"
-                size="iconSm"
+              <RowDeleteButton
                 onClick={() => onDelete(m)}
                 disabled={isPending}
-                aria-label={
+                label={
                   isMe ? t("leaveAction") : t("removeAria", { name: m.display_name })
                 }
-                title={isMe ? t("leaveAction") : t("remove")}
-              >
-                <TrashIcon size={16} />
-              </Button>
+              />
             )}
           </li>
         );
