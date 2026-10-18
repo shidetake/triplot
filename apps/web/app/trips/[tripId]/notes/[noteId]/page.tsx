@@ -56,6 +56,7 @@ export default async function NotePage({
   if (!me) notFound();
   const note = isNew ? null : (deriveNotes(notesRaw)[0] ?? null);
   if (!isNew && !note) notFound();
+  const backHref = `/trips/${tripId}?tab=notes#notes`;
 
   return (
     <>
@@ -64,13 +65,14 @@ export default async function NotePage({
           title: trip.title,
           dateRange: formatTripDateRange(trip.start_date, trip.end_date, locale),
         }}
-        back={{ href: `/trips/${tripId}?tab=notes#notes`, label: t("backToTrip") }}
+        back={{ href: backHref, label: t("backToTrip") }}
       />
       <main className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6 md:py-10">
         <NoteEditor
           tripId={tripId}
           note={note}
           myMemberId={me.id}
+          backHref={backHref}
           members={(members ?? []).map((m) => ({
             id: m.id,
             display_name: m.display_name,

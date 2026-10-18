@@ -1,10 +1,9 @@
 import * as Clipboard from "expo-clipboard";
-import { useLocalSearchParams } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { router, Stack, useLocalSearchParams } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AppState,
   Linking,
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +29,8 @@ import {
   type NoteRow,
 } from "@triplot/shared/notes";
 
+import { HeaderIconButton } from "@/components/header-icon-button";
+import { CheckIcon, EditIcon } from "@/components/icons";
 import { toast } from "@/components/toast";
 import { VisibilitySegment } from "@/components/visibility-segment";
 import { supabase } from "@/lib/supabase";
@@ -43,9 +44,11 @@ import { useTripIdParam } from "@/lib/useTripIdParam";
 // シートで重ねずに画面ごと切り替える（iOS のメモ帳と同じ。ui-guidelines
 // 「全画面表示を使う場面」）。どの画面からでも開けるようルート階層に置く。
 // web の components/note-editor.tsx と同じ動き:
-//   - 表示中と編集中の2つのモード。表示中はリンクを押せば Safari、
-//     それ以外を押せばロックを取って編集に入る（iOS のメモ帳と同じ）
-//   - 戻る（画面を離れる）＝保存。保存ボタンは置かない
+//   - 表示中と編集中の2つのモード（iOS のメモ帳・連絡先の「編集」「完了」と同じ）。
+//     表示中はナビバーの鉛筆で編集に入る（ロックを取る）。本文を押しても
+//     入らない（うっかり入って他の人をロックで締め出さないように）。リンクは
+//     押せば Safari。編集中は✓で保存して表示中に戻る（ロックを外す）
+//   - ✓を押さずに戻っても保存する（押し忘れの保険）
 //   - 編集中は期限付きのロックを延ばし続け、他の人が取ったら知らせる
 export default function NoteRoute() {
   const tripId = useTripIdParam();
@@ -102,6 +105,7 @@ function NoteEditor({
   nameOf: (memberId: string) => string;
 }) {
   const t = useTranslations("notes");
+  const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
   const invalidate = useInvalidateTrip(tripId);
@@ -123,14 +127,7 @@ function NoteEditor({
   const [busy, setBusy] = useState(false);
 
   // 離れた（画面が外れた）時点の中身を書き込むため、最新を控えておく。
-  const session = useRef<Session>({
-    noteId,
-    body,
-    visibility,
-    token,
-    original,
-    lost,
-  });
+  const session = useRef<Session | null>(null);
   useEffect(() => {
     session.current = { noteId, body, visibility, token, original, lost };
   });
@@ -142,7 +139,18 @@ function NoteEditor({
     },
   });
 
-  // 書き込む。戻った時と、アプリが裏に回った時（強制終了で書きかけが
+  // 消して「元に戻す」を出す。ロックは自分が持っているので消せる。
+  const removeEmptied = async (id: string, lockToken: string) => {
+    await releaseNoteLock(supabase, id, lockToken);
+    runUndoable({
+      apply: () => deleteNoteReturning(supabase, id),
+      restore: (snapshot) => restoreNote(supabase, snapshot),
+      done: t("deleted"),
+      failed: (error) => t("failed", { error }),
+    });
+  };
+
+  // ✓を押さずに離れた時の保険。戻った時と、アプリが裏に回った時（強制終了で書きかけが
   // 消えないように）に呼ぶ。新しく作ったら id を返す。
   const persist = async (s: Session): Promise<string | null> => {
     const changed =
@@ -161,14 +169,7 @@ function NoteEditor({
     }
     // 空にして戻ったら消す（iOS のメモ帳と同じ）。ロックは自分が持っているので消せる。
     if (s.body.trim() === "") {
-      await releaseNoteLock(supabase, s.noteId, s.token);
-      const id = s.noteId;
-      runUndoable({
-        apply: () => deleteNoteReturning(supabase, id),
-        restore: (snapshot) => restoreNote(supabase, snapshot),
-        done: t("deleted"),
-        failed: (error) => t("failed", { error }),
-      });
+      await removeEmptied(s.noteId, s.token);
       return null;
     }
     if (!changed) {
@@ -188,7 +189,12 @@ function NoteEditor({
   });
 
   // 戻った時。
-  useEffect(() => () => void persistRef.current(session.current), []);
+  useEffect(
+    () => () => {
+      if (session.current) void persistRef.current(session.current);
+    },
+    [],
+  );
 
   // アプリが裏に回ったら書き込んで表示中に戻す（戻ってきて続けるなら、
   // もう一度押して編集に入る＝ロックも取り直す）。
@@ -196,6 +202,7 @@ function NoteEditor({
     const sub = AppState.addEventListener("change", (state) => {
       if (state !== "background") return;
       const s = session.current;
+      if (!s) return;
       if (!(s.noteId === null ? s.body.trim() !== "" : s.token !== null)) return;
       void persistRef.current(s).then((createdId) => {
         if (createdId) setNoteId(createdId);
@@ -218,6 +225,70 @@ function NoteEditor({
     return () => clearInterval(id);
   }, [noteId, token]);
 
+  // 保存して表示中に戻ったことにする（離れた時の保険がもう一度書かないように、
+  // 控えも同じ形に揃える）。
+  const finishEditing = (savedBody: string, savedVisibility: NoteVisibility) => {
+    setOriginal({ body: savedBody, visibility: savedVisibility });
+    setToken(null);
+    setEditing(false);
+  };
+
+  // ✓。保存して表示中に戻る。
+  const save = async () => {
+    if (busy) return;
+    const changed =
+      body !== original.body || visibility !== original.visibility;
+
+    if (noteId === null) {
+      if (body.trim() === "") {
+        router.back();
+        return;
+      }
+      setBusy(true);
+      const r = await createNote(supabase, tripId, body, visibility);
+      setBusy(false);
+      if (!r.ok) {
+        toast(t("failed", { error: r.error }));
+        return;
+      }
+      setNoteId(r.data);
+      finishEditing(body, visibility);
+      void invalidate();
+      return;
+    }
+    if (token === null) return;
+    if (lost) {
+      toast(t("saveLost"), copyAction(body));
+      return;
+    }
+    if (body.trim() === "") {
+      // 消えたノートの画面に残っても仕方がないので、一覧へ戻る。
+      session.current = null;
+      void removeEmptied(noteId, token);
+      router.back();
+      return;
+    }
+    setBusy(true);
+    if (!changed) {
+      await releaseNoteLock(supabase, noteId, token);
+      setBusy(false);
+      finishEditing(body, visibility);
+      return;
+    }
+    const r = await saveNote(supabase, noteId, token, body, visibility);
+    setBusy(false);
+    if (!r.ok) {
+      toast(t("failed", { error: r.error }));
+      return;
+    }
+    if (!r.data) {
+      setLost(true);
+      toast(t("saveLost"), copyAction(body));
+      return;
+    }
+    finishEditing(body, visibility);
+    void invalidate();
+  };
   const startEditing = async () => {
     if (!noteId || busy) return;
     setBusy(true);
@@ -241,12 +312,43 @@ function NoteEditor({
     setEditing(true);
   };
 
+  const saveRef = useRef(save);
+  const startRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    saveRef.current = save;
+    startRef.current = startEditing;
+  });
+
+  // ナビバー右の鉛筆（表示中）／✓（編集中）。headerRight は identity が
+  // 変わるたび setOptions が走るので、モードが変わった時だけ作り直す。
+  const headerRight = useCallback(
+    () =>
+      editing ? (
+        <HeaderIconButton
+          accessibilityLabel={tCommon("save")}
+          onPress={() => void saveRef.current()}
+        >
+          <CheckIcon size={24} color={theme.foreground} />
+        </HeaderIconButton>
+      ) : (
+        <HeaderIconButton
+          accessibilityLabel={tCommon("edit")}
+          onPress={() => void startRef.current()}
+        >
+          <EditIcon size={20} color={theme.foreground} />
+        </HeaderIconButton>
+      ),
+    [editing, tCommon, theme.foreground],
+  );
+  const screenOptions = useMemo(() => ({ headerRight }), [headerRight]);
+
   // 自分だけにできるのは作った人だけ（DB も同じ規則で止める）。
   const canChangeVisibility =
     note === null || note.createdByMemberId === myMemberId;
 
   return (
     <View style={styles.container}>
+      <Stack.Screen options={screenOptions} />
       {editing ? (
         <TextInput
           value={body}
@@ -260,7 +362,7 @@ function NoteEditor({
           style={styles.input}
         />
       ) : (
-        <Pressable onPress={() => void startEditing()} style={styles.view}>
+        <View style={styles.view}>
           <Text style={styles.body}>
             {noteSegments(body).map((s, i) =>
               s.kind === "link" ? (
@@ -277,7 +379,7 @@ function NoteEditor({
               ),
             )}
           </Text>
-        </Pressable>
+        </View>
       )}
 
       {lockedBy !== null && (
