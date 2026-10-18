@@ -387,13 +387,17 @@ function NoteEditor({
       )}
       {lost && <Text style={styles.warning}>{t("lockLost")}</Text>}
 
-      {editing && canChangeVisibility && (
-        // 予定・費用のフォームと同じく、ラベルの右にセグメントを並べる。
-        <View style={styles.inlineRow}>
-          <Text style={styles.label}>{t("visibility")}</Text>
-          <VisibilitySegment value={visibility} onChange={setVisibility} />
-        </View>
-      )}
+      {/* 公開範囲は表示中も見せる（誰に見えているかは読む時にも知りたい）。
+          変えられるのは編集中だけで、自分だけにできるのは作った人だけ。
+          予定・費用のフォームと同じく、ラベルの右に並べる。 */}
+      <View style={styles.inlineRow}>
+        <Text style={styles.label}>{t("visibility")}</Text>
+        <VisibilitySegment
+          value={visibility}
+          onChange={setVisibility}
+          readOnly={!(editing && canChangeVisibility)}
+        />
+      </View>
     </View>
   );
 }

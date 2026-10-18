@@ -361,10 +361,12 @@ export function NoteEditor({
         </div>
       )}
 
-      {editing && canChangeVisibility && (
-        // 予定・費用のフォームと同じく、ラベルの右に選択肢を並べる。
-        <div className="flex items-center gap-3 border-t border-foreground/10 pt-4 text-sm">
-          <FieldLabel>{t("visibility")}</FieldLabel>
+      {/* 公開範囲は表示中も見せる（誰に見えているかは読む時にも知りたい）。
+          変えられるのは編集中だけで、自分だけにできるのは作った人だけ。
+          予定・費用のフォームと同じく、ラベルの右に並べる。 */}
+      <div className="flex items-center gap-3 border-t border-foreground/10 pt-4 text-sm">
+        <FieldLabel>{t("visibility")}</FieldLabel>
+        {editing && canChangeVisibility ? (
           <div
             className="flex gap-3"
             role="radiogroup"
@@ -384,8 +386,12 @@ export function NoteEditor({
               </label>
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <span className="text-muted-foreground">
+            {visibility === "shared" ? tCommon("shared") : tCommon("selfOnly")}
+          </span>
+        )}
+      </div>
     </div>
   );
 }
