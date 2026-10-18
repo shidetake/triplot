@@ -97,10 +97,14 @@ export function NotesSection({
                 : null;
             const preview = notePreview(n.body);
             return (
-              <li key={n.id} className="flex items-center text-sm">
+              // hover の色は行全体に付ける（ゴミ箱の部分も含めて1行として光る。TODO と同じ）。
+              <li
+                key={n.id}
+                className="flex items-center text-sm transition hover:bg-foreground/10"
+              >
                 <Link
                   href={`/trips/${tripId}/notes/${n.id}`}
-                  className="min-w-0 flex-1 p-3 transition hover:bg-foreground/10"
+                  className="min-w-0 flex-1 p-3"
                 >
                   <span className="flex items-center gap-1.5">
                     <span className="min-w-0 truncate font-semibold">
