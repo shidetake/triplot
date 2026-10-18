@@ -108,7 +108,8 @@
     "schedule": "Schedule",
     "places": "Places",
     "expenses": "Expenses",
-    "todos": "To-dos"
+    "todos": "To-dos",
+    "notes": "Notes"
   },
   "members": {
     "heading": "Members",
@@ -384,6 +385,23 @@
     "assigneeAria": "Assignee: {name}",
     "assigneeTitle": "Assignee",
     "assigneeEveryone": "Everyone"
+  },
+  "notes": {
+    "heading": "Notes",
+    "addAria": "Add note",
+    "empty": "No notes yet. Keep what you look up and links here.",
+    "placeholder": "Note",
+    "formLabel": "Note",
+    "editingBy": "{name} is editing",
+    "lockedNow": "{name} is editing this note, so you cannot edit it right now.",
+    "lockLost": "Someone else started editing, so these changes cannot be saved.",
+    "saveLost": "Someone else started editing, so your changes were not saved",
+    "copy": "Copy",
+    "copied": "Copied",
+    "deleted": "Note deleted",
+    "deleteAria": "Delete",
+    "failed": "Failed: {error}",
+    "visibility": "Visibility"
   },
   "place": {
     "noApiKey": "Google Maps API key is not set. Map and place search are disabled (list view only).",

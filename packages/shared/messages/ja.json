@@ -108,7 +108,8 @@
     "schedule": "予定",
     "places": "場所",
     "expenses": "費用",
-    "todos": "TODO"
+    "todos": "TODO",
+    "notes": "ノート"
   },
   "members": {
     "heading": "メンバー",
@@ -384,6 +385,23 @@
     "assigneeAria": "担当: {name}",
     "assigneeTitle": "担当",
     "assigneeEveryone": "全員"
+  },
+  "notes": {
+    "heading": "ノート",
+    "addAria": "ノートを追加",
+    "empty": "まだノートがありません。調べたことやリンクを貯めておけます。",
+    "placeholder": "ノート",
+    "formLabel": "ノート",
+    "editingBy": "{name}さんが編集中",
+    "lockedNow": "{name}さんが編集中のため、今は編集できません。",
+    "lockLost": "他の人が編集を始めたため、この内容は保存できません。",
+    "saveLost": "他の人が編集を始めたため、保存できませんでした",
+    "copy": "コピー",
+    "copied": "コピーしました",
+    "deleted": "ノートを削除しました",
+    "deleteAria": "削除",
+    "failed": "失敗しました: {error}",
+    "visibility": "公開範囲"
   },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",

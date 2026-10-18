@@ -15,6 +15,7 @@
   "dependencies": {
     "@photostructure/tz-lookup": "^11.6.0",
     "@supabase/supabase-js": "^2.105.1",
+    "linkify-it": "^6.1.0",
     "zod": "^4.4.3"
   },
   "devDependencies": {

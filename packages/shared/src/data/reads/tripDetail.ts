@@ -4,7 +4,7 @@ import type { DB } from "../client";
 // から移設したもので、select 文字列・ソート順はそのまま（挙動不変）。RN も
 // 同じ関数を使う（docs/architecture.md の「読み取りも shared に降ろす」段）。
 //
-// 9 本とも tripId キーで互いに独立。RLS で保護されているので並列で叩く
+// 10 本とも tripId キーで互いに独立。RLS で保護されているので並列で叩く
 // （直列だとクライアント→Supabase の RTT が 8 回積み上がる）。
 export async function fetchTripDetailRows(sb: DB, tripId: string) {
   const [
@@ -17,6 +17,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     { data: todosRaw },
     { data: pinOptionsRaw },
     { data: avatarsRaw },
+    { data: notesRaw },
   ] = await Promise.all([
     sb
       .from("trips")
@@ -83,6 +84,12 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     // users(avatar_url) だけだと管理者以外には自分の写真しか返らない。写真の
     // URL だけを返す RPC で埋める（20261004000000）。
     sb.rpc("trip_member_avatars", { p_trip_id: tripId }),
+    sb
+      .from("notes")
+      .select(
+        "id, body, visibility, created_by_member_id, updated_at, locked_by_member_id, lock_expires_at",
+      )
+      .eq("trip_id", tripId),
   ]);
 
   const avatarByMember = new Map(
@@ -105,6 +112,7 @@ export async function fetchTripDetailRows(sb: DB, tripId: string) {
     eventsRaw,
     todosRaw,
     pinOptionsRaw,
+    notesRaw,
   };
 }
 
