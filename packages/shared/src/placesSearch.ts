@@ -20,6 +20,9 @@ export type PlaceCandidate = {
   userRatingCount: number | null;
   // Google の主カテゴリ（restaurant / cafe / hotel …）。候補ピンのグリフ用。
   primaryType: string | null;
+  // Google マップの URL（`https://maps.google.com/?cid=…`）。withMapsUri の時だけ。
+  // 共有された場所の CID と照らし合わせるのに使う（googleMapsShare.ts）。
+  googleMapsUri?: string | null;
 };
 
 // types は Google の応答で欠けることがある（実機で TypeError になった実データあり）。
@@ -64,6 +67,8 @@ export type SearchPlacesOptions = {
   // 変わり、この2つは上の段に入る。使うのは人が場所を選ぶ画面（候補一覧・候補
   // ピン）だけで、取り込みの自動解決では見ても保存してもいないので、既定は取らない。
   withRatings?: boolean;
+  // Google マップの URL も取る（共有された場所の照らし合わせ用。要る時だけ）。
+  withMapsUri?: boolean;
 };
 
 // locationBias の中身。矩形（地図の表示範囲）があればそれを、無ければ円
@@ -103,7 +108,11 @@ export function locationBiasOf(
 }
 
 // 取る項目。評価点まわりだけ料金の段が上がるので、要る時だけ足す。
-function placeFields(withRatings: boolean, prefix: string): string {
+function placeFields(
+  withRatings: boolean,
+  prefix: string,
+  withMapsUri = false,
+): string {
   const base = [
     "id",
     "displayName",
@@ -112,9 +121,11 @@ function placeFields(withRatings: boolean, prefix: string): string {
     "addressComponents",
     "primaryType",
   ];
-  const fields = withRatings
-    ? [...base, "rating", "userRatingCount"]
-    : base;
+  const fields = [
+    ...base,
+    ...(withRatings ? ["rating", "userRatingCount"] : []),
+    ...(withMapsUri ? ["googleMapsUri"] : []),
+  ];
   return fields.map((f) => `${prefix}${f}`).join(",");
 }
 
@@ -129,7 +140,11 @@ export async function searchPlaces(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     "X-Goog-Api-Key": opts.apiKey,
-    "X-Goog-FieldMask": placeFields(opts.withRatings ?? false, "places."),
+    "X-Goog-FieldMask": placeFields(
+      opts.withRatings ?? false,
+      "places.",
+      opts.withMapsUri ?? false,
+    ),
   };
   if (opts.iosBundleId) {
     headers["X-Ios-Bundle-Identifier"] = opts.iosBundleId;
@@ -162,6 +177,7 @@ export async function searchPlaces(
       rating?: number;
       userRatingCount?: number;
       primaryType?: string;
+      googleMapsUri?: string;
     }[];
   };
 
@@ -180,6 +196,7 @@ export async function searchPlaces(
         rating: p.rating ?? null,
         userRatingCount: p.userRatingCount ?? null,
         primaryType: p.primaryType ?? null,
+        googleMapsUri: p.googleMapsUri ?? null,
       };
     });
 }
