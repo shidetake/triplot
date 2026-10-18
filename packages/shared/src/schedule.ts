@@ -902,23 +902,9 @@ export function buildSchedule(
   });
 
   // 4) 終日／連日バー（上部帯）。列index範囲＋行スタック
-  // 期間が長いほど上の段に来るよう「長さ DESC → 開始日 ASC」でソート。
-  // greedy で先頭から row 0 に詰めるので、長い予定が自然と最上段に乗る。
-  const allDayEvents = events
-    .filter((e) => e.allDay)
-    .sort((a, b) => {
-      const aStart = parseWall(a.startAt).date;
-      const aEnd = a.endAt ? parseWall(a.endAt).date : aStart;
-      const bStart = parseWall(b.startAt).date;
-      const bEnd = b.endAt ? parseWall(b.endAt).date : bStart;
-      const aLen = dateToUtc(aEnd) - dateToUtc(aStart);
-      const bLen = dateToUtc(bEnd) - dateToUtc(bStart);
-      if (aLen !== bLen) return bLen - aLen;
-      return a.startAt < b.startAt ? -1 : a.startAt > b.startAt ? 1 : 0;
-    });
-  const allDayBars: AllDayBar[] = [];
-  const rowEnds: number[] = []; // row -> 最後に埋まった列index
-  for (const ev of allDayEvents) {
+  // 終日バーの列範囲を出してから、段に詰める（packAllDayRows）。
+  const allDaySpans: AllDaySpan[] = [];
+  for (const ev of events.filter((e) => e.allDay)) {
     const d1 = parseWall(ev.startAt).date;
     const d2 = ev.endAt ? parseWall(ev.endAt).date : d1;
     // 複数日にわたる終日予定（宿泊等）の初日が、時差が戻る乗継の当日
@@ -940,15 +926,10 @@ export function buildSchedule(
       }
     }
     if (startColIndex === -1) continue;
-    let row = rowEnds.findIndex((e) => e < startColIndex);
-    if (row === -1) {
-      row = rowEnds.length;
-      rowEnds.push(endColIndex);
-    } else {
-      rowEnds[row] = endColIndex;
-    }
-    allDayBars.push({ event: ev, startColIndex, endColIndex, row });
+    allDaySpans.push({ event: ev, startColIndex, endColIndex });
   }
+  const { bars: allDayBars, rowCount: allDayRowCount } =
+    packAllDayRows(allDaySpans);
 
   return {
     groups,
@@ -956,7 +937,7 @@ export function buildSchedule(
     timed,
     transits: placedTransits,
     allDayBars,
-    allDayRowCount: rowEnds.length,
+    allDayRowCount,
     // 常に 0:00〜24:00。予定に応じた伸縮はしない。
     window: FULL_DAY_WINDOW,
   };
@@ -1311,4 +1292,65 @@ export function eventEndPlaceId(
   e: Pick<ScheduleEvent, "startPlaceId" | "endPlaceId">,
 ): string | null {
   return e.endPlaceId ?? e.startPlaceId;
+}
+
+type AllDaySpan = {
+  event: ScheduleEvent;
+  startColIndex: number;
+  endColIndex: number;
+};
+
+// 終日バーを段に詰める。
+//
+// **段の数（終日の枠の高さ）は最小にする。** そのうえで、できれば期間の長い
+// 予定ほど上の段に置く（長い宿泊が上に通っている方が読みやすい）。
+//
+// 長い順に「入る一番上の段」へ置いていくと、たいていは最小の段数で収まるが、
+// 収まらないこともある（短い予定が長い予定の間に挟まれて、段が1つ余計に要る）。
+// 左から順（開始の早い順）に置くと必ず最小になる（区間の重なりの最大数＝段数）。
+// なので両方試して、長い順が最小の段数で収まればそれを、収まらなければ左から順を使う。
+//
+// どちらも「その段で本当に重なるか」を、段に置いた全部のバーと比べて決める。
+// 以前は段ごとに「一番右の列」だけを覚えていて、長い順に置くと、後から来る
+// 短い予定が既にあるバーより左の空きに入れず、段が無駄に増えていた。
+export function packAllDayRows(spans: AllDaySpan[]): {
+  bars: AllDayBar[];
+  rowCount: number;
+} {
+  const len = (s: AllDaySpan) => s.endColIndex - s.startColIndex;
+  const byStart = (a: AllDaySpan, b: AllDaySpan) =>
+    a.startColIndex - b.startColIndex ||
+    len(b) - len(a) ||
+    (a.event.startAt < b.event.startAt
+      ? -1
+      : a.event.startAt > b.event.startAt
+        ? 1
+        : 0);
+
+  const longestFirst = firstFit(
+    [...spans].sort((a, b) => len(b) - len(a) || byStart(a, b)),
+  );
+  const leftFirst = firstFit([...spans].sort(byStart));
+  return longestFirst.rowCount <= leftFirst.rowCount ? longestFirst : leftFirst;
+}
+
+// 順に「重ならない一番上の段」へ置く。
+function firstFit(ordered: AllDaySpan[]): {
+  bars: AllDayBar[];
+  rowCount: number;
+} {
+  const rows: { start: number; end: number }[][] = [];
+  const bars: AllDayBar[] = [];
+  for (const s of ordered) {
+    let row = rows.findIndex((taken) =>
+      taken.every((t) => s.endColIndex < t.start || t.end < s.startColIndex),
+    );
+    if (row === -1) {
+      row = rows.length;
+      rows.push([]);
+    }
+    rows[row].push({ start: s.startColIndex, end: s.endColIndex });
+    bars.push({ ...s, row });
+  }
+  return { bars, rowCount: rows.length };
 }

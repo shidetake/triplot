@@ -7,6 +7,7 @@ import {
   dedupeTzCandidates,
   formatDayLabel,
   formatMinutes,
+  packAllDayRows,
   parseWall,
   resolveEventTz,
   resolveExpenseTz,
@@ -710,6 +711,67 @@ describe("buildSchedule: 日跨ぎ通常イベント（TZは跨がない）", ()
       topMin: 10 * 60,
       endMin: 24 * 60,
     });
+  });
+});
+
+describe("packAllDayRows: 終日バーの段詰め", () => {
+  const span = (id: string, start: number, end: number) => ({
+    event: { id, startAt: `2026-01-${String(start + 1).padStart(2, "0")}T00:00:00` } as ScheduleEvent,
+    startColIndex: start,
+    endColIndex: end,
+  });
+
+  it("長い予定より左の空きにも、後から来る短い予定が入る", () => {
+    // 実例（Peru & the West Coast）: 長い宿泊が先に段を取った後、その左に
+    // 収まる単日の予定が、段の「一番右の列」だけ見ていたせいで新しい段に回っていた。
+    const { bars, rowCount } = packAllDayRows([
+      span("long", 2, 6),
+      span("short", 0, 1),
+    ]);
+    expect(rowCount).toBe(1);
+    expect(bars.find((b) => b.event.id === "long")!.row).toBe(0);
+  });
+
+  it("長い予定ほど上の段（段の数が増えない限り）", () => {
+    const { bars, rowCount } = packAllDayRows([
+      span("short", 3, 3),
+      span("long", 0, 5),
+    ]);
+    expect(rowCount).toBe(2);
+    expect(bars.find((b) => b.event.id === "long")!.row).toBe(0);
+  });
+
+  it("段の数はいつも最小（いちばん深い重なりの数）で、同じ段では重ならない", () => {
+    // 決まった種で乱数の配置を作り、どの配置でも段が最小になることを確かめる。
+    let seed = 1;
+    const rand = (n: number) => {
+      seed = (seed * 1103515245 + 12345) % 2 ** 31;
+      return seed % n;
+    };
+    for (let trial = 0; trial < 300; trial++) {
+      const spans = Array.from({ length: 2 + rand(10) }, (_, i) => {
+        const start = rand(14);
+        return span(`e${i}`, start, Math.min(13, start + rand(6)));
+      });
+      const { bars, rowCount } = packAllDayRows(spans);
+      let depth = 0;
+      for (let col = 0; col < 14; col++) {
+        depth = Math.max(
+          depth,
+          spans.filter((s) => s.startColIndex <= col && col <= s.endColIndex)
+            .length,
+        );
+      }
+      expect(rowCount).toBe(depth);
+      for (const a of bars) {
+        for (const b of bars) {
+          if (a === b || a.row !== b.row) continue;
+          expect(
+            a.endColIndex < b.startColIndex || b.endColIndex < a.startColIndex,
+          ).toBe(true);
+        }
+      }
+    }
   });
 });
 
