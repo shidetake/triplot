@@ -907,64 +907,14 @@ export function buildSchedule(
   for (const ev of events.filter((e) => e.allDay)) {
     const d1 = parseWall(ev.startAt).date;
     const d2 = ev.endAt ? parseWall(ev.endAt).date : d1;
-    // 複数日にわたる終日予定（宿泊等）の初日が、時差が戻る乗継の当日
-    // （出発TZ側／到着TZ側の等幅2列）なら、出発側の列は飛ばして到着側の
-    // 列から始める。移動してからチェックインする、という実際の順序を
-    // 見た目にも反映する（placeOrder.ts の「初日の最後」扱いと対の見た目）。
-    // 単日の終日予定・split の無い日は対象外（従来通り列の先頭から）。
-    const isMultiDay = d1 !== d2;
-    let startColIndex = -1;
-    let endColIndex = -1;
-    // 日付の戻る便に掛かる予定は、収まる側（allDayTzSides）の列だけに置く。
-    // 便の到着側の列（t-<id>-arr）の手前までが出発側、そこからが到着側。
-    const sides = allDayTzSides(d1, d2, viewerTl.transits);
-    const arrIdx = sides
-      ? columns.findIndex((c) => c.key === `t-${sides.transitId}-arr`)
-      : -1;
-    if (sides && arrIdx !== -1) {
-      const side = pickAllDaySide(sides, {
-        transitId: ev.tzDisambigTransitId,
-        side: ev.tzDisambigSide,
-      });
-      if (side.side === "both") {
-        // 出発側のその日付の列から、隣の到着側の列（同じ日付）まで。
-        startColIndex = columns.findIndex(
-          (c, i) => i < arrIdx && c.date === d1,
-        );
-        if (columns[arrIdx].date === d1) endColIndex = arrIdx;
-      } else {
-        const [from, to] =
-          side.side === "depart"
-            ? [0, arrIdx - 1]
-            : [arrIdx, columns.length - 1];
-        for (let i = from; i <= to; i++) {
-          const c = columns[i];
-          if (startColIndex === -1 && c.date === d1) startColIndex = i;
-          if (startColIndex !== -1 && c.date === d2) {
-            endColIndex = i;
-            break;
-          }
-        }
-      }
-      if (startColIndex !== -1 && endColIndex !== -1) {
-        allDaySpans.push({ event: ev, startColIndex, endColIndex });
-        continue;
-      }
-      startColIndex = -1;
-      endColIndex = -1;
-    }
-    for (let i = 0; i < columns.length; i++) {
-      const c = columns[i];
-      if (cmpDate(c.date, d1) >= 0 && cmpDate(c.date, d2) <= 0) {
-        if (isMultiDay && c.date === d1 && c.role === "transit-depart") {
-          continue;
-        }
-        if (startColIndex === -1) startColIndex = i;
-        endColIndex = i;
-      }
-    }
-    if (startColIndex === -1) continue;
-    allDaySpans.push({ event: ev, startColIndex, endColIndex });
+    const span = placeAllDaySpan(
+      columns,
+      d1,
+      d2,
+      { transitId: ev.tzDisambigTransitId, side: ev.tzDisambigSide },
+      viewerTl.transits,
+    );
+    if (span) allDaySpans.push({ event: ev, ...span });
   }
   const { bars: allDayBars, rowCount: allDayRowCount } =
     packAllDayRows(allDaySpans);
@@ -1429,6 +1379,64 @@ export function pickAllDaySide(
   return pick(sides.options.find((o) => o.side === "arrive") ?? sides.options[0]);
 }
 
+// 終日の予定（d1〜d2）を置く列の範囲。週カレンダーの描画と、終日の帯を
+// ドラッグしている間の枠の両方がここを通る（枠と保存後の帯が必ず一致する）。
+// 列に1つも当たらなければ null。
+export function placeAllDaySpan(
+  columns: Column[],
+  d1: string,
+  d2: string,
+  saved: { transitId: string | null; side: EventTzSide | null },
+  transits: TripTzTimeline["transits"],
+): { startColIndex: number; endColIndex: number } | null {
+  let startColIndex = -1;
+  let endColIndex = -1;
+  // 日付の戻る便に掛かる予定は、収まる側（allDayTzSides）の列だけに置く。
+  // 便の到着側の列（t-<id>-arr）の手前までが出発側、そこからが到着側。
+  const sides = allDayTzSides(d1, d2, transits);
+  const arrIdx = sides
+    ? columns.findIndex((c) => c.key === `t-${sides.transitId}-arr`)
+    : -1;
+  if (sides && arrIdx !== -1) {
+    const side = pickAllDaySide(sides, saved);
+    if (side.side === "both") {
+      // 出発側のその日付の列から、隣の到着側の列（同じ日付）まで。
+      startColIndex = columns.findIndex((c, i) => i < arrIdx && c.date === d1);
+      if (columns[arrIdx].date === d1) endColIndex = arrIdx;
+    } else {
+      const [from, to] =
+        side.side === "depart" ? [0, arrIdx - 1] : [arrIdx, columns.length - 1];
+      for (let i = from; i <= to; i++) {
+        const c = columns[i];
+        if (startColIndex === -1 && c.date === d1) startColIndex = i;
+        if (startColIndex !== -1 && c.date === d2) {
+          endColIndex = i;
+          break;
+        }
+      }
+    }
+    if (startColIndex !== -1 && endColIndex !== -1) {
+      return { startColIndex, endColIndex };
+    }
+    startColIndex = -1;
+    endColIndex = -1;
+  }
+  // 複数日にわたる終日予定（宿泊等）の初日が、時差が戻る乗継の当日
+  // （出発TZ側／到着TZ側の等幅2列）なら、出発側の列は飛ばして到着側の
+  // 列から始める。移動してからチェックインする、という実際の順序を
+  // 見た目にも反映する（placeOrder.ts の「初日の最後」扱いと対の見た目）。
+  const isMultiDay = d1 !== d2;
+  for (let i = 0; i < columns.length; i++) {
+    const c = columns[i];
+    if (cmpDate(c.date, d1) >= 0 && cmpDate(c.date, d2) <= 0) {
+      if (isMultiDay && c.date === d1 && c.role === "transit-depart") continue;
+      if (startColIndex === -1) startColIndex = i;
+      endColIndex = i;
+    }
+  }
+  return startColIndex === -1 ? null : { startColIndex, endColIndex };
+}
+
 // 週カレンダーの終日の帯で選んだ列の範囲（クリックなら1列、ドラッグなら複数列）を、
 // 終日の予定の日付と「どちら側か」に直す。日付の戻る便の前後では同じ日付が
 // 2列あるので、押した列が便の到着側の列（t-<id>-arr）の手前か後ろかで側を決める。
@@ -1461,6 +1469,25 @@ export function allDaySelection(
     endDate,
     side: side ? { transitId: sides.transitId, side } : null,
   };
+}
+
+// 終日の帯をドラッグしている間の枠。選んだ列から決まる日付と側を、保存後と
+// 同じ置き方（placeAllDaySpan）に通す。収まらない列（例: 日本の 4/28 から
+// 4/29 まで引いた時の日本の 4/28）は枠から外れる＝保存した時の帯と同じ形。
+export function allDayDragSpan(
+  columns: Column[],
+  fromCol: number,
+  toCol: number,
+  transits: TripTzTimeline["transits"],
+): { startColIndex: number; endColIndex: number } | null {
+  const sel = allDaySelection(columns, fromCol, toCol, transits);
+  return placeAllDaySpan(
+    columns,
+    sel.startDate,
+    sel.endDate,
+    { transitId: sel.side?.transitId ?? null, side: sel.side?.side ?? null },
+    transits,
+  );
 }
 
 // 終日バーを段に詰める。

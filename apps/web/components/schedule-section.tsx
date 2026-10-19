@@ -17,6 +17,7 @@ import {
 import { moveEvent } from "@triplot/shared/data/events";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
+  allDayDragSpan,
   allDaySelection,
   buildSchedule,
   buildTripTzTimeline,
@@ -175,7 +176,7 @@ export function ScheduleSection({
   // PC ドラッグで作成中の可変長ゴースト。form 表示中も枠を残したいので
   // ScheduleSection で保持し、closeForm で同期的に消す。
   const [pcDrag, setPcDrag] = useState<PcDragRender | null>(null);
-  // 終日帯の PC ドラッグの範囲。pcDrag と同じく form を閉じる時に消す。
+  // 終日帯の PC ドラッグで引いた列の範囲。pcDrag と同じく form を閉じる時に消す。
   const [allDayDrag, setAllDayDrag] = useState<AllDayDragRender | null>(null);
 
   // 個別TZの初期値: trip.default_timezone → 無ければブラウザのTZ（自宅で
@@ -288,6 +289,21 @@ export function ScheduleSection({
     },
     [defaultTz],
   );
+
+  // ドラッグ中に出す枠は、引いた列ではなく保存した時に置かれる列（収まらない列は
+  // 外れる）。カレンダーの描画と同じ置き方を通すので、枠と保存後の帯は一致する。
+  const allDayDragShown = useMemo<AllDayDragRender | null>(() => {
+    if (!allDayDrag) return null;
+    const span = allDayDragSpan(
+      schedule.columns,
+      allDayDrag.fromCol,
+      allDayDrag.toCol,
+      timelineFor(tzTimeline, [viewerId]).transits,
+    );
+    return span
+      ? { fromCol: span.startColIndex, toCol: span.endColIndex }
+      : allDayDrag;
+  }, [allDayDrag, schedule.columns, tzTimeline, viewerId]);
 
   // 終日帯の空きから追加する時に呼ばれる（PC はクリック／横ドラッグ、スマホは
   // 長押し）。選んだ列から日付と「どちら側か」を決め、終日種別で開く。
@@ -477,7 +493,7 @@ export function ScheduleSection({
           memberHueById={memberHueById}
           pcDrag={pcDrag}
           onPcDragChange={setPcDrag}
-          allDayDrag={allDayDrag}
+          allDayDrag={allDayDragShown}
           onAllDayDragChange={setAllDayDrag}
           onSlotClick={onSlotClick}
           onAllDaySlotClick={onAllDaySlotClick}

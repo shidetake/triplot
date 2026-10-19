@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addDays,
+  allDayDragSpan,
   allDaySelection,
   allDayTzSides,
   buildSchedule,
@@ -1044,6 +1045,59 @@ describe("allDayTzSides", () => {
       endDate: "2026-04-29",
       side: null,
     });
+  });
+
+  it("ドラッグ中の枠は、保存した時に置かれる列に縮む（allDayDragSpan）", () => {
+    const f = ev({
+      id: "f",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const t = buildTripTzTimeline([f]).transits;
+    const s = buildSchedule([f], { tripStart: "2026-04-26", tripEnd: "2026-04-30" });
+    const dep = s.columns.findIndex((c) => c.key === "t-f-dep");
+    const arr = s.columns.findIndex((c) => c.key === "t-f-arr");
+    const span = (a: number, b: number) => {
+      const r = allDayDragSpan(s.columns, a, b, t)!;
+      return [r.startColIndex, r.endColIndex];
+    };
+    // 日本の 4/28 → ハワイの 4/28 → 4/29 と引くと、日本の 4/28 は外れる。
+    expect(span(dep, arr + 1)).toEqual([arr, arr + 1]);
+    // 逆向き（ハワイの 4/28 → 日本の 4/27）は、ハワイの 4/28 が外れる。
+    expect(span(arr, dep - 1)).toEqual([dep - 1, dep]);
+    // 4/28 の2列だけ → 両方。1列だけ → その列。
+    expect(span(dep, arr)).toEqual([dep, arr]);
+    expect(span(dep, dep)).toEqual([dep, dep]);
+    // 便をまたぐ範囲・便に掛からない範囲は引いたまま。
+    expect(span(dep - 1, arr + 1)).toEqual([dep - 1, arr + 1]);
+    expect(span(0, 1)).toEqual([0, 1]);
+    // 保存すると同じ列に置かれる（枠と帯が一致する）。
+    for (const [a, b] of [
+      [dep, arr + 1],
+      [arr, dep - 1],
+      [dep, arr],
+      [dep - 1, arr + 1],
+    ]) {
+      const sel = allDaySelection(s.columns, a, b, t);
+      const saved = buildSchedule(
+        [
+          f,
+          ev({
+            id: "x",
+            allDay: true,
+            startAt: `${sel.startDate}T00:00:00`,
+            endAt: `${sel.endDate}T00:00:00`,
+            tzDisambigTransitId: sel.side?.transitId ?? null,
+            tzDisambigSide: sel.side?.side ?? null,
+          }),
+        ],
+        { tripStart: "2026-04-26", tripEnd: "2026-04-30" },
+      ).allDayBars.find((x) => x.event.id === "x")!;
+      expect([saved.startColIndex, saved.endColIndex]).toEqual(span(a, b));
+    }
   });
 
   it("両方を選べるのは、出発日と到着日が同じ便の当日の、1日だけの予定", () => {

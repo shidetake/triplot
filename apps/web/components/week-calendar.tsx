@@ -163,7 +163,9 @@ export function WeekCalendar({
     // PC ドラッグで終了時刻を確定した時のみ渡される（タップ/クリックは省略）
     endMinutes?: number,
   ) => void;
-  // 終日帯のドラッグの範囲（PC）。pcDrag と同じく親持ち。
+  // 終日帯の PC ドラッグ。pcDrag と同じく親持ち。onAllDayDragChange には引いた
+  // 列を渡し、allDayDrag には枠として出す列（保存した時に置かれる列。親が
+  // allDayDragSpan で縮める）が返ってくる。
   allDayDrag: AllDayDragRender | null;
   onAllDayDragChange: (next: AllDayDragRender | null) => void;
   // 終日帯の空きから終日予定を追加する。列の範囲（schedule.columns 基準、
@@ -1130,8 +1132,9 @@ export function WeekCalendar({
                     return `${Number(m)}/${Number(d)}`;
                   };
                   const { lo, hi } = allDayGhostSpan;
+                  // 両方（4/28 の2列）は列が2つでも日付は1つ。
                   const label =
-                    lo === hi
+                    columns[lo].date === columns[hi].date
                       ? md(columns[lo].date)
                       : `${md(columns[lo].date)}–${md(columns[hi].date)}`;
                   const row = ghostAllDayRow ?? 0;
