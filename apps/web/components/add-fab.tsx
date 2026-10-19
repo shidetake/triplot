@@ -20,7 +20,7 @@ export function AddFab({
   bottom?: string;
 }) {
   return (
-    <div className="fixed right-4 z-20 md:hidden" style={{ bottom }}>
+    <div data-toast-anchor className="fixed right-4 z-20 md:hidden" style={{ bottom }}>
       <Button
         type="button"
         size="icon"

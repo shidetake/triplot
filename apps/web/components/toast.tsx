@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Toast } from "@base-ui/react/toast";
 import {
@@ -76,15 +77,62 @@ function ToastList() {
   ));
 }
 
+// 画面に浮いている操作子（下部タブバー・＋・「一覧を開く」）に
+// data-toast-anchor を付けておくと、トーストはその一番上の端より上に出る
+// （Android の Snackbar の setAnchorView と同じ形。RN 側の useToastAnchor と対）。
+// 一時的に出るトーストの方が避ける。操作子の寸法をここで持たず、実際の位置を
+// 測るので、操作子が動けばトーストも付いてくる。隠れているもの（表示中でない
+// タブの＋）は寸法が 0 なので数えない。
+const BASE_BOTTOM = 24;
+const ANCHOR_GAP = 12;
+
+function measureBottom(): number {
+  const vh = window.innerHeight;
+  let bottom = BASE_BOTTOM;
+  for (const el of document.querySelectorAll<HTMLElement>(
+    "[data-toast-anchor]",
+  )) {
+    const r = el.getBoundingClientRect();
+    if (r.width === 0 || r.height === 0) continue;
+    bottom = Math.max(bottom, vh - r.top + ANCHOR_GAP);
+  }
+  return bottom;
+}
+
+function ToastViewport() {
+  const { toasts } = Toast.useToastManager();
+  const [bottom, setBottom] = useState(BASE_BOTTOM);
+  const showing = toasts.length > 0;
+  // 出ている間だけ毎フレーム測り直す（タブの切り替え・シートの開閉で操作子が
+  // 出入りしても追従する）。出ている時間は長くて 10 秒で、測るのは数個の要素。
+  useEffect(() => {
+    if (!showing) return;
+    let frame = 0;
+    const tick = () => {
+      const next = measureBottom();
+      setBottom((prev) => (prev === next ? prev : next));
+      frame = requestAnimationFrame(tick);
+    };
+    tick();
+    return () => cancelAnimationFrame(frame);
+  }, [showing]);
+  return (
+    // 下中央のシンプルな縦スタック。最新が下（画面端に近い側）に積まれる。
+    // viewport 自体はクリックを通し、各トーストだけ pointer-events を受ける。
+    <Toast.Viewport
+      style={{ bottom }}
+      className="pointer-events-none fixed left-1/2 z-50 flex w-[min(92vw,24rem)] -translate-x-1/2 flex-col-reverse items-center gap-2"
+    >
+      <ToastList />
+    </Toast.Viewport>
+  );
+}
+
 export function Toaster() {
   return (
     <Toast.Provider toastManager={toastManager}>
       <Toast.Portal>
-        {/* 下中央のシンプルな縦スタック。最新が下（画面端に近い側）に積まれる。
-            viewport 自体はクリックを通し、各トーストだけ pointer-events を受ける。 */}
-        <Toast.Viewport className="pointer-events-none fixed bottom-6 left-1/2 z-50 flex w-[min(92vw,24rem)] -translate-x-1/2 flex-col-reverse items-center gap-2">
-          <ToastList />
-        </Toast.Viewport>
+        <ToastViewport />
       </Toast.Portal>
     </Toast.Provider>
   );

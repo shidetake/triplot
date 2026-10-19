@@ -94,6 +94,7 @@ export function TripDetailTabs({
           にする実測対象（use-mobile-chrome-margins.ts）。 */}
       <nav
         data-mobile-chrome-bottom
+        data-toast-anchor
         aria-label={t("navLabel")}
         // 半透明＋backdrop-blur でスクロールした中身が透けるガラス調
         // （iOS 26 のタブバーと同じ質感。/95 だとほぼ不透明で blur が効かない）。

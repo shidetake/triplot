@@ -806,6 +806,7 @@ export function PlacesSection({
               setPlacesSheetOpen(true);
             }}
             aria-label={t("openList")}
+            data-toast-anchor
             // 下端は地図上の他のオーバーレイ（縮尺バー・現在地）と同じ線
             // ＝Google ロゴのすぐ上。以前は 12px で、帰属表示に重なっていた。
             style={{
