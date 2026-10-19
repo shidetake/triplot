@@ -1429,6 +1429,40 @@ export function pickAllDaySide(
   return pick(sides.options.find((o) => o.side === "arrive") ?? sides.options[0]);
 }
 
+// 週カレンダーの終日の帯で選んだ列の範囲（クリックなら1列、ドラッグなら複数列）を、
+// 終日の予定の日付と「どちら側か」に直す。日付の戻る便の前後では同じ日付が
+// 2列あるので、押した列が便の到着側の列（t-<id>-arr）の手前か後ろかで側を決める。
+// 両側にまたがって選んだ時は、両方を選べる日（出発日と到着日が同じ便の日の
+// 1日だけ）なら両方、そうでなければ決めない（カレンダーの既定に任せる）。
+// columns は表示中の列、transits はその列を組んだ年表（見ている人のもの）。
+export function allDaySelection(
+  columns: Column[],
+  fromCol: number,
+  toCol: number,
+  transits: TripTzTimeline["transits"],
+): {
+  startDate: string;
+  endDate: string;
+  side: AllDayChoice | null;
+} {
+  const lo = Math.min(fromCol, toCol);
+  const hi = Math.max(fromCol, toCol);
+  const dates = columns.slice(lo, hi + 1).map((c) => c.date);
+  const startDate = dates.reduce((a, b) => (cmpDate(a, b) <= 0 ? a : b));
+  const endDate = dates.reduce((a, b) => (cmpDate(a, b) >= 0 ? a : b));
+  const sides = allDayTzSides(startDate, endDate, transits);
+  if (!sides || sides.options.length < 2) return { startDate, endDate, side: null };
+  const arrIdx = columns.findIndex((c) => c.key === `t-${sides.transitId}-arr`);
+  if (arrIdx === -1) return { startDate, endDate, side: null };
+  const side: EventTzSide | null =
+    hi < arrIdx ? "depart" : lo >= arrIdx ? "arrive" : sides.both ? "both" : null;
+  return {
+    startDate,
+    endDate,
+    side: side ? { transitId: sides.transitId, side } : null,
+  };
+}
+
 // 終日バーを段に詰める。
 //
 // **段の数（終日の枠の高さ）は最小にする。** そのうえで、できれば期間の長い

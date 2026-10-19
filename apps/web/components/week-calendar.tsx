@@ -90,6 +90,10 @@ export type PcDragRender = {
   endMin: number;
 };
 
+// 終日帯を PC でドラッグして選んでいる列の範囲（両端を含む）。PcDragRender と
+// 同じく、フォームが開いている間も残すため状態は親で持つ。
+export type AllDayDragRender = { fromCol: number; toCol: number };
+
 function colWidth(n: number): number {
   // 1日の横幅は従来（200/150/120）の約6割
   if (n <= 3) return 120;
@@ -126,6 +130,8 @@ export function WeekCalendar({
   memberHueById,
   pcDrag,
   onPcDragChange,
+  allDayDrag,
+  onAllDayDragChange,
   onSlotClick,
   onAllDaySlotClick,
   onEventClick: onEventClickProp,
@@ -157,8 +163,13 @@ export function WeekCalendar({
     // PC ドラッグで終了時刻を確定した時のみ渡される（タップ/クリックは省略）
     endMinutes?: number,
   ) => void;
-  // 終日帯の空きを長押し→離して終日予定追加。横ドラッグで日付変更。
-  onAllDaySlotClick: (date: string, anchor: Anchor) => void;
+  // 終日帯のドラッグの範囲（PC）。pcDrag と同じく親持ち。
+  allDayDrag: AllDayDragRender | null;
+  onAllDayDragChange: (next: AllDayDragRender | null) => void;
+  // 終日帯の空きから終日予定を追加する。列の範囲（schedule.columns 基準、
+  // 両端を含む）を渡す。PC はクリック＝1列・横ドラッグ＝複数列、スマホは
+  // 長押し→横ドラッグで1列を選ぶ。
+  onAllDaySlotClick: (fromCol: number, toCol: number, anchor: Anchor) => void;
   onEventClick: (eventId: string, anchor: Anchor) => void;
   // 確定済みの予定を掴んで別の日時へ動かす（RN の週カレンダーと同じ）。
   // 渡されなければ掴めない（＝押すだけ）。
@@ -411,6 +422,14 @@ export function WeekCalendar({
     startY: number;
     stripEl: HTMLElement;
     pressFired: boolean;
+  } | null>(null);
+  // PC（マウス）で終日帯を押した時の起点。時刻の枠の pcDragRef と同じ流れで、
+  // 動かさずに離せばクリック（1日）、横に動かせばドラッグ（複数日）。
+  const allDayMouseRef = useRef<{
+    fromCol: number;
+    stripEl: HTMLElement;
+    startClientX: number;
+    dragging: boolean;
   } | null>(null);
   const clearAllDayLongPress = useCallback(() => {
     if (allDayLongPressTimer.current) {
@@ -747,19 +766,29 @@ export function WeekCalendar({
   // 終日ゴーストの行（rowStack）。ゴーストの列を覆う既存バーの行を避けて
   // 空いている最小 row を割り当てる。同列に既存バーが居なければ row=0、
   // 全段埋まっていれば新規 row（バンド高さも伸ばす）。
+  // スマホの長押し（1列）と PC のドラッグ（列の範囲）のどちらか。
+  const allDayGhostSpan = allDayGhost
+    ? { lo: allDayGhost.columnIndex, hi: allDayGhost.columnIndex }
+    : allDayDrag
+      ? {
+          lo: Math.min(allDayDrag.fromCol, allDayDrag.toCol),
+          hi: Math.max(allDayDrag.fromCol, allDayDrag.toCol),
+        }
+      : null;
+  const ghostLo = allDayGhostSpan?.lo ?? null;
+  const ghostHi = allDayGhostSpan?.hi ?? null;
   const ghostAllDayRow = useMemo<number | null>(() => {
-    if (!allDayGhost) return null;
-    const idx = allDayGhost.columnIndex;
+    if (ghostLo == null || ghostHi == null) return null;
     const occupied = new Set<number>();
     for (const b of allDayBars) {
-      if (b.startColIndex <= idx && b.endColIndex >= idx) {
+      if (b.startColIndex <= ghostHi && b.endColIndex >= ghostLo) {
         occupied.add(b.row);
       }
     }
     let row = 0;
     while (occupied.has(row)) row++;
     return row;
-  }, [allDayGhost, allDayBars]);
+  }, [ghostLo, ghostHi, allDayBars]);
 
   if (columns.length === 0) {
     return <p className="text-sm text-muted-foreground">{tSched("noDates")}</p>;
@@ -891,8 +920,64 @@ export function WeekCalendar({
             className="flex border-b border-foreground/10 bg-muted"
           >
             <div
-              className="relative"
+              className="relative cursor-pointer"
               style={{ width: totalW, height: allDayBandH }}
+              onPointerDown={(e) => {
+                // PC（マウス）専用。touch は下の長押しで扱う。
+                if (e.pointerType !== "mouse") return;
+                if (e.button !== 0) return;
+                // 既存の終日バーを押した時はそのバーを開く（ここでは追加しない）。
+                if ((e.target as HTMLElement).closest("button")) return;
+                // フォームが開いている間は、閉じるだけ（新しいフォームを開かない）。
+                if (formOpen) return;
+                const stripEl = e.currentTarget;
+                allDayMouseRef.current = {
+                  fromCol: columnIndexFromX(stripEl, e.clientX),
+                  stripEl,
+                  startClientX: e.clientX,
+                  dragging: false,
+                };
+                stripEl.setPointerCapture(e.pointerId);
+              }}
+              onPointerMove={(e) => {
+                if (e.pointerType !== "mouse") return;
+                const info = allDayMouseRef.current;
+                if (!info) return;
+                if (!info.dragging) {
+                  if (Math.abs(e.clientX - info.startClientX) <= 5) return;
+                  info.dragging = true;
+                }
+                onAllDayDragChange({
+                  fromCol: info.fromCol,
+                  toCol: columnIndexFromX(info.stripEl, e.clientX),
+                });
+              }}
+              onPointerUp={(e) => {
+                if (e.pointerType !== "mouse") return;
+                const info = allDayMouseRef.current;
+                allDayMouseRef.current = null;
+                if (!info) return;
+                if (info.stripEl.hasPointerCapture(e.pointerId)) {
+                  info.stripEl.releasePointerCapture(e.pointerId);
+                }
+                const toCol = info.dragging
+                  ? columnIndexFromX(info.stripEl, e.clientX)
+                  : info.fromCol;
+                // ドラッグの枠はフォームが開いている間も残す（閉じる時に親が消す）。
+                // クリックは枠を出さない（時刻の枠と同じ）。
+                if (!info.dragging) onAllDayDragChange(null);
+                const anchor = { x: e.clientX, y: e.clientY };
+                // フォームはこの操作の click が済んでから開く（時刻の枠の
+                // onPointerUp と同じ理由。開いた直後に外側のクリックで閉じる）。
+                setTimeout(() =>
+                  onAllDaySlotClick(info.fromCol, toCol, anchor),
+                );
+              }}
+              onPointerCancel={(e) => {
+                if (e.pointerType !== "mouse") return;
+                allDayMouseRef.current = null;
+                onAllDayDragChange(null);
+              }}
               onTouchStart={(e) => {
                 recentTouchUntil.current = performance.now() + 700;
                 // 既存の終日バー上でのタッチは選択用なので長押し対象外
@@ -967,7 +1052,10 @@ export function WeekCalendar({
                       stripRect.left + g.columnIndex * COL + COL / 2;
                     const anchorY = stripRect.top + stripRect.height / 2;
                     setAllDayGhost(null);
-                    onAllDaySlotClick(g.date, { x: anchorX, y: anchorY });
+                    onAllDaySlotClick(g.columnIndex, g.columnIndex, {
+                      x: anchorX,
+                      y: anchorY,
+                    });
                     return;
                   }
                 }
@@ -1032,23 +1120,32 @@ export function WeekCalendar({
                   </button>
                 );
               })}
-              {/* スマホ長押し中のゴースト枠（1日分・半透明）。同列に既存
-                バーがあればその下の段に積み上げる（足りなければバンドも伸びる）。 */}
-              {allDayGhost &&
+              {/* 追加中のゴースト枠（スマホの長押しは1日分、PC のドラッグは
+                選んだ範囲・半透明）。同じ列に既存バーがあればその下の段に積み
+                上げる（足りなければバンドも伸びる）。 */}
+              {allDayGhostSpan &&
                 (() => {
-                  const [, m, d] = allDayGhost.date.split("-");
+                  const md = (date: string) => {
+                    const [, m, d] = date.split("-");
+                    return `${Number(m)}/${Number(d)}`;
+                  };
+                  const { lo, hi } = allDayGhostSpan;
+                  const label =
+                    lo === hi
+                      ? md(columns[lo].date)
+                      : `${md(columns[lo].date)}–${md(columns[hi].date)}`;
                   const row = ghostAllDayRow ?? 0;
                   return (
                     <div
                       className="pointer-events-none absolute z-20 truncate rounded border border-slate-400 bg-slate-100/50 px-1 text-xs leading-tight text-slate-800"
                       style={{
-                        left: allDayGhost.columnIndex * COL + 2,
-                        width: COL - 4,
+                        left: lo * COL + 2,
+                        width: (hi - lo + 1) * COL - 4,
                         top: row * ALLDAY_ROW + 2,
                         height: ALLDAY_ROW - 2,
                       }}
                     >
-                      {Number(m)}/{Number(d)}
+                      {label}
                     </div>
                   );
                 })()}

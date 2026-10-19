@@ -34,6 +34,7 @@ import {
   formatMinutes,
   allDayTzSides,
   pickAllDaySide,
+  type AllDayChoice,
   type EventTzSide,
   resolveEventTz,
   resolveExpenseTz,
@@ -143,8 +144,12 @@ export type EventFormMode =
       date: string;
       time: string;
       tz: string;
-      // 起動時に終日種別を選んでおきたい時のヒント（終日帯の長押し追加経路）。
+      // 起動時に終日種別を選んでおきたい時のヒント（終日帯から追加する経路）。
       allDay?: boolean;
+      // 終日帯をドラッグして複数日を選んだ時の終了日。未指定なら date と同じ日。
+      endDate?: string;
+      // 終日帯で押した列から決めた「どちら側か」（日付の戻る便の日だけ）。
+      allDaySide?: AllDayChoice;
       // PC ドラッグで作成した時の終了時刻("HH:MM")。同日扱い。未指定なら
       // 既存の "開始+1時間" がデフォルト。
       endTime?: string;
@@ -635,7 +640,10 @@ export function EventForm({
   const [alldayStart, setAlldayStart] = useDraft("alldayStart", startInit.date);
   const [alldayEnd, setAlldayEnd] = useDraft(
     "alldayEnd",
-    endInit.date || prefill?.endDate || startInit.date,
+    endInit.date ||
+      prefill?.endDate ||
+      (formMode.mode === "create" ? formMode.endDate : undefined) ||
+      startInit.date,
   );
 
   // 開始を動かすと長さ（日付込み）を保って終了が追従する（DateTimePopover から呼ぶ）。
@@ -705,10 +713,21 @@ export function EventForm({
   const [allDaySaved, setAllDaySaved] = useDraft<{
     transitId: string | null;
     side: EventTzSide | null;
-  }>("allDaySide", {
-    transitId: isEdit && ev!.allDay ? ev!.tzDisambigTransitId : null,
-    side: isEdit && ev!.allDay ? ev!.tzDisambigSide : null,
-  });
+  }>(
+    "allDaySide",
+    isEdit
+      ? {
+          transitId: ev!.allDay ? ev!.tzDisambigTransitId : null,
+          side: ev!.allDay ? ev!.tzDisambigSide : null,
+        }
+      : {
+          transitId:
+            (formMode.mode === "create" && formMode.allDaySide?.transitId) ||
+            null,
+          side:
+            (formMode.mode === "create" && formMode.allDaySide?.side) || null,
+        },
+  );
   const allDayChoice =
     allDaySides && allDaySides.options.length > 1
       ? pickAllDaySide(allDaySides, allDaySaved)

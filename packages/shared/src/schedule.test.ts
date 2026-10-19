@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   addDays,
+  allDaySelection,
   allDayTzSides,
   buildSchedule,
   buildTripTzTimeline,
@@ -1008,6 +1009,41 @@ describe("allDayTzSides", () => {
       ),
     ).toEqual(["arrive"]);
     expect(allDayTzSides("2026-12-10", "2026-12-12", tl.transits)).toBeNull();
+  });
+
+  it("終日の帯で選んだ列から、日付とどちら側かを決める（allDaySelection）", () => {
+    const f = ev({
+      id: "f",
+      kind: "transit",
+      startAt: "2026-04-28T19:10:00",
+      startTz: "Asia/Tokyo",
+      endAt: "2026-04-28T07:25:00",
+      endTz: "Pacific/Honolulu",
+    });
+    const s = buildSchedule([f], { tripStart: "2026-04-26", tripEnd: "2026-04-30" });
+    const t = buildTripTzTimeline([f]).transits;
+    const idx = (key: string) => s.columns.findIndex((c) => c.key === key);
+    const dep = idx("t-f-dep");
+    const arr = idx("t-f-arr");
+    // 便の日の日本側・ハワイ側・両方
+    expect(allDaySelection(s.columns, dep, dep, t)).toEqual({
+      startDate: "2026-04-28",
+      endDate: "2026-04-28",
+      side: { transitId: "f", side: "depart" },
+    });
+    expect(allDaySelection(s.columns, arr, arr, t).side?.side).toBe("arrive");
+    expect(allDaySelection(s.columns, arr, dep, t).side?.side).toBe("both");
+    // 便に掛からない日・便をまたぐ範囲は決めない
+    expect(allDaySelection(s.columns, 0, 1, t)).toEqual({
+      startDate: "2026-04-26",
+      endDate: "2026-04-27",
+      side: null,
+    });
+    expect(allDaySelection(s.columns, 1, arr + 1, t)).toEqual({
+      startDate: "2026-04-27",
+      endDate: "2026-04-29",
+      side: null,
+    });
   });
 
   it("両方を選べるのは、出発日と到着日が同じ便の当日の、1日だけの予定", () => {

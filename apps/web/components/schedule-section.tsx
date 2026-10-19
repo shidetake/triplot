@@ -17,9 +17,11 @@ import {
 import { moveEvent } from "@triplot/shared/data/events";
 import type { LatLng } from "@triplot/shared/placeMap";
 import {
+  allDaySelection,
   buildSchedule,
   buildTripTzTimeline,
   formatMinutes,
+  timelineFor,
   type ScheduleEvent,
 } from "@triplot/shared/schedule";
 import { resolveInboundDrafts } from "@triplot/shared/data/inbox";
@@ -44,7 +46,11 @@ import { CheckIcon, PlusIcon } from "./icons";
 import { ReservationIcon } from "./reservation-icon";
 import { type Anchor, FormPopover } from "./form-popover";
 import { useMediaQuery } from "./use-media-query";
-import { type PcDragRender, WeekCalendar } from "./week-calendar";
+import {
+  type AllDayDragRender,
+  type PcDragRender,
+  WeekCalendar,
+} from "./week-calendar";
 import { useActiveTripTab } from "@/lib/activeTripTab";
 import {
   MOBILE_TAB_BOTTOM_OFFSET,
@@ -169,6 +175,8 @@ export function ScheduleSection({
   // PC ドラッグで作成中の可変長ゴースト。form 表示中も枠を残したいので
   // ScheduleSection で保持し、closeForm で同期的に消す。
   const [pcDrag, setPcDrag] = useState<PcDragRender | null>(null);
+  // 終日帯の PC ドラッグの範囲。pcDrag と同じく form を閉じる時に消す。
+  const [allDayDrag, setAllDayDrag] = useState<AllDayDragRender | null>(null);
 
   // 個別TZの初期値: trip.default_timezone → 無ければブラウザのTZ（自宅で
   // 計画する想定。default_timezone はこの旅行で最初の予定/費用を作る瞬間に
@@ -238,6 +246,7 @@ export function ScheduleSection({
     // PC ドラッグのゴーストも form を閉じたタイミングで消す
     // （ドラッグ→form→確定/キャンセル の一連で見た目が連続するように）。
     setPcDrag(null);
+    setAllDayDrag(null);
   }, []);
 
   const defaultDate = tripStart ?? new Date().toISOString().slice(0, 10);
@@ -280,21 +289,30 @@ export function ScheduleSection({
     [defaultTz],
   );
 
-  // 終日帯の空きを長押し→離した時に呼ばれる。終日種別をプリセットで開く。
+  // 終日帯の空きから追加する時に呼ばれる（PC はクリック／横ドラッグ、スマホは
+  // 長押し）。選んだ列から日付と「どちら側か」を決め、終日種別で開く。
   const onAllDaySlotClick = useCallback(
-    (date: string, anchor: Anchor) => {
+    (fromCol: number, toCol: number, anchor: Anchor) => {
+      const sel = allDaySelection(
+        schedule.columns,
+        fromCol,
+        toCol,
+        timelineFor(tzTimeline, [viewerId]).transits,
+      );
       setOpen({
         form: {
           mode: "create",
-          date,
+          date: sel.startDate,
           time: "00:00", // 終日では使われない
           tz: defaultTz, // 同上
           allDay: true,
+          endDate: sel.endDate,
+          ...(sel.side ? { allDaySide: sel.side } : {}),
         },
         anchor,
       });
     },
-    [defaultTz],
+    [defaultTz, schedule.columns, tzTimeline, viewerId],
   );
 
   const onEventClick = useCallback(
@@ -459,6 +477,8 @@ export function ScheduleSection({
           memberHueById={memberHueById}
           pcDrag={pcDrag}
           onPcDragChange={setPcDrag}
+          allDayDrag={allDayDrag}
+          onAllDayDragChange={setAllDayDrag}
           onSlotClick={onSlotClick}
           onAllDaySlotClick={onAllDaySlotClick}
           onEventClick={onEventClick}
