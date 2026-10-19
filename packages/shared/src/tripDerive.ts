@@ -1,5 +1,6 @@
 import type { SummaryExpense } from "./expenseSummary";
 import {
+  type EventTzSide,
   resolveEventTz,
   timelineFor,
   wallClockToUtcMs,
@@ -249,7 +250,7 @@ export function deriveScheduleEvents(
     startTz: e.start_tz,
     endTz: e.end_tz,
     tzDisambigTransitId: e.tz_disambig_transit_id,
-    tzDisambigSide: e.tz_disambig_side as "depart" | "arrive" | null,
+    tzDisambigSide: e.tz_disambig_side as EventTzSide | null,
     startPlaceId: e.start_place_id,
     endPlaceId: e.end_place_id,
     visibility: e.visibility as Visibility,

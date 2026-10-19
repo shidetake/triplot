@@ -1,4 +1,5 @@
 import type { TzDisambig } from "../calendarMove";
+import type { EventTzSide } from "../schedule";
 import type { Visibility } from "../types/database";
 import type { DB } from "./client";
 import { type PlaceInput, placeSpec } from "./place";
@@ -19,7 +20,7 @@ export type EventFields = {
   // 乗継当日の選択（どの乗継の出発側/到着側か）。非曖昧な日・normal 予定
   // 以外は null。
   tzDisambigTransitId: string | null;
-  tzDisambigSide: "depart" | "arrive" | null;
+  tzDisambigSide: EventTzSide | null;
   visibility: Visibility;
   note: string;
   // 全員参加かどうかは**事実として持つ**。participantMemberIds が空である

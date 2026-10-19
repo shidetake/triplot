@@ -843,7 +843,7 @@ describe("buildSchedule: 終日・連日バー", () => {
     expect(bar.startColIndex).not.toBe(depIndex);
   });
 
-  it("単日の終日予定も、wraps 便の当日は両側に収まるので選んだ側（既定は到着側）に置く", () => {
+  it("出発日と到着日が同じ便の当日の単日の終日予定は、選んでいなければ2列とも覆い、選べばその側", () => {
     const flight = ev({
       id: "f1",
       title: "NRT-HNL",
@@ -867,15 +867,18 @@ describe("buildSchedule: 終日・連日バー", () => {
     const depIndex = s.columns.indexOf(s.columns.find((c) => c.key === "t-f1-dep")!);
     const arrIndex = s.columns.indexOf(s.columns.find((c) => c.key === "t-f1-arr")!);
     const bar = s.allDayBars.find((b) => b.event.id === "oneDay")!;
-    expect(bar.startColIndex).toBe(arrIndex);
+    expect([bar.startColIndex, bar.endColIndex]).toEqual([depIndex, arrIndex]);
 
-    const chosen = buildSchedule(
-      [flight, { ...oneDay, tzDisambigTransitId: "f1", tzDisambigSide: "depart" }],
-      { tripStart: "2026-04-28", tripEnd: "2026-04-30" },
-    );
-    expect(
-      chosen.allDayBars.find((b) => b.event.id === "oneDay")!.startColIndex,
-    ).toBe(depIndex);
+    const span = (side: "depart" | "arrive" | "both") => {
+      const b = buildSchedule(
+        [flight, { ...oneDay, tzDisambigTransitId: "f1", tzDisambigSide: side }],
+        { tripStart: "2026-04-28", tripEnd: "2026-04-30" },
+      ).allDayBars.find((x) => x.event.id === "oneDay")!;
+      return [b.startColIndex, b.endColIndex];
+    };
+    expect(span("depart")).toEqual([depIndex, depIndex]);
+    expect(span("arrive")).toEqual([arrIndex, arrIndex]);
+    expect(span("both")).toEqual([depIndex, arrIndex]);
   });
 
   describe("日付が戻る便の前後で同じ日付が2回出てくる時の宿泊", () => {
@@ -951,6 +954,24 @@ describe("buildSchedule: 終日・連日バー", () => {
       ]);
     });
 
+    it("出発日と到着日が違う便では、単日の予定でも両方は無く、選んでいなければ到着側", () => {
+      const s = buildSchedule([nh, la, stay("s", "2026-12-18", "2026-12-18")], opts);
+      expect(cols(s, "s")).toEqual(["2026-12-18@America/Los_Angeles"]);
+      // both が保存されていても（ここでは選べない）、選んでいない時と同じ扱い。
+      const saved = buildSchedule(
+        [
+          nh,
+          la,
+          stay("s", "2026-12-18", "2026-12-18", {
+            tzDisambigTransitId: "nh",
+            tzDisambigSide: "both",
+          }),
+        ],
+        opts,
+      );
+      expect(cols(saved, "s")).toEqual(["2026-12-18@America/Los_Angeles"]);
+    });
+
     it("どちら側にも収まらない（便をまたぐ）予定は、従来どおり日付で並べる", () => {
       const s = buildSchedule([nh, la, stay("s", "2026-12-19", "2026-12-20")], opts);
       expect(cols(s, "s").at(-1)).toBe("2026-12-20@America/Lima");
@@ -987,6 +1008,24 @@ describe("allDayTzSides", () => {
       ),
     ).toEqual(["arrive"]);
     expect(allDayTzSides("2026-12-10", "2026-12-12", tl.transits)).toBeNull();
+  });
+
+  it("両方を選べるのは、出発日と到着日が同じ便の当日の、1日だけの予定", () => {
+    const same = buildTripTzTimeline([
+      ev({
+        id: "f",
+        kind: "transit",
+        startAt: "2026-04-28T19:10:00",
+        startTz: "Asia/Tokyo",
+        endAt: "2026-04-28T07:25:00",
+        endTz: "Pacific/Honolulu",
+      }),
+    ]);
+    expect(allDayTzSides("2026-04-28", "2026-04-28", same.transits)?.both).toBe(true);
+    expect(allDayTzSides("2026-04-27", "2026-04-28", same.transits)?.both).toBe(false);
+    expect(allDayTzSides("2026-04-28", "2026-04-29", same.transits)?.both).toBe(false);
+    // 日付が戻る便は、1日だけでも両方は無い（2列の間に別の日付が挟まる）。
+    expect(allDayTzSides("2026-12-18", "2026-12-18", tl.transits)?.both).toBe(false);
   });
 });
 

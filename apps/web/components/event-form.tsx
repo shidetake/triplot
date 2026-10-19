@@ -34,6 +34,7 @@ import {
   formatMinutes,
   allDayTzSides,
   pickAllDaySide,
+  type EventTzSide,
   resolveEventTz,
   resolveExpenseTz,
   timelineFor,
@@ -460,10 +461,12 @@ export function EventForm({
   // 編集時、保存済みの選択が無い（=マイグレーション前の既存データ、または
   // 自動導出のまま保存された）乗継日は、tz と同じ先頭候補をラジオにも
   // 反映する（「実際は選ばれているのにどれもチェックが付いていない」を防ぐ）。
+  // 両方（both）は終日の予定だけが持つので、ここ（時刻のある予定の選択）には来ない。
+  const savedSide = isEdit ? ev!.tzDisambigSide : null;
   const editDisambig =
     isEdit && startResolution.kind === "ambiguous"
-      ? ev!.tzDisambigTransitId && ev!.tzDisambigSide
-        ? { transitId: ev!.tzDisambigTransitId, side: ev!.tzDisambigSide }
+      ? ev!.tzDisambigTransitId && savedSide && savedSide !== "both"
+        ? { transitId: ev!.tzDisambigTransitId, side: savedSide }
         : startResolution.options[0]
       : null;
   // 新規作成時の既定選択。取り込み下書きは場所からどちら側かを当てて
@@ -685,8 +688,9 @@ export function EventForm({
 
   // 日付が戻る便の前後では同じ日付が2回出てくる。終日の予定（宿泊など）が
   // その両側に収まる時だけ、どちら側か選ぶ（allDayTzSides）。片側にしか
-  // 収まらなければ決まるので出さない。選んでいなければ到着側（カレンダーの
-  // 既定と同じ）を選んだ状態で見せる。
+  // 収まらなければ決まるので出さない。出発日と到着日が同じ便の当日の1日だけの
+  // 予定は「両方」も選べる。選んでいなければカレンダーの既定（両方を選べれば
+  // 両方、そうでなければ到着側）を選んだ状態で見せる。
   const allDaySides =
     kind3 === "allday"
       ? allDayTzSides(
@@ -700,7 +704,7 @@ export function EventForm({
   // 日本側が選ばれている」ように見える（カレンダーは到着側に置いている）。
   const [allDaySaved, setAllDaySaved] = useDraft<{
     transitId: string | null;
-    side: "depart" | "arrive" | null;
+    side: EventTzSide | null;
   }>("allDaySide", {
     transitId: isEdit && ev!.allDay ? ev!.tzDisambigTransitId : null,
     side: isEdit && ev!.allDay ? ev!.tzDisambigSide : null,
@@ -1075,6 +1079,22 @@ export function EventForm({
                     <span>{tzDisplayLabel(opt.tz, locale)}</span>
                   </label>
                 ))}
+                {allDaySides.both && (
+                  <label className="inline-flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="tz_choice"
+                      checked={allDayChoice.side === "both"}
+                      onChange={() =>
+                        setAllDaySaved({
+                          transitId: allDaySides.transitId,
+                          side: "both",
+                        })
+                      }
+                    />
+                    <span>{t("transitDayBoth")}</span>
+                  </label>
+                )}
               </div>
             </fieldset>
           )}

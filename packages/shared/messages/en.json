@@ -291,6 +291,7 @@
     "deleteTitle": "Delete this event?",
     "deleteFailed": "Delete failed: {error}",
     "transitDay": "This is a transit day. Which timezone is this event in?",
+    "transitDayBoth": "Both",
     "kindMove": "Trip leg",
     "endPlace": "Arrival place",
     "tzUnset": "Not set",

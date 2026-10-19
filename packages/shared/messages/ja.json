@@ -291,6 +291,7 @@
     "deleteTitle": "この予定を削除しますか？",
     "deleteFailed": "削除に失敗しました: {error}",
     "transitDay": "移動日のため、どのタイムゾーンの予定か選んでください。",
+    "transitDayBoth": "両方",
     "kindMove": "移動",
     "endPlace": "到着地",
     "tzUnset": "未設定",

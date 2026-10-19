@@ -12,7 +12,7 @@
 // 長さは変えない。掴んだ予定の所要時間をそのまま持っていく（Google カレンダー
 // と同じ。長さを変えるのは端のハンドルを掴む別の操作）。
 
-import { addDays, parseWall } from "./schedule";
+import { addDays, type EventTzSide, parseWall } from "./schedule";
 
 export type MovableEvent = {
   kind: "normal" | "transit";
@@ -89,14 +89,14 @@ export function movedEventTiming(
 // 移動ではなく、あの時の状態に復元することなので）。
 export type TzDisambig = {
   transitId: string | null;
-  side: "depart" | "arrive" | null;
+  side: EventTzSide | null;
 };
 
 export function movedTzDisambig(
   from: {
     startAt: string;
     tzDisambigTransitId: string | null;
-    tzDisambigSide: "depart" | "arrive" | null;
+    tzDisambigSide: EventTzSide | null;
   },
   to: { startAt: string },
 ): TzDisambig {

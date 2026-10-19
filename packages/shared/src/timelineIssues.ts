@@ -1,5 +1,6 @@
 import {
   buildTripTzTimeline,
+  type EventTzSide,
   narrowTzByTime,
   resolveExpenseTz,
   timelineFor,
@@ -161,7 +162,7 @@ export function tzGroupsAt(
   tl: TripTzTimeline,
   memberIds: readonly string[],
   at: { date: string; time: string | null },
-  disambig: { transitId: string; side: "depart" | "arrive" } | null,
+  disambig: { transitId: string; side: EventTzSide } | null,
 ): TzGroup[] {
   const groups: TzGroup[] = [];
   const add = (tz: string, memberId: string) => {
@@ -197,7 +198,7 @@ export function splitParticipants(
   tl: TripTzTimeline,
   memberIds: readonly string[],
   at: { date: string; time: string | null },
-  disambig: { transitId: string; side: "depart" | "arrive" } | null,
+  disambig: { transitId: string; side: EventTzSide } | null,
 ): TzGroup[] | null {
   const groups = tzGroupsAt(tl, memberIds, at, disambig);
   return groups.length > 1 ? groups : null;

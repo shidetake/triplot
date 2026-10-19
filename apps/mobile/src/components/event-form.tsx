@@ -30,6 +30,7 @@ import {
   buildTripTzTimeline,
   dedupeTzCandidates,
   pickAllDaySide,
+  type EventTzSide,
   resolveExpenseTz,
   timelineFor,
   type TzCandidate,
@@ -443,9 +444,14 @@ export function EventForm({
   const [tzDisambigTransitId, setTzDisambigTransitId] = useState<string | null>(
     editEvent?.tzDisambigTransitId ?? initDisambig?.transitId ?? null,
   );
+  // 両方（both）は終日の予定だけが持つので、時刻のある予定の選択には持ち込まない。
   const [tzDisambigSide, setTzDisambigSide] = useState<
     "depart" | "arrive" | null
-  >(editEvent?.tzDisambigSide ?? initDisambig?.side ?? null);
+  >(
+    (editEvent?.tzDisambigSide === "both" ? null : editEvent?.tzDisambigSide) ??
+      initDisambig?.side ??
+      null,
+  );
   const startTzRes = useMemo(
     () => resolveExpenseTz(startDate, participantTimeline),
     [startDate, participantTimeline],
@@ -453,8 +459,9 @@ export function EventForm({
   const multiTz = participantTimeline.transits.length > 0;
   // 日付が戻る便の前後では同じ日付が2回出てくる。終日の予定（宿泊など）が
   // その両側に収まる時だけ、どちら側か選ぶ（allDayTzSides。web と同じ）。
-  // 片側にしか収まらなければ決まるので出さない。選んでいなければ到着側
-  // （カレンダーの既定と同じ）を選んだ状態で見せる。
+  // 片側にしか収まらなければ決まるので出さない。出発日と到着日が同じ便の当日の
+  // 1日だけの予定は「両方」も選べる。選んでいなければカレンダーの既定（両方を
+  // 選べれば両方、そうでなければ到着側）を選んだ状態で見せる。
   const allDaySides =
     kind === "allday"
       ? allDayTzSides(startDate, endDate, participantTimeline.transits)
@@ -464,7 +471,7 @@ export function EventForm({
   // 日本側が選ばれている」ように見える（カレンダーは到着側に置いている）。
   const [allDaySaved, setAllDaySaved] = useState<{
     transitId: string | null;
-    side: "depart" | "arrive" | null;
+    side: EventTzSide | null;
   }>({
     transitId: editEvent?.allDay ? editEvent.tzDisambigTransitId : null,
     side: editEvent?.allDay ? editEvent.tzDisambigSide : null,
@@ -1012,17 +1019,19 @@ export function EventForm({
           <Text style={styles.hint}>{t("transitDay")}</Text>
           <View style={styles.tzOptions}>
             <CompactSegment
-              options={allDaySides.options.map((opt) => ({
-                key: opt.side,
-                label: tzDisplayLabel(opt.tz, locale),
-              }))}
+              options={[
+                ...allDaySides.options.map((opt) => ({
+                  key: opt.side as EventTzSide,
+                  label: tzDisplayLabel(opt.tz, locale),
+                })),
+                ...(allDaySides.both
+                  ? [{ key: "both" as const, label: t("transitDayBoth") }]
+                  : []),
+              ]}
               value={allDayChoice.side}
-              onChange={(side) => {
-                const opt = allDaySides.options.find((o) => o.side === side);
-                if (opt) {
-                  setAllDaySaved({ transitId: opt.transitId, side: opt.side });
-                }
-              }}
+              onChange={(side) =>
+                setAllDaySaved({ transitId: allDaySides.transitId, side })
+              }
             />
           </View>
         </View>

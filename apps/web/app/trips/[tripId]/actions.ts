@@ -52,6 +52,7 @@ import {
 } from "@triplot/shared/data/todos";
 import { deleteTrip, updateTrip } from "@triplot/shared/data/trips";
 import { DISPLAY_NAME_MAX } from "@triplot/shared/displayName";
+import type { EventTzSide } from "@triplot/shared/schedule";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency, Visibility } from "@triplot/shared/types/database";
 
@@ -738,9 +739,9 @@ type ParsedEvent =
       // transit のみ非null（唯一の実TZ）。normal/allday は常に null。
       startTz: string | null;
       endTz: string | null;
-      // 乗継当日の選択。非曖昧な日・kind='transit'では null。
+      // 乗継当日の選択。非曖昧な日・kind='transit'では null。both は終日だけ。
       tzDisambigTransitId: string | null;
-      tzDisambigSide: "depart" | "arrive" | null;
+      tzDisambigSide: EventTzSide | null;
       // 出発地。到着地（endPlace）は移動の UI を入れるまで常に null＝出発地と同じ。
       startPlace: PlaceInput;
       endPlace: PlaceInput | null;
@@ -841,7 +842,9 @@ function parseEventForm(formData: FormData, t: TFunc): ParsedEvent {
     const allDayDisambigSideRaw = get("tz_disambig_side");
     const allDayDisambigSide =
       allDayDisambigTransitId &&
-      (allDayDisambigSideRaw === "depart" || allDayDisambigSideRaw === "arrive")
+      (allDayDisambigSideRaw === "depart" ||
+        allDayDisambigSideRaw === "arrive" ||
+        allDayDisambigSideRaw === "both")
         ? allDayDisambigSideRaw
         : null;
     const startDate = get("start_date");

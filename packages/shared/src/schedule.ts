@@ -30,7 +30,7 @@ export type ScheduleEvent = {
   // normal/allday のみ意味を持つ。乗継当日で候補が複数あるときの選択（どの
   // 乗継の出発側/到着側か）。非曖昧な日は null のまま（旅程から自動導出）。
   tzDisambigTransitId: string | null;
-  tzDisambigSide: "depart" | "arrive" | null;
+  tzDisambigSide: EventTzSide | null;
   // 出発地。単一地点の予定ではその場所。
   startPlaceId: string | null;
   // 到着地。**null は「startPlaceId と同じ」**の意味（DB に二重に持たない）。
@@ -926,14 +926,24 @@ export function buildSchedule(
         transitId: ev.tzDisambigTransitId,
         side: ev.tzDisambigSide,
       });
-      const [from, to] =
-        side.side === "depart" ? [0, arrIdx - 1] : [arrIdx, columns.length - 1];
-      for (let i = from; i <= to; i++) {
-        const c = columns[i];
-        if (startColIndex === -1 && c.date === d1) startColIndex = i;
-        if (startColIndex !== -1 && c.date === d2) {
-          endColIndex = i;
-          break;
+      if (side.side === "both") {
+        // 出発側のその日付の列から、隣の到着側の列（同じ日付）まで。
+        startColIndex = columns.findIndex(
+          (c, i) => i < arrIdx && c.date === d1,
+        );
+        if (columns[arrIdx].date === d1) endColIndex = arrIdx;
+      } else {
+        const [from, to] =
+          side.side === "depart"
+            ? [0, arrIdx - 1]
+            : [arrIdx, columns.length - 1];
+        for (let i = from; i <= to; i++) {
+          const c = columns[i];
+          if (startColIndex === -1 && c.date === d1) startColIndex = i;
+          if (startColIndex !== -1 && c.date === d2) {
+            endColIndex = i;
+            break;
+          }
         }
       }
       if (startColIndex !== -1 && endColIndex !== -1) {
@@ -1129,6 +1139,12 @@ export type TzCandidate = {
   side: "depart" | "arrive";
 };
 
+/**
+ * 予定に保存する「どちら側か」。`both` は終日の予定だけが持つ（日付が同じまま
+ * 2列になる便の日を、2列とも覆う。allDayTzSides 参照）。費用は depart / arrive だけ。
+ */
+export type EventTzSide = "depart" | "arrive" | "both";
+
 export type TzResolution =
   | { kind: "single"; tz: string }
   // 同一暦日に複数のTZを跨ぐ乗継日。時系列順の候補（2件以上）から選ばせる。
@@ -1291,7 +1307,7 @@ export function narrowTzByTime(
 export function resolveEventTz(
   date: string,
   tzDisambigTransitId: string | null,
-  tzDisambigSide: "depart" | "arrive" | null,
+  tzDisambigSide: EventTzSide | null,
   tl: TripTzTimeline,
 ): string {
   const r = resolveExpenseTz(date, tl);
@@ -1341,13 +1357,19 @@ type AllDaySpan = {
 //     足す時はフォームで選ぶので、選ばれていないのはメールの取り込みの時だけ）
 // 便の時刻（夜中の出発だから泊まらないはず、等）は判断に使わない。
 //
+// 便の出発日と到着日が同じ日付（日本の 4/28 とハワイの 4/28 が隣り合う2列）で、
+// 予定がその日1日だけの時は、2列とも覆う「両方」も選べる（both）。誕生日や
+// 移動日のメモのように、その日付そのものの予定があるため。選んでいなければ
+// 両方に置く（どちらの側とも推測しない）。出発日と到着日が違う便では、2列の
+// 間に別の日付が挟まり、つながった1本の帯では2列だけを覆えないので出さない。
+//
 // 返すのは、その範囲が日付の戻る区間に掛かる最初の便と、収まる側（1つか2つ）。
 // 掛からない・どちらにも収まらない時は null（従来どおり日付だけで並べる）。
 export function allDayTzSides(
   startDate: string,
   endDate: string,
   transits: TripTzTimeline["transits"],
-): { transitId: string; options: TzCandidate[] } | null {
+): { transitId: string; options: TzCandidate[]; both: boolean } | null {
   for (let i = 0; i < transits.length; i++) {
     const w = transits[i];
     const wraps =
@@ -1373,24 +1395,38 @@ export function allDayTzSides(
       options.push({ tz: w.arriveTz, transitId: w.transitId, side: "arrive" });
     }
     if (options.length === 0) continue;
-    return { transitId: w.transitId, options };
+    const both =
+      options.length === 2 &&
+      startDate === endDate &&
+      w.departDate === w.arriveDate;
+    return { transitId: w.transitId, options, both };
   }
   return null;
 }
 
+/** 終日の予定を置く側。both は2列とも覆う。 */
+export type AllDayChoice = { transitId: string; side: EventTzSide };
+
 // allDayTzSides の結果と、予定に保存されている選択から、置く側を決める。
+// 選んでいない時は、両方を選べるなら両方、そうでなければ到着側。
 export function pickAllDaySide(
-  sides: { transitId: string; options: TzCandidate[] },
-  saved: { transitId: string | null; side: "depart" | "arrive" | null },
-): TzCandidate {
-  if (sides.options.length === 1) return sides.options[0];
-  return (
-    sides.options.find(
-      (o) => o.transitId === saved.transitId && o.side === saved.side,
-    ) ??
-    sides.options.find((o) => o.side === "arrive") ??
-    sides.options[0]
-  );
+  sides: { transitId: string; options: TzCandidate[]; both: boolean },
+  saved: { transitId: string | null; side: EventTzSide | null },
+): AllDayChoice {
+  const pick = (o: TzCandidate): AllDayChoice => ({
+    transitId: o.transitId,
+    side: o.side,
+  });
+  if (sides.options.length === 1) return pick(sides.options[0]);
+  if (saved.transitId === sides.transitId) {
+    if (saved.side === "both" && sides.both) {
+      return { transitId: sides.transitId, side: "both" };
+    }
+    const match = sides.options.find((o) => o.side === saved.side);
+    if (match) return pick(match);
+  }
+  if (sides.both) return { transitId: sides.transitId, side: "both" };
+  return pick(sides.options.find((o) => o.side === "arrive") ?? sides.options[0]);
 }
 
 // 終日バーを段に詰める。
