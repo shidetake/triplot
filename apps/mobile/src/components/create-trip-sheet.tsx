@@ -285,8 +285,8 @@ export function CreateTripSheet({
         <Text style={styles.label}>{t("settlementCurrency")}</Text>
         {/* 通貨は web と同じ全170通貨から選べる（以前は6件に絞った独自
             chip 実装だった）。トリガー＋モーダルは編集シートと共通の
-            CurrencyPickerModal。web の「精算通貨とは」ヘルプツールチップは
-            RN 側に HelpTip 部品が無いので今回は省略（別途対応する）。 */}
+            CurrencyPickerModal。web の「精算通貨とは」の ? ヒント（HelpTip）は
+            iOS には置かない（docs/design/platform-parity.md）。 */}
         <CurrencyPickerTrigger
           value={currency}
           onPress={() => setCurrencyPickerOpen(true)}

@@ -2,6 +2,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
+import { cn } from "@/lib/utils";
 
 import {
   createGcalCalendar,
@@ -19,6 +20,7 @@ import {
 import { FieldLabel } from "./field-label";
 import { type Anchor, FormPopover } from "./form-popover";
 import { CheckIcon } from "./icons";
+import { Button, buttonVariants } from "./ui/button";
 import { menuItemClass } from "./menu-item";
 
 // Google Identity Services（GIS）のトークンクライアント最小型。
@@ -211,11 +213,6 @@ export function CalendarExportDialog({
     }
   }, [selected, newName, tripTitle, targetEvents, t]);
 
-  const btnBlack =
-    "h-9 w-full rounded-md bg-primary text-sm font-medium text-primary-foreground transition hover:bg-primary/90 disabled:opacity-50";
-  const btnGhost =
-    "h-9 w-full rounded-md border border-foreground/20 text-sm font-medium text-muted-foreground transition hover:bg-foreground/10";
-
   return (
     <FormPopover anchor={anchor} onClose={onClose} label={t("formLabel")}>
       <div className="space-y-3 p-4">
@@ -253,9 +250,9 @@ export function CalendarExportDialog({
         )}
 
         {phase === "connect" && (
-          <button type="button" onClick={connect} className={btnBlack}>
+          <Button type="button" onClick={connect} className="w-full">
             {t("connectButton")}
-          </button>
+          </Button>
         )}
 
         {phase === "loading" && (
@@ -303,14 +300,14 @@ export function CalendarExportDialog({
                 </label>
               ))}
             </div>
-            <button
+            <Button
               type="button"
               onClick={runExport}
               disabled={targetEvents.length === 0}
-              className={btnBlack}
+              className="w-full"
             >
               {t("exportButton", { count: targetEvents.length })}
-            </button>
+            </Button>
           </div>
         )}
 
@@ -332,7 +329,7 @@ export function CalendarExportDialog({
               href="https://calendar.google.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className={`${btnGhost} flex items-center justify-center`}
+              className={cn(buttonVariants({ variant: "outline" }), "w-full")}
             >
               {t("openGcal")}
             </a>
@@ -342,9 +339,14 @@ export function CalendarExportDialog({
         {phase === "error" && (
           <div className="space-y-3">
             <p className="text-sm text-red-600">{error}</p>
-            <button type="button" onClick={connect} className={btnGhost}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={connect}
+              className="w-full"
+            >
               {t("retry")}
-            </button>
+            </Button>
           </div>
         )}
       </div>

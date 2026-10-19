@@ -2,12 +2,12 @@
 // 「参加者の構成」と visibility だけで色を決める。閲覧者（自分）視点で変わる
 // 点に注意 —— mixed は「自分が参加しているか」で地色が変わる。
 //
-//   private    → 現状のまま zinc（後で詰める。今はプレースホルダ）
-//   全員参加   → 確定色と同じ green（hue=140°）
+//   private    → 無彩色の中立（色相を持たない）
+//   全員参加   → 確定色と同じ green（GREEN_HUE=162°）
 //   1人だけ    → そのメンバーの hue
 //   複数〜全員未満（mixed）→
 //       自分が参加 → 自分の hue（各自の画面で違って見える）
-//       自分は不参加 → slate（中立）
+//       自分は不参加 → 無彩色の中立を半分の濃さで（描画側）
 //     どちらも右肩に参加者ドットを出す（描画側で自分のドットは除外）。
 //
 // 「全員参加」は participantsEveryone が持つ（事実として保存されている）。
@@ -21,7 +21,7 @@ export const GREEN_HUE = 162;
 export type EventColor =
   | { kind: "private" }
   // 複数人だが全員ではない。selfHue=自分が参加かつ色ありなら自分の hue、
-  // それ以外（自分不参加 or 色未割当）は null（→ slate 地色）。
+  // それ以外（自分不参加 or 色未割当）は null（→ 中立の地色）。
   | { kind: "mixed"; selfHue: number | null }
   | { kind: "green" } // 全員参加
   | { kind: "hue"; hue: number }; // 1人だけ参加（その人の色）
@@ -45,7 +45,7 @@ export function pickEventColor(input: {
   if (n === 1) {
     const hue = input.memberHueById.get(input.participantMemberIds[0]);
     if (typeof hue === "number") return { kind: "hue", hue };
-    // 色未割当のメンバーは安全側で mixed（slate 地色）に倒す
+    // 色未割当のメンバーは安全側で mixed（中立の地色）に倒す
     return { kind: "mixed", selfHue: null };
   }
 
