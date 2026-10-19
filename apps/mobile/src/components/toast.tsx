@@ -1,5 +1,18 @@
-import { useEffect, useState } from "react";
-import { Animated, Pressable, StyleSheet, Text, View } from "react-native";
+import { useIsFocused } from "expo-router";
+import {
+  useCallback,
+  useEffect,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import {
+  Animated,
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from "react-native";
 
 import { MOBILE_TAB_BAR_TOP } from "@/lib/layout";
 import {
@@ -81,6 +94,62 @@ function hideNow(targets: Listener[]): void {
 
 const FADE_MS = 200;
 
+// ── アンカー（トーストが避ける、画面に浮いているボタン） ──
+//
+// トーストは画面下中央に出るが、同じ高さに浮いているボタン（追加の＋ボタン・
+// 地図の「一覧を開く」）があると被る。Material Design はトースト（スナック
+// バー）を浮いているボタンより上に出すと決めていて、Android 標準のスナック
+// バーも「このボタンの上に出す」とボタンを指定する仕組み（setAnchorView）を
+// 持つ。それと同じ形にする: 浮いているボタンが自分の上端の位置を測って知らせ、
+// トーストはその上に出る。トーストはボタンの寸法を数字で持たない（ボタンが
+// 動けば一緒に動く）。ボタンの無い画面では何も知らされないので従来の位置。
+//
+// 知らせるのは今表示している画面のボタンだけ（タブは切り替えても画面が
+// 残るので、裏のタブのボタンに引っ張られないように）。
+const ANCHOR_GAP = 12;
+const anchors = new Map<symbol, number>(); // 上端の、画面下端からの高さ
+const anchorSubs = new Set<() => void>();
+let anchorTop = 0;
+function setAnchor(key: symbol, top: number | null): void {
+  if (top == null) anchors.delete(key);
+  else anchors.set(key, top);
+  const next = Math.max(0, ...anchors.values());
+  if (next === anchorTop) return;
+  anchorTop = next;
+  for (const f of anchorSubs) f();
+}
+function subscribeAnchors(f: () => void): () => void {
+  anchorSubs.add(f);
+  return () => anchorSubs.delete(f);
+}
+
+/**
+ * 浮いているボタンに付けると、トーストがそのボタンより上に出る。
+ * 返り値の attach（ref に渡す）と onLayout をボタン（の一番外側の View / Pressable）に渡す。
+ */
+export function useToastAnchor(): {
+  attach: (node: View | null) => void;
+  onLayout: () => void;
+} {
+  const [key] = useState(() => Symbol("toastAnchor"));
+  // ボタンの View。消えたら null（条件付きで出すボタン）。
+  const [node, attach] = useState<View | null>(null);
+  const focused = useIsFocused();
+  const measure = useCallback(() => {
+    if (!node || !focused) return;
+    node.measureInWindow((_x, y) => {
+      setAnchor(key, Dimensions.get("window").height - y);
+    });
+  }, [node, focused, key]);
+  // 表示中でボタンがある間だけ知らせる。どちらかが外れたら取り下げる。
+  useEffect(() => {
+    if (!node || !focused) return;
+    measure();
+    return () => setAnchor(key, null);
+  }, [node, focused, key, measure]);
+  return { attach, onLayout: measure };
+}
+
 // inSheet: この Toaster が native の formSheet ルートの中にあるか。
 //
 // **シートの中では下寄せが画面に出ない。** 常時表示の bottom 基準の probe を
@@ -99,6 +168,7 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
   const [shown, setShown] = useState(false);
   const [opacity] = useState(() => new Animated.Value(0));
   const theme = useTheme();
+  const anchor = useSyncExternalStore(subscribeAnchors, () => anchorTop);
 
   useEffect(() => {
     const listener: Listener = {
@@ -153,7 +223,15 @@ export function Toaster({ inSheet = false }: { inSheet?: boolean }) {
         // 避ける。セーフエリア基準（insets.bottom+24）だと画面下から約58pt
         // になり、タブバー上端の実測約83ptの帯に半端に重なって見た目が悪い
         // （実機フィードバック）。MOBILE_TAB_BAR_TOP から確実に上へ出す。
-        inSheet ? { top: 24 } : { bottom: MOBILE_TAB_BAR_TOP + 17 },
+        // 浮いているボタンがあれば、その上端の上（useToastAnchor）。
+        inSheet
+          ? { top: 24 }
+          : {
+              bottom: Math.max(
+                MOBILE_TAB_BAR_TOP + 17,
+                anchor > 0 ? anchor + ANCHOR_GAP : 0,
+              ),
+            },
         { opacity },
       ]}
     >

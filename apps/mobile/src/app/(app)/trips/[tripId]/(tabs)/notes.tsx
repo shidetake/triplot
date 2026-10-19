@@ -14,6 +14,7 @@ import {
 } from "@triplot/shared/data/notes";
 import { deriveNotes, notePreview, noteTitle } from "@triplot/shared/notes";
 
+import { useToastAnchor } from "@/components/toast";
 import { PlusIcon } from "@/components/icons";
 import { LoadError } from "@/components/load-error";
 import { PrivateBadge } from "@/components/private-badge";
@@ -37,6 +38,8 @@ export default function NotesTab() {
   const t = useTranslations("notes");
   const tCommon = useTranslations("common");
   const theme = useTheme();
+  // 浮いている＋ボタン。トーストはこの上に出る（useToastAnchor）。
+  const { attach: attachFab, onLayout: onFabLayout } = useToastAnchor();
   const styles = useThemedStyles(makeStyles);
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
@@ -128,6 +131,8 @@ export default function NotesTab() {
 
       <Pressable
         onPress={() => pushOnce(`/trips/note?tripId=${tripId}`)}
+        ref={attachFab}
+        onLayout={onFabLayout}
         style={styles.fab}
         accessibilityLabel={t("addAria")}
       >

@@ -28,6 +28,7 @@ import {
   type EventRow,
 } from "@triplot/shared/tripDerive";
 
+import { useToastAnchor } from "@/components/toast";
 import { CheckIcon, PlusIcon } from "@/components/icons";
 import { FirstRunTip } from "@/components/first-run-tip";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
@@ -58,6 +59,8 @@ export default function ScheduleTab() {
   const locale = useLocale();
   const t = useTranslations();
   const theme = useTheme();
+  // 浮いている＋ボタン。トーストはこの上に出る（useToastAnchor）。
+  const { attach: attachFab, onLayout: onFabLayout } = useToastAnchor();
   const styles = useThemedStyles(makeStyles);
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const invalidateTrip = useInvalidateTrip(tripId);
@@ -269,7 +272,9 @@ export default function ScheduleTab() {
           {/* 追加 FAB */}
           <Pressable
             onPress={() => pushOnce(`/trips/${tripId}/event-form`)}
-            style={styles.fab}
+            ref={attachFab}
+        onLayout={onFabLayout}
+        style={styles.fab}
             accessibilityLabel={t("event.addAria")}
           >
             <PlusIcon size={24} color={theme.primaryForeground} />

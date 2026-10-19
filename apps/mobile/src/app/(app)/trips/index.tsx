@@ -20,6 +20,7 @@ import {
 } from "@triplot/shared/import/tripProposal";
 import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
 
+import { useToastAnchor } from "@/components/toast";
 import { HeaderAccountButtons } from "@/components/header-account-buttons";
 import { PlusIcon } from "@/components/icons";
 import { formatTripDateRange } from "@triplot/shared/ymd";
@@ -38,6 +39,8 @@ export default function TripsScreen() {
   const t = useTranslations("trips");
   const tCommon = useTranslations("common");
   const theme = useTheme();
+  // 浮いている＋ボタン。トーストはこの上に出る（useToastAnchor）。
+  const { attach: attachFab, onLayout: onFabLayout } = useToastAnchor();
   const styles = useThemedStyles(makeStyles);
   const locale = useLocale();
   const { session } = useSession();
@@ -219,6 +222,8 @@ export default function TripsScreen() {
 
       {/* 追加 FAB（予定/費用タブと同じ位置・同じ見た目） */}
       <Pressable
+        ref={attachFab}
+        onLayout={onFabLayout}
         style={styles.fab}
         accessibilityLabel={t("create")}
         onPress={() => pushOnce("/trips/new")}

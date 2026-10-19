@@ -176,8 +176,7 @@ export function ExpenseForm({
     if (isEdit) return { kind: "saved", placeId: editExpense.place_id };
     // 下書き: 保存済みマッチ／事前解決済みの Google の場所（resolveNamedPlace
     // 参照）はそれを、無ければ抽出した店名を自由入力テキストとして事前入力
-    // （RN は Google 自動解決を持たないので web の低確信時と同じ自由入力
-    // フォールバック）。
+    // （開いた後に下の useAutoResolvePlace が Google の場所へ丸める）。
     if (draft?.initialPlace?.kind === "saved") {
       return { kind: "saved", placeId: draft.initialPlace.id };
     }

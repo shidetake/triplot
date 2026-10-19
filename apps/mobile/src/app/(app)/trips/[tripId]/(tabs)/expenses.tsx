@@ -36,6 +36,7 @@ import {
   ExpenseDonut,
   ExpenseDonutLegend,
 } from "@/components/expense-donut";
+import { useToastAnchor } from "@/components/toast";
 import { ExpenseCategoryIcon } from "@/components/expense-category-icon";
 import { MemberAvatar, type MemberLite } from "@/components/member-avatar";
 import { PlusIcon } from "@/components/icons";
@@ -71,6 +72,8 @@ export default function ExpensesTab() {
   const tExp = useTranslations("expense");
   const tImport = useTranslations("import");
   const theme = useTheme();
+  // 浮いている＋ボタン。トーストはこの上に出る（useToastAnchor）。
+  const { attach: attachFab, onLayout: onFabLayout } = useToastAnchor();
   const styles = useThemedStyles(makeStyles);
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const { refreshing, onRefresh } = usePullRefresh(refetch);
@@ -488,6 +491,8 @@ export default function ExpensesTab() {
       {/* 追加 FAB */}
       <Pressable
         onPress={() => pushOnce(`/trips/${tripId}/expense-form`)}
+        ref={attachFab}
+        onLayout={onFabLayout}
         style={styles.fab}
         accessibilityLabel={tExp("addAria")}
       >

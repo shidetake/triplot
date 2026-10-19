@@ -125,7 +125,7 @@ import { PrivateBadge } from "@/components/private-badge";
 import { SwipeDeleteRow } from "@/components/swipe-delete-row";
 import { SheetScroll } from "@/components/sheet-scroll";
 import { SheetTitle } from "@/components/sheet-title";
-import { Toaster, toast } from "@/components/toast";
+import { Toaster, toast, useToastAnchor } from "@/components/toast";
 import { BUNDLE_ID, PLACES_API_KEY } from "@/lib/googlePlaces";
 import { hapticStep } from "@/lib/haptics";
 import { supabase } from "@/lib/supabase";
@@ -405,6 +405,9 @@ export default function PlacesTab() {
   const tCommon = useTranslations("common");
   const theme = useTheme();
   const styles = useThemedStyles(makeStyles);
+  // 地図に浮いている「一覧を開く」ボタン。トーストはこの上に出る（useToastAnchor）。
+  const { attach: attachListButton, onLayout: onListButtonLayout } =
+    useToastAnchor();
   const { data, me, loadError, refetch, isRefetching } = useTripDetail(tripId);
   const invalidate = useInvalidateTrip(tripId);
   const runUndoable = useUndoable(invalidate);
@@ -2151,6 +2154,8 @@ export default function PlacesTab() {
                 光り方をする）＝自前 backgroundColor で透明感を偽装しない。 */}
             {!locating && (
               <Pressable
+                ref={attachListButton}
+                onLayout={onListButtonLayout}
                 onPress={() => setListOpen(true)}
                 style={styles.listButtonWrap}
                 accessibilityLabel={t("openList")}
