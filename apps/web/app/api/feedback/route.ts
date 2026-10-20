@@ -9,7 +9,7 @@ import { notifyFeedback } from "@/lib/feedback/notify";
 import { createClient } from "@/lib/supabase/server";
 import { getVersion } from "@/lib/version";
 
-// ユーザーフィードバック（不具合報告・要望）の書き込み経路。web も将来の RN も
+// ユーザーフィードバック（不具合報告・要望）の書き込み経路。web も iOS も
 // この route を叩く（architecture.md「変更系は RN からも使えるよう API エンドポイントに
 // 出す」）。insert は本人のクライアントで行い RLS（insert-own）を効かせる。
 
