@@ -1,0 +1,21 @@
+// デプロイ: npm run workers:deploy -- retry-heartbeat
+// 秘密の値（CRON_SECRET / STAGING_VERCEL_BYPASS）は Cloudflare 側にだけ置く。
+// 入れ替える時は: npx wrangler secret put <名前> --config workers/retry-heartbeat/wrangler.jsonc
+{
+  "name": "triplot-retry-heartbeat",
+  "main": "index.js",
+  // cron でだけ動き HTTP には答えないので、公開の URL は持たない。
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-06-08",
+  // 平文の変数。ここに無いものはデプロイの時に消える（ダッシュボードで足さない）。
+  "vars": {
+    "RETRY_ENDPOINT_URL": "https://triplot.app/api/cron/retry-extract",
+    "STAGING_RETRY_ENDPOINT_URL": "https://triplot-git-staging-hdtks-projects.vercel.app/api/cron/retry-extract"
+  },
+  "triggers": { "crons": ["* * * * *"] },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "invocation_logs": true }
+  }
+}

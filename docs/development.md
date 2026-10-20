@@ -271,6 +271,25 @@ npm run db:push:staging   # scripts/db-push-staging.sh
 `database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
 本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。
 
+## Cloudflare の Worker を出す
+
+メールの受け口（`workers/inbound-email`）と、取り込みの再試行を毎分呼ぶ心拍
+（`workers/retry-heartbeat`）は Cloudflare で動く。どちらも1本で本番と staging の
+両方を受け持つので、**出した瞬間に本番に効く**。main への push では出ない。
+
+```bash
+npm run workers:deploy -- inbound-email --dry-run   # 送らずに、何が出るかだけ見る
+npm run workers:deploy -- inbound-email
+```
+
+- 初回だけ `npx wrangler login`（ブラウザで Cloudflare に許可する）。
+- 名前・平文の変数・cron は各 Worker の `wrangler.jsonc` が原本。**ダッシュボードで
+  平文の変数を足さない** —— ファイルに無いものは次に出した時に消える。
+- 秘密の値は Cloudflare 側にだけ置き、出しても消えない。入れ替えは
+  `npx wrangler secret put <名前> --config workers/<名前>/wrangler.jsonc`。
+- どのアドレスを受け口に向けるか（Email Routing の規則）はゾーンの設定で、
+  ダッシュボードの triplot.app → Email Routing にある。
+
 ## iOS の実機確認: シミュレータ → preview ビルド → TestFlight
 
 環境（本番/確認用で DB が分かれていること・bundle id・全体像）は

@@ -6,16 +6,15 @@
 //
 // 本番と staging の両方を叩く（staging の取り込みも本番と同じ流れで確かめるため）。
 //
-// 必要な環境変数（Cloudflare の Worker 設定 → Variables and Secrets で登録）:
+// 必要な環境変数（URL は wrangler.jsonc、秘密の値は Cloudflare 側にだけ置く）:
 //   RETRY_ENDPOINT_URL          例: https://triplot.app/api/cron/retry-extract
 //   CRON_SECRET                 Vercel の同名 env と同じ値（Production と Preview で共通。Bearer 認証）
 //   STAGING_RETRY_ENDPOINT_URL  例: https://triplot-git-staging-hdtks-projects.vercel.app/api/cron/retry-extract
 //   STAGING_VERCEL_BYPASS       Vercel の Protection Bypass for Automation の値
 // staging の URL が無ければ staging は叩かない。
 //
-// Cron Trigger: "* * * * *"（毎分）。
-// デプロイ: 現状は Cloudflare ダッシュボードにこの内容を貼って作成し、Triggers で
-// cron を設定、Variables に上記を登録する（このファイルが原本）。
+// Cron Trigger: "* * * * *"（毎分。wrangler.jsonc の triggers）。
+// デプロイ: npm run workers:deploy -- retry-heartbeat
 
 // 断られた時（401・Vercel の保護による 403 等）も記録する。通信の失敗だけを
 // 拾っていると、叩けていないことに気付けない。

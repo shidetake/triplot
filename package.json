@@ -22,6 +22,7 @@
     "db:push:staging": "bash scripts/db-push-staging.sh",
     "check:staging-migrations": "node scripts/check-staging-migrations.mjs",
     "check:no-secrets": "node scripts/check-no-secrets.mjs",
+    "workers:deploy": "node scripts/workers-deploy.mjs",
     "gmail:forward": "node scripts/forward-gmail.mjs",
     "licenses:generate": "node scripts/gen-licenses.mjs",
     "web:version:generate": "node scripts/gen-web-version.mjs",

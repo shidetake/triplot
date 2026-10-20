@@ -1,0 +1,22 @@
+// デプロイ: npm run workers:deploy -- inbound-email
+// 秘密の値（INBOUND_EMAIL_SECRET / STAGING_VERCEL_BYPASS）は Cloudflare 側にだけ置く。
+// 入れ替える時は: npx wrangler secret put <名前> --config workers/inbound-email/wrangler.jsonc
+// どのアドレスをこの Worker に向けるか（Email Routing の規則）はゾーンの設定で、
+// ここには無い（Cloudflare のダッシュボード → triplot.app → Email Routing）。
+{
+  "name": "triplot-inbound-email",
+  "main": "index.js",
+  // メールでだけ動き HTTP には答えないので、公開の URL は持たない。
+  "workers_dev": false,
+  "preview_urls": false,
+  "compatibility_date": "2026-06-02",
+  // 平文の変数。ここに無いものはデプロイの時に消える（ダッシュボードで足さない）。
+  "vars": {
+    "INBOUND_ENDPOINT_URL": "https://triplot.app/api/inbound-email",
+    "STAGING_INBOUND_ENDPOINT_URL": "https://triplot-git-staging-hdtks-projects.vercel.app/api/inbound-email"
+  },
+  "observability": {
+    "enabled": true,
+    "logs": { "enabled": true, "invocation_logs": true }
+  }
+}

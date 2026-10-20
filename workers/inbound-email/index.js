@@ -8,7 +8,7 @@
 // は staging（Vercel Preview の staging ブランチ）へ、それ以外は本番へ。接頭辞は
 // packages/shared/src/importAddress.ts の STAGING_IMPORT_LOCALPART と揃える。
 //
-// 必要な環境変数（Cloudflare の Worker 設定 → Variables and Secrets で登録）:
+// 必要な環境変数（URL は wrangler.jsonc、秘密の値は Cloudflare 側にだけ置く）:
 //   INBOUND_ENDPOINT_URL          例: https://triplot.app/api/inbound-email
 //   INBOUND_EMAIL_SECRET          Vercel の同名 env と同じ値（Production と Preview で共通）
 //   STAGING_INBOUND_ENDPOINT_URL  例: https://triplot-git-staging-hdtks-projects.vercel.app/api/inbound-email
@@ -16,8 +16,7 @@
 //                                 （Preview は Vercel Authentication で守られているため）
 // staging の URL が無ければ、staging 宛のメールは捨てる（本番には流さない）。
 //
-// デプロイ: 現状は Cloudflare ダッシュボードにこの内容を貼って作成している。
-// （リポジトリのこのファイルが原本。将来 wrangler 管理に移す）
+// デプロイ: npm run workers:deploy -- inbound-email
 
 const STAGING_PREFIX = "receipts-staging+";
 
