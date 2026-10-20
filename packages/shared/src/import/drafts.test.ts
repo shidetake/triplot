@@ -304,8 +304,8 @@ describe("deriveExpenseDraftItems", () => {
       expect(item.tzDisambig).toEqual({ transitId: "t1", side: "arrive" });
     });
 
-    // 同じレシートから出た仮予定も、直した日時から引き直される（終日→時間付き）。
-    it("レシート由来の仮予定も終日から時間付きになる", () => {
+    // 同じレシートから出た推定の予定も、直した日時から引き直される（終日→時間付き）。
+    it("推定の予定も終日から時間付きになる", () => {
       const drafts = [
         wholefds,
         {
@@ -434,7 +434,7 @@ describe("deriveExpenseDraftItems", () => {
       expect(item.initialTime).toBeUndefined();
     });
 
-    // ここが循環の入口。レシートから作った仮予定は「支払いの瞬間」を伸ばした
+    // ここが循環の入口。推定の予定は「支払いの瞬間」を伸ばした
     // だけの写しなので、そこから費用の時刻を借りると、搭乗日と購入時刻を
     // 組み合わせた実在しない日時が経路を変えて復活する。
     it("使う日が買った日と同じなら、購入時刻をそのまま使う（借りない）", () => {
@@ -456,7 +456,7 @@ describe("deriveExpenseDraftItems", () => {
       expect(item.initialTime).toBe("20:15");
     });
 
-    it("レシートから作った仮予定からは借りない（自分が導いた値を読み返さない）", () => {
+    it("推定の予定からは借りない（自分が導いた値を読み返さない）", () => {
       const [item] = deriveExpenseDraftItems(
         ride({ kind: "timed", timeFromReceipt: true }),
         expenseCtx,

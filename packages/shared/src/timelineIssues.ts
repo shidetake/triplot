@@ -220,7 +220,7 @@ export function detectTimelineIssues(
   );
   const tl = buildTripTzTimeline(events, defaultTimezone);
   for (const e of events) {
-    // 移動は判定1で見る。下書きは自分だけの仮の予定なので対象外。
+    // 移動は判定1で見る。下書きは自分だけの未確定の予定なので対象外。
     if (e.kind === "transit" || e.isDraft) continue;
     const participants = e.participantsEveryone
       ? memberIds

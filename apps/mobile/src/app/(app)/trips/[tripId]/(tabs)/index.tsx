@@ -93,8 +93,8 @@ export default function ScheduleTab() {
     ? deriveScheduleEvents(data.eventsRaw, data.todosRaw)
     : [];
   // 未確定の移動も含めた年表で導出する（deriveEventDraftItemsWithTimeline の
-  // コメント参照）。確定した予定だけの年表だと、TZ の境界がまだ仮予定の
-  // フライトの時にカレンダーの列と食い違い、ハワイの仮予定が東京の列に並ぶ。
+  // コメント参照）。確定した予定だけの年表だと、TZ の境界がまだ未確定の
+  // フライトの時にカレンダーの列と食い違い、ハワイの未確定の予定が東京の列に並ぶ。
   const { items: eventDrafts } = deriveEventDraftItemsWithTimeline(
     tripDrafts ?? null,
     events,

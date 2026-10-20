@@ -77,7 +77,7 @@ export async function extractEmail(
     .map(normalizeEventDraft);
   return {
     receipt,
-    // receipt由来の仮予定の時刻は LLM に作らせず、確定した receipt の日時から
+    // 推定の予定の時刻は LLM に作らせず、確定した receipt の日時から
     // 機械的に埋める（merge.ts の findMerge と同じ後処理。prompt.ts 参照）。
     events: applyReceiptEventTiming(receipt, events),
     tripId,

@@ -178,7 +178,7 @@ export type ExpenseDraftItem = {
 // 予定下書きの事前入力（開始日時・TZ 以外）。web の EventFormPrefill と同形。
 export type EventDraftPrefill = {
   kind3: "timed" | "allday" | "transit";
-  // 移動日にどちらの TZ を選んだか。本物の予定が持つ tzDisambigTransitId/side と
+  // 移動日にどちらの TZ を選んだか。確定した予定が持つ tzDisambigTransitId/side と
   // 同じ意味で、**これがこの下書きの TZ の決定そのもの**。フォームの初期選択も
   // カレンダーの列もここから決まる（片方だけ別経路で通すと、選択は「日本」なのに
   // 列は「ハワイ」のような食い違いが起きる）。移動日でなければ null。
@@ -224,7 +224,7 @@ export type EventDraftItem = {
   tz: string; // 旅程から解決した通常予定のTZ（prefill.tzDisambig から導かれる）
   // **この予定の中で、推測でない唯一の時刻**（0時からの通算分。無ければ null）。
   //
-  // レシートから作った仮予定は、会計時刻を起点に「夕食なら2時間」のような
+  // 推定の予定は、会計時刻を起点に「夕食なら2時間」のような
   // 見積もりで前後に伸ばしてある。つまり開始と終了の一方は事実、もう一方は
   // 推測で、どちらが事実かは業態で入れ替わる（会計が最後なら終了、先払いの
   // カフェなら開始）。重なりを解く時の前後はこれで決める
@@ -320,10 +320,10 @@ function localizedReceipt(
 //
 //   費用の時刻 = 使う瞬間があればそれ、無ければ支払いの瞬間
 //                （旅程に沿って読める方を採る。receiptDate 参照）
-//   仮予定の時間帯 = 支払いの瞬間から機械的に伸ばす（receiptTiming.ts）
+//   推定の予定の時間帯 = 支払いの瞬間から機械的に伸ばす（receiptTiming.ts）
 //
 // **どちらも「事実」から一方向に導く。導いた値を読み返さない。** レシートから
-// 作った仮予定（timeFromReceipt）は支払いの瞬間の写しなので、そこから費用の時刻を
+// 推定した予定（timeFromReceipt）は支払いの瞬間の写しなので、そこから費用の時刻を
 // 借りると、支払いの瞬間を使う瞬間として扱うことになる——搭乗日と購入時刻を
 // 組み合わせた実在しない日時が、経路を変えて復活する。だから借りる相手は
 // **予約から作った予定に限る**。
@@ -364,8 +364,8 @@ function wallMin(r: StoredReceipt | undefined): number | null {
   );
 }
 
-// レシート由来の仮予定（timeFromReceipt）の時間帯を、そのレシートの日時から
-// 引き直す。レシートが無い予定（本物の予約・旅程）には触らない。
+// 推定の予定（timeFromReceipt）の時間帯を、そのレシートの日時から
+// 引き直す。レシートが無い予定（メールに日時が書かれた予約・旅程）には触らない。
 function retimedFromReceipt(
   ev: StoredEventDraft,
   r: StoredReceipt | undefined,
@@ -408,7 +408,7 @@ export function deriveExpenseDraftItems(
           d.payload as unknown as StoredReceipt | null,
           ctx.tzTimeline,
         );
-        // **仮予定と同じ関数で決める。** 時刻が無いレシート（使う日を採って
+        // **推定の予定と同じ関数で決める。** 時刻が無いレシート（使う日を採って
         // 購入時刻を捨てた／通知が時刻を持たない）は、同じメールの予約の予定が
         // 持つ開始時刻をここで借りる。
         const m = receiptMoment(r, siblings.get(d.email_id) ?? []);
@@ -552,7 +552,7 @@ export function deriveEventDraftItems(
     receiptTzTimeline?: TripTzTimeline;
   },
 ): EventDraftItem[] {
-  // 同じメールから出たレシート（現地化済み）。レシート由来の仮予定は、この
+  // 同じメールから出たレシート（現地化済み）。推定の予定は、この
   // 日時から時間帯を引き直す。
   const receiptByEmail = new Map<string, StoredReceipt>();
   // 現地化がどのタイムゾーンで読んだか（移動日の候補選びに使う）。
@@ -576,7 +576,7 @@ export function deriveEventDraftItems(
     .flatMap((d) => {
       const stored = d.payload as unknown as StoredEventDraft | null;
       if (!stored) return [];
-      // **レシート由来の仮予定の時間帯は、保存値を読まずに引き直す。**
+      // **推定の予定の時間帯は、保存値を読まずに引き直す。**
       // 元になるレシートの日時が読み出し時に変わりうる（上の localizedReceipt）
       // ので、焼き込まれた値のままだと日付だけ直って時間帯が取り残される。
       // 引き直しは決定的（見出しと日時だけで決まる）なので、レシートが変わって
@@ -678,7 +678,7 @@ export function deriveEventDraftItems(
 
       // 場所欄: 出発地（transit は departLocation、それ以外は location）を
       // 手がかりにする。title は表示用の見出しでしかなく、レシート由来の
-      // 仮予定では「夕食」等の汎用語になるため検索語には使えない
+      // 推定の予定では「夕食」等の汎用語になるため検索語には使えない
       // （apps/web/lib/import/process.ts の resolveNamedPlace も同じ理由で
       // location だけを検索語にする）。location が無い時だけ title で代用する
       // （何も無いよりは手がかりになる、というクライアント側の最終フォールバック）。
@@ -883,14 +883,14 @@ export function draftEventTimes(d: EventDraftItem): {
 // 未確定の移動も含めた TZ の年表を作り、その年表で下書きを導出する。
 //
 // **年表が2つあると、同じ下書きが別の TZ を指す。** 確定した予定だけで年表を
-// 組むと、TZ の境界がまだ仮予定のフライトの時に:
+// 組むと、TZ の境界がまだ未確定のフライトの時に:
 //   - 下書き側は「境界を知らない年表」で TZ を決める
-//   - カレンダーの列は buildSchedule が「仮予定込みの一覧」で組み直す
+//   - カレンダーの列は buildSchedule が「未確定の予定込みの一覧」で組み直す
 // ことになり、下書きが持つ移動日の選択（tzDisambigTransitId）は列側の年表に
-// 存在しない移動を指す。一致しないので先頭候補＝出発側に落ち、**ハワイの仮予定が
+// 存在しない移動を指す。一致しないので先頭候補＝出発側に落ち、**ハワイの未確定の予定が
 // 東京の列に並ぶ**（実機で確認）。
 //
-// 年表を1つにすれば食い違わない。2回導出するのは、仮予定の移動そのものを年表に
+// 年表を1つにすれば食い違わない。2回導出するのは、未確定の移動そのものを年表に
 // 入れるため（移動の下書きの TZ は payload が持っていて年表に依存しないので、
 // 1回目の結果は2回目と変わらない＝収束する）。
 //
@@ -944,7 +944,7 @@ function coordsOfPrefill(p: EventDraftPlacePrefill): PlaceCoords | null {
 // ように座標が分かっている端点では、上書きは置かずに座標から導出する規約に
 // なっている（event-form の applyFlight と同じ。上書きを埋めると後から場所を
 // 直しても古い TZ が残るため）。そのまま実効値として読むと**フライトの TZ 境界が
-// 消える** — 実データで、成田→ホノルルの仮予定が両側とも同じ TZ になり、
+// 消える** — 実データで、成田→ホノルルの未確定の予定が両側とも同じ TZ になり、
 // カレンダーの列が東京のままだった。保存時と同じ導出をここでも通す。
 function draftTransitTimezones(d: EventDraftItem): {
   startTz: string;

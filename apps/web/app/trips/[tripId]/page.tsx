@@ -328,7 +328,7 @@ export default async function TripDetailPage({
   });
 
   // 未確定の移動も含めた年表で導出する。確定した予定だけの年表で導出すると、
-  // TZ の境界がまだ仮予定のフライトの時にカレンダーの列と食い違う
+  // TZ の境界がまだ未確定のフライトの時にカレンダーの列と食い違う
   // （deriveEventDraftItemsWithTimeline のコメント参照）。
   const { items: eventDrafts } = deriveEventDraftItemsWithTimeline(
     tripDrafts,

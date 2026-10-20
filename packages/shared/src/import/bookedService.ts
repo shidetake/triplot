@@ -21,7 +21,7 @@ const BOOKED_SERVICES: ReadonlySet<EventDraft["service"]> = new Set([
 ]);
 
 export function isBookedService(ev: StoredEventDraft): boolean {
-  // レシートから作った仮予定（食事・買い物のカード明細等）は、その場で払った
+  // 推定の予定（食事・買い物のカード明細等）は、その場で払った
   // 記録で予約ではない。飲食でも「レストラン予約」とは分ける。
   if (ev.timeFromReceipt) return false;
   // **service を持たない下書き**（この項目を足す前に取り込んだもの）は、

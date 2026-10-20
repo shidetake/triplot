@@ -187,7 +187,7 @@ export type Receipt = z.infer<typeof receiptSchema>;
 //   allday  = 終日・複数日（宿泊のチェックイン〜チェックアウト等）。TZ 無関係
 //   timed   = 1日の中の出来事として捉える予定（レストラン予約・アクティビティ等）
 // **種別は「どの単位で捉える予定か」で決まり、時刻が埋まっているかでは決まらない。**
-// レシート由来の仮予定は時刻をアプリ側が後から計算する（receiptTiming）ので、
+// 推定の予定は時刻をアプリ側が後から計算する（receiptTiming）ので、
 // 抽出の時点では時刻が空のまま timed になる。
 // 時刻は現地の壁時計をそのまま持つ（events の floating time モデルと一致）。
 // timed/allday の TZ は旅程から自動導出されるので持たない（transit のみ）。
@@ -195,8 +195,8 @@ export const eventDraftSchema = z.object({
   kind: z.enum(["timed", "allday", "transit"]).describe(
     // 足すのは否定形1つだけ。allday の側に条件を足すと、範囲の書かれていない
     // 宿泊（「5月1日 1泊」等）を誤って弾く。**時刻の有無でも決まらない** ——
-    // ホテルの確認メールには「チェックイン 15:00」と書いてあるし、逆にレシート
-    // 由来の仮予定は timed なのに時刻が空で来る（時刻はアプリ側が計算する）。
+    // ホテルの確認メールには「チェックイン 15:00」と書いてあるし、逆にレシートから
+    // 推定した予定は timed なのに時刻が空で来る（時刻はアプリ側が計算する）。
     "予定の種別。どの単位で捉える予定かで決める（時刻が埋まっているかでは決めない）。" +
       "transit=タイムゾーンを跨ぐ移動（フライト等）、" +
       "allday=日付の単位で捉える予定（宿泊のチェックイン〜チェックアウト等）、" +
@@ -352,9 +352,9 @@ export const eventDraftSchema = z.object({
     .boolean()
     .describe(
       "true = 時間帯をレシートの支払い時刻から作る予定（飲食・土産・衣服・" +
-        "エンタメ・カジノ・その他の receipt に対応する仮予定）。この場合" +
+        "エンタメ・カジノ・その他の receipt に対応する推定の予定）。この場合" +
         " startTime/endTime は null のままでよい（アプリ側で計算する）。" +
-        "false = メールに開始時刻が書かれている本物の予約・旅程（フライト・" +
+        "false = メールに開始時刻が書かれている予約・旅程（フライト・" +
         "宿泊・レストラン予約等）",
     ),
 });
@@ -447,7 +447,7 @@ export function canonicalTimeZone(tz: string): string | null {
 //  - 時刻/TZ は形式・実在を検証し、不正は null に落とす（フォームで人が直す）
 //  - kind の整合を補正: transit は到着（日時）が揃わなければ timed/allday に降格、
 //    timed は開始時刻が無ければ allday に降格。allday は時刻を持たない。
-//    **ただしレシート由来の仮予定（timeFromReceipt）は時刻がまだ入らないだけなので
+//    **ただし推定の予定（timeFromReceipt）は時刻がまだ入らないだけなので
 //    つねに timed に寄せる**（降格の対象外）
 //  - transit 以外は TZ・便名・ターミナル・出発/到着地を持たない（events の参照化モデルと一致）
 //    ／ transit は逆に汎用 location を持たない（departLocation/arriveLocation を使う）
@@ -466,13 +466,13 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
   if (kind === "transit" && (!startTime || !endTime || !endDate)) {
     kind = startTime ? "timed" : "allday";
   }
-  // **レシート由来の仮予定は定義上つねに timed。** 時刻はこの後アプリ側が
+  // **推定の予定は定義上つねに timed。** 時刻はこの後アプリ側が
   // レシートの日時と title の所要時間目安から機械的に入れる（receiptTiming）ので、
   // ここで時刻が空なのは正常な途中状態であって「終日」ではない。判断ではなく
   // 事実なので LLM の答えを採らず、ここで決める（実データ: 43件中3件が allday
   // で来ていた）。
   //
-  // transit はこの規則の外。移動は常に本物の移動で、レシート由来ではありえない
+  // transit はこの規則の外。移動は常にメールに日時が書かれた移動で、レシート由来ではありえない
   // （下で timeFromReceipt を false に戻す）。誤って立った印の側に合わせて種別を
   // 降ろすと、移動が移動でなくなる。
   if (kind !== "transit" && d.timeFromReceipt) {
@@ -505,7 +505,7 @@ export function sanitizeEventDraft(d: EventDraft): EventDraft | null {
       arriveLocation: d.arriveLocation,
       location: null,
       address: null,
-      // transit は常に本物の移動（フライト・配車等）で、レシート由来の仮予定
+      // transit は常にメールに日時が書かれた移動（フライト・配車等）で、推定の予定
       // には該当しない。LLM が誤って true にしても機械的に false へ戻す。
       timeFromReceipt: false,
     };

@@ -4,7 +4,7 @@ import { isTzBoundary } from "../schedule";
 
 import { draftToScheduleEvent, type EventDraftItem } from "./drafts";
 
-// 仮予定を疑似イベントに変換するときの TZ の決め方。
+// 未確定の予定を疑似イベントに変換するときの TZ の決め方。
 //
 // カレンダーの列はここで決まった TZ から組まれるので、**保存した時と同じ答え**に
 // ならないと、確定する前後で予定の置かれる列が変わってしまう。
@@ -58,7 +58,7 @@ const google = (name: string, c: { lat: number; lng: number }) =>
     icon: null,
   }) as EventDraftItem["prefill"]["place"];
 
-describe("移動の仮予定の TZ", () => {
+describe("未確定の移動の予定の TZ", () => {
   // prefill の departTz/arriveTz は「上書き」で、座標が分かる端点では置かない
   // 規約（event-form の applyFlight と同じ）。そのまま実効値として読むと
   // フライトの TZ 境界が消える。

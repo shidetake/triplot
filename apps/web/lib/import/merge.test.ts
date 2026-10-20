@@ -387,9 +387,9 @@ describe("selectMergeCandidates: 宿泊の同一判定", () => {
     ).toEqual(["no-ref"]);
   });
 
-  // レシート由来の仮予定（timeFromReceipt）は「その日その店にいた」という別物なので、
+  // 推定の予定（timeFromReceipt）は「その日その店にいた」という別物なので、
   // 施設名と日付がたまたま揃っても宿泊の同一判定には使わない。
-  it("レシート由来の仮予定は宿泊の同一判定に使わない", () => {
+  it("推定の予定は宿泊の同一判定に使わない", () => {
     const timeFromReceipt = stay({ timeFromReceipt: true });
     expect(
       selectMergeCandidates(timeFromReceipt, [

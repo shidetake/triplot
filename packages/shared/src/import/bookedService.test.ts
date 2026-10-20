@@ -50,7 +50,7 @@ describe("isBookedService", () => {
     );
   });
 
-  it("レシートから作った仮予定は、飲食でも予約ではない", () => {
+  it("推定の予定は、飲食でも予約ではない", () => {
     expect(
       isBookedService(
         ev({ kind: "timed", service: "dining", timeFromReceipt: true }),

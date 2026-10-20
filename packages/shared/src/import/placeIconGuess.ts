@@ -1,4 +1,4 @@
-// レシート/仮予定から Google 解決した場所に、地図ピンの種別（lib/placeIcons.ts
+// レシート/未確定の予定から Google 解決した場所に、地図ピンの種別（lib/placeIcons.ts
 // の ICON_CATALOG key）をベストエフォートで割り当てる。取り込みは推測なので
 // 多少の誤りは許容する（確定前の場所ピッカーでユーザーが直せる）。
 
@@ -35,7 +35,7 @@ function textHints(text: string | null, keywords: string[]): boolean {
 export function guessImportPlaceIcon(input: {
   // 費用のカテゴリ（RECEIPT_CATEGORIES の値）。イベント側の呼び出しでは null。
   category: string | null;
-  // 仮予定の title。レシート由来なら朝食/昼食/夕食/カフェ/バー/買い物/観光の
+  // 未確定の予定の title。レシート由来なら朝食/昼食/夕食/カフェ/バー/買い物/観光の
   // いずれか（プロンプト参照）。費用側の呼び出しでは null。
   eventTitle: string | null;
   // 店名・住所などのキーワード手がかり（receipt.merchant や event.location）。

@@ -582,7 +582,7 @@ async function prefetchFlights(
       continue;
     }
     // 場所の検索は location で行う（title は表示用の見出しでしかない。
-    // レシート由来の仮予定は title が「夕食」等の汎用語になるため、なおさら
+    // 推定の予定は title が「夕食」等の汎用語になるため、なおさら
     // 検索語には使えない）。location が無ければ地図で探す手がかりが無いので
     // 試さない＝自由入力のまま（title で代用検索はしない。生半可な一致で
     // 誤った店に解決するより、素直に「解決できない」方が安全）。
@@ -705,7 +705,7 @@ function localizeReceiptDate(receipt: StoredReceipt | null, sentAt: string | nul
 
 // 下書きとして保存する直前の作り込み（合体した時としない時で同じ手順を踏む）。
 // 場所の解決 → 決済通知の日付の現地化 → 為替レート、の順。レシート由来の
-// 仮予定の時刻は**現地化のあとに**引き直す（時刻が付くと終日から時間付きに
+// 推定の予定の時刻は**現地化のあとに**引き直す（時刻が付くと終日から時間付きに
 // 変わるので、先に計算しておくと古い日付のまま残る）。
 async function enrichForDrafts(
   supabase: ServiceClient,

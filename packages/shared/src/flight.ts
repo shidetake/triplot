@@ -43,7 +43,7 @@ export function parseFlightNumber(input: string): ParsedFlightNumber | null {
  *
  * LLM は同じ便を "DL181" と書くこともあれば "DELTA 181" と書くこともある
  * （同じ便のほぼ同じメール2通で実際に割れた）。後者は parseFlightNumber が
- * 弾くので、便の照会も空港の解決も丸ごと落ちて、2つの仮予定の中身が食い違う。
+ * 弾くので、便の照会も空港の解決も丸ごと落ちて、2つの未確定の予定の中身が食い違う。
  * 航空会社名を IATA コードに直してから読み直す。
  *
  * **手入力には使わない。** 入力途中の "delta 1" のような文字列まで便名として

@@ -213,13 +213,13 @@ describe("終日の下書き", () => {
   });
 });
 
-// TZ の境界がまだ**仮予定**のフライトの時、下書きの TZ とカレンダーの列が
+// TZ の境界がまだ**未確定**のフライトの時、下書きの TZ とカレンダーの列が
 // 食い違っていた。原因は年表が2つあること:
 //   - 下書き側は「確定した予定だけ」の年表で TZ を決める
 //   - カレンダーの列は buildSchedule が「確定＋仮」の一覧で組み直す
 // 下書きが持つ移動日の選択は列側の年表に存在しない移動を指すので、一致せず
-// 先頭候補＝出発側に落ち、ハワイの仮予定が東京の列に並んだ（実機で確認）。
-describe("TZ の境界が仮予定のフライトのとき", () => {
+// 先頭候補＝出発側に落ち、ハワイの未確定の予定が東京の列に並んだ（実機で確認）。
+describe("TZ の境界が未確定のフライトのとき", () => {
   const flightDraft = {
     id: "df",
     email_id: "e-df",
@@ -258,8 +258,8 @@ describe("TZ の境界が仮予定のフライトのとき", () => {
     },
   };
 
-  it("同じ年表から導けば、仮予定の夕食も到着側（ハワイ）になる", () => {
-    // 確定した予定は1つも無い（フライトもまだ仮予定）。
+  it("同じ年表から導けば、未確定の夕食も到着側（ハワイ）になる", () => {
+    // 確定した予定は1つも無い（フライトもまだ未確定）。
     const { items, tzTimeline } = deriveEventDraftItemsWithTimeline(
       [flightDraft, dinnerDraft],
       [],
@@ -275,7 +275,7 @@ describe("TZ の境界が仮予定のフライトのとき", () => {
     const dinner = items.find((i) => i.prefill.title === "夕食")!;
     expect(dinner.tz).toBe("Pacific/Honolulu");
 
-    // カレンダーの列を組む年表にも仮予定のフライトが入っている
+    // カレンダーの列を組む年表にも未確定のフライトが入っている
     // （＝列側と同じ年表。ここが揃っていないと列だけ東京になる）。
     expect(tzTimeline.transits).toHaveLength(1);
     expect(tzTimeline.transits[0].arriveTz).toBe("Pacific/Honolulu");

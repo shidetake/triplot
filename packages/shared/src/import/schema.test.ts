@@ -142,17 +142,17 @@ describe("sanitizeEventDraft", () => {
     expect(sanitizeEventDraft(draft({ startTime: null }))?.kind).toBe("allday");
   });
 
-  // レシート由来の仮予定の時刻は、この後アプリ側がレシートの日時と title の
+  // 推定の予定の時刻は、この後アプリ側がレシートの日時と title の
   // 所要時間目安から入れる（receiptTiming）。抽出の時点で時刻が空なのは正常な
   // 途中状態で、終日ではない。判断ではなく事実なのでここで決める
   // （実データ: 43件中3件が allday で来ていた）。
-  it("レシート由来の仮予定は、時刻が無くても timed のまま", () => {
+  it("推定の予定は、時刻が無くても timed のまま", () => {
     expect(
       sanitizeEventDraft(draft({ timeFromReceipt: true, startTime: null }))?.kind,
     ).toBe("timed");
   });
 
-  it("レシート由来の仮予定が allday で来ても timed に直す", () => {
+  it("推定の予定が allday で来ても timed に直す", () => {
     const d = sanitizeEventDraft(
       draft({
         kind: "allday",

@@ -91,7 +91,7 @@ function stayKeys(x: Extraction): string[] {
 // "Your ... Stay at The Royal Hawa HNLLC" が本文まで同一の2通）。費用を伴わない
 // 予定だけのメールは、金額も店名も一致材料にならないので closeness がほぼ日付
 // しか見られず、LLM に渡す前の順位付けで埋もれて合体されなかった（実データ:
-// 同じ宿泊が3件の仮予定になった）。
+// 同じ宿泊が3件の未確定の予定になった）。
 //
 // **ただし識別番号が両方にあって食い違うなら別の予約**（同じホテルの同じ日程で
 // 2部屋取る等）。番号は事実なので、名前と日付の一致より優先して否定に使う。
@@ -481,7 +481,7 @@ export async function findMerge(
     targetId: object.matchId,
     merged: {
       receipt: normalizedReceipt,
-      // receipt由来の仮予定の時刻は、確定した receipt の日時から機械的に
+      // 推定の予定の時刻は、確定した receipt の日時から機械的に
       // 埋め直す（LLM には startTime/endTime を作らせない。プロンプト参照）。
       events: applyReceiptEventTiming(normalizedReceipt, normalizedEvents),
     },

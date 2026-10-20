@@ -6,7 +6,7 @@ import {
 } from "./receiptDate";
 import type { EventDraft, Receipt } from "./schema";
 
-// レシート由来の仮予定（飲食・土産・衣服・エンタメ・カジノの「既に済んだ消費」を
+// 推定の予定（飲食・土産・衣服・エンタメ・カジノの「既に済んだ消費」を
 // カレンダー上に置く予定）の開始/終了を、レシートの日時＋予定の見出しから
 // **機械的に**決める。
 //
@@ -40,7 +40,7 @@ const DURATION_MINUTES: Record<string, number> = {
 };
 const DEFAULT_DURATION_MINUTES = 60;
 
-// kind は "timed" 固定（allday にはならない）。レシート由来の仮予定は常に
+// kind は "timed" 固定（allday にはならない）。推定の予定は常に
 // timed という決定を型で縛る——「時刻が無ければ allday」という後退を、次に
 // 誰かがここを触った時にコンパイラが弾けるようにする。
 export type ReceiptEventTiming = {
@@ -53,8 +53,8 @@ export type ReceiptEventTiming = {
 
 // 受け取るのはレシートそのもの（正規化済み＝後処理の日付修正が済んでいる
 // 前提）。**日付と時刻は receiptDate で決める。** 前売券・航空券のように
-// 「買った日」と「使う日」が離れるレシートは、仮予定を置くべきなのは使う日で、
-// 買った日ではない（実データ: 4/18 に買った Diamond Head の入場券の仮予定が
+// 「買った日」と「使う日」が離れるレシートは、推定の予定を置くべきなのは使う日で、
+// 買った日ではない（実データ: 4/18 に買った Diamond Head の入場券の推定の予定が
 // 4/18 に置かれていた。費用の側は使う日＝5/2 に出ていたので、同じレシートの
 // 費用と予定が別の日に並んでいた）。
 //
@@ -67,11 +67,11 @@ export type ReceiptEventTiming = {
 // 時は、根拠の無い時間帯を作らない — startTime/endTime は null のまま日付だけ
 // 置く。
 //
-// **kind は timed のまま変えない。** レシート由来の仮予定は「1日の中の出来事
+// **kind は timed のまま変えない。** 推定の予定は「1日の中の出来事
 // として捉える予定」で定義され（schema.ts 参照）、それは時刻が分かるかとは
 // 別の話。以前はここで allday に落としていて、sanitizeEventDraft が
 // timeFromReceipt を見て一度 timed に決めた直後にこの関数が上書きし、時刻の無い
-// レシート（銀行の通知等）由来の仮予定が結局 allday で保存されていた
+// レシート（銀行の通知等）から推定した予定が結局 allday で保存されていた
 // （実データ: 108通中2通で再現）。
 export function deriveReceiptEventTiming(
   title: string,

@@ -159,5 +159,5 @@ for (const [service, rows] of byService) {
   console.log(`      ${titles.join(", ")}`);
 }
 if (eventDrafts.length > 0) {
-  console.log("  （* はレシートから作った仮予定。予約済みにはしない）");
+  console.log("  （* は推定の予定。予約済みにはしない）");
 }
