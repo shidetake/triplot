@@ -16,6 +16,7 @@ import { FormHostProvider } from "@/components/form-host";
 import { SheetScroll } from "@/components/sheet-scroll";
 import { supabase } from "@/lib/supabase";
 import { useSiblingConfirm } from "@/lib/useSiblingConfirm";
+import { useUndoable } from "@/lib/undoable";
 import {
   useInvalidateInbox,
   useInvalidateTrip,
@@ -45,9 +46,12 @@ export default function EventFormRoute() {
 
   // フックは早期 return より前で呼ぶ（ガードの後ろに置くと描画ごとに
   // フックの数が変わって落ちる）。
-  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+  const { confirmSiblings, dismissSiblings, restoreSiblings } = useSiblingConfirm(
     tripId,
     me?.id,
+  );
+  const runUndoable = useUndoable(() =>
+    Promise.all([invalidate(), invalidateInbox()]),
   );
 
   if (!data?.trip || !me) return null;
@@ -137,28 +141,16 @@ export default function EventFormRoute() {
   };
 
   // 取り込み下書きの破棄（費用タブの dismissDraft と同じ）。確定と同じく
-  // メール単位で、同じメールから出た費用・予定をまとめて破棄する。
+  // メール単位で、同じメールから出た費用・予定をまとめて破棄する。確認は挟まず
+  // 「元に戻す」で戻せるようにする（ui-guidelines「確認の要否は復旧コストで決める」）。
   const dismissDraft = (id: string) => {
-    Alert.alert(t("import.dismissDraftTitle"), t("import.dismissDraftBody"), [
-      { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("import.dismiss"),
-        style: "destructive",
-        onPress: () => {
-          void dismissSiblings(emailIdsOf(id)).then(
-            (r) => {
-              if (!r.ok) {
-                Alert.alert(t("import.dismissFailed", { error: r.error }));
-                return;
-              }
-              router.back();
-              void invalidate();
-              void invalidateInbox();
-            },
-          );
-        },
-      },
-    ]);
+    router.back();
+    runUndoable({
+      apply: () => dismissSiblings(emailIdsOf(id)),
+      restore: (draftIds) => restoreSiblings(draftIds),
+      done: t("import.draftDismissed"),
+      failed: (error) => t("import.dismissFailed", { error }),
+    });
   };
 
   // 入力途中を保持するキー（web の schedule-section と同じ体系）。取り込み

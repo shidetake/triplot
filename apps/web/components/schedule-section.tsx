@@ -34,7 +34,6 @@ import {
 } from "@triplot/shared/import/drafts";
 
 import { Button } from "@/components/ui/button";
-import { confirmDialog } from "@/components/confirm-dialog";
 import { toEventFormPrefill } from "@/lib/event-form-prefill";
 import { useSiblingConfirm } from "@/lib/import/sibling-confirm";
 import { createClient } from "@/lib/supabase/client";
@@ -370,7 +369,7 @@ export function ScheduleSection({
       eventDrafts.find((d) => d.id === draftId)?.emailIds ?? [],
     [eventDrafts],
   );
-  const { confirmSiblings, dismissSiblings } = useSiblingConfirm(
+  const { confirmSiblings, dismissSiblings, restoreSiblings } = useSiblingConfirm(
     tripId,
     myMemberId,
   );
@@ -418,21 +417,20 @@ export function ScheduleSection({
   // 取り込み下書きの破棄。狭い画面はカレンダー上の疑似ブロックからしか
   // このフォームに来られず、広い画面のバナーにある × を使えないので、
   // フォームの中にも破棄の口を用意する（無いと消せない）。
+  //
+  // 破棄も確定と同じくメール単位で、確認は挟まず「元に戻す」で戻せるようにする
+  // （ImportDraftRow と揃える。ui-guidelines「確認の要否は復旧コストで決める」）。
   const dismissDraft = useCallback(
-    async (draftId: string) => {
-      if (
-        !(await confirmDialog({
-          title: tImport("dismissDraftTitle"),
-          body: tImport("dismissDraftBody"),
-        }))
-      )
-        return;
-      // 破棄も確定と同じくメール単位（ImportDraftRow と揃える）。
-      await dismissSiblings(emailIdsOf(draftId));
+    (draftId: string) => {
       closeForm();
-      router.refresh();
+      runUndoable({
+        apply: () => dismissSiblings(emailIdsOf(draftId)),
+        restore: (draftIds) => restoreSiblings(draftIds),
+        done: tImport("draftDismissed"),
+        failed: (error) => tImport("dismissFailed", { error }),
+      });
     },
-    [router, closeForm, tImport, emailIdsOf, dismissSiblings],
+    [runUndoable, closeForm, tImport, emailIdsOf, dismissSiblings, restoreSiblings],
   );
   const selectedEventId =
     open?.form.mode === "edit"
