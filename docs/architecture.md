@@ -92,7 +92,7 @@ flowchart LR
 | **Cloudflare** | DNS（ネームサーバ）＋ メール受信（Email Routing → Email Worker）＋ リトライ心拍（Cron Worker・毎分） | レシート転送メールを受けて Vercel に push。毎分 retry エンドポイントを叩く |
 | **Vercel** | Next.js 16 アプリのホスティング＋ Cron | リージョン `hnd1`（東京）に固定。`main` への push で自動デプロイ |
 | **Supabase** | Postgres（+ RLS）＋ Auth | 東京 `ap-northeast-1`。Vercel と同一都市圏に co-locate（RTT 削減） |
-| **Vercel AI Gateway** | LLM アクセス（レシート抽出・マージ判定） | 既定モデル `google/gemini-2.5-flash`。将来は BYOK（ユーザのキー）も |
+| **Vercel AI Gateway** | LLM アクセス（レシート抽出・マージ判定） | 既定モデル `google/gemini-2.5-flash` |
 | **Resend** | トランザクションメール送信（フィードバック受付確認・管理者への新着通知） | `RESEND_API_KEY` 未設定なら送信をスキップ（ローカル/プレビューで機能自体は動く）。詳細は [`feedback.md`](./design/feedback.md) |
 | **Google Cloud**（プロジェクト `935163799144`） | Google ログインの OAuth クライアント＋ Maps ＋ **People API** | web・iOS のクライアントは同じプロジェクト。**People API の有効化が要る**（下記） |
 
