@@ -31,7 +31,7 @@ import {
 } from "@triplot/shared/import/drafts";
 import { receiptDate } from "@triplot/shared/import/receiptDate";
 import { fetchFxRates } from "@triplot/shared/fxRates";
-import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
+import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
 import { localizeSettlementTiming } from "@triplot/shared/import/settlementTiming";
 import { dominantCenter } from "@triplot/shared/placeMap";
 import { timezoneOfPlace } from "@triplot/shared/placeTimezone";
@@ -724,7 +724,7 @@ async function enrichForDrafts(
     receipt,
     events: await prefetchFlights(
       supabase,
-      applyReceiptEventTiming(receipt, x.events),
+      settleReceiptEvents(receipt, x.events),
       tripId,
       borrowed,
     ),

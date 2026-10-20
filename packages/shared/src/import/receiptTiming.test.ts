@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  applyReceiptEventTiming,
+  settleReceiptEvents,
   deriveReceiptEventTiming,
 } from "./receiptTiming";
 
@@ -96,7 +96,7 @@ describe("deriveReceiptEventTiming", () => {
 // もので、同じメールでも付いたり付かなかったりする。実データ: カードの利用通知から
 // 作られた「Snorkel Rentals at Hanauma Bay」が、ある回は決済時刻を開始に写した時間
 // 付きの予定、別の回は印の無い終日の予定になった（メールの中身は変わっていない）。
-describe("applyReceiptEventTiming の対象", () => {
+describe("settleReceiptEvents の対象", () => {
   const receipt = {
     date: "2026-04-29",
     time: "10:07",
@@ -115,7 +115,7 @@ describe("applyReceiptEventTiming の対象", () => {
     }) as never;
 
   it("自分の時刻を持たない予定は、印が無くてもレシートから作る", () => {
-    const [out] = applyReceiptEventTiming(receipt, [
+    const [out] = settleReceiptEvents(receipt, [
       ev({ kind: "allday", title: "Snorkel Rentals at Hanauma Bay" }),
     ]) as unknown as Record<string, unknown>[];
     expect(out.startTime).toBe("09:07");
@@ -126,7 +126,7 @@ describe("applyReceiptEventTiming の対象", () => {
   });
 
   it("自分の時刻を持つ予定には触らない（メールに書かれた事実）", () => {
-    const [out] = applyReceiptEventTiming(receipt, [
+    const [out] = settleReceiptEvents(receipt, [
       ev({ title: "Diamond Head State Monument", startTime: "13:00", endTime: "14:00" }),
     ]) as unknown as Record<string, unknown>[];
     expect(out.startTime).toBe("13:00");
@@ -134,15 +134,58 @@ describe("applyReceiptEventTiming の対象", () => {
   });
 
   it("複数日にまたがる終日（宿泊）は1時間の枠にしない", () => {
-    const [out] = applyReceiptEventTiming(receipt, [
+    const [out] = settleReceiptEvents(receipt, [
       ev({ kind: "allday", title: "宿泊", endDate: "2026-05-04" }),
     ]) as unknown as Record<string, unknown>[];
     expect(out.startTime).toBeNull();
     expect(out.kind).toBe("allday");
   });
 
+  // 実データ: Diamond Head の入場予約のメールは、支払いと 5/2 13:00 の入場を
+  // 1通に書いている。日時が書かれた予約の予定と、支払いから推定した予定が
+  // 同じ入場について2つ出ていた。
+  describe("同じ出来事の予定を1つにする", () => {
+    const dh = {
+      date: "2026-04-18",
+      time: "17:56",
+      serviceDate: "2026-05-02",
+      location: "Diamond Head State Monument",
+    } as never;
+    const booked = ev({
+      title: "Diamond Head State Monument",
+      location: "Diamond Head State Monument",
+      startDate: "2026-05-02",
+      startTime: "13:00",
+      endTime: "14:00",
+    });
+
+    it("同じ日・同じ場所なら、日時が書かれた予定だけ残す", () => {
+      const out = settleReceiptEvents(dh, [
+        booked,
+        ev({ title: "観光", location: "DIAMOND HEAD STATE MONU", startDate: "2026-04-18" }),
+      ]) as unknown as Record<string, unknown>[];
+      expect(out.map((e) => e.title)).toEqual(["Diamond Head State Monument"]);
+    });
+
+    it("場所が違えば別の出来事として両方残す", () => {
+      const out = settleReceiptEvents(dh, [
+        booked,
+        ev({ title: "昼食", location: "Kono's", startDate: "2026-04-18" }),
+      ]) as unknown as Record<string, unknown>[];
+      expect(out.map((e) => e.title)).toEqual(["Diamond Head State Monument", "昼食"]);
+    });
+
+    it("日が違えば別の出来事として両方残す", () => {
+      const out = settleReceiptEvents(dh, [
+        { ...(booked as object), startDate: "2026-05-03" } as never,
+        ev({ title: "観光", location: "Diamond Head State Monument", startDate: "2026-04-18" }),
+      ]) as unknown as Record<string, unknown>[];
+      expect(out).toHaveLength(2);
+    });
+  });
+
   it("移動は対象外（年表の境界なので種別を降ろさない）", () => {
-    const [out] = applyReceiptEventTiming(receipt, [
+    const [out] = settleReceiptEvents(receipt, [
       ev({ kind: "transit", title: "Uber" }),
     ]) as unknown as Record<string, unknown>[];
     expect(out.kind).toBe("transit");

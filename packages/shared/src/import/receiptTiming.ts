@@ -58,7 +58,7 @@ export type ReceiptEventTiming = {
 // 4/18 に置かれていた。費用の側は使う日＝5/2 に出ていたので、同じレシートの
 // 費用と予定が別の日に並んでいた）。
 //
-// **日付の決め方を引数で渡さない**のは、取り込み時（applyReceiptEventTiming）と
+// **日付の決め方を引数で渡さない**のは、取り込み時（settleReceiptEvents）と
 // 表示時（drafts.ts の retimedFromReceipt）の2箇所から呼ばれるため。
 // 別々に渡す形にすると、片方だけ直して食い違う（同じ形の不具合を kind で
 // 一度やっている）。
@@ -138,19 +138,55 @@ function takesTimeFromReceipt(e: EventDraft): boolean {
   return true;
 }
 
-// 対象の予定の時間帯を、確定した receipt の日時から機械的に埋め直す。
+// 1通（合体したものはその全体）から出た予定を、レシートと突き合わせて整える。
+//
+// **同じ出来事の予定は1つにし、日時は確かな手がかりで決める。** 予約と支払いを
+// 1通で兼ねるメール（実データ: Diamond Head の入場予約。$11.27 の支払いと
+// 5/2 13:00 の入場が同じメールに書いてある）では、日時が書かれた予約の予定と、
+// 支払いから推定した予定が同じ入場について2つ出ていた。
+//
+// ただし**同じメールだからといって同じ出来事とは限らない**（1通に別々の出来事が
+// 書かれることもある）。手がかりが揃った時だけ同じとみなす: 同じメールで、
+// 同じ日で、同じ場所（sameEvent）。その時は日時が書かれた方を残し、推定の予定を
+// 捨てる。揃わなければ両方残す（同じかどうかの判断は抽出の側に任せる）。
+//
+// 残った推定の予定は、その時間帯を確定した receipt の日時から機械的に埋め直す。
 // **埋めたものには印を立てる**——伸ばした時間帯の片端は見積もりなので、後段が
 // それを事実として読み返さないようにする（重なりの解き方・時刻の借り先）。
-export function applyReceiptEventTiming(
+export function settleReceiptEvents(
   receipt: Receipt | null,
   events: EventDraft[],
 ): EventDraft[] {
   if (!receipt) return events;
-  return events.map((e) => {
-    if (!takesTimeFromReceipt(e)) return e;
+  const written = events.filter((e) => !takesTimeFromReceipt(e));
+  return events.flatMap((e) => {
+    if (!takesTimeFromReceipt(e)) return [e];
     const timing = deriveReceiptEventTiming(e.title, receipt, events);
-    return { ...e, ...timing, timeFromReceipt: true };
+    const estimated = { ...e, ...timing, timeFromReceipt: true };
+    const place = e.location ?? receipt.location ?? null;
+    if (written.some((w) => sameEvent(w, timing.startDate, place))) return [];
+    return [estimated];
   });
+}
+
+// 日時が書かれた予定 w が、その日・その場所の推定の予定と同じ出来事か。
+function sameEvent(w: EventDraft, date: string, place: string | null): boolean {
+  const end = w.endDate ?? w.startDate;
+  if (!w.startDate || date < w.startDate || date > end) return false;
+  const names = [w.location, w.departLocation, w.arriveLocation];
+  return names.some((n) => samePlaceName(n ?? null, place));
+}
+
+// 場所の名前の一致。表記の揺れ（大文字小文字・記号・空白）を落とし、片方が
+// もう片方を含めば同じとみなす（"DIAMOND HEAD STATE MONU" と
+// "Diamond Head State Monument" のような途中で切れた表記を拾う）。短すぎる
+// 名前は偶然含まれるので比べない。
+function samePlaceName(a: string | null, b: string | null): boolean {
+  const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}]/gu, "");
+  if (!a || !b) return false;
+  const [x, y] = [norm(a), norm(b)];
+  if (x.length < 4 || y.length < 4) return false;
+  return x.includes(y) || y.includes(x);
 }
 
 export { takesTimeFromReceipt };

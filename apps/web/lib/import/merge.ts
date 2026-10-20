@@ -6,7 +6,7 @@ import { nameTokens } from "@triplot/shared/import/placeMatch";
 import { logUsage } from "./usageLog";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
-import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
+import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
 import { chooseAuthoritativeDate } from "@triplot/shared/import/receiptDate";
 import { mergedTotal } from "@triplot/shared/import/receiptTotal";
 import type { StoredReceipt } from "@triplot/shared/import/drafts";
@@ -483,7 +483,7 @@ export async function findMerge(
       receipt: normalizedReceipt,
       // 推定の予定の時刻は、確定した receipt の日時から機械的に
       // 埋め直す（LLM には startTime/endTime を作らせない。プロンプト参照）。
-      events: applyReceiptEventTiming(normalizedReceipt, normalizedEvents),
+      events: settleReceiptEvents(normalizedReceipt, normalizedEvents),
     },
   };
 }

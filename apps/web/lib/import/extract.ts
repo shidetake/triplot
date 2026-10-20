@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
 import { logUsage } from "./usageLog";
-import { applyReceiptEventTiming } from "@triplot/shared/import/receiptTiming";
+import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
 import { buildImportPrompt, IMPORT_SYSTEM_PROMPT, type TripHint } from "./prompt";
 import {
   type Extraction,
@@ -79,7 +79,7 @@ export async function extractEmail(
     receipt,
     // 推定の予定の時刻は LLM に作らせず、確定した receipt の日時から
     // 機械的に埋める（merge.ts の findMerge と同じ後処理。prompt.ts 参照）。
-    events: applyReceiptEventTiming(receipt, events),
+    events: settleReceiptEvents(receipt, events),
     tripId,
     detailUrl,
   };
