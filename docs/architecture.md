@@ -38,9 +38,7 @@ flowchart TD
 > **web まで含めた 1 UI ではない**。Discord も web/desktop＝React DOM（Electron）、mobile＝RN で、有名な
 > 「90% 共有」は iOS↔Android 間の話。triplot も同様に web は残す。
 
-**移行の段取り（未着手）**: ① モノレポ化して `packages/shared` にロジック抽出 → ② Expo アプリ雛形＋Supabase 接続
-→ ③ タブ（日程/地図/費用/TODO）を 1 つずつ移植。変更系は今 Next.js の server action 中心なので、RN からも
-使えるよう「Supabase client を受け取る共有関数」か API エンドポイントに出すのが要点。
+web と iOS は公開済み。Android は未着手。
 
 ## サービス構成
 

@@ -1,76 +1,64 @@
 # triplot
 
-旅行をみんなで計画して、費用を割り勘するためのアプリ。旅行ごとにメンバー・場所・予定・費用を持ち、
-費用は多通貨に対応した Splitwise 風の最小トランザクション割り勘で精算する。
+旅行をみんなで計画して、費用を割り勘するためのアプリ。旅行ごとにメンバー・場所・予定・費用・TODO・ノートを持ち、
+費用は多通貨に対応した Splitwise 風の最小トランザクション割り勘で精算する。レシートや予約のメールを転送すると、
+AI が費用・予定・場所の下書きにして取り込む。
 
-## 技術スタック
+web（`https://triplot.app`）と iOS アプリで公開している。
 
-- **Next.js 16**（App Router）+ React 19 + TypeScript + Tailwind CSS v4
-- **Supabase**（Auth + Postgres + RLS）— `@supabase/ssr` による cookie ベースのセッション管理
-- **shadcn/ui**（style `base-nova`＝Base UI 製）+ Lucide / Material Symbols アイコン
-- **Google Maps**（`@vis.gl/react-google-maps`）— 場所の検索・地図表示
-- **Vitest** — `lib/**/*.test.ts` の純粋関数ユニットテスト
+## 構成（モノレポ）
 
-## 必要なもの
+| パス | 役割 |
+|---|---|
+| `apps/web/` | web（Next.js 16 App Router + React 19 + Tailwind CSS v4 + shadcn/ui）。Vercel にデプロイ |
+| `apps/mobile/` | iOS アプリ（Expo / React Native） |
+| `packages/shared/` | web と iOS が共有する型・純ロジック・データアクセス層・文言（`messages/`） |
+| `supabase/` | DB スキーマ・RLS・RPC（`migrations/` が単一の真実）と Edge Function |
+| `workers/` | Cloudflare の Worker（メールの受け口・取り込みの再試行の心拍） |
+| `scripts/` | 型生成・各種チェック・iOS のビルドと提出・取り込みのテスト用の道具 |
+| `docs/` | アーキテクチャ・開発手順・DB・UI ガイドライン・機能ごとの設計 |
 
-- Node.js（`.nvmrc` / `package.json` の engines に準拠）
-- Supabase プロジェクト（ローカルは Supabase CLI でも可）
-- Google Maps API キー
-
-`.env.local` に最低限つぎの値を設定する（キー名は `lib/supabase/*` と地図コンポーネントを参照）:
-
-```bash
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=...
-NEXT_PUBLIC_GOOGLE_MAPS_MAP_ID=...        # 地図のスタイル ID
-NEXT_PUBLIC_GOOGLE_OAUTH_CLIENT_ID=...    # Google ログイン
-SUPABASE_ACCESS_TOKEN=...                 # db:types で実 DB から型生成するときに使う
-```
+バックエンドは Supabase（Auth + Postgres + RLS）で、web と iOS の共通。
 
 ## セットアップと起動
 
 ```bash
 npm install
-npm run dev
+npm run dev          # web の開発サーバ（http://localhost:3000）
+npm run dev:mobile   # iOS の開発サーバ（Expo）
 ```
 
-[http://localhost:3000](http://localhost:3000) を開く。
+環境変数は `apps/web/.env.example` を参照。ローカルを staging に向ける設定や開発用ログインなど、
+手順の詳細は [docs/development.md](./docs/development.md) にある。
 
-## コマンド
+## よく使うコマンド
 
 ```bash
-npm run dev          # 開発サーバ
-npm run build        # 本番ビルド
-npm run lint         # ESLint
-npx tsc --noEmit     # 型チェック（pre-commit / pre-push でも実行）
-npm test             # Vitest（1 回だけ）
-npm run test:watch   # Vitest（watch）
+npm run lint         # ESLint（全ワークスペース）
+npm run typecheck    # 型チェック（全ワークスペース）
+npm test             # Vitest（純関数のみ・DB に触らない）
+npm run test:db      # staging の実 DB に繋ぐテスト（手で走らせる）
 npm run db:types     # 実 DB から DB 型を再生成（migration を変えたら必須）
+npm run db:push:staging  # migration を staging DB に当てる
 ```
 
-Husky フック: `pre-commit` で lint + tsc、`pre-push` で lint + tsc + test + DB 型のズレ検出。
-
-## ディレクトリ構成
-
-| パス | 役割 |
-|---|---|
-| `app/` | App Router のページ・route handler・server action |
-| `components/` | UI 部品（`components/ui/` が shadcn/ui） |
-| `lib/` | ビジネスロジック（`settlement.ts` 等の純粋関数）・Supabase クライアント・型 |
-| `supabase/migrations/` | DB スキーマ・RLS・RPC（単一の真実） |
-| `proxy.ts` | Next.js 16 の旧 middleware 相当。認証 cookie をリフレッシュ |
-| `docs/` | アーキテクチャ・機能設計・UI ガイドライン |
+Husky フック: `pre-commit` で lint + 型チェック + 秘密の値の混入チェック、`pre-push` でそれに加えて
+テスト・クライアント境界・DB 型のズレ・staging への migration の当て忘れを検出する。
 
 ## ドキュメント
 
-- [アーキテクチャ概要](./docs/architecture.md) — クライアント構成（web ＋ Expo ネイティブ）と外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway）の俯瞰
-- [費用インポート（メール転送）設計](./docs/design/import-flow.md) — シーケンス図・状態遷移図つきの機能設計
-- [UI ガイドライン](./docs/ui-guidelines.md) — UI / アイコン / 配色 / コピー / インタラクションの規約（単一の真実）
-- [docs/development.md](./docs/development.md) — 開発の手順・コマンド・コードの仕組み
-- [docs/database.md](./docs/database.md) — DB の設計と読み書きの決まり
+- [アーキテクチャ概要](./docs/architecture.md) — クライアント構成（web ＋ Expo ネイティブ）と外部サービス（Dynadot / Cloudflare / Vercel / Supabase / AI Gateway / Resend）の俯瞰
+- [開発ガイド](./docs/development.md) — 開発の手順・コマンド・コードの仕組み・確認環境（staging）・iOS のビルド
+- [データベース](./docs/database.md) — DB の設計と読み書きの決まり
+- [UI ガイドライン](./docs/ui-guidelines.md) — UI / アイコン / 配色 / コピー / インタラクションの規約
+- [バージョン表記](./docs/versioning.md) — web・iOS のバージョン番号とリリース手順
+- `docs/design/` — 機能ごとの設計（メール取り込み・タイムゾーン・地図・課金・ログイン方法など）
+- [BACKLOG.md](./BACKLOG.md) — 残件
 - [CLAUDE.md](./CLAUDE.md) / [AGENTS.md](./AGENTS.md) — AI エージェント専用の作業指示（人間向けの内容は docs/ にある）
 
 ## デプロイ
 
-`main` への push で Vercel が本番に自動デプロイする（関数リージョンは `hnd1`、Supabase は東京 `ap-northeast-1`）。
+- **web**: `main` への push で Vercel が本番に自動デプロイする（関数リージョンは `hnd1`、Supabase は東京
+  `ap-northeast-1`）。確認は `staging` ブランチ（Vercel Preview ＋ staging の Supabase）で行う。
+- **iOS**: `npm run ios:build` → `npm run ios:submit` で TestFlight へ。手順は docs/development.md。
+- **Cloudflare の Worker**: `npm run workers:deploy -- <名前>`。main への push では出ない。
