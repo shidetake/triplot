@@ -542,8 +542,7 @@ export async function removeTripPinOptionAction(
 }
 
 // 場所ピンの追加（trip_pin_options に 1 行 insert）。RLS は active member 限定
-// なので RPC は使わず素の table 操作で OK。label はカタログ既定値で固定（将来
-// 「ラベル編集 UI」を入れたら別アクションで update）。
+// なので RPC は使わず素の table 操作で OK。label はカタログ既定値で固定。
 export async function addTripPinOptionAction(
   tripId: string,
   iconKey: string,

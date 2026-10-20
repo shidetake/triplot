@@ -67,7 +67,7 @@ export function centerOf(b: Bounds): LatLng {
 
 // クラスタ連結のしきい値(km)。隣接ピン同士の間隔がこれ未満なら同じクラスタに
 // 連結する（単リンク）。連続して埋まれば数珠つなぎで1つ、大きな隙間で割れる。
-// 旅行の「エリア」は概ね100km以内、別の「脚」は数百km以上離れる前提。後で調整。
+// 旅行の「エリア」は概ね100km以内、別の「脚」は数百km以上離れる前提。
 export const CLUSTER_GAP_KM = 100;
 
 export type ClusterInput = {

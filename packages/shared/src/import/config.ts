@@ -4,8 +4,7 @@
 // per-user の月間抽出上限（コスト保護）。超過分は抽出せず over_quota で保存のみ。
 // 受信箱の「今月の取り込み X / cap 件」表示にも使う。
 //
-// これは docs/design/billing.md の「プランの上限」にあたる値。プラン（無料/有料）は
-// まだ実装していないので、当面この定数が全員のプランの上限になる。
+// これは docs/design/billing.md の「プランの上限」にあたる値。
 // **個別のユーザの枠を増やすときはこの値を動かさない** — users の
 // monthly_email_cap_override（個別上書き）に入れる。実効上限は
 // effectiveEmailCap() が max で決める。

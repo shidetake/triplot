@@ -25,8 +25,7 @@ import type { EventDraft, Receipt } from "./schema";
 const START_ANCHORED_TITLES = new Set(["カフェ"]);
 
 // 所要時間の目安（分）。触れない見出しは「その他の判断しづらいもの」として
-// 1時間。値の根拠はプロンプトの旧記述と同じ（実測ではなく目安。ユーザーが
-// 後で調整する前提）。
+// 1時間。値の根拠はプロンプトの旧記述と同じ（実測ではなく目安）。
 const DURATION_MINUTES: Record<string, number> = {
   カフェ: 30,
   軽食: 30,

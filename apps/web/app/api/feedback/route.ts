@@ -60,8 +60,7 @@ export async function POST(request: Request) {
   const input = parsed.data;
 
   const userAgent = request.headers.get("user-agent");
-  // デプロイ時点のバージョン（今は commit SHA。将来 tag ベースに切り替えても
-  // getVersion() の中身だけ変えればここは無変更で追従する）。
+  // デプロイ時点のバージョン（getVersion() が持つ）。
   const appVersion = getVersion();
 
   const { error } = await supabase.from("feedback").insert({
