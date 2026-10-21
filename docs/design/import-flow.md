@@ -704,8 +704,6 @@ pending→確定・差額調整の決済メールや、**スケジュール変�
 
 ## 設計判断メモ
 
-- **BYOK（ユーザ課金）が長期の既定**。早期は運用者課金の AI Gateway を意図的に loss-leader として使う
-  （月間取り込み上限でコスト保護）。
 - **`expenses` / `events` テーブルは綺麗に保つ**。取り込みの不完全さ・provenance は
   `inbound_emails` / `inbound_drafts` 側に閉じ込める。
 - **全角→半角の正規化**を抽出結果の店名・場所・タイトル・referenceId に適用（日本語・カタカナは保持）。
