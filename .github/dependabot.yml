@@ -13,13 +13,16 @@ updates:
       default-days: 7
     open-pull-requests-limit: 20
     groups:
-      # 上から順に当てはまるものに入る。どれにも入らない（＝メジャー）は1件ずつの PR になる。
+      # どれにも入らないもの（＝メジャー）は1件ずつの PR になる。グループ同士は重ならない
+      # ように書く（重ねていた時、ワイルドカードで書いた iOS の依存が web-production に
+      # 入った。書いた順には当てはめてくれない）。
       dev-tools:
         dependency-type: development
         update-types: [minor, patch]
       # iOS でだけ使う依存。マージしても次のビルドと TestFlight での確認を経てから
       # 利用者に届くので、自動で入れる。
       ios:
+        dependency-type: production
         patterns:
           - expo
           - expo-*
@@ -34,6 +37,18 @@ updates:
         update-types: [minor, patch]
       web-production:
         dependency-type: production
+        # ios と同じ並び（片方だけ直すと重なる）
+        exclude-patterns:
+          - expo
+          - expo-*
+          - "@expo/*"
+          - react-native
+          - react-native-*
+          - "@react-native-async-storage/*"
+          - "@react-native-community/*"
+          - "@react-native-google-signin/*"
+          - "@tanstack/react-query"
+          - use-intl
         update-types: [minor, patch]
       security:
         applies-to: security-updates
@@ -41,28 +56,34 @@ updates:
         update-types: [minor, patch]
     ignore:
       # Expo の SDK が版を決めている依存は、SDK を上げる時に `npx expo install --fix` で
-      # まとめて揃える。単独で上げると組み合わせが崩れる。`expo` 本体のメジャーだけは
-      # 「新しい SDK が出た」知らせとして PR を出させる。
+      # まとめて揃える。単独で上げると組み合わせが崩れる。
+      # `expo` 本体のメジャーも止める: グループは各依存の最新版を取りに行くので、最新が
+      # メジャーだと SDK 内のパッチまで来なくなる（新しい SDK は自分で追う）。
+      - dependency-name: expo
+        update-types: ["version-update:semver-major"]
       - dependency-name: expo-*
         update-types: ["version-update:semver-major"]
       - dependency-name: "@expo/*"
         update-types: ["version-update:semver-major"]
-      - dependency-name: react-native-*
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@react-native-async-storage/*"
-        update-types: ["version-update:semver-major"]
-      - dependency-name: "@react-native-community/*"
-        update-types: ["version-update:semver-major"]
       - dependency-name: eslint-config-expo
         update-types: ["version-update:semver-major"]
-      # React Native は 0.x なので、マイナーが SDK を跨ぐ変更にあたる。React も SDK が
-      # 版を1つに固定している（web も同じ版に揃えている）。
+      # Expo 以外の部品は、SDK が許すのがパッチまで（`~x.y.z`）。
+      - dependency-name: react-native-*
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@react-native-async-storage/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      - dependency-name: "@react-native-community/*"
+        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # React Native は 0.x なので、マイナーが SDK を跨ぐ変更にあたる。
       - dependency-name: react-native
         update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # React は SDK が版を1つに固定している（web も同じ版に揃えている）。パッチも SDK を
+      # 上げる時に揃える。
       - dependency-name: react
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
       - dependency-name: react-dom
-        update-types: ["version-update:semver-major", "version-update:semver-minor"]
+      # 型定義は動かしている Node（24）に合わせる。
+      - dependency-name: "@types/node"
+        versions: [">=25"]
 
   - package-ecosystem: github-actions
     directory: /

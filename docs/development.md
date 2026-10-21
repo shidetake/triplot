@@ -420,8 +420,10 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
   管理者（手元からの push）はこの保護の外にある。
 - **Expo の SDK が版を決めている依存は、メジャーを Dependabot に上げさせない。** 単独で上げると
   組み合わせが崩れるので、SDK を上げる時に `npx expo install --fix` でまとめて揃える。`expo`
-  本体のメジャーだけは「新しい SDK が出た」知らせとして PR が来る（そのままではチェックで
-  落ちる）。SDK 内の更新が組み合わせからずれていないかは、CI の `npx expo install --check` が見る。
+  本体のメジャーも PR にしない（Dependabot は各依存の最新版を取りに行くので、最新がメジャーだと
+  SDK 内のパッチまで来なくなる）。新しい SDK が出たかは自分で追う。React と React Native も
+  SDK が版を決めているので同じ扱い。SDK 内の更新が組み合わせからずれていないかは、CI の
+  `npx expo install --check` が見る。
 - **メジャーの残件は、開いている Dependabot の PR の一覧そのもの**（BACKLOG.md には書かない）。
   放っておいても Dependabot がその版の最新に追従させ続ける。手を入れた PR は Dependabot が
   作り直さなくなるので、main と衝突したら自分で直す。
