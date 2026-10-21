@@ -41,7 +41,12 @@ jobs:
               if [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
                 gh pr edit "$PR" --add-label "要検討：メジャー"
               else
-                gh pr edit "$PR" --add-label "そのまま入れてよい"
+                # 直接の依存のパッチ・マイナーは必ずどれかのグループに入るので、グループ無しで
+                # メジャーでもないのは、セキュリティの修正（間接の依存のものは security の
+                # グループにまとまらず1件ずつ来る）。
+                gh pr edit "$PR" --add-label "セキュリティ" --add-label "自動マージ"
+                gh pr merge "$PR" --auto --squash
+                gh pr comment "$PR" --body "@$OWNER セキュリティの修正です。チェックが通ったら自動でマージされ、本番に出ます。"
               fi
               ;;
           esac
