@@ -419,6 +419,8 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
 - **自動マージの条件**は main のブランチ保護が持つ: CI（`.github/workflows/ci.yml`）と
   Vercel のビルドが通り、main の最新を取り込んだ状態であること。1本入ると、残りの PR は
   Dependabot が新しい main の上に作り直してチェックし直すので、**入れる順番は気にしなくてよい**。
+  Dependabot は衝突しない限り古くなっただけの PR を自分からは作り直さないので、
+  `.github/workflows/dependabot-rebase.yml` が main に入るたびに `@dependabot rebase` で頼む。
   管理者（手元からの push）はこの保護の外にある。
 - **メジャーの残件は、開いている Dependabot の PR の一覧そのもの**（BACKLOG.md には書かない）。
   放っておいても Dependabot がその版の最新に追従させ続ける。手を入れた PR は Dependabot が
