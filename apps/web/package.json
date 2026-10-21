@@ -17,7 +17,7 @@
     "@supabase/supabase-js": "^2.105.1",
     "@triplot/shared": "*",
     "@vis.gl/react-google-maps": "^1.8.3",
-    "ai": "^6.0.195",
+    "ai": "^7.0.140",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
