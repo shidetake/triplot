@@ -18,7 +18,7 @@ import { createClient } from "@/lib/supabase/client";
 
 // 設定の「ログイン方法」。今のアカウントに Google / Apple を足す。
 //
-// 足すだけで、アカウントの統合はしない。その Google / Apple で既に別の
+// その Google / Apple で既に別の
 // アカウントがあると Supabase が断るので、戻ってきた先で案内を出す
 // （LinkResultToast。@triplot/shared/loginMethods 参照）。
 //

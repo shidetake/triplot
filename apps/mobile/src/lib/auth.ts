@@ -137,7 +137,7 @@ export async function signInWithGoogle(): Promise<boolean> {
 }
 
 // 設定の「ログイン方法」から、今のアカウントに Google / Apple を足す。
-// 足すだけで、アカウントの統合はしない。その Google / Apple で既に別の
+// その Google / Apple で既に別の
 // アカウントがあると Supabase が断る（呼び出し側が classifyLinkError で
 // 見分けて案内を出す。@triplot/shared/loginMethods）。
 // 閉じられたら false、失敗は throw。

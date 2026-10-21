@@ -22,7 +22,7 @@ import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 // 設定の「ログイン方法」。今のアカウントに Google / Apple を足す
 // （web の LoginMethods と同じ役割・同じ並び）。
 //
-// 足すだけで、アカウントの統合はしない。その Google / Apple で既に別の
+// その Google / Apple で既に別の
 // アカウントがあると Supabase が断るので、案内を出す。
 //
 // web はリダイレクトで追加して戻った先でトーストを出すが、iOS はシートの中で
