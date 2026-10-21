@@ -1,0 +1,30 @@
+# PR のチェック。手元の pre-push フックと同じ検査のうち、資格情報の要らないものを走らせる
+# （DB と型のずれ・staging への migration の当て忘れは、手元のフックだけが見る）。
+# main のブランチ保護がこのジョブの成功をマージの条件にしている。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run check:client-boundary
+      # iOS の依存が Expo の SDK の組み合わせからずれていないか。
+      - run: npx expo install --check
+        working-directory: apps/mobile

@@ -1,0 +1,47 @@
+# Dependabot の PR に、人が見るべきかどうかのラベルを付け、自動で入れてよいものは
+# 自動マージを予約する（マージはブランチ保護のチェックが全部通った時に GitHub が行う）。
+# 分け方は docs/development.md の「依存の更新」。グループ名は .github/dependabot.yml のもの。
+name: Dependabot
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  triage:
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - id: meta
+        uses: dependabot/fetch-metadata@v2
+      - env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ github.event.pull_request.html_url }}
+          GROUP: ${{ steps.meta.outputs.dependency-group }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          case "$GROUP" in
+            dev-tools|ios|actions)
+              gh pr edit "$PR" --add-label "自動マージ"
+              gh pr merge "$PR" --auto --squash
+              ;;
+            security)
+              gh pr edit "$PR" --add-label "セキュリティ" --add-label "自動マージ"
+              gh pr merge "$PR" --auto --squash
+              # 本番に入る変更なので、入ったことが分かるようにする（メンションでメールが届く）。
+              gh pr comment "$PR" --body "@$OWNER セキュリティの修正です。チェックが通ったら自動でマージされ、本番に出ます。"
+              ;;
+            web-production)
+              gh pr edit "$PR" --add-label "そのまま入れてよい"
+              ;;
+            *)
+              if [ "$UPDATE_TYPE" = "version-update:semver-major" ]; then
+                gh pr edit "$PR" --add-label "要検討：メジャー"
+              else
+                gh pr edit "$PR" --add-label "そのまま入れてよい"
+              fi
+              ;;
+          esac
