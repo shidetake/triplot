@@ -1,0 +1,119 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "description": "依存の更新の PR を Renovate に出させる。どれを自動で入れ、どれを人が見るかは docs/development.md の「依存の更新」。packageRules は後に書いたものが前のものを上書きする。",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Tokyo",
+  "schedule": ["before 9am on the first day of the month"],
+  "minimumReleaseAge": "7 days",
+  "prConcurrentLimit": 20,
+  "packageRules": [
+    {
+      "description": "web の本番の依存のパッチ・マイナー。main に入った瞬間に本番に出るので人が見る",
+      "matchDepTypes": ["dependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "web の本番の依存",
+      "labels": ["そのまま入れてよい"]
+    },
+    {
+      "description": "iOS でだけ使う依存のうち、Expo の SDK が版を決めていないもの。次のビルドと TestFlight での確認を経てから利用者に届くので自動で入れる",
+      "matchDepTypes": ["dependencies"],
+      "matchPackageNames": [
+        "expo-share-intent",
+        "@react-native-google-signin/*",
+        "@tanstack/react-query",
+        "use-intl"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "iOS の依存",
+      "labels": ["自動マージ"],
+      "automerge": true
+    },
+    {
+      "description": "開発用の依存のパッチ・マイナー。利用者に届かないので自動で入れる",
+      "matchDepTypes": ["devDependencies"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "開発用の依存",
+      "labels": ["自動マージ"],
+      "automerge": true
+    },
+    {
+      "description": "GitHub Actions の部品。壊れれば CI 自体が落ちるので自動で入れる",
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "labels": ["自動マージ"],
+      "automerge": true
+    },
+    {
+      "description": "メジャーは1件ずつ、中身を吟味してから入れる",
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["要検討：メジャー"],
+      "automerge": false
+    },
+    {
+      "description": "セキュリティの修正。待つ間穴が開いたままなので自動で入れる（メジャーを除く）",
+      "isVulnerabilityAlert": true,
+      "matchUpdateTypes": ["minor", "patch"],
+      "labels": ["セキュリティ", "自動マージ"],
+      "automerge": true
+    },
+    {
+      "description": "セキュリティの修正でもメジャーは人が見る",
+      "isVulnerabilityAlert": true,
+      "matchUpdateTypes": ["major"],
+      "labels": ["セキュリティ", "要検討：メジャー"],
+      "automerge": false
+    },
+    {
+      "description": "Expo の SDK が版を決めている依存には触らない。Expo は SDK ごとに動作を確かめた版の組み合わせを持っていて、それを知っているのは Expo のコマンドだけなので、npx expo install --fix（SDK の中）と SDK を上げる作業で揃える。中身は expo の bundledNativeModules.json に載っている依存と expo 本体で、npm run check:renovate-expo が実際の依存との一致を確かめる",
+      "matchPackageNames": [
+        "@react-native-async-storage/async-storage",
+        "@react-native-community/datetimepicker",
+        "eslint-config-expo",
+        "expo",
+        "expo-apple-authentication",
+        "expo-application",
+        "expo-build-properties",
+        "expo-clipboard",
+        "expo-constants",
+        "expo-crypto",
+        "expo-dev-client",
+        "expo-file-system",
+        "expo-font",
+        "expo-glass-effect",
+        "expo-haptics",
+        "expo-image-manipulator",
+        "expo-image-picker",
+        "expo-linking",
+        "expo-localization",
+        "expo-location",
+        "expo-router",
+        "expo-splash-screen",
+        "expo-status-bar",
+        "expo-system-ui",
+        "react",
+        "react-dom",
+        "react-native",
+        "react-native-gesture-handler",
+        "react-native-maps",
+        "react-native-reanimated",
+        "react-native-safe-area-context",
+        "react-native-screens",
+        "react-native-svg",
+        "react-native-worklets"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "型定義は動かしている Node（24）に合わせる",
+      "matchPackageNames": ["@types/node"],
+      "allowedVersions": "<25"
+    }
+  ],
+  "lockFileMaintenance": {
+    "description": "lockfile を作り直し、間接の依存を範囲内の最新にする（間接の依存のセキュリティの修正もここで入る）。web の本番に効くので人が見る",
+    "enabled": true,
+    "schedule": ["before 9am on the first day of the month"],
+    "labels": ["そのまま入れてよい"]
+  }
+}

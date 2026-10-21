@@ -3,7 +3,7 @@
 // 更新のどちらによるものか切り分けられなくなるので、上げるのは今の作業を終えた後、
 // 独立した作業として行う（docs/development.md「依存の更新」）。
 //
-// Dependabot は Expo の部品に触らない（Expo が SDK ごとに決めている版の組み合わせを
+// Renovate は Expo の部品に触らない（Expo が SDK ごとに決めている版の組み合わせを
 // 知らないため）。その代わりに、ビルドのたびにここで気付けるようにしている。
 
 import { spawnSync } from "node:child_process";

@@ -25,4 +25,4 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run check:client-boundary
-      - run: npm run check:dependabot-expo
+      - run: npm run check:renovate-expo

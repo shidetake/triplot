@@ -53,7 +53,7 @@ skip する。本番を向いていたら例外で止まる）。
 
 Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test。
 これに下表の判定が乗る。PR には GitHub Actions の CI（`.github/workflows/ci.yml`）が
-同じ検査のうち資格情報の要らないものを走らせる（手元のフックを通らない Dependabot の PR のため）。
+同じ検査のうち資格情報の要らないものを走らせる（手元のフックを通らない Renovate の PR のため）。
 
 **規約を文書だけに置かない。** 手順として書けば、思い出した時にしか実行され
 ない＝忘れた時に素通りする。機械が判定できるものはフックか、その操作を行う
@@ -65,7 +65,7 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 | `database.generated.ts` が実 DB とズレる | `pre-push`（`db:types:check`） |
 | migration を staging に当て忘れる | `pre-push`（`check:staging-migrations`） |
 | クライアント境界を越える import | `pre-push`（`check:client-boundary`） |
-| Expo の部品を足したのに Dependabot の除外に入れ忘れる | `pre-push`・CI（`check:dependabot-expo`） |
+| Expo の部品を足したのに Renovate の除外に入れ忘れる | `pre-push`・CI（`check:renovate-expo`） |
 | 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
 | 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
 | 起動しない ipa を TestFlight に出す | `npm run ios:build` / `npm run ios:submit` |
@@ -394,18 +394,20 @@ npm run workers:deploy -- inbound-email
 G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
 で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
 
-## 依存の更新（Dependabot）
+## 依存の更新（Renovate）
 
-依存の新しい版は Dependabot が PR にして持ってくる（設定は `.github/dependabot.yml`）。
+依存の新しい版は Renovate（GitHub アプリ）が PR にして持ってくる（設定は `renovate.json`）。
 **人が見るのは、web の本番の依存のパッチ・マイナーと、メジャーだけ**。それ以外は
-チェックが通れば GitHub が自動でマージする。
+チェックが通れば自動でマージされる。
 
 | 種類 | PR の出方 | ラベル | 扱い |
 |---|---|---|---|
 | 開発用の依存（lint・型・テストの道具）のパッチ・マイナー | 月1回、まとめて1本 | 自動マージ | 自動 |
 | iOS でだけ使う依存のパッチ・マイナー（Expo の部品を除く） | 月1回、まとめて1本 | 自動マージ | 自動 |
-| セキュリティの修正（パッチ・マイナー） | 見つかった時にすぐ | セキュリティ・自動マージ | 自動。入ったことはメンションで知らせる |
+| GitHub Actions の部品 | 月1回、まとめて1本 | 自動マージ | 自動 |
+| セキュリティの修正（パッチ・マイナー） | 見つかった時にすぐ | セキュリティ・自動マージ | 自動 |
 | web の本番の依存のパッチ・マイナー | 月1回、まとめて1本 | そのまま入れてよい | チェックが緑なら、プレビューをざっと触ってマージ |
+| lockfile の作り直し（間接の依存を範囲内の最新にする） | 月1回 | そのまま入れてよい | 同上 |
 | メジャー（メジャーを上げないと直らないセキュリティの修正を含む） | 1件ずつ | 要検討：メジャー | 中身を吟味し、コードを直してから入れる |
 | Expo の部品（SDK の中の更新・新しい SDK） | 来ない | — | iOS のビルドが知らせる。下の「Expo の部品」 |
 
@@ -414,28 +416,29 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
   依存は main に入った瞬間に本番に出るのに、チェックが画面の動作を見ていないので人が見る
   （チェックを強くして自動に寄せる話は BACKLOG にある）。セキュリティの修正は、待つ間
   穴が開いたままなので、壊れる見込みの小ささを取って自動にしている。
-- **公開から7日経った版だけを取る**（`cooldown`）。乗っ取られたアカウントから出た悪意のある
-  版は、たいてい数日で見つかって取り下げられる。セキュリティの修正には効かない。
+- **公開から7日経った版だけを取る**（`minimumReleaseAge`）。乗っ取られたアカウントから出た
+  悪意のある版は、たいてい数日で見つかって取り下げられる。セキュリティの修正には効かない。
 - **自動マージの条件**は main のブランチ保護が持つ: CI（`.github/workflows/ci.yml`）と
-  Vercel のビルドが通り、main の最新を取り込んだ状態であること。1本入ると、残りの PR は
-  Dependabot が新しい main の上に作り直してチェックし直すので、**入れる順番は気にしなくてよい**。
-  Dependabot は衝突しない限り古くなっただけの PR を自分からは作り直さないので、
-  `.github/workflows/dependabot-rebase.yml` が main に入るたびに `@dependabot rebase` で頼む。
-  管理者（手元からの push）はこの保護の外にある。
-- **メジャーの残件は、開いている Dependabot の PR の一覧そのもの**（BACKLOG.md には書かない）。
-  放っておいても Dependabot がその版の最新に追従させ続ける。手を入れた PR は Dependabot が
-  作り直さなくなるので、main と衝突したら自分で直す。
-- PR が来ない脆弱性の警告（直すのに親の依存のメジャーが要るもの等）は、GitHub の Security
-  タブとメールに届く。
+  Vercel のビルドが通り、main の最新を取り込んだ状態であること。1本入って残りの PR の土台が
+  古くなると、Renovate が新しい main の上に作り直してチェックし直すので、**入れる順番は
+  気にしなくてよい**。管理者（手元からの push）はこの保護の外にある。
+- **Dependabot ではなく Renovate を使うのはこのため。** Dependabot は衝突しない限り古くなった
+  だけの PR を作り直さず、作り直しの依頼（`@dependabot rebase`）も人からしか受け付けない
+  ので、自動マージ待ちの PR が1本入るたびに残りが緑のまま止まった。
+- **メジャーの残件は、開いている PR の一覧と、Renovate が立てる Issue「Dependency Dashboard」**
+  （BACKLOG.md には書かない）。放っておいても Renovate がその版の最新に追従させ続ける。
+- **間接の依存のセキュリティの修正は、月1回の lockfile の作り直しで入る。** Renovate が
+  見つかった時にすぐ PR にするのは、直接の依存の修正だけ。GitHub の脆弱性の警告（Security
+  タブとメール）は別に届くので、急ぐものはそれを見て入れる。
 
 ### Expo の部品
 
-**Expo の SDK が版を決めている部品は、Dependabot に触らせない**（expo 本体・expo-*・React・
+**Expo の SDK が版を決めている部品は、Renovate に触らせない**（expo 本体・expo-*・React・
 React Native とその周りの部品）。Expo は SDK ごとに「動作を確かめた版の組み合わせ」を持って
 いて、外れると iOS のビルドが通らない・起動しない等の壊れ方をすることがある。その組み合わせは
-部品の設定ファイルではなく Expo 自身の一覧にあり、npm も Dependabot も読めない。読めるのは
+部品の設定ファイルではなく Expo 自身の一覧にあり、npm も Renovate も読めない。読めるのは
 Expo のコマンドだけなので、版を選ぶのはそちらに任せる。除外の一覧が実際の依存と合っているかは
-`npm run check:dependabot-expo`（pre-push と CI）が見る。Expo の部品を足したらここで止まる。
+`npm run check:renovate-expo`（pre-push と CI）が見る。Expo の部品を足したらここで止まる。
 
 代わりに **`npm run ios:build` が、最後に知らせを出す**（preview・TestFlight のどちらでも。
 止めはしない）。知らせは2種類で、扱いが違う:
