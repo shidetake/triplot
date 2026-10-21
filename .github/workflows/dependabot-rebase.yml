@@ -23,12 +23,16 @@ jobs:
       - env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO: ${{ github.repository }}
+          MAIN: ${{ github.sha }}
         run: |
-          # push の直後は GitHub が古いかどうかをまだ計算していない（UNKNOWN）ことがある
-          sleep 30
+          # 古いかどうかは PR の先頭と main を直接比べる。一覧の mergeStateStatus は
+          # GitHub が計算を後回しにしていて、push の直後はほぼ UNKNOWN で返る。
           gh pr list -R "$REPO" --author "app/dependabot" --state open \
-            --json number,mergeStateStatus,autoMergeRequest \
-            --jq '.[] | select(.autoMergeRequest != null and .mergeStateStatus == "BEHIND") | .number' |
-          while read -r n; do
-            gh pr comment "$n" -R "$REPO" --body "@dependabot rebase"
+            --json number,headRefOid,autoMergeRequest \
+            --jq '.[] | select(.autoMergeRequest != null) | "\(.number) \(.headRefOid)"' |
+          while read -r n head; do
+            behind=$(gh api "repos/$REPO/compare/$MAIN...$head" --jq .behind_by)
+            if [ "$behind" -gt 0 ]; then
+              gh pr comment "$n" -R "$REPO" --body "@dependabot rebase"
+            fi
           done
