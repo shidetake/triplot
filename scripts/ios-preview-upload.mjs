@@ -6,10 +6,8 @@
 // QR だと画像を送る一手間が増えるだけなので採用しないと決めた）。
 //
 // 使い方:
-//   cd apps/mobile
-//   npx eas-cli build --platform ios --profile preview --local --non-interactive \
-//     --output ./build/triplot-preview.ipa
-//   node ../../scripts/ios-preview-upload.mjs ./build/triplot-preview.ipa
+//   npm run ios:build -- preview
+//   npm run ios:preview:upload -- apps/mobile/build-<timestamp>.ipa
 //
 // BLOB_READ_WRITE_TOKEN は .env.local（リポジトリルート）にある
 // （`vercel blob create-store` 実行時に自動で書き込まれた値）。Next.js と違い

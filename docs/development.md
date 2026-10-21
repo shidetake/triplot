@@ -65,6 +65,7 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 | `database.generated.ts` が実 DB とズレる | `pre-push`（`db:types:check`） |
 | migration を staging に当て忘れる | `pre-push`（`check:staging-migrations`） |
 | クライアント境界を越える import | `pre-push`（`check:client-boundary`） |
+| Expo の部品を足したのに Dependabot の除外に入れ忘れる | `pre-push`・CI（`check:dependabot-expo`） |
 | 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
 | 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
 | 起動しない ipa を TestFlight に出す | `npm run ios:build` / `npm run ios:submit` |
@@ -344,12 +345,12 @@ npm run workers:deploy -- inbound-email
 - ビルド → アップロード → インストールリンク発行:
 
   ```bash
-  cd apps/mobile
-  npx eas-cli build --platform ios --profile preview --local --non-interactive \
-    --output ./build/triplot-preview.ipa
-  cd ..
-  npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
+  npm run ios:build -- preview
+  npm run ios:preview:upload -- apps/mobile/build-<timestamp>.ipa
   ```
+
+  ビルドは TestFlight 用と同じ `ios:build` を通す（ログを全文残す・できた ipa を検める・
+  Expo の部品の知らせを出す。下の「TestFlight」と「依存の更新」）。
 
   最後に出る `itms-services://...` リンクを実機の **Safari** で開くと
   インストールできる（他アプリ内ブラウザやカスタムスキーム非対応アプリからの
@@ -402,10 +403,11 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
 | 種類 | PR の出方 | ラベル | 扱い |
 |---|---|---|---|
 | 開発用の依存（lint・型・テストの道具）のパッチ・マイナー | 月1回、まとめて1本 | 自動マージ | 自動 |
-| iOS でだけ使う依存のパッチ・マイナー（Expo の SDK 内の更新を含む） | 月1回、まとめて1本 | 自動マージ | 自動 |
+| iOS でだけ使う依存のパッチ・マイナー（Expo の部品を除く） | 月1回、まとめて1本 | 自動マージ | 自動 |
 | セキュリティの修正（パッチ・マイナー） | 見つかった時にすぐ | セキュリティ・自動マージ | 自動。入ったことはメンションで知らせる |
 | web の本番の依存のパッチ・マイナー | 月1回、まとめて1本 | そのまま入れてよい | チェックが緑なら、プレビューをざっと触ってマージ |
 | メジャー（メジャーを上げないと直らないセキュリティの修正を含む） | 1件ずつ | 要検討：メジャー | 中身を吟味し、コードを直してから入れる |
+| Expo の部品（SDK の中の更新・新しい SDK） | 来ない | — | iOS のビルドが知らせる。下の「Expo の部品」 |
 
 - **自動で入れる線引きは「入った変更が、確かめる前に利用者に届くか」。** 開発用の道具は
   利用者に届かず、iOS の依存は次のビルドと TestFlight での確認を経てから届く。web の本番の
@@ -418,17 +420,41 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
   Vercel のビルドが通り、main の最新を取り込んだ状態であること。1本入ると、残りの PR は
   Dependabot が新しい main の上に作り直してチェックし直すので、**入れる順番は気にしなくてよい**。
   管理者（手元からの push）はこの保護の外にある。
-- **Expo の SDK が版を決めている依存は、メジャーを Dependabot に上げさせない。** 単独で上げると
-  組み合わせが崩れるので、SDK を上げる時に `npx expo install --fix` でまとめて揃える。`expo`
-  本体のメジャーも PR にしない（Dependabot は各依存の最新版を取りに行くので、最新がメジャーだと
-  SDK 内のパッチまで来なくなる）。新しい SDK が出たかは自分で追う。React と React Native も
-  SDK が版を決めているので同じ扱い。SDK 内の更新が組み合わせからずれていないかは、CI の
-  `npx expo install --check` が見る。
 - **メジャーの残件は、開いている Dependabot の PR の一覧そのもの**（BACKLOG.md には書かない）。
   放っておいても Dependabot がその版の最新に追従させ続ける。手を入れた PR は Dependabot が
   作り直さなくなるので、main と衝突したら自分で直す。
 - PR が来ない脆弱性の警告（直すのに親の依存のメジャーが要るもの等）は、GitHub の Security
   タブとメールに届く。
+
+### Expo の部品
+
+**Expo の SDK が版を決めている部品は、Dependabot に触らせない**（expo 本体・expo-*・React・
+React Native とその周りの部品）。Expo は SDK ごとに「動作を確かめた版の組み合わせ」を持って
+いて、外れると iOS のビルドが通らない・起動しない等の壊れ方をすることがある。その組み合わせは
+部品の設定ファイルではなく Expo 自身の一覧にあり、npm も Dependabot も読めない。読めるのは
+Expo のコマンドだけなので、版を選ぶのはそちらに任せる。除外の一覧が実際の依存と合っているかは
+`npm run check:dependabot-expo`（pre-push と CI）が見る。Expo の部品を足したらここで止まる。
+
+代わりに **`npm run ios:build` が、最後に知らせを出す**（preview・TestFlight のどちらでも。
+止めはしない）。知らせは2種類で、扱いが違う:
+
+| 知らせ | 大きさ | どうするか |
+|---|---|---|
+| 今の SDK の中の更新がある | パッチ相当 | **今の作業を終えてから、次の作業に入る前に**上げる |
+| 新しい SDK が出ている | メジャー相当 | 上げるかどうか・いつ上げるかを吟味して決める |
+
+**どちらも、上げる時は独立した作業にする。** 機能の作業の途中で部品を変えると、確かめた結果が
+自分の変更と部品の更新のどちらによるものか切り分けられない（コミットを分けても同じ）。
+ビルドが止めないのはこのためで、今の作業は元の部品のまま最後まで確かめて出す。上げる時は:
+
+1. main から専用のブランチを切る
+2. `npx expo install --fix`（SDK の中）で揃えてコミットする。SDK を上げる時は Expo の
+   アップグレードの手順に従う
+3. preview ビルドで、部品の更新だけを実機で確かめる
+4. main に入れ、機能の作業はその上に積む
+
+ルートの `package.json` は expo と expo-router をアプリと同じ版に固定している（理由はそこに
+書いてある）。揃えた後はルートの版もアプリに合わせる。
 
 ## バージョン表記
 

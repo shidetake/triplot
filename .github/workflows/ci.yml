@@ -25,6 +25,4 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run check:client-boundary
-      # iOS の依存が Expo の SDK の組み合わせからずれていないか。
-      - run: npx expo install --check
-        working-directory: apps/mobile
+      - run: npm run check:dependabot-expo

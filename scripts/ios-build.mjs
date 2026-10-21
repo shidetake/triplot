@@ -12,15 +12,26 @@
 //
 //   npm run ios:build              # production（TestFlight 用）
 //   npm run ios:build -- preview   # preview（実機の軽い確認用）
+//
+// 最後に、Expo の部品の更新や新しい SDK があれば知らせる（止めはしない。
+// expo-sdk-notice.mjs）。
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
+import { expoSdkNotice } from "./expo-sdk-notice.mjs";
 import { verifyIpa } from "./ios-verify-ipa.mjs";
 
 const profile = process.argv.slice(2).find((a) => !a.startsWith("--")) ?? "production";
 const mobile = path.join(process.cwd(), "apps/mobile");
+
+// 調べるのはビルドの前（速い）、出すのは最後（長いビルドの出力に埋もれないように）。
+// 失敗で抜ける時も出す。
+const notice = expoSdkNotice(mobile);
+process.on("exit", () => {
+  if (notice) console.log(notice);
+});
 const logDir = path.join(mobile, "build-logs");
 fs.mkdirSync(logDir, { recursive: true });
 const logFile = path.join(
