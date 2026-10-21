@@ -41,7 +41,7 @@ const extractionSchema = z.object({
 });
 
 // メール本文 → 構造化データ（LLM 抽出）＋ 旅行割り当て。プロバイダ非依存：model は
-// 呼び出し側で用意して渡す（BYOK ではユーザのキーで作ったモデルインスタンス）。
+// 呼び出し側で用意して渡す。
 // trips を渡すと tripId を推論する（渡さなければ tripId は常に null）。
 // events は検証・補正（sanitizeEventDraft）済みのものだけ返す。
 export async function extractEmail(
