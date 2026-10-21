@@ -15,8 +15,8 @@
 - 権利を引く1か所の入口（判定はサーバ側）
 未決: どちらの経路から作るか／有料で何が変わるか（取り込みの枠だけか、機能も出し分けるか）。
 選択肢: 取り込みの AI を、利用者自身の AI の鍵（BYOK）でも動かせるようにする。たくさん
-取り込む人は自分の鍵で枠を気にせず使え、こちらの AI の費用もかからない（今の AI Gateway の
-無料枠と併用する形）。
+取り込む人は自分の鍵で枠を気にせず使え、こちらの AI の費用もかからない（こちらの AI Gateway の
+クレジットで動く今の経路と併用する形）。
 
 ### 20. Google マップから場所を共有して取り込む（iOS）
 Google マップアプリの共有ボタンから、共有先として triplot を選べるようにする。
@@ -46,3 +46,32 @@ iOS の場所タブは、一覧をスクロールすると選択中の場所が�
 - 付けるかどうかは画面の幅ではなく `pointer: coarse` で判定する。幅で判定すると、デスクトップで
   ウィンドウを細くしただけの人がホイールで選択を乗っ取られる
 - scroll-snap・見えている行の監視・カメラの追従は自前で作ることになる
+
+### 23. `@expo/ui` に行の高さの下限を設定する口を足すよう上流に提案する
+iOS のスワイプで消せる一覧は、SwiftUI の行の高さの下限（`defaultMinListRowHeight`、既定
+44pt）を 36pt に下げて使っている。`@expo/ui` はこの環境値を公開していないので、
+`patches/@expo+ui+57.0.8.patch` で足している（理由は docs/ui-guidelines.md の「一覧の行から
+消せるようにするときの作法」）。最新の 58.0.21 にも入っていない。
+- expo/expo に PR（環境値のキーを1つ足すだけの変更）を出す。取り込まれればパッチを消せる
+- 取り込まれるまでは、`@expo/ui` を上げるたびにパッチが当たるか確かめる
+
+### 24. formSheet の入れ子で画面が二重に重なる不具合を上流に報告する（iOS）
+formSheet で開いた画面の中に `ScreenStack` を入れ子にしてもう1枚 formSheet を出すと、元の
+画面と二重露光のように重なる（2026-09 に実機で確認）。そのため通貨の選択・コピー元の選択は
+detent を持てない `PageSheet` で出していて、中身が短くても画面いっぱいに開く。
+上流に既知の issue があるかは確かめていない（経緯は `apps/mobile/src/components/page-sheet.tsx`）。
+- react-native-screens の issue を探し、無ければ最小の再現を付けて報告する
+- 直るか、Stack v5 が安定したら formSheet に寄せ直す（詳細は page-sheet.tsx のコメント）
+
+### 25. Android アプリ
+web と iOS は公開済みで、Android は未着手。iOS と同じ Expo のコードから出す前提
+（docs/architecture.md）。着手時に要るもの:
+- **バージョン番号の付け方**: `versionName` / `versionCode` の運用を決め、docs/versioning.md の
+  「未着手・表記未定」を埋める
+- **iOS にしか無い部品の代わり**: スワイプで消す一覧（`SwipeDeleteRow` は SwiftUI の
+  `.swipeActions`）・Apple でのログイン（`expo-apple-authentication`）。OS ネイティブのシート
+  （formSheet / pageSheet）も Android でどう出るか確かめる。Android の流儀で何を使うかを決め、
+  差分は docs/design/platform-parity.md に書く
+- **共有の拡張機能**: Google マップからの共有（#20）は `disableAndroid: true` で iOS だけに
+  入れている。Android は共有の受け口（intent filter）で別に作る
+- **ストアと鍵**: Google Play の登録、Android 用の Google Maps / Google ログインの鍵
