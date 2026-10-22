@@ -392,8 +392,9 @@ npm run workers:deploy -- inbound-email
 失敗した時に自分で見に行く。
 
 ローカルビルドには Xcode 26.3 以上 / fastlane / login キーチェーンに Apple WWDR
-G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 26.3 の Swift
-で `abs` が曖昧になる上流バグ）は root の postinstall で自動適用される。
+G3 中間証明書が要る。`patches/` のパッチは root の postinstall で自動適用される。
+パッチを当てた部品の版が lockfile の作り直し等で上がると、当たらずに `npm ci` ごと落ちる
+（CI で止まる）。上流で直っていればパッチを消し、まだ要るなら新しい版で作り直す。
 
 ## 依存の更新（Renovate）
 
