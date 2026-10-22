@@ -22,6 +22,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - [docs/ui-guidelines.md](docs/ui-guidelines.md) — 見た目とインタラクションの規約
 - [docs/architecture.md](docs/architecture.md) — システム全体の構成（取り込みはしない。必要な時に読む）
 
+残件（これからやること）は GitHub の Issue で持つ（`gh issue list -R shidetake/triplot`）。
+足すのも閉じるのも Issue で行い、リポジトリのファイルに残件の一覧を作らない。PR で片付く
+ものは、PR の本文に `closes #番号` を書いてマージで閉じる。
+
 ## 自分の判断で進めてよいこと・いけないこと
 
 - **web**: 画面に見える変更が一段落し typecheck / lint / テストが通ったら、

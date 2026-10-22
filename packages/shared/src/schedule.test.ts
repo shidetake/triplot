@@ -1371,7 +1371,7 @@ describe("timelineFor: 年表は人ごと（乗った移動だけを並べる）
     });
     // 列は旅行全体の移動から組まれる（4/28 はホノルルの列）。A の昼食は
     // その列に、B の昼食は東京の列が無いので日付一致の列に置かれる（今は
-    // 見る人の年表で列を組んでいない＝BACKLOG 18 の段階3）。
+    // 見る人の年表で列を組んでいない）。
     const placedA = s.timed.find((t) => t.event.id === "lunch-a")!;
     expect(s.columns.find((c) => c.key === placedA.columnKey)!.tz).toBe(
       "Pacific/Honolulu",

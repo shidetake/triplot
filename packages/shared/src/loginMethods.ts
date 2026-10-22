@@ -5,7 +5,7 @@ import { classifySignInError } from "./signInError";
 //
 // 足すだけで、アカウントの統合（中身の移し替え）はしない。その Google / Apple で
 // 既に別のアカウントがある場合、Supabase が追加を断るので、それを見分けて
-// 案内を出す（BACKLOG 16。統合しない理由は判断の記録を参照）。
+// 案内を出す（統合しない理由は判断の記録を参照）。
 
 export type LoginProvider = "google" | "apple";
 
