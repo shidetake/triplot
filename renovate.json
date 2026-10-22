@@ -49,11 +49,12 @@
       "automerge": true
     },
     {
-      "description": "メジャーは1件ずつ、移行の手順を読み、コードを直してから人が入れる",
+      "description": "メジャーは1件ずつ、移行の手順を読み、コードを直してから人が入れる。手を付けると決めるまでは Dependency Dashboard に載せるだけで PR を作らない（開いておくと main が動くたびに作り直されてビルドが落ち続ける）",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["major"],
       "labels": ["要検討：メジャー"],
-      "automerge": false
+      "automerge": false,
+      "dependencyDashboardApproval": true
     },
     {
       "description": "Expo の SDK が版を決めている依存には触らない。Expo は SDK ごとに動作を確かめた版の組み合わせを持っていて、それを知っているのは Expo のコマンドだけなので、npx expo install --fix（SDK の中）と SDK を上げる作業で揃える。中身は expo の bundledNativeModules.json に載っている依存と expo 本体で、npm run check:renovate-expo が実際の依存との一致を確かめる",
@@ -110,7 +111,8 @@
   "vulnerabilityAlerts": {
     "description": "セキュリティの修正。見つかった時にすぐ出す。Renovate はこれを packageRules の後に強制で当てるので、上の規則（メジャーは人が見る等）より優先される",
     "labels": ["セキュリティ", "自動マージ"],
-    "automerge": true
+    "automerge": true,
+    "dependencyDashboardApproval": false
   },
   "lockFileMaintenance": {
     "description": "lockfile を作り直し、間接の依存（Expo の部品の SDK の中の更新を含む）を範囲内の最新にする。間接の依存のセキュリティの修正もここで入る",
