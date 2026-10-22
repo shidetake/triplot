@@ -2,6 +2,7 @@
   "name": "triplot",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@12.2.1",
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -50,5 +51,11 @@
   "overrides": {
     "react": "19.2.3",
     "react-dom": "19.2.3"
+  },
+  "allowScripts": {
+    "@parcel/watcher": false,
+    "fsevents": false,
+    "@swc/core": false,
+    "unrs-resolver": false
   }
 }

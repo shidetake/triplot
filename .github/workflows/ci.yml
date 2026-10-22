@@ -20,6 +20,8 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # 使う npm の版は package.json の packageManager が決める（手元・Renovate と揃える）
+      - run: npm install -g "$(node -p "require('./package.json').packageManager")"
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck

@@ -439,6 +439,17 @@ G3 中間証明書が要る。`patches/` の expo-modules-jsi パッチ（Xcode 
   見つかった時にすぐ PR にするのは、直接の依存の修正だけ。GitHub の脆弱性の警告（Security
   タブとメール）は別に届くので、急ぐものはそれを見て入れる。
 
+- **npm の版は `package.json` の `packageManager` で決める。** Renovate はこれを読んで同じ版で
+  lockfile を作り、CI もこの版を入れてから動く。新しい版は開発用の依存のまとめに入って自動で
+  上がるので、手元の npm もそれに合わせて上げる（`npm install -g npm@<版>`）。
+- **ルートの `.npmrc` の `allow-remote=all` は npm 12 の不具合の回避。** lockfile の無い状態から
+  作り直すと失敗する（npm/cli#9800）。外れるのは「レジストリの外（URL・git）から部品を取らせない」
+  という npm 12 で増えた防御で、npm 11 までと同じ扱いになる。直ったら消す。
+- **npm 12 は依存の install スクリプトを、`package.json` の `allowScripts` で許したものしか
+  走らせない。** 今止めているもの（`false`）は、ビルド済みのバイナリを同梱していてスクリプトが
+  要らないもの。新しく止められたら `npm install-scripts ls` に出るので、要るものだけ
+  `npm install-scripts approve <名前>` で許す。
+
 ### Expo の部品
 
 **Expo の SDK が版を決めている部品は、Renovate に触らせない**（expo 本体・expo-*・React・

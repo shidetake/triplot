@@ -31,8 +31,8 @@
       "automerge": true
     },
     {
-      "description": "開発用の依存のパッチ・マイナー。利用者に届かないので自動で入れる",
-      "matchDepTypes": ["devDependencies"],
+      "description": "開発用の依存のパッチ・マイナー。利用者に届かないので自動で入れる。npm 自体（package.json の packageManager）もここに入る",
+      "matchDepTypes": ["devDependencies", "packageManager"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "開発用の依存",
       "groupSlug": "dev-tools",
