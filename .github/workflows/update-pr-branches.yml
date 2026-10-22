@@ -1,0 +1,46 @@
+# main に何か入るたびに、自動マージを掛けた PR に最新の main を取り込ませる
+# （docs/development.md「web の動作確認は staging で行う」）。main のブランチ保護が
+# 「最新の main を取り込んだ状態」をマージの条件にしているので、放っておくと先に1本
+# 入っただけで残りが止まる。マージキューの代わり（個人のリポジトリでは使えない）。
+#
+# - 取り込みは merge（コミットを作り直さないので、手元のブランチは pull で追いつける）
+# - Renovate の PR は外す（Renovate が自分で作り直す。人が触ったブランチは作り直しを止める）
+# - GitHub App の鍵で取り込む。Actions に付いてくる鍵だと取り込んだ後の CI が動かない
+name: PR に最新の main を取り込む
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-pr-branches
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          client-id: ${{ vars.DEPS_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.DEPS_BOT_PRIVATE_KEY }}
+      - name: 古くなった PR を更新する
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          gh pr list -R "$REPO" --base main --state open --limit 100 \
+            --json number,headRefName,autoMergeRequest \
+            --jq '.[] | select(.autoMergeRequest != null) | select(.headRefName | startswith("renovate/") | not) | "\(.number) \(.headRefName)"' |
+          while read -r number branch; do
+            behind=$(gh api "repos/$REPO/compare/main...$branch" --jq .behind_by)
+            if [ "$behind" -gt 0 ]; then
+              echo "#$number（$branch）は main より $behind コミット古いので取り込む"
+              gh pr update-branch "$number" -R "$REPO"
+            fi
+          done

@@ -26,7 +26,7 @@ export function expoSdkNotice(mobileDir) {
       .map((l) => `  ${l.trim()}`);
     if (outdated.length > 0) {
       lines.push("Expo の部品に、今の SDK の中の更新がある:", ...outdated);
-      lines.push("今の作業とは別の PR で `npx expo install --fix` で揃える。");
+      lines.push("週1回のワークフロー（.github/workflows/expo-sdk-patch.yml）が PR にする。急ぐなら Actions から手で動かす。");
     } else {
       lines.push("Expo の部品が SDK の組み合わせどおりか確かめられなかった（`npx expo install --check`）。");
     }

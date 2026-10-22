@@ -1,0 +1,61 @@
+# Expo の部品を、今の SDK の中の最新の組み合わせに揃える PR を週1回出す
+# （docs/development.md「Expo の部品」）。Renovate は Expo の組み合わせを知らないので、
+# 揃えるのは Expo のコマンド（npx expo install --fix）に任せる。CI が通れば自動で入る。
+#
+# PR は GitHub App の鍵で作る。Actions に付いてくる鍵で作った PR では CI が動かず、
+# マージの条件を満たせないため。
+name: Expo の部品を揃える
+
+on:
+  schedule:
+    - cron: "0 23 * * 0" # 月曜 8:00（日本時間）。Renovate と同じ朝
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: expo-sdk-patch
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/create-github-app-token@v3
+        id: app
+        with:
+          client-id: ${{ vars.DEPS_BOT_CLIENT_ID }}
+          private-key: ${{ secrets.DEPS_BOT_PRIVATE_KEY }}
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm install -g "$(node -p "require('./package.json').packageManager")"
+      - run: npm ci
+      - run: npx expo install --fix
+        working-directory: apps/mobile
+      - name: PR を出す（変わった時だけ）
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SLUG: ${{ steps.app.outputs.app-slug }}
+        run: |
+          if git diff --quiet; then
+            echo "Expo の部品は揃っている"
+            exit 0
+          fi
+          id=$(gh api "/users/${SLUG}%5Bbot%5D" --jq .id)
+          git config user.name "${SLUG}[bot]"
+          git config user.email "${id}+${SLUG}[bot]@users.noreply.github.com"
+          branch=expo/sdk-patch
+          git switch -C "$branch"
+          git commit -am "Expo の部品を今の SDK の最新の組み合わせに揃える"
+          git push --force origin "$branch"
+          if ! gh pr view "$branch" --json state --jq .state | grep -q OPEN; then
+            gh pr create --head "$branch" --label 自動マージ \
+              --title "Expo の部品を今の SDK の最新の組み合わせに揃える" \
+              --body "\`npx expo install --fix\` の結果。CI が通れば自動で入る（docs/development.md「Expo の部品」）。"
+          fi
+          gh pr merge "$branch" --auto --squash

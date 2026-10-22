@@ -214,6 +214,10 @@ web の入口は OAuth（Google / Apple）だけなので、自動テストや A
   通り、main の最新を取り込んだ状態であることがマージの条件（ブランチ保護。管理者にも効く
   ので、手元から `main` へ直接 push すると弾かれる）。手元のフックは手元の `node_modules`
   で走るので、まっさらな環境から入れ直す CI でしか出ない壊れ方がある。
+- **入れてよい PR には自動マージを掛ける**（`gh pr merge --auto --squash`）。先に別の PR が
+  入って古くなっても、`.github/workflows/update-pr-branches.yml` が最新の main を取り込ませ
+  （merge。手元のブランチは pull で追いつける）、CI が通り直せば入る。マージキューの代わり
+  （個人のリポジトリでは使えない）。Renovate の PR は Renovate が自分で作り直すので対象外。
 
 - **確認はプレビュー URL で行う。** `https://triplot-git-staging-hdtks-projects.vercel.app`
   （Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが
@@ -486,12 +490,22 @@ Expo のコマンドだけなので、版を選ぶのはそちらに任せる。
 - **組み合わせから外れていないかは CI が見る**（`npm run check:expo-deps`。pre-push と CI）。
   入っている expo 本体が持つ一覧と比べ、Expo のサーバーには問い合わせない（`EXPO_OFFLINE=1`）。
   問い合わせると、Expo が新しいパッチを出した日に、リポジトリが何も変わっていなくても落ちる。
-- **expo 本体と、版を固定している部品（react-native 等）を上げるのは人。** `npm run ios:build` が
-  最後に知らせを出す（preview・TestFlight のどちらでも。止めはしない）:
+- **expo 本体と、範囲の外に出る更新（版を固定している react-native 等）は、週1回の
+  ワークフローが揃える**（`.github/workflows/expo-sdk-patch.yml`。月曜の朝）。
+  `npx expo install --fix` を回し、変わった時だけ PR を出して自動マージを掛ける。CI が通れば入る。
+  急ぐ時は Actions の画面から手で動かせる。Expo が版を決めているアプリの開発用の依存
+  （`typescript`・`@types/react`）もこれが揃えるので、Renovate は `apps/mobile` のそれには触らない。
+  - Expo の組み合わせは Expo 自身が確かめて出すものなので、このワークフローは公開から
+    7日待たずに取り込む。
+  - PR は GitHub App（`triplot-deps-bot`）の鍵で作る。Actions に付いてくる鍵で作った PR では
+    CI が動かず、マージの条件を満たせないため。鍵は Actions の変数 `DEPS_BOT_CLIENT_ID` と
+    シークレット `DEPS_BOT_PRIVATE_KEY`。
+- **新しい SDK は人が判断する。** `npm run ios:build` が最後に知らせを出す（preview・TestFlight の
+  どちらでも。止めはしない）:
 
 | 知らせ | 大きさ | どうするか |
 |---|---|---|
-| 今の SDK の中の更新がある | パッチ相当 | 今の作業とは別の PR で `npx expo install --fix` で揃える |
+| 今の SDK の中の更新がある | パッチ相当 | 週1回のワークフローが揃える。急ぐなら手で動かす |
 | 新しい SDK が出ている | メジャー相当 | 上げるかどうか・いつ上げるかを吟味して決める。Expo のアップグレードの手順に従い、別の PR にする |
 
 ルートの `package.json` は expo と expo-router をアプリと同じ版に固定している（理由はそこに
