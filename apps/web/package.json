@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.5.0",
-    "@supabase/ssr": "^0.10.2",
+    "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.105.1",
     "@triplot/shared": "*",
     "@vis.gl/react-google-maps": "^1.8.3",
@@ -22,7 +22,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.3.0",
     "lucide-react": "^1.16.0",
-    "next": "16.3.8",
+    "next": "16.4.1",
     "next-intl": "^4.13.0",
     "postal-mime": "^2.7.4",
     "react": "19.2.3",
