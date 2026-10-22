@@ -208,7 +208,12 @@ web の入口は OAuth（Google / Apple）だけなので、自動テストや A
 [`architecture.md`](./architecture.md) の「環境（本番／確認）」節を参照。
 
 **`main` に入れたものは即公開されるので、確認は staging で行う**
-（`main` への push ＝ 公開）。
+（`main` に入る ＝ 公開）。
+
+- **`main` へは PR からだけ入れる。** CI（`.github/workflows/ci.yml`）と Vercel のビルドが
+  通り、main の最新を取り込んだ状態であることがマージの条件（ブランチ保護。管理者にも効く
+  ので、手元から `main` へ直接 push すると弾かれる）。手元のフックは手元の `node_modules`
+  で走るので、まっさらな環境から入れ直す CI でしか出ない壊れ方がある。
 
 - **確認はプレビュー URL で行う。** `https://triplot-git-staging-hdtks-projects.vercel.app`
   （Vercel Authentication が有効＝Vercel にログイン済みのチームメンバーだけが
@@ -217,7 +222,7 @@ web の入口は OAuth（Google / Apple）だけなので、自動テストや A
 - **migration を入れたら staging にも当てる**（下記「staging DB への migration」）。
 
 ```
-feature ブランチ → staging にマージ → プレビュー URL で確認 → main にマージ → 本番
+feature ブランチ → staging にマージ → プレビュー URL で確認 → main への PR → CI が通ったらマージ → 本番
 ```
 
 環境の対応。**コード側に環境の分岐は無く**、Vercel の環境変数スコープだけで
@@ -431,7 +436,7 @@ G3 中間証明書が要る。`patches/` のパッチは root の postinstall �
 - **自動マージの条件**は main のブランチ保護が持つ: CI（`.github/workflows/ci.yml`）と
   Vercel のビルドが通り、main の最新を取り込んだ状態であること。1本入って残りの PR の土台が
   古くなると、Renovate が新しい main の上に作り直してチェックし直すので、**入れる順番は
-  気にしなくてよい**。管理者（手元からの push）はこの保護の外にある。
+  気にしなくてよい**。自分の変更も同じ条件で PR から入る（上の「web の動作確認は staging で行う」）。
 - **Dependabot ではなく Renovate を使うのはこのため。** Dependabot は衝突しない限り古くなった
   だけの PR を作り直さず、作り直しの依頼（`@dependabot rebase`）も人からしか受け付けない
   ので、自動マージ待ちの PR が1本入るたびに残りが緑のまま止まった。
