@@ -12,6 +12,7 @@
       "matchDepTypes": ["dependencies"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "web の本番の依存",
+      "groupSlug": "web",
       "labels": ["そのまま入れてよい"]
     },
     {
@@ -25,6 +26,7 @@
       ],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "iOS の依存",
+      "groupSlug": "ios",
       "labels": ["自動マージ"],
       "automerge": true
     },
@@ -33,6 +35,7 @@
       "matchDepTypes": ["devDependencies"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "開発用の依存",
+      "groupSlug": "dev-tools",
       "labels": ["自動マージ"],
       "automerge": true
     },
@@ -40,6 +43,7 @@
       "description": "GitHub Actions の部品。壊れれば CI 自体が落ちるので自動で入れる",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
+      "groupSlug": "github-actions",
       "labels": ["自動マージ"],
       "automerge": true
     },
@@ -48,20 +52,6 @@
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["major"],
       "labels": ["要検討：メジャー"],
-      "automerge": false
-    },
-    {
-      "description": "セキュリティの修正。待つ間穴が開いたままなので自動で入れる（メジャーを除く）",
-      "isVulnerabilityAlert": true,
-      "matchUpdateTypes": ["minor", "patch"],
-      "labels": ["セキュリティ", "自動マージ"],
-      "automerge": true
-    },
-    {
-      "description": "セキュリティの修正でもメジャーは人が見る",
-      "isVulnerabilityAlert": true,
-      "matchUpdateTypes": ["major"],
-      "labels": ["セキュリティ", "要検討：メジャー"],
       "automerge": false
     },
     {
@@ -110,6 +100,11 @@
       "allowedVersions": "<25"
     }
   ],
+  "vulnerabilityAlerts": {
+    "description": "セキュリティの修正。待つ間穴が開いたままなので自動で入れる。Renovate はこれを packageRules の後に強制で当てるので、上の規則（web の本番は人が見る等）より優先される",
+    "labels": ["セキュリティ", "自動マージ"],
+    "automerge": true
+  },
   "lockFileMaintenance": {
     "description": "lockfile を作り直し、間接の依存を範囲内の最新にする（間接の依存のセキュリティの修正もここで入る）。web の本番に効くので人が見る",
     "enabled": true,
