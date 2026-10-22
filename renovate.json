@@ -1,22 +1,23 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "description": "依存の更新の PR を Renovate に出させる。どれを自動で入れ、どれを人が見るかは docs/development.md の「依存の更新」。packageRules は後に書いたものが前のものを上書きする。",
+  "description": "依存の更新の PR を Renovate に出させる。CI が通れば自動で入れ、人が見るのはメジャーだけ（docs/development.md の「依存の更新」）。packageRules は後に書いたものが前のものを上書きする。",
   "extends": ["config:recommended"],
   "timezone": "Asia/Tokyo",
-  "schedule": ["before 9am on the first day of the month"],
+  "schedule": ["before 9am on monday"],
   "minimumReleaseAge": "7 days",
   "prConcurrentLimit": 20,
   "packageRules": [
     {
-      "description": "web の本番の依存のパッチ・マイナー。main に入った瞬間に本番に出るので人が見る",
+      "description": "web の本番の依存のパッチ・マイナー",
       "matchDepTypes": ["dependencies"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "web の本番の依存",
       "groupSlug": "web",
-      "labels": ["そのまま入れてよい"]
+      "labels": ["自動マージ"],
+      "automerge": true
     },
     {
-      "description": "iOS でだけ使う依存のうち、Expo の SDK が版を決めていないもの。次のビルドと TestFlight での確認を経てから利用者に届くので自動で入れる",
+      "description": "iOS でだけ使う依存のうち、Expo の SDK が版を決めていないもの",
       "matchDepTypes": ["dependencies"],
       "matchPackageNames": [
         "expo-share-intent",
@@ -31,7 +32,7 @@
       "automerge": true
     },
     {
-      "description": "開発用の依存のパッチ・マイナー。利用者に届かないので自動で入れる。npm 自体（package.json の packageManager）もここに入る",
+      "description": "開発用の依存のパッチ・マイナー。npm 自体（package.json の packageManager）もここに入る",
       "matchDepTypes": ["devDependencies", "packageManager"],
       "matchUpdateTypes": ["minor", "patch"],
       "groupName": "開発用の依存",
@@ -40,7 +41,7 @@
       "automerge": true
     },
     {
-      "description": "GitHub Actions の部品。壊れれば CI 自体が落ちるので自動で入れる",
+      "description": "GitHub Actions の部品（メジャーも。壊れれば CI 自体が落ちる）",
       "matchManagers": ["github-actions"],
       "groupName": "GitHub Actions",
       "groupSlug": "github-actions",
@@ -48,7 +49,7 @@
       "automerge": true
     },
     {
-      "description": "メジャーは1件ずつ、中身を吟味してから入れる",
+      "description": "メジャーは1件ずつ、移行の手順を読み、コードを直してから人が入れる",
       "matchManagers": ["npm"],
       "matchUpdateTypes": ["major"],
       "labels": ["要検討：メジャー"],
@@ -101,14 +102,15 @@
     }
   ],
   "vulnerabilityAlerts": {
-    "description": "セキュリティの修正。待つ間穴が開いたままなので自動で入れる。Renovate はこれを packageRules の後に強制で当てるので、上の規則（web の本番は人が見る等）より優先される",
+    "description": "セキュリティの修正。見つかった時にすぐ出す。Renovate はこれを packageRules の後に強制で当てるので、上の規則（メジャーは人が見る等）より優先される",
     "labels": ["セキュリティ", "自動マージ"],
     "automerge": true
   },
   "lockFileMaintenance": {
-    "description": "lockfile を作り直し、間接の依存を範囲内の最新にする（間接の依存のセキュリティの修正もここで入る）。web の本番に効くので人が見る",
+    "description": "lockfile を作り直し、間接の依存（Expo の部品の SDK の中の更新を含む）を範囲内の最新にする。間接の依存のセキュリティの修正もここで入る",
     "enabled": true,
-    "schedule": ["before 9am on the first day of the month"],
-    "labels": ["そのまま入れてよい"]
+    "schedule": ["before 9am on monday"],
+    "labels": ["自動マージ"],
+    "automerge": true
   }
 }

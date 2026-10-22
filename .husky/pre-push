@@ -3,5 +3,6 @@ npm run typecheck
 npm test
 npm run check:client-boundary
 npm run check:renovate-expo
+npm run check:expo-deps
 npm run db:types:check
 npm run check:staging-migrations

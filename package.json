@@ -21,6 +21,7 @@
     "db:types:check": "bash scripts/check-db-types.sh",
     "check:client-boundary": "node scripts/check-client-boundary.mjs",
     "check:renovate-expo": "node scripts/check-renovate-expo.mjs",
+    "check:expo-deps": "EXPO_OFFLINE=1 npm -w @triplot/mobile exec -- expo install --check",
     "db:push:staging": "bash scripts/db-push-staging.sh",
     "check:staging-migrations": "node scripts/check-staging-migrations.mjs",
     "check:no-secrets": "node scripts/check-no-secrets.mjs",
