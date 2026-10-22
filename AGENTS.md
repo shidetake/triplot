@@ -26,7 +26,9 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 - **web**: 画面に見える変更が一段落し typecheck / lint / テストが通ったら、
   指示を待たず `staging` にマージして push する（確認できる場所まで自分で運ぶ）。
-  **`main` へはユーザーの指示なしに入れない**（`main` への push ＝ 本番公開）。
+  **`main` へはユーザーの指示なしに入れない**（`main` に入る ＝ 本番公開）。入れる時は
+  PR を作り、CI が通ってからマージする（ブランチ保護が管理者にも効いていて、直接の push は
+  弾かれる）。ユーザーの「push していい」「main に入れていい」は、この PR のマージの許可。
 - **iOS**: 「実機で見たい」と言われたら preview ビルドを使う。区切り
   （docs/development.md の「iOS の実機確認」の定義）では、指示を待たず
   TestFlight にビルドして submit まで進める。
