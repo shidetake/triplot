@@ -53,7 +53,7 @@ Husky フック: `pre-commit` で lint + 型チェック + 秘密の値の混入
 - [UI ガイドライン](./docs/ui-guidelines.md) — UI / アイコン / 配色 / コピー / インタラクションの規約
 - [バージョン表記](./docs/versioning.md) — web・iOS のバージョン番号とリリース手順
 - `docs/design/` — 機能ごとの設計（メール取り込み・タイムゾーン・地図・課金・ログイン方法など）
-- [BACKLOG.md](./BACKLOG.md) — 残件
+- [Issue](https://github.com/shidetake/triplot/issues) — 残件（これからやること）
 - [CLAUDE.md](./CLAUDE.md) / [AGENTS.md](./AGENTS.md) — AI エージェント専用の作業指示（人間向けの内容は docs/ にある）
 
 ## デプロイ
