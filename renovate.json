@@ -96,6 +96,12 @@
       "enabled": false
     },
     {
+      "description": "アプリ（apps/mobile）の開発用の依存のうち、Expo が SDK ごとに版を決めているもの（Expo の relatedPackages）。揃えるのは .github/workflows/expo-sdk-patch.yml の npx expo install --fix。web 側の同じ部品は上の規則どおり Renovate が上げる",
+      "matchFileNames": ["apps/mobile/package.json"],
+      "matchPackageNames": ["@types/react", "typescript"],
+      "enabled": false
+    },
+    {
       "description": "型定義は動かしている Node（24）に合わせる",
       "matchPackageNames": ["@types/node"],
       "allowedVersions": "<25"

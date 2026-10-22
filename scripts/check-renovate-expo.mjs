@@ -35,10 +35,13 @@ if (process.argv.includes("--print")) {
   process.exit(0);
 }
 
-// enabled: false の規則が、Expo の部品を外している規則（1つだけ）。
-const rules = (read("renovate.json").packageRules ?? []).filter((r) => r.enabled === false);
+// ファイルを限らない enabled: false の規則が、Expo の部品を外している規則（1つだけ）。
+// apps/mobile に限った規則（Expo の relatedPackages）は別に持っている。
+const rules = (read("renovate.json").packageRules ?? []).filter(
+  (r) => r.enabled === false && !r.matchFileNames,
+);
 if (rules.length !== 1) {
-  console.error("check-renovate-expo: renovate.json に enabled: false の規則がちょうど1つ無い");
+  console.error("check-renovate-expo: renovate.json にファイルを限らない enabled: false の規則がちょうど1つ無い");
   process.exit(1);
 }
 const listed = [...(rules[0].matchPackageNames ?? [])].sort();
