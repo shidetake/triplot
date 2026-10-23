@@ -9,7 +9,12 @@
 // 忘れても素通りしない。
 //
 // 探す値は**環境ファイルから読む**。この判定器自体に秘密を書いてしまっては
-// 本末転倒なので、値をここに持たない（環境ファイルが無ければ何も見ずに通す）。
+// 本末転倒なので、値をここに持たない（環境ファイルが無ければ値では探さない）。
+//
+// もう1つ、**値を知らなくても形で分かる鍵**は形で探す。Google の API キーは
+// 環境ファイルではなく EAS に置いてあり、値では探せない。実際、iOS のビルドが
+// 記録に書き出した地図のキーが、記録ごと無関係なコミットに紛れて公開された
+// （build-logs/ を gitignore し忘れていた）。どこに紛れても形で止める。
 
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
@@ -26,6 +31,10 @@ const SECRET_KEYS = [
   "SUPABASE_ACCESS_TOKEN",
   "BLOB_READ_WRITE_TOKEN",
   "SUPABASE_STAGING_DB_URL",
+];
+// 形で分かる鍵。名前は見つけた時の知らせに使う。
+const SECRET_PATTERNS = [
+  { name: "Google の API キー", re: /AIza[0-9A-Za-z_-]{35}/ },
 ];
 
 function readSecrets() {
@@ -46,7 +55,6 @@ function readSecrets() {
 }
 
 const secrets = readSecrets();
-if (secrets.size === 0) process.exit(0);
 
 // staged の中身だけを見る（作業ツリーの実験は止めない）。
 const staged = spawnSync("git", ["diff", "--cached", "--name-only", "-z"], {
@@ -66,7 +74,10 @@ for (const file of files) {
   }).stdout;
   if (!content || content.includes("\0")) continue;
   for (const [key, value] of secrets) {
-    if (content.includes(value)) hits.push({ file, key });
+    if (content.includes(value)) hits.push({ file, key: `${key} の値` });
+  }
+  for (const { name, re } of SECRET_PATTERNS) {
+    if (re.test(content)) hits.push({ file, key: name });
   }
 }
 
@@ -77,11 +88,12 @@ if (hits.length > 0) {
   for (const h of hits) {
     // **値そのものは出さない**（ログや画面に残るため）。どのファイルの
     // どの種類か、だけ言う。
-    console.error(`  ${h.file}  ← ${h.key} の値`);
+    console.error(`  ${h.file}  ← ${h.key}`);
   }
   console.error("");
-  console.error("その値は gitignore された環境ファイルにだけ置く。");
+  console.error("その値は gitignore された環境ファイル（Google のキーは EAS）にだけ置く。");
   console.error("ファイルから消してからコミットし直すこと。");
+  console.error("ビルドの記録などの出力なら、置き場所を gitignore に足す。");
   console.error("");
   console.error(
     "（転送先アドレスは、知っていれば誰でもその受信箱にメールを流し込める）",
