@@ -39,6 +39,94 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_call_features: {
+        Row: {
+          code: string
+          description: string
+        }
+        Insert: {
+          code: string
+          description: string
+        }
+        Update: {
+          code?: string
+          description?: string
+        }
+        Relationships: []
+      }
+      ai_call_purposes: {
+        Row: {
+          code: string
+          description: string
+          feature: string
+        }
+        Insert: {
+          code: string
+          description: string
+          feature: string
+        }
+        Update: {
+          code?: string
+          description?: string
+          feature?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_call_purposes_feature_fkey"
+            columns: ["feature"]
+            isOneToOne: false
+            referencedRelation: "ai_call_features"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      ai_calls: {
+        Row: {
+          cached_input_tokens: number
+          cost_usd: number | null
+          created_at: string
+          id: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          purpose: string
+          reasoning_tokens: number
+          unit_id: string
+        }
+        Insert: {
+          cached_input_tokens: number
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          input_tokens: number
+          model: string
+          output_tokens: number
+          purpose: string
+          reasoning_tokens: number
+          unit_id: string
+        }
+        Update: {
+          cached_input_tokens?: number
+          cost_usd?: number | null
+          created_at?: string
+          id?: string
+          input_tokens?: number
+          model?: string
+          output_tokens?: number
+          purpose?: string
+          reasoning_tokens?: number
+          unit_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_calls_purpose_fkey"
+            columns: ["purpose"]
+            isOneToOne: false
+            referencedRelation: "ai_call_purposes"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
       ai_usage_baseline: {
         Row: {
           extracted_since: number
@@ -1199,6 +1287,24 @@ export type Database = {
     Functions: {
       acquire_note_lock: { Args: { p_note_id: string }; Returns: Json }
       admin_active_user_count: { Args: never; Returns: number }
+      admin_ai_cost_daily: {
+        Args: { p_since: string }
+        Returns: {
+          cost_usd: number
+          day: string
+          feature: string
+          units: number
+        }[]
+      }
+      admin_ai_cost_summary: {
+        Args: { p_since: string }
+        Returns: {
+          calls: number
+          cost_usd: number
+          feature: string
+          units: number
+        }[]
+      }
       admin_rate_limited_email_count: { Args: never; Returns: number }
       admin_user_usage: {
         Args: never

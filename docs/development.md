@@ -64,8 +64,9 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 | 転送先アドレス等・Google の API キーをコミットする | `pre-commit`（`check:no-secrets`。値は環境ファイルから読み、Google のキーは形で探す。ログには出さない） |
 | `database.generated.ts` が実 DB とズレる | `pre-push`（`db:types:check`） |
 | migration を staging に当て忘れる | `pre-push`（`check:staging-migrations`） |
+| テーブルを作る migration に grant を書き忘れる | `pre-push`・CI（`check:migration-grants`） |
 | クライアント境界を越える import | `pre-push`（`check:client-boundary`） |
-| Expo の部品を足したのに Renovate の除外に入れ忘れる | `pre-push`・CI（`check:renovate-expo`） |
+| Expo の部品・SDK に縛られた部品を足したのに Renovate の除外に入れ忘れる | `pre-push`・CI（`check:renovate-expo`） |
 | Expo の部品が SDK の組み合わせから外れる | `pre-push`・CI（`check:expo-deps`） |
 | 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
 | 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
@@ -275,6 +276,16 @@ Supabase Auth の Apple プロバイダは**本番プロジェクトのみ有効
 になる。**Google ログインで代替できるので確認は Google で行う**（Apple 固有の
 確認がどうしても要るときだけ TestFlight／本番相当の環境で見る）。
 
+### メールとパスワードでのログインは staging だけ有効
+
+Supabase Auth の Email プロバイダは**staging だけ有効**で、本番では切ってある。
+利用者の入口は Google と Apple だけで、メールとパスワードを使うのは開発用ログイン
+（web・iOS）と実 DB のテストだけ。どれも staging に向く。
+
+画面にボタンが無くても、プロバイダが有効ならログインの窓口は開いている（窓口の場所と
+anon key はアプリにも web にも入っている）。本番のアカウントにパスワードを付けると
+そこから入れてしまうので、**本番ではプロバイダを有効にしない・パスワードを付けない**。
+
 ### staging DB への migration
 
 ```bash
@@ -413,7 +424,7 @@ G3 中間証明書が要る。`patches/` のパッチは root の postinstall �
 
 ## 依存の更新（Renovate）
 
-依存の新しい版は Renovate（GitHub アプリ）が PR にして持ってくる（設定は `renovate.json`）。
+依存の新しい版は Renovate（GitHub アプリ）が PR にして持ってくる（設定は `renovate.json5`）。
 **CI が通れば自動でマージされる。人が見るのはメジャーと、Expo の新しい SDK だけ**。
 
 | 種類 | PR の出方 | ラベル | 扱い |
@@ -486,12 +497,39 @@ G3 中間証明書が要る。`patches/` のパッチは root の postinstall �
 
 ### Expo の部品
 
-**Expo の SDK が版を決めている部品は、Renovate に PR を作らせない**（expo 本体・expo-*・React・
+**Expo の SDK に版が縛られている部品は、Renovate に PR を作らせない**（expo 本体・expo-*・React・
 React Native とその周りの部品）。Expo は SDK ごとに「動作を確かめた版の組み合わせ」を持って
 いて、外れると iOS のビルドが通らない・起動しない等の壊れ方をすることがある。その組み合わせは
 部品の設定ファイルではなく Expo 自身の一覧にあり、npm も Renovate も読めない。読めるのは
-Expo のコマンドだけなので、版を選ぶのはそちらに任せる。除外の一覧が実際の依存と合っているかは
-`npm run check:renovate-expo`（pre-push と CI）が見る。Expo の部品を足したらここで止まる。
+Expo のコマンドだけなので、版を選ぶのはそちらに任せる。
+
+**外す部品は「Expo の一覧」＋「名前」＋「足す」−「引く」で決める**（`renovate.json5` の
+Expo の規則。欄ごとにコメントで区切ってある）。
+
+| 欄 | 中身 | 決め方 |
+|---|---|---|
+| Expo の一覧 | expo の `bundledNativeModules.json` に載っている依存と expo 本体 | 手で選ばない。書くべき一覧は `npm run check:renovate-expo -- --print` |
+| 名前 | `expo-*`・`@expo/*` | Expo 向けの部品は SDK に縛られていることが多いので、名前で先に外す |
+| 足す | 上の2つに当たらないが、SDK に縛られている部品 | 見つけたら1行足し、理由と見つけた日をコメントに書く |
+| 引く（先頭に `!`） | 名前で外れたが、SDK に縛られていない部品 | 同上 |
+
+- **Expo の一覧だけでは足りない。** Expo の一覧は Expo が自分で確かめた部品だけの一覧で、Expo に
+  縛られた部品の全部ではない。外部の人が作った部品にも、求める expo の版を SDK 1つに閉じて
+  宣言しているものがある（例: 共有を受け取る `expo-share-intent`。8 系は SDK 57 だけ、9 系は
+  SDK 58 だけ）。これを普通の依存として扱うと、SDK を上げない限り入らないメジャーが
+  Dashboard の承認待ちに並び、承認すれば上がるように見える。Renovate も Expo のコマンドも
+  この縛りを見ない（Renovate の保守者も、peerDependencies を見て候補を絞る機能は無いと
+  している）ので、自分たちで見る。
+- **書き方は gitignore に似ているが、順番は関係ない。** どれかに当たり、`!` のどれにも当たら
+  なければ外れる（Renovate の名前の指定の決まり）。
+- **外し忘れ・引き違いは `npm run check:renovate-expo`（pre-push と CI）が止める。** Expo の一覧の
+  欄のずれ、SDK に縛られている（求める expo の版がメジャー1つに閉じている）のにどこからも
+  外れていない部品、引けない部品（Expo の一覧のもの・SDK に縛られたもの）を引いている、
+  もう依存に無い名前が足す・引くに残っている、を見る。
+- **名前・足すで外した部品は、誰も新しいメジャーを持ってこない**（Renovate は外しているし、
+  Expo のコマンドは知らない）。SDK に縛られた部品なら、SDK を上げる時にインストールが
+  止まるので、そこで一緒に上げる。縛られていないのに名前で外れていた場合に取り残されないよう、
+  `npm run ios:build` の最後の知らせに新しいメジャーを出す（下の表）。
 
 部品の版の動き方と見張り:
 
@@ -517,6 +555,7 @@ Expo のコマンドだけなので、版を選ぶのはそちらに任せる。
 |---|---|---|
 | 今の SDK の中の更新がある | パッチ相当 | 週1回のワークフローが揃える。急ぐなら手で動かす |
 | 新しい SDK が出ている | メジャー相当 | 上げるかどうか・いつ上げるかを吟味して決める。Expo のアップグレードの手順に従い、別の PR にする |
+| Renovate から外していて Expo のコマンドも揃えない部品に、新しいメジャーがある | メジャー | SDK に縛られているなら SDK を上げる時に一緒に上げる。縛られていないなら「引く」に書いて Renovate に戻す |
 
 expo と Expo の部品は、アプリの `package.json`（`apps/mobile`）にだけ書く（Expo の monorepo の
 手順と同じ）。ルートには置かない。

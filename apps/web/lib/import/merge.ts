@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { nameTokens } from "@triplot/shared/import/placeMatch";
 
-import { logUsage } from "./usageLog";
+import { type LlmCall, logUsage } from "./usageLog";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
 import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
@@ -328,6 +328,8 @@ export async function findMerge(
   model: LanguageModel,
   incoming: { extraction: Extraction; text: string },
   candidates: DraftCandidate[],
+  // LLM を呼んだ結果（トークン数・費用）の受け取り口。extractEmail と同じ。
+  onCall?: (call: LlmCall) => Promise<void>,
 ): Promise<{ targetId: string; merged: Extraction } | null> {
   if (candidates.length === 0) return null;
 
@@ -398,6 +400,11 @@ export async function findMerge(
         prompt,
       });
   logUsage(certain ? "merge(確定)" : "merge(判断)", call.usage);
+  await onCall?.({
+    model,
+    usage: call.usage,
+    providerMetadata: call.providerMetadata,
+  });
   const object = call.object;
 
   if (!object.matchId || !object.merged) return null;

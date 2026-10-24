@@ -2,7 +2,7 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
-import { logUsage } from "./usageLog";
+import { type LlmCall, logUsage } from "./usageLog";
 import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
 import { buildImportPrompt, IMPORT_SYSTEM_PROMPT, type TripHint } from "./prompt";
 import {
@@ -44,12 +44,15 @@ const extractionSchema = z.object({
 // 呼び出し側で用意して渡す。
 // trips を渡すと tripId を推論する（渡さなければ tripId は常に null）。
 // events は検証・補正（sanitizeEventDraft）済みのものだけ返す。
+// onCall は LLM を呼んだ結果（トークン数・費用）を受け取る。記録先（ai_calls）と
+// 何の処理かは呼び出し側が知っているので、ここでは渡すだけにする。
 export async function extractEmail(
   model: LanguageModel,
   input: { subject: string; text: string; trips?: TripHint[] },
+  onCall?: (call: LlmCall) => Promise<void>,
 ): Promise<Extraction & { tripId: string | null; detailUrl: string | null }> {
   const trips = input.trips ?? [];
-  const { object, usage } = await generateObject({
+  const { object, usage, providerMetadata } = await generateObject({
     model,
     schema: extractionSchema,
     // **固定の指示を先に、可変の本文を後に置く。** Gemini 2.5 系は先頭が同一の
@@ -61,6 +64,7 @@ export async function extractEmail(
     prompt: buildImportPrompt(input),
   });
   logUsage("extract", usage);
+  await onCall?.({ model, usage, providerMetadata });
   // 幻覚 id を弾く（候補に無い id は無効として未割当に）。
   const tripId = trips.some((t) => t.id === object.tripId) ? object.tripId : null;
   // 幻覚 URL を弾く（本文に実在する URL のみ採用）。

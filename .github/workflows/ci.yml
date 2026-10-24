@@ -29,3 +29,4 @@ jobs:
       - run: npm run check:client-boundary
       - run: npm run check:renovate-expo
       - run: npm run check:expo-deps
+      - run: npm run check:migration-grants
