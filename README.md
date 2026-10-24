@@ -43,7 +43,7 @@ npm run db:push:staging  # migration を staging DB に当てる
 ```
 
 Husky フック: `pre-commit` で lint + 型チェック + 秘密の値の混入チェック、`pre-push` でそれに加えて
-テスト・クライアント境界・DB 型のズレ・staging への migration の当て忘れを検出する。
+テスト・クライアント境界・DB 型のズレ・staging への migration の当て忘れ・テーブルの grant の書き忘れを検出する。
 
 ## ドキュメント
 
