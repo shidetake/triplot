@@ -61,7 +61,7 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 
 | 守りたいこと | どこで止まるか |
 |---|---|
-| 転送先アドレス等をコミットする | `pre-commit`（`check:no-secrets`。値は環境ファイルから読み、ログには出さない） |
+| 転送先アドレス等・Google の API キーをコミットする | `pre-commit`（`check:no-secrets`。値は環境ファイルから読み、Google のキーは形で探す。ログには出さない） |
 | `database.generated.ts` が実 DB とズレる | `pre-push`（`db:types:check`） |
 | migration を staging に当て忘れる | `pre-push`（`check:staging-migrations`） |
 | クライアント境界を越える import | `pre-push`（`check:client-boundary`） |
