@@ -48,6 +48,7 @@ import {
   isUnknownReceiptHostUrl,
 } from "./links";
 import { type DraftCandidate, findMerge, selectMergeCandidates } from "./merge";
+import { recordAiCall } from "./usageLog";
 import { appendLinkText, gatherReceiptText } from "./pipeline";
 import {
   extractionGainedDetail,
@@ -244,7 +245,12 @@ async function tryMerge(
   const candidates = selectMergeCandidates(extraction, drafts);
   if (candidates.length === 0) return { result: null, candidates: 0 };
   return {
-    result: await findMerge(EXTRACT_MODEL, { extraction, text }, candidates),
+    result: await findMerge(
+      EXTRACT_MODEL,
+      { extraction, text },
+      candidates,
+      (call) => recordAiCall(supabase, "inbound_merge", emailId, call),
+    ),
     candidates: candidates.length,
   };
 }
@@ -883,11 +889,11 @@ async function runExtraction(
   const asJson = () => diag as unknown as Json;
   const trips = await fetchTripHints(supabase, userId);
   let text = gatheredText;
-  const firstPass = await extractEmail(EXTRACT_MODEL, {
-    subject,
-    text,
-    trips,
-  });
+  const firstPass = await extractEmail(
+    EXTRACT_MODEL,
+    { subject, text, trips },
+    (call) => recordAiCall(supabase, "inbound_extract", emailId, call),
+  );
   let extractResult = firstPass;
 
   // 第2パス: 明細が未許可ホストのリンク先にしか無いメール。LLM が特定したその URL
@@ -909,11 +915,12 @@ async function runExtraction(
       if (linkText && linkText.trim()) {
         const enriched = appendLinkText(text, firstPass.detailUrl, linkText);
         try {
-          const secondPass = await extractEmail(EXTRACT_MODEL, {
-            subject,
-            text: enriched,
-            trips,
-          });
+          const secondPass = await extractEmail(
+            EXTRACT_MODEL,
+            { subject, text: enriched, trips },
+            (call) =>
+              recordAiCall(supabase, "inbound_extract_link", emailId, call),
+          );
           // 未許可ホストを学習用に記録するのは、実際に下書きの内容を補えた時だけ
           // （LLM の detailUrl 誤報告等のノイズを候補表から除く。admin 管理ページに
           // 出るホストはドメイン名を見るだけで昇格判断できる）。
