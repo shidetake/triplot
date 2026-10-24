@@ -43,6 +43,7 @@
   "devDependencies": {
     "@vercel/blob": "^2.8.2",
     "husky": "^9.1.7",
+    "json5": "^2.2.3",
     "license-checker-rseidelsohn": "^5.0.1",
     "supabase": "^2.120.0"
   },

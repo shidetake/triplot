@@ -11,6 +11,8 @@ import fs from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 
+import { dependencyNames, loadExpoExclusion } from "./renovate-expo.mjs";
+
 export function expoSdkNotice(mobileDir) {
   const lines = [];
 
@@ -44,6 +46,16 @@ export function expoSdkNotice(mobileDir) {
     lines.push("上げるかどうか・いつ上げるかは吟味して決める。上げる時も今の作業とは別の PR にする。");
   }
 
+  // Renovate から外していて、Expo のコマンドも揃えない部品（名前の形・「足す」で外したもの）。
+  // 誰も新しいメジャーを持ってこないので、SDK を上げる時に一緒に見るためにここで出す。
+  const stranded = strandedMajors(mobileDir);
+  if (stranded.length > 0) {
+    if (lines.length > 0) lines.push("");
+    lines.push("Renovate から外していて Expo のコマンドも揃えない部品に、新しいメジャーがある:");
+    lines.push(...stranded.map((s) => `  ${s}`));
+    lines.push("SDK に縛られているなら、SDK を上げる時に一緒に上げる。縛られていないなら renovate.json5 の「引く」に書く。");
+  }
+
   if (lines.length === 0) return null;
   return ["", "── Expo の知らせ（docs/development.md「依存の更新」）──", ...lines].join("\n");
 }
@@ -56,4 +68,32 @@ function installedExpoMajor(mobileDir) {
   } catch {
     return null;
   }
+}
+
+function strandedMajors(mobileDir) {
+  let ex;
+  try {
+    ex = loadExpoExclusion();
+  } catch {
+    return [];
+  }
+  const require = createRequire(path.resolve(mobileDir, "package.json"));
+  const found = [];
+  for (const name of dependencyNames()) {
+    if (!ex.excludes(name) || ex.inExpoList(name)) continue;
+    let installed;
+    try {
+      installed = JSON.parse(fs.readFileSync(require.resolve(`${name}/package.json`), "utf8")).version;
+    } catch {
+      continue;
+    }
+    const latest = spawnSync("npm", ["view", name, "version"], {
+      encoding: "utf8",
+      timeout: 60_000,
+    }).stdout?.trim();
+    if (latest && Number(latest.split(".")[0]) > Number(installed.split(".")[0])) {
+      found.push(`${name}: ${latest}（今は ${installed}）`);
+    }
+  }
+  return found;
 }
