@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import {
   buildUsageBuckets,
+  type DailyCost,
   type DailyCount,
   type UsageGranularity,
 } from "@triplot/shared/aiUsageBuckets";
@@ -16,17 +17,20 @@ const BUCKET_COUNT: Record<UsageGranularity, number> = {
   month: 12,
 };
 
-// 管理画面の「LLM 使用量の推移」。日別の抽出通数（ai_usage_daily）を日/週/月に
-// 束ねて、通数と概算コストを並べる。
+// 管理画面の「LLM 使用量の推移」。日別の抽出通数（ai_usage_daily）と費用
+// （ai_calls の日別合計）を日/週/月に束ねて並べる。費用は記録を始める前の
+// 期間は分からないので出さない。
 //
 // **切り替えはクライアント側の状態**にする。粒度は見た目の都合でしかなく、
 // サーバの再取得を伴わない（元データは同じ抽出日時の一覧）。
 export function AiUsageChart({
   daily,
-  perEmailUsd,
+  costs,
+  costSince,
 }: {
   daily: DailyCount[];
-  perEmailUsd: number | null;
+  costs: DailyCost[];
+  costSince: string;
 }) {
   const t = useTranslations("admin");
   const [granularity, setGranularity] = useState<UsageGranularity>("day");
@@ -34,14 +38,18 @@ export function AiUsageChart({
   // 日付が変わる瞬間にバケットの区切りが動いて表示が揺れる。
   const [now] = useState(() => new Date());
 
-  const buckets = buildUsageBuckets(daily, {
+  const buckets = buildUsageBuckets(daily, costs, {
     now,
     granularity,
     bucketCount: BUCKET_COUNT[granularity],
-    perEmailUsd,
+    costSince,
   });
   const total = buckets.reduce((s, b) => s + b.count, 0);
-  const totalCost = perEmailUsd === null ? null : total * perEmailUsd;
+  // 期間の中に費用の分からないバケットが1つでもあれば、合計は出さない
+  // （分かる分だけ足すと、実際より安く見える）。
+  const totalCost = buckets.some((b) => b.cost === null)
+    ? null
+    : buckets.reduce((s, b) => s + (b.cost ?? 0), 0);
   // 棒の高さの基準。全部0のときに 0 で割らない。
   const max = Math.max(1, ...buckets.map((b) => b.count));
 
@@ -87,7 +95,7 @@ export function AiUsageChart({
         </span>
         {totalCost !== null && (
           <span className="text-sm tabular-nums">
-            ≈ ${totalCost.toFixed(3)}
+            ${totalCost.toFixed(3)}
           </span>
         )}
       </div>
@@ -123,7 +131,7 @@ export function AiUsageChart({
               <span className="text-muted-foreground">{b.start}</span>
               <span>
                 {t("usageEmails", { count: b.count })}
-                {b.cost !== null && ` ≈ $${b.cost.toFixed(3)}`}
+                {b.cost !== null && ` $${b.cost.toFixed(3)}`}
               </span>
             </li>
           ))}

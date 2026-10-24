@@ -610,6 +610,13 @@ staging の事故（大きな組を何度も流す・再試行が回り続ける
   **チーム全体の値**で、どちらの鍵で読んでも同じ数字が返る
 - 鍵ごとの使用額 — `vercel ai-gateway budgets list`（上限を掛けた鍵の今月の使用額）、
   またはダッシュボードの AI Gateway タブの鍵ごとの集計。staging だけでいくら使ったかはこちらで見る
+- 1回ごと・1通ごとの費用 — `ai_calls`。LLM を呼ぶたびに、AI Gateway が応答に入れて返す費用
+  （`providerMetadata.gateway.cost`）とトークン数を1行ずつ残す。DB は環境ごとなので本番と
+  staging が混ざらない。管理ページの「1通あたり」（直近30日の平均）と推移のグラフの費用はここから出す。
+  何の費用かは「機能（`ai_call_features`）→ 目的（`ai_call_purposes`）→ 処理の単位（`unit_id`）」で
+  持ち、**同じ機能で同じ `unit_id` の行が1まとまり**（取り込みならメール1通）。`unit_id` は外部キーに
+  しないので、メールが消えても1通あたりの費用を数え直せる。設計の理由は migration
+  `20261024000000_ai_calls.sql` のコメント
 - 滞留の実態 — `inbound_emails` の `status='error'` を `retry_count` / `next_retry_at` 付きで数える。
   時間を空けて2回数えれば、通っているのか完全に止まっているのか区別できる
 

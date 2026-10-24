@@ -23,6 +23,14 @@ import { requireAdmin } from "./require-admin";
 // （月100通 × 実測 $0.021 ≒ $2）。1人ぶんを切ったら手当てが要る、という線。
 const CREDITS_LOW_USD = 2;
 
+// 1通あたりの単価を出す期間。全期間の平均だとモデルやプロンプトを変えた後も
+// 古い単価を引きずるので、直近に絞る。
+const PER_EMAIL_WINDOW_DAYS = 30;
+
+// ai_call_features の取り込みの行。1通あたりの単価はこの機能だけで出す
+// （他の機能で LLM を使い始めても混ざらない）。
+const INBOUND_EMAIL_FEATURE = "inbound_email";
+
 // AI Gateway のクレジット購入（top-up モーダル）。**チーム slug を埋め込まない**
 // — `/d?to=` は Vercel 側でログイン中のチームに解決してくれるリダイレクタなので、
 // この1本でよい（slug を焼き込むと、チームを変えた時に黙って迷子になる）。
@@ -41,6 +49,13 @@ function usageSinceDay(): string {
   return new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)
     .toISOString()
     .slice(0, 10);
+}
+
+// 1通あたりの単価を出す期間の始まり。usageSinceDay と同じく、レンダーの外で評価する。
+function perEmailSince(): string {
+  return new Date(
+    Date.now() - PER_EMAIL_WINDOW_DAYS * 24 * 60 * 60 * 1000,
+  ).toISOString();
 }
 
 export default async function AdminPage() {
@@ -65,19 +80,20 @@ export default async function AdminPage() {
   // ＝運用者が気づける場所が要る。1通あたりの単価は固定値を持たず実績から出す
   // （定数だと実態からずれていく）。
   //
-  // **分母は ai_usage_baseline の累計通数を使う。** 以前は inbound_emails の
-  // 行数を数えていたが、分子（AI Gateway の使用額）が累計なのに分母だけ
-  // 「今残っている行」で、対応していなかった。受信箱を空にすると分母が
-  // リセットされて単価が跳ね上がる（実測: 23通しか残っていない時に
-  // $14.721 ÷ 23 = $0.64。実際は1通1〜2セント）。90日の自動削除でも同じ形で
-  // 徐々に膨らむ。
+  // **単価は ai_calls に1回ずつ記録した費用から出す。** AI Gateway の累計使用額は
+  // チーム全体の値で、本番と staging の両方の分が混ざる（staging は鍵を分けたが、
+  // 累計額の問い合わせはどの鍵でもチーム全体を返す）。それを各環境の通数で
+  // 割っていたので、staging の単価は本番の使用額まで含んで $0.36 と出ていた。
+  // ai_calls は DB ごと＝環境ごとなので混ざらない。
   //
   // 残高だけでは足りない。**無料枠のレート制限は残高があっても掛かる**ので、
   // 「残高は十分なのに取り込みが進まない」が残高の表示からは読み取れない
   // （実際、残高 $1.5 のまま 80 通が数時間止まった）。詰まっている件数も並べる。
   const [
     credits,
-    { data: baseline },
+    { data: costSummary },
+    { data: costDailyRows },
+    { data: firstCall },
     { data: rateLimitedCount },
     { data: extractedRows },
     { count: registeredUserCount },
@@ -86,11 +102,17 @@ export default async function AdminPage() {
     { data: userStatsDaily },
   ] = await Promise.all([
     fetchGatewayCredits(),
-    // 単価計算の基準値。RLS の ai_usage_baseline_admin_select（is_app_admin()）
-    // で管理者の権限で読む。
+    // 直近の機能ごとの費用とまとまりの数（取り込みならメールの通数）。
+    supabase.rpc("admin_ai_cost_summary", { p_since: perEmailSince() }),
+    // 推移のグラフ用の日別の費用。
+    supabase.rpc("admin_ai_cost_daily", { p_since: usageSinceDay() }),
+    // 費用の記録を始めた日。これより前の費用は分からない（グラフで 0 と
+    // 区別する）。RLS の ai_calls_admin_select で管理者の権限で読む。
     supabase
-      .from("ai_usage_baseline")
-      .select("total_used_at_start, extracted_since")
+      .from("ai_calls")
+      .select("created_at")
+      .order("created_at", { ascending: true })
+      .limit(1)
       .maybeSingle(),
     // レート制限で詰まっている件数（全ユーザー分）。受信メールは本人しか
     // 読めないので、件数だけを返す RPC 越しに数える。
@@ -131,11 +153,17 @@ export default async function AdminPage() {
       .select("day, registered_count, active_count")
       .order("day", { ascending: true }),
   ]);
-  const since = baseline?.extracted_since ?? 0;
+  const inbound = (costSummary ?? []).find(
+    (r) => r.feature === INBOUND_EMAIL_FEATURE,
+  );
   const perEmail =
-    credits && since > 0
-      ? (credits.totalUsed - Number(baseline?.total_used_at_start ?? 0)) / since
+    inbound && Number(inbound.units) > 0
+      ? Number(inbound.cost_usd) / Number(inbound.units)
       : null;
+  // 記録がまだ1件も無ければ、どの日の費用も分からない（明日以降を指して全部 null）。
+  const costSince = firstCall
+    ? firstCall.created_at.slice(0, 10)
+    : "9999-12-31";
   const remainingEmails =
     credits && perEmail && perEmail > 0
       ? Math.floor(credits.balance / perEmail)
@@ -272,7 +300,10 @@ export default async function AdminPage() {
             day: r.day,
             count: Number(r.extracted_count),
           }))}
-          perEmailUsd={perEmail}
+          costs={(costDailyRows ?? [])
+            .filter((r) => r.feature === INBOUND_EMAIL_FEATURE)
+            .map((r) => ({ day: r.day, cost: Number(r.cost_usd) }))}
+          costSince={costSince}
         />
       </section>
 

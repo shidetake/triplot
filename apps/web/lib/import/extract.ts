@@ -2,7 +2,7 @@ import { generateObject, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import { normalizeEventDraft, normalizeReceipt } from "./normalize";
-import { logUsage } from "./usageLog";
+import { type LlmCall, logUsage } from "./usageLog";
 import { settleReceiptEvents } from "@triplot/shared/import/receiptTiming";
 import { buildImportPrompt, IMPORT_SYSTEM_PROMPT, type TripHint } from "./prompt";
 import {
@@ -44,23 +44,29 @@ const extractionSchema = z.object({
 // 呼び出し側で用意して渡す。
 // trips を渡すと tripId を推論する（渡さなければ tripId は常に null）。
 // events は検証・補正（sanitizeEventDraft）済みのものだけ返す。
+// onCall は LLM を呼んだ結果（トークン数・費用）を受け取る。記録先（ai_calls）と
+// 何の処理かは呼び出し側が知っているので、ここでは渡すだけにする。
 export async function extractEmail(
   model: LanguageModel,
   input: { subject: string; text: string; trips?: TripHint[] },
+  onCall?: (call: LlmCall) => Promise<void>,
 ): Promise<Extraction & { tripId: string | null; detailUrl: string | null }> {
   const trips = input.trips ?? [];
-  const { object, usage } = await generateObject({
+  const { object, usage, providerMetadata } = await generateObject({
     model,
     schema: extractionSchema,
     // **固定の指示を先に、可変の本文を後に置く。** Gemini 2.5 系は先頭が同一の
-    // 入力に自動でキャッシュ割引（75%）を効かせるので、並び順がそのまま単価に
-    // なる。指示とスキーマ説明で約 7,500 トークンあり、最低要件（1,024）を
-    // 大きく超えているので、この並びのままなら毎回効く。プロンプトを書き換えると
-    // その時だけ外れる（壊れるのではなく、割引が乗り直すまで1回ぶん高くなる）。
+    // 入力に自動でキャッシュ割引（75%）を効かせることがあるので、並び順を崩さない。
+    // ただし**当てにはできない**（2026-10-24 に AI Gateway 経由で実測）: 指示文
+    // だけ（約 2,800 トークン）では一度も効かず、1万トークンに伸ばしても3回に
+    // 1回、先頭の約 2,000 トークンだけ。送り先のアカウントを固定（sessionId）
+    // しても同じだった。費用の大半は出力（考える分を含む）なので、効いても
+    // 1通あたり1割に満たない。
     system: IMPORT_SYSTEM_PROMPT,
     prompt: buildImportPrompt(input),
   });
   logUsage("extract", usage);
+  await onCall?.({ model, usage, providerMetadata });
   // 幻覚 id を弾く（候補に無い id は無効として未割当に）。
   const tripId = trips.some((t) => t.id === object.tripId) ? object.tripId : null;
   // 幻覚 URL を弾く（本文に実在する URL のみ採用）。
