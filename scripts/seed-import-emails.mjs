@@ -27,6 +27,8 @@ import os from "node:os";
 import path from "node:path";
 import { parseArgs } from "node:util";
 
+import { stagingQuery } from "./staging-supabase.mjs";
+
 const ROOT = path.join(import.meta.dirname, "..");
 const ENV_FILE = path.join(ROOT, "apps/web/.env.local");
 // forward-gmail.mjs の既定の state とは別ファイルにする（あちらを単体で使う
@@ -76,40 +78,9 @@ function run(cmd, args, opts = {}) {
   return r;
 }
 
-// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は
-// `supabase link` 済みのプロジェクトだが、そちらは見ない。接続文字列は
-// scripts/db-push-staging.sh と同じ gitignore されたファイルから読む。
-const STAGING_ENV_FILE = path.join(ROOT, "apps/web/.env.staging.local");
-
-function stagingDbUrl() {
-  if (fs.existsSync(STAGING_ENV_FILE)) {
-    for (const line of fs.readFileSync(STAGING_ENV_FILE, "utf8").split("\n")) {
-      const m = line.match(/^SUPABASE_STAGING_DB_URL=(.*)$/);
-      if (m) return m[1].trim();
-    }
-  }
-  console.error(`SUPABASE_STAGING_DB_URL が ${STAGING_ENV_FILE} にありません。`);
-  process.exit(1);
-}
-
-function dbQuery(sql) {
-  const r = spawnSync(
-    "npx",
-    ["supabase", "db", "query", "--db-url", stagingDbUrl(), sql],
-    { cwd: ROOT, encoding: "utf8" },
-  );
-  if (r.status !== 0) {
-    console.error(r.stderr || r.stdout);
-    process.exit(r.status ?? 1);
-  }
-  // 出力は JSON だが前後に進捗行が混ざるので、最初の { から読む。
-  const body = r.stdout.slice(r.stdout.indexOf("{"));
-  try {
-    return JSON.parse(body).rows ?? [];
-  } catch {
-    return [];
-  }
-}
+// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は見ない。
+// つなぎ方は scripts/staging-supabase.mjs（staging だけに絞ったトークン）。
+const dbQuery = stagingQuery;
 
 const { values } = parseArgs({
   options: {

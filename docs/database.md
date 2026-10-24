@@ -54,7 +54,7 @@ service role は RLS を素通りして全部のデータを読み書きでき�
 
 ## DB 型定義
 
-- **`packages/shared/src/types/database.generated.ts`** が単一の真実。`npm run db:types` で実 DB から自動生成する（`apps/web/.env.local` の `SUPABASE_ACCESS_TOKEN` を使う）。**手で編集しない。**
+- **`packages/shared/src/types/database.generated.ts`** が単一の真実。`npm run db:types` で実 DB から自動生成する（本番だけに絞ったトークン＝`apps/web/.env.local` の `SUPABASE_ACCESS_TOKEN` を使う。[development.md](./development.md) の「Supabase の管理用トークン」）。**手で編集しない。**
 - `packages/shared/src/types/database.ts` は生成物の re-export + 利便用の union 別名（`Currency` など）だけ。生成型は CHECK 制約を読めず通貨等が `string` になるので、DB 境界（fetch 結果の map、RPC 呼び出し）で `as Currency` 等に絞る。
 - gen-types は DEFAULT 無しの nullable 関数引数を `string` にしてしまう既知の癖がある（`create_trip` の `p_start_date` 等）。その箇所だけ呼び出し側でキャスト。
 - migration を変えたら **必ず `npm run db:types` を実行して再生成し、コミットに含める**。

@@ -9,25 +9,15 @@
 //
 // 資格情報が無い環境（CI・他人のマシン）では黙って通す。db:types:check と同じ扱い。
 
-import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 
-const ENV_FILE = "apps/web/.env.staging.local";
+import { hasStagingCredentials, runStagingCli } from "./staging-supabase.mjs";
+
 const MIGRATIONS_DIR = "supabase/migrations";
 
-function stagingDbUrl() {
-  if (!fs.existsSync(ENV_FILE)) return null;
-  for (const line of fs.readFileSync(ENV_FILE, "utf8").split("\n")) {
-    const m = line.match(/^\s*SUPABASE_STAGING_DB_URL\s*=\s*(.*)$/);
-    if (m) return m[1].trim().replace(/^["']|["']$/g, "");
-  }
-  return null;
-}
-
-const dbUrl = stagingDbUrl();
-if (!dbUrl) {
-  console.log("check-staging-migrations: skip（staging の接続文字列が無い）");
+if (!hasStagingCredentials()) {
+  console.log("check-staging-migrations: skip（staging のトークンが無い）");
   process.exit(0);
 }
 
@@ -38,18 +28,12 @@ const local = fs
   .sort();
 if (local.length === 0) process.exit(0);
 
-const q = spawnSync(
-  "npx",
-  [
-    "supabase",
-    "db",
-    "query",
-    "--db-url",
-    dbUrl,
-    "select version from supabase_migrations.schema_migrations",
-  ],
-  { encoding: "utf8", timeout: 60_000 },
-);
+const q = runStagingCli([
+  "db",
+  "query",
+  "--linked",
+  "select version from supabase_migrations.schema_migrations",
+]);
 if (q.status !== 0) {
   // 落ちている・繋がらないだけで push を止めない（当て忘れを見つけるのが目的で、
   // 疎通監視ではない）。

@@ -107,8 +107,8 @@ npm run test:import-status                      # 取り込みの結果を見る
   `TRIPLOT_RECEIPTS_ADDRESS` / `TRIPLOT_TEST_GMAIL_LABEL_*` から読む（転送先は
   知っていれば誰でもその受信箱にメールを流し込めるため）。転送先は staging の
   開発用アカウントのアドレス（`receipts-staging+<トークン>@triplot.app`）。
-- DB は staging を読み書きする（`test:import-status` も同じ）。接続文字列は
-  `apps/web/.env.staging.local` の `SUPABASE_STAGING_DB_URL`。
+- DB は staging を読み書きする（`test:import-status` も同じ）。つなぎ方は下の
+  「Supabase の管理用トークン」。
 - Gmail の認証は `~/.gmail-mcp/`（`gcp-oauth.keys.json` と `credentials.json`）。
   切れていればブラウザが開いて再認証する。
 - 転送してから取り込みが終わるまでは cron 次第で時間がかかる。件数の推移は
@@ -289,16 +289,38 @@ anon key はアプリにも web にも入っている）。本番のアカウン
 ### staging DB への migration
 
 ```bash
-npm run db:push:staging   # scripts/db-push-staging.sh
+npm run db:push:staging   # staging に当てる
+npm run db:push           # 本番に当てる
 ```
-
-接続文字列は gitignore された `apps/web/.env.staging.local` の
-`SUPABASE_STAGING_DB_URL` から読む。本番は `supabase link` 済みプロジェクトを
-見る従来どおりの経路で、**link を張り替えない**（どちらを触っているかが
-コマンドから自明であること優先）。
 
 `database.generated.ts` の生成元は本番のまま（`npm run db:types`）。staging と
 本番でスキーマが揃っている前提なので、**migration を入れたら両方に当てる**こと。
+
+### Supabase の管理用トークン
+
+手元から Supabase を触るコマンド（migration・型の生成・staging の調査）は、
+**プロジェクトごとに絞った管理用トークン**で入る。DB のパスワードは手元に持たない。
+
+| | トークン（Supabase での名前） | 置き場所 | link 先 |
+|---|---|---|---|
+| 本番 | `triplot-cli-production` | `apps/web/.env.local` の `SUPABASE_ACCESS_TOKEN` | `supabase/` |
+| staging | `triplot-cli-staging` | `apps/web/.env.staging.local` の `SUPABASE_ACCESS_TOKEN` | `supabase-staging/supabase/` |
+
+- **権限は Project Settings（Read）・Database（Read-write）・Connection Pooling（Read）
+  だけ。** 片方が漏れても、もう片方のプロジェクトには入れない。有効期限は最長1年
+  （切れたら Supabase の Account → Access Tokens で作り直し、置き場所を書き換える）。
+- **link は張り替えない。** CLI が覚える link 先はフォルダに1つなので、staging は
+  `supabase-staging/` に別に持つ（config と migrations は本体へのシンボリックリンク）。
+  どちらに当てるかがコマンドの名前で自明になる。link 先のファイルは秘密ではないので
+  `postinstall`（`scripts/supabase-link.mjs`）が書く。`supabase link` は使わない
+  （API キーを読む権限が要るので、トークンに付けていない）。
+- **`supabase login` には頼らない。** ブラウザでのログインはアカウント全体に効く
+  トークンを Mac に保存する。コマンドは上の置き場所のトークンを環境変数で渡す。
+- **秘密はコマンドの引数で渡さない。** npm 12 は `npx` の引数を `npm notice run ...`
+  として表示するので、引数に載せた値は画面と会話の記録に残る（以前、staging の
+  DB のパスワード入りの接続文字列をそうして漏らした）。環境変数で渡し、CLI は
+  `node_modules/.bin/supabase` を直接呼ぶ。staging を触るスクリプトは
+  `scripts/staging-supabase.mjs` を通す。
 
 ## Cloudflare の Worker を出す
 
