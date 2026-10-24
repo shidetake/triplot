@@ -61,10 +61,8 @@ export function AccountMenu({
   isAnonymous: boolean;
   // admin のみ: 未対応フィードバック件数（「管理」行のバッジ＋アバターの右上バッジ）。
   openFeedbackCount?: number;
-  // デプロイ反映の目視確認用。以前は全ページ共通フッターに常時表示していたが、
-  // 一般ユーザーには意味のない文字列を常時見せることになる・狭い画面のタブ
-  // レイアウトで表示位置の計算が壊れやすいため撤去し、世の中の慣習
-  // （Settings/About 相当）に合わせてここに移した。
+  // デプロイ反映の目視確認用（管理者にだけ出す）。利用者が版を知って使う
+  // 場面は無い（不具合はフィードバックから届き、版はその記録に自動で付く）。
   deployEnv: string;
   version: string;
   // 設定シート（テーマ・言語）の初期値。cookie から解決した現在のテーマ。
@@ -129,7 +127,7 @@ export function AccountMenu({
       {email}
     </div>
   );
-  const versionRow = (
+  const versionRow = isAdmin && (
     <div className="truncate border-t border-foreground/5 px-3 py-1.5 text-[10px] text-subtle-foreground">
       {deployEnv} · {version}
     </div>

@@ -34,7 +34,7 @@
 | `viewport` | 表示領域 `幅x高さ`（`window.innerWidth/innerHeight`） | クライアント |
 | `timezone` | ブラウザの実 IANA タイムゾーン（`Intl.DateTimeFormat().resolvedOptions().timeZone`） | クライアント |
 | `theme` | 実際に表示されていた解決後テーマ（`light`/`dark`。`<html class="dark">` の有無） | クライアント |
-| `app_version` | 送信時にデプロイされていたバージョン（`lib/version.ts` の `getVersion()`。本番はリリースのバージョン番号、それ以外は commit SHA） | サーバ（route） |
+| `app_version` | 送信時にデプロイされていたバージョン（`lib/version.ts` の `getVersion()`。コミットハッシュの先頭7桁） | サーバ（route） |
 
 ## 書き込み経路（web / ネイティブ共通）
 
