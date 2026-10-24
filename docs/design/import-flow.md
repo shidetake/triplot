@@ -595,10 +595,21 @@ $0.15 に対して抽出に成功したのが7通。`429` は課金されない�
 
 1通あたりの単価はメールの長さで動く（この計測は明細の長いレシート中心）ので、桁の目安として扱うこと。
 
+**鍵は本番と staging で分け、財布（クレジット）は1つ。** Vercel の環境変数
+`AI_GATEWAY_API_KEY` は Production が `triplot`、Preview が `triplot-staging` の鍵。
+どちらもチームの同じ残高から引かれるので、入金は1か所で済む。分けているのは、
+staging の事故（大きな組を何度も流す・再試行が回り続ける等）で残高を食い潰して
+本番の取り込みを止めないため。staging の鍵にだけ使用額の上限（月 $10）を掛けて
+あり、当たっても止まるのは staging だけ。手元の開発（`apps/web/.env.development.local`）
+も staging の鍵を使う。
+
 **現状を確認する手段**（数値が非公開なぶん、実測で見るしかない）:
 
 - 残高と累計使用額 — ダッシュボードの AI Gateway タブ、または
-  [`GET /v1/credits`](https://vercel.com/docs/ai-gateway/sdks-and-apis/rest-api)（`AI_GATEWAY_API_KEY` が要る）
+  [`GET /v1/credits`](https://vercel.com/docs/ai-gateway/sdks-and-apis/rest-api)（`AI_GATEWAY_API_KEY` が要る）。
+  **チーム全体の値**で、どちらの鍵で読んでも同じ数字が返る
+- 鍵ごとの使用額 — `vercel ai-gateway budgets list`（上限を掛けた鍵の今月の使用額）、
+  またはダッシュボードの AI Gateway タブの鍵ごとの集計。staging だけでいくら使ったかはこちらで見る
 - 滞留の実態 — `inbound_emails` の `status='error'` を `retry_count` / `next_retry_at` 付きで数える。
   時間を空けて2回数えれば、通っているのか完全に止まっているのか区別できる
 
