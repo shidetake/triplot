@@ -30,13 +30,15 @@ const SECRET_KEYS = [
   "TRIPLOT_PROD_RECEIPTS_ADDRESS",
   "SUPABASE_ACCESS_TOKEN",
   "BLOB_READ_WRITE_TOKEN",
-  "SUPABASE_STAGING_DB_URL",
 ];
 // 形で分かる鍵。名前は見つけた時の知らせに使う。
 const SECRET_PATTERNS = [
   { name: "Google の API キー", re: /AIza[0-9A-Za-z_-]{35}/ },
 ];
 
+// 同じ名前が複数のファイルにある（SUPABASE_ACCESS_TOKEN は本番用が .env.local、
+// staging 用が .env.staging.local）ので、名前ではなく「ファイル + 名前」で持つ。
+// 名前で持つと後のファイルが前の値を上書きし、片方を見なくなる。
 function readSecrets() {
   const out = new Map();
   for (const f of ENV_FILES) {
@@ -48,7 +50,7 @@ function readSecrets() {
       if (!SECRET_KEYS.includes(key)) continue;
       const value = raw.trim().replace(/^["']|["']$/g, "");
       // 短すぎる値は誤検知の元（空・プレースホルダ）。
-      if (value.length >= 12) out.set(key, value);
+      if (value.length >= 12) out.set(`${f} の ${key}`, value);
     }
   }
   return out;

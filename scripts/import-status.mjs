@@ -21,45 +21,9 @@
 // ので画面には出ず、実害は確認できていない。原因も未特定なので、再現するか
 // どうかを知るために毎回数える。
 
-import { spawnSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
-
-const ROOT = path.join(import.meta.dirname, "..");
-
-// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は
-// `supabase link` 済みのプロジェクトだが、そちらは見ない。接続文字列は
-// scripts/db-push-staging.sh と同じ gitignore されたファイルから読む。
-const STAGING_ENV_FILE = path.join(ROOT, "apps/web/.env.staging.local");
-
-function stagingDbUrl() {
-  if (fs.existsSync(STAGING_ENV_FILE)) {
-    for (const line of fs.readFileSync(STAGING_ENV_FILE, "utf8").split("\n")) {
-      const m = line.match(/^SUPABASE_STAGING_DB_URL=(.*)$/);
-      if (m) return m[1].trim();
-    }
-  }
-  console.error(`SUPABASE_STAGING_DB_URL が ${STAGING_ENV_FILE} にありません。`);
-  process.exit(1);
-}
-
-function dbQuery(sql) {
-  const r = spawnSync(
-    "npx",
-    ["supabase", "db", "query", "--db-url", stagingDbUrl(), sql],
-    { cwd: ROOT, encoding: "utf8" },
-  );
-  if (r.status !== 0) {
-    console.error(r.stderr || r.stdout);
-    process.exit(r.status ?? 1);
-  }
-  const body = r.stdout.slice(r.stdout.indexOf("{"));
-  try {
-    return JSON.parse(body).rows ?? [];
-  } catch {
-    return [];
-  }
-}
+// 読み書きするのは staging の DB（取り込みの確認は staging で行う）。本番は見ない。
+// つなぎ方は scripts/staging-supabase.mjs（staging だけに絞ったトークン）。
+import { stagingQuery as dbQuery } from "./staging-supabase.mjs";
 
 const STATUS_LABEL = {
   pending: "取り込み待ち",

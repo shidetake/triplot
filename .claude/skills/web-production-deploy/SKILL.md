@@ -26,8 +26,8 @@ git push origin main
 
 - push 時に pre-push フック（lint + typecheck + test + `db:types:check`）が走る。
   失敗したら `--no-verify` で回避せず原因を直す。
-- migration を含む変更で本番DBにまだ当てていなければ、通常の
-  `supabase db push --linked`（link済みプロジェクト＝本番を見る）を先に済ませる。
+- migration を含む変更で本番DBにまだ当てていなければ、`npm run db:push`
+  （本番だけに絞ったトークンで本番に当てる）を先に済ませる。
 
 ## 完了報告
 
