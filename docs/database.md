@@ -44,6 +44,7 @@ service role は RLS を素通りして全部のデータを読み書きでき�
 
 - `SECURITY DEFINER` の SQL ヘルパーが 2 つ — `is_active_trip_member(trip_id)` と `is_own_member(member_id)` — をポリシーから呼んでいる。`SECURITY DEFINER` なのは意図的で、`trip_members` を参照するときに同じテーブルの RLS が再帰評価されるのを避けるため。
 - trip 紐づきテーブルに新しくポリシーを書くときは既存パターンに従うこと: `(visibility = 'shared' AND is_active_trip_member(trip_id)) OR (visibility = 'private' AND is_own_member(created_by_member_id))`。
+- **テーブルを作る migration には、同じファイルにそのテーブルの `grant` を書く。** grant は「その役割がテーブルに触れるか」、RLS は「どの行が見えるか」を決める別の層で、両方要る。Supabase は public に新しく作ったテーブルへ権限を自動で付けない（2026-10-30 から）ので、書き忘れると migration は通るのに、読み書きの時に "permission denied" になる。付けるのは使う役割の分だけ（アプリから触るなら `authenticated`、Edge Function・Cron なら `service_role`）。書き忘れは `check:migration-grants` が止める。
 
 ## 複数行書き込みは `SECURITY DEFINER` RPC で
 
