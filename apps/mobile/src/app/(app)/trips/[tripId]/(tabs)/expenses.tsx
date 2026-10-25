@@ -328,8 +328,16 @@ export default function ExpensesTab() {
                     style={styles.draftButton}
                   >
                     <View style={styles.draftLabelParts}>
+                      {/* 縮めるのは先頭（店名）だけ。金額と日付は切らない
+                      （web の import-draft-row と同じ）。 */}
                       {d.labelParts.map((part, i) => (
-                        <View key={i} style={styles.draftLabelPart}>
+                        <View
+                          key={i}
+                          style={[
+                            styles.draftLabelPart,
+                            i > 0 && styles.draftLabelPartFixed,
+                          ]}
+                        >
                           {i > 0 && <View style={styles.draftDivider} />}
                           <Text style={styles.draftLabelText} numberOfLines={1}>
                             {part}
@@ -585,6 +593,7 @@ const makeStyles = (t: Theme) =>
       gap: 8,
       flexShrink: 1,
     },
+    draftLabelPartFixed: { flexShrink: 0 },
     // 横並び要素の区切りは縦棒（web の InlineDivider と同じ 1px・foreground/10）。
     draftDivider: { width: 1, height: 12, backgroundColor: t.fgAlpha(0.1) },
     draftLabelText: { fontSize: 14, flexShrink: 1, color: t.foreground },
