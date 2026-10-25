@@ -322,6 +322,28 @@ npm run db:push           # 本番に当てる
   `node_modules/.bin/supabase` を直接呼ぶ。staging を触るスクリプトは
   `scripts/staging-supabase.mjs` を通す。
 
+### Vercel の CLI
+
+環境変数・デプロイ・AI Gateway の使用額など、Vercel を手元から触る時は
+`npm run vercel -- <サブコマンド>` を使う（中身は `scripts/vercel.mjs`）。
+
+```bash
+npm run vercel -- env ls --environment preview --project triplot
+npm run vercel -- ls triplot
+npm run vercel -- ai-gateway budgets list
+```
+
+- **CLI は全体に入れる**（`npm i -g vercel`）。依存のビルド用スクリプト（esbuild 等）が
+  止められたと出るが、手元でビルドしない限り要らない。
+- **トークンはチームだけに絞った期限付きのもの。** Vercel の Account Settings → Tokens で
+  名前 `triplot-cli`・Scope を `hdtks-projects`・期限を1年にして作り、`apps/web/.env.local` の
+  `VERCEL_TOKEN` に置く。Vercel のトークンはチーム単位までしか絞れない（環境変数だけ、の
+  ような権限の絞り方は無い）。切れたら作り直して書き換える。
+- **`vercel login` には頼らない。** Supabase と同じ理由で、ブラウザでのログインはアカウント
+  全体に効くトークンを Mac に保存する。スクリプトがトークンを環境変数で渡すので要らない。
+- **worktree ごとに置く。** `apps/web/.env.local` は gitignore されていて worktree ごとに別の
+  ファイルなので、worktree を作ったらそちらにも `VERCEL_TOKEN` の行を写す。
+
 ## Cloudflare の Worker を出す
 
 メールの受け口（`workers/inbound-email`）と、取り込みの再試行を毎分呼ぶ心拍
