@@ -71,6 +71,8 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 | 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
 | 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
 | 起動しない ipa を TestFlight に出す | `npm run ios:build` / `npm run ios:submit` |
+| マージ済みの手元のブランチが溜まる | `post-checkout`（ブランチを切り替えるたびに、マージ済みの PR に全部入っているブランチを消す。GitHub 側はマージ時に消える設定） |
+| 古い ipa が溜まる | `npm run ios:build`（新しい3個を残して消す） |
 
 ## メール取り込みの動作確認
 

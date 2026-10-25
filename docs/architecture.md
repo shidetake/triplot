@@ -88,7 +88,7 @@ flowchart LR
 |---|---|---|
 | **Dynadot** | ドメインのレジストラ（`triplot.app` の登録・更新） | ネームサーバは Cloudflare に委任済み。DNS 自体は触らない |
 | **Cloudflare** | DNS（ネームサーバ）＋ メール受信（Email Routing → Email Worker）＋ リトライ心拍（Cron Worker・毎分） | レシート転送メールを受けて Vercel に push。毎分 retry エンドポイントを叩く |
-| **Vercel** | Next.js 16 アプリのホスティング＋ Cron | リージョン `hnd1`（東京）に固定。`main` への push で自動デプロイ |
+| **Vercel** | Next.js 16 アプリのホスティング＋ Cron | リージョン `hnd1`（東京）に固定。`main` に PR が入ると自動デプロイ |
 | **Supabase** | Postgres（+ RLS）＋ Auth | 東京 `ap-northeast-1`。Vercel と同一都市圏に co-locate（RTT 削減） |
 | **Vercel AI Gateway** | LLM アクセス（レシート抽出・マージ判定） | 既定モデル `google/gemini-2.5-flash` |
 | **Resend** | トランザクションメール送信（フィードバック受付確認・管理者への新着通知） | `RESEND_API_KEY` 未設定なら送信をスキップ（ローカル/プレビューで機能自体は動く）。詳細は [`feedback.md`](./design/feedback.md) |
@@ -116,7 +116,9 @@ People API は写真ごとに `default` フラグを返し、これが生成画�
 
 ## デプロイとリージョン
 
-- **デプロイ**: GitHub `main` への push がトリガーの自動デプロイ。`vercel` CLI の手動デプロイは使わない。
+- **デプロイ**: GitHub `main` に PR が入るとそれがトリガーの自動デプロイ（`main` へは PR からしか入れない）。`vercel` CLI の手動デプロイは使わない。
+- **Vercel のプロジェクト設定**: Root Directory は `apps/web`（`vercel.json` もそこ）。「Include files outside the root directory」はオンにしておく（`@triplot/shared` を解決するため）。
+- **環境変数のスコープ**: Production と Preview に別々に要る。Preview に無いとプレビューで Supabase のクライアントが作れず、`proxy.ts` ごと全ページが 500 になる（本番は動くので気付きにくい）。**プレビューの 500 を見たら、まず Preview スコープの環境変数を疑う。**
 - **リージョン**: Vercel 関数 `hnd1` × Supabase `ap-northeast-1` を東京に揃え、サーバ側 Supabase クエリの太平洋越え RTT 積み上げを避ける。複数の独立クエリは `Promise.all` で並列化する方針。
 
 ## 定期実行（3系統）
@@ -187,4 +189,6 @@ flowchart LR
 | 対象 | 周期 | 対応 |
 |---|---|---|
 | Apple Sign in の自動更新に使う管理用トークン | 1年（Supabase の上限） | 期限の30日前から毎週、管理者にメールが届く。届いたら Supabase の Account → Access Tokens で作り直す（Name `triplot-apple-secret-rotation`／Expires in 1年後／Resource access は Project で本番の triplot だけ／Permissions は Project Settings と Auth Config の Read-write だけ）。作ったら Function Secrets の `MANAGEMENT_API_TOKEN` と `MANAGEMENT_API_TOKEN_EXPIRES_AT`（YYYY-MM-DD）を入れ替え、古いトークンを消す。切れても即座には壊れない（使うのは client secret の作り直しの時だけで、その時に失敗メールが届き、client secret の期限まで約1か月やり直せる） |
+| 手元から Supabase に入る管理用トークン（本番 `triplot-cli-production`・staging `triplot-cli-staging`） | 1年（期限 2027-10-23） | 知らせは来ない（管理者のカレンダーに期限の1か月前の予定を入れてある）。Supabase の Account → Access Tokens で同じ名前・同じ権限で作り直し、置き場所を書き換える（権限と置き場所は [`development.md`](development.md) の「Supabase の管理用トークン」）。切れると migration・型の生成・staging の調査が手元から動かなくなる（アプリは影響を受けない） |
+| 手元から Vercel を触るトークン（`triplot-cli`） | 1年（2026-10-25 に作成） | 同上（同じ予定に入れてある）。作り直し方は [`development.md`](development.md) の「Vercel の CLI」。切れると `npm run vercel` が動かなくなる（デプロイは影響を受けない） |
 | Apple Sign in の鍵まわり | 自動更新が失敗した時・トークンの期限切れ時 | client secret（最長6か月）そのものは上の定期実行が自動で作り直すので、普段は何もしない。**自動更新が失敗すると管理者にメールが届く**ので、その時に直す。疑うもの: Apple Developer の Keys で鍵（.p8）から Sign in with Apple が外れていないか（実例: 鍵の編集で外れていた）、Supabase の管理用トークン（Function Secrets の `MANAGEMENT_API_TOKEN`）が失効・期限切れしていないか。直せば翌週の実行で入れ替わる。急ぐ時は手で作る。鍵（.p8）の写しは手元に残していない（Function Secrets の値は読み出せない）ので、Apple Developer の Keys で鍵を作り直す: Sign in with Apple を付け、Primary App ID に `app.triplot.mobile` を選んで作成 → .p8 をダウンロード → Function Secrets の `APPLE_P8` と `APPLE_KEY_ID` を入れ替える → 自動更新は前回の記録から150日経つまで作り直さないので、今すぐ入れるには `node scripts/apple-client-secret.mjs --p8 <鍵> --key-id <Key ID> --team-id <Team ID>` で JWT を作り Supabase Dashboard（Auth → Providers → Apple → Secret Key）に貼る → 古い鍵を Apple Developer で無効にし、.p8 は手元から消す（手で入れた分は記録に残らないが、次の自動更新は入れ替えた鍵で前回の記録から150日後に走り、手で入れた client secret はそれより後まで有効なので途切れない）。**切れると web の「Apple でログイン」が失敗する**（iOS は端末の Apple ログインを使うので動き続け、気付きにくい。ログインの失敗でも管理者にメールが届く）。入れ替えの履歴は `apple_client_secret_rotations` テーブル |
