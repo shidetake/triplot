@@ -6,6 +6,7 @@ import { formatTripDateRange } from "@triplot/shared/ymd";
 
 import { AppHeader } from "@/components/app-header";
 import { NoteEditor } from "@/components/note-editor";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
 // ノートのページ。noteId が "new" なら新しいノート。
@@ -19,9 +20,7 @@ export default async function NotePage({
 }) {
   const { tripId, noteId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/");
 
   const isNew = noteId === "new";

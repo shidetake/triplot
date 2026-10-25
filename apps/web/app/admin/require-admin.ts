@@ -1,5 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
 // 管理ページ共通の入口チェック。未ログインは LP へ、非 admin にはページの
@@ -8,9 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 // is_app_admin() が守る。ここは画面の出し分け）。
 export async function requireAdmin() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/");
 
   const { data: profile } = await supabase
