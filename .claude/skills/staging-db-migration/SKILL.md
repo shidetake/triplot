@@ -17,16 +17,20 @@ staging に適用:
 npm run db:push:staging
 ```
 
-- 中身は `scripts/db-push-staging.sh`。接続文字列は gitignore された
-  `apps/web/.env.staging.local` の `SUPABASE_STAGING_DB_URL` から読む。
-- スクリプトは接続文字列に本番の project ref が混ざっていたら止める安全装置あり。
+- 中身は `scripts/db-push-staging.mjs`。staging だけに絞ったトークン
+  （`apps/web/.env.staging.local` の `SUPABASE_ACCESS_TOKEN`）で、
+  `supabase-staging/` の link 先（staging）に当てる。link 先が staging でなければ止まる。
 
-本番に適用（`supabase link` 済みプロジェクト＝本番を見る、通常のリンク経路のまま。
+本番に適用（本番だけに絞ったトークンで `supabase/` の link 先＝本番に当てる。
 **link を張り替えない**——どちらを触っているかがコマンドから自明であることを優先）:
 
 ```bash
-npx supabase db push --linked
+npm run db:push
 ```
+
+`npx supabase db push --linked` を直に叩かない（`supabase login` で保存した、
+アカウント全体に効くトークンを使ってしまう）。詳しくは docs/development.md の
+「Supabase の管理用トークン」。
 
 型を再生成してコミットに含める:
 

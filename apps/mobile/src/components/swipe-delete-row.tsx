@@ -52,6 +52,12 @@ import {
 // 測る間は素の行をそのまま描く。見た目は同じなので切り替わりは見えないし、
 // 仮に埋め込みが失敗しても行は読める状態で残る。
 //
+// **高さだけでなく幅も渡す。** SwiftUI の中の RN ビューは、幅を与えないと中身の
+// 好きな幅で並び直す。長い1行（住所・店名）が折り返されず画面より広がって
+// 真ん中寄せになり、左右が切れた。測った時と違う幅で並ぶと行数も変わり、
+// 測った高さに収まらずに下の要素（旅行の選択）へ重なった（どちらも実機）。
+// 測った時と同じ幅で並べれば、高さも測った値のままになる。
+//
 // **行の余白はゼロにする**（`listRowInsets`）。既定のままだと SwiftUI の行が
 // 左右にも余白を取り、渡した高さに対して中身が入りきらずに切れる（実測: 高さを
 // 60px 増やしても左右が削られて切れたままだった＝足りないのは高さではなかった）。
@@ -124,17 +130,26 @@ export function SwipeDeleteRow({
   // 測った高さは測った時の中身とセットで持つ。中身が変われば古い測定値は
   // 使わない＝描画中に 0 に戻る（effect で消しに行かない。React の
   // 「props が変わった時の state の調整」の作法）。
-  const [measured, setMeasured] = useState({ key: measureKey, height: 0 });
-  const height = measured.key === measureKey ? measured.height : 0;
+  const [measured, setMeasured] = useState({
+    key: measureKey,
+    height: 0,
+    width: 0,
+  });
+  const fresh = measured.key === measureKey;
+  const height = fresh ? measured.height : 0;
+  const width = fresh ? measured.width : 0;
 
   const minH = { minHeight: MIN_ROW_H };
 
   const onLayout = (e: LayoutChangeEvent) => {
     const h = Math.round(e.nativeEvent.layout.height);
-    if (h > 0 && h !== height) setMeasured({ key: measureKey, height: h });
+    const w = e.nativeEvent.layout.width;
+    if (h > 0 && w > 0 && (h !== height || w !== width)) {
+      setMeasured({ key: measureKey, height: h, width: w });
+    }
   };
 
-  if (!enabled || height === 0) {
+  if (!enabled || height === 0 || width === 0) {
     return (
       <View style={[style, minH]} onLayout={onLayout}>
         {children}
@@ -162,7 +177,7 @@ export function SwipeDeleteRow({
           ]}
         >
           <RNHostView matchContents>
-            <View style={[style, minH, { height }]}>{children}</View>
+            <View style={[style, minH, { height, width }]}>{children}</View>
           </RNHostView>
           {/* 引き切った時に実行されるのは**先頭のボタン**。ボタンが増えても
               先頭は削除に揃える——同じ仕草の結果が行によって変わると、覚えた

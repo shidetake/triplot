@@ -46,6 +46,7 @@ import {
 import { localizeSettlementByTrip } from "./settlementTiming";
 import { resolveTransportCategory } from "./transportCategory";
 import { type FixedBlock, resolveDraftOverlaps } from "./draftOverlap";
+import { formatAmount } from "../formatAmount";
 
 // fetchTripPendingDrafts の1行（必要な列だけの構造的部分型）。
 // email_id は「同じメールから出た費用と予定」を突き合わせるのに要る
@@ -496,7 +497,7 @@ export function deriveExpenseDraftItems(
             // カードの横幅が厳しいので日付は年を省いた M/D のみ（実際の日付は initialPaidAt で保持）。
             labelParts: [
               r.merchant || ctx.unknownMerchantLabel,
-              `${r.total} ${r.currency}`,
+              formatAmount(r.total, r.currency),
               monthDayLabel(when.date),
             ],
             initialPrice: r.total,

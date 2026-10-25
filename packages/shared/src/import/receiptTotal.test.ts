@@ -36,6 +36,13 @@ describe("mergedTotal — 印がある時（主）", () => {
     });
   });
 
+  it("足した結果は通貨の最小単位に丸める（小数の誤差を下書きに残さない）", () => {
+    // 3.62 + 0.52 は、そのまま足すと 4.140000000000001 になる。実データで
+    // この値のまま確定された費用があった。
+    expect(mergedTotal(marked(3.62), marked(0.52, true), 0).total).toBe(4.14);
+    expect(mergedTotal(marked(1000, false, "JPY"), marked(500, true, "JPY"), 0).total).toBe(1500);
+  });
+
   it("差額が先に届いていても足す", () => {
     expect(mergedTotal(marked(5, true), marked(50), 50).total).toBe(55);
   });

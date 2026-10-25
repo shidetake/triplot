@@ -27,6 +27,7 @@ import { useUndoable } from "@/lib/undoable";
 import { deriveTripProposals } from "@triplot/shared/import/tripProposal";
 
 import { toast } from "@/components/toast";
+import { formatAmount } from "@triplot/shared/formatAmount";
 
 export interface ImportInboxData {
   importAddress: string | null;
@@ -248,7 +249,7 @@ export function ImportInbox({
                 locale,
                 subject: null,
                 fallbackTitle: t("unknownMerchant"),
-                formatAmount: (total, currency) => `${total} ${currency}`,
+                formatAmount,
               });
               return (
                 <li key={row.id} className="p-3">
@@ -261,11 +262,21 @@ export function ImportInbox({
                       場所）。カテゴリと予定タイトルは判断に効かないので出さない。
                       組み立ては shared の inboxRowSummary（RN と同じ）。 */}
                       {summary.parts.length > 0 ? (
-                        <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-muted-foreground">
+                        // 折り返さず1行に収め、最後の要素（場所）だけを切り詰める
+                        // （折り返すと区切りの縦棒が行の端に取り残される。iOS と同じ）。
+                        <div className="mt-1 flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
                           {summary.parts.map((part, i) => (
                             <Fragment key={i}>
                               {i > 0 && <InlineDivider />}
-                              <span>{part}</span>
+                              <span
+                                className={
+                                  i === summary.parts.length - 1
+                                    ? "min-w-0 truncate"
+                                    : "shrink-0"
+                                }
+                              >
+                                {part}
+                              </span>
                             </Fragment>
                           ))}
                         </div>
@@ -390,8 +401,7 @@ export function ImportInbox({
                                       locale,
                                       subject: null,
                                       fallbackTitle: t("unknownMerchant"),
-                                      formatAmount: (total, currency) =>
-                                        `${total} ${currency}`,
+                                      formatAmount,
                                     });
                                     return [sm.title, ...sm.parts].join("  ");
                                   })()}
