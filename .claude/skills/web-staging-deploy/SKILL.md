@@ -5,7 +5,7 @@ description: web の変更を staging ブランチにマージ&pushしてVercel 
 
 # web の staging デプロイ
 
-`main` への push＝本番公開なので、リリースまでの確認は staging（Vercel Preview）で行う。
+`main` に入る＝本番公開なので、リリースまでの確認は staging（Vercel Preview）で行う。
 
 ## 前提
 
@@ -17,8 +17,8 @@ description: web の変更を staging ブランチにマージ&pushしてVercel 
 ## モバイルのみの変更は対象外
 
 この手順は **web（Next.js）に影響する変更**の話。iOS/RN のみの変更は Vercel と無関係なので
-staging を経由する必要はなく、作業ブランチが `main` ならそのまま commit push してよい
-（このリポジトリでの実例: 費用一覧のRN側UI変更はstagingを経由せず直接mainにpushした）。
+staging を経由する必要はなく、作業ブランチから main への PR を作って自動マージを掛ける
+（`gh pr merge --auto --squash`。main へは PR からしか入れない）。
 
 ## 手順
 

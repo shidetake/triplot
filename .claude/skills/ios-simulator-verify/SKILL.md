@@ -24,10 +24,22 @@ npx expo run:ios --device "iPhone 16 Pro (iOS26)"
 - `run_in_background: true` で実行し、"Build Succeeded" を確認してから次に進む。
 - dev-client バイナリを再インストールし Metro に正しく再接続するので、これが唯一信頼できる方法。
 
+- シミュレータは staging DB を見て、開発用ログインで自動的にログインする（`apps/mobile/.env.local`。
+  docs/development.md「シミュレータの向き先」）。書き込みを伴う確認もしてよい。
+- `console.log` は Metro のプロセスの標準出力に出る。
+
 ## maestro での操作・スクリーンショット
 
+- maestro は `/opt/homebrew/bin/maestro`。無ければ GitHub のリリースから取る
+  （`gh release download --repo mobile-dev-inc/maestro --pattern maestro.zip`。Java 17 が要る）。
 - flow は yaml でスクラッチパッドに書く（例: 画面遷移→`takeScreenshot`）。
 - 実行: `maestro test <flow>.yaml`
+- `launchApp` の直後はバンドルを取り直すので数秒白い画面になる。固定の `wait` ではなく
+  `extendedWaitUntil: visible: "<文字列>.*"` で待ってから触る（固定の待ちだとタップが空振りする）。
+- その場で1枚撮るだけなら `xcrun simctl io booted screenshot <path>.png` でもよい。
+- ソフトウェアキーボードが要る確認は
+  `defaults write com.apple.iphonesimulator ConnectHardwareKeyboard -bool false` の後に Simulator を
+  起動し直す。
 - スクリーンショットの保存先: `~/.maestro/tests/<timestamp>/<flow名>/takeScreenshot/<name>.png`
   （`ls -t ~/.maestro/tests/ | head -1` で直近の実行を特定する）。
 - **必ず Read ツールでスクリーンショットを画像として読み、目視で確認してから「直った」と報告する**
@@ -35,6 +47,10 @@ npx expo run:ios --device "iPhone 16 Pro (iOS26)"
 
 ## タップ座標が外れる時
 
+- `tapOn` の文字列は**正規表現の完全一致**。旅行のカードの読み上げ名は
+  「Honolulu, 2026/4/28 – 2026/5/5」のように後ろが続くので `tapOn: "Honolulu.*"` と書く。
+- 要素が拾えない時は `maestro hierarchy` の出力を整形して、実際の読み上げ名を見る。
+- `point` の % は整数だけ（`9.5%` は落ちる）。
 - `tapOn: "ラベル文字列"` のテキストマッチが効かない（要素がアクセシビリティツリーに
   文字として出ていない等）場合は、`tapOn: {point: "X%,Y%"}` に切り替える。
 - それでも狙った場所を外す場合は、Python/PIL でスクリーンショットのピクセルを直接

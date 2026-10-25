@@ -16,19 +16,17 @@ TestFlight・App Store Connect を一切通らない内部配布ビルド。「�
 ## 手順
 
 ```bash
-cd apps/mobile
-npx eas-cli build --platform ios --profile preview --local --non-interactive \
-  --output ./build/triplot-preview.ipa
+npm run ios:build -- preview
 ```
 
 - `run_in_background: true` で実行。
+- **`eas-cli` を直に叩かない。** `ios:build` がログの全文を残し、できた ipa を検める（docs/development.md「preview ビルド」）。
 - **プロファイルは `preview`**（`production` ではない。bundle id が `app.triplot.mobile.staging` になり本番アプリと共存できる。staging Supabase を向く）。
 
-ビルドが終わったらアップロード:
+ビルドが終わったら、最後に出た ipa のパスでアップロード:
 
 ```bash
-cd apps/mobile/..
-npm run ios:preview:upload -- apps/mobile/build/triplot-preview.ipa
+npm run ios:preview:upload -- apps/mobile/build-<timestamp>.ipa
 ```
 
 （Vercel Blob の `triplot-ios-preview` ストアにアップロードし、`itms-services://...` のインストールリンクを出力する。トークンは repo ルートの `.env.local` の `BLOB_READ_WRITE_TOKEN` から自動で拾う。）
