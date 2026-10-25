@@ -56,10 +56,13 @@ if (!since) {
 }
 console.log(`この回の開始: ${since}（続きからやり直す時は --since に渡す）`);
 
-// 取り込み待ちが 0 で、件数が2回続けて動かなければ終わり。一時的に繋がらない回は飛ばす。
+// 取り込み待ちも、取り込み直しの予定がある失敗も 0 で、件数が2回続けて動かなければ終わり。
+// 失敗の一部（分類できないもの）は間隔を倍にしながら最大6回取り込み直すので、最後の
+// 試行まで1時間ほどかかる。利用者が最終的に見るのはその結果なので、そこまで待つ。
+// 一時的に繋がらない回は飛ばす。
 let prev = "";
 let stable = 0;
-for (let i = 0; i < 360 && stable < 2; i++) {
+for (let i = 0; i < 600 && stable < 2; i++) {
   if (i > 0) await new Promise((r) => setTimeout(r, 15_000));
   const r = runStagingCli([
     "db",
@@ -67,7 +70,9 @@ for (let i = 0; i < 360 && stable < 2; i++) {
     "--linked",
     `select count(*)::int total, count(*) filter (where status = 'pending')::int pending,
             count(*) filter (where status = 'extracted')::int extracted, count(*) filter (where status = 'merged')::int merged,
-            count(*) filter (where status = 'error')::int error, count(*) filter (where status = 'over_quota')::int over_quota
+            count(*) filter (where status = 'error')::int error,
+            count(*) filter (where status = 'error' and next_retry_at is not null)::int retrying,
+            count(*) filter (where status = 'over_quota')::int over_quota
      from inbound_emails where user_id = ${ME} and received_at >= ${lit(since)}`,
   ]);
   let row;
@@ -78,10 +83,10 @@ for (let i = 0; i < 360 && stable < 2; i++) {
   }
   const s = JSON.stringify(row);
   if (s !== prev) console.log(new Date().toISOString(), s);
-  stable = row.total > 0 && row.pending === 0 && s === prev ? stable + 1 : 0;
+  stable = row.total > 0 && row.pending === 0 && row.retrying === 0 && s === prev ? stable + 1 : 0;
   prev = s;
 }
-if (stable < 2) die("取り込みが90分で終わりませんでした（--since で続きから）");
+if (stable < 2) die("取り込みが2時間半で終わりませんでした（--since で続きから）");
 
 const emails = stagingQuery(`
   select e.id, e.received_at, e.subject, e.sender, e.status, e.merged_into, e.trip_id, e.extracted,
