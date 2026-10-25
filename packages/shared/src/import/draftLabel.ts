@@ -1,6 +1,7 @@
 import { formatDayLabel } from "../schedule";
 
 import type { EventDraft, Extraction } from "./schema";
+import { formatAmount } from "../formatAmount";
 
 // 取り込み下書きカードの狭い表示幅向け。年・曜日を省いた "M/D" だけ
 // （ui-guidelines の日付整形の基本形。カードは横幅が厳しいので年は省く）。
@@ -37,7 +38,7 @@ export function extractionSummary(
   const first = x?.events[0] ?? null;
   return {
     title: x?.receipt?.merchant || first?.title || fallback,
-    amount: x?.receipt ? `${x.receipt.total} ${x.receipt.currency}` : null,
+    amount: x?.receipt ? formatAmount(x.receipt.total, x.receipt.currency) : null,
     date: x?.receipt?.date ?? first?.startDate ?? null,
   };
 }

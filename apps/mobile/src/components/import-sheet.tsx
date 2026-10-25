@@ -38,6 +38,7 @@ import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { pushOnce } from "@/lib/navigate";
+import { formatAmount } from "@triplot/shared/formatAmount";
 
 // 受信箱（メール取り込み、FormSheet の中身）。web の /import 相当
 // （M8 スコープ = 割当/破棄/アドレス表示。確定は各旅行の画面で）。
@@ -316,7 +317,7 @@ export function ImportSheet() {
                       locale,
                       subject: x.subject,
                       fallbackTitle: t("noContent"),
-                      formatAmount: (total, currency) => `${total} ${currency}`,
+                      formatAmount,
                     });
                     return (
                       <Pressable
@@ -353,7 +354,7 @@ export function ImportSheet() {
                 locale,
                 subject: e.subject,
                 fallbackTitle: t("noContent"),
-                formatAmount: (total, currency) => `${total} ${currency}`,
+                formatAmount,
               });
               const assigned = trips.find((tr) => tr.id === e.trip_id);
               const children = row?.children ?? [];

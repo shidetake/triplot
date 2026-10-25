@@ -27,6 +27,7 @@ import { useUndoable } from "@/lib/undoable";
 import { deriveTripProposals } from "@triplot/shared/import/tripProposal";
 
 import { toast } from "@/components/toast";
+import { formatAmount } from "@triplot/shared/formatAmount";
 
 export interface ImportInboxData {
   importAddress: string | null;
@@ -248,7 +249,7 @@ export function ImportInbox({
                 locale,
                 subject: null,
                 fallbackTitle: t("unknownMerchant"),
-                formatAmount: (total, currency) => `${total} ${currency}`,
+                formatAmount,
               });
               return (
                 <li key={row.id} className="p-3">
@@ -390,8 +391,7 @@ export function ImportInbox({
                                       locale,
                                       subject: null,
                                       fallbackTitle: t("unknownMerchant"),
-                                      formatAmount: (total, currency) =>
-                                        `${total} ${currency}`,
+                                      formatAmount,
                                     });
                                     return [sm.title, ...sm.parts].join("  ");
                                   })()}
