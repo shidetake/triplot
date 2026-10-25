@@ -81,6 +81,7 @@
         "expo-localization",
         "expo-location",
         "expo-router",
+        "expo-secure-store",
         "expo-splash-screen",
         "expo-status-bar",
         "expo-system-ui",

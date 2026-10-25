@@ -22,6 +22,9 @@ const bundleIdentifier = isStaging
   ? "app.triplot.mobile.staging"
   : "app.triplot.mobile";
 
+// ローカルビルドの署名チーム。キーチェーンのグループ名にも使う。
+const appleTeamId = "D37LHZNVW3";
+
 const config: ExpoConfig = {
   name: isStaging ? "triplot (staging)" : "triplot",
   slug: "triplot",
@@ -38,7 +41,7 @@ const config: ExpoConfig = {
     usesAppleSignIn: true,
     // ローカルビルドの署名チーム（Apple Development 証明書の OU）。
     // 対話プロンプト無しで expo run:ios の署名を通すために明示する。
-    appleTeamId: "D37LHZNVW3",
+    appleTeamId,
     // 招待リンク（https://triplot.app/join/<token>）を Safari ではなくアプリで
     // 開く（受け口は src/app/join/[token].tsx）。対になる
     // apple-app-site-association は web 側が配信する（apps/web の
@@ -53,6 +56,11 @@ const config: ExpoConfig = {
     // プロファイルを作り直す時は、この行が入った状態で eas credentials を
     // 実行すること（EAS が entitlements を見て capability を有効化するため）。
     ...(isStaging ? {} : { associatedDomains: ["applinks:triplot.app"] }),
+    // ログイン状態を共有の拡張機能（targets/share）と分け合うキーチェーンの
+    // グループ（src/lib/authSessionStore.ts）。拡張機能も同じグループを宣言する。
+    entitlements: {
+      "keychain-access-groups": [`$(AppIdentifierPrefix)${bundleIdentifier}`],
+    },
     // 標準暗号（HTTPS）のみ使用＝輸出コンプライアンスの申告を事前に済ませる
     // （TestFlight 提出のたびに質問されるのを防ぐ）。infoPlist を明示しておかないと
     // config-plugins の base mod が undefined 参照で prebuild に失敗する事情もある。
@@ -63,6 +71,12 @@ const config: ExpoConfig = {
       CFBundleAllowMixedLocalizations: true,
       CFBundleLocalizations: ["ja", "en"],
       CFBundleDevelopmentRegion: "ja",
+      // 共有の拡張機能（targets/share/AppConfig.swift）が読む。拡張機能は
+      // アプリ本体の中に入っているので、向き先（本番 / staging）はアプリ本体の
+      // ものを見ればよい。anon key は公開してよい値（アプリにも入っている）。
+      TriplotSupabaseURL: process.env.EXPO_PUBLIC_SUPABASE_URL ?? "",
+      TriplotSupabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? "",
+      TriplotKeychainGroup: `${appleTeamId}.${bundleIdentifier}`,
     },
     // 注: react-native-maps の iOS Google Maps キーは ios.config.googleMapsApiKey
     // では設定しない。それを使うと Expo 組み込みの旧 Maps プラグインが動いて
@@ -83,23 +97,10 @@ const config: ExpoConfig = {
     "expo-router",
     "expo-localization",
     // 共有の拡張機能（Share Extension）: Google マップの「共有」から triplot を
-    // 選べるようにする。受け取ったものはアプリ本体を開いて渡し、旅行を選んで
-    // 場所タブで開く（src/app/+native-intent.tsx → trips/shared-place）。
-    // 受けるのは URL とテキストだけ（Google マップは短縮 URL と店名のテキストを渡す）。
-    // 拡張機能は別の bundle id（<本体>.share-extension）と App Group
-    // （group.<本体>）を持つので、実機のビルドにはそれを含むプロビジョニング
-    // プロファイルが要る（EAS が entitlements を見て作る）。
-    [
-      "expo-share-intent",
-      {
-        iosShareExtensionName: "triplotShareExtension",
-        iosActivationRules: {
-          NSExtensionActivationSupportsWebURLWithMaxCount: 1,
-          NSExtensionActivationSupportsText: true,
-        },
-        disableAndroid: true,
-      },
-    ],
+    // 選び、triplot を開かずにその場で旅行を選んで場所を足す（LINE の転送と
+    // 同じ）。中身は targets/share（SwiftUI）。このプラグインが targets/ の下を
+    // Xcode のターゲットにし、EAS の署名の対象（extra.eas の appExtensions）にも足す。
+    "@bacons/apple-targets",
     "expo-apple-authentication",
     // アバター画像の選択（設定 → アバター変更）。写真ライブラリの利用文言を
     // Info.plist に注入する。カメラ・マイクは使わない（文言を注入しない）。
@@ -179,27 +180,6 @@ const config: ExpoConfig = {
   extra: {
     eas: {
       projectId: "9fc880e2-573b-49e9-8279-01418e9c665a",
-      // 共有の拡張機能（expo-share-intent が prebuild で足すターゲット）の署名。
-      // EAS はビルド前に ios/ を持たないので、ここで宣言しておかないと拡張機能の
-      // プロビジョニングプロファイルを作らない（実機のビルドが署名で落ちる）。
-      // 名前・bundle id・App Group はプラグインの既定と同じ形にそろえる。
-      build: {
-        experimental: {
-          ios: {
-            appExtensions: [
-              {
-                targetName: "triplotShareExtension",
-                bundleIdentifier: `${bundleIdentifier}.share-extension`,
-                entitlements: {
-                  "com.apple.security.application-groups": [
-                    `group.${bundleIdentifier}`,
-                  ],
-                },
-              },
-            ],
-          },
-        },
-      },
     },
   },
 };

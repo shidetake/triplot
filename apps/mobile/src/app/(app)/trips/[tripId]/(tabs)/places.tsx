@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -23,7 +22,6 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
 import { GlassView } from "expo-glass-effect";
 import * as Location from "expo-location";
 import Reanimated, {
@@ -134,7 +132,6 @@ import { useOptimisticHide } from "@/lib/optimistic-hide";
 import { useUndoable } from "@/lib/undoable";
 import { useInvalidateTrip, useTripDetail } from "@/lib/useTripDetail";
 import { LIST_ROW_PADDING_H } from "@/lib/layout";
-import { takeSharedPlace } from "@/lib/sharedPlace";
 import { useTripId } from "@/lib/useTripId";
 
 // Google 評価の★（web の place-popups と同じ Material Symbols star 塗り・amber）。
@@ -1787,995 +1784,984 @@ export default function PlacesTab() {
   });
 
   return (
-    <>
-      {/* Google マップから共有された場所を、検索のサジェストを選んだ時と同じ形で
-          開く（候補ピン1つ＋追加フォーム。旅行に同じ場所があれば
-          openAddCandidate がそちらを開く＝重複して足さない）。 */}
-      <SharedPlaceTrigger
-        onOpen={(c) => {
-          setCandidates([c]);
-          openAddCandidate(c);
-        }}
-      />
-      <ScreenStack style={StyleSheet.absoluteFill}>
-        {/* ベース画面: 地図＋検索バー＋位置指定バナー。常設リストと追加/編集
-            フォームはこの上に native の formSheet として重ねる。
-            sheetLargestUndimmedDetentIndex="last" で全 detent で背後の地図が
-            暗くならず操作できる（本家 Apple/Google マップの場所カードと同じ）。
-            シートは react-native-screens の ScreenStack/ScreenStackItem。
-            単一コンポーネントのままなので mapRef・state・ハンドラは
-            そのまま共有できる（共有ストア不要）。 */}
-        <ScreenStackItem
-          screenId="places-map"
-          activityState={2}
-          style={StyleSheet.absoluteFill}
-          // header を hidden にしないと iOS26 の ScreenStackItem が中身を
-          // SafeAreaView(top) で包み、地図の上に黒帯（上部インセット）が出る。
-          // 全画面地図なので上部インセットは不要＝hidden で opt-out する。
-          headerConfig={{ hidden: true }}
-        >
-          <View style={styles.screen}>
-            <MapView
-              ref={mapRef}
-              provider={PROVIDER_GOOGLE}
-              style={StyleSheet.absoluteFill}
-              initialRegion={initialRegion}
-              // Google ロゴをタブバーの上に逃がす（MAP_BOTTOM_PADDING のコメント参照）。
-              // padding は SDK 側でリージョンもインセットするので、投影に使う寸法は
-              // projectionSize（ビュー実寸 − この余白）を渡す。
-              mapPadding={MAP_PADDING}
-              customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
-              // ダブルタップズームを切る代わりにシングルタップの認識遅延を大幅に
-              // 減らす（react-native-maps 公式ドキュメントの注記どおり）。地図タップで
-              // 場所一覧シートを閉じた直後、もう一度タップ/スワイプしても地図が
-              // 反応しない不具合の原因がこれだった＝iOS の Google Maps SDK は
-              // シングルタップをダブルタップの1打目と区別するため毎回のタップに
-              // 判定待ちを挟んでおり、閉じた直後の2回目の操作がその判定待ちに
-              // 飲まれていた。ピンチズームは影響を受けない。
-              zoomTapEnabled={false}
-              // 現在地の青丸は自前の Marker で描く（下の <Marker> 参照。native の
-              // showsUserLocation は重なり順を制御できないため使わない）。
-              // 縮尺バーは「拡大縮小を始めた瞬間」から出す（本家 Google マップと
-              // 同じ）ので、ジェスチャ中に連続発火する onRegionChange 側で判定する。
-              // 候補ラベルの再配置は重い計算なので従来どおり onRegionChangeComplete
-              // （ジェスチャ確定時）だけで行い、ここでは触らない。
-              onRegionChange={onRegionChange}
-              onRegionChangeComplete={onRegionChangeComplete}
-              onLayout={(e) => {
-                const { width, height } = e.nativeEvent.layout;
-                setMapSize({ width, height });
-              }}
-              // 地図の素のタップ＝入力から離れた合図。キーボードとサジェストを畳む
-              // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
-              // 「位置を設定」モード中はタップ座標をその場所の位置として確定に回す
-              // （web の locatingHint「クリック / 長押し」と同じく両ジェスチャ対応）。
-              // 何もない場所のタップ（ドラッグ/ピンチでは発火しない＝react-native-maps
-              // が move 系ジェスチャと区別済み）は選択解除＝本家マップの「キャンセル」
-              // と同じ動き。段階的に一段戻す:
-              //   - 編集/追加フォームを開いている（2タップ目まで進んだ・候補/長押し）→
-              //     フォームを閉じて選択も全部解除する。
-              //   - 一覧の1タップ目（プレビュー・赤ピン）だけの状態 → 選択だけ解除し、
-              //     一覧シートは開いたままにする（一覧を見ている続きの操作を
-              //     邪魔しないようにする）。
-              //   - 一覧シートを開いているだけ（選択なし）→ 一覧を閉じる
-              //     （スワイプ閉じの onDismissed と同じ後始末）。
-              onPress={(e) => {
-                Keyboard.dismiss();
-                closeSuggestions();
-                if (locating) {
-                  const c = e.nativeEvent.coordinate;
-                  pickLocation(c.latitude, c.longitude);
-                  return;
-                }
-                if (formOpen) {
-                  setFormOpen(false);
-                  setSelectedCandidate(null);
-                  setEditing(null);
-                  setPinDraft(null);
-                } else if (editing) {
-                  setEditing(null);
-                } else if (listOpen) {
-                  setListOpen(false);
-                  setCandidates([]);
-                  setSelectedCandidate(null);
-                }
-              }}
-              onLongPress={(e) => {
+    <ScreenStack style={StyleSheet.absoluteFill}>
+      {/* ベース画面: 地図＋検索バー＋位置指定バナー。常設リストと追加/編集
+          フォームはこの上に native の formSheet として重ねる。
+          sheetLargestUndimmedDetentIndex="last" で全 detent で背後の地図が
+          暗くならず操作できる（本家 Apple/Google マップの場所カードと同じ）。
+          シートは react-native-screens の ScreenStack/ScreenStackItem。
+          単一コンポーネントのままなので mapRef・state・ハンドラは
+          そのまま共有できる（共有ストア不要）。 */}
+      <ScreenStackItem
+        screenId="places-map"
+        activityState={2}
+        style={StyleSheet.absoluteFill}
+        // header を hidden にしないと iOS26 の ScreenStackItem が中身を
+        // SafeAreaView(top) で包み、地図の上に黒帯（上部インセット）が出る。
+        // 全画面地図なので上部インセットは不要＝hidden で opt-out する。
+        headerConfig={{ hidden: true }}
+      >
+        <View style={styles.screen}>
+          <MapView
+            ref={mapRef}
+            provider={PROVIDER_GOOGLE}
+            style={StyleSheet.absoluteFill}
+            initialRegion={initialRegion}
+            // Google ロゴをタブバーの上に逃がす（MAP_BOTTOM_PADDING のコメント参照）。
+            // padding は SDK 側でリージョンもインセットするので、投影に使う寸法は
+            // projectionSize（ビュー実寸 − この余白）を渡す。
+            mapPadding={MAP_PADDING}
+            customMapStyle={theme.dark ? DARK_MAP_STYLE : undefined}
+            // ダブルタップズームを切る代わりにシングルタップの認識遅延を大幅に
+            // 減らす（react-native-maps 公式ドキュメントの注記どおり）。地図タップで
+            // 場所一覧シートを閉じた直後、もう一度タップ/スワイプしても地図が
+            // 反応しない不具合の原因がこれだった＝iOS の Google Maps SDK は
+            // シングルタップをダブルタップの1打目と区別するため毎回のタップに
+            // 判定待ちを挟んでおり、閉じた直後の2回目の操作がその判定待ちに
+            // 飲まれていた。ピンチズームは影響を受けない。
+            zoomTapEnabled={false}
+            // 現在地の青丸は自前の Marker で描く（下の <Marker> 参照。native の
+            // showsUserLocation は重なり順を制御できないため使わない）。
+            // 縮尺バーは「拡大縮小を始めた瞬間」から出す（本家 Google マップと
+            // 同じ）ので、ジェスチャ中に連続発火する onRegionChange 側で判定する。
+            // 候補ラベルの再配置は重い計算なので従来どおり onRegionChangeComplete
+            // （ジェスチャ確定時）だけで行い、ここでは触らない。
+            onRegionChange={onRegionChange}
+            onRegionChangeComplete={onRegionChangeComplete}
+            onLayout={(e) => {
+              const { width, height } = e.nativeEvent.layout;
+              setMapSize({ width, height });
+            }}
+            // 地図の素のタップ＝入力から離れた合図。キーボードとサジェストを畳む
+            // （本家と同じ）。マーカータップは各マーカーの onPress が受ける。
+            // 「位置を設定」モード中はタップ座標をその場所の位置として確定に回す
+            // （web の locatingHint「クリック / 長押し」と同じく両ジェスチャ対応）。
+            // 何もない場所のタップ（ドラッグ/ピンチでは発火しない＝react-native-maps
+            // が move 系ジェスチャと区別済み）は選択解除＝本家マップの「キャンセル」
+            // と同じ動き。段階的に一段戻す:
+            //   - 編集/追加フォームを開いている（2タップ目まで進んだ・候補/長押し）→
+            //     フォームを閉じて選択も全部解除する。
+            //   - 一覧の1タップ目（プレビュー・赤ピン）だけの状態 → 選択だけ解除し、
+            //     一覧シートは開いたままにする（一覧を見ている続きの操作を
+            //     邪魔しないようにする）。
+            //   - 一覧シートを開いているだけ（選択なし）→ 一覧を閉じる
+            //     （スワイプ閉じの onDismissed と同じ後始末）。
+            onPress={(e) => {
+              Keyboard.dismiss();
+              closeSuggestions();
+              if (locating) {
                 const c = e.nativeEvent.coordinate;
-                if (locating) {
-                  pickLocation(c.latitude, c.longitude);
-                  return;
-                }
-                onMapLongPress(c.latitude, c.longitude);
-              }}
-              onPoiClick={(e) =>
-                void onPoiPress(e.nativeEvent.placeId, e.nativeEvent.coordinate)
+                pickLocation(c.latitude, c.longitude);
+                return;
               }
-            >
-              {filteredPlaces
-                .filter((p) => p.lat != null && p.lng != null)
-                .map((p) => {
-                  // 編集中（フォームを開いている）のピンは本家 Google マップと同じく
-                  // 赤ピンに差し替えて表示する。シートを閉じると元のピンに戻る。
-                  const isEditing = editing?.id === p.id;
-                  return (
-                    <Marker
-                      // 差し替えで子とアンカーが変わるので key で再マウントさせる。
-                      key={`${p.id}:${isEditing ? 1 : 0}`}
-                      coordinate={{ latitude: p.lat!, longitude: p.lng! }}
-                      onPress={() => {
-                        // 「位置を設定」モード中は、既存ピンを直タップしても
-                        // そのピンへ寄せる（新しいピンを別に作らない）。
-                        if (
-                          locating &&
-                          p.google_place_id &&
-                          p.lat != null &&
-                          p.lng != null &&
-                          resolveLocatingTo({
-                            googlePlaceId: p.google_place_id,
-                            name: p.name,
-                            lat: p.lat,
-                            lng: p.lng,
-                            formattedAddress: p.formatted_address,
-                            region: p.region,
-                            locality: p.locality,
-                            icon: p.icon,
-                          })
-                        ) {
-                          return;
-                        }
-                        // 地図から選んだ＝一覧側もその行までスクロールして見せる。
-                        scrollToSelectionRef.current = true;
-                        previewOrEditPlace(p);
-                      }}
-                      // stopPropagation の既定は false（react-native-maps）＝
-                      // マーカーの onPress は親 MapView の onPress にもバブリング
-                      // する。iOS はこれが有効で、放っておくと同じタップで直後に
-                      // 地図側の onPress も発火し「選択した直後に選択解除される
-                      // （editing/listOpen を戻す分岐）」不具合になる＝地図上の
-                      // ピンを直タップした時だけ一覧の行タップと挙動が食い違って
-                      // 見えていた原因。
-                      stopPropagation
-                      // 丸マーカーは中心、赤ピンは先端を座標に合わせる。
-                      anchor={isEditing ? { x: 0.5, y: 0.9 } : { x: 0.5, y: 0.5 }}
-                      // 現在地の青丸（下の MyLocationDot マーカー）より手前に
-                      // ピンが乗って隠してしまわないよう、通常時は負の zIndex で
-                      // 青丸の下に沈める（編集中の赤ピンは操作対象なので手前のまま）。
-                      // -1000 起点なので、件数が千件を超えない限り青丸(50)・
-                      // 編集中(200)を追い越さない。
-                      zIndex={
-                        isEditing ? 200 : -1000 + (stackRankById.get(p.id) ?? 0)
-                      }
-                    >
-                      {isEditing ? (
-                        <RedPin />
-                      ) : (
-                        <PlaceMarker
-                          icon={p.icon}
-                          tentative={p.tentative}
-                          creatorHue={
-                            memberHueById.get(p.created_by_member_id) ?? null
-                          }
-                        />
-                      )}
-                    </Marker>
-                  );
-                })}
-              {/* 現在地の青丸。確定ピン(zIndex=-1)より手前・編集中の赤ピン(200)より
-              奥に固定し、常に確定ピンに隠れず見える位置にする。 */}
-              {myLocation && (
-                <Marker
-                  coordinate={myLocation}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  zIndex={50}
-                  tracksViewChanges={false}
-                >
-                  <MyLocationDot />
-                </Marker>
-              )}
-              {pinDraft && (
-                // 仮ピンはドラッグで微調整できる（web の draggable な draft ピンと
-                // 同じ。長押しで置いた位置は指の太さぶんズレるので、置き直しでは
-                // なく寄せられる方が早い）。tracksViewChanges を切らないと
-                // ドラッグ中の再描画が止まる。
-                <Marker
-                  coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
-                  anchor={{ x: 0.5, y: 0.9 }}
-                  // 他の全マーカーが zIndex を明示している以上、これも揃える
-                  // （一部だけ未指定だと重なり順が不安定になる）。ドラッグ中の
-                  // 仮ピンは編集中の赤ピンと同格で常に最前面でよい。
-                  zIndex={200}
-                  draggable
-                  onDragEnd={(e) => {
-                    const { latitude, longitude } = e.nativeEvent.coordinate;
-                    setPinDraft({ lat: latitude, lng: longitude });
-                  }}
-                >
-                  <RedPin />
-                </Marker>
-              )}
-              {candidates.map((c) => {
-                const placement = labelPlacements[c.placeId] ?? "right";
-                const selected = c.placeId === selectedCandidate?.placeId;
+              if (formOpen) {
+                setFormOpen(false);
+                setSelectedCandidate(null);
+                setEditing(null);
+                setPinDraft(null);
+              } else if (editing) {
+                setEditing(null);
+              } else if (listOpen) {
+                setListOpen(false);
+                setCandidates([]);
+                setSelectedCandidate(null);
+              }
+            }}
+            onLongPress={(e) => {
+              const c = e.nativeEvent.coordinate;
+              if (locating) {
+                pickLocation(c.latitude, c.longitude);
+                return;
+              }
+              onMapLongPress(c.latitude, c.longitude);
+            }}
+            onPoiClick={(e) =>
+              void onPoiPress(e.nativeEvent.placeId, e.nativeEvent.coordinate)
+            }
+          >
+            {filteredPlaces
+              .filter((p) => p.lat != null && p.lng != null)
+              .map((p) => {
+                // 編集中（フォームを開いている）のピンは本家 Google マップと同じく
+                // 赤ピンに差し替えて表示する。シートを閉じると元のピンに戻る。
+                const isEditing = editing?.id === p.id;
                 return (
-                  <CandidateMarker
-                    // 見た目が変わる要素を key に含めて再マウントさせる
-                    // （tracksViewChanges を切った後の再描画手段）。
-                    key={`${c.placeId}:${placement}:${selected ? 1 : 0}:${theme.dark ? 1 : 0}`}
-                    candidate={c}
-                    placement={placement}
-                    selected={selected}
-                    dark={theme.dark}
+                  <Marker
+                    // 差し替えで子とアンカーが変わるので key で再マウントさせる。
+                    key={`${p.id}:${isEditing ? 1 : 0}`}
+                    coordinate={{ latitude: p.lat!, longitude: p.lng! }}
                     onPress={() => {
+                      // 「位置を設定」モード中は、既存ピンを直タップしても
+                      // そのピンへ寄せる（新しいピンを別に作らない）。
+                      if (
+                        locating &&
+                        p.google_place_id &&
+                        p.lat != null &&
+                        p.lng != null &&
+                        resolveLocatingTo({
+                          googlePlaceId: p.google_place_id,
+                          name: p.name,
+                          lat: p.lat,
+                          lng: p.lng,
+                          formattedAddress: p.formatted_address,
+                          region: p.region,
+                          locality: p.locality,
+                          icon: p.icon,
+                        })
+                      ) {
+                        return;
+                      }
                       // 地図から選んだ＝一覧側もその行までスクロールして見せる。
                       scrollToSelectionRef.current = true;
-                      previewOrAddCandidate(c);
+                      previewOrEditPlace(p);
                     }}
-                  />
+                    // stopPropagation の既定は false（react-native-maps）＝
+                    // マーカーの onPress は親 MapView の onPress にもバブリング
+                    // する。iOS はこれが有効で、放っておくと同じタップで直後に
+                    // 地図側の onPress も発火し「選択した直後に選択解除される
+                    // （editing/listOpen を戻す分岐）」不具合になる＝地図上の
+                    // ピンを直タップした時だけ一覧の行タップと挙動が食い違って
+                    // 見えていた原因。
+                    stopPropagation
+                    // 丸マーカーは中心、赤ピンは先端を座標に合わせる。
+                    anchor={isEditing ? { x: 0.5, y: 0.9 } : { x: 0.5, y: 0.5 }}
+                    // 現在地の青丸（下の MyLocationDot マーカー）より手前に
+                    // ピンが乗って隠してしまわないよう、通常時は負の zIndex で
+                    // 青丸の下に沈める（編集中の赤ピンは操作対象なので手前のまま）。
+                    // -1000 起点なので、件数が千件を超えない限り青丸(50)・
+                    // 編集中(200)を追い越さない。
+                    zIndex={
+                      isEditing ? 200 : -1000 + (stackRankById.get(p.id) ?? 0)
+                    }
+                  >
+                    {isEditing ? (
+                      <RedPin />
+                    ) : (
+                      <PlaceMarker
+                        icon={p.icon}
+                        tentative={p.tentative}
+                        creatorHue={
+                          memberHueById.get(p.created_by_member_id) ?? null
+                        }
+                      />
+                    )}
+                  </Marker>
                 );
               })}
-            </MapView>
+            {/* 現在地の青丸。確定ピン(zIndex=-1)より手前・編集中の赤ピン(200)より
+            奥に固定し、常に確定ピンに隠れず見える位置にする。 */}
+            {myLocation && (
+              <Marker
+                coordinate={myLocation}
+                anchor={{ x: 0.5, y: 0.5 }}
+                zIndex={50}
+                tracksViewChanges={false}
+              >
+                <MyLocationDot />
+              </Marker>
+            )}
+            {pinDraft && (
+              // 仮ピンはドラッグで微調整できる（web の draggable な draft ピンと
+              // 同じ。長押しで置いた位置は指の太さぶんズレるので、置き直しでは
+              // なく寄せられる方が早い）。tracksViewChanges を切らないと
+              // ドラッグ中の再描画が止まる。
+              <Marker
+                coordinate={{ latitude: pinDraft.lat, longitude: pinDraft.lng }}
+                anchor={{ x: 0.5, y: 0.9 }}
+                // 他の全マーカーが zIndex を明示している以上、これも揃える
+                // （一部だけ未指定だと重なり順が不安定になる）。ドラッグ中の
+                // 仮ピンは編集中の赤ピンと同格で常に最前面でよい。
+                zIndex={200}
+                draggable
+                onDragEnd={(e) => {
+                  const { latitude, longitude } = e.nativeEvent.coordinate;
+                  setPinDraft({ lat: latitude, lng: longitude });
+                }}
+              >
+                <RedPin />
+              </Marker>
+            )}
+            {candidates.map((c) => {
+              const placement = labelPlacements[c.placeId] ?? "right";
+              const selected = c.placeId === selectedCandidate?.placeId;
+              return (
+                <CandidateMarker
+                  // 見た目が変わる要素を key に含めて再マウントさせる
+                  // （tracksViewChanges を切った後の再描画手段）。
+                  key={`${c.placeId}:${placement}:${selected ? 1 : 0}:${theme.dark ? 1 : 0}`}
+                  candidate={c}
+                  placement={placement}
+                  selected={selected}
+                  dark={theme.dark}
+                  onPress={() => {
+                    // 地図から選んだ＝一覧側もその行までスクロールして見せる。
+                    scrollToSelectionRef.current = true;
+                    previewOrAddCandidate(c);
+                  }}
+                />
+              );
+            })}
+          </MapView>
 
-            {/* 「位置を設定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
-            {locating && (
-              <View style={styles.locatingBanner}>
-                {/* 見出し（対象の名前）と案内を2段に分ける。1段に流すと、名前の
-                長さ次第で案内の末尾が数文字だけ次の行に落ちる（実機で確認）。
-                名前は長くなり得るので切り詰めてよく、案内は切らない。 */}
-                <View style={styles.locatingHead}>
-                  <Text style={styles.locatingTitle} numberOfLines={1}>
-                    {t("locatingFor", { name: locating.name })}
-                  </Text>
-                  {/* モードから抜ける口。× にしない —— × は「オーバーレイを
-                  閉じる」印で、この帯はオーバーレイではなくモードの表示なので、
-                  押すと案内が消えるだけに読めてしまう（モードを抜けられると
-                  分からない）。 */}
+          {/* 「位置を設定」モード中のヒント帯（amber。web の locating 行と同じ意味） */}
+          {locating && (
+            <View style={styles.locatingBanner}>
+              {/* 見出し（対象の名前）と案内を2段に分ける。1段に流すと、名前の
+              長さ次第で案内の末尾が数文字だけ次の行に落ちる（実機で確認）。
+              名前は長くなり得るので切り詰めてよく、案内は切らない。 */}
+              <View style={styles.locatingHead}>
+                <Text style={styles.locatingTitle} numberOfLines={1}>
+                  {t("locatingFor", { name: locating.name })}
+                </Text>
+                {/* モードから抜ける口。× にしない —— × は「オーバーレイを
+                閉じる」印で、この帯はオーバーレイではなくモードの表示なので、
+                押すと案内が消えるだけに読めてしまう（モードを抜けられると
+                分からない）。 */}
+                <Pressable
+                  onPress={() => {
+                    setLocating(null);
+                    setPinDraft(null);
+                  }}
+                  hitSlop={12}
+                  accessibilityLabel={tCommon("cancel")}
+                >
+                  <Text style={styles.locatingCancel}>{tCommon("cancel")}</Text>
+                </Pressable>
+              </View>
+              <Text style={styles.locatingText}>{t("locatingHintTouch")}</Text>
+            </View>
+          )}
+
+          {/* 検索バー（地図上に重ねる）＋入力中サジェスト。
+          専用の検索ボタンは置かない（本家 Google マップと同じくソフトウェア
+          キーボードの確定キー＝ returnKeyType="search" だけで検索する。
+          web の Combobox と違い、候補は矢印キーでなくタップで選ぶので
+          「確定キー＝ハイライト中候補の確定」の曖昧さが無く、ボタンが要らない）。 */}
+          <View
+            ref={searchBarRef}
+            style={styles.searchBar}
+            onLayout={() => {
+              // 検索バー自身の absolute 位置（top: 12 等）はこの View の親基準
+              // なので、画面座標での下端は measureInWindow で実測する。
+              searchBarRef.current?.measureInWindow((_x, y, _w, h) => {
+                setSearchBarBottomY(y + h);
+              });
+            }}
+          >
+            <View style={styles.searchInputWrap}>
+              <TextInput
+                value={query}
+                onChangeText={onQueryChange}
+                placeholder={t("searchPlaceholder")}
+                placeholderTextColor={theme.subtleForeground}
+                style={styles.searchInput}
+                returnKeyType="search"
+                onSubmitEditing={() => void runSearch()}
+                editable={!!PLACES_API_KEY}
+              />
+              {/* 右端は状態排他で1つだけ: 検索中はスピナー、そうでなく入力があれば
+              全消しの ×（本家 Google マップと同じく入力欄の右端に出る）。
+              入力欄は wrap の先頭なので絶対配置でその上に重ねる（サジェストが
+              下に伸びても位置は変わらない）。 */}
+              {searching ? (
+                <View style={styles.searchClear} pointerEvents="none">
+                  <ActivityIndicator
+                    size="small"
+                    color={theme.mutedForeground}
+                  />
+                </View>
+              ) : (
+                query.length > 0 && (
                   <Pressable
-                    onPress={() => {
+                    onPress={clearSearch}
+                    hitSlop={8}
+                    style={styles.searchClear}
+                    accessibilityLabel={t("searchClear")}
+                  >
+                    <XIcon size={18} color={theme.mutedForeground} />
+                  </Pressable>
+                )
+              )}
+              {predictions.length > 0 && (
+                <View style={styles.suggestions}>
+                  {predictions.map((p) => (
+                    <Pressable
+                      key={p.placeId}
+                      onPress={() => void pickPrediction(p)}
+                      style={styles.suggestionRow}
+                    >
+                      <Text style={styles.suggestionPrimary} numberOfLines={1}>
+                        {p.primaryText}
+                      </Text>
+                      {p.secondaryText ? (
+                        <Text
+                          style={styles.suggestionSecondary}
+                          numberOfLines={1}
+                        >
+                          {p.secondaryText}
+                        </Text>
+                      ) : null}
+                    </Pressable>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+
+          {/* 場所フィルタ（エリア/日にちで地図のピン・一覧を絞り込む）。検索
+              バーの右隣（右上）に置く＝多くのアプリでフィルタが右上にある
+              慣例に合わせる。検索バー側を右に少し詰めて隙間を作る
+              （styles.searchBar の right 参照）。フィルタ中はアイコンを
+              塗り＋青地にして常に一目で分かるようにする（フィルタしっぱなし
+              で忘れるのを防ぐ、との要望）。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => setFilterOpen(true)}
+              style={[
+                styles.filterButtonTop,
+                (placeFilter || showDismissed) && styles.filterButtonActive,
+              ]}
+              accessibilityLabel={
+                placeFilter
+                  ? t("filterAria", { label: placeFilterLabel(placeFilter) })
+                  : t("filterTitle")
+              }
+            >
+              <FilterIcon
+                size={18}
+                color={placeFilter || showDismissed ? "#fff" : theme.foreground}
+              />
+            </Pressable>
+          )}
+
+          {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
+              押した時だけ native の formSheet で一覧を出す＝閉じている間は
+              タブバーが見える。中身は native の摺りガラス（UIVisualEffectView
+              ラップの GlassView。isInteractive でタップ時に native のガラスの
+              光り方をする）＝自前 backgroundColor で透明感を偽装しない。 */}
+          {!locating && (
+            <Pressable
+              ref={attachListButton}
+              onLayout={onListButtonLayout}
+              onPress={() => setListOpen(true)}
+              style={styles.listButtonWrap}
+              accessibilityLabel={t("openList")}
+            >
+              <GlassView
+                glassEffectStyle="regular"
+                isInteractive
+                style={styles.listButton}
+              >
+                <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
+                {/* 検索結果が残っている間はそちらの件数を出す。一覧を下げても
+                    結果は捨てないので、このボタンがそのまま「開き直す手」に
+                    なる（検索し直さないと戻せない、というフィードバック）。 */}
+                <Text style={styles.listButtonText}>
+                  {candidates.length > 0
+                    ? `検索結果 ${candidates.length}件`
+                    : `${filteredPlaces.length}件の場所`}
+                </Text>
+              </GlassView>
+            </Pressable>
+          )}
+
+          {/* 縮尺バー（本家 Google マップの右下と同じ）。ズームした時だけ
+              フェードインし、約5秒後にフェードアウトする。地図キャンバスの
+              上に直接乗るので、候補ピンのラベルと同じ「地図の見た目に合わせた
+              色＋ハロー」で明暗どちらのベースマップでも読める（ui-guidelines
+              の地図・Google 連携の原則）。 */}
+          {scaleBar && (
+            <Animated.View
+              pointerEvents="none"
+              style={[styles.scaleBar, { opacity: scaleOpacity }]}
+            >
+              <Text style={styles.scaleBarText}>
+                {scaleBar.unit === "km"
+                  ? `${scaleBar.value} km`
+                  : `${scaleBar.value} m`}
+              </Text>
+              <View
+                style={[styles.scaleBarRuler, { width: scaleBar.widthPx }]}
+              />
+            </Animated.View>
+          )}
+
+          {/* 方位磁針（本家 Google マップ・iOS マップと同じ: 真北を向いている
+              間は隠れ、回転すると現れる）。針は地図の回転と逆に回して常に
+              真北を指し続ける。タップで真北へ戻す。現在地ボタンの真上に置く。 */}
+          {!locating && Math.abs(heading) > 0.5 && (
+            <Pressable
+              onPress={resetHeading}
+              style={styles.compassButton}
+              accessibilityLabel={t("resetHeading")}
+            >
+              <Svg
+                viewBox="0 0 24 24"
+                width={28}
+                height={28}
+                style={{ transform: [{ rotate: `${-heading}deg` }] }}
+              >
+                <Path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
+                <Path d="M12,22 L15,12 L9,12 Z" fill={theme.mutedForeground} />
+              </Svg>
+            </Pressable>
+          )}
+
+          {/* 現在地に戻るボタン（本家 Google マップ・iOS マップと同じ位置・
+              見た目: 白丸＋右上向きのナビゲーション矢印）。現在地を中心に
+              据えている間だけ青塗り、それ以外はアウトラインのみ（本家と同じ）。
+              青丸自体は上の MyLocationDot マーカーが描く。 */}
+          {!locating && (
+            <Pressable
+              onPress={() => void goToMyLocation()}
+              style={styles.myLocationButton}
+              accessibilityLabel={t("myLocation")}
+            >
+              <Svg
+                viewBox="0 -960 960 960"
+                width={26}
+                height={26}
+                style={{
+                  // Material Symbols "navigation" のグリフは viewBox 内で
+                  // 視覚重心が左下に寄っており、45°回転すると白丸内で
+                  // 左下ズレとして現れる。回転後のスクリーン座標系で補正する
+                  // ため translate は rotate より前（＝配列内で先）に置く。
+                  // シミュレータの実測(x-2.8pt/y+2.8pt)をそのまま当てると
+                  // 実機では右上に寄りすぎたため、半分の値にしている。
+                  transform: [
+                    { translateX: 1.5 },
+                    { translateY: -1.5 },
+                    { rotate: "45deg" },
+                  ],
+                }}
+              >
+                {/* アウトラインは専用の Material Symbols パス（ウェイト違い）
+                    ではなく、塗りと同じ NAVIGATION_ICON_FILLED_PATH を
+                    stroke 描画で縁取るだけにする。ウェイト違いのパスは
+                    シルエット自体のサイズ/比率が変わり、塗り⇄アウトライン
+                    切替時に大きさが揃わず不自然だった（実機フィードバック）。
+                    strokeWidth だけを太さの調整点にする。 */}
+                <Path
+                  d={NAVIGATION_ICON_FILLED_PATH}
+                  fill={followingLocation ? "#4285F4" : "none"}
+                  stroke={followingLocation ? undefined : theme.foreground}
+                  strokeWidth={followingLocation ? undefined : 66}
+                  strokeLinejoin="round"
+                />
+              </Svg>
+            </Pressable>
+          )}
+        </View>
+      </ScreenStackItem>
+
+      {/* 場所一覧（native formSheet・ボタン/検索で開く・×/スワイプで閉じる）。
+          常設にすると formSheet がタブバー（浮島）を覆ってタブ移動できなくなる
+          ため、開いた時だけ出すモーダルにする。開いている間は地図の上に重なる
+          （sheetLargestUndimmedDetentIndex="last" で地図は暗くならず操作可能）。
+          開いた瞬間は小さい方（画面の半分程度）、引き上げると検索バーの下端
+          までの2 detent でドラッグ。 */}
+      {listOpen && (
+        <ScreenStackItem
+          key={`places-list-${listMode}`}
+          screenId="places-list"
+          activityState={2}
+          stackPresentation="formSheet"
+          // 通常の一覧（browse）は開いた瞬間は小さい方（画面の半分程度）で見せ、
+          // 引き上げると検索バーの下端を上限に拡張できる（本家 Apple マップと
+          // 同じ「まず控えめに、必要なら広げる」振る舞い。以前は逆に「中身に
+          // フィット」が既定で、場所が多いとほぼ全画面になり検索バーまで隠れて
+          // いた。実機フィードバックで撤回。上限の算出は上の maxSheetHeight
+          // 参照）。検索結果（search）は件数が多くなりがちで、同じ理由で半分
+          // 程度の高さを既定にし、地図と一覧を同時に見られるようにする
+          // （本家 Google マップの検索結果シートと同じ）。
+          // どちらも「小さい方」＋「大きい方」の2段で、ドラッグで切り替え
+          // られるようにする（browse 側の値は上の browseSheet 参照）。
+          // 行を選択している間（editing !== null）は半分の detent だけに絞る。
+          // 一覧より地図が主役という方針で、選択中は地図を隠しすぎないよう
+          // それ以上シートを引き上げられなくする（sheetAllowedDetents の動的
+          // 変更は remount 無しで反映される・実機/シミュレータで確認済み）。
+          sheetAllowedDetents={
+            listMode === "search"
+              ? [0.25, 0.5]
+              : editing
+                ? [browseSheet.detents[0]]
+                : browseSheet.detents
+          }
+          sheetInitialDetentIndex={
+            listMode === "search" ? 1 : editing ? 0 : 0 // browse も開いた瞬間は小さい方（画面の半分程度）から見せる
+          }
+          sheetLargestUndimmedDetentIndex="last"
+          // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
+          // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
+          sheetExpandsWhenScrolledToEdge={false}
+          sheetGrabberVisible
+          // sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
+          // （旧16pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
+          // 半径が噛み合わず、カーブ部分だけ本家と違う小さい丸みに見えていた。
+          // automatic にすると OS がマージン幅とコーナー半径を一致させて計算し、
+          // 本家 Apple マップの場所シートと同じ「全周同じ幅の隙間」になる。
+          headerConfig={{ hidden: true }}
+          // 背景色は敷かず native 既定のシートマテリアル（摺りガラス）に任せる＝
+          // 他の formSheet と同じ質感。地図の上でも背後をぼかして読みやすい
+          // （本家 Apple マップの場所シートと同じ）。
+          // スワイプ閉じで一覧を閉じる（× は付けない＝native シートはドラッグで
+          // 閉じる）。プレビュー選択（赤ピン）は解除する。
+          // **検索結果は捨てない**: 地図を広く見ようとして下げただけのつもりでも
+          // 結果ごと消えて、検索し直さないと戻せなかった（フィードバック）。
+          // 地図のピンも一覧も残し、浮島ボタンから開き直せるようにする。
+          // 捨てるのは検索のクリア（×）と、地図の何もない所のタップ（一段戻す
+          // 梯子の最後）の時だけ。
+          onDismissed={() => {
+            setListOpen(false);
+            setEditing(null);
+            setSelectedCandidate(null);
+          }}
+        >
+          {candidates.length > 0 ? (
+            // 検索結果モード: searchText で取得済みの候補情報を一覧で見せる
+            // （表示は取得済みデータの描画だけ＝追加の API 課金なし）。
+            // ヘッダーは ListHeaderComponent に入れる＝native formSheet の
+            // ScrollView 検出（最大2サブビュー）を壊さないよう、FlatList を
+            // ScreenStackItem 直下の単一の子にする（さもないと行タップが
+            // シートのスクロール/拡張ジェスチャに飲まれて発火しない）。
+            <FlatList
+              ref={candidateListRef}
+              data={candidates}
+              keyExtractor={(item) => item.placeId}
+              contentContainerStyle={styles.list}
+              keyboardShouldPersistTaps="handled"
+              // 行の高さを実測前に scrollToIndex した場合の保険（FlatList の
+              // 推奨手順）: 平均行高でおおよその位置へ飛ばし、実測が済む次の
+              // フレームで正確に合わせ直す。
+              onScrollToIndexFailed={({ index, averageItemLength }) => {
+                candidateListRef.current?.scrollToOffset({
+                  offset: index * averageItemLength,
+                  animated: false,
+                });
+                setTimeout(() => {
+                  candidateListRef.current?.scrollToIndex({
+                    index,
+                    viewPosition: 0,
+                  });
+                }, 50);
+              }}
+              // selectedCandidate が変わったら行を再レンダー（選択ハイライトと、
+              // 行 onPress のクロージャを最新の選択状態で作り直すため。保存済み
+              // 一覧の extraData と同じ理由＝無いと2タップ目の判定が古いままになる）。
+              extraData={selectedCandidate?.placeId ?? ""}
+              ListHeaderComponent={
+                <View style={styles.sheetHeader}>
+                  <Text style={styles.sheetCount}>
+                    検索結果 {candidates.length}件
+                  </Text>
+                  {/* 検索結果の時だけ × を出す（本家 Google マップと同じ）。
+                      シートには普通 × を置かない（下げれば閉じると分かるため）が、
+                      ここは「下げる」＝結果を残したまま畳むなので、検索そのものを
+                      やめる操作が別に要る。役割は検索欄の × と同じ。 */}
+                  <Pressable
+                    onPress={clearSearch}
+                    accessibilityLabel={t("searchClear")}
+                    style={styles.sheetHeaderClose}
+                  >
+                    <XIcon size={20} color={theme.mutedForeground} />
+                  </Pressable>
+                </View>
+              }
+              renderItem={({ item }) => (
+                <Pressable
+                  onPress={() => previewOrAddCandidate(item)}
+                  style={[
+                    styles.placeRow,
+                    // 選択中（プレビュー中）の行を薄くハイライト（保存済み一覧と同じ）。
+                    selectedCandidate?.placeId === item.placeId &&
+                      styles.selectedRow,
+                  ]}
+                >
+                  {/* 行の先頭グリフ＝地図の候補ピンと同じカテゴリアイコン（Google 赤） */}
+                  <PlaceCategoryIcon
+                    icon={iconKeyForGoogleType(item.primaryType)}
+                    size={20}
+                    color="#EA4335"
+                  />
+                  <View style={styles.placeInfo}>
+                    <Text style={styles.placeName} numberOfLines={1}>
+                      {item.name}
+                    </Text>
+                    <View style={styles.candidateMeta}>
+                      {item.rating != null && (
+                        <>
+                          <Svg viewBox="0 -960 960 960" width={12} height={12}>
+                            <Path d={STAR_PATH} fill="#d97706" />
+                          </Svg>
+                          <Text style={styles.candidateRating}>
+                            {item.rating.toFixed(1)}
+                          </Text>
+                          {item.userRatingCount != null && (
+                            <Text style={styles.candidateCount}>
+                              ({item.userRatingCount})
+                            </Text>
+                          )}
+                        </>
+                      )}
+                      <Text style={styles.candidateAddress} numberOfLines={1}>
+                        {item.formattedAddress}
+                      </Text>
+                    </View>
+                  </View>
+                  {/* プレビュー中（1タップ目）の行だけ、もう1タップで追加に
+                      進むことを示す「＞」（保存済み一覧と同じ）。 */}
+                  {selectedCandidate?.placeId === item.placeId && (
+                    <ChevronIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              )}
+            />
+          ) : (
+            <FlatList
+              ref={placeListRef}
+              data={filteredPlaces}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={[
+                styles.list,
+                { paddingBottom: LIST_BOTTOM_PADDING + pickerCenterPad },
+              ]}
+              keyboardShouldPersistTaps="handled"
+              // 中身の高さ＝シートの「フィット」detent の元になる値（上の
+              // browseSheet 参照）。行の増減・note の折返しまで込みの実測値。
+              onContentSizeChange={(_w, h) => setBrowseContentH(h)}
+              // Phase 2: 選択中の一覧スクロールをピッカー操作にするための実測
+              // 可視高さ（handlePickerScroll・上のパディング計算で使う）。
+              // タップ選択直後は fit→半分 detent の遷移が落ち着くまで、この
+              // 実測を使って中央へのスクロールをデバウンスする（詳細は
+              // handleListLayout 参照）。
+              onLayout={handleListLayout}
+              // scrollToIndex の保険（検索結果側と同じ。理由はそちらのコメント）。
+              onScrollToIndexFailed={({ index, averageItemLength }) => {
+                placeListRef.current?.scrollToOffset({
+                  offset: index * averageItemLength,
+                  animated: false,
+                });
+                setTimeout(() => {
+                  placeListRef.current?.scrollToIndex({
+                    index,
+                    viewPosition: 0,
+                  });
+                }, 50);
+              }}
+              // editing / locating が変わったら行を再レンダー（選択ハイライトと、
+              // 行 onPress のクロージャを最新の editing で作り直すため。無いと
+              // 2タップ目の判定が古い editing=null のままになる）。
+              extraData={`${editing?.id ?? ""}:${locating?.id ?? ""}`}
+              onScroll={handlePickerScroll}
+              scrollEventThrottle={16}
+              onScrollBeginDrag={() => {
+                isUserScrollingRef.current = true;
+              }}
+              onScrollEndDrag={handleDragEnd}
+              onMomentumScrollEnd={handleMomentumScrollEnd}
+              ListHeaderComponent={
+                <>
+                  <View style={styles.sheetHeader}>
+                    <Text style={styles.sheetCount}>
+                      {filteredPlaces.length}件の場所
+                    </Text>
+                  </View>
+                  {/* ピッカー中の先頭/末尾の行を一覧の中央まで持ってこられる
+                    ようにする余白。ヘッダーの後ろに置くことで、ヘッダー
+                    自体はスクロール位置に関わらず常に一覧の先頭に留まる
+                    （余白がヘッダーの上に付くと、選択中だけヘッダーが下に
+                    ずれて見えてしまうため）。 */}
+                  {pickerTopPad > 0 && (
+                    <View style={{ height: pickerTopPad }} />
+                  )}
+                </>
+              }
+              renderItem={({ item, index }) => (
+                // **スワイプは通常モードだけ**（選んでいる最中＝スクロール
+                // モードでは受けない）。あのモードは縦に回して選ぶダイヤルで、
+                // 目は地図にある。行への操作は一覧の時だけにする
+                // （docs/design/platform-parity.md）。
+                //
+                // 引き切りは常に削除（先頭のボタン）。位置未設定の行だけ
+                // 非表示を足すが、引き切りの結果は行によって変えない。
+                <SwipeDeleteRow
+                  enabled={editing == null}
+                  // 高さに効くものを全部入れる。**選択中の行は膨らむ**（縦の
+                  // 余白が広がり、住所と日程バッジが増える）ので選択も鍵に
+                  // 含める —— 含めないと、選択を解いた後も器が膨らんだ高さの
+                  // まま残り、行の下に空白が居座る（実機で再現）。
+                  measureKey={[
+                    item.name,
+                    item.lat == null,
+                    item.location_dismissed,
+                    editing?.id === item.id,
+                    item.note ? 1 : 0,
+                  ].join("|")}
+                  actions={[
+                    {
+                      icon: "trash",
+                      label: tCommon("delete"),
+                      destructive: true,
+                      onPress: () => removePlace(item),
+                    },
+                    ...(item.lat == null && !item.location_dismissed
+                      ? [
+                          {
+                            icon: "eye.slash" as const,
+                            label: t("hide"),
+                            onPress: () => hideLocation(item),
+                          },
+                        ]
+                      : []),
+                  ]}
+                >
+                  <SavedPlaceRow
+                    item={item}
+                    index={index}
+                    isSelected={editing?.id === item.id}
+                    isLocating={item.lat == null && item.id === locating?.id}
+                    day={dayByPlaceId.get(item.id)}
+                    area={areaByPlaceId.get(item.id)}
+                    focusProgress={focusProgress}
+                    focusActive={focusActive}
+                    theme={theme}
+                    styles={styles}
+                    t={t}
+                    onStartLocate={() => startLocate(item)}
+                    onCancelLocate={() => {
                       setLocating(null);
                       setPinDraft(null);
                     }}
-                    hitSlop={12}
-                    accessibilityLabel={tCommon("cancel")}
-                  >
-                    <Text style={styles.locatingCancel}>{tCommon("cancel")}</Text>
-                  </Pressable>
-                </View>
-                <Text style={styles.locatingText}>{t("locatingHintTouch")}</Text>
-              </View>
-            )}
-
-            {/* 検索バー（地図上に重ねる）＋入力中サジェスト。
-            専用の検索ボタンは置かない（本家 Google マップと同じくソフトウェア
-            キーボードの確定キー＝ returnKeyType="search" だけで検索する。
-            web の Combobox と違い、候補は矢印キーでなくタップで選ぶので
-            「確定キー＝ハイライト中候補の確定」の曖昧さが無く、ボタンが要らない）。 */}
-            <View
-              ref={searchBarRef}
-              style={styles.searchBar}
-              onLayout={() => {
-                // 検索バー自身の absolute 位置（top: 12 等）はこの View の親基準
-                // なので、画面座標での下端は measureInWindow で実測する。
-                searchBarRef.current?.measureInWindow((_x, y, _w, h) => {
-                  setSearchBarBottomY(y + h);
-                });
-              }}
-            >
-              <View style={styles.searchInputWrap}>
-                <TextInput
-                  value={query}
-                  onChangeText={onQueryChange}
-                  placeholder={t("searchPlaceholder")}
-                  placeholderTextColor={theme.subtleForeground}
-                  style={styles.searchInput}
-                  returnKeyType="search"
-                  onSubmitEditing={() => void runSearch()}
-                  editable={!!PLACES_API_KEY}
-                />
-                {/* 右端は状態排他で1つだけ: 検索中はスピナー、そうでなく入力があれば
-                全消しの ×（本家 Google マップと同じく入力欄の右端に出る）。
-                入力欄は wrap の先頭なので絶対配置でその上に重ねる（サジェストが
-                下に伸びても位置は変わらない）。 */}
-                {searching ? (
-                  <View style={styles.searchClear} pointerEvents="none">
-                    <ActivityIndicator
-                      size="small"
-                      color={theme.mutedForeground}
-                    />
-                  </View>
-                ) : (
-                  query.length > 0 && (
-                    <Pressable
-                      onPress={clearSearch}
-                      hitSlop={8}
-                      style={styles.searchClear}
-                      accessibilityLabel={t("searchClear")}
-                    >
-                      <XIcon size={18} color={theme.mutedForeground} />
-                    </Pressable>
-                  )
-                )}
-                {predictions.length > 0 && (
-                  <View style={styles.suggestions}>
-                    {predictions.map((p) => (
-                      <Pressable
-                        key={p.placeId}
-                        onPress={() => void pickPrediction(p)}
-                        style={styles.suggestionRow}
-                      >
-                        <Text style={styles.suggestionPrimary} numberOfLines={1}>
-                          {p.primaryText}
-                        </Text>
-                        {p.secondaryText ? (
-                          <Text
-                            style={styles.suggestionSecondary}
-                            numberOfLines={1}
-                          >
-                            {p.secondaryText}
-                          </Text>
-                        ) : null}
-                      </Pressable>
-                    ))}
-                  </View>
-                )}
-              </View>
-            </View>
-
-            {/* 場所フィルタ（エリア/日にちで地図のピン・一覧を絞り込む）。検索
-                バーの右隣（右上）に置く＝多くのアプリでフィルタが右上にある
-                慣例に合わせる。検索バー側を右に少し詰めて隙間を作る
-                （styles.searchBar の right 参照）。フィルタ中はアイコンを
-                塗り＋青地にして常に一目で分かるようにする（フィルタしっぱなし
-                で忘れるのを防ぐ、との要望）。 */}
-            {!locating && (
-              <Pressable
-                onPress={() => setFilterOpen(true)}
-                style={[
-                  styles.filterButtonTop,
-                  (placeFilter || showDismissed) && styles.filterButtonActive,
-                ]}
-                accessibilityLabel={
-                  placeFilter
-                    ? t("filterAria", { label: placeFilterLabel(placeFilter) })
-                    : t("filterTitle")
-                }
-              >
-                <FilterIcon
-                  size={18}
-                  color={placeFilter || showDismissed ? "#fff" : theme.foreground}
-                />
-              </Pressable>
-            )}
-
-            {/* 一覧を開くボタン（タブバーの上に浮かせる）。常設シートをやめ、
-                押した時だけ native の formSheet で一覧を出す＝閉じている間は
-                タブバーが見える。中身は native の摺りガラス（UIVisualEffectView
-                ラップの GlassView。isInteractive でタップ時に native のガラスの
-                光り方をする）＝自前 backgroundColor で透明感を偽装しない。 */}
-            {!locating && (
-              <Pressable
-                ref={attachListButton}
-                onLayout={onListButtonLayout}
-                onPress={() => setListOpen(true)}
-                style={styles.listButtonWrap}
-                accessibilityLabel={t("openList")}
-              >
-                <GlassView
-                  glassEffectStyle="regular"
-                  isInteractive
-                  style={styles.listButton}
-                >
-                  <ChevronIcon size={16} color={theme.foreground} rotate={-90} />
-                  {/* 検索結果が残っている間はそちらの件数を出す。一覧を下げても
-                      結果は捨てないので、このボタンがそのまま「開き直す手」に
-                      なる（検索し直さないと戻せない、というフィードバック）。 */}
-                  <Text style={styles.listButtonText}>
-                    {candidates.length > 0
-                      ? `検索結果 ${candidates.length}件`
-                      : `${filteredPlaces.length}件の場所`}
-                  </Text>
-                </GlassView>
-              </Pressable>
-            )}
-
-            {/* 縮尺バー（本家 Google マップの右下と同じ）。ズームした時だけ
-                フェードインし、約5秒後にフェードアウトする。地図キャンバスの
-                上に直接乗るので、候補ピンのラベルと同じ「地図の見た目に合わせた
-                色＋ハロー」で明暗どちらのベースマップでも読める（ui-guidelines
-                の地図・Google 連携の原則）。 */}
-            {scaleBar && (
-              <Animated.View
-                pointerEvents="none"
-                style={[styles.scaleBar, { opacity: scaleOpacity }]}
-              >
-                <Text style={styles.scaleBarText}>
-                  {scaleBar.unit === "km"
-                    ? `${scaleBar.value} km`
-                    : `${scaleBar.value} m`}
-                </Text>
-                <View
-                  style={[styles.scaleBarRuler, { width: scaleBar.widthPx }]}
-                />
-              </Animated.View>
-            )}
-
-            {/* 方位磁針（本家 Google マップ・iOS マップと同じ: 真北を向いている
-                間は隠れ、回転すると現れる）。針は地図の回転と逆に回して常に
-                真北を指し続ける。タップで真北へ戻す。現在地ボタンの真上に置く。 */}
-            {!locating && Math.abs(heading) > 0.5 && (
-              <Pressable
-                onPress={resetHeading}
-                style={styles.compassButton}
-                accessibilityLabel={t("resetHeading")}
-              >
-                <Svg
-                  viewBox="0 0 24 24"
-                  width={28}
-                  height={28}
-                  style={{ transform: [{ rotate: `${-heading}deg` }] }}
-                >
-                  <Path d="M12,2 L15,12 L9,12 Z" fill="#EA4335" />
-                  <Path d="M12,22 L15,12 L9,12 Z" fill={theme.mutedForeground} />
-                </Svg>
-              </Pressable>
-            )}
-
-            {/* 現在地に戻るボタン（本家 Google マップ・iOS マップと同じ位置・
-                見た目: 白丸＋右上向きのナビゲーション矢印）。現在地を中心に
-                据えている間だけ青塗り、それ以外はアウトラインのみ（本家と同じ）。
-                青丸自体は上の MyLocationDot マーカーが描く。 */}
-            {!locating && (
-              <Pressable
-                onPress={() => void goToMyLocation()}
-                style={styles.myLocationButton}
-                accessibilityLabel={t("myLocation")}
-              >
-                <Svg
-                  viewBox="0 -960 960 960"
-                  width={26}
-                  height={26}
-                  style={{
-                    // Material Symbols "navigation" のグリフは viewBox 内で
-                    // 視覚重心が左下に寄っており、45°回転すると白丸内で
-                    // 左下ズレとして現れる。回転後のスクリーン座標系で補正する
-                    // ため translate は rotate より前（＝配列内で先）に置く。
-                    // シミュレータの実測(x-2.8pt/y+2.8pt)をそのまま当てると
-                    // 実機では右上に寄りすぎたため、半分の値にしている。
-                    transform: [
-                      { translateX: 1.5 },
-                      { translateY: -1.5 },
-                      { rotate: "45deg" },
-                    ],
-                  }}
-                >
-                  {/* アウトラインは専用の Material Symbols パス（ウェイト違い）
-                      ではなく、塗りと同じ NAVIGATION_ICON_FILLED_PATH を
-                      stroke 描画で縁取るだけにする。ウェイト違いのパスは
-                      シルエット自体のサイズ/比率が変わり、塗り⇄アウトライン
-                      切替時に大きさが揃わず不自然だった（実機フィードバック）。
-                      strokeWidth だけを太さの調整点にする。 */}
-                  <Path
-                    d={NAVIGATION_ICON_FILLED_PATH}
-                    fill={followingLocation ? "#4285F4" : "none"}
-                    stroke={followingLocation ? undefined : theme.foreground}
-                    strokeWidth={followingLocation ? undefined : 66}
-                    strokeLinejoin="round"
+                    onPreviewOrEdit={() => previewOrEditPlace(item)}
+                    onDismissLocation={() => dismissLocation(item)}
                   />
-                </Svg>
-              </Pressable>
-            )}
-          </View>
+                </SwipeDeleteRow>
+              )}
+              ListEmptyComponent={
+                <Text style={styles.empty}>{t("empty")}</Text>
+              }
+            />
+          )}
+          {/* このシート専用のトースト。ルートの <Toaster />（app/_layout.tsx）は
+              native の formSheet の裏に回って見えない（実機フィードバック: 場所を
+              消した時の「元に戻す」が一覧シートの下に隠れていた）。器を挟まず
+              FlatList の兄弟として置く＝FlatList が ScreenStackItem 直下のまま
+              なので、native のスクロール検出（行タップがシートのジェスチャに
+              飲まれる問題）に影響しない。 */}
+          <Toaster inSheet />
         </ScreenStackItem>
+      )}
 
-        {/* 場所一覧（native formSheet・ボタン/検索で開く・×/スワイプで閉じる）。
-            常設にすると formSheet がタブバー（浮島）を覆ってタブ移動できなくなる
-            ため、開いた時だけ出すモーダルにする。開いている間は地図の上に重なる
-            （sheetLargestUndimmedDetentIndex="last" で地図は暗くならず操作可能）。
-            開いた瞬間は小さい方（画面の半分程度）、引き上げると検索バーの下端
-            までの2 detent でドラッグ。 */}
-        {listOpen && (
-          <ScreenStackItem
-            key={`places-list-${listMode}`}
-            screenId="places-list"
-            activityState={2}
-            stackPresentation="formSheet"
-            // 通常の一覧（browse）は開いた瞬間は小さい方（画面の半分程度）で見せ、
-            // 引き上げると検索バーの下端を上限に拡張できる（本家 Apple マップと
-            // 同じ「まず控えめに、必要なら広げる」振る舞い。以前は逆に「中身に
-            // フィット」が既定で、場所が多いとほぼ全画面になり検索バーまで隠れて
-            // いた。実機フィードバックで撤回。上限の算出は上の maxSheetHeight
-            // 参照）。検索結果（search）は件数が多くなりがちで、同じ理由で半分
-            // 程度の高さを既定にし、地図と一覧を同時に見られるようにする
-            // （本家 Google マップの検索結果シートと同じ）。
-            // どちらも「小さい方」＋「大きい方」の2段で、ドラッグで切り替え
-            // られるようにする（browse 側の値は上の browseSheet 参照）。
-            // 行を選択している間（editing !== null）は半分の detent だけに絞る。
-            // 一覧より地図が主役という方針で、選択中は地図を隠しすぎないよう
-            // それ以上シートを引き上げられなくする（sheetAllowedDetents の動的
-            // 変更は remount 無しで反映される・実機/シミュレータで確認済み）。
-            sheetAllowedDetents={
-              listMode === "search"
-                ? [0.25, 0.5]
-                : editing
-                  ? [browseSheet.detents[0]]
-                  : browseSheet.detents
-            }
-            sheetInitialDetentIndex={
-              listMode === "search" ? 1 : editing ? 0 : 0 // browse も開いた瞬間は小さい方（画面の半分程度）から見せる
-            }
-            sheetLargestUndimmedDetentIndex="last"
-            // 内側 FlatList のスクロールとシート拡張を分離しないと、行タップが
-            // 「スクロールで拡張」ジェスチャに飲まれて onPress が発火しない。
-            sheetExpandsWhenScrolledToEdge={false}
-            sheetGrabberVisible
-            // sheetCornerRadius は指定しない（native 既定 = automatic）。固定値
-            // （旧16pt）だと iOS26 の大きな continuous コーナー＋左右の浮きマージンと
-            // 半径が噛み合わず、カーブ部分だけ本家と違う小さい丸みに見えていた。
-            // automatic にすると OS がマージン幅とコーナー半径を一致させて計算し、
-            // 本家 Apple マップの場所シートと同じ「全周同じ幅の隙間」になる。
-            headerConfig={{ hidden: true }}
-            // 背景色は敷かず native 既定のシートマテリアル（摺りガラス）に任せる＝
-            // 他の formSheet と同じ質感。地図の上でも背後をぼかして読みやすい
-            // （本家 Apple マップの場所シートと同じ）。
-            // スワイプ閉じで一覧を閉じる（× は付けない＝native シートはドラッグで
-            // 閉じる）。プレビュー選択（赤ピン）は解除する。
-            // **検索結果は捨てない**: 地図を広く見ようとして下げただけのつもりでも
-            // 結果ごと消えて、検索し直さないと戻せなかった（フィードバック）。
-            // 地図のピンも一覧も残し、浮島ボタンから開き直せるようにする。
-            // 捨てるのは検索のクリア（×）と、地図の何もない所のタップ（一段戻す
-            // 梯子の最後）の時だけ。
-            onDismissed={() => {
-              setListOpen(false);
-              setEditing(null);
-              setSelectedCandidate(null);
-            }}
-          >
-            {candidates.length > 0 ? (
-              // 検索結果モード: searchText で取得済みの候補情報を一覧で見せる
-              // （表示は取得済みデータの描画だけ＝追加の API 課金なし）。
-              // ヘッダーは ListHeaderComponent に入れる＝native formSheet の
-              // ScrollView 検出（最大2サブビュー）を壊さないよう、FlatList を
-              // ScreenStackItem 直下の単一の子にする（さもないと行タップが
-              // シートのスクロール/拡張ジェスチャに飲まれて発火しない）。
-              <FlatList
-                ref={candidateListRef}
-                data={candidates}
-                keyExtractor={(item) => item.placeId}
-                contentContainerStyle={styles.list}
-                keyboardShouldPersistTaps="handled"
-                // 行の高さを実測前に scrollToIndex した場合の保険（FlatList の
-                // 推奨手順）: 平均行高でおおよその位置へ飛ばし、実測が済む次の
-                // フレームで正確に合わせ直す。
-                onScrollToIndexFailed={({ index, averageItemLength }) => {
-                  candidateListRef.current?.scrollToOffset({
-                    offset: index * averageItemLength,
-                    animated: false,
-                  });
-                  setTimeout(() => {
-                    candidateListRef.current?.scrollToIndex({
-                      index,
-                      viewPosition: 0,
-                    });
-                  }, 50);
-                }}
-                // selectedCandidate が変わったら行を再レンダー（選択ハイライトと、
-                // 行 onPress のクロージャを最新の選択状態で作り直すため。保存済み
-                // 一覧の extraData と同じ理由＝無いと2タップ目の判定が古いままになる）。
-                extraData={selectedCandidate?.placeId ?? ""}
-                ListHeaderComponent={
-                  <View style={styles.sheetHeader}>
-                    <Text style={styles.sheetCount}>
-                      検索結果 {candidates.length}件
-                    </Text>
-                    {/* 検索結果の時だけ × を出す（本家 Google マップと同じ）。
-                        シートには普通 × を置かない（下げれば閉じると分かるため）が、
-                        ここは「下げる」＝結果を残したまま畳むなので、検索そのものを
-                        やめる操作が別に要る。役割は検索欄の × と同じ。 */}
-                    <Pressable
-                      onPress={clearSearch}
-                      accessibilityLabel={t("searchClear")}
-                      style={styles.sheetHeaderClose}
-                    >
-                      <XIcon size={20} color={theme.mutedForeground} />
-                    </Pressable>
-                  </View>
-                }
-                renderItem={({ item }) => (
-                  <Pressable
-                    onPress={() => previewOrAddCandidate(item)}
-                    style={[
-                      styles.placeRow,
-                      // 選択中（プレビュー中）の行を薄くハイライト（保存済み一覧と同じ）。
-                      selectedCandidate?.placeId === item.placeId &&
-                        styles.selectedRow,
-                    ]}
-                  >
-                    {/* 行の先頭グリフ＝地図の候補ピンと同じカテゴリアイコン（Google 赤） */}
-                    <PlaceCategoryIcon
-                      icon={iconKeyForGoogleType(item.primaryType)}
-                      size={20}
-                      color="#EA4335"
-                    />
-                    <View style={styles.placeInfo}>
-                      <Text style={styles.placeName} numberOfLines={1}>
-                        {item.name}
-                      </Text>
-                      <View style={styles.candidateMeta}>
-                        {item.rating != null && (
-                          <>
-                            <Svg viewBox="0 -960 960 960" width={12} height={12}>
-                              <Path d={STAR_PATH} fill="#d97706" />
-                            </Svg>
-                            <Text style={styles.candidateRating}>
-                              {item.rating.toFixed(1)}
-                            </Text>
-                            {item.userRatingCount != null && (
-                              <Text style={styles.candidateCount}>
-                                ({item.userRatingCount})
-                              </Text>
-                            )}
-                          </>
-                        )}
-                        <Text style={styles.candidateAddress} numberOfLines={1}>
-                          {item.formattedAddress}
-                        </Text>
-                      </View>
-                    </View>
-                    {/* プレビュー中（1タップ目）の行だけ、もう1タップで追加に
-                        進むことを示す「＞」（保存済み一覧と同じ）。 */}
-                    {selectedCandidate?.placeId === item.placeId && (
-                      <ChevronIcon size={16} color={theme.mutedForeground} />
-                    )}
-                  </Pressable>
-                )}
-              />
-            ) : (
-              <FlatList
-                ref={placeListRef}
-                data={filteredPlaces}
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={[
-                  styles.list,
-                  { paddingBottom: LIST_BOTTOM_PADDING + pickerCenterPad },
-                ]}
-                keyboardShouldPersistTaps="handled"
-                // 中身の高さ＝シートの「フィット」detent の元になる値（上の
-                // browseSheet 参照）。行の増減・note の折返しまで込みの実測値。
-                onContentSizeChange={(_w, h) => setBrowseContentH(h)}
-                // Phase 2: 選択中の一覧スクロールをピッカー操作にするための実測
-                // 可視高さ（handlePickerScroll・上のパディング計算で使う）。
-                // タップ選択直後は fit→半分 detent の遷移が落ち着くまで、この
-                // 実測を使って中央へのスクロールをデバウンスする（詳細は
-                // handleListLayout 参照）。
-                onLayout={handleListLayout}
-                // scrollToIndex の保険（検索結果側と同じ。理由はそちらのコメント）。
-                onScrollToIndexFailed={({ index, averageItemLength }) => {
-                  placeListRef.current?.scrollToOffset({
-                    offset: index * averageItemLength,
-                    animated: false,
-                  });
-                  setTimeout(() => {
-                    placeListRef.current?.scrollToIndex({
-                      index,
-                      viewPosition: 0,
-                    });
-                  }, 50);
-                }}
-                // editing / locating が変わったら行を再レンダー（選択ハイライトと、
-                // 行 onPress のクロージャを最新の editing で作り直すため。無いと
-                // 2タップ目の判定が古い editing=null のままになる）。
-                extraData={`${editing?.id ?? ""}:${locating?.id ?? ""}`}
-                onScroll={handlePickerScroll}
-                scrollEventThrottle={16}
-                onScrollBeginDrag={() => {
-                  isUserScrollingRef.current = true;
-                }}
-                onScrollEndDrag={handleDragEnd}
-                onMomentumScrollEnd={handleMomentumScrollEnd}
-                ListHeaderComponent={
-                  <>
-                    <View style={styles.sheetHeader}>
-                      <Text style={styles.sheetCount}>
-                        {filteredPlaces.length}件の場所
-                      </Text>
-                    </View>
-                    {/* ピッカー中の先頭/末尾の行を一覧の中央まで持ってこられる
-                      ようにする余白。ヘッダーの後ろに置くことで、ヘッダー
-                      自体はスクロール位置に関わらず常に一覧の先頭に留まる
-                      （余白がヘッダーの上に付くと、選択中だけヘッダーが下に
-                      ずれて見えてしまうため）。 */}
-                    {pickerTopPad > 0 && (
-                      <View style={{ height: pickerTopPad }} />
-                    )}
-                  </>
-                }
-                renderItem={({ item, index }) => (
-                  // **スワイプは通常モードだけ**（選んでいる最中＝スクロール
-                  // モードでは受けない）。あのモードは縦に回して選ぶダイヤルで、
-                  // 目は地図にある。行への操作は一覧の時だけにする
-                  // （docs/design/platform-parity.md）。
-                  //
-                  // 引き切りは常に削除（先頭のボタン）。位置未設定の行だけ
-                  // 非表示を足すが、引き切りの結果は行によって変えない。
-                  <SwipeDeleteRow
-                    enabled={editing == null}
-                    // 高さに効くものを全部入れる。**選択中の行は膨らむ**（縦の
-                    // 余白が広がり、住所と日程バッジが増える）ので選択も鍵に
-                    // 含める —— 含めないと、選択を解いた後も器が膨らんだ高さの
-                    // まま残り、行の下に空白が居座る（実機で再現）。
-                    measureKey={[
-                      item.name,
-                      item.lat == null,
-                      item.location_dismissed,
-                      editing?.id === item.id,
-                      item.note ? 1 : 0,
-                    ].join("|")}
-                    actions={[
-                      {
-                        icon: "trash",
-                        label: tCommon("delete"),
-                        destructive: true,
-                        onPress: () => removePlace(item),
-                      },
-                      ...(item.lat == null && !item.location_dismissed
-                        ? [
-                            {
-                              icon: "eye.slash" as const,
-                              label: t("hide"),
-                              onPress: () => hideLocation(item),
-                            },
-                          ]
-                        : []),
-                    ]}
-                  >
-                    <SavedPlaceRow
-                      item={item}
-                      index={index}
-                      isSelected={editing?.id === item.id}
-                      isLocating={item.lat == null && item.id === locating?.id}
-                      day={dayByPlaceId.get(item.id)}
-                      area={areaByPlaceId.get(item.id)}
-                      focusProgress={focusProgress}
-                      focusActive={focusActive}
-                      theme={theme}
-                      styles={styles}
-                      t={t}
-                      onStartLocate={() => startLocate(item)}
-                      onCancelLocate={() => {
-                        setLocating(null);
-                        setPinDraft(null);
-                      }}
-                      onPreviewOrEdit={() => previewOrEditPlace(item)}
-                      onDismissLocation={() => dismissLocation(item)}
-                    />
-                  </SwipeDeleteRow>
-                )}
-                ListEmptyComponent={
-                  <Text style={styles.empty}>{t("empty")}</Text>
-                }
-              />
-            )}
-            {/* このシート専用のトースト。ルートの <Toaster />（app/_layout.tsx）は
-                native の formSheet の裏に回って見えない（実機フィードバック: 場所を
-                消した時の「元に戻す」が一覧シートの下に隠れていた）。器を挟まず
-                FlatList の兄弟として置く＝FlatList が ScreenStackItem 直下のまま
-                なので、native のスクロール検出（行タップがシートのジェスチャに
-                飲まれる問題）に影響しない。 */}
-            <Toaster inSheet />
-          </ScreenStackItem>
-        )}
-
-        {/* 追加/編集フォーム＝一覧の上にさらに重ねる native formSheet。
-            sheetLargestUndimmedDetentIndex="last" で背後の地図（どのピンの話かの
-            文脈・仮ピン位置）を暗くせず見せる。本家 Google/Apple マップの場所
-            カードと同じ。キーボード回避は native の formSheet が自動で行う。 */}
-        {formOpen && (
-          <ScreenStackItem
-            screenId="places-form"
-            activityState={2}
-            stackPresentation="formSheet"
-            sheetAllowedDetents="fitToContents"
-            sheetLargestUndimmedDetentIndex="last"
-            sheetGrabberVisible
-            // sheetCornerRadius は指定しない（native 既定 = automatic。理由は
-            // 一覧シートと同じ、下のコメント参照）。
-            headerConfig={{ hidden: true }}
-            // 背景色は敷かず native 既定のシートマテリアルに任せる（他の
-            // formSheet と同じ質感）。
-            // スワイプ閉じ・プログラム閉じ両方で地図の一時表示を解除する:
-            // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
-            onDismissed={() => {
-              setFormOpen(false);
-              setSelectedCandidate(null);
-              setEditing(null);
-              setPinDraft(null);
-            }}
-          >
-            <SheetScroll>
-              <PlaceForm
-                tripId={tripId}
-                pinOptions={pinOptions}
-                candidate={selectedCandidate ?? undefined}
-                pinDraft={pinDraft ?? undefined}
-                editPlace={editing ?? undefined}
-                myMemberId={me.id}
-                onOpenIconPicker={(onPick) => {
-                  iconPickerOnPickRef.current = onPick;
-                  setIconPickerOpen(true);
-                }}
-                onDone={() => {
-                  setFormOpen(false);
-                  setCandidates([]);
-                  setQuery("");
-                  setPredictions([]);
-                  setPinDraft(null);
-                  setSelectedCandidate(null);
-                  setEditing(null);
-                  void invalidate();
-                }}
-              />
-            </SheetScroll>
-          </ScreenStackItem>
-        )}
-        {/* ピンのアイコンピッカー。編集フォームの中にネストせず兄弟
-            ScreenStackItem にする（コンポーネント構造の理由は
-            onOpenIconPicker のコメント参照）。 */}
-        {iconPickerOpen && (
-          <ScreenStackItem
-            screenId="places-icon-picker"
-            activityState={2}
-            stackPresentation="formSheet"
-            sheetAllowedDetents={[0.9]}
-            sheetGrabberVisible
-            headerConfig={{ hidden: true }}
-            onDismissed={() => setIconPickerOpen(false)}
-          >
-            <PlaceIconPicker
+      {/* 追加/編集フォーム＝一覧の上にさらに重ねる native formSheet。
+          sheetLargestUndimmedDetentIndex="last" で背後の地図（どのピンの話かの
+          文脈・仮ピン位置）を暗くせず見せる。本家 Google/Apple マップの場所
+          カードと同じ。キーボード回避は native の formSheet が自動で行う。 */}
+      {formOpen && (
+        <ScreenStackItem
+          screenId="places-form"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetLargestUndimmedDetentIndex="last"
+          sheetGrabberVisible
+          // sheetCornerRadius は指定しない（native 既定 = automatic。理由は
+          // 一覧シートと同じ、下のコメント参照）。
+          headerConfig={{ hidden: true }}
+          // 背景色は敷かず native 既定のシートマテリアルに任せる（他の
+          // formSheet と同じ質感）。
+          // スワイプ閉じ・プログラム閉じ両方で地図の一時表示を解除する:
+          // 候補ピンの選択ハイライト・編集中ピンの赤ピン差し替え・長押しの仮ピン。
+          onDismissed={() => {
+            setFormOpen(false);
+            setSelectedCandidate(null);
+            setEditing(null);
+            setPinDraft(null);
+          }}
+        >
+          <SheetScroll>
+            <PlaceForm
               tripId={tripId}
               pinOptions={pinOptions}
-              onAdded={(key) => {
-                iconPickerOnPickRef.current?.(key);
-                setIconPickerOpen(false);
+              candidate={selectedCandidate ?? undefined}
+              pinDraft={pinDraft ?? undefined}
+              editPlace={editing ?? undefined}
+              myMemberId={me.id}
+              onOpenIconPicker={(onPick) => {
+                iconPickerOnPickRef.current = onPick;
+                setIconPickerOpen(true);
               }}
-              onChanged={() => void invalidate()}
+              onDone={() => {
+                setFormOpen(false);
+                setCandidates([]);
+                setQuery("");
+                setPredictions([]);
+                setPinDraft(null);
+                setSelectedCandidate(null);
+                setEditing(null);
+                void invalidate();
+              }}
             />
-          </ScreenStackItem>
-        )}
-        {/* 場所フィルタの選択肢（エリア/日にち）。一覧/編集フォームと同じ native
-            formSheet ＝グラバー位置・摺りガラス質感がその2つと揃う。 */}
-        {filterOpen && (
-          <ScreenStackItem
-            screenId="places-filter"
-            activityState={2}
-            stackPresentation="formSheet"
-            sheetAllowedDetents="fitToContents"
-            sheetGrabberVisible
-            headerConfig={{ hidden: true }}
-            onDismissed={() => setFilterOpen(false)}
-          >
-            <SheetScroll>
-              <SheetTitle>{t("filterTitle")}</SheetTitle>
-              <Pressable
-                onPress={() => applyPlaceFilter(null)}
+          </SheetScroll>
+        </ScreenStackItem>
+      )}
+      {/* ピンのアイコンピッカー。編集フォームの中にネストせず兄弟
+          ScreenStackItem にする（コンポーネント構造の理由は
+          onOpenIconPicker のコメント参照）。 */}
+      {iconPickerOpen && (
+        <ScreenStackItem
+          screenId="places-icon-picker"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents={[0.9]}
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setIconPickerOpen(false)}
+        >
+          <PlaceIconPicker
+            tripId={tripId}
+            pinOptions={pinOptions}
+            onAdded={(key) => {
+              iconPickerOnPickRef.current?.(key);
+              setIconPickerOpen(false);
+            }}
+            onChanged={() => void invalidate()}
+          />
+        </ScreenStackItem>
+      )}
+      {/* 場所フィルタの選択肢（エリア/日にち）。一覧/編集フォームと同じ native
+          formSheet ＝グラバー位置・摺りガラス質感がその2つと揃う。 */}
+      {filterOpen && (
+        <ScreenStackItem
+          screenId="places-filter"
+          activityState={2}
+          stackPresentation="formSheet"
+          sheetAllowedDetents="fitToContents"
+          sheetGrabberVisible
+          headerConfig={{ hidden: true }}
+          onDismissed={() => setFilterOpen(false)}
+        >
+          <SheetScroll>
+            <SheetTitle>{t("filterTitle")}</SheetTitle>
+            <Pressable
+              onPress={() => applyPlaceFilter(null)}
+              style={[
+                styles.priorityRow,
+                !placeFilter && styles.priorityRowSelected,
+              ]}
+            >
+              <Text
                 style={[
-                  styles.priorityRow,
-                  !placeFilter && styles.priorityRowSelected,
+                  styles.priorityRowLabel,
+                  !placeFilter && styles.priorityRowLabelSelected,
                 ]}
               >
-                <Text
-                  style={[
-                    styles.priorityRowLabel,
-                    !placeFilter && styles.priorityRowLabelSelected,
-                  ]}
-                >
-                  {t("filterAll")}
+                {t("filterAll")}
+              </Text>
+              {!placeFilter && (
+                <CheckIcon size={16} color={theme.mutedForeground} />
+              )}
+            </Pressable>
+            {areaOptions.length > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionArea")}
                 </Text>
-                {!placeFilter && (
-                  <CheckIcon size={16} color={theme.mutedForeground} />
-                )}
-              </Pressable>
-              {areaOptions.length > 0 && (
-                <>
-                  <Text style={styles.filterSectionLabel}>
-                    {t("filterSectionArea")}
-                  </Text>
-                  {areaOptions.map(({ label, count }) => {
-                    const selected =
-                      placeFilter?.kind === "area" && placeFilter.label === label;
-                    return (
-                      <Pressable
-                        key={`area:${label ?? ""}`}
-                        onPress={() => applyPlaceFilter({ kind: "area", label })}
-                        style={[
-                          styles.priorityRow,
-                          selected && styles.priorityRowSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.priorityRowLabel,
-                            selected && styles.priorityRowLabelSelected,
-                          ]}
-                        >
-                          {label ?? t("other")}
-                        </Text>
-                        <Text style={styles.filterCount}>{count}</Text>
-                        {selected && (
-                          <CheckIcon size={16} color={theme.mutedForeground} />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </>
-              )}
-              {dayOptions.length > 0 && (
-                <>
-                  <Text style={styles.filterSectionLabel}>
-                    {t("filterSectionDay")}
-                  </Text>
-                  {dayOptions.map((d) => {
-                    const selected =
-                      placeFilter?.kind === "day" &&
-                      placeFilter.dayIndex === d.dayIndex;
-                    return (
-                      <Pressable
-                        key={`day:${d.dayIndex}`}
-                        onPress={() =>
-                          applyPlaceFilter({ kind: "day", dayIndex: d.dayIndex })
-                        }
-                        style={[
-                          styles.priorityRow,
-                          selected && styles.priorityRowSelected,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.priorityRowLabel,
-                            selected && styles.priorityRowLabelSelected,
-                          ]}
-                        >
-                          {`${d.dayIndex}日目・${formatDayLabel(d.date)}`}
-                        </Text>
-                        <Text style={styles.filterCount}>{d.count}</Text>
-                        {selected && (
-                          <CheckIcon size={16} color={theme.mutedForeground} />
-                        )}
-                      </Pressable>
-                    );
-                  })}
-                </>
-              )}
-              {dismissedCount > 0 && (
-                <>
-                  <Text style={styles.filterSectionLabel}>
-                    {t("filterSectionOther")}
-                  </Text>
-                  <Pressable
-                    onPress={() => setShowDismissed((v) => !v)}
-                    style={[
-                      styles.priorityRow,
-                      showDismissed && styles.priorityRowSelected,
-                    ]}
-                  >
-                    <Text
+                {areaOptions.map(({ label, count }) => {
+                  const selected =
+                    placeFilter?.kind === "area" && placeFilter.label === label;
+                  return (
+                    <Pressable
+                      key={`area:${label ?? ""}`}
+                      onPress={() => applyPlaceFilter({ kind: "area", label })}
                       style={[
-                        styles.priorityRowLabel,
-                        showDismissed && styles.priorityRowLabelSelected,
+                        styles.priorityRow,
+                        selected && styles.priorityRowSelected,
                       ]}
                     >
-                      {t("filterShowDismissed")}
-                    </Text>
-                    {showDismissed && (
-                      <CheckIcon size={16} color={theme.mutedForeground} />
-                    )}
-                  </Pressable>
-                </>
-              )}
-            </SheetScroll>
-          </ScreenStackItem>
-        )}
-      </ScreenStack>
-    </>
+                      <Text
+                        style={[
+                          styles.priorityRowLabel,
+                          selected && styles.priorityRowLabelSelected,
+                        ]}
+                      >
+                        {label ?? t("other")}
+                      </Text>
+                      <Text style={styles.filterCount}>{count}</Text>
+                      {selected && (
+                        <CheckIcon size={16} color={theme.mutedForeground} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </>
+            )}
+            {dayOptions.length > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionDay")}
+                </Text>
+                {dayOptions.map((d) => {
+                  const selected =
+                    placeFilter?.kind === "day" &&
+                    placeFilter.dayIndex === d.dayIndex;
+                  return (
+                    <Pressable
+                      key={`day:${d.dayIndex}`}
+                      onPress={() =>
+                        applyPlaceFilter({ kind: "day", dayIndex: d.dayIndex })
+                      }
+                      style={[
+                        styles.priorityRow,
+                        selected && styles.priorityRowSelected,
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.priorityRowLabel,
+                          selected && styles.priorityRowLabelSelected,
+                        ]}
+                      >
+                        {`${d.dayIndex}日目・${formatDayLabel(d.date)}`}
+                      </Text>
+                      <Text style={styles.filterCount}>{d.count}</Text>
+                      {selected && (
+                        <CheckIcon size={16} color={theme.mutedForeground} />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </>
+            )}
+            {dismissedCount > 0 && (
+              <>
+                <Text style={styles.filterSectionLabel}>
+                  {t("filterSectionOther")}
+                </Text>
+                <Pressable
+                  onPress={() => setShowDismissed((v) => !v)}
+                  style={[
+                    styles.priorityRow,
+                    showDismissed && styles.priorityRowSelected,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.priorityRowLabel,
+                      showDismissed && styles.priorityRowLabelSelected,
+                    ]}
+                  >
+                    {t("filterShowDismissed")}
+                  </Text>
+                  {showDismissed && (
+                    <CheckIcon size={16} color={theme.mutedForeground} />
+                  )}
+                </Pressable>
+              </>
+            )}
+          </SheetScroll>
+        </ScreenStackItem>
+      )}
+    </ScreenStack>
   );
 }
 
@@ -2785,25 +2771,6 @@ export default function PlacesTab() {
 // コンテナの形と anchor は shared の markerGeometry（衝突計算と単一の真実）。
 // tracksViewChanges は初回描画後に切って CPU を抑える。見た目が変わるとき
 // （placement / selected / ダーク切替）は親が key を変えて再マウントする。
-// 共有された場所が届いていれば（?sharedPlace=1）、取り出して onOpen に渡す。
-// 場所タブの本体は早期 return の後ろで関数を組み立てるので、その後で描く
-// この小さな部品に「届いた時に開く」を任せる。
-function SharedPlaceTrigger({
-  onOpen,
-}: {
-  onOpen: (c: PlaceCandidate) => void;
-}) {
-  const { sharedPlace } = useLocalSearchParams<{ sharedPlace?: string }>();
-  const open = useEffectEvent(onOpen);
-  useEffect(() => {
-    if (!sharedPlace) return;
-    const c = takeSharedPlace();
-    if (c) open(c);
-    router.setParams({ sharedPlace: undefined });
-  }, [sharedPlace]);
-  return null;
-}
-
 function CandidateMarker({
   candidate: c,
   placement,

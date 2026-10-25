@@ -1,0 +1,60 @@
+{
+  "sourceLanguage" : "ja",
+  "strings" : {
+    "added" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Added" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "追加しました" } }
+      }
+    },
+    "added.badge" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Added" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "追加済み" } }
+      }
+    },
+    "alreadyAdded" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Already in this trip" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "この旅行にもう入っています" } }
+      }
+    },
+    "cancel" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Cancel" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "キャンセル" } }
+      }
+    },
+    "failed" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Something went wrong. Please try again." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "うまくいきませんでした。もう一度試してください。" } }
+      }
+    },
+    "noTrips" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No trips yet. Create a trip in triplot first." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "旅行がありません。先に triplot で旅行を作ってください。" } }
+      }
+    },
+    "notFound" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Could not read a Google Maps place" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "Google マップの場所を読み取れませんでした" } }
+      }
+    },
+    "notSignedIn" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to triplot first." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "先に triplot でログインしてください。" } }
+      }
+    },
+    "title" : {
+      "localizations" : {
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Choose a trip" } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "旅行を選択" } }
+      }
+    }
+  },
+  "version" : "1.0"
+}
