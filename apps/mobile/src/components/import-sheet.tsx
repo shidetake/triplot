@@ -1,5 +1,5 @@
 import * as Clipboard from "expo-clipboard";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 import { Alert, Pressable, StyleSheet, Text, View } from "react-native";
@@ -38,6 +38,7 @@ import { useUndoable } from "@/lib/undoable";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 import { useSession } from "@/lib/session";
 import { pushOnce } from "@/lib/navigate";
+import { formatAmount } from "@triplot/shared/formatAmount";
 
 // 受信箱（メール取り込み、FormSheet の中身）。web の /import 相当
 // （M8 スコープ = 割当/破棄/アドレス表示。確定は各旅行の画面で）。
@@ -316,7 +317,7 @@ export function ImportSheet() {
                       locale,
                       subject: x.subject,
                       fallbackTitle: t("noContent"),
-                      formatAmount: (total, currency) => `${total} ${currency}`,
+                      formatAmount,
                     });
                     return (
                       <Pressable
@@ -353,7 +354,7 @@ export function ImportSheet() {
                 locale,
                 subject: e.subject,
                 fallbackTitle: t("noContent"),
-                formatAmount: (total, currency) => `${total} ${currency}`,
+                formatAmount,
               });
               const assigned = trips.find((tr) => tr.id === e.trip_id);
               const children = row?.children ?? [];
@@ -380,13 +381,22 @@ export function ImportSheet() {
                   shared の inboxRowSummary（web と同じ）。 */}
                   {summary.parts.length > 0 ? (
                     <View style={styles.emailMeta}>
+                      {/* 折り返さず1行に収め、最後の要素（場所）だけを切り詰める。
+                      折り返すと区切りの縦棒が行の端に取り残される。金額と日時は
+                      割り当ての判断に要るので縮めない。 */}
                       {summary.parts.map((part, pi) => (
-                        <Fragment key={pi}>
+                        <View
+                          key={pi}
+                          style={[
+                            styles.metaPart,
+                            pi === summary.parts.length - 1 && styles.metaPartLast,
+                          ]}
+                        >
                           {pi > 0 && <InlineDivider />}
                           <Text style={styles.metaText} numberOfLines={1}>
                             {part}
                           </Text>
-                        </Fragment>
+                        </View>
                       ))}
                     </View>
                   ) : (
@@ -655,11 +665,18 @@ const makeStyles = (t: Theme) =>
     },
     emailMeta: {
       flexDirection: "row",
-      flexWrap: "wrap",
       alignItems: "center",
       gap: 8,
     },
-    metaText: { fontSize: 12, color: t.mutedForeground },
+    // 長い住所は1行で切り詰める（numberOfLines は、縮めてよい時しか効かない）。
+    metaText: { fontSize: 12, color: t.mutedForeground, flexShrink: 1 },
+    metaPart: {
+      flexDirection: "row",
+      alignItems: "center",
+      gap: 8,
+      flexShrink: 0,
+    },
+    metaPartLast: { flexShrink: 1 },
     actionsRow: {
       flexDirection: "row",
       alignItems: "center",

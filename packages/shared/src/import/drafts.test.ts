@@ -519,7 +519,7 @@ describe("deriveExpenseDraftItems", () => {
     );
     expect(items).toHaveLength(1);
     const it1 = items[0];
-    expect(it1.labelParts).toEqual(["Kai Coffee", "12.5 USD", "8/1"]);
+    expect(it1.labelParts).toEqual(["Kai Coffee", "$12.50", "8/1"]);
     expect(it1.initialCategoryId).toBe("cat-food");
     expect(it1.initialCurrency).toBe("USD");
     expect(it1.initialPlace).toEqual({

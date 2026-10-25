@@ -85,7 +85,7 @@ describe("extractionSummary", () => {
         },
         "(店名不明)",
       ),
-    ).toEqual({ title: "Yard House", amount: "42.5 USD", date: "2026-05-01" });
+    ).toEqual({ title: "Yard House", amount: "$42.50", date: "2026-05-01" });
   });
 
   it("レシートが無ければ先頭の予定のタイトル・開始日を使う", () => {

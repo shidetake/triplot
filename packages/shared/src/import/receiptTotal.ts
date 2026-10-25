@@ -33,6 +33,8 @@
 // 載せる（$100 で承認して $40 で確定するガソリンスタンド、一部返金）。それは
 // 下の範囲の外に落ちる。
 
+import { roundAmount } from "../formatAmount";
+
 export type TotaledReceipt = {
   total: number;
   currency: string;
@@ -71,10 +73,10 @@ export function mergedTotal(
     // 印がある側を主にする。片方だけが「差額」なら足す。両方が差額（同じ確定
     // 通知が2回届いた）や両方が総額（重複・更新）は足さない。
     if (!!a.totalIsDelta !== !!b.totalIsDelta) {
-      return { total: a.total + b.total, summed: true };
+      return { total: roundAmount(a.total + b.total, a.currency), summed: true };
     }
     if (!a.totalIsDelta && !b.totalIsDelta && looksLikeTip(a, b)) {
-      return { total: a.total + b.total, summed: true };
+      return { total: roundAmount(a.total + b.total, a.currency), summed: true };
     }
   }
 
