@@ -171,7 +171,9 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 |---|---|---|
 | `lib/supabase/client.ts` | クライアントコンポーネント（`"use client"`） | ブラウザの cookie を扱う |
 | `lib/supabase/server.ts` | Server Component / route handler / server action | `next/headers` で cookie 読み書き。RSC からの書き込み失敗は意図的に握りつぶす（セッション更新は proxy 任せ） |
-| `lib/supabase/proxy.ts` | `proxy.ts` からのみ | request と response の cookie を同時に更新する必要がある。`getUser()` を呼ばないとリフレッシュが走らない |
+| `lib/supabase/proxy.ts` | `proxy.ts` からのみ | request と response の cookie を同時に更新する必要がある。`getClaims()` を呼ばないとリフレッシュが走らない |
+
+サーバー描画でログイン中の人を確かめる時は `auth.getUser()` を直に呼ばず、`lib/supabase/auth-user.ts` の `getAuthUser()` を使う。署名を手元で確かめる（認証サーバーへの往復が無い）うえ、ページ本体とヘッダーが両方呼んでも1回の描画で1回に済む。書き込みの Server Action は `getUser()` のまま（取り消し済みのセッションを通さない）。
 
 このほかに、全部のデータを読み書きできる service role のクライアント
 （`lib/supabase/service.ts`）がある。使ってよい場面は [`database.md`](./database.md)

@@ -8,6 +8,7 @@ import {
 } from "@triplot/shared/data/invites";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
 import { HardRedirect } from "./hard-redirect";
@@ -40,9 +41,7 @@ export default async function JoinPage({
   // （読み取りは shared＝RN の招待参加画面と共用）。
   const title = await peekInvite(supabase, token);
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
 
   // **もう入っている旅行なら、参加画面は出さずにその旅行へ送る。**
   // 自分が共有したリンクを自分で踏む・同じリンクを2回踏む、はどちらも普通に
@@ -85,14 +84,14 @@ export default async function JoinPage({
   // フォームの初期値とも揃う。まだ何も入っていない時だけ、サインインの情報から
   // full_name → name の順で拾う（Google は両方入るが Apple は full_name のみ）。
   const profile =
-    user && !user.is_anonymous
+    user && !user.isAnonymous
       ? await fetchUserProfile(supabase, user.id)
       : null;
   const defaultName =
     profile?.display_name?.trim() ||
-    (!user?.is_anonymous &&
-      ((user?.user_metadata?.full_name as string | undefined) ??
-        (user?.user_metadata?.name as string | undefined) ??
+    (!user?.isAnonymous &&
+      ((user?.userMetadata.full_name as string | undefined) ??
+        (user?.userMetadata.name as string | undefined) ??
         "")) ||
     "";
 

@@ -17,15 +17,13 @@ import {
 } from "@triplot/shared/import/tripProposal";
 import { TripProposalCard } from "@/components/trip-proposal-card";
 import { AppHeader } from "@/components/app-header";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 import { formatTripDateRange } from "@triplot/shared/ymd";
 
 // アプリのホーム = 旅行一覧（要ログイン）。未ログインは LP（/）へ。
 export default async function TripsPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/");
 
   return (
