@@ -5,7 +5,11 @@ export { MONTHLY_EMAIL_CAP } from "@triplot/shared/import/config";
 
 // 抽出に使うモデル（Vercel AI Gateway 経由の "provider/model" 文字列）。
 // 提供者持ち（運用初期は Gateway の無料クレジット内でほぼ無料）。
-export const EXTRACT_MODEL = "google/gemini-2.5-flash";
+//
+// 環境変数 IMPORT_LLM_MODEL があればそちらを使う。モデルの比較を staging で
+// 流すためのもので、Vercel の Preview にだけ置く（本番には置かない）。
+export const EXTRACT_MODEL =
+  process.env.IMPORT_LLM_MODEL || "google/gemini-2.5-flash";
 
 // 関数の寿命。**プランの上限いっぱい**に取る（Hobby は 300 秒。超えるとデプロイが
 // `invalid_max_duration` で失敗する）。長いほど1回で多く流せる。

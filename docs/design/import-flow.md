@@ -583,6 +583,8 @@ returns a `429` error and you can retry after a short wait."）。[コミュニ�
 
 **使っているモデルは課金対象。** 抽出は `google/gemini-2.5-flash`
 （`apps/web/lib/import/importConfig.ts`）で、$0.30/1M（入力）・$2.50/1M（出力）。
+環境変数 `IMPORT_LLM_MODEL` を置くと、抽出・明細リンクの第2パス・合体の判断がすべてそのモデルに
+替わる。モデルの比較を staging で流すためのもので、Vercel の Preview にだけ置き、本番には置かない。
 
 **1通あたりの実費は約 $0.021**（2026-08-23 の実測。レシート約25通を転送し、1時間の spend
 $0.15 に対して抽出に成功したのが7通。`429` は課金されない）。[billing.md](./billing.md) の
