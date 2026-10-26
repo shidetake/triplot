@@ -58,7 +58,7 @@ Husky フック: `pre-commit` で lint + 型チェック + 秘密の値の混入
 
 ## デプロイ
 
-- **web**: `main` への push で Vercel が本番に自動デプロイする（関数リージョンは `hnd1`、Supabase は東京
+- **web**: `main` に PR が入ると Vercel が本番に自動デプロイする（`main` へは PR からしか入れない）（関数リージョンは `hnd1`、Supabase は東京
   `ap-northeast-1`）。確認は `staging` ブランチ（Vercel Preview ＋ staging の Supabase）で行う。
 - **iOS**: `npm run ios:build` → `npm run ios:submit` で TestFlight へ。手順は docs/development.md。
 - **Cloudflare の Worker**: `npm run workers:deploy -- <名前>`。main への push では出ない。

@@ -6,7 +6,7 @@ import { DevSignInButton } from "@/components/dev-sign-in-button";
 import { MessageBox } from "@/components/message-box";
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
 import { resolveLastAuthProvider } from "@/lib/lastAuthProvider.server";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 
 const PROVIDER_NAME: Record<string, string> = { google: "Google", apple: "Apple" };
 
@@ -21,10 +21,7 @@ export default async function LandingPage({
 }: {
   searchParams: Promise<{ auth_error?: string; auth_provider?: string }>;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   const [t, lastAuthProvider, { auth_error: authError, auth_provider: authProvider }] =
     await Promise.all([
     getTranslations("landing"),

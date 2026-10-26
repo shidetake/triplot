@@ -68,6 +68,7 @@ import {
   deriveExpenseDraftItems,
 } from "@triplot/shared/import/drafts";
 import type { TripPlace } from "@triplot/shared/import/placeMatch";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 import type { Currency } from "@triplot/shared/types/database";
 
@@ -78,9 +79,7 @@ export default async function TripDetailPage({
 }) {
   const { tripId } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   if (!user) redirect("/");
 
   // 本文の随所（kmlPlacemarks 等）で早い段階から使うので先に解決しておく。

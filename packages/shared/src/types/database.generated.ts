@@ -127,27 +127,6 @@ export type Database = {
           },
         ]
       }
-      ai_usage_baseline: {
-        Row: {
-          extracted_since: number
-          id: boolean
-          started_at: string
-          total_used_at_start: number
-        }
-        Insert: {
-          extracted_since?: number
-          id?: boolean
-          started_at?: string
-          total_used_at_start?: number
-        }
-        Update: {
-          extracted_since?: number
-          id?: boolean
-          started_at?: string
-          total_used_at_start?: number
-        }
-        Relationships: []
-      }
       ai_usage_daily: {
         Row: {
           day: string

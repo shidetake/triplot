@@ -127,6 +127,16 @@ if (!ipa) {
 console.log("");
 console.log(`できた: ${path.relative(process.cwd(), ipa)}`);
 if (!verifyIpa(ipa)) process.exit(1);
+
+// 古い ipa は新しい順に KEEP_IPAS 個だけ残して消す。1個 25MB ほどあり、
+// 放っておくと数 GB 溜まる（実際 111 個・2.8GB になっていた）。submit し直す
+// ことがあるので、今できたもの1つだけにはしない。
+const KEEP_IPAS = 3;
+const stale = listIpas()
+  .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
+  .slice(KEEP_IPAS);
+for (const f of stale) fs.rmSync(f);
+if (stale.length > 0) console.log(`古い ipa を ${stale.length} 個消した（新しい ${KEEP_IPAS} 個を残す）`);
 console.log("");
 console.log("submit する:");
 console.log(`  npm run ios:submit -- ${path.relative(process.cwd(), ipa)}`);

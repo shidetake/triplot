@@ -1,47 +1,17 @@
 import { after, NextResponse } from "next/server";
 
-import { createClient as createBearerClient } from "@supabase/supabase-js";
-
 import { feedbackInputSchema } from "@triplot/shared/feedback";
-import type { Database } from "@triplot/shared/types/database";
 
 import { notifyFeedback } from "@/lib/feedback/notify";
-import { createClient } from "@/lib/supabase/server";
+import { resolveRequestUser } from "@/lib/supabase/request-user";
 import { getVersion } from "@/lib/version";
 
 // ユーザーフィードバック（不具合報告・要望）の書き込み経路。web も iOS も
 // この route を叩く（architecture.md「変更系は RN からも使えるよう API エンドポイントに
 // 出す」）。insert は本人のクライアントで行い RLS（insert-own）を効かせる。
 
-// 認証ユーザーとそのクライアントを解決する。web は cookie、RN は
-// Authorization: Bearer <access_token>（cookie が無い環境）を使う。
-async function resolveUser(request: Request) {
-  const cookieClient = await createClient();
-  const {
-    data: { user },
-  } = await cookieClient.auth.getUser();
-  if (user) return { supabase: cookieClient, user };
-
-  const authorization = request.headers.get("authorization");
-  if (authorization?.startsWith("Bearer ")) {
-    const bearerClient = createBearerClient<Database>(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: authorization } },
-        auth: { persistSession: false, autoRefreshToken: false },
-      },
-    );
-    const {
-      data: { user: bearerUser },
-    } = await bearerClient.auth.getUser();
-    if (bearerUser) return { supabase: bearerClient, user: bearerUser };
-  }
-  return null;
-}
-
 export async function POST(request: Request) {
-  const resolved = await resolveUser(request);
+  const resolved = await resolveRequestUser(request);
   if (!resolved) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

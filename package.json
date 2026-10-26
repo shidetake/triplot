@@ -24,6 +24,7 @@
     "check:expo-deps": "EXPO_OFFLINE=1 npm -w @triplot/mobile exec -- expo install --check",
     "db:push": "node scripts/db-push.mjs",
     "db:push:staging": "node scripts/db-push-staging.mjs",
+    "vercel": "node scripts/vercel.mjs",
     "check:staging-migrations": "node scripts/check-staging-migrations.mjs",
     "check:migration-grants": "node scripts/check-migration-grants.mjs",
     "check:no-secrets": "node scripts/check-no-secrets.mjs",
@@ -36,7 +37,11 @@
     "postinstall": "node scripts/apply-patches.mjs && node scripts/supabase-link.mjs",
     "prepare": "husky || true",
     "test:seed-emails": "node scripts/seed-import-emails.mjs",
-    "test:import-status": "node scripts/import-status.mjs"
+    "test:import-status": "node scripts/import-status.mjs",
+    "eval:import": "node scripts/import-eval/run.mjs",
+    "eval:import:truth": "node scripts/import-eval/truth.mjs",
+    "eval:import:score": "node scripts/import-eval/score.mjs",
+    "eval:import:compare": "node scripts/import-eval/compare.mjs"
   },
   "dependencies": {
     "patch-package": "^8.0.1"
@@ -46,7 +51,8 @@
     "husky": "^9.1.7",
     "json5": "^2.2.3",
     "license-checker-rseidelsohn": "^5.0.1",
-    "supabase": "^2.120.0"
+    "supabase": "^2.120.0",
+    "tsx": "^4.23.15"
   },
   "overrides": {
     "react": "19.2.3",
@@ -56,6 +62,7 @@
     "@parcel/watcher": false,
     "fsevents": false,
     "@swc/core": false,
-    "unrs-resolver": false
+    "unrs-resolver": false,
+    "esbuild": false
   }
 }

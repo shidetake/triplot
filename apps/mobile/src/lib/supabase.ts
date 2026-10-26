@@ -1,8 +1,9 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 import { AppState } from "react-native";
 
 import type { Database } from "@triplot/shared/types/database";
+
+import { authSessionStore } from "@/lib/authSessionStore";
 
 // RN 用 Supabase クライアント（Supabase 公式の RN パターン）。
 // packages/shared/src/data/client.ts の `DB` 型（SupabaseClient<Database>）と
@@ -75,7 +76,8 @@ const authAwareFetch: typeof fetch = async (input, init) => {
 
 export const supabase = createClient<Database>(url, anonKey, {
   auth: {
-    storage: AsyncStorage,
+    // 共有画面（拡張機能）と分け合うキーチェーン（lib/authSessionStore.ts）。
+    storage: authSessionStore,
     persistSession: true,
     autoRefreshToken: true,
     // ブラウザの OAuth リダイレクト URL 検出は RN では不要（native sign-in を使う）。

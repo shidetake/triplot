@@ -9,6 +9,7 @@ import { ChevronIcon } from "@/components/icons";
 import { ImportSheetButton } from "@/components/import-sheet";
 import { PAGE_HEADER_ACTIONS_ID } from "@/components/page-header-actions-id";
 import { resolveTheme } from "@/i18n/theme.server";
+import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 import { getDeployEnv, getVersion } from "@/lib/version";
 
@@ -47,9 +48,7 @@ export async function AppHeader({
   back?: { href: string; label: string };
 } = {}) {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getAuthUser();
   // 未ログイン時の遷移は各ページの redirect に任せ、ここでは何も出さない。
   if (!user) return null;
 
@@ -64,8 +63,8 @@ export async function AppHeader({
   // 違うのを避ける）。
   const avatarUrl = profile?.avatar_url ?? null;
   const accountName =
-    (user.user_metadata?.full_name as string | undefined) ??
-    (user.user_metadata?.name as string | undefined) ??
+    (user.userMetadata.full_name as string | undefined) ??
+    (user.userMetadata.name as string | undefined) ??
     profile?.display_name?.trim() ??
     null;
 
@@ -139,10 +138,10 @@ export async function AppHeader({
           {tripActions}
           <ImportSheetButton count={importCount} />
           <AccountMenu
-            email={user.email ?? null}
+            email={user.email}
             name={accountName}
             avatarUrl={avatarUrl}
-            isAnonymous={user.is_anonymous ?? false}
+            isAnonymous={user.isAnonymous}
         isAdmin={profile?.is_admin ?? false}
             openFeedbackCount={openFeedbackCount}
             deployEnv={getDeployEnv()}

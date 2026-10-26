@@ -405,12 +405,6 @@
     "visibility": "公開範囲",
     "backToTrip": "旅行に戻る"
   },
-  "sharedPlace": {
-    "title": "旅行を選択",
-    "resolving": "場所を調べています...",
-    "notFound": "Google マップの場所を読み取れませんでした",
-    "noTrips": "旅行がありません。先に旅行を作ってください。"
-  },
   "place": {
     "noApiKey": "Google Maps API キーが未設定のため、地図と場所検索は無効です（一覧のみ表示）。",
     "status": "ステータス",

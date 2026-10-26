@@ -71,6 +71,8 @@ Husky フック: `pre-commit` は lint + tsc、`pre-push` は lint + tsc + test�
 | 色トークンを外したクラス（`text-zinc-` 等）・`window.confirm` | ESLint（`apps/web/eslint.config.mjs`） |
 | 画面遷移を `router.push` で直に書く | ESLint（`apps/mobile/eslint.config.js`） |
 | 起動しない ipa を TestFlight に出す | `npm run ios:build` / `npm run ios:submit` |
+| マージ済みの手元のブランチが溜まる | `post-checkout`（ブランチを切り替えるたびに、マージ済みの PR に全部入っているブランチを消す。GitHub 側はマージ時に消える設定） |
+| 古い ipa が溜まる | `npm run ios:build`（新しい3個を残して消す） |
 
 ## メール取り込みの動作確認
 
@@ -125,6 +127,11 @@ npm run test:import-status                      # 取り込みの結果を見る
 最後のものは吸収された側が下書きを持たない設計に反する状態で、再発するかを
 毎回見ている。
 
+### 精度を測る（`npm run eval:import`）
+
+モデルやプロンプトを変える前後で、組のメールを全部流して本番の確定済みの旅行と
+突き合わせ、採点する。手順と採点の規則は [`import-eval.md`](./import-eval.md)。
+
 ## web のコードの仕組み
 
 ### Next.js 16 固有の事情（Next 14/15 の常識を持ち込まない）
@@ -164,7 +171,9 @@ Server Action が必要なのは、サーバー描画コンテンツ（翻訳テ
 |---|---|---|
 | `lib/supabase/client.ts` | クライアントコンポーネント（`"use client"`） | ブラウザの cookie を扱う |
 | `lib/supabase/server.ts` | Server Component / route handler / server action | `next/headers` で cookie 読み書き。RSC からの書き込み失敗は意図的に握りつぶす（セッション更新は proxy 任せ） |
-| `lib/supabase/proxy.ts` | `proxy.ts` からのみ | request と response の cookie を同時に更新する必要がある。`getUser()` を呼ばないとリフレッシュが走らない |
+| `lib/supabase/proxy.ts` | `proxy.ts` からのみ | request と response の cookie を同時に更新する必要がある。`getClaims()` を呼ばないとリフレッシュが走らない |
+
+サーバー描画でログイン中の人を確かめる時は `auth.getUser()` を直に呼ばず、`lib/supabase/auth-user.ts` の `getAuthUser()` を使う。署名を手元で確かめる（認証サーバーへの往復が無い）うえ、ページ本体とヘッダーが両方呼んでも1回の描画で1回に済む。書き込みの Server Action は `getUser()` のまま（取り消し済みのセッションを通さない）。
 
 このほかに、全部のデータを読み書きできる service role のクライアント
 （`lib/supabase/service.ts`）がある。使ってよい場面は [`database.md`](./database.md)
@@ -321,6 +330,28 @@ npm run db:push           # 本番に当てる
   DB のパスワード入りの接続文字列をそうして漏らした）。環境変数で渡し、CLI は
   `node_modules/.bin/supabase` を直接呼ぶ。staging を触るスクリプトは
   `scripts/staging-supabase.mjs` を通す。
+
+### Vercel の CLI
+
+環境変数・デプロイ・AI Gateway の使用額など、Vercel を手元から触る時は
+`npm run vercel -- <サブコマンド>` を使う（中身は `scripts/vercel.mjs`）。
+
+```bash
+npm run vercel -- env ls --environment preview --project triplot
+npm run vercel -- ls triplot
+npm run vercel -- ai-gateway budgets list
+```
+
+- **CLI は全体に入れる**（`npm i -g vercel`）。依存のビルド用スクリプト（esbuild 等）が
+  止められたと出るが、手元でビルドしない限り要らない。
+- **トークンはチームだけに絞った期限付きのもの。** Vercel の Account Settings → Tokens で
+  名前 `triplot-cli`・Scope を `hdtks-projects`・期限を1年にして作り、`apps/web/.env.local` の
+  `VERCEL_TOKEN` に置く。Vercel のトークンはチーム単位までしか絞れない（環境変数だけ、の
+  ような権限の絞り方は無い）。切れたら作り直して書き換える。
+- **`vercel login` には頼らない。** Supabase と同じ理由で、ブラウザでのログインはアカウント
+  全体に効くトークンを Mac に保存する。スクリプトがトークンを環境変数で渡すので要らない。
+- **worktree ごとに置く。** `apps/web/.env.local` は gitignore されていて worktree ごとに別の
+  ファイルなので、worktree を作ったらそちらにも `VERCEL_TOKEN` の行を写す。
 
 ## Cloudflare の Worker を出す
 
