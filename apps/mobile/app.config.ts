@@ -28,7 +28,7 @@ const appleTeamId = "D37LHZNVW3";
 const config: ExpoConfig = {
   name: isStaging ? "triplot (staging)" : "triplot",
   slug: "triplot",
-  version: "1.1.0",
+  version: "1.2.0",
   orientation: "portrait",
   icon: "./assets/images/icon.png",
   scheme: isStaging ? "triplot-staging" : "triplot",
