@@ -27,7 +27,7 @@
     "expo-localization": "~57.0.1",
     "expo-location": "~57.0.22",
     "expo-router": "~57.0.29",
-    "expo-share-intent": "^8.0.1",
+    "expo-secure-store": "~57.0.4",
     "expo-splash-screen": "~57.0.5",
     "expo-status-bar": "~57.0.1",
     "expo-system-ui": "~57.0.2",
@@ -43,6 +43,7 @@
     "use-intl": "^4.6.1"
   },
   "devDependencies": {
+    "@bacons/apple-targets": "^5.0.0",
     "@types/react": "~19.2.4",
     "eslint-config-expo": "~57.0.1",
     "typescript": "~6.0.3"

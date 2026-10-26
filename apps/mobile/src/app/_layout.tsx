@@ -1,5 +1,4 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
-import { ShareIntentProvider } from "expo-share-intent";
 import { useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { IntlProvider } from "use-intl";
@@ -23,34 +22,30 @@ export default function RootLayout() {
         // アプリは常に端末 TZ が正）。
         timeZone={Intl.DateTimeFormat().resolvedOptions().timeZone}
       >
-        {/* 共有の拡張機能（Google マップの「共有」→ triplot）から届いたものを
-            受け取る。開くシートは (app)/_layout.tsx の SharedPlaceOpener。 */}
-        <ShareIntentProvider>
-          <SessionProvider>
-            <AppQueryProvider>
-              <ThemeProvider value={navTheme}>
-                <Stack>
-                  <Stack.Screen
-                    name="sign-in"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen name="(app)" options={{ headerShown: false }} />
-                  {/* 招待リンク（Universal Link / triplot://join/<token>）の
-                      受け口。認証ゲート((app))の外なので未ログインでも開ける。 */}
-                  <Stack.Screen
-                    name="join/[token]"
-                    options={{ headerShown: false }}
-                  />
-                  <Stack.Screen
-                    name="dev-check"
-                    options={{ title: "M0 チェック" }}
-                  />
-                </Stack>
-                <Toaster />
-              </ThemeProvider>
-            </AppQueryProvider>
-          </SessionProvider>
-        </ShareIntentProvider>
+        <SessionProvider>
+          <AppQueryProvider>
+            <ThemeProvider value={navTheme}>
+              <Stack>
+                <Stack.Screen
+                  name="sign-in"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen name="(app)" options={{ headerShown: false }} />
+                {/* 招待リンク（Universal Link / triplot://join/<token>）の
+                    受け口。認証ゲート((app))の外なので未ログインでも開ける。 */}
+                <Stack.Screen
+                  name="join/[token]"
+                  options={{ headerShown: false }}
+                />
+                <Stack.Screen
+                  name="dev-check"
+                  options={{ title: "M0 チェック" }}
+                />
+              </Stack>
+              <Toaster />
+            </ThemeProvider>
+          </AppQueryProvider>
+        </SessionProvider>
       </IntlProvider>
     </GestureHandlerRootView>
   );

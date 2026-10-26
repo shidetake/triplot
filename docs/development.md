@@ -315,9 +315,12 @@ npm run db:push           # 本番に当てる
 | 本番 | `triplot-cli-production` | `apps/web/.env.local` の `SUPABASE_ACCESS_TOKEN` | `supabase/` |
 | staging | `triplot-cli-staging` | `apps/web/.env.staging.local` の `SUPABASE_ACCESS_TOKEN` | `supabase-staging/supabase/` |
 
-- **権限は Project Settings（Read）・Database（Read-write）・Connection Pooling（Read）
-  だけ。** 片方が漏れても、もう片方のプロジェクトには入れない。有効期限は最長1年
-  （切れたら Supabase の Account → Access Tokens で作り直し、置き場所を書き換える）。
+- **権限は Project Settings（Read）・Database（Read-write）・Connection Pooling（Read）・
+  Edge Functions（Read-write）・Edge Function Secrets（Read-write）だけ。** 片方が
+  漏れても、もう片方のプロジェクトには入れない。有効期限は最長1年（切れたら
+  Supabase の Account → Access Tokens で作り直し、置き場所を書き換える）。
+- **worktree ごとに置く。** `apps/web/.env.local` と `.env.staging.local` は
+  gitignore されていて worktree ごとに別のファイルなので、作り直したら各 worktree にも写す。
 - **link は張り替えない。** CLI が覚える link 先はフォルダに1つなので、staging は
   `supabase-staging/` に別に持つ（config と migrations は本体へのシンボリックリンク）。
   どちらに当てるかがコマンドの名前で自明になる。link 先のファイルは秘密ではないので
@@ -352,6 +355,18 @@ npm run vercel -- ai-gateway budgets list
   全体に効くトークンを Mac に保存する。スクリプトがトークンを環境変数で渡すので要らない。
 - **worktree ごとに置く。** `apps/web/.env.local` は gitignore されていて worktree ごとに別の
   ファイルなので、worktree を作ったらそちらにも `VERCEL_TOKEN` の行を写す。
+
+## Supabase の Edge Function を出す
+
+```bash
+npm run functions:deploy -- <関数の名前> --staging   # staging
+npm run functions:deploy -- <関数の名前>             # 本番
+```
+
+- main への push では出ない。関数を変えたら、staging で確かめてから本番に出す。
+- 設定値（`supabase secrets`）はこのコマンドでは入れない。秘密の値を引数に載せない
+  よう、値をファイルに書いて `--env-file` で入れ、入れたらファイルを消す。関数ごとの
+  値は各関数の設計（例: [design/share-extension.md](./design/share-extension.md)）。
 
 ## Cloudflare の Worker を出す
 
