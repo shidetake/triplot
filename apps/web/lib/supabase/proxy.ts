@@ -30,12 +30,13 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  // セッションのリフレッシュ。`getUser` を呼ぶことで cookie が更新される。
-  const { error } = await supabase.auth.getUser();
+  // セッションのリフレッシュ。`getClaims` を呼ぶことで、期限切れなら取り直して
+  // cookie が更新される。署名は公開鍵で手元で確かめるので、認証サーバーへの往復は
+  // 取り直す時だけ（lib/supabase/auth-user.ts）。
+  const { error } = await supabase.auth.getClaims();
 
-  // getUser の自動更新は「期限が近いか」の時間ベースだけで、サーバの時計補正等で
-  // トークンが期限内なのにサーバから拒否されるケース（401, 例:
-  // "JWT issued at future"）は救えない。失敗時は明示的に取り直す
+  // 自動更新は「期限が近いか」の時間ベースだけで、時計のずれ等でトークンが
+  // 期限内なのに通らないケースは救えない。失敗時は明示的に取り直す
   // （apps/mobile/src/lib/supabase.ts の authAwareFetch と同じ考え方）。
   // 未ログイン（セッション自体が無い）はリフレッシュしても無駄なので除く。
   if (error && error.name !== "AuthSessionMissingError") {
