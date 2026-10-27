@@ -241,6 +241,13 @@ export function WeekCalendar({
   // スクロールとして拾うので、そのままだと寄せ直した位置を上書きされる
   // （ゴースト中に止めるのと同じ考え方）。scrollTo は止めていても効く。
   const [pinching, setPinching] = useState(false);
+  // 今のタッチの間に2本目の指が触れたか。触れたら長押しで予定を作らない・
+  // 動かさない。ピンチの途中で指が止まったり、片方の指を離して残った指が
+  // 止まったりすると長押しが成立し、ピンチのつもりが予定の枠が出ていた
+  // （実機フィードバック）。長押しのジェスチャー自身は2本目の指を数えきれない
+  // （本数の上限は自分の上に載った指しか見ない）ので、本体全体を見ている
+  // ピンチの側で数える。1本目の指が触れた時に戻す。
+  const multiTouchSv = useSharedValue(false);
 
   // **指を動かしている間はレイアウトし直さない。** 毎フレーム hourPx を state に
   // 書くと、時刻線・全ブロック・ガターを JS スレッドで作り直すことになり、実機で
@@ -523,6 +530,7 @@ export function WeekCalendar({
   type GhostTouch = { x: number; y: number; absoluteX: number; absoluteY: number };
   const onGhostStart = useCallback(
     (e: GhostTouch) => {
+      if (multiTouchSv.value) return;
       bodyWrap.current?.measureInWindow((x, y2, w, h) => {
         viewportRef.current = { x, y: y2, w, h };
       });
@@ -552,6 +560,8 @@ export function WeekCalendar({
       }
       setGhost(ghostAt(e.x, e.y));
     },
+    // multiTouchSv は共有値（ref と同じ可変コンテナ）なので依存に入れない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       blockAt,
       eventById,
@@ -565,6 +575,7 @@ export function WeekCalendar({
   );
   const onGhostUpdate = useCallback(
     (e: GhostTouch) => {
+      if (multiTouchSv.value) return;
       dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
       const moving = moveRef.current;
       if (moving) {
@@ -593,9 +604,13 @@ export function WeekCalendar({
       }
       updateAutoScroll();
     },
+    // multiTouchSv は共有値（ref と同じ可変コンテナ）なので依存に入れない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [ghostAt, moveAt, setGhost, setMove, updateAutoScroll],
   );
   const onGhostEnd = useCallback(() => {
+    // 掴んだ後に2本目の指が来た時も、置かずにやめる。
+    if (multiTouchSv.value) return;
     const m = moveRef.current;
     if (m) {
       const ev = eventById.get(m.eventId);
@@ -622,6 +637,7 @@ export function WeekCalendar({
       onSlotPick(col.date, g.startMin);
       hapticDrop();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, eventById, onEventMove, onSlotPick, snapMin]);
   const onGhostFinalize = useCallback(() => {
     stopAutoScroll();
@@ -707,6 +723,10 @@ export function WeekCalendar({
   // イベント時のみ）。
   /* eslint-disable react-hooks/immutability, react-hooks/refs */
   const zoomPinch = Gesture.Pinch()
+    .onTouchesDown((e) => {
+      "worklet";
+      multiTouchSv.value = e.numberOfTouches > 1;
+    })
     .onBegin((e) => {
       "worklet";
       zStartHourPx.value = hourPxSv.value;
