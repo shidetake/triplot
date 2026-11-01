@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+
+import { aiClientName } from "@triplot/shared/aiClients";
 import { redirect } from "next/navigation";
 
 import { OAuthSignInButton } from "@/components/oauth-sign-in-button";
@@ -80,7 +82,7 @@ export default async function OAuthConsentPage({
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <p className="mt-4 text-sm">
         {t.rich("request", {
-          client: data.client.name || t("unnamedClient"),
+          client: aiClientName(data.client.name) ?? t("unnamedClient"),
           b: (chunks) => <span className="font-semibold">{chunks}</span>,
         })}
       </p>
