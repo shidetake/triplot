@@ -24,6 +24,7 @@
     "check:expo-deps": "EXPO_OFFLINE=1 npm -w @triplot/mobile exec -- expo install --check",
     "db:push": "node scripts/db-push.mjs",
     "db:push:staging": "node scripts/db-push-staging.mjs",
+    "functions:deploy": "node scripts/functions-deploy.mjs",
     "vercel": "node scripts/vercel.mjs",
     "check:staging-migrations": "node scripts/check-staging-migrations.mjs",
     "check:migration-grants": "node scripts/check-migration-grants.mjs",
