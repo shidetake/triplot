@@ -816,26 +816,26 @@
     "howToLead": "In your AI's settings, add the URL above as a custom connector. A triplot page opens along the way; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
-      "In claude.ai (or the app), open Customize → Connectors",
-      "Choose + Add → Add custom connector, enter triplot as the name and the URL above, then add it",
-      "Choose Connect, then Allow on the triplot page that opens"
+      "Open the Connectors settings",
+      "Choose + Add → Add custom connector, and enter triplot as the name and the URL above",
+      "Choose Connect, then Allow on the triplot page"
     ],
     "claudeNote": "On the Free plan you can add one custom connector.",
     "geminiSteps": [
-      "On a computer, open gemini.google.com and go to Settings → Connected Apps",
-      "Under Custom apps, choose Add a custom app and enter the URL above",
-      "Choose Allow on the triplot page that opens"
+      "Open the Connected Apps settings (on a computer)",
+      "Choose Add a custom app and enter the URL above",
+      "Choose Allow on the triplot page"
     ],
     "geminiNote": "For now this works only when you use Gemini in English, and not with work or school accounts. Once connected, it also works in the Gemini mobile app.",
     "chatgptSteps": [
       "In Plugins, choose + → Add custom MCP server",
       "Enter the URL above and keep OAuth as the authentication",
-      "Choose Allow on the triplot page that opens"
+      "Choose Allow on the triplot page"
     ],
     "chatgptNote": "For now this works in ChatGPT Business, Enterprise and Edu workspaces (Pro can only read).",
     "museSteps": [
       "Paste the URL above into a Muse chat and ask it to add a connector for it",
-      "Choose Connect, then Allow on the triplot page that opens"
+      "Choose Connect, then Allow on the triplot page"
     ],
     "museNote": "For now this works in the US and Canada.",
     "examplesTitle": "Things to ask",

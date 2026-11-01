@@ -32,19 +32,22 @@ const AIS = [
   {
     key: "claude",
     name: "Claude",
+    settings: "https://claude.ai/customize/connectors",
     help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
   },
   {
     key: "gemini",
     name: "Gemini",
+    settings: "https://gemini.google.com/customize/connectors",
     help: "https://support.google.com/gemini/answer/17209137",
   },
   {
     key: "chatgpt",
     name: "ChatGPT",
+    settings: null,
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
-  { key: "muse", name: "Muse", help: null },
+  { key: "muse", name: "Muse", settings: null, help: null },
 ] as const;
 
 type Grant = { clientId: string; name: string; grantedAt: string };
@@ -143,7 +146,18 @@ export function AiSheet() {
                     {(t.raw(`${ai.key}Steps`) as string[]).map((s, i) => (
                       <View key={s} style={styles.step}>
                         <Text style={styles.stepNo}>{i + 1}.</Text>
-                        <Text style={styles.stepText}>{s}</Text>
+                        {/* 設定の画面を開ける AI は、1つ目の手順をその画面へのリンクにする。 */}
+                        {i === 0 && ai.settings ? (
+                          <Text
+                            style={[styles.stepText, styles.linkStep]}
+                            onPress={() => void Linking.openURL(ai.settings)}
+                            accessibilityRole="link"
+                          >
+                            {s}
+                          </Text>
+                        ) : (
+                          <Text style={styles.stepText}>{s}</Text>
+                        )}
                       </View>
                     ))}
                     <Text style={styles.note}>{t(`${ai.key}Note`)}</Text>
@@ -270,6 +284,7 @@ const makeStyles = (t: Theme) =>
     stepText: { flex: 1, fontSize: 14, lineHeight: 21, color: t.foreground },
     note: { fontSize: 12, color: t.mutedForeground },
     link: { fontSize: 12, color: t.linkText },
+    linkStep: { color: t.linkText },
     grantRow: {
       flexDirection: "row",
       alignItems: "center",
