@@ -805,5 +805,60 @@
     "failed": "Something went wrong. Please try again.",
     "invalidTitle": "This link can't be used",
     "invalidBody": "It has expired or is not valid. Connect again from your AI app."
+  },
+  "ai": {
+    "menuLink": "Connect AI",
+    "title": "Connect AI",
+    "lead": "Connect triplot to an AI such as Claude or Gemini, and it can look at your trip, help you plan, and add the events and places you decide on straight into the trip. When you change the plan, the AI always reads the latest version.",
+    "urlLabel": "triplot connection URL",
+    "copyUrl": "Copy the URL",
+    "howTo": "How to connect",
+    "howToLead": "In your AI's settings, add the URL above as a custom connector. A triplot page opens along the way; choose Allow and you're done.",
+    "officialHelp": "Official steps",
+    "claudeSteps": [
+      "In claude.ai (or the app), open Customize → Connectors",
+      "Choose + Add → Add custom connector, enter triplot as the name and the URL above, then add it",
+      "Choose Connect, then Allow on the triplot page that opens"
+    ],
+    "claudeNote": "On the Free plan you can add one custom connector.",
+    "geminiSteps": [
+      "On a computer, open gemini.google.com and go to Settings → Connected Apps",
+      "Under Custom apps, choose Add a custom app and enter the URL above",
+      "Choose Allow on the triplot page that opens"
+    ],
+    "geminiNote": "For now this works only when you use Gemini in English, and not with work or school accounts. Once connected, it also works in the Gemini mobile app.",
+    "chatgptSteps": [
+      "In Plugins, choose + → Add custom MCP server",
+      "Enter the URL above and keep OAuth as the authentication",
+      "Choose Allow on the triplot page that opens"
+    ],
+    "chatgptNote": "For now this works in ChatGPT Business, Enterprise and Edu workspaces (Pro can only read).",
+    "museSteps": [
+      "Paste the URL above into a Muse chat and ask it to add a connector for it",
+      "Choose Connect, then Allow on the triplot page that opens"
+    ],
+    "museNote": "For now this works in the US and Canada.",
+    "examplesTitle": "Things to ask",
+    "examples": [
+      "Day 3 of my Hawaii trip is free in the afternoon. What should we do?",
+      "Add Hanauma Bay to the places we're considering",
+      "Add breakfast at 7 am on the 12th",
+      "Add this $80 dinner to expenses, split among everyone",
+      "Which prep to-dos are still open?"
+    ],
+    "connectedTitle": "Connected AI",
+    "connectedEmpty": "No AI is connected yet.",
+    "connectedSince": "Since {date}",
+    "disconnect": "Disconnect",
+    "disconnectConfirmTitle": "Disconnect {name}?",
+    "disconnectConfirmBody": "This AI will no longer be able to read or change your trips. Connect it again to use it.",
+    "disconnected": "Disconnected",
+    "disconnectFailed": "Couldn't disconnect. Please try again.",
+    "noteTitle": "Good to know",
+    "notes": [
+      "The AI uses triplot as you. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
+      "AI can make mistakes. Check the events and expenses it adds in triplot.",
+      "You can disconnect an AI from the list above at any time."
+    ]
   }
 }

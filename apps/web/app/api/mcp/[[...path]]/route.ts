@@ -28,6 +28,8 @@ import { fetchMyTrips } from "@triplot/shared/data/reads/trips";
 import { tripForAi } from "@triplot/shared/tripForAi";
 import type { Database } from "@triplot/shared/types/database";
 
+import { mcpUrl } from "@/lib/mcp-url";
+
 // AI（Claude・ChatGPT・Gemini 等）が旅行を読み書きする入口（MCP サーバー）。
 // AI は旅行のメンバーにはならず、**ログインした本人の代理**として本人の権限で
 // 読み書きする（RLS がそのまま効き、足したものは本人が足したものになる）。
@@ -96,11 +98,9 @@ const OFFSET_TIME_HELP =
   "Local time at the place with its UTC offset, like 2027-08-11T12:00-10:00.";
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// AI から見たこの入口の URL。本番はこの web そのもの。staging は web が
-// Vercel の保護の内側にあって外の AI から届かないので、Supabase の Edge
-// Function（mcp）が中継し、その URL を MCP_RESOURCE_URL に置く。
+// AI から見たこの入口の URL（lib/mcp-url.ts。案内のページと同じもの）。
 function resourceServer(req: Request): string {
-  return process.env.MCP_RESOURCE_URL ?? `${new URL(req.url).origin}/api/mcp`;
+  return mcpUrl(new URL(req.url).origin);
 }
 
 const handle = pipeline(
