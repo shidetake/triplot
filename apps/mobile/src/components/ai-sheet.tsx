@@ -81,7 +81,7 @@ export function AiSheet() {
       [
         { text: tCommon("cancel"), style: "cancel" },
         {
-          text: t("disconnect"),
+          text: t("disconnectConfirm"),
           style: "destructive",
           onPress: async () => {
             const { error } = await supabase.auth.oauth.revokeGrant({

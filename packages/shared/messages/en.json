@@ -859,6 +859,7 @@
       "The AI uses triplot as you. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
       "AI can make mistakes. Check the events and expenses it adds in triplot.",
       "You can disconnect an AI from the list above at any time."
-    ]
+    ],
+    "disconnectConfirm": "Disconnect"
   }
 }
