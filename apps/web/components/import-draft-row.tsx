@@ -16,8 +16,8 @@ import { InlineDivider } from "./inline-divider";
 
 // 取り込み下書き（費用/予定の1項目）の行。クリックで事前入力済みフォーム（children）を
 // 開き、追加成功で下書きを confirmed に、× で dismissed にして一覧から消す
-// （router.refresh）。費用は DraftConfirmButton、予定は EventDraftConfirmButton が
-// この行にそれぞれのフォームを載せる。
+// （router.refresh）。費用は DraftConfirmButton がこの行にフォームを載せる
+// （未確定の予定は一覧に並べず、カレンダー上の疑似ブロックから開く）。
 export function ImportDraftRow({
   draftId,
   draftIds = [draftId],

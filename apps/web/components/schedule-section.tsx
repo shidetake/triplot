@@ -5,7 +5,6 @@ import {
   useEffect,
   useMemo,
   useState,
-  type ReactNode,
 } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -96,7 +95,6 @@ export function ScheduleSection({
   members,
   biasCenter,
   myMemberId,
-  afterHeading,
 }: {
   tripId: string;
   initialTz: string | null; // trip.default_timezone（旅程にtransitが無い時の唯一の拠り所）
@@ -124,9 +122,6 @@ export function ScheduleSection({
   }[];
   biasCenter: LatLng; // Google 検索の地理バイアス（既存ピン重心 or 東京）
   myMemberId: string;
-  // 広い画面だけに出す取り込みバナー（確認ボタン付き一覧）。狭い画面は
-  // カレンダー上の疑似ブロックに一本化する（下記 hidden md:block）。
-  afterHeading?: ReactNode;
 }) {
   const locale = useLocale();
   const router = useRouter();
@@ -468,10 +463,6 @@ export function ScheduleSection({
         </div>
       </div>
 
-      {/* 取り込みバナー（確認ボタン付き一覧）は広い画面だけ。狭い画面は
-          未確定の予定をカレンダー上に amber+破線の疑似ブロックで直接表示する
-          方式に一本化した（フローティングカードは邪魔が大きすぎたため廃止）。 */}
-      {afterHeading && <div className="hidden md:block">{afterHeading}</div>}
 
       {/* カレンダー本体を直接 position:fixed で画面いっぱいに描く（狭い画面）。
           h-full の多段継承は地図で実機不具合を起こしたため使わず、この1階層の
