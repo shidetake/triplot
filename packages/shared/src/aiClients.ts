@@ -32,7 +32,15 @@ export type AiGuide = {
   help: string | null;
 };
 
+// 並びはアルファベット順（何かを推しているように見せない）。
 export const AI_GUIDES: readonly AiGuide[] = [
+  {
+    key: "chatgpt",
+    name: "ChatGPT",
+    setup: null,
+    prompt: false,
+    help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
+  },
   {
     key: "claude",
     name: "Claude",
@@ -47,13 +55,6 @@ export const AI_GUIDES: readonly AiGuide[] = [
     setup: () => "https://gemini.google.com/customize/connectors",
     prompt: false,
     help: "https://support.google.com/gemini/answer/17209137",
-  },
-  {
-    key: "chatgpt",
-    name: "ChatGPT",
-    setup: null,
-    prompt: false,
-    help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
   { key: "muse", name: "Muse", setup: null, prompt: true, help: null },
 ];
