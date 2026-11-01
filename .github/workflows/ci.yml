@@ -18,7 +18,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 24
+          node-version: 26
           cache: npm
       # 使う npm の版は package.json の packageManager が決める（手元・Renovate と揃える）
       - run: npm install -g "$(node -p "require('./package.json').packageManager")"
