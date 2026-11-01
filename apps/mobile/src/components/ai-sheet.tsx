@@ -126,7 +126,21 @@ export function AiSheet() {
                       <View key={s} style={styles.step}>
                         <Text style={styles.stepNo}>{i + 1}.</Text>
                         {/* 設定の画面を開ける AI は、1つ目の手順をその画面へのリンクにする。 */}
-                        {i === 0 && ai.setup ? (
+                        {i === 0 && ai.chat ? (
+                          <Text
+                            style={[styles.stepText, styles.linkStep]}
+                            onPress={() => {
+                              // 開く前にコピーする（アプリが開くと依頼文は入らないので、貼って送る）。
+                              const prompt = t("musePrompt", { url });
+                              void Clipboard.setStringAsync(prompt).then(() =>
+                                Linking.openURL(ai.chat!(prompt)),
+                              );
+                            }}
+                            accessibilityRole="link"
+                          >
+                            {s}
+                          </Text>
+                        ) : i === 0 && ai.setup ? (
                           <Text
                             style={[styles.stepText, styles.linkStep]}
                             onPress={() => void Linking.openURL(ai.setup!(url))}
@@ -139,21 +153,6 @@ export function AiSheet() {
                         )}
                       </View>
                     ))}
-                    {ai.chat && (
-                      <Pressable
-                        onPress={() => {
-                          // 開く前にコピーする（アプリが開くと依頼文は入らないので、貼って送る）。
-                          const prompt = t("musePrompt", { url });
-                          void Clipboard.setStringAsync(prompt).then(() =>
-                            Linking.openURL(ai.chat!(prompt)),
-                          );
-                        }}
-                        style={styles.copyPrompt}
-                      >
-                        <CopyIcon size={16} color={theme.foreground} />
-                        <Text style={styles.copyPromptLabel}>{t("museCopy")}</Text>
-                      </Pressable>
-                    )}
                     {ai.help && (
                       <Pressable onPress={() => void Linking.openURL(ai.help!)} hitSlop={8}>
                         <Text style={styles.link}>{t("officialHelp")}</Text>
@@ -278,18 +277,6 @@ const makeStyles = (t: Theme) =>
     note: { fontSize: 12, color: t.mutedForeground },
     link: { fontSize: 12, color: t.linkText },
     linkStep: { color: t.linkText },
-    copyPrompt: {
-      flexDirection: "row",
-      alignItems: "center",
-      alignSelf: "flex-start",
-      gap: 6,
-      height: 32,
-      paddingHorizontal: 12,
-      borderRadius: 6,
-      borderWidth: 1,
-      borderColor: t.fgAlpha(0.2),
-    },
-    copyPromptLabel: { fontSize: 12, color: t.foreground },
     grantRow: {
       flexDirection: "row",
       alignItems: "center",
