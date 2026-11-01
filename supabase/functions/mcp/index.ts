@@ -19,18 +19,20 @@
 //   VERCEL_BYPASS  Vercel の Protection Bypass for Automation の値
 
 // AI と web の間でそのまま渡すヘッダー（MCP と OAuth の分）。
+//
+// **MCP のヘッダー（Mcp- で始まるもの）は名前で数え上げず、全部渡す。** MCP は
+// 版を重ねるたびにヘッダーを足していて（新しい版は要求の種類を Mcp-Method で
+// 送る）、数え上げると新しい版の AI だけが壊れる。実際に ChatGPT が
+// 「action discovery failed」になった（Mcp-Method を落とし、web が要求を断った）。
 const FORWARD_REQUEST = [
   "authorization",
   "content-type",
   "accept",
-  "mcp-protocol-version",
-  "mcp-session-id",
   "last-event-id",
 ];
 const FORWARD_RESPONSE = [
   "content-type",
   "www-authenticate",
-  "mcp-session-id",
   "cache-control",
   "access-control-allow-origin",
   "access-control-allow-headers",
@@ -55,6 +57,9 @@ Deno.serve(async (req) => {
     const value = req.headers.get(name);
     if (value) headers.set(name, value);
   }
+  for (const [name, value] of req.headers) {
+    if (name.startsWith("mcp-")) headers.set(name, value);
+  }
   const bypass = Deno.env.get("VERCEL_BYPASS");
   if (bypass) headers.set("x-vercel-protection-bypass", bypass);
 
@@ -70,6 +75,9 @@ Deno.serve(async (req) => {
   for (const name of FORWARD_RESPONSE) {
     const value = res.headers.get(name);
     if (value) out.set(name, value);
+  }
+  for (const [name, value] of res.headers) {
+    if (name.startsWith("mcp-")) out.set(name, value);
   }
   // 返事は流したまま渡す（MCP は SSE で返すことがある）。
   return new Response(res.body, { status: res.status, headers: out });
