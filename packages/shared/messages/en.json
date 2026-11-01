@@ -790,5 +790,20 @@
     "licenses": "Open source licenses",
     "googleNotice": "Google Maps legal notices",
     "version": "Version {version} ({build})"
+  },
+  "oauthConsent": {
+    "title": "Connect AI to triplot",
+    "signInFirst": "Sign in to triplot to connect.",
+    "request": "<b>{client}</b> wants to connect to your triplot.",
+    "unnamedClient": "An unnamed app",
+    "returnsTo": "Connecting to",
+    "signedInAs": "Signed in as",
+    "grants": "If you allow it, this app can read and change your trips in triplot as you: the events, places, expenses, to-dos and notes you can see, including private ones.",
+    "checkHost": "Check that this matches the AI you use. If you don't recognize it, deny.",
+    "approve": "Allow",
+    "deny": "Deny",
+    "failed": "Something went wrong. Please try again.",
+    "invalidTitle": "This link can't be used",
+    "invalidBody": "It has expired or is not valid. Connect again from your AI app."
   }
 }
