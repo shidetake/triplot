@@ -646,7 +646,7 @@
     "emptyState": "No drafts yet. Try forwarding a receipt or booking confirmation to the address above.",
     "unknownMerchant": "(unknown store)",
     "noContent": "(no content extracted)",
-    "selectTrip": "(select a trip)",
+    "selectTrip": "Select a trip",
     "selectTripPrompt": "Select a trip",
     "confirmAtTrip": "→ Confirm in {title}",
     "tripFallback": "trip",
