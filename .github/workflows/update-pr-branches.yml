@@ -11,6 +11,11 @@ name: PR に最新の main を取り込む
 on:
   push:
     branches: [main]
+  # 自動マージを掛けた時にも見る。古い main から切ったブランチで PR を作ると、
+  # 作った時点で既に古いのに、次に main へ何か入るまで誰も取り込まず止まったまま
+  # になっていた（#88・#94）。
+  pull_request:
+    types: [auto_merge_enabled]
   workflow_dispatch:
 
 permissions:
