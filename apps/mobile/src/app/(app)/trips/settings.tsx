@@ -22,6 +22,7 @@ export default function SettingsRoute() {
         onDone={() => router.back()}
         onOpenFeedback={() => pushOnce("/trips/feedback")}
         onOpenAbout={() => pushOnce("/trips/about")}
+        onOpenAi={() => pushOnce("/trips/ai")}
         onOpenTrip={
           tripId
             ? () => pushOnce(`/trips/trip-edit?tripId=${tripId}`)
