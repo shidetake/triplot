@@ -790,5 +790,20 @@
     "licenses": "オープンソースライセンス",
     "googleNotice": "Google マップの法的通知",
     "version": "バージョン {version} ({build})"
+  },
+  "oauthConsent": {
+    "title": "AI に triplot をつなぐ",
+    "signInFirst": "つなぐには、triplot にログインしてください。",
+    "request": "<b>{client}</b> が、あなたの triplot につなごうとしています。",
+    "unnamedClient": "名前のないアプリ",
+    "returnsTo": "接続先",
+    "signedInAs": "ログイン中のアカウント",
+    "grants": "許可すると、このアプリはあなたとして triplot の旅行を読み書きできるようになります。あなたが見られる予定・場所・費用・TODO・ノート（自分だけのものも含む）が対象です。",
+    "checkHost": "使っている AI の接続先と一致しているか確かめてください。心当たりがなければ拒否してください。",
+    "approve": "許可する",
+    "deny": "拒否",
+    "failed": "うまくいきませんでした。もう一度押してください。",
+    "invalidTitle": "このリンクは使えません",
+    "invalidBody": "期限が切れたか、リンクが正しくありません。AI の画面からもう一度つなぎ直してください。"
   }
 }
