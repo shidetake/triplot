@@ -34,7 +34,7 @@ sequenceDiagram
 
 | 部品 | 場所 | 役割 |
 |---|---|---|
-| MCP の入口 | `apps/web/app/api/mcp/[[...path]]/route.ts` | 鍵を確かめ、本人の権限の Supabase クライアントで道具を動かす。鍵が無ければ 401 と認可の情報の在りかを返す（`@supabase/server`） |
+| MCP の入口 | `apps/web/app/api/mcp/[[...path]]/route.ts` | 鍵を確かめ、本人の権限の Supabase クライアントで道具を動かす。鍵が無ければ 401 と認可の情報の在りかを返す（`@supabase/server`）。**AI に発行した鍵（`client_id` 入り）だけを通す**（MCP の仕様は、自分宛ての鍵しか受け付けないことを求めている。アプリの普段のログインの鍵は通さない） |
 | 道具 | 同上 | `list_trips`（旅行の一覧）・`get_trip`（旅行1つの中身） |
 | 中身の文章 | `packages/shared/src/tripForAi.ts` | 旅行の中身を AI が読む Markdown にする（下記） |
 | 許可の画面 | `apps/web/app/oauth/consent/` | 「〇〇 があなたの triplot につなごうとしています」。許可・拒否を Supabase に返す |
