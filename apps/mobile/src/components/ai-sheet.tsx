@@ -143,7 +143,18 @@ export function AiSheet() {
                         ) : i === 0 && ai.setup ? (
                           <Text
                             style={[styles.stepText, styles.linkStep]}
-                            onPress={() => void Linking.openURL(ai.setup!(url))}
+                            onPress={() => {
+                              // 入力済みで開けない AI は、開いた先で貼れるよう接続先をコピーしておく。
+                              // web 版で開く AI は x-safari-https: で Safari に開かせる（https: のままだと
+                              // アプリが入っていればアプリが開く。iOS 17 から。Apple の説明は無いが広く
+                              // 使われている書き方で、効かなくなってもアプリが開くだけ）。
+                              const href = ai.setup!(url);
+                              const open = () =>
+                                Linking.openURL(
+                                  ai.setupInBrowser ? href.replace(/^https:/, "x-safari-https:") : href,
+                                );
+                              void (ai.copiesUrl ? Clipboard.setStringAsync(url).then(open) : open());
+                            }}
                             accessibilityRole="link"
                           >
                             {s}

@@ -23,6 +23,10 @@ export function aiClientName(registered: string | null | undefined): string | nu
 //   名前と接続先を入れた状態で追加の画面が開く（公式の説明は無いが、実際に
 //   開くことを確かめた）。ChatGPT と Gemini は連携の設定の画面まで（入力済みで
 //   開く口が無い）。
+// - copiesUrl: setup を開く前に接続先をコピーする（入力済みで開けない AI。開いた
+//   先で貼るだけで済む。Claude は入力済みで開くので要らない）。
+// - setupInBrowser: スマホでも setup をブラウザ（web 版）で開く。ChatGPT はアプリから
+//   カスタムの MCP を足せない（実際に確認）が、普通に開くと iOS がアプリに渡すため。
 // - chat: チャットで頼んで足す AI（Muse）。依頼文を受け取り、それを入れた状態の
 //   チャットを開く URL を返す。Muse は muse.ai/chat?prompt= で、PC の web では依頼文
 //   入りで開き、スマホではアプリが開く（/chat はアプリで開く対象。ただし依頼文は
@@ -32,6 +36,8 @@ export type AiGuide = {
   key: "claude" | "gemini" | "chatgpt" | "muse";
   name: string;
   setup: ((mcpUrl: string) => string) | null;
+  copiesUrl: boolean;
+  setupInBrowser: boolean;
   chat: ((prompt: string) => string) | null;
   help: string | null;
 };
@@ -42,6 +48,8 @@ export const AI_GUIDES: readonly AiGuide[] = [
     key: "chatgpt",
     name: "ChatGPT",
     setup: () => "https://chatgpt.com/plugins",
+    copiesUrl: true,
+    setupInBrowser: true,
     chat: null,
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
@@ -50,6 +58,8 @@ export const AI_GUIDES: readonly AiGuide[] = [
     name: "Claude",
     setup: (url) =>
       `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=triplot&connectorUrl=${encodeURIComponent(url)}`,
+    copiesUrl: false,
+    setupInBrowser: false,
     chat: null,
     help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
   },
@@ -57,6 +67,8 @@ export const AI_GUIDES: readonly AiGuide[] = [
     key: "gemini",
     name: "Gemini",
     setup: () => "https://gemini.google.com/customize/connectors",
+    copiesUrl: true,
+    setupInBrowser: false,
     chat: null,
     help: "https://support.google.com/gemini/answer/17209137",
   },
@@ -64,6 +76,8 @@ export const AI_GUIDES: readonly AiGuide[] = [
     key: "muse",
     name: "Muse",
     setup: null,
+    copiesUrl: false,
+    setupInBrowser: false,
     chat: (prompt) => `https://muse.ai/chat?prompt=${encodeURIComponent(prompt)}`,
     help: null,
   },
