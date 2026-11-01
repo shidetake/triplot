@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/app-header";
 import { ChevronIcon } from "@/components/icons";
+import { InlineDivider } from "@/components/inline-divider";
 import { mcpUrl } from "@/lib/mcp-url";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
@@ -36,9 +37,15 @@ export default async function AiPage() {
   // ゲスト（匿名のセッション）は端末に閉じたものなので AI につなげない
   // （許可の画面もログインを求める）。
   const supabase = await createClient();
-  const { data: grants } = user.isAnonymous
-    ? { data: [] }
-    : await supabase.auth.oauth.listGrants();
+  const [{ data: grants }, { data: usage }] = user.isAnonymous
+    ? [{ data: [] }, { data: [] }]
+    : await Promise.all([
+        supabase.auth.oauth.listGrants(),
+        supabase.from("ai_client_usage").select("client_id, last_used_at"),
+      ]);
+  const lastUsed = new Map(
+    (usage ?? []).map((u) => [u.client_id, u.last_used_at]),
+  );
   const date = new Intl.DateTimeFormat(locale, {
     year: "numeric",
     month: "numeric",
@@ -140,10 +147,22 @@ export default async function AiPage() {
                     <div className="truncate text-sm font-medium">
                       {aiClientName(g.client.name) ?? g.client.id}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      {t("connectedSince", {
-                        date: date.format(new Date(g.granted_at)),
-                      })}
+                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+                      <span>
+                        {t("connectedSince", {
+                          date: date.format(new Date(g.granted_at)),
+                        })}
+                      </span>
+                      <InlineDivider />
+                      <span>
+                        {lastUsed.has(g.client.id)
+                          ? t("lastUsed", {
+                              date: date.format(
+                                new Date(lastUsed.get(g.client.id)!),
+                              ),
+                            })
+                          : t("notUsedYet")}
+                      </span>
                     </div>
                   </div>
                   <DisconnectAiButton
