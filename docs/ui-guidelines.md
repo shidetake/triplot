@@ -428,7 +428,8 @@ flowchart TD
 - **× 閉じるボタンは `<CloseButton>`**（`components/close-button.tsx`、subtle 色・rounded-full の独自レシピ。`label`/`iconSize`/`className`/`type` を渡せる）。
 
 **押せるものは、マウスの形を手にそろえる**（web）。ボタン・リンク・メニューの行・
-セグメント・開閉の `<summary>` のどれでも同じ形にする（リンクだけ手、メニューの行は
+セグメント・開閉の `<summary>`・セレクト（ブラウザ標準の `<select>` も自前のものも）・
+チェックボックスのどれでも同じ形にする（リンクだけ手、メニューの行は
 文字選択の形、のようにばらばらだと、押せるかどうかが形から読めない）。要素ごとに
 `cursor-pointer` を足さず、`globals.css` が押せるものの種類（`button`・`role` 等）で
 決めている。新しく押せる部品を素の `div` で作る時は `role` を付ければ揃う。
