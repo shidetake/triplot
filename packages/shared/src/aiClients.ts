@@ -23,13 +23,16 @@ export function aiClientName(registered: string | null | undefined): string | nu
 //   名前と接続先を入れた状態で追加の画面が開く（公式の説明は無いが、実際に
 //   開くことを確かめた）。ChatGPT と Gemini は連携の設定の画面まで（入力済みで
 //   開く口が無い）。
-// - prompt: チャットで頼んで足す AI（Muse）。頼む文をコピーするボタンを出す。
+// - chat: チャットで頼んで足す AI（Muse）。依頼文を受け取り、それを入れた状態の
+//   チャットを開く URL を返す。Muse は muse.ai/chat?prompt= で、PC の web では依頼文
+//   入りで開き、スマホではアプリが開く（/chat はアプリで開く対象。ただし依頼文は
+//   入らない）。どちらでも貼れるよう、開く前に依頼文をコピーする。
 // - help: 各社の公式の手順。
 export type AiGuide = {
   key: "claude" | "gemini" | "chatgpt" | "muse";
   name: string;
   setup: ((mcpUrl: string) => string) | null;
-  prompt: boolean;
+  chat: ((prompt: string) => string) | null;
   help: string | null;
 };
 
@@ -39,7 +42,7 @@ export const AI_GUIDES: readonly AiGuide[] = [
     key: "chatgpt",
     name: "ChatGPT",
     setup: () => "https://chatgpt.com/plugins",
-    prompt: false,
+    chat: null,
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
   {
@@ -47,15 +50,21 @@ export const AI_GUIDES: readonly AiGuide[] = [
     name: "Claude",
     setup: (url) =>
       `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=triplot&connectorUrl=${encodeURIComponent(url)}`,
-    prompt: false,
+    chat: null,
     help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
   },
   {
     key: "gemini",
     name: "Gemini",
     setup: () => "https://gemini.google.com/customize/connectors",
-    prompt: false,
+    chat: null,
     help: "https://support.google.com/gemini/answer/17209137",
   },
-  { key: "muse", name: "Muse", setup: null, prompt: true, help: null },
+  {
+    key: "muse",
+    name: "Muse",
+    setup: null,
+    chat: (prompt) => `https://muse.ai/chat?prompt=${encodeURIComponent(prompt)}`,
+    help: null,
+  },
 ];

@@ -10,7 +10,7 @@ import { mcpUrl } from "@/lib/mcp-url";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
-import { CopyText, DisconnectAiButton, McpUrl } from "./ai-client";
+import { CopyAndOpen, DisconnectAiButton, McpUrl } from "./ai-client";
 
 // AI 連携（MCP）の案内と、連携している AI の一覧と解除。要ログイン。
 //
@@ -90,9 +90,10 @@ export default async function AiPage() {
                       </li>
                     ))}
                   </ol>
-                  {ai.prompt && (
-                    <CopyText
+                  {ai.chat && (
+                    <CopyAndOpen
                       text={t("musePrompt", { url })}
+                      href={ai.chat(t("musePrompt", { url }))}
                       label={t("museCopy")}
                     />
                   )}

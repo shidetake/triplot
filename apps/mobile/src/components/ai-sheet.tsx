@@ -139,9 +139,15 @@ export function AiSheet() {
                         )}
                       </View>
                     ))}
-                    {ai.prompt && (
+                    {ai.chat && (
                       <Pressable
-                        onPress={() => void copyText(t("musePrompt", { url }))}
+                        onPress={() => {
+                          // 開く前にコピーする（アプリが開くと依頼文は入らないので、貼って送る）。
+                          const prompt = t("musePrompt", { url });
+                          void Clipboard.setStringAsync(prompt).then(() =>
+                            Linking.openURL(ai.chat!(prompt)),
+                          );
+                        }}
                         style={styles.copyPrompt}
                       >
                         <CopyIcon size={16} color={theme.foreground} />
