@@ -139,9 +139,6 @@ export function AiSheet() {
                         )}
                       </View>
                     ))}
-                    {!!t(`${ai.key}Note`) && (
-                      <Text style={styles.note}>{t(`${ai.key}Note`)}</Text>
-                    )}
                     {ai.prompt && (
                       <Pressable
                         onPress={() => void copyText(t("musePrompt", { url }))}

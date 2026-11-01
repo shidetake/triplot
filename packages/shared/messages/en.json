@@ -819,24 +819,20 @@
       "Open the add custom connector screen",
       "Choose Add → Connect, then Allow on the triplot page"
     ],
-    "claudeNote": "On the Free plan you can add one custom connector.",
     "geminiSteps": [
       "Open the app connections settings",
       "Choose + Custom and enter the URL above",
       "Choose Allow on the triplot page"
     ],
-    "geminiNote": "Once connected, it also works in the Gemini mobile app.",
     "chatgptSteps": [
       "Open the Plugins settings",
       "Choose Add → Add custom MCP server and enter the URL above (keep OAuth as the authentication)",
       "Choose Allow on the triplot page"
     ],
-    "chatgptNote": "For now this works in ChatGPT Business, Enterprise and Edu workspaces (Pro can only read).",
     "museSteps": [
       "Copy the request with the button below and send it in a Muse chat",
       "Choose Connect, then Allow on the triplot page"
     ],
-    "museNote": "",
     "examplesTitle": "Things to ask",
     "examples": [
       "Day 3 of my Hawaii trip is free in the afternoon. What should we do?",
