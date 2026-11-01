@@ -362,7 +362,7 @@ export function SettingsSheet({
             <ChevronIcon size={16} color={theme.subtleForeground} />
           </Pressable>
         )}
-        {/* AI につなぐ。ゲストは端末に閉じたセッションなので AI につなげない。 */}
+        {/* AI 連携。ゲストは端末に閉じたセッションなので AI につなげない。 */}
         {!isGuest && (
           <Pressable onPress={onOpenAi} style={styles.navRow}>
             <BotIcon size={18} color={theme.mutedForeground} />

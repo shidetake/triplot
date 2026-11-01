@@ -12,7 +12,7 @@ import { LIST_ROW_PADDING_H } from "@/lib/layout";
 import { supabase } from "@/lib/supabase";
 import { type Theme, useTheme, useThemedStyles } from "@/lib/theme";
 
-// AI につなぐ（MCP）の案内と、つないでいる AI の一覧・解除。web の /ai
+// AI 連携（MCP）の案内と、連携している AI の一覧と解除。web の /ai
 // （apps/web/app/ai/page.tsx）と同じ中身・同じ文言（ai の翻訳）。
 // 設計: docs/design/mcp.md
 

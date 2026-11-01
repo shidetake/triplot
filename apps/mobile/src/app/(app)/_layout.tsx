@@ -161,7 +161,7 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
-      {/* AI につなぐ。案内が縦に長く、つなぎ方を開くと高さが変わるので、
+      {/* AI 連携。案内が縦に長く、つなぎ方を開くと高さが変わるので、
           中身に合わせず全高で開く（受信箱と同じ理由。fitToContents だと
           開くたびに測り直されてスクロールが先頭に戻る）。 */}
       <Stack.Screen

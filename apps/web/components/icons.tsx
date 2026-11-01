@@ -334,7 +334,7 @@ export function MessageSquareIcon({
   );
 }
 
-// Lucide: bot（AI につなぐ）
+// Lucide: bot（AI 連携）
 export function BotIcon({
   size = 18,
   className,
