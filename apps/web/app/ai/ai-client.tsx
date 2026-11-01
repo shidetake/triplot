@@ -46,16 +46,26 @@ export function McpUrl({ url }: { url: string }) {
   );
 }
 
-// チャットで頼んで足す AI（Muse）に送る文をコピーするボタン。
-export function CopyText({ text, label }: { text: string; label: string }) {
-  const tCommon = useTranslations("common");
+// チャットで頼んで足す AI（Muse）の、依頼文をコピーしてチャットを開くボタン。
+// 依頼文入りで開ける環境（PC の web）ならそのまま送れ、入らない環境（スマホの
+// アプリ）でも貼るだけで済む。開く前にコピーするのは、別のタブ・アプリに
+// 移った後ではコピーできないため。
+export function CopyAndOpen({
+  text,
+  href,
+  label,
+}: {
+  text: string;
+  href: string;
+  label: string;
+}) {
   const copy = async () => {
     try {
       await navigator.clipboard.writeText(text);
-      toast(tCommon("copied"));
     } catch {
-      // クリップボード不可の環境は無視
+      // クリップボード不可の環境は無視（PC の web は依頼文入りで開くので困らない）
     }
+    window.open(href, "_blank", "noopener");
   };
   return (
     <Button
