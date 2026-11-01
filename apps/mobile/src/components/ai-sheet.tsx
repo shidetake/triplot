@@ -8,6 +8,7 @@ import { useFormatter, useTranslations } from "use-intl";
 import { AI_GUIDES, aiClientName } from "@triplot/shared/aiClients";
 
 import { ChevronIcon, CopyIcon } from "@/components/icons";
+import { InlineDivider } from "@/components/inline-divider";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
 import { LIST_ROW_PADDING_H } from "@/lib/layout";
@@ -28,7 +29,12 @@ function mcpUrl(): string {
     : "https://triplot.app/api/mcp";
 }
 
-type Grant = { clientId: string; name: string; grantedAt: string };
+type Grant = {
+  clientId: string;
+  name: string;
+  grantedAt: string;
+  lastUsedAt: string | null;
+};
 
 export function AiSheet() {
   const t = useTranslations("ai");
@@ -41,15 +47,29 @@ export function AiSheet() {
   const { data: grants, refetch } = useQuery({
     queryKey: ["ai-grants"],
     queryFn: async (): Promise<Grant[]> => {
-      const { data, error } = await supabase.auth.oauth.listGrants();
+      const [{ data, error }, { data: usage }] = await Promise.all([
+        supabase.auth.oauth.listGrants(),
+        supabase.from("ai_client_usage").select("client_id, last_used_at"),
+      ]);
       if (error) throw error;
+      const lastUsed = new Map(
+        (usage ?? []).map((u) => [u.client_id, u.last_used_at]),
+      );
       return (data ?? []).map((g) => ({
         clientId: g.client.id,
         name: aiClientName(g.client.name) ?? g.client.id,
         grantedAt: g.granted_at,
+        lastUsedAt: lastUsed.get(g.client.id) ?? null,
       }));
     },
   });
+
+  const formatDate = (iso: string) =>
+    format.dateTime(new Date(iso), {
+      year: "numeric",
+      month: "numeric",
+      day: "numeric",
+    });
 
   const copyText = async (text: string) => {
     await Clipboard.setStringAsync(text);
@@ -200,15 +220,17 @@ export function AiSheet() {
                   <Text style={styles.rowLabel} numberOfLines={1}>
                     {g.name}
                   </Text>
-                  <Text style={styles.note}>
-                    {t("connectedSince", {
-                      date: format.dateTime(new Date(g.grantedAt), {
-                        year: "numeric",
-                        month: "numeric",
-                        day: "numeric",
-                      }),
-                    })}
-                  </Text>
+                  <View style={styles.grantMeta}>
+                    <Text style={styles.note}>
+                      {t("connectedSince", { date: formatDate(g.grantedAt) })}
+                    </Text>
+                    <InlineDivider />
+                    <Text style={styles.note}>
+                      {g.lastUsedAt
+                        ? t("lastUsed", { date: formatDate(g.lastUsedAt) })
+                        : t("notUsedYet")}
+                    </Text>
+                  </View>
                 </View>
                 <Pressable
                   onPress={() => disconnect(g)}
@@ -295,6 +317,7 @@ const makeStyles = (t: Theme) =>
       paddingVertical: 12,
     },
     grantText: { flex: 1, minWidth: 0, gap: 2 },
+    grantMeta: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", columnGap: 8 },
     disconnect: {
       height: 32,
       paddingHorizontal: 12,
