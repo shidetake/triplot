@@ -46,11 +46,9 @@ export function McpUrl({ url }: { url: string }) {
   );
 }
 
-// チャットで頼んで足す AI（Muse）の、依頼文をコピーしてチャットを開くリンク。
-// 見た目は他の AI の1つ目の手順と同じテキストのリンク。
-// 依頼文入りで開ける環境（PC の web）ならそのまま送れ、入らない環境（スマホの
-// アプリ）でも貼るだけで済む。開く前にコピーするのは、別のタブ・アプリに
-// 移った後ではコピーできないため。
+// 開いた先で貼るものをコピーしてから開くリンク（Muse の依頼文、ChatGPT・Gemini の
+// 接続先）。見た目は他の AI の1つ目の手順と同じテキストのリンク。
+// 開く前にコピーするのは、別のタブ・アプリに移った後ではコピーできないため。
 export function CopyAndOpen({
   text,
   href,
@@ -64,7 +62,7 @@ export function CopyAndOpen({
     try {
       await navigator.clipboard.writeText(text);
     } catch {
-      // クリップボード不可の環境は無視（PC の web は依頼文入りで開くので困らない）
+      // クリップボード不可の環境は無視（接続先はページに出ているので手で写せる）
     }
     window.open(href, "_blank", "noopener");
   };

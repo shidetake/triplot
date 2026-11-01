@@ -81,6 +81,8 @@ export default async function AiPage() {
                             href={ai.chat(t("musePrompt", { url }))}
                             label={s}
                           />
+                        ) : i === 0 && ai.setup && ai.copiesUrl ? (
+                          <CopyAndOpen text={url} href={ai.setup(url)} label={s} />
                         ) : i === 0 && ai.setup ? (
                           <a
                             href={ai.setup(url)}
