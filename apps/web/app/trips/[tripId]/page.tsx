@@ -5,8 +5,6 @@ import { notFound, redirect } from "next/navigation";
 import { AddExpenseButton } from "@/components/add-expense-button";
 import { HelpTip } from "@/components/help-tip";
 import { DraftConfirmButton } from "@/components/draft-confirm-button";
-import { EventDraftConfirmButton } from "@/components/event-draft-confirm-button";
-import { toEventFormPrefill } from "@/lib/event-form-prefill";
 import {
   buildCalendarExportEvents,
   type CalendarExportEvent,
@@ -441,54 +439,6 @@ export default async function TripDetailPage({
                   biasCenter={placesBiasCenter}
                   myMemberId={me.id}
                   eventDrafts={eventDrafts}
-                  afterHeading={
-                    eventDrafts.length > 0 && (
-                      <div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          {t("tripDetail.pendingImports", {
-                            count: eventDrafts.length,
-                          })}
-                          <HelpTip
-                            label={t("tripDetail.importHelpLabel")}
-                            widthClass="w-52"
-                          >
-                            {t("tripDetail.importEventHelp")}
-                          </HelpTip>
-                        </div>
-                        <div className="mt-1 divide-y divide-foreground/10 rounded-md border border-dashed border-foreground/20">
-                          {eventDrafts.map((d) => (
-                            <EventDraftConfirmButton
-                              key={d.id}
-                              draftId={d.id}
-                              draftIds={d.draftIds}
-                              emailIds={d.emailIds}
-                              myMemberId={me.id}
-                              labelParts={d.labelParts}
-                              tripId={tripId}
-                              defaultTz={d.tz}
-                              tripStart={trip.start_date}
-                              tripEnd={trip.end_date}
-                              state={{
-                                mode: "create",
-                                date: d.date,
-                                time: d.time,
-                                tz: d.tz,
-                                prefill: toEventFormPrefill(d.prefill),
-                              }}
-                              places={placesForPicker}
-                              members={activeMembers.map((m) => ({
-                                id: m.id,
-                                display_name: m.display_name,
-                                color: m.color,
-                              }))}
-                              biasCenter={draftBiasCenter(d.date)}
-                              tzTimeline={tzTimeline}
-                            />
-                          ))}
-                        </div>
-                      </div>
-                    )
-                  }
                 />
               </section>
             }

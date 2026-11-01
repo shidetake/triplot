@@ -100,7 +100,6 @@
     "expenseBreakdownTrip": "Trip",
     "expenseSummarySettlement": "Settlement",
     "expenseSummaryAverageRate": "Average rate: {rates}",
-    "importEventHelp": "Drafts extracted from emails. Review and confirm to add them as events.",
     "reservationRefNote": "Confirmation # {ref}"
   },
   "tripTabs": {
