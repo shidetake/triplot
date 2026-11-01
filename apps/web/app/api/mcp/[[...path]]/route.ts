@@ -52,7 +52,19 @@ const handle = pipeline(
       },
     }),
   ],
-  async (req, { supabase, userClaims }) => {
+  async (req, { supabase, userClaims, jwtClaims }) => {
+    // **AI に発行した鍵だけを通す。** MCP の仕様は、MCP サーバーが自分宛てに
+    // 発行された鍵しか受け付けないことを求めている。この Supabase で OAuth の
+    // クライアントに鍵を出すのは MCP のためだけなので、鍵に client_id（どの
+    // OAuth のクライアントに出したか）が入っていることで見分ける。アプリの
+    // 普段のログインの鍵には入っていない。
+    // 401 には、前段（withOAuthProtectedResource）が認可の情報の在りかを付ける。
+    if (typeof jwtClaims?.client_id !== "string") {
+      return Response.json(
+        { error: "invalid_token", error_description: "Not an MCP access token." },
+        { status: 401 },
+      );
+    }
     const handler = createMcpHandler(
       () => {
         const server = new McpServer({ name: "triplot", version: "0.1.0" });
