@@ -110,7 +110,7 @@ export function MessageSquareIcon(p: IconProps) {
   );
 }
 
-// Lucide: bot（AI につなぐ。web の BotIcon と同じパス）
+// Lucide: bot（AI 連携。web の BotIcon と同じパス）
 export function BotIcon(p: IconProps) {
   return (
     <LucideIcon {...p}>

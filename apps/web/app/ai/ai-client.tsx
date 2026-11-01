@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 
 import { disconnectAiAction } from "./actions";
 
-// AI につなぐページの、手で触る部品（接続先のコピー・AI を外す）。
+// AI 連携のページの、手で触る部品（接続先のコピー・AI との連携を解除）。
 
 // 接続先の URL。取り込みアドレス（import-address.tsx）と同じく、値を出したうえで
 // コピーできるようにする（別の端末で手で打つ・合っているか見比べる用途がある）。

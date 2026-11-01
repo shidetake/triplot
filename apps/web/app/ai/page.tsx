@@ -10,7 +10,7 @@ import { createClient } from "@/lib/supabase/server";
 
 import { DisconnectAiButton, McpUrl } from "./ai-client";
 
-// AI につなぐ（MCP）の案内と、つないでいる AI の一覧・解除。要ログイン。
+// AI 連携（MCP）の案内と、連携している AI の一覧と解除。要ログイン。
 //
 // ヘッダーから開くものは原則オーバーレイだが、ここはページにする。つなぎ方を
 // 読みながら別のアプリ（AI の設定）へ行って戻ってくる、文書のような行き先なので

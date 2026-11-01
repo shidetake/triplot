@@ -146,7 +146,7 @@ export function AccountMenu({
     </span>
   );
 
-  // AI につなぐ（MCP）。ゲストは端末に閉じたセッションなので AI につなげない。
+  // AI 連携（MCP）。ゲストは端末に閉じたセッションなので AI につなげない。
   const aiRow = !isAnonymous && (
     <Link href="/ai" className={rowClass}>
       <BotIcon size={16} className="text-muted-foreground" />

@@ -807,8 +807,8 @@
     "invalidBody": "It has expired or is not valid. Connect again from your AI app."
   },
   "ai": {
-    "menuLink": "Connect AI",
-    "title": "Connect AI",
+    "menuLink": "AI connections",
+    "title": "AI connections",
     "lead": "Connect triplot to an AI such as Claude or Gemini, and it can look at your trip, help you plan, and add the events and places you decide on straight into the trip. When you change the plan, the AI always reads the latest version.",
     "urlLabel": "triplot connection URL",
     "copyUrl": "Copy the URL",
