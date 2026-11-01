@@ -821,7 +821,7 @@
     ],
     "claudeNote": "On the Free plan you can add one custom connector.",
     "geminiSteps": [
-      "Open the Connected Apps settings (on a computer)",
+      "Open the Connected Apps settings",
       "Choose Add a custom app and enter the URL above",
       "Choose Allow on the triplot page"
     ],
