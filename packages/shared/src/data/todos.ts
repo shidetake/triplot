@@ -55,7 +55,7 @@ export async function setTodoCompleted(
 export async function updateTodo(
   sb: DB,
   todoId: string,
-  patch: { title?: string; priority?: string },
+  patch: { title?: string; priority?: string; kind?: string },
 ): Promise<Result<void>> {
   if (Object.keys(patch).length === 0) return ok(undefined);
   const { error } = await sb.from("todos").update(patch).eq("id", todoId);
