@@ -1,6 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
 
-import { aiClientName } from "@triplot/shared/aiClients";
+import { AI_GUIDES, aiClientName } from "@triplot/shared/aiClients";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -10,7 +10,7 @@ import { mcpUrl } from "@/lib/mcp-url";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
-import { DisconnectAiButton, McpUrl } from "./ai-client";
+import { CopyText, DisconnectAiButton, McpUrl } from "./ai-client";
 
 // AI 連携（MCP）の案内と、連携している AI の一覧と解除。要ログイン。
 //
@@ -19,28 +19,6 @@ import { DisconnectAiButton, McpUrl } from "./ai-client";
 // （ui-guidelines「全画面表示を使う場面」）。AI ごとの手順は細部まで書かず各社の
 // 公式の手順へリンクする（各社の画面はよく変わり、こちらで追いかけきれない）。
 // 設計: docs/design/mcp.md
-
-const AIS = [
-  {
-    key: "claude",
-    name: "Claude",
-    settings: "https://claude.ai/customize/connectors",
-    help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
-  },
-  {
-    key: "gemini",
-    name: "Gemini",
-    settings: "https://gemini.google.com/customize/connectors",
-    help: "https://support.google.com/gemini/answer/17209137",
-  },
-  {
-    key: "chatgpt",
-    name: "ChatGPT",
-    settings: null,
-    help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
-  },
-  { key: "muse", name: "Muse", settings: null, help: null },
-] as const;
 
 export default async function AiPage() {
   const user = await getAuthUser();
@@ -82,7 +60,7 @@ export default async function AiPage() {
           <h2 className="text-lg font-semibold">{t("howTo")}</h2>
           <p className="text-sm text-muted-foreground">{t("howToLead")}</p>
           <div className="divide-y divide-foreground/10 rounded-lg border border-foreground/10">
-            {AIS.map((ai) => (
+            {AI_GUIDES.map((ai) => (
               <details key={ai.key} className="group px-4">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-2 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
                   {ai.name}
@@ -97,9 +75,9 @@ export default async function AiPage() {
                         （どこを開くかを文章で辿らせない）。 */}
                     {(t.raw(`${ai.key}Steps`) as string[]).map((s, i) => (
                       <li key={s}>
-                        {i === 0 && ai.settings ? (
+                        {i === 0 && ai.setup ? (
                           <a
-                            href={ai.settings}
+                            href={ai.setup(url)}
                             target="_blank"
                             rel="noreferrer"
                             className="text-blue-600 hover:underline dark:text-blue-400"
@@ -116,6 +94,12 @@ export default async function AiPage() {
                     <p className="text-xs text-muted-foreground">
                       {t(`${ai.key}Note`)}
                     </p>
+                  )}
+                  {ai.prompt && (
+                    <CopyText
+                      text={t("musePrompt", { url })}
+                      label={t("museCopy")}
+                    />
                   )}
                   {ai.help && (
                     <a

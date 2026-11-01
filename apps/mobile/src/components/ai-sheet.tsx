@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 
-import { aiClientName } from "@triplot/shared/aiClients";
+import { AI_GUIDES, aiClientName } from "@triplot/shared/aiClients";
 
 import { ChevronIcon, CopyIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
@@ -27,28 +27,6 @@ function mcpUrl(): string {
     ? `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/mcp`
     : "https://triplot.app/api/mcp";
 }
-
-const AIS = [
-  {
-    key: "claude",
-    name: "Claude",
-    settings: "https://claude.ai/customize/connectors",
-    help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
-  },
-  {
-    key: "gemini",
-    name: "Gemini",
-    settings: "https://gemini.google.com/customize/connectors",
-    help: "https://support.google.com/gemini/answer/17209137",
-  },
-  {
-    key: "chatgpt",
-    name: "ChatGPT",
-    settings: null,
-    help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
-  },
-  { key: "muse", name: "Muse", settings: null, help: null },
-] as const;
 
 type Grant = { clientId: string; name: string; grantedAt: string };
 
@@ -73,10 +51,11 @@ export function AiSheet() {
     },
   });
 
-  const copy = async () => {
-    await Clipboard.setStringAsync(url);
+  const copyText = async (text: string) => {
+    await Clipboard.setStringAsync(text);
     toast(tCommon("copied"));
   };
+  const copy = () => copyText(url);
 
   // 外すのは確認を挟む（つなぎ直すのは AI の設定まで行く手間があるので）。
   const disconnect = (g: Grant) => {
@@ -126,7 +105,7 @@ export function AiSheet() {
         <Text style={styles.heading}>{t("howTo")}</Text>
         <Text style={styles.muted}>{t("howToLead")}</Text>
         <View style={styles.list}>
-          {AIS.map((ai) => {
+          {AI_GUIDES.map((ai) => {
             const expanded = open === ai.key;
             return (
               <View key={ai.key} style={styles.row}>
@@ -147,10 +126,10 @@ export function AiSheet() {
                       <View key={s} style={styles.step}>
                         <Text style={styles.stepNo}>{i + 1}.</Text>
                         {/* 設定の画面を開ける AI は、1つ目の手順をその画面へのリンクにする。 */}
-                        {i === 0 && ai.settings ? (
+                        {i === 0 && ai.setup ? (
                           <Text
                             style={[styles.stepText, styles.linkStep]}
-                            onPress={() => void Linking.openURL(ai.settings)}
+                            onPress={() => void Linking.openURL(ai.setup!(url))}
                             accessibilityRole="link"
                           >
                             {s}
@@ -163,8 +142,17 @@ export function AiSheet() {
                     {!!t(`${ai.key}Note`) && (
                       <Text style={styles.note}>{t(`${ai.key}Note`)}</Text>
                     )}
+                    {ai.prompt && (
+                      <Pressable
+                        onPress={() => void copyText(t("musePrompt", { url }))}
+                        style={styles.copyPrompt}
+                      >
+                        <CopyIcon size={16} color={theme.foreground} />
+                        <Text style={styles.copyPromptLabel}>{t("museCopy")}</Text>
+                      </Pressable>
+                    )}
                     {ai.help && (
-                      <Pressable onPress={() => void Linking.openURL(ai.help)} hitSlop={8}>
+                      <Pressable onPress={() => void Linking.openURL(ai.help!)} hitSlop={8}>
                         <Text style={styles.link}>{t("officialHelp")}</Text>
                       </Pressable>
                     )}
@@ -287,6 +275,18 @@ const makeStyles = (t: Theme) =>
     note: { fontSize: 12, color: t.mutedForeground },
     link: { fontSize: 12, color: t.linkText },
     linkStep: { color: t.linkText },
+    copyPrompt: {
+      flexDirection: "row",
+      alignItems: "center",
+      alignSelf: "flex-start",
+      gap: 6,
+      height: 32,
+      paddingHorizontal: 12,
+      borderRadius: 6,
+      borderWidth: 1,
+      borderColor: t.fgAlpha(0.2),
+    },
+    copyPromptLabel: { fontSize: 12, color: t.foreground },
     grantRow: {
       flexDirection: "row",
       alignItems: "center",
