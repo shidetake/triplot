@@ -816,13 +816,13 @@
     "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
-      "Add to Claude",
+      "Open the add custom connector screen",
       "Choose Add → Connect, then Allow on the triplot page"
     ],
     "claudeNote": "On the Free plan you can add one custom connector.",
     "geminiSteps": [
-      "Open the Connected Apps settings",
-      "Choose Add a custom app and enter the URL above",
+      "Open the app connections settings",
+      "Choose + Custom and enter the URL above",
       "Choose Allow on the triplot page"
     ],
     "geminiNote": "Once connected, it also works in the Gemini mobile app.",
