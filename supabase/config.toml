@@ -409,3 +409,8 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # （呼ばれても期限が近くなければ何もしないので、誰が叩いても困らない）。
 [functions.rotate-apple-client-secret]
 verify_jwt = false
+
+# AI（MCP）から web の /api/mcp への中継（staging だけで使う）。AI は認可の情報を
+# 鍵なしで取りに来るので、ゲートウェイでは止めない。鍵の検査は web 側がする。
+[functions.mcp]
+verify_jwt = false
