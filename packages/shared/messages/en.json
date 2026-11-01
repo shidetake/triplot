@@ -813,7 +813,7 @@
     "urlLabel": "triplot connection URL",
     "copyUrl": "Copy the URL",
     "howTo": "How to connect",
-    "howToLead": "In your AI's settings, add the URL above as a custom connector. A triplot page opens along the way; choose Allow and you're done.",
+    "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
       "Open the Connectors settings",
