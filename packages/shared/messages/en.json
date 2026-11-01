@@ -816,7 +816,7 @@
     "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
-      "Add to Claude (opens with the name and URL filled in)",
+      "Add to Claude",
       "Choose Add → Connect, then Allow on the triplot page"
     ],
     "claudeNote": "On the Free plan you can add one custom connector.",
