@@ -846,19 +846,20 @@
       "この夕食代 80 ドルを費用に入れて。全員で割り勘",
       "まだ済んでいない準備の TODO を教えて"
     ],
-    "connectedTitle": "つないでいる AI",
-    "connectedEmpty": "まだつないでいる AI はありません。",
+    "connectedTitle": "連携している AI",
+    "connectedEmpty": "まだ連携している AI はありません。",
     "connectedSince": "{date} から",
-    "disconnect": "外す",
-    "disconnectConfirmTitle": "{name} を外しますか？",
+    "disconnect": "連携を解除",
+    "disconnectConfirmTitle": "{name} との連携を解除しますか？",
     "disconnectConfirmBody": "この AI は triplot の旅行を読み書きできなくなります。使う時は、もう一度つなぎ直してください。",
-    "disconnected": "外しました",
-    "disconnectFailed": "外せませんでした。もう一度試してください。",
+    "disconnected": "連携を解除しました",
+    "disconnectFailed": "連携を解除できませんでした。もう一度試してください。",
     "noteTitle": "知っておいてほしいこと",
     "notes": [
       "AI はあなたとして triplot を使います。あなたに見えるもの（自分だけの予定やメモも）が AI にも見え、AI が足したり直したりしたものは、あなたの操作として残ります。",
       "AI は間違えることがあります。AI が入れた予定や費用は、triplot で確かめてください。",
-      "つないだ AI は、上の一覧からいつでも外せます。"
-    ]
+      "連携した AI は、上の一覧からいつでも解除できます。"
+    ],
+    "disconnectConfirm": "解除"
   }
 }

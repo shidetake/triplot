@@ -60,7 +60,7 @@ export function DisconnectAiButton({
       !(await confirmDialog({
         title: t("disconnectConfirmTitle", { name }),
         body: t("disconnectConfirmBody"),
-        confirmLabel: t("disconnect"),
+        confirmLabel: t("disconnectConfirm"),
       }))
     ) {
       return;
