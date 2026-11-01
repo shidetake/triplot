@@ -805,5 +805,60 @@
     "failed": "うまくいきませんでした。もう一度押してください。",
     "invalidTitle": "このリンクは使えません",
     "invalidBody": "期限が切れたか、リンクが正しくありません。AI の画面からもう一度つなぎ直してください。"
+  },
+  "ai": {
+    "menuLink": "AI につなぐ",
+    "title": "AI につなぐ",
+    "lead": "Claude や Gemini などの AI に triplot をつなぐと、AI が旅行の中身を見ながら相談に乗り、決まった予定や行きたい場所をそのまま旅行に入れてくれます。計画を直しても、AI はいつも最新の中身を読みます。",
+    "urlLabel": "triplot の接続先",
+    "copyUrl": "接続先をコピー",
+    "howTo": "つなぎ方",
+    "howToLead": "使っている AI の設定で、上の接続先をカスタムコネクタとして足します。途中で triplot の画面が開くので、「許可する」を押せば完了です。",
+    "officialHelp": "公式の手順",
+    "claudeSteps": [
+      "claude.ai（またはアプリ）で「カスタマイズ」→「コネクタ」を開く",
+      "「＋追加」→「カスタムコネクタを追加」を選び、名前に triplot、URL に上の接続先を入れて追加する",
+      "「連携」を押し、開いた triplot の画面で「許可する」を押す"
+    ],
+    "claudeNote": "無料プランでは、カスタムコネクタは1つまでです。",
+    "geminiSteps": [
+      "パソコンのブラウザで gemini.google.com を開き、設定 →「連携アプリ（Connected Apps）」を開く",
+      "「カスタムアプリ」の「カスタムアプリを追加（Add a custom app）」で、上の接続先を入れる",
+      "開いた triplot の画面で「許可する」を押す"
+    ],
+    "geminiNote": "今は Gemini を英語で使っている時だけ使えます。仕事・学校のアカウントでは使えません。一度つなげば、スマホの Gemini アプリでも使えます。",
+    "chatgptSteps": [
+      "「プラグイン」で「＋」→「カスタム MCP サーバーを追加（Add custom MCP server）」を選ぶ",
+      "接続先に上の URL を入れ、認証は OAuth のまま作る",
+      "開いた triplot の画面で「許可する」を押す"
+    ],
+    "chatgptNote": "今は ChatGPT の Business・Enterprise・Edu のワークスペースで使えます（Pro は読むだけ）。",
+    "museSteps": [
+      "Muse のチャットに上の接続先を貼り、「この URL のコネクタを追加して」と頼む",
+      "出てきた「接続」を押し、開いた triplot の画面で「許可する」を押す"
+    ],
+    "museNote": "今は米国・カナダで使えます。",
+    "examplesTitle": "聞き方の例",
+    "examples": [
+      "ハワイ旅行の3日目の午後が空いてるけど、何をするのがいい？",
+      "ハナウマ湾を行きたい場所の候補に足して",
+      "12日の朝7時から朝食の予定を入れて",
+      "この夕食代 80 ドルを費用に入れて。全員で割り勘",
+      "まだ済んでいない準備の TODO を教えて"
+    ],
+    "connectedTitle": "つないでいる AI",
+    "connectedEmpty": "まだつないでいる AI はありません。",
+    "connectedSince": "{date} から",
+    "disconnect": "外す",
+    "disconnectConfirmTitle": "{name} を外しますか？",
+    "disconnectConfirmBody": "この AI は triplot の旅行を読み書きできなくなります。使う時は、もう一度つなぎ直してください。",
+    "disconnected": "外しました",
+    "disconnectFailed": "外せませんでした。もう一度試してください。",
+    "noteTitle": "知っておいてほしいこと",
+    "notes": [
+      "AI はあなたとして triplot を使います。あなたに見えるもの（自分だけの予定やメモも）が AI にも見え、AI が足したり直したりしたものは、あなたの操作として残ります。",
+      "AI は間違えることがあります。AI が入れた予定や費用は、triplot で確かめてください。",
+      "つないだ AI は、上の一覧からいつでも外せます。"
+    ]
   }
 }
