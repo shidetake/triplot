@@ -13,7 +13,13 @@ import {
   aiAddPlace,
   aiAddTodo,
   aiAddTransit,
+  aiDeleteItem,
   aiSearchPlaces,
+  aiUpdateEvent,
+  aiUpdateExpense,
+  aiUpdatePlace,
+  aiUpdateTodo,
+  aiUpdateTransit,
   type AiTripContext,
   loadAiTripContext,
 } from "@triplot/shared/data/aiWrites";
@@ -25,7 +31,8 @@ import type { Database } from "@triplot/shared/types/database";
 // AI（Claude・ChatGPT・Gemini 等）が旅行を読み書きする入口（MCP サーバー）。
 // AI は旅行のメンバーにはならず、**ログインした本人の代理**として本人の権限で
 // 読み書きする（RLS がそのまま効き、足したものは本人が足したものになる）。
-// 書き込みは足すだけ（変える・消すは持たない）。時刻は時差付きで受け、旅程と
+// 足す・変える・消すができる。どれを指すかは get_trip に載せた id で受ける（id は
+// AI と triplot の間だけで使い、利用者には見せない）。時刻は時差付きで受け、旅程と
 // 突き合わせる（@triplot/shared/aiTime）。認可は Supabase Auth の OAuth 2.1 サーバーで、
 // AI は自分で登録し（動的クライアント登録）、本人が許可の画面
 // （app/oauth/consent）で許すと、本人の JWT を受け取ってここを叩く。
@@ -53,6 +60,16 @@ const ADD = {
   idempotentHint: false,
   openWorldHint: false,
 } as const;
+const CHANGE = {
+  readOnlyHint: false,
+  destructiveHint: true,
+  idempotentHint: true,
+  openWorldHint: false,
+} as const;
+// 変える・消す道具の説明に添える。当てはまるものが複数ある時に、AI が勝手に
+// 選ばず利用者に聞き返すように。
+const PICK_HELP =
+  "Use the id from get_trip. If the user's request could match more than one item, ask which one first. Fields you leave out stay as they are.";
 
 // 書き込みの道具で共通の引数。
 const tripId = z.string().describe("The trip id from list_trips.");
@@ -423,6 +440,211 @@ const handle = pipeline(
                 },
                 placesApiKey,
               ),
+            ),
+        );
+
+        server.registerTool(
+          "update_event",
+          {
+            description: `Change an event (not a transit; use update_transit for those). ${PICK_HELP} Times work as in add_event: local time with the UTC offset. Sending only start keeps the length.`,
+            inputSchema: z.object({
+              trip_id: tripId,
+              id: z.string(),
+              title: z.string().optional(),
+              start: z.string().optional().describe(OFFSET_TIME_HELP),
+              end: z.string().optional().describe(OFFSET_TIME_HELP),
+              all_day_start_date: z.string().optional(),
+              all_day_end_date: z.string().optional(),
+              ...placeRef,
+              participants: participants.optional(),
+              note: z.string().optional(),
+              private: z.boolean().optional(),
+              needs_reservation: z.boolean().optional(),
+            }),
+            annotations: CHANGE,
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiUpdateEvent(
+                supabase,
+                ctx,
+                {
+                  id: a.id,
+                  title: a.title,
+                  start: a.start,
+                  end: a.end,
+                  allDayStartDate: a.all_day_start_date,
+                  allDayEndDate: a.all_day_end_date,
+                  place: { place: a.place, googlePlaceId: a.google_place_id },
+                  participants: a.participants,
+                  note: a.note,
+                  private: a.private,
+                  needsReservation: a.needs_reservation,
+                },
+                placesApiKey,
+              ),
+            ),
+        );
+
+        server.registerTool(
+          "update_transit",
+          {
+            description: `Change a transit (flight, train…). ${PICK_HELP} An end you send replaces that end's time and time zone.`,
+            inputSchema: z.object({
+              trip_id: tripId,
+              id: z.string(),
+              title: z.string().optional(),
+              depart: transitEnd.optional(),
+              arrive: transitEnd.optional(),
+              participants: participants.optional(),
+              note: z.string().optional(),
+              private: z.boolean().optional(),
+              needs_reservation: z.boolean().optional(),
+            }),
+            annotations: CHANGE,
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiUpdateTransit(
+                supabase,
+                ctx,
+                {
+                  id: a.id,
+                  title: a.title,
+                  depart: a.depart && {
+                    time: a.depart.time,
+                    timeZone: a.depart.time_zone,
+                    place: a.depart.place,
+                    googlePlaceId: a.depart.google_place_id,
+                  },
+                  arrive: a.arrive && {
+                    time: a.arrive.time,
+                    timeZone: a.arrive.time_zone,
+                    place: a.arrive.place,
+                    googlePlaceId: a.arrive.google_place_id,
+                  },
+                  participants: a.participants,
+                  note: a.note,
+                  private: a.private,
+                  needsReservation: a.needs_reservation,
+                },
+                placesApiKey,
+              ),
+            ),
+        );
+
+        server.registerTool(
+          "update_place",
+          {
+            description: `Change a place: decided or candidate, note, private. ${PICK_HELP}`,
+            inputSchema: z.object({
+              trip_id: tripId,
+              id: z.string(),
+              decided: z.boolean().optional(),
+              note: z.string().optional(),
+              private: z.boolean().optional(),
+            }),
+            annotations: CHANGE,
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiUpdatePlace(supabase, ctx, {
+                id: a.id,
+                decided: a.decided,
+                note: a.note,
+                private: a.private,
+              }),
+            ),
+        );
+
+        server.registerTool(
+          "update_todo",
+          {
+            description: `Change a to-do, or check it off for the user (done is recorded per person). ${PICK_HELP}`,
+            inputSchema: z.object({
+              trip_id: tripId,
+              id: z.string(),
+              title: z.string().optional(),
+              priority: z.enum(["high", "medium", "low"]).optional(),
+              when: z.enum(["before_trip", "during_trip"]).optional(),
+              done: z.boolean().optional().describe("Check off (true) or uncheck (false) for the user."),
+            }),
+            annotations: CHANGE,
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiUpdateTodo(supabase, ctx, {
+                id: a.id,
+                title: a.title,
+                priority: a.priority,
+                when: a.when,
+                done: a.done,
+              }),
+            ),
+        );
+
+        server.registerTool(
+          "update_expense",
+          {
+            description: `Change an expense. ${PICK_HELP} Times work as in add_expense.`,
+            inputSchema: z.object({
+              trip_id: tripId,
+              id: z.string(),
+              amount: z.number().positive().optional(),
+              currency: z.string().optional(),
+              rate_to_settlement_currency: z.number().positive().optional(),
+              paid_at: z.string().optional().describe(OFFSET_TIME_HELP),
+              paid_on: z.string().optional(),
+              category: z.string().optional(),
+              payer: z.string().optional(),
+              split: z
+                .union([z.literal("everyone"), z.literal("none"), z.array(z.string())])
+                .optional(),
+              ...placeRef,
+              note: z.string().optional(),
+              private: z.boolean().optional(),
+            }),
+            annotations: CHANGE,
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiUpdateExpense(
+                supabase,
+                ctx,
+                {
+                  id: a.id,
+                  amount: a.amount,
+                  currency: a.currency,
+                  rateToSettlementCurrency: a.rate_to_settlement_currency,
+                  paidAt: a.paid_at,
+                  paidOn: a.paid_on,
+                  category: a.category,
+                  payer: a.payer,
+                  split: a.split,
+                  place: { place: a.place, googlePlaceId: a.google_place_id },
+                  note: a.note,
+                  private: a.private,
+                },
+                placesApiKey,
+              ),
+            ),
+        );
+
+        server.registerTool(
+          "delete_item",
+          {
+            description:
+              "Delete an event (or transit), place, to-do or expense. Use the id from get_trip. If the user's request could match more than one item, ask which one first. The reply contains what was deleted, so it can be added again if the user changes their mind.",
+            inputSchema: z.object({
+              trip_id: tripId,
+              type: z.enum(["event", "place", "todo", "expense"]),
+              id: z.string(),
+            }),
+            annotations: { ...CHANGE, idempotentHint: false },
+          },
+          async (a) =>
+            withTrip(a.trip_id, (ctx) =>
+              aiDeleteItem(supabase, ctx, { type: a.type, id: a.id }),
             ),
         );
 

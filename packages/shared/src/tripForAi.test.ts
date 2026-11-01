@@ -104,11 +104,11 @@ describe("tripForAi", () => {
     expect(transit).toBeGreaterThan(-1);
     expect(sunset).toBeGreaterThan(transit);
     expect(md).toContain(
-      "- 2027-08-10 20:55 (UTC+09:00 Asia/Tokyo) → 2027-08-10 09:25 (UTC-10:00 Pacific/Honolulu) [transit] 成田 → ホノルル (from 成田国際空港 to ダニエル・K・イノウエ国際空港) — participants: everyone",
+      "- 2027-08-10 20:55 (UTC+09:00 Asia/Tokyo) → 2027-08-10 09:25 (UTC-10:00 Pacific/Honolulu) [transit] 成田 → ホノルル (from 成田国際空港 to ダニエル・K・イノウエ国際空港) — participants: everyone (id: e1)",
     );
     // 移動の後の日は、到着地のタイムゾーンと時差が付く（AI が同じ形で書き込めるように）。
     expect(md).toContain(
-      "- 18:30–19:30 (UTC-10:00 Pacific/Honolulu) ワイキキで夕日を見る — participants: はな",
+      "- 18:30–19:30 (UTC-10:00 Pacific/Honolulu) ワイキキで夕日を見る — participants: はな (id: e2)",
     );
   });
 
@@ -134,7 +134,7 @@ describe("tripForAi", () => {
       ],
     } as unknown as Rows);
     expect(md).toContain(
-      "- 2027-08-11 08:00 12.5 USD (≈ 1875 JPY) — 飲食 — paid by たけ — split among everyone",
+      "- 2027-08-11 08:00 12.5 USD (≈ 1875 JPY) — 飲食 — paid by たけ — split among everyone (id: x1)",
     );
     expect(md).toContain("  - note: 朝食");
   });
@@ -158,7 +158,7 @@ describe("tripForAi", () => {
       notesRaw: [{ id: "n1", body: "集合は 7:00", visibility: "private" }],
     } as unknown as Rows);
     expect(md).toContain(
-      "- [ ] ESTA を申請 — before the trip — priority: high — assignee: everyone — done by: たけ [private: only you can see this]",
+      "- [ ] ESTA を申請 — before the trip — priority: high — assignee: everyone — done by: たけ [private: only you can see this] (id: td1)",
     );
     expect(md).toContain("### Private note (only you can see this)\n集合は 7:00");
   });
@@ -172,8 +172,8 @@ describe("tripForAi", () => {
       ],
     } as unknown as Rows);
     expect(md.indexOf("### Decided")).toBeLessThan(md.indexOf("ハレクラニ"));
-    expect(md).toContain("- ハレクラニ (location not set)");
+    expect(md).toContain("- ハレクラニ (location not set) (id: p2)");
     expect(md.indexOf("### Candidates")).toBeLessThan(md.indexOf("ハナウマ湾"));
-    expect(md).toContain("- ハナウマ湾 — Honolulu, HI");
+    expect(md).toContain("- ハナウマ湾 — Honolulu, HI (id: p1)");
   });
 });

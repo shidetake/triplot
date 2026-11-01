@@ -88,6 +88,11 @@ export function tripForAi(rows: Rows): string {
   const out: string[] = [];
   out.push(`# ${trip.title}`);
   out.push("");
+  // id は AI が変える・消す時に指すためのもの。利用者は知らないので見せない。
+  out.push(
+    "(Each item ends with an id for update_* and delete_item. The ids are internal: never show them to the user. If a request could match more than one item, ask the user which one before changing or deleting.)",
+  );
+  out.push("");
   out.push(
     `- Dates: ${trip.start_date ?? "(not set)"} – ${trip.end_date ?? "(not set)"}`,
   );
@@ -175,7 +180,7 @@ export function tripForAi(rows: Rows): string {
       ? "everyone"
       : list((e.event_participants ?? []).map((p) => nameOf(p.member_id)));
     out.push(
-      `- ${when} ${e.kind === "transit" ? "[transit] " : ""}${oneLine(e.title)}${where} — participants: ${who}${privateMark(e.visibility)}`,
+      `- ${when} ${e.kind === "transit" ? "[transit] " : ""}${oneLine(e.title)}${where} — participants: ${who}${privateMark(e.visibility)} (id: ${e.id})`,
     );
     if (oneLine(e.note)) out.push(`  - note: ${oneLine(e.note)}`);
   }
@@ -198,7 +203,7 @@ export function tripForAi(rows: Rows): string {
         [p.locality, p.region].filter(Boolean).join(", "),
       );
       out.push(
-        `- ${oneLine(p.name)}${area ? ` — ${area}` : ""}${p.lat === null ? " (location not set)" : ""}${privateMark(p.visibility)}`,
+        `- ${oneLine(p.name)}${area ? ` — ${area}` : ""}${p.lat === null ? " (location not set)" : ""}${privateMark(p.visibility)} (id: ${p.id})`,
       );
       if (oneLine(p.note)) out.push(`  - note: ${oneLine(p.note)}`);
     }
@@ -240,7 +245,7 @@ export function tripForAi(rows: Rows): string {
         ? dateOf(x.paid_at)
         : zoned(x.paid_at, paidTz);
     out.push(
-      `- ${paid} ${amount}${converted} — ${category} — paid by ${nameOf(x.payer_member_id)} — ${split}${place ? ` — @ ${place}` : ""}${privateMark(x.visibility)}`,
+      `- ${paid} ${amount}${converted} — ${category} — paid by ${nameOf(x.payer_member_id)} — ${split}${place ? ` — @ ${place}` : ""}${privateMark(x.visibility)} (id: ${x.id})`,
     );
     if (oneLine(x.note)) out.push(`  - note: ${oneLine(x.note)}`);
   }
@@ -258,7 +263,7 @@ export function tripForAi(rows: Rows): string {
         : "unassigned";
     const doneBy = (t.todo_completions ?? []).map((c) => nameOf(c.member_id));
     out.push(
-      `- [${t.done ? "x" : " "}] ${oneLine(t.title)} — ${t.kind === "onsite" ? "during the trip" : "before the trip"} — priority: ${t.priority} — assignee: ${assignees}${doneBy.length > 0 && !t.done ? ` — done by: ${list(doneBy)}` : ""}${privateMark(t.visibility)}`,
+      `- [${t.done ? "x" : " "}] ${oneLine(t.title)} — ${t.kind === "onsite" ? "during the trip" : "before the trip"} — priority: ${t.priority} — assignee: ${assignees}${doneBy.length > 0 && !t.done ? ` — done by: ${list(doneBy)}` : ""}${privateMark(t.visibility)} (id: ${t.id})`,
     );
   }
 
