@@ -325,6 +325,9 @@ gmp-advanced-marker:focus-visible {
   [role="option"]:not([aria-disabled="true"]),
   [role="tab"]:not([aria-disabled="true"]),
   summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
   label:has(> input:not(:disabled)) {
     cursor: pointer;
   }
