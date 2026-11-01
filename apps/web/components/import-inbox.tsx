@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { Fragment, useState, useTransition } from "react";
 
@@ -322,18 +321,11 @@ export function ImportInbox({
                           </select>
                         </form>
 
-                        {row.assignedTripId ? (
-                          <Link
-                            href={`/trips/${row.assignedTripId}`}
-                            className="text-sm font-medium text-foreground underline underline-offset-2"
-                          >
-                            {t("confirmAtTrip", {
-                              title:
-                                tripTitle.get(row.assignedTripId) ??
-                                t("tripFallback"),
-                            })}
-                          </Link>
-                        ) : (
+                        {/* 割り当て済みの旅行へのリンク（「→ 〇〇で確定」）は置かない。
+                            割当先はセレクトに出ていて、確定は各旅行の画面で行う
+                            （iOS の受信箱と同じ。「確定」と書いてあるのに何も確定
+                            しないリンクだった）。 */}
+                        {!row.assignedTripId && (
                           <span className="rounded bg-amber-100 px-1.5 text-xs text-amber-700 dark:bg-amber-400/20 dark:text-amber-300">
                             {t("needsAssignment")}
                           </span>

@@ -648,8 +648,6 @@
     "noContent": "(no content extracted)",
     "selectTrip": "Select a trip",
     "selectTripPrompt": "Select a trip",
-    "confirmAtTrip": "→ Confirm in {title}",
-    "tripFallback": "trip",
     "needsAssignment": "Needs assignment",
     "mergedSummary": "{count} emails merged",
     "adjustment": "(adjustment)",
