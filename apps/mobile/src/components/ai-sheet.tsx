@@ -160,7 +160,9 @@ export function AiSheet() {
                         )}
                       </View>
                     ))}
-                    <Text style={styles.note}>{t(`${ai.key}Note`)}</Text>
+                    {!!t(`${ai.key}Note`) && (
+                      <Text style={styles.note}>{t(`${ai.key}Note`)}</Text>
+                    )}
                     {ai.help && (
                       <Pressable onPress={() => void Linking.openURL(ai.help)} hitSlop={8}>
                         <Text style={styles.link}>{t("officialHelp")}</Text>

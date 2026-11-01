@@ -112,9 +112,11 @@ export default async function AiPage() {
                       </li>
                     ))}
                   </ol>
-                  <p className="text-xs text-muted-foreground">
-                    {t(`${ai.key}Note`)}
-                  </p>
+                  {t(`${ai.key}Note`) && (
+                    <p className="text-xs text-muted-foreground">
+                      {t(`${ai.key}Note`)}
+                    </p>
+                  )}
                   {ai.help && (
                     <a
                       href={ai.help}

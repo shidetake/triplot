@@ -826,7 +826,7 @@
       "Choose Add a custom app and enter the URL above",
       "Choose Allow on the triplot page"
     ],
-    "geminiNote": "For now this works only when you use Gemini in English, and not with work or school accounts. Once connected, it also works in the Gemini mobile app.",
+    "geminiNote": "Once connected, it also works in the Gemini mobile app.",
     "chatgptSteps": [
       "In Plugins, choose + → Add custom MCP server",
       "Enter the URL above and keep OAuth as the authentication",
@@ -837,7 +837,7 @@
       "Paste the URL above into a Muse chat and ask it to add a connector for it",
       "Choose Connect, then Allow on the triplot page"
     ],
-    "museNote": "For now this works in the US and Canada.",
+    "museNote": "",
     "examplesTitle": "Things to ask",
     "examples": [
       "Day 3 of my Hawaii trip is free in the afternoon. What should we do?",
