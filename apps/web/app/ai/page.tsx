@@ -24,19 +24,22 @@ const AIS = [
   {
     key: "claude",
     name: "Claude",
+    settings: "https://claude.ai/customize/connectors",
     help: "https://support.claude.com/en/articles/11175166-get-started-with-custom-connectors-using-remote-mcp",
   },
   {
     key: "gemini",
     name: "Gemini",
+    settings: "https://gemini.google.com/customize/connectors",
     help: "https://support.google.com/gemini/answer/17209137",
   },
   {
     key: "chatgpt",
     name: "ChatGPT",
+    settings: null,
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
-  { key: "muse", name: "Muse", help: null },
+  { key: "muse", name: "Muse", settings: null, help: null },
 ] as const;
 
 export default async function AiPage() {
@@ -90,8 +93,23 @@ export default async function AiPage() {
                 </summary>
                 <div className="space-y-2 pb-4 text-sm">
                   <ol className="list-decimal space-y-1 pl-5">
-                    {(t.raw(`${ai.key}Steps`) as string[]).map((s) => (
-                      <li key={s}>{s}</li>
+                    {/* 設定の画面を開ける AI は、1つ目の手順をその画面へのリンクにする
+                        （どこを開くかを文章で辿らせない）。 */}
+                    {(t.raw(`${ai.key}Steps`) as string[]).map((s, i) => (
+                      <li key={s}>
+                        {i === 0 && ai.settings ? (
+                          <a
+                            href={ai.settings}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-blue-600 hover:underline dark:text-blue-400"
+                          >
+                            {s}
+                          </a>
+                        ) : (
+                          s
+                        )}
+                      </li>
                     ))}
                   </ol>
                   <p className="text-xs text-muted-foreground">
