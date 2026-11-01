@@ -427,6 +427,13 @@ flowchart TD
 - 幅・位置（`w-full`/`flex-1`/`shrink-0`/`rounded-full` 等）は `className` で渡す。角丸は rounded-md（入力欄と揃う）、**フォーカスは `focus-visible:ring`**（キーボード操作時のリング＝a11y）を Button が担保する。
 - **× 閉じるボタンは `<CloseButton>`**（`components/close-button.tsx`、subtle 色・rounded-full の独自レシピ。`label`/`iconSize`/`className`/`type` を渡せる）。
 
+**押せるものは、マウスの形を手にそろえる**（web）。ボタン・リンク・メニューの行・
+セグメント・開閉の `<summary>`・セレクト（ブラウザ標準の `<select>` も自前のものも）・
+チェックボックスのどれでも同じ形にする（リンクだけ手、メニューの行は
+文字選択の形、のようにばらばらだと、押せるかどうかが形から読めない）。要素ごとに
+`cursor-pointer` を足さず、`globals.css` が押せるものの種類（`button`・`role` 等）で
+決めている。新しく押せる部品を素の `div` で作る時は `role` を付ければ揃う。
+
 **`<Button>` を使う／使わないの境界**（混在は分断ではなく、UIパターンの違い）:
 
 | これは `<Button>` | これは `<Button>` ではない（別パターン） |

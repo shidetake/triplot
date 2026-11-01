@@ -20,6 +20,7 @@ import { deleteAccount, updateDisplayName } from "@triplot/shared/data/account";
 import { fetchUserProfile } from "@triplot/shared/data/reads/trips";
 
 import {
+  BotIcon,
   ChevronIcon,
   EditIcon,
   InfoIcon,
@@ -47,11 +48,13 @@ export function SettingsSheet({
   onDone,
   onOpenFeedback,
   onOpenAbout,
+  onOpenAi,
   onOpenTrip,
 }: {
   onDone: () => void;
   onOpenFeedback: () => void;
   onOpenAbout: () => void;
+  onOpenAi: () => void;
   // 旅行詳細から開いた時だけ渡る。その旅行の設定（旧・歯車が開いていたもの）
   // への行を先頭に出す（web がアカウントメニューに「この旅行 ▸」を差し込むのと
   // 同じ。アカウント〔自分〕と旅行〔対象〕は意味が違うので、同じ並びに混ぜず
@@ -356,6 +359,14 @@ export function SettingsSheet({
           <Pressable onPress={onOpenTrip} style={styles.navRow}>
             <MapIcon size={18} color={theme.mutedForeground} />
             <Text style={styles.navRowLabel}>{t("tripActions.editTrip")}</Text>
+            <ChevronIcon size={16} color={theme.subtleForeground} />
+          </Pressable>
+        )}
+        {/* AI 連携。ゲストは端末に閉じたセッションなので AI につなげない。 */}
+        {!isGuest && (
+          <Pressable onPress={onOpenAi} style={styles.navRow}>
+            <BotIcon size={18} color={theme.mutedForeground} />
+            <Text style={styles.navRowLabel}>{t("ai.menuLink")}</Text>
             <ChevronIcon size={16} color={theme.subtleForeground} />
           </Pressable>
         )}

@@ -104,6 +104,23 @@ input[type="radio"] {
   accent-color: var(--primary);
 }
 
+/* ブラウザ標準のセレクトの ▼ は自前で描く。ブラウザの ▼ は右端にほとんど余白が
+   無く（枠に詰まって切れそうに見える）、ブラウザごとに形も位置も違う。自前の
+   セレクト（Base UI のカテゴリ等。▼ を右 12px に置く）と同じ形・同じ位置・同じ色
+   （subtle-foreground。ライト #9e9e9e / ダーク #424242）にそろえる。 */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-right: 2.25rem;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239e9e9e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 16px 16px;
+}
+.dark select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23424242' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
+
 /* iOS Safari の date/time input は既定 appearance のままだと固有幅を持ち、
    width:100% / min-width:0 を入れてもグリッド/フレックス内で縮まず
    コンテナからはみ出す。appearance を外すと CSS 幅に従う。 */
@@ -313,5 +330,22 @@ gmp-advanced-marker:focus-visible {
   }
   html {
     @apply font-sans;
+  }
+  /* 押せるものはマウスの形を手にそろえる。Tailwind v4 はボタンを矢印に戻し、
+     メニューの行（Base UI の Menu.Item は div）は文字の上で文字選択の形になる
+     ので、リンクの行だけ手になって形がばらばらだった（実機フィードバック）。
+     要素ごとに cursor-pointer を足して回らず、押せるものの種類で決める。 */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemradio"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  summary,
+  select:not(:disabled),
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled),
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
   }
 }

@@ -100,7 +100,6 @@
     "expenseBreakdownTrip": "Trip",
     "expenseSummarySettlement": "Settlement",
     "expenseSummaryAverageRate": "Average rate: {rates}",
-    "importEventHelp": "Drafts extracted from emails. Review and confirm to add them as events.",
     "reservationRefNote": "Confirmation # {ref}"
   },
   "tripTabs": {
@@ -646,10 +645,8 @@
     "emptyState": "No drafts yet. Try forwarding a receipt or booking confirmation to the address above.",
     "unknownMerchant": "(unknown store)",
     "noContent": "(no content extracted)",
-    "selectTrip": "(select a trip)",
+    "selectTrip": "Select a trip",
     "selectTripPrompt": "Select a trip",
-    "confirmAtTrip": "→ Confirm in {title}",
-    "tripFallback": "trip",
     "needsAssignment": "Needs assignment",
     "mergedSummary": "{count} emails merged",
     "adjustment": "(adjustment)",
@@ -805,5 +802,57 @@
     "failed": "Something went wrong. Please try again.",
     "invalidTitle": "This link can't be used",
     "invalidBody": "It has expired or is not valid. Connect again from your AI app."
+  },
+  "ai": {
+    "menuLink": "AI connections",
+    "title": "AI connections",
+    "lead": "Connect triplot to an AI such as ChatGPT or Gemini, and it can look at your trip, help you plan, and add the events and places you decide on straight into the trip. When you change the plan, the AI always reads the latest version.",
+    "urlLabel": "triplot connection URL",
+    "copyUrl": "Copy the URL",
+    "howTo": "How to connect",
+    "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
+    "officialHelp": "Official steps",
+    "claudeSteps": [
+      "Open the add custom connector screen",
+      "Choose Add → Connect, then Allow on the triplot page"
+    ],
+    "geminiSteps": [
+      "Open the app connections settings",
+      "Choose + Custom and enter the URL above",
+      "Choose Allow on the triplot page"
+    ],
+    "chatgptSteps": [
+      "Open the Plugins settings",
+      "Choose Add → Add custom MCP server and enter the URL above (keep OAuth as the authentication)",
+      "Choose Allow on the triplot page"
+    ],
+    "museSteps": [
+      "Copy the request and open Muse",
+      "Send the request (if the box is empty, paste the copied request)",
+      "Choose Connect, then Allow on the triplot page"
+    ],
+    "examplesTitle": "Things to ask",
+    "examples": [
+      "Day 3 of my Hawaii trip is free in the afternoon. What should we do?",
+      "Add Hanauma Bay to the places we're considering",
+      "Add breakfast at 7 am on the 12th",
+      "Add this $80 dinner to expenses, split among everyone",
+      "Which prep to-dos are still open?"
+    ],
+    "connectedTitle": "Connected AI",
+    "connectedEmpty": "No AI is connected yet.",
+    "connectedSince": "Since {date}",
+    "disconnect": "Disconnect",
+    "disconnectConfirmTitle": "Disconnect {name}?",
+    "disconnectConfirmBody": "This AI will no longer be able to read or change your trips. Connect it again to use it.",
+    "disconnected": "Disconnected",
+    "disconnectFailed": "Couldn't disconnect. Please try again.",
+    "noteTitle": "Things to note",
+    "notes": [
+      "The AI uses triplot with your account. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
+      "AI can make mistakes. Check the events and expenses it adds in triplot."
+    ],
+    "disconnectConfirm": "Disconnect",
+    "musePrompt": "Add a connector for this URL: {url}"
   }
 }

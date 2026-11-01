@@ -161,6 +161,18 @@ export default function AppLayout() {
           sheetGrabberVisible: true,
         }}
       />
+      {/* AI 連携。案内が縦に長く、つなぎ方を開くと高さが変わるので、
+          中身に合わせず全高で開く（受信箱と同じ理由。fitToContents だと
+          開くたびに測り直されてスクロールが先頭に戻る）。 */}
+      <Stack.Screen
+        name="trips/ai"
+        options={{
+          headerShown: false,
+          presentation: "formSheet",
+          sheetAllowedDetents: [1],
+          sheetGrabberVisible: true,
+        }}
+      />
       {/* Google マップの法的通知も長大なのでライセンス一覧と同じ決め打ち detent。 */}
       <Stack.Screen
         name="trips/google-notice"

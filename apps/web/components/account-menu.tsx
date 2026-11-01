@@ -9,6 +9,7 @@ import { useState, type ReactNode } from "react";
 import { Menu } from "@base-ui/react/menu";
 
 import {
+  BotIcon,
   LogOutIcon,
   MessageSquareIcon,
   SettingsIcon,
@@ -145,6 +146,14 @@ export function AccountMenu({
     </span>
   );
 
+  // AI 連携（MCP）。ゲストは端末に閉じたセッションなので AI につなげない。
+  const aiRow = !isAnonymous && (
+    <Link href="/ai" className={rowClass}>
+      <BotIcon size={16} className="text-muted-foreground" />
+      {t("ai.menuLink")}
+    </Link>
+  );
+
   // ゲストのときだけ。email 行が出ない位置に置く。
   const upgradeRowIcon = (
     <UserPlusIcon size={16} className="text-muted-foreground" />
@@ -221,6 +230,7 @@ export function AccountMenu({
               )}
               {tripRows}
               {tripRows && <div className="my-1 border-t border-foreground/5" />}
+              {aiRow}
               <button
                 type="button"
                 onClick={(e) => {
@@ -304,6 +314,12 @@ export function AccountMenu({
                   {tripMenu}
                   <div className="my-1 border-t border-foreground/5" />
                 </>
+              )}
+              {!isAnonymous && (
+                <Menu.Item render={<Link href="/ai" />} className={rowClass}>
+                  <BotIcon size={16} className="text-muted-foreground" />
+                  {t("ai.menuLink")}
+                </Menu.Item>
               )}
               <Menu.Item
                 onClick={(e) =>
