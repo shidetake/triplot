@@ -47,13 +47,15 @@ export async function fetchSharedPlaceTrips(
   );
 }
 
-// 旅行に場所を足す。追加フォームを出さないので、公開範囲は共有・メモ無し、
-// アイコンは Google の種類から推測する（iconForSharedPlace）。
+// 旅行に場所を足す。追加フォームを出さないので、既定は決定・共有・メモ無し
+// （AI からの追加は候補か決定か・公開範囲・メモを指定できる）。アイコンは
+// Google の種類から推測する（iconForSharedPlace）。
 // 同じ場所がもう入っていれば足さない（アプリの追加と同じく重複させない）。
 export async function addSharedPlace(
   sb: DB,
   tripId: string,
   c: PlaceCandidate,
+  opts: { tentative?: boolean; visibility?: "shared" | "private"; note?: string } = {},
 ): Promise<Result<"added" | "exists">> {
   const { data: existing, error: existingErr } = await sb
     .from("places")
@@ -72,9 +74,9 @@ export async function addSharedPlace(
 
   const created = await createPlace(sb, tripId, {
     name: c.name,
-    tentative: false,
-    visibility: "shared",
-    note: "",
+    tentative: opts.tentative ?? false,
+    visibility: opts.visibility ?? "shared",
+    note: opts.note ?? "",
     googlePlaceId: c.placeId,
     lat: c.lat,
     lng: c.lng,

@@ -241,6 +241,13 @@ export function WeekCalendar({
   // スクロールとして拾うので、そのままだと寄せ直した位置を上書きされる
   // （ゴースト中に止めるのと同じ考え方）。scrollTo は止めていても効く。
   const [pinching, setPinching] = useState(false);
+  // 今のタッチの間に2本目の指が触れたか。触れたら長押しで予定を作らない・
+  // 動かさない。ピンチの途中で指が止まったり、片方の指を離して残った指が
+  // 止まったりすると長押しが成立し、ピンチのつもりが予定の枠が出ていた
+  // （実機フィードバック）。長押しのジェスチャー自身は2本目の指を数えきれない
+  // （本数の上限は自分の上に載った指しか見ない）ので、本体全体を見ている
+  // ピンチの側で数える。1本目の指が触れた時に戻す。
+  const multiTouchSv = useSharedValue(false);
 
   // **指を動かしている間はレイアウトし直さない。** 毎フレーム hourPx を state に
   // 書くと、時刻線・全ブロック・ガターを JS スレッドで作り直すことになり、実機で
@@ -257,6 +264,41 @@ export function WeekCalendar({
   const zFocalMin = useSharedValue(0);
   const zScrollY = useSharedValue(0);
   const zScale = useSharedValue(1);
+  // **指を離した瞬間を1枚で描き替える**ための、もう1段の変形。
+  //
+  // ピンチ中の伸び縮み（上の zoomScale/zoomTy）は UI スレッドの値で、本物の高さ
+  // （hourPx）と位置（スクロール）は React の描画で変わる。この2つは別々の
+  // タイミングで画面に出るので、離した時に変形を戻すと「古い高さ・変形なし」や
+  // 「新しい高さ・変形あり」の絵が1枚挟まり、表示がばたつく（実機フィードバック）。
+  //
+  // そこで離した時は UI スレッドの変形に触らず、**React の描画の中で打ち消す**。
+  // 新しい高さ・スクロール位置・この打ち消しが同じ描画に乗るので、途中の絵が
+  // 出ない。外側（ピンチの変形）と内側（打ち消し）を合わせると変形なしになり、
+  // 次のピンチは外側を「内側を差し引いた値」で動かす。
+  const [innerZoom, setInnerZoom] = useState({ scale: 1, ty: 0 });
+  const innerScaleSv = useSharedValue(1);
+  const innerTySv = useSharedValue(0);
+  const innerZoomStyle = useMemo(
+    () => ({
+      transformOrigin: "top" as const,
+      transform: [{ translateY: innerZoom.ty }, { scaleY: innerZoom.scale }],
+    }),
+    [innerZoom],
+  );
+  // 文字の打ち消しも2段（外側の分は zoomTextStyle、内側の分はこれ）。
+  const innerTextStyle = useMemo(
+    () => ({
+      transformOrigin: "top" as const,
+      transform: [{ scaleY: 1 / innerZoom.scale }],
+    }),
+    [innerZoom],
+  );
+  // 縦スクロールの位置も描画で渡す（contentOffset。変わった時だけ当たる）。
+  // scrollTo だと、新しい高さとは別の回に当たる。
+  const [scrollTarget, setScrollTarget] = useState({
+    y: 6 * HOUR_PX_MIN,
+    n: 0,
+  });
   useEffect(() => {
     zoomMaxSv.value = maxHourPx(bodyViewportH, HOUR_PX_MIN);
   }, [bodyViewportH, zoomMaxSv]);
@@ -296,10 +338,6 @@ export function WeekCalendar({
     (min: number) => (Math.min(Math.max(min, 0), 1440) / 60) * hourPx,
     [hourPx],
   );
-
-  // ピンチ確定後に当てるスクロール位置。内容の高さが新しい hourPx で描き直された
-  // 後でないと正しくクランプされないので、描画を挟んでから当てる。
-  const pendingScrollY = useRef<number | null>(null);
 
   // 現在のスクロール量（auto-scroll と指位置→グリッド座標の変換に使う）。
   const scrollXRef = useRef(0);
@@ -523,6 +561,7 @@ export function WeekCalendar({
   type GhostTouch = { x: number; y: number; absoluteX: number; absoluteY: number };
   const onGhostStart = useCallback(
     (e: GhostTouch) => {
+      if (multiTouchSv.value) return;
       bodyWrap.current?.measureInWindow((x, y2, w, h) => {
         viewportRef.current = { x, y: y2, w, h };
       });
@@ -552,6 +591,8 @@ export function WeekCalendar({
       }
       setGhost(ghostAt(e.x, e.y));
     },
+    // multiTouchSv は共有値（ref と同じ可変コンテナ）なので依存に入れない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       blockAt,
       eventById,
@@ -565,6 +606,7 @@ export function WeekCalendar({
   );
   const onGhostUpdate = useCallback(
     (e: GhostTouch) => {
+      if (multiTouchSv.value) return;
       dragAbsRef.current = { x: e.absoluteX, y: e.absoluteY };
       const moving = moveRef.current;
       if (moving) {
@@ -593,9 +635,13 @@ export function WeekCalendar({
       }
       updateAutoScroll();
     },
+    // multiTouchSv は共有値（ref と同じ可変コンテナ）なので依存に入れない。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [ghostAt, moveAt, setGhost, setMove, updateAutoScroll],
   );
   const onGhostEnd = useCallback(() => {
+    // 掴んだ後に2本目の指が来た時も、置かずにやめる。
+    if (multiTouchSv.value) return;
     const m = moveRef.current;
     if (m) {
       const ev = eventById.get(m.eventId);
@@ -622,6 +668,7 @@ export function WeekCalendar({
       onSlotPick(col.date, g.startMin);
       hapticDrop();
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [columns, eventById, onEventMove, onSlotPick, snapMin]);
   const onGhostFinalize = useCallback(() => {
     stopAutoScroll();
@@ -637,10 +684,6 @@ export function WeekCalendar({
   // 2本指なので、1本指のスクロール・長押しドラッグとは指の本数で切り分く。
   // 縦スクロールとは同時に成立させる（ピンチ中に scrollTo で寄せ直すため）。
   //
-  // zoomScale/zoomTy/hourPxSv 等は reanimated の SharedValue（ref と同じ可変
-  // コンテナ）で、react-hooks/immutability はまだ区別できないため、この関数の
-  // 中だけ無効化する（places.tsx の applyPickerFocus と同じ対処）。
-  /* eslint-disable react-hooks/immutability */
   // 指を離した時だけ本物の高さに直す（ここだけ React の再描画が走る）。
   const commitZoom = useCallback(() => {
     const next = zoomedHourPx(
@@ -661,44 +704,20 @@ export function WeekCalendar({
     hourPxSv.value = next;
     scrollYRef.current = y2;
     scrollYSv.value = y2;
-    // **scrollTo はここで呼ばない。** setHourPx の再描画で内容の高さ
-    // （24 * hourPx）が変わるが、それが反映されるのは描画後。ここで呼ぶと
-    // 拡大時は「まだ短い内容」に対してクランプされ、狙った位置より手前で
-    // 止まる。新しい高さが確定してから当てる（下の applyPendingScroll）。
-    pendingScrollY.current = y2;
-    // **見えている場所を動かさないまま、実体だけ入れ替える。**
-    //
-    // 指を離した瞬間に変形を消すと、実際の高さが新しくなるのは再描画の後なので、
-    // その間に「古い高さ・変形なし」の絵が1枚出る。さらに位置合わせ（scrollTo）は
-    // もう1つ後なので、「新しい高さ・古い位置」も挟まる。この2枚がちらつきの
-    // 正体（実機フィードバック）。
-    //
-    // 新しい高さは今見えている絵と同じ倍率なので、**ずれているのは位置だけ**。
-    // その差だけ content を動かしておけば、見た目は指を離す前と同じままになる。
-    // 位置合わせが実際に当たった時（下の onContentSizeChange）に 0 へ戻す。
-    zoomScale.value = 1;
-    zoomTy.value = -(y2 - scrollYRef.current);
+    // 外側の変形はそのままにし、内側で打ち消す（innerZoom の説明）。
+    // 外側は y → ty + scale·y なので、内側を y → (y − ty) / scale にすれば
+    // 合わせて変形なしになる。
+    const scale = zoomScale.value;
+    const ty = zoomTy.value;
+    innerScaleSv.value = 1 / scale;
+    innerTySv.value = -ty / scale;
+    setInnerZoom({ scale: 1 / scale, ty: -ty / scale });
+    // 前と同じ値だと当たらないので、回ごとにごくわずかにずらす
+    // （0.001pt は画面に出ない）。
+    setScrollTarget((p) => ({ y: y2 + (p.n % 2) * 0.001, n: p.n + 1 }));
     setPinching(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bodyViewportH]);
-  /* eslint-enable react-hooks/immutability */
-
-  // 保留していた位置へ飛ばす。**内容の高さが実際に変わった合図で当てる**
-  // （onContentSizeChange）。useEffect だと再描画の直後には走るが、ネイティブ側の
-  // 内容の高さがまだ古いことがあり、拡大時は短い内容に対してクランプされて
-  // 狙った位置より手前で止まる。
-  //
-  // 当てると同時に、commitZoom で入れておいた「ずれ打ち消し」を戻す。位置と
-  // 変形が同じ回で入れ替わるので、途中の絵が出ない。
-  const applyPendingScroll = useCallback(() => {
-    const y = pendingScrollY.current;
-    if (y === null) return;
-    pendingScrollY.current = null;
-    verticalScroll.current?.scrollTo({ y, animated: false });
-    // eslint-disable-next-line react-hooks/immutability
-    zoomTy.value = 0;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // 縦ピンチ。**onUpdate は worklet（UI スレッド）**で、共有値を書き換えるだけ。
   // 指の間にある時刻を動かさないよう、拡大と同時に平行移動で引き戻す。
@@ -707,6 +726,10 @@ export function WeekCalendar({
   // イベント時のみ）。
   /* eslint-disable react-hooks/immutability, react-hooks/refs */
   const zoomPinch = Gesture.Pinch()
+    .onTouchesDown((e) => {
+      "worklet";
+      multiTouchSv.value = e.numberOfTouches > 1;
+    })
     .onBegin((e) => {
       "worklet";
       zStartHourPx.value = hourPxSv.value;
@@ -727,10 +750,14 @@ export function WeekCalendar({
       );
       const s2 = target / zStartHourPx.value;
       zScale.value = e.scale;
-      zoomScale.value = s2;
       // 焦点の内容座標（拡大前）。拡大後にここが同じ高さへ来るよう戻す。
       const y0 = (zFocalMin.value / 60) * zStartHourPx.value;
-      zoomTy.value = zFocalY.value - (y0 * s2 - zScrollY.value);
+      const ty = zFocalY.value - (y0 * s2 - zScrollY.value);
+      // 見せたいのは「y → ty + s2·y」。内側の打ち消し（y → innerTy +
+      // innerScale·y）が先にかかるので、外側はそれを差し引いた値にする。
+      const outer = s2 / innerScaleSv.value;
+      zoomScale.value = outer;
+      zoomTy.value = ty - outer * innerTySv.value;
     })
     .onFinalize(() => {
       "worklet";
@@ -1084,8 +1111,9 @@ export function WeekCalendar({
       <GestureDetector gesture={zoomPinch}>
       <ScrollView
         ref={verticalScroll}
-        // 初回の表示位置（6時を先頭に）。以後の位置合わせは scrollTo が持つ。
-        contentOffset={{ x: 0, y: 6 * HOUR_PX_MIN }}
+        // 初回の表示位置（6時を先頭に）と、ピンチで縮尺を変えた後の位置。
+        // 新しい高さと同じ描画で当てる（innerZoom の説明）。
+        contentOffset={{ x: 0, y: scrollTarget.y }}
         showsVerticalScrollIndicator={false}
         scrollEnabled={ghost == null && move == null && !pinching}
         onScroll={(e) => {
@@ -1101,7 +1129,6 @@ export function WeekCalendar({
           scrollYSv.value = e.nativeEvent.contentOffset.y;
         }}
         scrollEventThrottle={16}
-        onContentSizeChange={applyPendingScroll}
         // NativeTabs（iOS 26 Liquid Glass の浮島タブバー）は画面下端に重なって
         // 浮くだけでレイアウト上の余白を確保しない（index.tsx の FAB と同じ
         // 事情。タブバー上端は画面下端から実測 約83pt）。末尾（21〜24時）が
@@ -1111,16 +1138,19 @@ export function WeekCalendar({
         // 24:00 の下に空白が見えてしまう＝実機フィードバックで判明）。
         contentContainerStyle={SCROLL_CONTENT_STYLE}
       >
-        <Animated.View style={[styles.bodyRow, zoomStyle]}>
+        <Animated.View style={zoomStyle}>
+        <View style={[styles.bodyRow, innerZoomStyle]}>
           {/* 時刻ガター（固定・縦だけスクロール） */}
           <View style={{ width: GUTTER, height: bodyH }}>
             {Array.from({ length: 24 }, (_, h) => (
-              <Animated.View
+              <View
                 key={h}
-                style={[styles.gutterHour, { top: h * hourPx }, zoomTextStyle]}
+                style={[styles.gutterHour, { top: h * hourPx }, innerTextStyle]}
               >
-                <Text style={styles.gutterLabel}>{h}:00</Text>
-              </Animated.View>
+                <Animated.View style={zoomTextStyle}>
+                  <Text style={styles.gutterLabel}>{h}:00</Text>
+                </Animated.View>
+              </View>
             ))}
           </View>
 
@@ -1192,6 +1222,7 @@ export function WeekCalendar({
                       },
                     ]}
                   >
+                    <View style={innerTextStyle}>
                     <Animated.View style={zoomTextStyle}>
                       {/* 開始時刻を先頭に（本家 Google カレンダーと同じ並び）。
                           先頭でも強調はしない＝見た目は従来の eventTime のまま。
@@ -1258,6 +1289,7 @@ export function WeekCalendar({
                           </Text>
                         ))}
                     </Animated.View>
+                    </View>
                   </Pressable>
                 );
               })}
@@ -1338,6 +1370,7 @@ export function WeekCalendar({
                     >
                       {/* 時刻→タイトル→場所→メモの優先度（timed ブロックと同じ）。
                           mixed は右肩に参加者ドット（web の時差移動と同じ）。 */}
+                      <View style={innerTextStyle}>
                       <Animated.View style={zoomTextStyle}>
                         <View style={styles.timeRow}>
                           <Text style={[styles.eventTime, { color: col.text }]}>
@@ -1367,6 +1400,7 @@ export function WeekCalendar({
                             </Text>
                           ))}
                       </Animated.View>
+                      </View>
                     </Pressable>
                   );
                 });
@@ -1440,6 +1474,7 @@ export function WeekCalendar({
             </View>
             </GestureDetector>
           </ScrollView>
+        </View>
         </Animated.View>
       </ScrollView>
       </GestureDetector>
