@@ -1,5 +1,6 @@
 import { createMcpHandler, McpServer } from "@modelcontextprotocol/server";
 import { pipeline } from "@supabase/middleware";
+import { after } from "next/server";
 import {
   fromSupabaseUrl,
   withOAuthProtectedResource,
@@ -132,9 +133,34 @@ const handle = pipeline(
         { status: 401 },
       );
     }
+    // 連携ごとに最後に使われた日時を残す（AI 連携のページと管理ページに出す）。
+    // 道具の一覧を読むだけの呼び出しも数える。AI 側でコネクタを消すと何も
+    // 来なくなるので、見分けたい「もう使われていない連携」はこれで分かる。
+    // 応答を待たせないよう、返した後に書く。
+    const clientId = jwtClaims.client_id;
+    after(async () => {
+      await supabase.from("ai_client_usage").upsert({
+        user_id: userClaims!.id,
+        client_id: clientId,
+        last_used_at: new Date().toISOString(),
+      });
+    });
     const handler = createMcpHandler(
       () => {
-        const server = new McpServer({ name: "triplot", version: "0.1.0" });
+        // アイコンを名乗っておく。名乗らないと AI 側がドメインのファビコンを
+        // 外から引いて出し、その引き先に古いもの（作り始めの Vercel の▲）が
+        // 残っていると、それが出る（Claude で実際に起きた）。
+        const server = new McpServer({
+          name: "triplot",
+          version: "0.1.0",
+          icons: [
+            {
+              src: `${new URL(req.url).origin}/icon.png`,
+              mimeType: "image/png",
+              sizes: ["512x512"],
+            },
+          ],
+        });
 
         server.registerTool(
           "list_trips",

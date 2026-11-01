@@ -127,6 +127,24 @@ export type Database = {
           },
         ]
       }
+      ai_client_usage: {
+        Row: {
+          client_id: string
+          last_used_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          last_used_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          last_used_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_usage_daily: {
         Row: {
           day: string
@@ -1266,6 +1284,15 @@ export type Database = {
     Functions: {
       acquire_note_lock: { Args: { p_note_id: string }; Returns: Json }
       admin_active_user_count: { Args: never; Returns: number }
+      admin_ai_connections: {
+        Args: never
+        Returns: {
+          client_name: string
+          granted_at: string
+          last_used_at: string
+          user_id: string
+        }[]
+      }
       admin_ai_cost_daily: {
         Args: { p_since: string }
         Returns: {
