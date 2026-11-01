@@ -852,7 +852,7 @@
     "disconnectFailed": "Couldn't disconnect. Please try again.",
     "noteTitle": "Things to note",
     "notes": [
-      "The AI uses triplot as you. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
+      "The AI uses triplot with your account. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
       "AI can make mistakes. Check the events and expenses it adds in triplot."
     ],
     "disconnectConfirm": "Disconnect",
