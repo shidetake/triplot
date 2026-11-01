@@ -809,7 +809,7 @@
   "ai": {
     "menuLink": "AI 連携",
     "title": "AI 連携",
-    "lead": "Claude や Gemini などの AI に triplot をつなぐと、AI が旅行の中身を見ながら相談に乗り、決まった予定や行きたい場所をそのまま旅行に入れてくれます。計画を直しても、AI はいつも最新の中身を読みます。",
+    "lead": "ChatGPT や Gemini などの AI に triplot をつなぐと、AI が旅行の中身を見ながら相談に乗り、決まった予定や行きたい場所をそのまま旅行に入れてくれます。計画を直しても、AI はいつも最新の中身を読みます。",
     "urlLabel": "triplot の接続先",
     "copyUrl": "接続先をコピー",
     "howTo": "連携方法",
