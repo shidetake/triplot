@@ -34,7 +34,7 @@ const AIS = [
     name: "ChatGPT",
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },
-  { key: "muse", name: "Meta Muse", help: null },
+  { key: "muse", name: "Muse", help: null },
 ] as const;
 
 export default async function AiPage() {
