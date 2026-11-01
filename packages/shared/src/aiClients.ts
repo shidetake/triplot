@@ -21,7 +21,8 @@ export function aiClientName(registered: string | null | undefined): string | nu
 //
 // - setup: 1つ目の手順のリンク先（接続先の URL を受け取って作る）。Claude は
 //   名前と接続先を入れた状態で追加の画面が開く（公式の説明は無いが、実際に
-//   開くことを確かめた）。Gemini は連携の設定の画面まで。
+//   開くことを確かめた）。ChatGPT と Gemini は連携の設定の画面まで（入力済みで
+//   開く口が無い）。
 // - prompt: チャットで頼んで足す AI（Muse）。頼む文をコピーするボタンを出す。
 // - help: 各社の公式の手順。
 export type AiGuide = {
@@ -37,7 +38,7 @@ export const AI_GUIDES: readonly AiGuide[] = [
   {
     key: "chatgpt",
     name: "ChatGPT",
-    setup: null,
+    setup: () => "https://chatgpt.com/plugins",
     prompt: false,
     help: "https://help.openai.com/en/articles/12584461-developer-mode-and-mcp-apps-in-chatgpt",
   },

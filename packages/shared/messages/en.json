@@ -827,8 +827,8 @@
     ],
     "geminiNote": "Once connected, it also works in the Gemini mobile app.",
     "chatgptSteps": [
-      "In Plugins, choose + → Add custom MCP server",
-      "Enter the URL above and keep OAuth as the authentication",
+      "Open the Plugins settings",
+      "Choose + → Add custom MCP server and enter the URL above (keep OAuth as the authentication)",
       "Choose Allow on the triplot page"
     ],
     "chatgptNote": "For now this works in ChatGPT Business, Enterprise and Edu workspaces (Pro can only read).",
