@@ -314,4 +314,18 @@ gmp-advanced-marker:focus-visible {
   html {
     @apply font-sans;
   }
+  /* 押せるものはマウスの形を手にそろえる。Tailwind v4 はボタンを矢印に戻し、
+     メニューの行（Base UI の Menu.Item は div）は文字の上で文字選択の形になる
+     ので、リンクの行だけ手になって形がばらばらだった（実機フィードバック）。
+     要素ごとに cursor-pointer を足して回らず、押せるものの種類で決める。 */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  [role="menuitem"]:not([aria-disabled="true"]),
+  [role="menuitemradio"]:not([aria-disabled="true"]),
+  [role="option"]:not([aria-disabled="true"]),
+  [role="tab"]:not([aria-disabled="true"]),
+  summary,
+  label:has(> input:not(:disabled)) {
+    cursor: pointer;
+  }
 }
