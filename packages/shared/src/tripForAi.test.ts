@@ -55,7 +55,7 @@ describe("tripForAi", () => {
     expect(md).toContain("(no notes)");
   });
 
-  it("writes transit with the time zone of each end, and other events as wall-clock times", () => {
+  it("writes times with the UTC offset and time zone the itinerary gives them", () => {
     const md = tripForAi({
       ...base,
       placesRaw: [
@@ -78,6 +78,8 @@ describe("tripForAi", () => {
           note: null,
           participants_everyone: false,
           event_participants: [{ member_id: "m2" }],
+          tz_disambig_transit_id: null,
+          tz_disambig_side: null,
         },
         {
           id: "e1",
@@ -102,9 +104,12 @@ describe("tripForAi", () => {
     expect(transit).toBeGreaterThan(-1);
     expect(sunset).toBeGreaterThan(transit);
     expect(md).toContain(
-      "- 20:55 (Asia/Tokyo) → 2027-08-10 09:25 (Pacific/Honolulu) [transit] 成田 → ホノルル (from 成田国際空港 to ダニエル・K・イノウエ国際空港) — participants: everyone",
+      "- 2027-08-10 20:55 (UTC+09:00 Asia/Tokyo) → 2027-08-10 09:25 (UTC-10:00 Pacific/Honolulu) [transit] 成田 → ホノルル (from 成田国際空港 to ダニエル・K・イノウエ国際空港) — participants: everyone",
     );
-    expect(md).toContain("- 18:30–19:30 ワイキキで夕日を見る — participants: はな");
+    // 移動の後の日は、到着地のタイムゾーンと時差が付く（AI が同じ形で書き込めるように）。
+    expect(md).toContain(
+      "- 18:30–19:30 (UTC-10:00 Pacific/Honolulu) ワイキキで夕日を見る — participants: はな",
+    );
   });
 
   it("converts foreign-currency expenses and names the payer and split", () => {
@@ -142,6 +147,7 @@ describe("tripForAi", () => {
           id: "td1",
           title: "ESTA を申請",
           priority: "high",
+          kind: "prep",
           done: false,
           assignee_everyone: true,
           visibility: "private",
@@ -152,7 +158,7 @@ describe("tripForAi", () => {
       notesRaw: [{ id: "n1", body: "集合は 7:00", visibility: "private" }],
     } as unknown as Rows);
     expect(md).toContain(
-      "- [ ] ESTA を申請 — priority: high — assignee: everyone — done by: たけ [private: only you can see this]",
+      "- [ ] ESTA を申請 — before the trip — priority: high — assignee: everyone — done by: たけ [private: only you can see this]",
     );
     expect(md).toContain("### Private note (only you can see this)\n集合は 7:00");
   });
