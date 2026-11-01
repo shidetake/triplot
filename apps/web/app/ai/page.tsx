@@ -90,11 +90,6 @@ export default async function AiPage() {
                       </li>
                     ))}
                   </ol>
-                  {t(`${ai.key}Note`) && (
-                    <p className="text-xs text-muted-foreground">
-                      {t(`${ai.key}Note`)}
-                    </p>
-                  )}
                   {ai.prompt && (
                     <CopyText
                       text={t("musePrompt", { url })}
