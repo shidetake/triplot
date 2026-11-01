@@ -143,7 +143,11 @@ export function AiSheet() {
                         ) : i === 0 && ai.setup ? (
                           <Text
                             style={[styles.stepText, styles.linkStep]}
-                            onPress={() => void Linking.openURL(ai.setup!(url))}
+                            onPress={() => {
+                              // 入力済みで開けない AI は、開いた先で貼れるよう接続先をコピーしておく。
+                              const open = () => Linking.openURL(ai.setup!(url));
+                              void (ai.copiesUrl ? Clipboard.setStringAsync(url).then(open) : open());
+                            }}
                             accessibilityRole="link"
                           >
                             {s}
