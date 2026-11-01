@@ -75,7 +75,13 @@ export default async function AiPage() {
                         （どこを開くかを文章で辿らせない）。 */}
                     {(t.raw(`${ai.key}Steps`) as string[]).map((s, i) => (
                       <li key={s}>
-                        {i === 0 && ai.setup ? (
+                        {i === 0 && ai.chat ? (
+                          <CopyAndOpen
+                            text={t("musePrompt", { url })}
+                            href={ai.chat(t("musePrompt", { url }))}
+                            label={s}
+                          />
+                        ) : i === 0 && ai.setup ? (
                           <a
                             href={ai.setup(url)}
                             target="_blank"
@@ -90,13 +96,6 @@ export default async function AiPage() {
                       </li>
                     ))}
                   </ol>
-                  {ai.chat && (
-                    <CopyAndOpen
-                      text={t("musePrompt", { url })}
-                      href={ai.chat(t("musePrompt", { url }))}
-                      label={t("museCopy")}
-                    />
-                  )}
                   {ai.help && (
                     <a
                       href={ai.help}

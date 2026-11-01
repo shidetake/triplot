@@ -46,7 +46,8 @@ export function McpUrl({ url }: { url: string }) {
   );
 }
 
-// チャットで頼んで足す AI（Muse）の、依頼文をコピーしてチャットを開くボタン。
+// チャットで頼んで足す AI（Muse）の、依頼文をコピーしてチャットを開くリンク。
+// 見た目は他の AI の1つ目の手順と同じテキストのリンク。
 // 依頼文入りで開ける環境（PC の web）ならそのまま送れ、入らない環境（スマホの
 // アプリ）でも貼るだけで済む。開く前にコピーするのは、別のタブ・アプリに
 // 移った後ではコピーできないため。
@@ -68,16 +69,16 @@ export function CopyAndOpen({
     window.open(href, "_blank", "noopener");
   };
   return (
-    <Button
-      type="button"
-      variant="outline"
-      size="sm"
-      onClick={copy}
-      className="gap-1.5"
+    <a
+      href={href}
+      onClick={(e) => {
+        e.preventDefault();
+        void copy();
+      }}
+      className="text-blue-600 hover:underline dark:text-blue-400"
     >
-      <CopyIcon size={16} />
       {label}
-    </Button>
+    </a>
   );
 }
 

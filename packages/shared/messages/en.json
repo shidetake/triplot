@@ -830,7 +830,8 @@
       "Choose Allow on the triplot page"
     ],
     "museSteps": [
-      "Open Muse with the button below and send the request (if the box is empty, paste the copied request)",
+      "Open Muse with the request",
+      "Send the request (if the box is empty, paste the copied request)",
       "Choose Connect, then Allow on the triplot page"
     ],
     "examplesTitle": "Things to ask",
@@ -855,7 +856,6 @@
       "AI can make mistakes. Check the events and expenses it adds in triplot."
     ],
     "disconnectConfirm": "Disconnect",
-    "museCopy": "Copy the request and open Muse",
     "musePrompt": "Add a connector for this URL: {url}"
   }
 }
