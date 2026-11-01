@@ -5,6 +5,8 @@ import { useState } from "react";
 import { Alert, Linking, Pressable, StyleSheet, Text, View } from "react-native";
 import { useFormatter, useTranslations } from "use-intl";
 
+import { aiClientName } from "@triplot/shared/aiClients";
+
 import { ChevronIcon, CopyIcon } from "@/components/icons";
 import { SheetTitle } from "@/components/sheet-title";
 import { toast } from "@/components/toast";
@@ -62,7 +64,7 @@ export function AiSheet() {
       if (error) throw error;
       return (data ?? []).map((g) => ({
         clientId: g.client.id,
-        name: g.client.name || g.client.id,
+        name: aiClientName(g.client.name) ?? g.client.id,
         grantedAt: g.granted_at,
       }));
     },

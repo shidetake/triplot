@@ -854,11 +854,10 @@
     "disconnectConfirmBody": "This AI will no longer be able to read or change your trips. Connect it again to use it.",
     "disconnected": "Disconnected",
     "disconnectFailed": "Couldn't disconnect. Please try again.",
-    "noteTitle": "Good to know",
+    "noteTitle": "Things to note",
     "notes": [
       "The AI uses triplot as you. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
-      "AI can make mistakes. Check the events and expenses it adds in triplot.",
-      "You can disconnect an AI from the list above at any time."
+      "AI can make mistakes. Check the events and expenses it adds in triplot."
     ],
     "disconnectConfirm": "Disconnect"
   }

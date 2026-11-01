@@ -1,4 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server";
+
+import { aiClientName } from "@triplot/shared/aiClients";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -135,7 +137,7 @@ export default async function AiPage() {
                 >
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-medium">
-                      {g.client.name || g.client.id}
+                      {aiClientName(g.client.name) ?? g.client.id}
                     </div>
                     <div className="text-xs text-muted-foreground">
                       {t("connectedSince", {
@@ -145,7 +147,7 @@ export default async function AiPage() {
                   </div>
                   <DisconnectAiButton
                     clientId={g.client.id}
-                    name={g.client.name || g.client.id}
+                    name={aiClientName(g.client.name) ?? g.client.id}
                   />
                 </li>
               ))}
