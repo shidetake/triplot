@@ -828,7 +828,7 @@
     "geminiNote": "一度つなげば、スマホの Gemini アプリでも使えます。",
     "chatgptSteps": [
       "プラグインの設定を開く",
-      "「＋」→「カスタム MCP サーバーを追加」で、上の接続先を入れる（認証は OAuth のまま）",
+      "「追加」→「カスタム MCP サーバーを追加」で、上の接続先を入れる（認証は OAuth のまま）",
       "triplot の画面で「許可する」を押す"
     ],
     "chatgptNote": "今は ChatGPT の Business・Enterprise・Edu のワークスペースで使えます（Pro は読むだけ）。",
