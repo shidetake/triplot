@@ -46,6 +46,31 @@ export function McpUrl({ url }: { url: string }) {
   );
 }
 
+// チャットで頼んで足す AI（Muse）に送る文をコピーするボタン。
+export function CopyText({ text, label }: { text: string; label: string }) {
+  const tCommon = useTranslations("common");
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast(tCommon("copied"));
+    } catch {
+      // クリップボード不可の環境は無視
+    }
+  };
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={copy}
+      className="gap-1.5"
+    >
+      <CopyIcon size={16} />
+      {label}
+    </Button>
+  );
+}
+
 export function DisconnectAiButton({
   clientId,
   name,

@@ -816,9 +816,8 @@
     "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
-      "Open the Connectors settings",
-      "Choose + Add → Add custom connector, and enter triplot as the name and the URL above",
-      "Choose Connect, then Allow on the triplot page"
+      "Add to Claude (opens with the name and URL filled in)",
+      "Choose Add → Connect, then Allow on the triplot page"
     ],
     "claudeNote": "On the Free plan you can add one custom connector.",
     "geminiSteps": [
@@ -834,7 +833,7 @@
     ],
     "chatgptNote": "For now this works in ChatGPT Business, Enterprise and Edu workspaces (Pro can only read).",
     "museSteps": [
-      "Paste the URL above into a Muse chat and ask it to add a connector for it",
+      "Copy the request with the button below and send it in a Muse chat",
       "Choose Connect, then Allow on the triplot page"
     ],
     "museNote": "",
@@ -859,6 +858,8 @@
       "The AI uses triplot as you. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
       "AI can make mistakes. Check the events and expenses it adds in triplot."
     ],
-    "disconnectConfirm": "Disconnect"
+    "disconnectConfirm": "Disconnect",
+    "museCopy": "Copy the request",
+    "musePrompt": "Add a connector for this URL: {url}"
   }
 }
