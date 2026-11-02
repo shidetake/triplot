@@ -1,4 +1,4 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 
 import { AI_GUIDES, aiClientName } from "@triplot/shared/aiClients";
 import { headers } from "next/headers";
@@ -6,12 +6,16 @@ import { redirect } from "next/navigation";
 
 import { AppHeader } from "@/components/app-header";
 import { ChevronIcon } from "@/components/icons";
-import { InlineDivider } from "@/components/inline-divider";
 import { mcpUrl } from "@/lib/mcp-url";
 import { getAuthUser } from "@/lib/supabase/auth-user";
 import { createClient } from "@/lib/supabase/server";
 
-import { CopyAndOpen, DisconnectAiButton, McpUrl } from "./ai-client";
+import {
+  CopyAndOpen,
+  DisconnectAiButton,
+  GrantDates,
+  McpUrl,
+} from "./ai-client";
 
 // AI 連携（MCP）の案内と、連携している AI の一覧と解除。要ログイン。
 //
@@ -25,11 +29,7 @@ export default async function AiPage() {
   const user = await getAuthUser();
   if (!user) redirect("/");
 
-  const [t, locale, h] = await Promise.all([
-    getTranslations("ai"),
-    getLocale(),
-    headers(),
-  ]);
+  const [t, h] = await Promise.all([getTranslations("ai"), headers()]);
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto = h.get("x-forwarded-proto") ?? "https";
   const url = mcpUrl(`${proto}://${host}`);
@@ -46,11 +46,6 @@ export default async function AiPage() {
   const lastUsed = new Map(
     (usage ?? []).map((u) => [u.client_id, u.last_used_at]),
   );
-  const date = new Intl.DateTimeFormat(locale, {
-    year: "numeric",
-    month: "numeric",
-    day: "numeric",
-  });
 
   return (
     <>
@@ -147,23 +142,10 @@ export default async function AiPage() {
                     <div className="truncate text-sm font-medium">
                       {aiClientName(g.client.name) ?? g.client.id}
                     </div>
-                    <div className="flex flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-                      <span>
-                        {t("connectedSince", {
-                          date: date.format(new Date(g.granted_at)),
-                        })}
-                      </span>
-                      <InlineDivider />
-                      <span>
-                        {lastUsed.has(g.client.id)
-                          ? t("lastUsed", {
-                              date: date.format(
-                                new Date(lastUsed.get(g.client.id)!),
-                              ),
-                            })
-                          : t("notUsedYet")}
-                      </span>
-                    </div>
+                    <GrantDates
+                      grantedAt={g.granted_at}
+                      lastUsedAt={lastUsed.get(g.client.id) ?? null}
+                    />
                   </div>
                   <DisconnectAiButton
                     clientId={g.client.id}
