@@ -744,7 +744,7 @@
     "diagnosticsNote": "動作環境（ブラウザ・OS等）も参考情報として送信されます。",
     "sent": "フィードバックを送信しました",
     "sendFailed": "送信に失敗しました。",
-    "emailSubject": "【triplot】フィードバックを受け付けました",
+    "emailSubject": "【Triplot】フィードバックを受け付けました",
     "emailIntro": "フィードバックありがとうございます。以下の内容で受け付けました。",
     "emailOutro": "内容を確認のうえ、必要に応じて対応します。"
   },
@@ -790,13 +790,13 @@
     "version": "バージョン {version} ({build})"
   },
   "oauthConsent": {
-    "title": "AI に triplot をつなぐ",
-    "signInFirst": "つなぐには、triplot にログインしてください。",
-    "request": "<b>{client}</b> が、あなたの triplot につなごうとしています。",
+    "title": "AI に Triplot をつなぐ",
+    "signInFirst": "つなぐには、Triplot にログインしてください。",
+    "request": "<b>{client}</b> が、あなたの Triplot につなごうとしています。",
     "unnamedClient": "名前のないアプリ",
     "returnsTo": "接続先",
     "signedInAs": "ログイン中のアカウント",
-    "grants": "許可すると、このアプリはあなたとして triplot の旅行を読み書きできるようになります。あなたが見られる予定・場所・費用・TODO・ノート（自分だけのものも含む）が対象です。",
+    "grants": "許可すると、このアプリはあなたとして Triplot の旅行を読み書きできるようになります。あなたが見られる予定・場所・費用・TODO・ノート（自分だけのものも含む）が対象です。",
     "checkHost": "使っている AI の接続先と一致しているか確かめてください。心当たりがなければ拒否してください。",
     "approve": "許可する",
     "deny": "拒否",
@@ -807,30 +807,30 @@
   "ai": {
     "menuLink": "AI 連携",
     "title": "AI 連携",
-    "lead": "ChatGPT や Gemini などの AI に triplot をつなぐと、AI が旅行の中身を見ながら相談に乗り、決まった予定や行きたい場所をそのまま旅行に入れてくれます。計画を直しても、AI はいつも最新の中身を読みます。",
-    "urlLabel": "triplot の接続先",
+    "lead": "ChatGPT や Gemini などの AI に Triplot をつなぐと、AI が旅行の中身を見ながら相談に乗り、決まった予定や行きたい場所をそのまま旅行に入れてくれます。計画を直しても、AI はいつも最新の中身を読みます。",
+    "urlLabel": "Triplot の接続先",
     "copyUrl": "接続先をコピー",
     "howTo": "連携方法",
-    "howToLead": "ご利用中の AI の設定で、カスタムコネクタとして上の接続先を登録します。登録の途中で triplot の画面が開くので、「許可する」を押せば完了です。",
+    "howToLead": "ご利用中の AI の設定で、カスタムコネクタとして上の接続先を登録します。登録の途中で Triplot の画面が開くので、「許可する」を押せば完了です。",
     "officialHelp": "公式の手順",
     "claudeSteps": [
       "カスタムコネクタの追加画面を開く",
-      "「追加」→「連携」を押し、triplot の画面で「許可する」を押す"
+      "「追加」→「連携」を押し、Triplot の画面で「許可する」を押す"
     ],
     "geminiSteps": [
       "接続先をコピーしてアプリ連携の設定を開く",
       "「＋カスタム」で、コピーした接続先を貼る",
-      "triplot の画面で「許可する」を押す"
+      "Triplot の画面で「許可する」を押す"
     ],
     "chatgptSteps": [
       "接続先をコピーしてプラグインの設定を開く",
       "「追加」→「カスタム MCP サーバーを追加」で、コピーした接続先を貼る（認証は OAuth のまま）",
-      "triplot の画面で「許可する」を押す"
+      "Triplot の画面で「許可する」を押す"
     ],
     "museSteps": [
       "依頼文をコピーして Muse を開く",
       "依頼文を送る（入力欄が空ならコピー済みの依頼文を貼る）",
-      "「接続」を押し、triplot の画面で「許可する」を押す"
+      "「接続」を押し、Triplot の画面で「許可する」を押す"
     ],
     "examplesTitle": "聞き方の例",
     "examples": [
@@ -847,13 +847,13 @@
     "notUsedYet": "まだ使われていません",
     "disconnect": "解除",
     "disconnectConfirmTitle": "{name} との連携を解除しますか？",
-    "disconnectConfirmBody": "この AI は triplot の旅行を読み書きできなくなります。使う時は、もう一度つなぎ直してください。",
+    "disconnectConfirmBody": "この AI は Triplot の旅行を読み書きできなくなります。使う時は、もう一度つなぎ直してください。",
     "disconnected": "連携を解除しました",
     "disconnectFailed": "連携を解除できませんでした。もう一度試してください。",
     "noteTitle": "注意点",
     "notes": [
-      "AI はあなたのアカウントで triplot を使います。あなたに見えるもの（自分だけの予定やメモも）が AI にも見え、AI が足したり直したりしたものは、あなたの操作として残ります。",
-      "AI は間違えることがあります。AI が入れた予定や費用は、triplot で確かめてください。"
+      "AI はあなたのアカウントで Triplot を使います。あなたに見えるもの（自分だけの予定やメモも）が AI にも見え、AI が足したり直したりしたものは、あなたの操作として残ります。",
+      "AI は間違えることがあります。AI が入れた予定や費用は、Triplot で確かめてください。"
     ],
     "disconnectConfirm": "解除",
     "musePrompt": "この URL のコネクタを追加して：{url}"

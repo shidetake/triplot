@@ -43,7 +43,7 @@ export default async function LandingPage({
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-24">
       <section className="space-y-6">
-        <h1 className="text-4xl font-semibold tracking-tight">triplot</h1>
+        <h1 className="text-4xl font-semibold tracking-tight">Triplot</h1>
         <p className="text-lg text-muted-foreground">{t("tagline")}</p>
         <p className="text-sm text-muted-foreground">{t("lead")}</p>
 
