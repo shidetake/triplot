@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { confirmDialog } from "@/components/confirm-dialog";
 import { CopyIcon } from "@/components/icons";
+import { InlineDivider } from "@/components/inline-divider";
+import { useLocalDateFormat } from "@/components/local-date";
 import { toast } from "@/components/toast";
 import { Button } from "@/components/ui/button";
 
@@ -77,6 +79,37 @@ export function CopyAndOpen({
     >
       {label}
     </a>
+  );
+}
+
+// つながっている AI の「〇〇 から ｜ 最終利用日 〇〇」。日付は見ている人の
+// タイムゾーンで出すので、文言ごとブラウザで組み立てる（components/local-date.tsx）。
+// ブラウザに入るまでは行の高さだけ取っておく（入った時に一覧が動かないように）。
+export function GrantDates({
+  grantedAt,
+  lastUsedAt,
+}: {
+  grantedAt: string;
+  lastUsedAt: string | null;
+}) {
+  const t = useTranslations("ai");
+  const format = useLocalDateFormat();
+  return (
+    <div className="flex min-h-4 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
+      {format && (
+        <>
+          <span>
+            {t("connectedSince", { date: format(grantedAt, "locale") })}
+          </span>
+          <InlineDivider />
+          <span>
+            {lastUsedAt
+              ? t("lastUsed", { date: format(lastUsedAt, "locale") })
+              : t("notUsedYet")}
+          </span>
+        </>
+      )}
+    </div>
   );
 }
 
