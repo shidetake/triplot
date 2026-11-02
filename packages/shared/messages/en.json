@@ -191,7 +191,7 @@
     "deleteConfirmLabel": "Delete",
     "deleteFailed": "Could not delete the account: {message}",
     "upgrade": "Create an account",
-    "upgradeBody": "You can keep using triplot as a guest. With an account you can open the same trips from another device, and everything you have written carries over.",
+    "upgradeBody": "You can keep using Triplot as a guest. With an account you can open the same trips from another device, and everything you have written carries over.",
     "upgradeDone": "Account created.",
     "upgradeFailed": "Could not create the account: {message}",
     "guestSignOutConfirmTitle": "You cannot sign back in",
@@ -744,7 +744,7 @@
     "diagnosticsNote": "Your device/browser environment is also sent as reference info.",
     "sent": "Feedback sent",
     "sendFailed": "Failed to send.",
-    "emailSubject": "[triplot] We received your feedback",
+    "emailSubject": "[Triplot] We received your feedback",
     "emailIntro": "Thank you for your feedback. We received the following.",
     "emailOutro": "We'll review it and act on it as needed."
   },
@@ -790,13 +790,13 @@
     "version": "Version {version} ({build})"
   },
   "oauthConsent": {
-    "title": "Connect AI to triplot",
-    "signInFirst": "Sign in to triplot to connect.",
-    "request": "<b>{client}</b> wants to connect to your triplot.",
+    "title": "Connect AI to Triplot",
+    "signInFirst": "Sign in to Triplot to connect.",
+    "request": "<b>{client}</b> wants to connect to your Triplot.",
     "unnamedClient": "An unnamed app",
     "returnsTo": "Connecting to",
     "signedInAs": "Signed in as",
-    "grants": "If you allow it, this app can read and change your trips in triplot as you: the events, places, expenses, to-dos and notes you can see, including private ones.",
+    "grants": "If you allow it, this app can read and change your trips in Triplot as you: the events, places, expenses, to-dos and notes you can see, including private ones.",
     "checkHost": "Check that this matches the AI you use. If you don't recognize it, deny.",
     "approve": "Allow",
     "deny": "Deny",
@@ -807,30 +807,30 @@
   "ai": {
     "menuLink": "AI connections",
     "title": "AI connections",
-    "lead": "Connect triplot to an AI such as ChatGPT or Gemini, and it can look at your trip, help you plan, and add the events and places you decide on straight into the trip. When you change the plan, the AI always reads the latest version.",
-    "urlLabel": "triplot connection URL",
+    "lead": "Connect Triplot to an AI such as ChatGPT or Gemini, and it can look at your trip, help you plan, and add the events and places you decide on straight into the trip. When you change the plan, the AI always reads the latest version.",
+    "urlLabel": "Triplot connection URL",
     "copyUrl": "Copy the URL",
     "howTo": "How to connect",
-    "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A triplot page opens during registration; choose Allow and you're done.",
+    "howToLead": "In the settings of the AI you use, register the URL above as a custom connector. A Triplot page opens during registration; choose Allow and you're done.",
     "officialHelp": "Official steps",
     "claudeSteps": [
       "Open the add custom connector screen",
-      "Choose Add → Connect, then Allow on the triplot page"
+      "Choose Add → Connect, then Allow on the Triplot page"
     ],
     "geminiSteps": [
       "Copy the URL and open the app connections settings",
       "Choose + Custom and paste the copied URL",
-      "Choose Allow on the triplot page"
+      "Choose Allow on the Triplot page"
     ],
     "chatgptSteps": [
       "Copy the URL and open the Plugins settings",
       "Choose Add → Add custom MCP server and paste the copied URL (keep OAuth as the authentication)",
-      "Choose Allow on the triplot page"
+      "Choose Allow on the Triplot page"
     ],
     "museSteps": [
       "Copy the request and open Muse",
       "Send the request (if the box is empty, paste the copied request)",
-      "Choose Connect, then Allow on the triplot page"
+      "Choose Connect, then Allow on the Triplot page"
     ],
     "examplesTitle": "Things to ask",
     "examples": [
@@ -852,8 +852,8 @@
     "disconnectFailed": "Couldn't disconnect. Please try again.",
     "noteTitle": "Things to note",
     "notes": [
-      "The AI uses triplot with your account. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
-      "AI can make mistakes. Check the events and expenses it adds in triplot."
+      "The AI uses Triplot with your account. It sees what you can see (including your private events and notes), and what it adds or changes is recorded as your action.",
+      "AI can make mistakes. Check the events and expenses it adds in Triplot."
     ],
     "disconnectConfirm": "Disconnect",
     "musePrompt": "Add a connector for this URL: {url}"

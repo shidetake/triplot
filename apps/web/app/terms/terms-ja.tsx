@@ -9,7 +9,7 @@ export function TermsJa() {
         href="/"
         className="text-sm text-muted-foreground transition hover:text-foreground"
       >
-        ← triplot
+        ← Triplot
       </Link>
 
       <h1 className="mt-6 text-2xl font-semibold">利用規約</h1>
@@ -20,7 +20,7 @@ export function TermsJa() {
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
         <section className="space-y-2">
           <p>
-            本規約は、triplot（以下「本サービス」）の利用条件を定めるものです。
+            本規約は、Triplot（以下「本サービス」）の利用条件を定めるものです。
             本サービスは、旅行の予定・場所・費用・TODO を複数人で共有しながら
             作るためのサービスで、web 版と iOS アプリを提供します。
             本サービスを利用した時点で、本規約に同意したものとみなします。

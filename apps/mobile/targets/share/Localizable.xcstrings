@@ -33,8 +33,8 @@
     },
     "noTrips" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "No trips yet. Create a trip in triplot first." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "旅行がありません。先に triplot で旅行を作ってください。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "No trips yet. Create a trip in Triplot first." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "旅行がありません。先に Triplot で旅行を作ってください。" } }
       }
     },
     "notFound" : {
@@ -45,8 +45,8 @@
     },
     "notSignedIn" : {
       "localizations" : {
-        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to triplot first." } },
-        "ja" : { "stringUnit" : { "state" : "translated", "value" : "先に triplot でログインしてください。" } }
+        "en" : { "stringUnit" : { "state" : "translated", "value" : "Sign in to Triplot first." } },
+        "ja" : { "stringUnit" : { "state" : "translated", "value" : "先に Triplot でログインしてください。" } }
       }
     },
     "title" : {

@@ -151,7 +151,7 @@ const handle = pipeline(
         // 外から引いて出し、その引き先に古いもの（作り始めの Vercel の▲）が
         // 残っていると、それが出る（Claude で実際に起きた）。
         const server = new McpServer({
-          name: "triplot",
+          name: "Triplot",
           version: "0.1.0",
           icons: [
             {
@@ -371,7 +371,7 @@ const handle = pipeline(
           "add_transit",
           {
             description:
-              "Add travel between two places (a flight, train, ferry…). Each end has its own local time, UTC offset and IANA time zone. Flights that cross time zones are what tell triplot where the trip is on each day.",
+              "Add travel between two places (a flight, train, ferry…). Each end has its own local time, UTC offset and IANA time zone. Flights that cross time zones are what tell Triplot where the trip is on each day.",
             inputSchema: z.object({
               trip_id: tripId,
               title: z.string().describe("e.g. the flight number and route."),

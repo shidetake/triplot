@@ -15,7 +15,7 @@ describe("aiClientName", () => {
   it("opens Claude's add-connector screen with triplot's URL filled in", () => {
     const claude = AI_GUIDES.find((a) => a.key === "claude")!;
     expect(claude.setup!("https://triplot.app/api/mcp")).toBe(
-      "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=triplot&connectorUrl=https%3A%2F%2Ftriplot.app%2Fapi%2Fmcp",
+      "https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Triplot&connectorUrl=https%3A%2F%2Ftriplot.app%2Fapi%2Fmcp",
     );
   });
 

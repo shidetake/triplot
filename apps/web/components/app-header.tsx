@@ -124,7 +124,7 @@ export async function AppHeader({
           </div>
         ) : (
           <Link href="/trips" className="text-lg font-semibold tracking-tight">
-            triplot
+            Triplot
           </Link>
         )}
         {/* アイコン同士のタップ領域が接しないよう gap-3（ui-guidelines の

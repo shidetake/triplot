@@ -123,7 +123,7 @@ async function warnIfTokenExpiring(sb: ReturnType<typeof createClient>): Promise
   });
   if (acquired !== true) return;
   await sendMail(
-    "【triplot】Apple ログインの自動更新に使うトークンの期限が近づいています",
+    "【Triplot】Apple ログインの自動更新に使うトークンの期限が近づいています",
     [
       `web の「Apple でログイン」の client secret を自動で作り直すための Supabase の管理用トークンが、${raw} に期限切れになります${daysLeft < 0 ? "（既に切れています）" : `（あと${Math.ceil(daysLeft)}日）`}。`,
       "",
@@ -191,7 +191,7 @@ function b64url(data: string | Uint8Array): string {
 
 function alert(detail: string): Promise<void> {
   return sendMail(
-    "【triplot】Apple ログインの client secret の自動更新が失敗しました",
+    "【Triplot】Apple ログインの client secret の自動更新が失敗しました",
     [
       "web の「Apple でログイン」の client secret（最長6か月）の自動更新が失敗しました。",
       "毎週やり直すので、原因を直せば次の実行で入れ替わります。",

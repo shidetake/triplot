@@ -66,7 +66,7 @@ export default function SignInScreen() {
 
   return (
     <View style={[styles.container, dark && styles.containerDark]}>
-      <Text style={[styles.wordmark, dark && styles.textDark]}>triplot</Text>
+      <Text style={[styles.wordmark, dark && styles.textDark]}>Triplot</Text>
       {/* Apple 先頭（web の OAuthSignInButton と同じ並び）。 */}
       <View style={styles.buttons}>
         <OAuthSignInButton

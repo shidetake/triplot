@@ -34,7 +34,7 @@ const geistMono = Geist_Mono({
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("app");
   return {
-    title: "triplot",
+    title: "Triplot",
     description: t("description"),
     other: {
       // Smart App Banner（iOS Safari 専用。他ブラウザ・Android は無視する）。

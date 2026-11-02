@@ -22,7 +22,7 @@ export default function AppLayout() {
           流儀だが、ルート画面のラージタイトルとしてワードマークを置く）。 */}
       <Stack.Screen
         name="trips/index"
-        options={{ title: "triplot", headerLargeTitle: true }}
+        options={{ title: "Triplot", headerLargeTitle: true }}
       />
       {/* trips/[tripId] は旅行名が動的なのでここでは静的な title だけ宣言
           （中身は [tripId]/_layout.tsx が旅行データ到着後に動的注入する）。
