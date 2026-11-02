@@ -744,7 +744,7 @@
     "diagnosticsNote": "動作環境（ブラウザ・OS等）も参考情報として送信されます。",
     "sent": "フィードバックを送信しました",
     "sendFailed": "送信に失敗しました。",
-    "emailSubject": "【triplot】フィードバックを受け付けました",
+    "emailSubject": "【Triplot】フィードバックを受け付けました",
     "emailIntro": "フィードバックありがとうございます。以下の内容で受け付けました。",
     "emailOutro": "内容を確認のうえ、必要に応じて対応します。"
   },

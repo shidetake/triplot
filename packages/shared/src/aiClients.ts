@@ -57,7 +57,7 @@ export const AI_GUIDES: readonly AiGuide[] = [
     key: "claude",
     name: "Claude",
     setup: (url) =>
-      `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=triplot&connectorUrl=${encodeURIComponent(url)}`,
+      `https://claude.ai/customize/connectors?modal=add-custom-connector&connectorName=Triplot&connectorUrl=${encodeURIComponent(url)}`,
     copiesUrl: false,
     setupInBrowser: false,
     chat: null,

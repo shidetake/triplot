@@ -60,7 +60,7 @@ export default function DevCheckScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.heading}>triplot M0 チェック</Text>
+      <Text style={styles.heading}>Triplot M0 チェック</Text>
 
       <Text style={styles.sectionTitle}>i18n（共有カタログ）</Text>
       <Text style={styles.body}>

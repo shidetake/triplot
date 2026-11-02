@@ -9,7 +9,7 @@ export function TermsJa() {
         href="/"
         className="text-sm text-muted-foreground transition hover:text-foreground"
       >
-        ← triplot
+        ← Triplot
       </Link>
 
       <h1 className="mt-6 text-2xl font-semibold">利用規約</h1>

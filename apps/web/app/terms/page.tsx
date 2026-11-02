@@ -14,7 +14,7 @@ import { TermsJa } from "./terms-ja";
 // 日本語版が正本で、英語版は参考訳（本文の「言語」の節）。表示の言語で出し分ける。
 export async function generateMetadata(): Promise<Metadata> {
   const en = (await getLocale()) === "en";
-  return { title: en ? "Terms of Service | triplot" : "利用規約 | triplot" };
+  return { title: en ? "Terms of Service | Triplot" : "利用規約 | Triplot" };
 }
 
 export default async function TermsPage() {

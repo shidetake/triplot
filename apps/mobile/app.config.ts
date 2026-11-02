@@ -26,7 +26,7 @@ const bundleIdentifier = isStaging
 const appleTeamId = "D37LHZNVW3";
 
 const config: ExpoConfig = {
-  name: isStaging ? "triplot (staging)" : "triplot",
+  name: isStaging ? "Triplot (staging)" : "Triplot",
   slug: "triplot",
   version: "1.3.0",
   orientation: "portrait",

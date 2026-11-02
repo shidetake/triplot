@@ -72,7 +72,7 @@ export async function alertAdminAuthFailure(params: {
     const { error: sendError } = await new Resend(apiKey).emails.send({
       from: FROM,
       to,
-      subject: `【triplot】${name}の${flowLabel}が失敗しています`,
+      subject: `【Triplot】${name}の${flowLabel}が失敗しています`,
       text,
     });
     if (sendError) console.error("[auth-alert] mail send failed", sendError.message);

@@ -9,7 +9,7 @@ export function TermsEn() {
         href="/"
         className="text-sm text-muted-foreground transition hover:text-foreground"
       >
-        ← triplot
+        ← Triplot
       </Link>
 
       <h1 className="mt-6 text-2xl font-semibold">Terms of Service</h1>
