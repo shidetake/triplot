@@ -213,7 +213,7 @@ async function sendMail(subject: string, text: string): Promise<void> {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        from: "triplot <noreply@triplot.app>",
+        from: "Triplot <noreply@triplot.app>",
         to,
         subject,
         text,

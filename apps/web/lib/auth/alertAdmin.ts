@@ -19,7 +19,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 // アドレス）。RESEND_API_KEY / 宛先が無い環境（ローカル・プレビュー）では送らない。
 // best-effort: 失敗してもログインの流れには影響させない（ログのみ）。
 
-const FROM = "triplot <noreply@triplot.app>";
+const FROM = "Triplot <noreply@triplot.app>";
 const THROTTLE_SECONDS = 60 * 60;
 
 export async function alertAdminAuthFailure(params: {
