@@ -20,7 +20,7 @@ export function TermsEn() {
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
         <section className="space-y-2">
           <p>
-            These terms set out the conditions for using triplot (the
+            These terms set out the conditions for using Triplot (the
             &quot;Service&quot;). The Service lets several people build a
             trip&apos;s schedule, places, expenses, and to-dos together, and is
             offered as a web version and an iOS app. By using the Service, you

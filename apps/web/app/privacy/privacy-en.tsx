@@ -20,7 +20,7 @@ export function PrivacyEn() {
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
         <section className="space-y-2">
           <p>
-            triplot (the &quot;Service&quot;) is a service for planning trips
+            Triplot (the &quot;Service&quot;) is a service for planning trips
             and for recording and settling travel expenses. This policy
             describes the information the Service (the web version and the iOS
             app) collects and how it is handled.
