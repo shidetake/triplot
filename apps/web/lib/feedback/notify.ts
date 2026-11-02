@@ -9,7 +9,7 @@ import ja from "@triplot/shared/messages/ja.json";
 // best-effort: 送信失敗は投稿の成否に影響させない（ログのみ）。
 // RESEND_API_KEY 未設定の環境（ローカル・プレビュー）ではスキップ＝メール無しでも機能は完結。
 
-const FROM = "triplot <noreply@triplot.app>";
+const FROM = "Triplot <noreply@triplot.app>";
 const MESSAGES = { ja, en } as const;
 
 async function send(
