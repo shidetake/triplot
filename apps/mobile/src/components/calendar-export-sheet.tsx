@@ -74,7 +74,7 @@ export function CalendarExportSheet({ tripId }: { tripId: string }) {
   });
   const mineEvents = events.filter((e) => e.mine);
   const targetEvents = scope === "mine" ? mineEvents : events;
-  const vNewName = newName ?? `triplot_${trip.title}`;
+  const vNewName = newName ?? `${trip.title} (Triplot)`;
 
   const connect = async () => {
     setError(null);
@@ -109,7 +109,7 @@ export function CalendarExportSheet({ tripId }: { tripId: string }) {
     try {
       let calendarId = selected;
       if (selected === NEW) {
-        const name = vNewName.trim() || `triplot_${trip.title}`;
+        const name = vNewName.trim() || `${trip.title} (Triplot)`;
         try {
           calendarId = await createGcalCalendar(token, name);
         } catch (e) {
@@ -197,7 +197,7 @@ export function CalendarExportSheet({ tripId }: { tripId: string }) {
               <TextInput
                 value={vNewName}
                 onChangeText={setNewName}
-                placeholder={`triplot_${trip.title}`}
+                placeholder={`${trip.title} (Triplot)`}
                 placeholderTextColor={theme.subtleForeground}
                 style={styles.input}
               />

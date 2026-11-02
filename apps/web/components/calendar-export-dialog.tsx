@@ -105,7 +105,7 @@ export function CalendarExportDialog({
   const [error, setError] = useState<string | null>(null);
   const [calendars, setCalendars] = useState<GcalCalendarItem[]>([]);
   const [selected, setSelected] = useState<string>(NEW);
-  const [newName, setNewName] = useState(`triplot_${tripTitle}`);
+  const [newName, setNewName] = useState(`${tripTitle} (Triplot)`);
   // 出力範囲。既定は「自分が参加する予定だけ」。
   const [scope, setScope] = useState<"mine" | "all">("mine");
   const [progress, setProgress] = useState({ done: 0, total: 0, failed: 0 });
@@ -184,7 +184,7 @@ export function CalendarExportDialog({
     try {
       let calendarId = selected;
       if (selected === NEW) {
-        const name = newName.trim() || `triplot_${tripTitle}`;
+        const name = newName.trim() || `${tripTitle} (Triplot)`;
         try {
           calendarId = await createGcalCalendar(token, name);
         } catch (e) {
@@ -281,7 +281,7 @@ export function CalendarExportDialog({
                   type="text"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder={`triplot_${tripTitle}`}
+                  placeholder={`${tripTitle} (Triplot)`}
                   className="ml-6 w-[calc(100%-1.5rem)] rounded-md border border-foreground/20 px-2 py-1.5 text-sm"
                 />
               )}
