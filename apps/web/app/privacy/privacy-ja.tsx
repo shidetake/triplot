@@ -20,7 +20,7 @@ export function PrivacyJa() {
       <div className="mt-8 space-y-8 text-sm leading-relaxed text-foreground">
         <section className="space-y-2">
           <p>
-            triplot（以下「本サービス」）は、旅行の計画・費用の記録と精算を行う
+            Triplot（以下「本サービス」）は、旅行の計画・費用の記録と精算を行う
             サービスです。本ポリシーは、本サービス（web
             版および iOS アプリ）が取得する情報とその取り扱いを定めます。
           </p>
