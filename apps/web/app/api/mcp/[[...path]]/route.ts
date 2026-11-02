@@ -151,7 +151,7 @@ const handle = pipeline(
         // 外から引いて出し、その引き先に古いもの（作り始めの Vercel の▲）が
         // 残っていると、それが出る（Claude で実際に起きた）。
         const server = new McpServer({
-          name: "triplot",
+          name: "Triplot",
           version: "0.1.0",
           icons: [
             {

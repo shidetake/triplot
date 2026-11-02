@@ -744,7 +744,7 @@
     "diagnosticsNote": "Your device/browser environment is also sent as reference info.",
     "sent": "Feedback sent",
     "sendFailed": "Failed to send.",
-    "emailSubject": "[triplot] We received your feedback",
+    "emailSubject": "[Triplot] We received your feedback",
     "emailIntro": "Thank you for your feedback. We received the following.",
     "emailOutro": "We'll review it and act on it as needed."
   },

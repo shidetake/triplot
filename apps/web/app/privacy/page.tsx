@@ -12,7 +12,7 @@ import { PrivacyJa } from "./privacy-ja";
 // 日本語版が正本で、英語版は参考訳（本文の「言語」の節）。表示の言語で出し分ける。
 export async function generateMetadata(): Promise<Metadata> {
   const en = (await getLocale()) === "en";
-  return { title: en ? "Privacy Policy | triplot" : "プライバシーポリシー | triplot" };
+  return { title: en ? "Privacy Policy | Triplot" : "プライバシーポリシー | Triplot" };
 }
 
 export default async function PrivacyPage() {

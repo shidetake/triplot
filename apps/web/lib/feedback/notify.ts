@@ -86,7 +86,7 @@ export async function notifyFeedback(params: {
     sends.push(
       send(resend, {
         to: adminTo,
-        subject: `【triplot】新しいフィードバック: ${kindLabel}`,
+        subject: `【Triplot】新しいフィードバック: ${kindLabel}`,
         text: lines.join("\n"),
       }),
     );
