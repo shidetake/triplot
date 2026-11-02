@@ -156,7 +156,7 @@ export default async function AdminUsersPage() {
                         ? aiByUser.get(u.user_id)!.map((c, i) => (
                             <div key={i}>
                               {c.name}{" "}
-                              <span className="tabular-nums text-muted-foreground">
+                              <span className="tabular-nums">
                                 {day(c.lastUsedAt)}
                               </span>
                             </div>
