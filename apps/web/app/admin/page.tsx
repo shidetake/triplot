@@ -1,10 +1,10 @@
-import { getLocale, getTranslations } from "next-intl/server";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
-import { formatDayLabel } from "@triplot/shared/schedule";
 
 import { FeedbackStatusButton } from "@/components/feedback-status-button";
 import { InlineDivider } from "@/components/inline-divider";
+import { LocalDate } from "@/components/local-date";
 import { AiUsageChart } from "@/components/ai-usage-chart";
 import { UserStatsChart } from "@/components/user-stats-chart";
 import { MessageBox } from "@/components/message-box";
@@ -12,6 +12,7 @@ import { fetchGatewayCredits } from "@/lib/import/gatewayCredits";
 import { isAllowedReceiptHost } from "@/lib/import/links";
 
 import { updateFeedbackStatusAction } from "./actions";
+import { LastSeen } from "./last-seen";
 import { requireAdmin } from "./require-admin";
 
 // サイト管理者専用の管理ページ。ビューは2つ:
@@ -169,10 +170,9 @@ export default async function AdminPage() {
       ? Math.floor(credits.balance / perEmail)
       : null;
 
-  const [t, tFeedback, locale] = await Promise.all([
+  const [t, tFeedback] = await Promise.all([
     getTranslations("admin"),
     getTranslations("feedback"),
-    getLocale(),
   ]);
 
   return (
@@ -342,9 +342,7 @@ export default async function AdminPage() {
                   </span>
                   <InlineDivider />
                   <span className="shrink-0">
-                    {t("lastSeen", {
-                      date: formatDayLabel(c.last_seen.slice(0, 10), locale),
-                    })}
+                    <LastSeen iso={c.last_seen} />
                   </span>
                   {c.sample_url && (
                     <>
@@ -394,7 +392,7 @@ export default async function AdminPage() {
                     </span>
                     <InlineDivider />
                     <span className="shrink-0 text-xs text-muted-foreground">
-                      {formatDayLabel(f.created_at.slice(0, 10), locale)}
+                      <LocalDate iso={f.created_at} style="dayLabel" />
                     </span>
                     {f.path && (
                       <>

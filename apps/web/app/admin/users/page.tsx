@@ -10,6 +10,7 @@ import {
 } from "@triplot/shared/loginMethods";
 
 import { ChevronIcon } from "@/components/icons";
+import { LocalDate } from "@/components/local-date";
 
 import { requireAdmin } from "../require-admin";
 
@@ -60,8 +61,9 @@ export default async function AdminUsersPage() {
     );
     return names.length > 0 ? names.join(", ") : "—";
   };
-  // 日付は YYYY-MM-DD（管理ページの LLM 使用量と揃える。UTC の日付）。
-  const day = (iso: string | null) => (iso ? iso.slice(0, 10) : "—");
+  // 日付は YYYY-MM-DD。見ている人のタイムゾーンの日付（components/local-date.tsx）。
+  const day = (iso: string | null) =>
+    iso ? <LocalDate iso={iso} style="ymd" /> : "—";
 
   const th = "px-2 py-2 text-right font-normal whitespace-nowrap";
   // 数字はすべて同じ濃さ。例外は「/ 上限」（件数の分母なので薄く）と、
@@ -154,7 +156,7 @@ export default async function AdminUsersPage() {
                         ? aiByUser.get(u.user_id)!.map((c, i) => (
                             <div key={i}>
                               {c.name}{" "}
-                              <span className="tabular-nums text-muted-foreground">
+                              <span className="tabular-nums">
                                 {day(c.lastUsedAt)}
                               </span>
                             </div>
